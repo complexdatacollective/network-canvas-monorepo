@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
+
 import {
+  getGroupedValidationsForVariableType,
   getValidationOptionsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,
@@ -8,6 +11,98 @@ import {
 } from '../options';
 
 describe('Validation options', () => {
+  // The dropdown is built from the protocol schema's own per-type `validation`
+  // picks. Assert the two agree, so a rule can never be offered that would make
+  // the saved protocol fail validation.
+  describe('agreement with the protocol schema', () => {
+    it.each(Object.entries(VARIABLE_TYPE_VALIDATIONS))(
+      'offers exactly the rules the schema accepts for %s',
+      (variableType, acceptedRules) => {
+        const offered = getValidationOptionsForVariableType(
+          variableType,
+          'node',
+        ).map((option) => option.value);
+
+        expect(offered).toEqual(Object.keys(acceptedRules));
+      },
+    );
+
+    it('offers nothing for a type the schema does not know', () => {
+      expect(getValidationOptionsForVariableType('nonsense', 'node')).toEqual(
+        [],
+      );
+    });
+  });
+
+  describe('grouping partitions the schema-accepted rules', () => {
+    const everyAcceptedRule = [
+      ...new Set(
+        Object.values(VARIABLE_TYPE_VALIDATIONS).flatMap((mask) =>
+          Object.keys(mask),
+        ),
+      ),
+    ];
+
+    it.each(everyAcceptedRule)(
+      '%s is claimed by exactly one group predicate',
+      (rule) => {
+        const claims = [
+          isValidationWithoutValue,
+          isValidationWithNumberValue,
+          isValidationWithListValue,
+        ].filter((predicate) => predicate(rule));
+
+        expect(claims).toHaveLength(1);
+      },
+    );
+
+    it.each(Object.keys(VARIABLE_TYPE_VALIDATIONS))(
+      'groups every offered rule for %s exactly once',
+      (variableType) => {
+        const flat = getValidationOptionsForVariableType(
+          variableType,
+          'node',
+        ).map((option) => option.value);
+        const grouped = getGroupedValidationsForVariableType(
+          variableType,
+          'node',
+        ).flatMap((group) => group.rules.map((rule) => rule.value));
+
+        expect(grouped.toSorted()).toEqual(flat.toSorted());
+        expect(new Set(grouped).size).toBe(grouped.length);
+      },
+    );
+
+    it('offers only length limits for the anonymisation passphrase', () => {
+      const groups = getGroupedValidationsForVariableType('passphrase', 'node');
+
+      expect(groups.map((group) => group.id)).toEqual(['limits']);
+      expect(groups[0]?.rules.map((rule) => rule.value)).toEqual([
+        'minLength',
+        'maxLength',
+      ]);
+    });
+
+    it.each(['layout', 'location', 'nonsense'])(
+      'renders no group at all for %s',
+      (variableType) => {
+        expect(
+          getGroupedValidationsForVariableType(variableType, 'node'),
+        ).toEqual([]);
+      },
+    );
+
+    it('drops unique from the requirements group for ego', () => {
+      const requirementsFor = (entity: string) =>
+        getGroupedValidationsForVariableType('text', entity)
+          .find((group) => group.id === 'requirements')
+          ?.rules.map((rule) => rule.value);
+
+      expect(requirementsFor('node')).toEqual(['required', 'unique']);
+      expect(requirementsFor('ego')).toEqual(['required']);
+    });
+  });
+
   describe('getValidationOptionsForVariableType', () => {
     describe('comparison variable validations availability', () => {
       const typesWithComparisonValidations = ['number', 'datetime', 'scalar'];

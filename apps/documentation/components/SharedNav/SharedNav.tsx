@@ -8,6 +8,7 @@ import type {
   SiteNavigationLocale,
 } from '@codaco/fresco-ui/navigation/SiteNavigation';
 import type { Locale } from '~/app/types';
+import { resolveNetworkCanvasUrl } from '~/lib/siteUrls';
 import { Link } from '~/navigation';
 
 import MobileNavBar from '../MobileNavBar';
@@ -21,7 +22,11 @@ function renderNavigationLink({
   children,
   ...props
 }: SiteNavigationLinkRenderProps) {
-  return <Link {...props}>{children}</Link>;
+  return (
+    <Link {...props} href={resolveNetworkCanvasUrl(props.href)}>
+      {children}
+    </Link>
+  );
 }
 
 export default function SharedNav() {

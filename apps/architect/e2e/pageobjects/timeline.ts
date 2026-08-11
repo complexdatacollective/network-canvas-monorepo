@@ -14,7 +14,11 @@ import { type Page } from '@playwright/test';
 // - Each row's stage label renders via fresco-ui's `Heading level="h4"`,
 //   which defaults to a real `<h4>` tag — matched here by accessible role.
 export class Timeline {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private container() {
     return this.page.locator('ul.justify-items-center');

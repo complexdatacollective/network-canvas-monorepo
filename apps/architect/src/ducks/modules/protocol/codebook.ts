@@ -20,6 +20,7 @@ import { getIsUsed } from '~/selectors/codebook/isUsed';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
+import { deleteStage } from './deleteStage';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
@@ -415,6 +416,17 @@ const codebookSlice = createSlice({
         },
       };
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(deleteStage, (state, action) => {
+      if (!action.payload.clearEncryptedVariables) return;
+
+      for (const nodeType of Object.values(state.node ?? {})) {
+        for (const variable of Object.values(nodeType.variables ?? {})) {
+          delete variable.encrypted;
+        }
+      }
+    });
   },
 });
 

@@ -2,9 +2,9 @@
 
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
-import { MotionConfig } from 'motion/react';
 import type { ReactNode } from 'react';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { Toaster } from '@codaco/fresco-ui/Toast';
@@ -44,19 +44,9 @@ const noopFinish = () => Promise.resolve();
  * Shell's own internal Toast.Provider + InterviewToastViewport, so this
  * decorator only needs to provide the default toast surface.
  */
-export default function Providers({
-  children,
-  disableAnimations,
-}: {
-  children: ReactNode;
-  disableAnimations?: boolean;
-}) {
-  if (disableAnimations) {
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
-  }
-
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <MotionConfig reducedMotion="user" skipAnimations={disableAnimations}>
+    <AnimationProvider disableAnimationsForAutomation>
       <DirectionProvider direction="ltr">
         <Toast.Provider limit={7}>
           <TooltipProvider>
@@ -75,6 +65,6 @@ export default function Providers({
           <Toaster />
         </Toast.Provider>
       </DirectionProvider>
-    </MotionConfig>
+    </AnimationProvider>
   );
 }

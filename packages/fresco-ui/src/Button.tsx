@@ -27,12 +27,14 @@ const buttonSpecificVariants = cva({
     'focusable',
     'elevation-low',
     'not-disabled:active:elevation-none not-disabled:active:translate-y-[2px]',
-    'transition-[background-color,border-color,color,box-shadow,opacity,translate] duration-150',
+    'transition-[background-color,border-color,border-width,color,box-shadow,opacity,translate] duration-150',
   ),
   variants: {
     variant: {
       'default': 'bg-(--component-text) text-(--component-bg)',
       'default-inverted': 'bg-white text-(--component-text)',
+      'raised':
+        'not-disabled:hover:elevation-medium border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)] not-disabled:hover:-translate-y-0.5 not-disabled:active:border-b-transparent',
       'outline':
         'border-2 border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
       'text':
@@ -43,8 +45,18 @@ const buttonSpecificVariants = cva({
         'control-glass border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
       'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
-        'font-body elevation-none hover:elevation-none! h-auto! p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]!',
+        'font-body elevation-none hover:elevation-none! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]!',
       ),
+    },
+    textStyle: {
+      default: 'tracking-wide normal-case',
+      uppercase: 'tracking-widest uppercase',
+    },
+    size: {
+      sm: '',
+      md: '',
+      lg: '',
+      xl: '',
     },
     color: {
       default:
@@ -74,6 +86,7 @@ const buttonSpecificVariants = cva({
     variant: 'default',
     color: 'default',
     iconPosition: 'left',
+    size: 'md',
   },
   compoundVariants: [
     // When in interview mode, use the button color for outline, because text has no contrast with bg
@@ -98,6 +111,74 @@ const buttonSpecificVariants = cva({
       variant: ['text', 'link'],
       className: 'elevation-none',
     },
+    {
+      variant: 'raised',
+      size: 'sm',
+      className:
+        'border-b-3 text-xs not-disabled:hover:border-b-4 not-disabled:active:translate-y-0.75 not-disabled:active:border-b-3',
+    },
+    {
+      variant: 'raised',
+      size: 'md',
+      className:
+        'border-b-4 text-sm not-disabled:hover:border-b-5 not-disabled:active:translate-y-1 not-disabled:active:border-b-4',
+    },
+    {
+      variant: 'raised',
+      size: 'lg',
+      className:
+        'border-b-5 text-base not-disabled:hover:border-b-6 not-disabled:active:translate-y-1.25 not-disabled:active:border-b-5',
+    },
+    {
+      variant: 'raised',
+      size: 'xl',
+      className:
+        'border-b-6 text-lg not-disabled:hover:border-b-8 not-disabled:active:translate-y-1.5 not-disabled:active:border-b-6',
+    },
+    {
+      textStyle: 'uppercase',
+      size: 'sm',
+      className: 'text-xs',
+    },
+    {
+      textStyle: 'uppercase',
+      size: 'md',
+      className: 'text-sm',
+    },
+    {
+      textStyle: 'uppercase',
+      size: 'lg',
+      className: 'text-base',
+    },
+    {
+      textStyle: 'uppercase',
+      size: 'xl',
+      className: 'text-lg',
+    },
+    {
+      variant: 'raised',
+      textStyle: 'default',
+      size: 'sm',
+      className: 'text-sm',
+    },
+    {
+      variant: 'raised',
+      textStyle: 'default',
+      size: 'md',
+      className: 'text-base',
+    },
+    {
+      variant: 'raised',
+      textStyle: 'default',
+      size: 'lg',
+      className: 'text-lg',
+    },
+    {
+      variant: 'raised',
+      textStyle: 'default',
+      size: 'xl',
+      className: 'text-xl',
+    },
   ],
 });
 
@@ -113,6 +194,7 @@ const buttonVariants = compose(
 
 type BaseButtonProps = {
   variant?: VariantProps<typeof buttonVariants>['variant'];
+  textStyle?: VariantProps<typeof buttonVariants>['textStyle'];
   asChild?: boolean;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
@@ -143,6 +225,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       icon,
       iconPosition = 'left',
+      textStyle,
       type = 'button',
       ...props
     },
@@ -154,6 +237,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       color,
       size,
       iconPosition,
+      textStyle,
       className,
     });
 
@@ -194,7 +278,7 @@ Button.displayName = 'Button';
 
 type IconButtonProps = Omit<
   ButtonProps,
-  'icon' | 'children' | 'iconPosition' | 'color'
+  'icon' | 'children' | 'iconPosition' | 'color' | 'textStyle'
 > & {
   'icon': React.ReactNode;
   'aria-label': string;
@@ -242,6 +326,7 @@ const ButtonSkeleton = (props: ButtonProps) => {
       variant: props.variant,
       color: props.color,
       size: props.size,
+      textStyle: props.textStyle,
     }),
     props.className,
   );

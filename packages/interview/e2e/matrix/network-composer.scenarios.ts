@@ -334,12 +334,14 @@ export const networkComposerScenarios: InterfaceScenarios = {
         ]);
         await expect(composer.hullShapes).toHaveCount(0);
 
-        // Multi-selecting offers no "Add all to" bar without groups.
+        // Multi-selecting offers no group-membership controls without groups.
         await composer.selectTool();
         await composer.tapNode('Frank');
         await composer.tapNode('Gina', 'Shift');
         await expect(
-          page.getByRole('button', { name: /Add all to/ }),
+          page.getByRole('group', {
+            name: 'Group membership for selected people',
+          }),
         ).toHaveCount(0);
       },
     },
@@ -404,6 +406,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
     {
       id: 'convexhull-lasso-bulk-add',
       covers: ['convexHullVariable.lasso'],
+      visual: true,
       build: () => {
         const synth = new SyntheticInterview(185);
         const person = synth.addNodeType({ name: 'Person' });
@@ -419,6 +422,21 @@ export const networkComposerScenarios: InterfaceScenarios = {
             { value: 'school', label: 'School' },
             { value: 'work', label: 'Work' },
             { value: 'family', label: 'Family' },
+            {
+              value: 'partner-family',
+              label: "My partner's family",
+            },
+            { value: 'friends', label: 'Friends' },
+            { value: 'neighborhood', label: 'Neighborhood' },
+            {
+              value: 'community',
+              label: 'Community or faith group',
+            },
+            {
+              value: 'professionals',
+              label: 'Services and professionals',
+            },
+            { value: 'online', label: 'Online' },
           ],
         });
         synth.addStage('NetworkComposer', {
@@ -471,12 +489,70 @@ export const networkComposerScenarios: InterfaceScenarios = {
           'data-node-selected',
         );
 
-        // One selection-bar button per hull option.
-        await expect(composer.getSelectionBarButton('School')).toBeVisible();
-        await expect(composer.getSelectionBarButton('Work')).toBeVisible();
-        await expect(composer.getSelectionBarButton('Family')).toBeVisible();
+        const groupLabels = [
+          'School',
+          'Work',
+          'Family',
+          "My partner's family",
+          'Friends',
+          'Neighborhood',
+          'Community or faith group',
+          'Services and professionals',
+          'Online',
+        ];
+        const membershipGroup = page.getByRole('group', {
+          name: 'Group membership for selected people',
+        });
+        const groupToggles = membershipGroup.getByRole('button');
+
+        await expect(membershipGroup).toBeVisible();
+        await expect(groupToggles).toHaveCount(groupLabels.length);
+        await Promise.all(
+          groupLabels.map((label) =>
+            expect(composer.getSelectionBarButton(label)).toBeVisible(),
+          ),
+        );
+
+        const toggleSizes = await groupToggles.evaluateAll((toggles) =>
+          toggles.map((toggle) => {
+            const { width, height } = toggle.getBoundingClientRect();
+            return { width, height };
+          }),
+        );
+        const widths = toggleSizes.map(({ width }) => width);
+        const heights = toggleSizes.map(({ height }) => height);
+        expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(
+          1,
+        );
+        expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(
+          1,
+        );
+
+        const matrixViewport = page.viewportSize();
+        if (matrixViewport === null) {
+          throw new Error('Network Composer matrix tests require a viewport');
+        }
+
+        await page.setViewportSize({ width: 768, height: 1024 });
+        const toolbarBox = await page
+          .getByRole('toolbar', { name: 'Network composer tools' })
+          .boundingBox();
+        const membershipGroupBox = await membershipGroup.boundingBox();
+        if (toolbarBox === null || membershipGroupBox === null) {
+          throw new Error(
+            'Toolbar or group membership selector is not visible',
+          );
+        }
+        expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
+          toolbarBox.x + toolbarBox.width,
+        );
+        await page.setViewportSize(matrixViewport);
 
         await composer.getSelectionBarButton('Work').click();
+        await expect(composer.getSelectionBarButton('Work')).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        );
 
         const communityOf = (
           s: Awaited<ReturnType<typeof protocol.getNetworkState>>,

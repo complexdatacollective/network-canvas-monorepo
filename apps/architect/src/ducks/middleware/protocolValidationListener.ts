@@ -1,167 +1,305 @@
 import {
   createListenerMiddleware,
+  type ListenerEffectAPI,
   type TypedStartListening,
+  type UnknownAction,
 } from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
+import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
+import { beginProtocolCommit } from '~/utils/criticalOperation';
 import { ensureError } from '~/utils/ensureError';
 import { enqueueProtocolValidationDialogEvent } from '~/utils/protocolValidationDialogQueue';
 
-import { updateLastModified } from '../modules/activeProtocol';
-import { validateProtocolAsync } from '../modules/protocolValidation';
+import {
+  clearActiveProtocol,
+  setActiveProtocol,
+  updateLastModified,
+} from '../modules/activeProtocol';
+import {
+  getActiveProtocolId,
+  getProtocolOpenElsewhere,
+  getStorageUnavailable,
+  setActiveProtocolId,
+  setProtocolOpenElsewhere,
+} from '../modules/app';
+import {
+  clearValidation,
+  validateProtocolAsync,
+} from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
+import { resetDraft } from '../modules/stageEditorDraft';
+import { protocolCommitAccepted } from '../protocolCommit';
 import type { AppDispatch } from '../store';
 import { timelineActions } from './timeline';
 
-// Create the listener middleware
 export const protocolValidationListenerMiddleware = createListenerMiddleware();
 
-// Type the start listening function
 type AppStartListening = TypedStartListening<RootState, AppDispatch>;
+type AppListenerApi = ListenerEffectAPI<RootState, AppDispatch>;
 const startAppListening =
   protocolValidationListenerMiddleware.startListening as AppStartListening;
 
-// Locus of the last state that validated successfully. The auto-revert targets
-// this position so it undoes back to a known-valid point rather than blindly
-// popping the newest timeline entry.
-let lastValidLocusId: string | null = null;
+type KnownValidState = {
+  session: number;
+  locusId: string;
+};
 
-// Edits that land while a validation is in flight are gated out of the effect
-// (isValidating is true across the awaited run); record that so we re-validate
-// the latest state once the current run finishes instead of dropping it.
-let revalidatePending = false;
+type ProtocolCommitCandidate = {
+  session: number;
+  protocolId: string | null;
+  locusId: string;
+  protocol: CurrentProtocol;
+  persistenceAllowed: boolean;
+};
 
-// The invalid-protocol dialog reverts on confirm; while one is open, suppress
-// opening another so repeated failed validations don't stack dialogs. The id
-// lets a later successful validation dismiss the now-stale dialog.
+let activeSession = 0;
+let lastValidState: KnownValidState | null = null;
 let invalidDialogId: string | null = null;
+let latestInvalidSession: number | null = null;
+let validationQueue: Promise<void> = Promise.resolve();
 
-// The locus of the most recent invalid state. The open dialog's revert closure
-// reads this at confirm time (rather than a value frozen when it opened), so a
-// further invalid edit that lands while the dialog is open still lets the revert
-// fire for the state the user is actually looking at instead of no-oping.
-let latestInvalidLocusId: string | null = null;
+const isLocusInCurrentTimeline = (state: RootState, locusId: string): boolean =>
+  state.activeProtocol.timeline.some((entry) => entry.id === locusId);
 
-// Listen for any protocol changes and trigger validation
-startAppListening({
-  predicate: (action, currentState, previousState) => {
-    // Skip validation for lastModified updates to prevent infinite loop
-    if (updateLastModified.match(action)) {
-      return false;
-    }
+const closeInvalidDialog = (): void => {
+  if (!invalidDialogId) return;
+  enqueueProtocolValidationDialogEvent({
+    type: 'close',
+    id: invalidDialogId,
+  });
+  invalidDialogId = null;
+  latestInvalidSession = null;
+};
 
-    // Get the current and previous active protocols
-    const currentProtocol = getProtocol(currentState);
-    const previousProtocol = getProtocol(previousState);
+const beginTrustedSession = (state: RootState): void => {
+  activeSession += 1;
+  closeInvalidDialog();
 
-    const changed =
-      currentProtocol !== null && currentProtocol !== previousProtocol;
+  const protocol = getProtocol(state);
+  const locusId = getTimelineLocus(state);
+  lastValidState =
+    protocol && locusId
+      ? {
+          session: activeSession,
+          locusId,
+        }
+      : null;
+};
 
-    // An edit arrived while a validation is in flight: remember to re-validate
-    // the latest state after the current run rather than silently skipping it.
-    if (changed && currentState.protocolValidation.isValidating) {
-      revalidatePending = true;
-    }
+const clearProtocolSession = (): void => {
+  activeSession += 1;
+  lastValidState = null;
+  closeInvalidDialog();
+};
 
-    // Only validate if we have a changed protocol and aren't mid-validation.
-    return changed && !currentState.protocolValidation.isValidating;
-  },
-  effect: async (_action, listenerApi) => {
-    // Re-validate the latest state until no edit arrived during a run, so edits
-    // made while a validation was in flight are never left unvalidated. The
-    // try/finally guarantees that a thrown/rejected validation still clears
-    // isValidating (via the thunk) and re-checks revalidatePending, so an edit
-    // that landed mid-run is never silently dropped.
-    do {
-      // Reset before awaiting so an edit that arrives during this run flips it
-      // back to true and drives another iteration.
-      revalidatePending = false;
+const resetInvalidProtocolSession = (listenerApi: AppListenerApi): void => {
+  clearProtocolSession();
+  disarmInMemoryUnloadGuard();
+  listenerApi.dispatch(resetDraft(null));
+  listenerApi.dispatch(clearValidation());
+  listenerApi.dispatch(setProtocolOpenElsewhere(false));
+  listenerApi.dispatch(setActiveProtocolId(null));
+  listenerApi.dispatch(clearActiveProtocol());
+  // clearActiveProtocol changes `present`, while reset removes every past and
+  // future copy so browser history can never revive the invalid candidate.
+  listenerApi.dispatch(timelineActions.reset(null));
+};
 
-      const state = listenerApi.getState();
-      const protocol = getProtocol(state);
+const openInvalidDialog = (
+  listenerApi: AppListenerApi,
+  candidate: ProtocolCommitCandidate,
+  errorMessage: string,
+): void => {
+  latestInvalidSession = candidate.session;
+  if (invalidDialogId) return;
 
-      if (!protocol) {
+  const dialogId = uuid();
+  invalidDialogId = dialogId;
+  enqueueProtocolValidationDialogEvent({
+    type: 'open',
+    id: dialogId,
+    errorMessage,
+    onRevert: () => {
+      if (
+        invalidDialogId !== dialogId ||
+        latestInvalidSession !== activeSession ||
+        !lastValidState ||
+        lastValidState.session !== activeSession
+      ) {
         return;
       }
 
-      // Capture the locus of the state being validated before awaiting, so an
-      // edit that lands during validation can't make us record the newer,
-      // unvalidated position as known-valid.
-      const validatedLocusId = getTimelineLocus(state);
-
-      try {
-        const result = await listenerApi
-          .dispatch(validateProtocolAsync(protocol))
-          .unwrap();
-
-        if (result.result.success) {
-          // Record this known-valid position as the auto-revert target.
-          lastValidLocusId = validatedLocusId;
-          latestInvalidLocusId = null;
-
-          // A previously-opened revert dialog is now stale: the latest state
-          // validated cleanly, so dismiss it rather than let the user revert a
-          // valid protocol back to an older point.
-          if (invalidDialogId) {
-            enqueueProtocolValidationDialogEvent({
-              type: 'close',
-              id: invalidDialogId,
-            });
-            invalidDialogId = null;
-          }
-
-          // Update lastModified timestamp when validation succeeds
-          listenerApi.dispatch({
-            ...updateLastModified(new Date().toISOString()),
-            meta: { skipTimeline: true },
-          });
-        } else {
-          // Track the newest invalid position even when a dialog is already
-          // open, so its revert targets the state currently on screen rather
-          // than freezing on the first failure.
-          latestInvalidLocusId = validatedLocusId;
-
-          if (!invalidDialogId) {
-            const errorMessage = ensureError(result.result.error).message;
-            const dialogId = uuid();
-            invalidDialogId = dialogId;
-            enqueueProtocolValidationDialogEvent({
-              type: 'open',
-              id: dialogId,
-              errorMessage,
-              onConfirm: () => {
-                // Staleness check: only revert if the current state is still
-                // an invalid one we flagged (a valid newer edit dismisses
-                // this dialog via the success branch), and always revert to
-                // the last known-valid point. Reads the module-scoped locus
-                // so a further invalid edit after the dialog opened doesn't
-                // freeze the target and make the revert a no-op.
-                const currentLocusId = getTimelineLocus(listenerApi.getState());
-                if (currentLocusId !== latestInvalidLocusId) {
-                  return;
-                }
-                if (lastValidLocusId) {
-                  listenerApi.dispatch(timelineActions.jump(lastValidLocusId));
-                }
-                navigate('/protocol');
-              },
-              onClose: () => {
-                // Clear only if this dialog is still the tracked one; a later
-                // success may have already dismissed it and opened nothing new.
-                if (invalidDialogId === dialogId) {
-                  invalidDialogId = null;
-                }
-              },
-            });
-          }
-        }
-      } catch {
-        // Validation threw (thunk rejected). isValidating is already cleared by
-        // the rejected reducer; fall through to the while-check so a pending
-        // edit is still re-validated instead of being dropped.
+      invalidDialogId = null;
+      latestInvalidSession = null;
+      listenerApi.dispatch(timelineActions.jump(lastValidState.locusId));
+      navigate('/protocol');
+    },
+    onReturnToStart: () => {
+      if (invalidDialogId !== dialogId) return;
+      invalidDialogId = null;
+      latestInvalidSession = null;
+      resetInvalidProtocolSession(listenerApi);
+    },
+    onClose: () => {
+      if (invalidDialogId === dialogId) {
+        invalidDialogId = null;
+        latestInvalidSession = null;
       }
-    } while (revalidatePending);
+    },
+  });
+};
+
+const processCandidate = async (
+  listenerApi: AppListenerApi,
+  candidate: ProtocolCommitCandidate,
+): Promise<void> => {
+  try {
+    const validationResult = await listenerApi
+      .dispatch(validateProtocolAsync(candidate.protocol))
+      .unwrap();
+    if (!validationResult.result.success) {
+      const state = listenerApi.getState();
+      if (
+        candidate.session === activeSession &&
+        getTimelineLocus(state) === candidate.locusId
+      ) {
+        openInvalidDialog(
+          listenerApi,
+          candidate,
+          ensureError(validationResult.result.error).message,
+        );
+      }
+      return;
+    }
+
+    const state = listenerApi.getState();
+    const belongsToActiveSession = candidate.session === activeSession;
+    // An undo can move a still-validating candidate into the future. It is no
+    // longer an accepted commit on the active branch and must not overwrite the
+    // canonical row before the undo itself is validated.
+    if (
+      belongsToActiveSession &&
+      !isLocusInCurrentTimeline(state, candidate.locusId)
+    ) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const acceptedProtocol = {
+      ...candidate.protocol,
+      lastModified: timestamp,
+    };
+
+    if (belongsToActiveSession) {
+      lastValidState = {
+        session: candidate.session,
+        locusId: candidate.locusId,
+      };
+
+      if (getTimelineLocus(state) === candidate.locusId) {
+        closeInvalidDialog();
+        listenerApi.dispatch({
+          ...updateLastModified(timestamp),
+          meta: { skipTimeline: true },
+        });
+      }
+    }
+
+    if (candidate.protocolId) {
+      listenerApi.dispatch(
+        protocolCommitAccepted({
+          id: candidate.protocolId,
+          protocol: acceptedProtocol,
+          persistenceAllowed: candidate.persistenceAllowed,
+        }),
+      );
+    }
+  } catch (error: unknown) {
+    const state = listenerApi.getState();
+    if (
+      candidate.session === activeSession &&
+      getTimelineLocus(state) === candidate.locusId
+    ) {
+      openInvalidDialog(
+        listenerApi,
+        candidate,
+        `Protocol validation could not be completed: ${
+          typeof error === 'string' ? error : ensureError(error).message
+        }`,
+      );
+    }
+  }
+};
+
+// `setActiveProtocol` is trusted admission. Recent/rehydrated protocols come
+// from canonical IndexedDB, and every import/template path validates before it
+// dispatches this action. Seed the opening state as the revert baseline without
+// validating or rewriting it.
+startAppListening({
+  actionCreator: setActiveProtocol,
+  effect: (_action, listenerApi) => {
+    beginTrustedSession(listenerApi.getState());
+  },
+});
+
+startAppListening({
+  actionCreator: clearActiveProtocol,
+  effect: () => {
+    clearProtocolSession();
+  },
+});
+
+// Capture every timeline commit as its own immutable FIFO candidate. Validation
+// and persistence never re-read a later protocol snapshot after an await.
+startAppListening({
+  predicate: (
+    action: UnknownAction,
+    currentState: RootState,
+    previousState: RootState,
+  ) => {
+    if (
+      setActiveProtocol.match(action) ||
+      clearActiveProtocol.match(action) ||
+      updateLastModified.match(action)
+    ) {
+      return false;
+    }
+
+    const currentProtocol = getProtocol(currentState);
+    return (
+      currentProtocol !== null &&
+      currentProtocol !== getProtocol(previousState) &&
+      getTimelineLocus(currentState) !== null
+    );
+  },
+  effect: async (_action, listenerApi) => {
+    const state = listenerApi.getState();
+    const protocol = getProtocol(state);
+    const locusId = getTimelineLocus(state);
+    if (!protocol || !locusId) return;
+
+    const finishCriticalOperation = beginProtocolCommit();
+    const candidate: ProtocolCommitCandidate = {
+      session: activeSession,
+      protocolId: getActiveProtocolId(state),
+      locusId,
+      protocol,
+      persistenceAllowed:
+        !getStorageUnavailable(state) && !getProtocolOpenElsewhere(state),
+    };
+
+    const run = validationQueue.then(() =>
+      processCandidate(listenerApi, candidate),
+    );
+    validationQueue = run.catch(() => undefined);
+    try {
+      await run;
+    } finally {
+      finishCriticalOperation();
+    }
   },
 });

@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { useEffect, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import Field from '../../form/Field/Field';
+import InputField from '../../form/fields/InputField';
 import DialogProvider, { type WizardStep } from '../DialogProvider';
 import useDialog from '../useDialog';
 import { useWizard } from '../useWizard';
@@ -34,6 +36,32 @@ function SecondStep() {
 
 function ThirdStep() {
   return <div>Step 3 content</div>;
+}
+
+function FirstNameStep() {
+  const { completedStepValues } = useWizard();
+
+  return (
+    <>
+      <Field name="first.name" label="First name" component={InputField} />
+      <output data-testid="completed-step-values">
+        {JSON.stringify(completedStepValues)}
+      </output>
+    </>
+  );
+}
+
+function SecondNameStep() {
+  const { completedStepValues } = useWizard();
+
+  return (
+    <>
+      <Field name="second.name" label="Second name" component={InputField} />
+      <output data-testid="completed-step-values">
+        {JSON.stringify(completedStepValues)}
+      </output>
+    </>
+  );
 }
 
 function TestWizardComponent({
@@ -150,6 +178,39 @@ describe('Wizard Dialog', () => {
     });
 
     expect(onResult).toHaveBeenCalledWith({ step1: 'done', step2: 'done' });
+  });
+
+  it('exposes active values from completed steps and clears them on back', async () => {
+    const onResult = vi.fn();
+
+    render(
+      <DialogProvider>
+        <TestWizardComponent
+          onResult={onResult}
+          steps={[
+            { title: 'First person', content: FirstNameStep },
+            { title: 'Second person', content: SecondNameStep },
+          ]}
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByText('Open'));
+    await user.type(
+      screen.getByRole('textbox', { name: 'First name' }),
+      'Alice',
+    );
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await screen.findByRole('textbox', { name: 'Second name' });
+    expect(screen.getByTestId('completed-step-values')).toHaveTextContent(
+      JSON.stringify({ 0: { first: { name: 'Alice' } } }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+
+    await screen.findByRole('textbox', { name: 'First name' });
+    expect(screen.getByTestId('completed-step-values')).toHaveTextContent('{}');
   });
 
   it('should return null when cancelled', async () => {

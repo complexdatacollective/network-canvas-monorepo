@@ -188,7 +188,7 @@ export const promptLeaveEditor = async (
           type: 'choice',
           title: 'Return to start screen?',
           description:
-            "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+            "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
           intent: 'default',
           size: 'readable',
           actions: {

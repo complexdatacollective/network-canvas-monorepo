@@ -1,6 +1,6 @@
 import { useTranslations } from 'next-intl';
 
-import SiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
+import SharedSiteFooter from '@codaco/fresco-ui/navigation/SiteFooter';
 import type {
   SiteFooterLink,
   SiteFooterSocialLink,
@@ -34,7 +34,7 @@ export function Footer() {
   ];
 
   return (
-    <SiteFooter
+    <SharedSiteFooter
       brand={<Logo />}
       links={links}
       copyright={t('copyright', { year: new Date().getFullYear() })}

@@ -111,6 +111,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         >
           <ValidatedField
             component={ShapePicker}
+            labelHidden
             name="shape.default"
             validation={{ required: true }}
             componentProps={{ nodeColor: formColor }}
@@ -131,6 +132,7 @@ const TypeEditor = ({ form, entity, existingTypes }: TypeEditorProps) => {
         >
           <ValidatedField
             component={IconPicker}
+            labelHidden
             name="icon"
             validation={{ required: true }}
           />

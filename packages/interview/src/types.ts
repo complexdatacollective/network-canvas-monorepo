@@ -2,8 +2,11 @@ import type { Stage as TStage } from '@codaco/protocol-validation';
 
 export type Direction = 'forwards' | 'backwards';
 
+export type NavigationIntent = 'step' | 'jump';
+
 export type BeforeNextFunction = (
   direction: Direction,
+  intent: NavigationIntent,
 ) => Promise<boolean | 'FORCE'> | boolean | 'FORCE';
 
 export type RegisterBeforeNext = {

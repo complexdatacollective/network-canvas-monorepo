@@ -1,10 +1,10 @@
 {
   "name": "@codaco/documentation",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols && pnpm next dev",
+    "dev": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols && pnpm next dev --port 3000",
     "build": "pnpm next build",
     "postbuild": "pnpm next-sitemap",
     "prebuild": "pnpm writeSidebarJson && pnpm copyProtocolDownloads && pnpm generateProtocols",
@@ -30,6 +30,7 @@
     "@docsearch/react": "^4.6.3",
     "@next/bundle-analyzer": "catalog:",
     "@next/third-parties": "catalog:",
+    "@posthog/nextjs-config": "catalog:",
     "@posthog/react": "catalog:",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@t3-oss/env-nextjs": "^0.13.11",
@@ -39,7 +40,7 @@
     "next": "catalog:",
     "next-intl": "^4.13.0",
     "next-themes": "^0.4.6",
-    "postcss": "^8.5.19",
+    "postcss": "^8.5.25",
     "posthog-js": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -72,7 +73,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

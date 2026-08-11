@@ -34,6 +34,26 @@ describe('CategoricalBin optionGetters', () => {
       ]);
     });
 
+    // redux-form leaves the field value unset until it holds rows, and a
+    // half-filled row has no `property` yet.
+    it.each([
+      ['undefined', undefined],
+      ['null', null],
+      ['a non-array value', {}],
+      ['rows with no property yet', [{ direction: 'asc' }]],
+    ])('disables nothing when allValues is %s', (_label, allValues) => {
+      const sortOrderOptionGetter =
+        getSortOrderOptionGetter(mockVariableOptions);
+
+      const subject = sortOrderOptionGetter('property', undefined, allValues);
+
+      expect(subject).toEqual([
+        { label: '*', value: '*' },
+        { label: 'Name', value: '1234-1234-1234-1' },
+        { label: 'Age', value: '1234-1234-1234-2' },
+      ]);
+    });
+
     it('options for `direction`', () => {
       const sortOrderOptionGetter =
         getSortOrderOptionGetter(mockVariableOptions);

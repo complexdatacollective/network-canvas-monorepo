@@ -1,6 +1,6 @@
 {
   "name": "@codaco/protocol-utilities",
-  "version": "2.2.2",
+  "version": "3.2.1",
   "description": "Synthetic network generation and interview-payload builder for Network Canvas protocols.",
   "license": "MIT",
   "repository": {
@@ -40,6 +40,7 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@codaco/fresco-ui": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",

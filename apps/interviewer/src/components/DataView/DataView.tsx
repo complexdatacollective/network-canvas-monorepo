@@ -9,6 +9,7 @@ import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
 import { DataViewToolbar } from './DataViewToolbar';
+import { ExportDialog } from './ExportDialog';
 import { useDataViewColumns } from './useDataViewColumns';
 import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
@@ -70,15 +71,21 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   // protocol hash, for the progress column's "step X of Y" label. Derived via
   // getInterviewProgress so the host never hard-codes the +1 for the finish
   // stage.
-  const protocolTotalSteps = useMemo(() => {
-    const map = new Map<string, number>();
+  const { protocolTotalSteps, protocolStages } = useMemo(() => {
+    const totalSteps = new Map<string, number>();
+    const stagesByHash = new Map<
+      string,
+      ProtocolWithCounts['protocol']['stages']
+    >();
     for (const protocol of protocols) {
-      map.set(
-        protocol.hash,
-        getInterviewProgress(protocol.protocol.stages ?? [], 0).totalSteps,
-      );
+      const stages = protocol.protocol.stages ?? [];
+      totalSteps.set(protocol.hash, getInterviewProgress(stages, 0).totalSteps);
+      stagesByHash.set(protocol.hash, stages);
     }
-    return map;
+    return {
+      protocolTotalSteps: totalSteps,
+      protocolStages: stagesByHash,
+    };
   }, [protocols]);
 
   const protocolOptions = useMemo(() => {
@@ -129,12 +136,16 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   } = useSessionSelection({ filtersKey, pageIds, totalCount, queryParams });
 
   const {
-    exporting,
+    exportFlow,
+    preparingExport,
     deleting,
+    markingUnfinishedId,
     handleExport,
+    handleCancelBuild,
+    handleDismissExport,
     handleDelete,
+    handleMarkUnfinished,
     handleShareReady,
-    pendingShare,
   } = useSessionMutations({
     selectedCount,
     resolveSelectedIds,
@@ -150,6 +161,14 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     togglePageSelected,
     allOnPageSelected,
     someOnPageSelected,
+    markingUnfinishedId,
+    mutationsBusy: exportFlow.phase !== 'idle' || preparingExport || deleting,
+    onMarkUnfinished: (session) => {
+      void handleMarkUnfinished(
+        session,
+        protocolStages.get(session.protocolHash) ?? [],
+      );
+    },
   });
 
   const table = useReactTable({
@@ -176,7 +195,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="tablet-landscape:px-11 flex min-h-0 w-full flex-1 flex-col gap-6 px-6 pt-8 pb-8"
+      className="laptop:px-11 flex min-h-0 w-full flex-1 flex-col gap-6 px-6 pt-8 pb-8"
     >
       <DataViewToolbar
         table={table}
@@ -185,12 +204,17 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         statusCounts={statusCounts}
         protocolOptions={protocolOptions}
         selectedCount={selectedCount}
-        exporting={exporting}
+        exporting={exportFlow.phase !== 'idle' || preparingExport}
         deleting={deleting}
-        pendingShare={pendingShare !== null}
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
-        onShareReady={() => void handleShareReady()}
+      />
+
+      <ExportDialog
+        flow={exportFlow}
+        onCancelBuild={handleCancelBuild}
+        onSave={() => void handleShareReady()}
+        onDismiss={handleDismissExport}
       />
 
       <AnimatePresence initial={false}>

@@ -1,7 +1,10 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { NodeDefinition } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type NodeDefinition,
+} from '@codaco/protocol-validation';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../contract/network';
@@ -73,7 +76,7 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'circle',
       dynamic: {
-        variable: 'ethnicity',
+        variable: asEntityAttributeReference('ethnicity'),
         type: 'discrete',
         map: [
           { value: 'asian', shape: 'square' },
@@ -89,7 +92,7 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'circle',
       dynamic: {
-        variable: 'role',
+        variable: asEntityAttributeReference('role'),
         type: 'discrete',
         map: [{ value: 'lead', shape: 'diamond' }],
       },
@@ -102,7 +105,7 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'square',
       dynamic: {
-        variable: 'is_person',
+        variable: asEntityAttributeReference('is_person'),
         type: 'discrete',
         map: [{ value: true, shape: 'circle' }],
       },

@@ -9,6 +9,7 @@ import {
   controlLabelVariants,
   sliderControlVariants,
   sliderRootVariants,
+  sliderThumbSurfaceVariants,
   sliderThumbVariants,
   sliderTickContainerStyles,
   sliderTickStyles,
@@ -86,28 +87,52 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
 
   const popoverOption = options[sliderValue];
 
+  // The in-progress pointer press. `started` is only true for a primary press
+  // that began on this slider, so a release belonging to some other gesture —
+  // a secondary-button click, or a drag that started elsewhere and happens to
+  // end over the scale — can't record a response. `movedValue` records whether
+  // that press has already chosen an option.
+  const pointerPressRef = useRef({ started: false, movedValue: false });
+
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
     const index = Array.isArray(newValue) ? newValue[0] : newValue;
     if (index !== undefined) {
       const selectedOption = options[index];
       if (selectedOption) {
+        pointerPressRef.current.movedValue = true;
         onChange?.(selectedOption.value);
       }
     }
   };
 
-  // onValueCommitted fires on pointer release, even if the position didn't change.
-  // This handles the case where the user clicks on the midpoint while pristine.
-  const handleValueCommitted = (newValue: number | number[]) => {
-    if (readOnly || hasValue) return;
-    const index = Array.isArray(newValue) ? newValue[0] : newValue;
-    if (index !== undefined) {
-      const selectedOption = options[index];
-      if (selectedOption) {
-        onChange?.(selectedOption.value);
-      }
+  // base-ui only reports a value change when the press actually moves the
+  // slider, so a pristine scale pressed on the thumb — or on the midpoint the
+  // thumb already rests at — would never record a response. Commit whatever the
+  // thumb is resting on instead.
+  const commitPristineValue = () => {
+    if (disabled || readOnly || hasValue) return;
+    const restingOption = options[sliderValue];
+    if (restingOption) {
+      onChange?.(restingOption.value);
     }
+  };
+
+  const handlePointerDown = (event: React.PointerEvent) => {
+    pointerPressRef.current = {
+      started: event.button === 0,
+      movedValue: false,
+    };
+    if (pointerPressRef.current.started) active.onPointerDown();
+  };
+
+  // Committing on release rather than on press leaves a press that *does* move
+  // the thumb free to record the option the participant chose.
+  const handlePointerUp = () => {
+    const press = pointerPressRef.current;
+    pointerPressRef.current = { started: false, movedValue: false };
+    if (!press.started || press.movedValue) return;
+    commitPristineValue();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -133,13 +158,16 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
         <Slider.Root
           value={sliderValue}
           onValueChange={handleValueChange}
-          onValueCommitted={handleValueCommitted}
           onKeyDown={(event) => {
             if (readOnly) return;
             handleKeyDown(event);
             active.onKeyDown(event);
           }}
-          onPointerDown={readOnly ? undefined : active.onPointerDown}
+          onPointerDown={readOnly ? undefined : handlePointerDown}
+          onPointerUp={readOnly ? undefined : handlePointerUp}
+          onPointerCancel={() => {
+            pointerPressRef.current = { started: false, movedValue: false };
+          }}
           onBlur={(event) => {
             active.onBlur();
             onBlur?.(event);
@@ -185,21 +213,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 inputRef={(input) => {
                   if (input && id) input.id = id;
                 }}
-                render={
-                  <motion.div
-                    // base-ui's nested <input type="range"> is the focusable
-                    // control; motion otherwise auto-adds tabIndex={0} to a
-                    // `whileTap` element, which would make the thumb a second
-                    // tab stop. Keep the div out of the tab order.
-                    tabIndex={-1}
-                    whileTap={{ scale: 1.1 }}
-                    transition={{
-                      type: 'spring',
-                      duration: 0.3,
-                      bounce: 0.4,
-                    }}
-                  />
-                }
                 className={sliderThumbVariants({ state: thumbState })}
                 aria-label={
                   ariaLabelledBy
@@ -209,7 +222,22 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={() => currentOption?.label ?? 'No selection'}
-              />
+              >
+                <motion.div
+                  // base-ui's nested <input type="range"> is the focusable
+                  // control; motion otherwise auto-adds tabIndex={0} to a
+                  // `whileTap` element, which would make the thumb a second
+                  // tab stop. Keep the div out of the tab order.
+                  tabIndex={-1}
+                  whileTap={{ scale: 1.1 }}
+                  transition={{
+                    type: 'spring',
+                    duration: 0.3,
+                    bounce: 0.4,
+                  }}
+                  className={sliderThumbSurfaceVariants({ state: thumbState })}
+                />
+              </Slider.Thumb>
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>

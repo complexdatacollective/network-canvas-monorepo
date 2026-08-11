@@ -121,7 +121,11 @@ test.describe('interview data management', () => {
 
     const { fileName, files } = await download.captureExport(async () => {
       await page.getByTestId('data-export').click();
-      await expect(page.getByText('Archive ready')).toBeVisible();
+      // The export dialog's ready state; role-scoped because its sr-only live
+      // region announces the same text.
+      await expect(
+        page.getByRole('heading', { name: 'Archive ready' }),
+      ).toBeVisible();
       await page.getByTestId('data-save-export').click();
     });
 
@@ -172,5 +176,51 @@ test.describe('interview data management', () => {
     await page.getByRole('button', { name: /^In progress ·/ }).click();
     await page.getByTestId('data-resume').first().click();
     await expect(page).toHaveURL(/\/interview\//);
+  });
+
+  test('reviews a completed session read-only and marks it unfinished', async ({
+    protocol,
+    seed,
+    page,
+  }) => {
+    await importAndSeed(protocol, seed, page);
+    await page.goto('/data');
+    await page.getByRole('button', { name: /^Complete ·/ }).click();
+
+    await page.getByTestId('data-review').first().click();
+    await expect(page).toHaveURL(/\/interview\/.+\?mode=review$/);
+    await expect(page.getByText('Read-only review')).toBeVisible();
+    await expect(page.locator('[data-stage-step]')).toHaveAttribute(
+      'data-stage-step',
+      '3',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Finish Interview' }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByText(
+        'Changes made while reviewing this interview will not be saved.',
+      ),
+    ).toBeVisible();
+
+    await page.goto('/data?status=complete');
+    await page.getByTestId('data-mark-unfinished').first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Mark unfinished' }).click();
+
+    await expect(page.getByText('Interview marked unfinished')).toBeVisible();
+    await expect(page.getByTestId('data-resume')).toHaveCount(0);
+    await page.getByRole('button', { name: /^In progress ·/ }).click();
+    await expect(page.getByTestId('data-resume').first()).toBeVisible();
+    await page.getByTestId('data-resume').first().click();
+    await expect(page).toHaveURL(/\/interview\//);
+    await expect(page.locator('[data-stage-step]')).toHaveAttribute(
+      'data-stage-step',
+      '3',
+    );
+    await expect(
+      page.getByRole('heading', { name: 'Finish Interview' }),
+    ).not.toBeVisible();
   });
 });

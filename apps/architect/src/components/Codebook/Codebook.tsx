@@ -1,5 +1,5 @@
 import { Plus, Search } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -23,24 +23,16 @@ type CodebookProps = {
   onEditEntity?: (entity: string, type?: string) => void;
 };
 
-type FilterValues = {
-  search: string;
-  unusedOnly: boolean;
-};
-
-const CodebookFilterObserver = ({
+const CodebookSearchObserver = ({
   onChange,
 }: {
-  onChange: (values: FilterValues) => void;
+  onChange: (search: string) => void;
 }) => {
-  const values = useFormValue(['search', 'unusedOnly'] as const);
+  const values = useFormValue(['search'] as const);
 
   useEffect(() => {
-    onChange({
-      search: String(values.search ?? ''),
-      unusedOnly: Boolean(values.unusedOnly),
-    });
-  }, [onChange, values.search, values.unusedOnly]);
+    onChange(typeof values.search === 'string' ? values.search : '');
+  }, [onChange, values.search]);
 
   return null;
 };
@@ -60,20 +52,17 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
     hasEgoVariables || hasNodes || hasEdges || hasNetworkAssets;
   const [search, setSearch] = useState('');
   const [unusedOnly, setUnusedOnly] = useState(false);
-  const handleFilterChange = useCallback((values: FilterValues) => {
-    setSearch(values.search);
-    setUnusedOnly(values.unusedOnly);
-  }, []);
+  const unusedOnlyId = useId();
 
   return (
     <div className="my-10">
-      <Surface className="mb-7" spacing="sm" shadow="sm">
-        <Form
-          onSubmit={() => ({ success: true })}
-          className="flex flex-wrap items-center gap-5 [&>.group]:mb-0!"
-        >
-          <CodebookFilterObserver onChange={handleFilterChange} />
-          <div className="min-w-72 flex-1">
+      <Surface className="mb-14" spacing="sm" shadow="sm">
+        <div className="flex flex-wrap items-end gap-5">
+          <Form
+            onSubmit={() => ({ success: true })}
+            className="min-w-72 flex-1 [&>.group]:mb-0!"
+          >
+            <CodebookSearchObserver onChange={setSearch} />
             <Field
               name="search"
               label="Search the codebook by name"
@@ -83,15 +72,21 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
               placeholder="Search types and variables by name..."
               prefixComponent={<Search aria-hidden className="size-4" />}
             />
+          </Form>
+          <div className="flex shrink-0 items-center gap-3 pb-2.5">
+            <CheckboxField
+              id={unusedOnlyId}
+              value={unusedOnly}
+              onChange={(value) => setUnusedOnly(Boolean(value))}
+            />
+            <label
+              htmlFor={unusedOnlyId}
+              className="font-heading cursor-pointer text-base leading-snug font-bold"
+            >
+              Show unused only
+            </label>
           </div>
-          <Field
-            name="unusedOnly"
-            label="Show unused only"
-            component={CheckboxField}
-            initialValue={false}
-            inline
-          />
-        </Form>
+        </div>
       </Surface>
 
       {!hasAnyContent && (
@@ -104,7 +99,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         </div>
       )}
 
-      <div className="mb-7">
+      <div className="mb-14">
         <Heading level="h2" margin="none" className="mb-5">
           Ego
         </Heading>
@@ -113,7 +108,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         </Section>
       </div>
 
-      <div className="mb-7">
+      <div className="mb-14">
         <div className="mb-5 flex items-center gap-5">
           <Heading level="h2" margin="none">
             Node Types ({nodes.length})
@@ -130,22 +125,24 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {nodes.length === 0 ? (
           <Paragraph className="text-muted">No node types yet.</Paragraph>
         ) : (
-          nodes.map((node) => (
-            <EntityType
-              key={node.type}
-              entity={node.entity}
-              type={node.type}
-              inUse={node.inUse}
-              usage={[...node.usage]}
-              search={search}
-              unusedOnly={unusedOnly}
-              onEditEntity={onEditEntity}
-            />
-          ))
+          <div className="space-y-8">
+            {nodes.map((node) => (
+              <EntityType
+                key={node.type}
+                entity={node.entity}
+                type={node.type}
+                inUse={node.inUse}
+                usage={[...node.usage]}
+                search={search}
+                unusedOnly={unusedOnly}
+                onEditEntity={onEditEntity}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="mb-7">
+      <div className="mb-14">
         <div className="mb-5 flex items-center gap-5">
           <Heading level="h2" margin="none">
             Edge Types ({edges.length})
@@ -162,23 +159,25 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         {edges.length === 0 ? (
           <Paragraph className="text-muted">No edge types yet.</Paragraph>
         ) : (
-          edges.map((edge) => (
-            <EntityType
-              key={edge.type}
-              entity={edge.entity}
-              type={edge.type}
-              inUse={edge.inUse}
-              usage={[...edge.usage]}
-              search={search}
-              unusedOnly={unusedOnly}
-              onEditEntity={onEditEntity}
-            />
-          ))
+          <div className="space-y-8">
+            {edges.map((edge) => (
+              <EntityType
+                key={edge.type}
+                entity={edge.entity}
+                type={edge.type}
+                inUse={edge.inUse}
+                usage={[...edge.usage]}
+                search={search}
+                unusedOnly={unusedOnly}
+                onEditEntity={onEditEntity}
+              />
+            ))}
+          </div>
         )}
       </div>
 
       {processedNetworkAssets.length > 0 && (
-        <div className="mb-7">
+        <div className="mb-14">
           <Heading level="h2" margin="none" className="mb-5">
             Network Assets ({processedNetworkAssets.length})
           </Heading>

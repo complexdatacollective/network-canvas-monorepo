@@ -27,6 +27,11 @@ const redirectTests: RedirectTest[] = [
     description: 'Root redirects to /en',
   },
   {
+    from: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
+    description: 'Building a protocol moved into the Tutorials group',
+  },
+  {
     from: '/en/design-protocols/installing-architect-desktop',
     expectedDestination: '/en/design-protocols/installing-architect-classic',
     description: 'Installing Architect page renamed to Architect Classic',
@@ -39,18 +44,17 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/reference/protocol-schema-information',
-    expectedDestination:
-      '/en/get-started/advanced-topics/protocol-schema-information',
+    expectedDestination: '/en/get-started/protocol-schema-information',
     description: 'Protocol schema information redirect',
   },
   {
     from: '/reference/node-labelling',
-    expectedDestination: '/en/get-started/advanced-topics/node-labelling',
+    expectedDestination: '/en/design-protocols/key-concepts/node-labelling',
     description: 'Node labelling redirect',
   },
   {
     from: '/reference/protocol-file-format',
-    expectedDestination: '/en/get-started/advanced-topics/protocol-file-format',
+    expectedDestination: '/en/design-protocols/key-concepts/the-protocol-file',
     description: 'Protocol file format redirect',
   },
   {
@@ -88,7 +92,7 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/advanced-topics/network-canvas-graphml',
-    expectedDestination: '/en/analyze-data/network-canvas-graphml',
+    expectedDestination: '/en/analyze-data/data-export',
     description:
       'advanced-topics graphml jumps section (exact rule beats advanced-topics splat)',
   },
@@ -96,7 +100,7 @@ const redirectTests: RedirectTest[] = [
   // Two-section layout: /en/desktop/*
   {
     from: '/en/desktop/tutorials/building-a-protocol',
-    expectedDestination: '/en/design-protocols/building-a-protocol',
+    expectedDestination: '/en/design-protocols/tutorials/building-a-protocol',
     description: 'desktop tutorial remapped into design-protocols',
   },
   {

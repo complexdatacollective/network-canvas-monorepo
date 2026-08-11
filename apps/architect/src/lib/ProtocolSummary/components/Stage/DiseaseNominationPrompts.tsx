@@ -1,3 +1,4 @@
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import Markdown from '~/components/Markdown';
 
 import MiniTable from '../MiniTable';
@@ -23,9 +24,9 @@ const DiseaseNominationPrompts = ({
 
   return (
     <SectionFrame title="Disease Nomination Prompts">
-      <ol className="m-0 ps-10">
+      <UnorderedList>
         {diseaseNominationStep.map((prompt) => (
-          <li className="my-5 pl-5" key={prompt.id}>
+          <li className="my-5" key={prompt.id}>
             <div className="break-inside-avoid">
               <Markdown label={prompt.text} />
               <MiniTable
@@ -40,7 +41,7 @@ const DiseaseNominationPrompts = ({
             </div>
           </li>
         ))}
-      </ol>
+      </UnorderedList>
     </SectionFrame>
   );
 };

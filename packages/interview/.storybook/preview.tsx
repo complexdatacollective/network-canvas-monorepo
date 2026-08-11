@@ -9,7 +9,6 @@ import {
 } from '@storybook/addon-docs/blocks';
 import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
-import isChromatic from 'chromatic/isChromatic';
 import mapboxgl from 'mapbox-gl';
 // Serve mapbox-gl's worker as an untransformed asset (?url). Bundling
 // mapbox-gl rewrites its embedded worker source into ESM (import.meta),
@@ -70,39 +69,26 @@ export default definePreview({
     docs: {
       container: ThemedDocsContainer,
     },
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: 'todo',
+    },
   },
   decorators: [
-    (Story) => {
-      // Disable Base UI animations whenever the browser is being driven by
-      // automation (Playwright in vitest browser mode, or Storybook's
-      // play-function runner). This makes Base UI dialog open/close flows
-      // deterministic: they no longer wait on `getAnimations()` so sequences
-      // like "click Cancel → confirm dialog opens → click Continue editing"
-      // don't race the form store against CSS animation completion.
-      //
-      // Also togglable via `?disableAnimations=1` on the URL for interactive
-      // debugging of the animation-disabled code path.
-      //
-      // Manual browsing has `navigator.webdriver === false`, so interactive
-      // development still gets the full animations by default.
-      const disableAnimationsFromAutomation =
-        typeof navigator !== 'undefined' && navigator.webdriver;
-      const disableAnimations =
-        disableAnimationsFromAutomation || isChromatic();
-
-      return (
-        <StrictMode>
-          {/*
-           * Required by Base UI's portal-based dialogs/popovers:
-           * https://base-ui.com/react/overview/quick-start#portals
-           */}
-          <ThemedRegion theme="interview" className="root h-full">
-            <Providers disableAnimations={disableAnimations}>
-              <Story />
-            </Providers>
-          </ThemedRegion>
-        </StrictMode>
-      );
-    },
+    (Story) => (
+      <StrictMode>
+        {/*
+         * Required by Base UI's portal-based dialogs/popovers:
+         * https://base-ui.com/react/overview/quick-start#portals
+         */}
+        <ThemedRegion theme="interview" className="root h-full">
+          <Providers>
+            <Story />
+          </Providers>
+        </ThemedRegion>
+      </StrictMode>
+    ),
   ],
 });

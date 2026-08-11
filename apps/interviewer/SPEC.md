@@ -33,7 +33,8 @@ The start screen is implemented from a Claude Design handoff bundle. Use the fol
 
 - List of all collected sessions with case ID, protocol name, start time, and status (in progress, finished, exported).
 - Multi-select with bulk export and bulk delete.
-- Resume an in-progress interview or review a finished one.
+- Resume an in-progress interview, review a finished one without saving changes,
+  or mark a finished interview as unfinished to continue editing it.
 
 ### Settings
 

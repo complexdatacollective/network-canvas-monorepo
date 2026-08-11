@@ -1,5 +1,327 @@
 # @codaco/interview
 
+## 8.0.0
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+- 90e0178: The "current or ex partner?" answer in the family pedigree's Add Person form is now preserved when switching between selecting an existing person and adding a new one.
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+
+## 7.1.1
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- 2325d34: Answers given in the final moments of an interview are no longer lost when a
+  participant finishes. Responses are saved on a short delay, so the very last
+  answer could still be waiting to be written when the interview was marked as
+  complete — and any study that locks an interview once it is finished then
+  rejected that late save without warning. The interview now waits for every
+  outstanding answer to be saved before it is finished. If that final save fails,
+  the participant can still finish rather than being stranded on the interview.
+
+## 7.1.0
+
+### Minor Changes
+
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+### Patch Changes
+
+- ea589ec: Keep a scrolled roster near the dragged item after it is added instead of resetting the source list to the top.
+- 48572ed: Keep canvas nodes fully visible at the canvas edge on every screen size. The
+  boundary that stops a dragged or auto-laid-out node at the edge of the
+  Sociogram, Narrative, and Network Composer canvases now uses the node's real
+  rendered size instead of a fixed estimate, so larger nodes on wide displays are
+  no longer partially cut off when moved to the edge of the canvas.
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 66da138: Keep content clear of the device status bar in the installed app. On iPads and
+  other devices with a status bar, the home screen's brand mark, view switcher,
+  and settings button — and interview stage content — now start below the system
+  status bar instead of sliding underneath the clock and battery indicators,
+  while the background still fills the entire screen. The interview navigation
+  bar also sits evenly against the bottom edge of the screen in both
+  orientations, rather than reserving extra space below its buttons.
+
+## 7.0.2
+
+### Patch Changes
+
+- fde9bb4: Make animation-aware components consistently respect disabled and reduced motion, and advance Dyad Census and Tie Strength Census immediately after committed answers when motion is disabled.
+
+## 7.0.1
+
+### Patch Changes
+
+- 8effa31: `BooleanField` now honours the `negative` flag on a boolean option. Selecting an option marked negative styles its border and indicator in the destructive colour instead of the primary one; unselected options are unchanged. Previously the flag was accepted by the protocol schema and written by Architect, but ignored at render time.
+
+## 7.0.0
+
+### Minor Changes
+
+- b777dc1: The Categorical Bin "other" input and the Name Generator quick-add field now apply the referenced variable's configured validation rules, exactly as form fields do — including context-dependent rules such as `differentFrom` and `unique`. The Network Composer's add-node input applies the quick-add variable's codebook rules in the same way, a behaviour change for existing protocols whose quick-add variable carries validation. Previously these inputs ignored the codebook and enforced only their local requirements. In native v8 protocols, both Categorical Bin "other" and Name Generator quick-add are optional when their referenced variable has no required validation. The v7→v8 migration adds `required: true` to variables referenced by either writer, preserving existing protocols' required responses while retaining their other validation rules. Variables without an explicit input `component` work correctly. After a valid Network Composer node is added, its quick-add field now resets its value and validation state so the fresh blank entry does not announce a required-field error.
+
+  Network Composer also waits for a quick-add node to finish being stored before
+  clearing and reopening the input, preventing two rapid submissions from
+  bypassing uniqueness validation against the first node.
+
+  The Categorical Bin dialog registers its response under the referenced
+  codebook variable ID, so a sibling variable literally named `otherVariable`
+  cannot be mistaken for the live response by cross-variable validation.
+
+  Deferred invalid-field focus now remains safe when its form unmounts before
+  smooth scrolling finishes.
+
+### Patch Changes
+
+- 59625a8: The defaults a date field falls back on, when a protocol declares no bounds of its own, now live in one place.
+
+  `@codaco/shared-consts` exports `DATE_PICKER_DEFAULT_MIN`,
+  `DATE_PICKER_EARLIEST_DATE`, `DATE_PICKER_LATEST_DATE`,
+  `RELATIVE_DATE_PICKER_DEFAULT_BEFORE`, and
+  `RELATIVE_DATE_PICKER_DEFAULT_AFTER`. `@codaco/fresco-ui` renders its date
+  fields from them, `@codaco/interview` derives the bounds a submitted date is
+  validated against from them, `@codaco/protocol-validation` models those bounds
+  when detecting contradictions, and `@codaco/protocol-utilities` generates
+  synthetic dates to fit them. Each package previously kept some local copies and
+  tested only those copies, so widening or narrowing a bound in one place could
+  leave another package predicting a window that no longer existed. No default
+  or limit has changed value, and generated data is unchanged.
+
+  `@codaco/protocol-utilities` additionally exports `todayYmd`, the clock read behind `GenerationConfig.today`'s default.
+
+- 0807c3d: Form analytics now report each field's real input control. `form_opened` and
+  `form_validation_failed` read the control from the codebook variable rather
+  than from the form field, which never carried one — so every field was
+  previously recorded as `unknown`. Event shapes are unchanged.
+- 1b48714: Clear the Name Generator quick-add field after successful submissions, including when adding the node refreshes the live validation context.
+- a9a5900: `useProtocolForm` now precomputes the RelativeDatePicker submission-time
+  min/max window even when a protocol field or variable omits `parameters`
+  entirely. The rendered control always applies its default window (before =
+  180 days, after = 0, anchor = today) regardless of whether the record is
+  absent or empty, but the submission-time validator was previously only
+  derived when `parameters` was present — so a keyboard-typed date outside the
+  default window could bypass validation and be submitted. Absent and `{}`
+  `parameters` now behave identically, matching
+  `@codaco/protocol-validation`'s contradiction analyser.
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+- efc3a92: A relative date question anchored near either end of the calendar no longer refuses every date it offers.
+
+  A relative date question works out the dates it accepts by counting days forward and back from an anchor. With an anchor late in the calendar that count could pass the year 9999 — an anchor of 9999-12-31 accepting one day after it worked out a latest date of 10000-01-01 — and with an early anchor it could pass year zero, working out 0000-07-05 or, further back, something that was not a date at all. Neither is a date the software recognises, so the check on what a participant entered stopped comparing dates and compared plain text instead, where a five-digit year sorts before every four-digit one. Every date the question could offer was then rejected as too late, including the one the participant had just chosen. Both ends of the window now stop at the first and last dates a date field can hold.
+
+  `@codaco/shared-consts` exports `dateWithinPickerRange`, `DATE_PICKER_EARLIEST_DATE` and `DATE_PICKER_LATEST_DATE`. The field in `@codaco/fresco-ui`, the submission checks in `@codaco/interview` and the synthetic dates drawn by `@codaco/protocol-utilities` all work the window out from that one function, so the three cannot disagree about it. Questions anchored anywhere else are unaffected, and generated data for them is unchanged.
+
+- 7cffcc9: Synthetic interview data now respects the validation rules configured on your variables.
+
+  Previously, generated networks ignored the rules a protocol author sets in Architect, so previewing a protocol or bulk-generating interviews could produce data a participant could never have entered — names shorter than a required minimum length, numbers outside their permitted range, dates outside a date picker's window, duplicate values on a variable marked unique, or a "start date" later than the "end date" it is required to precede. Generated values now satisfy required, minimum/maximum length, minimum/maximum value, minimum/maximum selected, unique, same as, different from, and the greater/less than (or equal to) cross-variable comparisons, as well as the bounds a date picker or relative date picker imposes.
+
+  Where rules refer to one another, generation follows that order, so a variable compared against another is filled in after the variable it depends on.
+
+  If a protocol's rules cannot all be satisfied at once — for example a minimum length greater than its maximum length, a permitted range with no values in it, or a variable required to be both unique and drawn from fewer options than there are entities to fill — generation is now refused with a `SyntheticDataConstraintError` that names the variable and describes the conflict, instead of silently producing data that could never be collected. `SyntheticDataConstraintError` and the `ConstraintConflict` type it carries are exported from `@codaco/protocol-utilities`.
+
+  When skip logic and filtering are respected, controls on stages proven unreachable no longer create synthetic-data rendering conflicts with reachable Network Composer stages.
+
+  Read-only stage references no longer make validation rules apply to values written only by binning stages. Writers on stages proven unreachable by skip logic are likewise ignored consistently by both the feasibility check and the synthetic draw.
+
+  Manually seeded nodes and edges keep omitted Boolean attributes at the neutral
+  `false` value regardless of how the control's options are ordered.
+
+  When multiple reachable Network Composer stages render one date variable at the
+  same resolution, generation now uses the intersection of their accepted
+  windows. It refuses only controls at incompatible resolutions or controls whose
+  windows do not overlap. When an ordinary form also renders that variable,
+  generation includes its codebook control in the same intersection.
+
+  Categorical Bin "other" inputs must now target a text variable, matching the
+  text field the interview renders. Importing a version 7 protocol removes an
+  incompatible non-text "other" configuration instead of preserving a control
+  that cannot record the target variable's value.
+
+  `@codaco/fresco-ui` adds a `./form/validation/helpers` export subpath so consumers can build the same validator stack the interview uses. `@codaco/interview` now fails loudly, naming the variable, when a protocol carries a validation rule of the wrong type, rather than passing it to a validator that would report a generic error.
+
+- Updated dependencies [59625a8]
+- Updated dependencies [a124bc0]
+- Updated dependencies [1b4dc6b]
+- Updated dependencies [86603b4]
+- Updated dependencies [fd78d55]
+- Updated dependencies [a33e3cf]
+- Updated dependencies [b777dc1]
+- Updated dependencies [1a3fe60]
+- Updated dependencies [efc3a92]
+- Updated dependencies [7cffcc9]
+- Updated dependencies [457052e]
+  - @codaco/fresco-ui@5.0.0
+
+## 6.0.0
+
+### Minor Changes
+
+- b66b062: The interview Shell now supports a review mode that stops before the finish
+  screen, uses review-specific exit messaging, suppresses interview analytics, and
+  allows hosts to explain their post-completion editing policy in the finish
+  confirmation.
+
+### Patch Changes
+
+- 00e16c0: Refine interview typography scaling and unify the type-scale base.
+
+  The shared Fresco theme now uses a single `0.9rem` base for `--theme-root-size`
+  across product surfaces, and exposes a new `--theme-root-size-fluid` token — an
+  opt-in `clamp()` ramp for presentation surfaces that want type and spacing to
+  grow on wide or scaled-up displays. The participant interview adopts the shared
+  `0.9rem` base and scales it with a continuous ramp (reaching ~`1rem` at typical
+  screen sizes and up to `1.25rem` on large displays), replacing the previous
+  three-step ramp. Dense product UI keeps a constant, compact base.
+
+  Also fixes the scroll-to-bottom "ready" detection in scrolling forms
+  (`useScrolledToBottom`): it now measures scroll position directly instead of
+  relying on a zero-height sentinel's edge intersection, which some browsers
+  (notably Firefox) fail to report when the form is scrolled to the exact bottom —
+  so the "ready to continue" cue reliably appears.
+
+- 31d45db: Fix the Previous Step button at the start of an interview: it no longer lights up before there is anywhere to go back to, and pressing it when no earlier screen exists no longer silently breaks the current stage's own step-by-step navigation.
+- c8c4614: Scalar (visual analog scale) variables no longer accept the `minValue` and
+  `maxValue` validation rules.
+
+  A scalar response is recorded on a normalised 0-1 scale, and these rules are
+  integers — so the only pair they could express on that scale was `{0, 1}`, the
+  scale it already has. Anything else silently redefined the variable's range
+  through a validation rule, which the interview then forwarded onto the slider's
+  rendered track without adjusting its step or value formatting. Validation now
+  rejects either rule on a scalar, migrating a protocol to schema 8 removes them
+  (preserving the requiredness a `min*` validator used to imply), and the
+  interview no longer derives the slider's bounds from validation.
+
+  Number variables are unaffected, and scalars keep `required` and the comparison
+  rules, which compare two scalars on the same scale.
+
+  Also adds a `VARIABLE_TYPE_VALIDATIONS` export: the record of which validation
+  rules each variable type accepts. Every variable schema now picks its
+  `validation` shape from this record, so an authoring UI can build its per-type
+  rule list from the same source rather than maintaining a parallel copy.
+
+- 310a5ae: Improve Network Composer group assignment for multi-person selections with an accessible, scrollable group selector that handles mixed membership and consistently sizes group controls.
+- Updated dependencies [9c25292]
+- Updated dependencies [c8c4614]
+  - @codaco/protocol-validation@12.0.0
+  - @codaco/network-query@1.2.3
+
+## 5.0.0
+
+### Major Changes
+
+- c2a8700: `generateNetwork` now takes a single parameter object — call
+  `generateNetwork({ codebook, stages, ...options })` instead of passing the
+  codebook and stages as positional arguments. This is a breaking change.
+
+  It can also build name generator stages from real roster data. Pass parsed
+  roster nodes via the new `externalData` option, keyed by stage id, and roster
+  and roster-panel stages draw their people from those rows — preserving each
+  row's primary key and attributes — instead of inventing people from the
+  codebook. Draws are without replacement across prompts and stages, mirroring the
+  runtime's global exclusion of rows already in the network. A stage with no entry
+  still falls back to codebook-generated people. A roster that loads but contains
+  no rows — or whose panel filters out every row — now generates an empty roster
+  stage instead of inventing people, matching a live interview that would offer
+  nobody to add; only a missing or unreadable roster falls back to fabrication. A new `config` option exposes the
+  generation-tuning defaults (the roster-versus-fabricate ratio, node counts, edge
+  probabilities, and so on) so callers can override them. FamilyPedigree stages
+  now mark exactly one generated node as ego, matching the runtime convention,
+  instead of randomising the ego flag across every node.
+
+  `@codaco/interview` now exposes its roster-parsing pipeline from the `./contract`
+  entry: `collectRosterExternalData` gathers a protocol's roster nodes keyed by
+  stage, and `parseExternalNetworkAsset` and `filterExternalPanelNodes` parse and
+  filter individual roster assets. This is the exact code the interview runtime
+  uses, so a host reads roster assets identically to a live interview.
+
+  `@codaco/protocol-validation` now exports a `StructuralCodebook` type for
+  consumers that assemble or receive a codebook before schema validation.
+
+  Roster rows parsed by `@codaco/interview` are now identified as
+  `subjectType_contentHash` instead of a bare content hash. A roster file that
+  backs more than one node type (say, a shared address book used by both a
+  person stage and a place stage) previously produced the same primary key for
+  matching rows under each type, an invariant violation once both ended up in
+  the same network. This is a breaking change: sessions saved by earlier
+  versions will not re-associate their roster people after upgrading.
+
+### Patch Changes
+
+- 1e6a02b: Refine Sociogram canvas spacing, keep image backgrounds full-screen, and improve the node drawer's size and drag-target feedback.
+- 34de1fd: Keep the full Sociogram canvas available while repositioning people by removing its outer padding and opening the empty drawer only after a dragged person reaches its highlighted tab.
+- 7f0d49e: Name generator panels now respect the screen's maximum number of people.
+  Previously the limit only stopped new people being added through the form or
+  quick add field, so a participant who had reached the maximum could keep
+  dragging people out of a side panel. Panel items can no longer be dragged once
+  the maximum is reached, and dragging people back into a panel to remove them
+  still works as before.
+- 9145682: Node lists now respect reduced-motion preferences when moving between prompts. Previously the outgoing nodes always played a fade-out animation before the next prompt's nodes appeared, even when the participant's system requested reduced motion; the swap is now instant in that case.
+- c53110d: Go to the chosen screen when picking one from the navigation bar. Screens that
+  have their own internal steps previously ignored the choice — picking a later
+  screen from an alter form moved to the next person's form and stayed put.
+  Picking a screen now saves the current form if it can, asks before discarding
+  changes that cannot be saved, and otherwise moves straight there without
+  requiring the form to be completed first.
+
 ## 4.1.0
 
 ### Minor Changes

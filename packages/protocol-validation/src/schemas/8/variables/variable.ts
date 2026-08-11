@@ -6,8 +6,158 @@ import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
-import { ComponentTypes, VariableTypes } from './types.ts';
-import { validations } from './validation.ts';
+import {
+  type ComponentType,
+  ComponentTypes,
+  VariableTypes,
+  type VariableType,
+} from './types.ts';
+import { findValidationContradictions } from './validation-contradictions.ts';
+import { validations, type ValidationName } from './validation.ts';
+
+/**
+ * The validation rules a single variable type accepts. Keys are listed in the
+ * order an authoring UI should offer them.
+ */
+type ValidationMask = Partial<Record<ValidationName, true>>;
+
+const textValidations = {
+  required: true,
+  minLength: true,
+  maxLength: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+const numberValidations = {
+  required: true,
+  minValue: true,
+  maxValue: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+const datetimeValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+// A scalar response is recorded on a normalised 0-1 scale, so it takes no value
+// bounds: `minValue`/`maxValue` are integers, making the only expressible pair
+// {0, 1} — the scale it already has. The comparison rules remain, since
+// comparing two scalars on the same scale is meaningful.
+const scalarValidations = {
+  required: true,
+  lessThanVariable: true,
+  greaterThanVariable: true,
+  lessThanOrEqualToVariable: true,
+  greaterThanOrEqualToVariable: true,
+} as const satisfies ValidationMask;
+
+const booleanValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+// Ordinal is single-select, so minSelected/maxSelected (which expect an array
+// value) do not apply — only categorical carries them.
+const ordinalValidations = {
+  required: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+const categoricalValidations = {
+  required: true,
+  minSelected: true,
+  maxSelected: true,
+  unique: true,
+  differentFrom: true,
+  sameAs: true,
+} as const satisfies ValidationMask;
+
+/**
+ * The single source of truth for which validation rules each variable type
+ * accepts. Every variable schema below picks its `validation` shape from its
+ * entry here, and an authoring UI builds its per-type rule list from the same
+ * record — so a UI can never offer a rule that would fail validation.
+ *
+ * Layout and location variables take no validation at all.
+ */
+export const VARIABLE_TYPE_VALIDATIONS = {
+  text: textValidations,
+  number: numberValidations,
+  datetime: datetimeValidations,
+  scalar: scalarValidations,
+  boolean: booleanValidations,
+  ordinal: ordinalValidations,
+  categorical: categoricalValidations,
+  layout: {},
+  location: {},
+} as const satisfies Record<VariableType, ValidationMask>;
+
+// The input controls each variable type can be rendered with. Every variable
+// schema below builds its own `component` field from these lists, so the
+// record below cannot drift from what the schemas accept.
+const textComponents = [ComponentTypes.Text, ComponentTypes.TextArea] as const;
+const numberComponents = [ComponentTypes.Number] as const;
+const scalarComponents = [ComponentTypes.VisualAnalogScale] as const;
+const ordinalComponents = [
+  ComponentTypes.RadioGroup,
+  ComponentTypes.LikertScale,
+] as const;
+const categoricalComponents = [
+  ComponentTypes.CheckboxGroup,
+  ComponentTypes.ToggleButtonGroup,
+] as const;
+// datetime and boolean each split across TWO variable schemas (the control
+// determines which `parameters`/`options` shape applies), so their lists are
+// declared per schema and composed into the per-type record below.
+const datePickerComponents = [ComponentTypes.DatePicker] as const;
+const relativeDatePickerComponents = [
+  ComponentTypes.RelativeDatePicker,
+] as const;
+const booleanChoiceComponents = [ComponentTypes.Boolean] as const;
+const booleanToggleComponents = [ComponentTypes.Toggle] as const;
+
+/**
+ * The single source of truth for which input controls each variable type can
+ * be rendered with — the component counterpart of
+ * `VARIABLE_TYPE_VALIDATIONS`. The variable schemas above/below build their
+ * `component` fields from the same lists, and the NetworkComposer stage-field
+ * check (schema.ts) reads this record to reject a stage field whose own
+ * `component` cannot render the codebook variable it writes (thirteenth-wave
+ * Finding 3).
+ *
+ * Layout and location variables have no participant-facing control at all, so
+ * their lists are empty.
+ */
+export const VARIABLE_TYPE_COMPONENTS = {
+  text: textComponents,
+  number: numberComponents,
+  datetime: [...datePickerComponents, ...relativeDatePickerComponents],
+  scalar: scalarComponents,
+  boolean: [...booleanChoiceComponents, ...booleanToggleComponents],
+  ordinal: ordinalComponents,
+  categorical: categoricalComponents,
+  layout: [],
+  location: [],
+} as const satisfies Record<VariableType, readonly ComponentType[]>;
 
 export type VariableOptions = z.infer<typeof categoricalOptionsSchema>;
 export type VariableOption = VariableOptions[number];
@@ -26,73 +176,23 @@ const baseVariableSchema = z.strictObject({
 
 const numberVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.number),
-  component: z.literal(ComponentTypes.Number).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      minValue: true,
-      maxValue: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  component: z.enum(numberComponents).optional(),
+  validation: z.strictObject(validations).pick(numberValidations).optional(),
 });
 
 const scalarVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.scalar),
-  component: z.literal(ComponentTypes.VisualAnalogScale).optional(),
+  component: z.enum(scalarComponents).optional(),
   parameters: z
     .strictObject({
       minLabel: z.string().optional(),
       maxLabel: z.string().optional(),
     })
     .optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      minValue: true,
-      maxValue: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(scalarValidations).optional(),
 });
 
-const dateTimeDatePickerSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.datetime),
-  component: z.literal(ComponentTypes.DatePicker).optional(),
-  parameters: z
-    .strictObject({
-      type: z.enum(['full', 'month', 'year']).optional(),
-      min: z.string().optional(),
-      max: z.string().optional(),
-    })
-    .optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
-});
-
-const isIsoDate = (value: string) => {
+export const isIsoDate = (value: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return false;
   const year = Number(match[1]);
@@ -100,8 +200,13 @@ const isIsoDate = (value: string) => {
   const day = Number(match[3]);
   // Date.parse/UTC normalize impossible calendar dates (e.g. 2020-02-31 ->
   // 2020-03-02), so round-trip the components and require an exact match to
-  // reject invalid days-of-month and out-of-range months.
-  const date = new Date(Date.UTC(year, month - 1, day));
+  // reject invalid days-of-month and out-of-range months. Built via
+  // setUTCFullYear rather than Date.UTC(year, ...): Date.UTC (like the
+  // multi-arg Date constructor) maps a 0-99 year into 1900-1999, which would
+  // falsely reject a real four-digit year like '0099'; setUTCFullYear has no
+  // such two-digit-year special case.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
   return (
     date.getUTCFullYear() === year &&
     date.getUTCMonth() === month - 1 &&
@@ -109,75 +214,187 @@ const isIsoDate = (value: string) => {
   );
 };
 
-const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
+export const DATE_RESOLUTION = {
+  full: { label: 'YYYY-MM-DD', pattern: /^\d{4}-\d{2}-\d{2}$/, length: 10 },
+  month: { label: 'YYYY-MM', pattern: /^\d{4}-\d{2}$/, length: 7 },
+  year: { label: 'YYYY', pattern: /^\d{4}$/, length: 4 },
+} as const;
+
+export const isValidDateAtResolution = (
+  value: string,
+  resolution: keyof typeof DATE_RESOLUTION,
+): boolean => {
+  if (!DATE_RESOLUTION[resolution].pattern.test(value)) return false;
+  if (resolution === 'year') return true;
+  if (resolution === 'month') {
+    const month = Number(value.slice(5, 7));
+    return month >= 1 && month <= 12;
+  }
+  return isIsoDate(value);
+};
+
+// Shared with NetworkComposer's per-stage-field parameters (see
+// network-composer.ts's ComposerFormFieldSchema), which lets a NetworkComposer
+// form field render a DatePicker with its own min/max/resolution window
+// independent of the codebook variable's own component. Exported so that
+// schema can re-validate the same shape without duplicating it.
+export const datePickerParametersSchema = z
+  .strictObject({
+    type: z.enum(['full', 'month', 'year']).optional(),
+    min: z.string().optional(),
+    max: z.string().optional(),
+  })
+  .superRefine((parameters, ctx) => {
+    const resolution = parameters.type ?? 'full';
+    const { label } = DATE_RESOLUTION[resolution];
+    for (const bound of ['min', 'max'] as const) {
+      const value = parameters[bound];
+      if (value === undefined) continue;
+      if (!isValidDateAtResolution(value, resolution)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must be a valid ${label} date matching the picker's resolution`,
+          path: [bound],
+        });
+        continue;
+      }
+      // Eighth-wave Finding 2: the interview runtime builds a year/month
+      // resolution DatePicker's selectable year options via `y.toString()`
+      // (unpadded, e.g. `99`, not `'0099'`), so a stored value ('99') and a
+      // zero-padded coarse-resolution bound ('0099') would never compare
+      // equal even though a full-resolution YYYY-MM-DD string is always
+      // zero-padded and round-trips correctly at any year (the wave-3
+      // small-year fix). Reject small years at year/month resolution only.
+      if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must use a four-digit year of 1000 or later at year/month resolution`,
+          path: [bound],
+        });
+      }
+      // Eleventh-wave Finding 1: '0000-12-31' is a real, round-tripping ISO
+      // date (JS Date supports year 0), but the native HTML date input's
+      // earliest selectable date is 0001-01-01, so a year-zero bound (e.g.
+      // max '0000-12-31' on a required field) leaves no selectable value
+      // that can ever pass. Years 0001-0999 stay valid at full resolution
+      // (the wave-3 small-year support); coarse resolutions are already
+      // floored at 1000 above.
+      if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `DatePicker "${bound}" must use a year of 0001 or later — the native date input starts at year 0001`,
+          path: [bound],
+        });
+      }
+    }
+    if (
+      parameters.min !== undefined &&
+      parameters.max !== undefined &&
+      isValidDateAtResolution(parameters.min, resolution) &&
+      isValidDateAtResolution(parameters.max, resolution) &&
+      parameters.min > parameters.max
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'DatePicker "min" must not be after "max"',
+        path: ['max'],
+      });
+    }
+  });
+
+const dateTimeDatePickerSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.datetime),
-  component: z.literal(ComponentTypes.RelativeDatePicker).optional(),
-  parameters: z
-    .strictObject({
-      anchor: z.string().optional(),
-      before: z.number().int().optional(),
-      after: z.number().int().optional(),
-    })
-    .superRefine((parameters, ctx) => {
-      if (parameters.anchor !== undefined && !isIsoDate(parameters.anchor)) {
+  component: z.enum(datePickerComponents).optional(),
+  parameters: datePickerParametersSchema.optional(),
+  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
+});
+
+// Shared with NetworkComposer's per-stage-field parameters, mirroring
+// `datePickerParametersSchema` above.
+export const relativeDatePickerParametersSchema = z
+  .strictObject({
+    anchor: z.string().optional(),
+    before: z.number().int().optional(),
+    after: z.number().int().optional(),
+  })
+  .superRefine((parameters, ctx) => {
+    if (parameters.anchor !== undefined) {
+      if (!isIsoDate(parameters.anchor)) {
         ctx.addIssue({
           code: 'custom' as const,
           message:
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
           path: ['anchor'],
         });
-      }
-      if (parameters.before !== undefined && parameters.before < 0) {
+      } else if (Number(parameters.anchor.slice(0, 4)) === 0) {
         ctx.addIssue({
           code: 'custom' as const,
-          message: 'RelativeDatePicker "before" must not be negative',
-          path: ['before'],
+          message:
+            'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
+          path: ['anchor'],
         });
       }
-      if (parameters.after !== undefined && parameters.after < 0) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: 'RelativeDatePicker "after" must not be negative',
-          path: ['after'],
-        });
-      }
-      // `before` and `after` are independent non-negative offsets in opposite
-      // directions from the anchor (earliest = anchor - before, latest =
-      // anchor + after; see RelativeDatePicker, default before=180/after=0), so
-      // there is no `before < after` relationship to enforce.
-    })
-    .optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-      greaterThanVariable: true,
-      lessThanVariable: true,
-      greaterThanOrEqualToVariable: true,
-      lessThanOrEqualToVariable: true,
-    })
-    .optional(),
+    }
+    if (parameters.before !== undefined && parameters.before < 0) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'RelativeDatePicker "before" must not be negative',
+        path: ['before'],
+      });
+    }
+    if (parameters.after !== undefined && parameters.after < 0) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'RelativeDatePicker "after" must not be negative',
+        path: ['after'],
+      });
+    }
+    // `before` and `after` are independent non-negative offsets in opposite
+    // directions from the anchor (earliest = anchor - before, latest =
+    // anchor + after; see RelativeDatePicker, default before=180/after=0), so
+    // there is no `before < after` relationship to enforce.
+  });
+
+const dateTimeRelativeDatePickerSchema = baseVariableSchema.extend({
+  type: z.literal(VariableTypes.datetime),
+  component: z.enum(relativeDatePickerComponents).optional(),
+  parameters: relativeDatePickerParametersSchema.optional(),
+  validation: z.strictObject(validations).pick(datetimeValidations).optional(),
 });
 
 const textVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.text),
-  component: z.enum([ComponentTypes.Text, ComponentTypes.TextArea]).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      minLength: true,
-      maxLength: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  component: z.enum(textComponents).optional(),
+  validation: z.strictObject(validations).pick(textValidations).optional(),
 });
 
+// Thirteenth-wave Finding 2: an explicitly empty array is not the same as no
+// `options` at all. fresco-ui's BooleanField defaults to Yes/No only when the
+// prop is `undefined` (a destructuring default), so `options: []` renders a
+// control with no buttons — unanswerable, and fatal on a required variable.
+// `findValidationContradictions`'s `booleanDomain` models the same
+// distinction.
+//
+// Twenty-eighth-wave Finding 1: that only holds once `component: 'Boolean'`
+// IS this variable's own rendering — the refinement below anchors the
+// rejection there. A componentless boolean is renderable by EITHER control
+// `VARIABLE_TYPE_COMPONENTS['boolean']` lists (`Boolean` and `Toggle`; see
+// `rejectValidationContradictions`'s Twenty-first/Twenty-sixth-wave findings
+// above `booleanDomain`), and which one a participant actually sees is
+// decided solely by the rendering surface — a NetworkComposer field's own
+// required `component`, independent of the codebook — which this SHAPE rule
+// (run per-variable, with no stage in scope) can never know. Rejecting
+// `options: []` here for a componentless variable exclusively rendered by
+// `Toggle` (which takes no `options` prop and is unconditionally two-valued)
+// is a false rejection, and blocked identical v7 protocols from importing
+// before the strip below existed. The empty-array rejection is therefore
+// scoped to variables that EXPLICITLY declare `component: 'Boolean'`
+// themselves — their own declared rendering needs the options it can never
+// fill. The genuinely broken stage-level case — a NetworkComposer field that
+// RENDERS a boolean through the `Boolean` control over a variable whose
+// options are empty, whatever the codebook declares — is instead caught in
+// schema.ts's `validateComposerFieldComponents`, where the rendering is
+// actually known.
 const booleanOptionsSchema = z.array(
   z.strictObject({
     label: z.string(),
@@ -186,33 +403,32 @@ const booleanOptionsSchema = z.array(
   }),
 );
 
-const booleanBooleanVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.boolean),
-  component: z.literal(ComponentTypes.Boolean).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
-  options: booleanOptionsSchema.optional(), // This is different from the categorical options!
-});
+const booleanBooleanVariableSchema = baseVariableSchema
+  .extend({
+    type: z.literal(VariableTypes.boolean),
+    component: z.enum(booleanChoiceComponents).optional(),
+    validation: z.strictObject(validations).pick(booleanValidations).optional(),
+    options: booleanOptionsSchema.optional(), // This is different from the categorical options!
+  })
+  .superRefine((variable, ctx) => {
+    if (
+      variable.component === ComponentTypes.Boolean &&
+      variable.options !== undefined &&
+      variable.options.length === 0
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'Boolean options must offer at least one choice when component is "Boolean"',
+        path: ['options'],
+      });
+    }
+  });
 
 const booleanToggleVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.boolean),
-  component: z.literal(ComponentTypes.Toggle).optional(),
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  component: z.enum(booleanToggleComponents).optional(),
+  validation: z.strictObject(validations).pick(booleanValidations).optional(),
 });
 
 // Options Schema for categorical and ordinal variables. Option values are
@@ -230,39 +446,18 @@ const categoricalOptionsSchema = z
 
 const ordinalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.ordinal),
-  component: z
-    .enum([ComponentTypes.RadioGroup, ComponentTypes.LikertScale])
-    .optional(),
+  component: z.enum(ordinalComponents).optional(),
   options: categoricalOptionsSchema,
-  // Ordinal is single-select, so minSelected/maxSelected (which expect an
-  // array value) do not apply — only categorical carries them.
-  validation: z
-    .strictObject(validations)
-    .pick({
-      required: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
-    .optional(),
+  validation: z.strictObject(validations).pick(ordinalValidations).optional(),
 });
 
 const categoricalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.categorical),
-  component: z
-    .enum([ComponentTypes.CheckboxGroup, ComponentTypes.ToggleButtonGroup])
-    .optional(),
+  component: z.enum(categoricalComponents).optional(),
   options: categoricalOptionsSchema,
   validation: z
     .strictObject(validations)
-    .pick({
-      required: true,
-      minSelected: true,
-      maxSelected: true,
-      sameAs: true,
-      unique: true,
-      differentFrom: true,
-    })
+    .pick(categoricalValidations)
     .optional(),
 });
 
@@ -344,6 +539,24 @@ const rejectEgoUnique = (variables: VariablesRecord, ctx: z.RefinementCtx) => {
   }
 };
 
+// Contradictory validation-rule combinations (inverted bounds, impossible
+// reference structures, disjoint bounds) are rejected at the record level —
+// the analyser needs every sibling variable in scope. The v7→v8 migration
+// strips the same combinations from existing protocols.
+const rejectValidationContradictions = (
+  variables: VariablesRecord,
+  ctx: z.RefinementCtx,
+) => {
+  for (const contradiction of findValidationContradictions(variables)) {
+    const anchor = contradiction.strips[0];
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: contradiction.message,
+      path: [anchor.variableId, 'validation', anchor.rule],
+    });
+  }
+};
+
 type AllKeys<T> = T extends unknown ? keyof T : never;
 export type VariablePropertyKey = AllKeys<Variable>;
 
@@ -367,16 +580,19 @@ const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
 export const VariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncryptedOnNonTextNode);
+  .superRefine(rejectEncryptedOnNonTextNode)
+  .superRefine(rejectValidationContradictions);
 
 export const EdgeVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
-  .superRefine(rejectEncrypted('Edge'));
+  .superRefine(rejectEncrypted('Edge'))
+  .superRefine(rejectValidationContradictions);
 
 export const EgoVariablesSchema = z
   .record(VariableNameSchema, VariableSchema)
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
-  .superRefine(rejectEgoUnique);
+  .superRefine(rejectEgoUnique)
+  .superRefine(rejectValidationContradictions);
 export type Variables = z.infer<typeof VariablesSchema>;

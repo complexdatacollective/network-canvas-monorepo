@@ -1,13 +1,9 @@
 'use client';
 
-import {
-  MotionConfigContext,
-  motion,
-  useAnimationControls,
-  useReducedMotionConfig,
-} from 'motion/react';
-import { useContext, useEffect, useRef } from 'react';
+import { motion, useAnimationControls } from 'motion/react';
+import { useEffect, useRef } from 'react';
 
+import { useShouldSkipAnimations } from './hooks/useSafeAnimate';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const ANIMATION_DURATION = 1.8;
@@ -139,16 +135,7 @@ export default function Spinner({
   // the tab. Accessibility-wise the right answer is also just "don't
   // animate" in reduced-motion mode, so we bail out entirely.
   //
-  // `useReducedMotionConfig` respects the OS `prefers-reduced-motion`
-  // setting AND an ancestor `MotionConfig`'s `reducedMotion` override.
-  // We ALSO have to check `skipAnimations` from the context directly
-  // because `useReducedMotionConfig` doesn't cover that flag, and it
-  // also causes `controls.start(...)` to resolve synchronously.
-  const reducedMotionFromConfig = useReducedMotionConfig();
-  const { skipAnimations: skipAnimationsFromConfig } =
-    useContext(MotionConfigContext);
-  const shouldReduceMotion =
-    !!reducedMotionFromConfig || !!skipAnimationsFromConfig;
+  const shouldReduceMotion = useShouldSkipAnimations();
 
   const containerControls = useAnimationControls();
   const halfCircleControls = [

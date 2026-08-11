@@ -5,7 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createNarrativeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
@@ -98,7 +98,13 @@ type NarrativeArgs = {
   concentricCircles: number;
 };
 
-const COMMUNITY_VALUES = ['family', 'work', 'school', 'neighborhood'] as const;
+// A categorical value is always an array, even for a single membership.
+const COMMUNITY_VALUES = [
+  ['family'],
+  ['work'],
+  ['school'],
+  ['neighborhood'],
+] as const;
 
 const buildFromArgs = (args: NarrativeArgs) => {
   const { si, layoutVar1, closeVar, communityVar, friendshipEt } =
@@ -258,16 +264,16 @@ const buildWithConvexHulls = () => {
     layoutVariable: layoutVar1.id,
     groupVariable: communityVar.id,
   });
-  const groupValues: (string | string[] | null)[] = [
-    'family',
-    'family',
-    'family',
-    'work',
-    'work',
-    'work',
-    'school',
-    'school',
-    'school',
+  const groupValues: (string[] | null)[] = [
+    ['family'],
+    ['family'],
+    ['family'],
+    ['work'],
+    ['work'],
+    ['work'],
+    ['school'],
+    ['school'],
+    ['school'],
     ['family', 'work'],
   ];
   groupValues.forEach((v, i) => {
@@ -338,16 +344,16 @@ const buildFullFeatured = () => {
   hlValues.forEach((v, i) => {
     si.setNodeAttribute(i, closeVar.id, v);
   });
-  const groupValues: (string | string[] | null)[] = [
-    'family',
-    'family',
-    'family',
-    'work',
-    'work',
-    'work',
-    'school',
-    'school',
-    'school',
+  const groupValues: (string[] | null)[] = [
+    ['family'],
+    ['family'],
+    ['family'],
+    ['work'],
+    ['work'],
+    ['work'],
+    ['school'],
+    ['school'],
+    ['school'],
     ['family', 'school'],
   ];
   groupValues.forEach((v, i) => {
@@ -427,17 +433,17 @@ const buildMultiplePresets = () => {
   hlValues.forEach((v, i) => {
     si.setNodeAttribute(i, closeVar.id, v);
   });
-  const groupValues: (string | string[] | null)[] = [
-    'family',
-    'family',
-    'work',
-    'work',
-    'school',
-    'school',
+  const groupValues: (string[] | null)[] = [
+    ['family'],
+    ['family'],
+    ['work'],
+    ['work'],
+    ['school'],
+    ['school'],
     ['family', 'school'],
-    'work',
-    'family',
-    'school',
+    ['work'],
+    ['family'],
+    ['school'],
   ];
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);
@@ -547,16 +553,16 @@ const buildAllBehaviours = () => {
   hlValues.forEach((v, i) => {
     si.setNodeAttribute(i, closeVar.id, v);
   });
-  const groupValues: (string | string[] | null)[] = [
-    'family',
-    'family',
-    'family',
-    'work',
-    'work',
-    'work',
-    'school',
-    'school',
-    'school',
+  const groupValues: (string[] | null)[] = [
+    ['family'],
+    ['family'],
+    ['family'],
+    ['work'],
+    ['work'],
+    ['work'],
+    ['school'],
+    ['school'],
+    ['school'],
     ['family', 'work'],
   ];
   groupValues.forEach((v, i) => {
@@ -614,7 +620,12 @@ const buildManyNodes = () => {
   hlValues.forEach((v, i) => {
     si.setNodeAttribute(i, closeVar.id, v);
   });
-  const catValues = ['family', 'work', 'school', 'neighborhood'] as const;
+  const catValues = [
+    ['family'],
+    ['work'],
+    ['school'],
+    ['neighborhood'],
+  ] as const;
   const groupValues = Array.from({ length: 15 }, (_, i) => catValues[i % 4]);
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);
@@ -664,7 +675,12 @@ const buildSingleNodeGroups = () => {
     layoutVariable: layoutVar1.id,
     groupVariable: communityVar.id,
   });
-  const groupValues: string[] = ['family', 'work', 'school', 'neighborhood'];
+  const groupValues: string[][] = [
+    ['family'],
+    ['work'],
+    ['school'],
+    ['neighborhood'],
+  ];
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);
   });
@@ -686,7 +702,7 @@ const buildTwoNodeGroup = () => {
     layoutVariable: layoutVar1.id,
     groupVariable: communityVar.id,
   });
-  const groupValues: string[] = ['family', 'family', 'work', 'work'];
+  const groupValues: string[][] = [['family'], ['family'], ['work'], ['work']];
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);
   });
@@ -823,7 +839,7 @@ const buildClique = () => {
   ]);
   // All five nodes belong to a single group.
   for (let i = 0; i < 5; i++) {
-    si.setNodeAttribute(i, communityVar.id, 'family');
+    si.setNodeAttribute(i, communityVar.id, ['family']);
   }
   si.addEdges(
     [
@@ -905,17 +921,17 @@ const buildTwoCommunitiesBroker = () => {
     { x: 0.9, y: 0.45 },
     { x: 0.84, y: 0.78 },
   ]);
-  const groupValues: string[] = [
-    'family',
-    'family',
-    'family',
-    'family',
-    'family',
-    'work',
-    'work',
-    'work',
-    'work',
-    'work',
+  const groupValues: string[][] = [
+    ['family'],
+    ['family'],
+    ['family'],
+    ['family'],
+    ['family'],
+    ['work'],
+    ['work'],
+    ['work'],
+    ['work'],
+    ['work'],
   ];
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);
@@ -974,7 +990,7 @@ const buildCorePeriphery = () => {
   ]);
   // Only the core shares a group so a single hull surrounds it.
   for (let i = 0; i < 4; i++) {
-    si.setNodeAttribute(i, communityVar.id, 'family');
+    si.setNodeAttribute(i, communityVar.id, ['family']);
   }
   si.addEdges(
     [
@@ -1027,15 +1043,15 @@ const buildEgoNetwork = () => {
   // Ego unassigned; alters split across family / work / school so multiple
   // hulls render. Node 4 belongs to TWO groups (work + school) to exercise
   // between-hulls placement for a multi-membership alter.
-  const groupValues: (string | string[] | null)[] = [
+  const groupValues: (string[] | null)[] = [
     null,
-    'family',
-    'family',
-    'work',
+    ['family'],
+    ['family'],
+    ['work'],
     ['work', 'school'],
-    'school',
-    'school',
-    'family',
+    ['school'],
+    ['school'],
+    ['family'],
   ];
   groupValues.forEach((v, i) => {
     si.setNodeAttribute(i, communityVar.id, v);

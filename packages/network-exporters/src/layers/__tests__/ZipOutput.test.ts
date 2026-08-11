@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Fiber } from 'effect';
 import { unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 
@@ -171,5 +171,96 @@ describe('makeZipOutput', () => {
     );
     // We don't care whether end() succeeds or fails - only that it resolves promptly.
     expect(['Left', 'Right']).toContain(endExit._tag);
+  });
+
+  it('abort settles a sink awaiting more chunks instead of stranding it', async () => {
+    // Without abort, a sink suspended on iterable.next() after an interrupted
+    // pipeline would never settle, pinning every chunk it buffered.
+    let sinkSettled = false;
+
+    const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+      Effect.tryPromise({
+        try: async () => {
+          try {
+            for await (const _chunk of stream) {
+              // drain
+            }
+          } finally {
+            sinkSettled = true;
+          }
+          return { key: fileName };
+        },
+        catch: (cause) => new OutputError({ cause }),
+      });
+
+    const program = Effect.gen(function* () {
+      const out = yield* Output;
+      const handle = yield* out.begin();
+      yield* out.writeEntry(handle, { name: 'a.txt', data: bytesOf('a') });
+      // No end(): simulate the pipeline being interrupted mid-write.
+      yield* out.abort?.(handle) ?? Effect.void;
+    });
+
+    await Effect.runPromise(program.pipe(Effect.provide(makeZipOutput(sink))));
+    // One macrotask beat for the rejected iterator promise to propagate.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sinkSettled).toBe(true);
+  });
+
+  it('abort stops the active entry producer and closes its source iterator', async () => {
+    // Pipeline interruption cannot cancel an already-running appendEntry
+    // promise; the producer must observe the abort itself, or it keeps
+    // formatting the current (potentially huge) entry into a dead queue.
+    let producerClosed = false;
+    async function* endlessSource(): AsyncIterable<Uint8Array> {
+      try {
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          yield encoder.encode('chunk');
+        }
+      } finally {
+        producerClosed = true;
+      }
+    }
+
+    const sink = (stream: AsyncIterable<Uint8Array>, fileName: string) =>
+      Effect.tryPromise({
+        try: async () => {
+          try {
+            for await (const _chunk of stream) {
+              // drain
+            }
+          } catch {
+            // The abort rejects the stream; the sink's outcome is irrelevant
+            // here.
+          }
+          return { key: fileName };
+        },
+        catch: (cause) => new OutputError({ cause }),
+      });
+
+    const program = Effect.gen(function* () {
+      const out = yield* Output;
+      const handle = yield* out.begin();
+      const writeFiber = yield* Effect.fork(
+        Effect.either(
+          out.writeEntry(handle, {
+            name: 'big.csv',
+            data: endlessSource(),
+          }),
+        ),
+      );
+      yield* Effect.sleep(10);
+      yield* out.abort?.(handle) ?? Effect.void;
+      // The write must now settle instead of pumping the endless source.
+      return yield* Fiber.join(writeFiber);
+    });
+
+    const writeExit = await Effect.runPromise(
+      program.pipe(Effect.provide(makeZipOutput(sink))),
+    );
+    expect(writeExit._tag).toBe('Left');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(producerClosed).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 ---
 title: Name Generator for Roster Data
+navOrder: 4
 ---
 
 <InterfaceSummary type="NameGeneratorRoster">
@@ -12,7 +13,7 @@ title: Name Generator for Roster Data
 
 Name Generators are one of the fundamental components of a network interview. They allow your participant to create alters, thereby describing one of the two main entities in your study's networks.
 
-There are three name generator [Interfaces](../key-concepts/interfaces) in Network Canvas that can be added to your study, all of which can be configured within Architect.
+There are several name generator [Interfaces](../key-concepts/interfaces) in Network Canvas that can be added to your study, all of which can be configured within Architect.
 
 Each of these Interfaces is designed for a specific type of alter elicitation, with several associated advantages and disadvantages. Although they have some configuration options that are [shared with all other Network Canvas Interfaces](./shared), this article will focus on options specific to the Name Generator for Roster Data.
 
@@ -20,7 +21,7 @@ The Name Generator for Roster Data is useful when you have a known set of networ
 
 ## Defining a Roster
 
-This interface requires you to have a datafile that represents your roster. See our article on [working with roster data](/en/design-protocols/working-with-rosters) for more information about how to create such a file. Have this file, or a suitable mock file, ready before you attempt to configure either of these interfaces.
+This interface requires you to have a datafile that represents your roster. See our article on [working with roster data](/en/design-protocols/tutorials/working-with-rosters) for more information about how to create such a file. Have this file, or a suitable mock file, ready before you attempt to configure this interface.
 
 <KeyConcept title="Roster size constraints">
 
@@ -39,9 +40,14 @@ study](/en/collect-data/interviewer/choosing-hardware).
 
 The roster interface is split into two panels. One panel displays ‘cards’ that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. To nominate an alter, the participant must drag a card from the first panel on the left into the second panel on the right. The card will then be removed from the card list, and a node will be created representing the roster member in the interview network.
 
-When using a small roster that contains less than 100 nodes, cards representing all members of the roster will be displayed on the interface according to the display and sort options you have configured. Participants can scan the list displayed and select the appropriate card(s) to add to their network.
+When using a small roster that contains less than 100 nodes, cards representing all members of the roster will be displayed on the interface according to the display and sort options you have configured. You can define both the default sort order of the cards and the properties that participants can use to sort the list themselves. Participants can scan the list displayed and select the appropriate card(s) to add to their network.
 
-When using a large roster that contains more than 100 nodes, participants must use the search function before any cards are shown. The participant can type to search for nodes based on the search options you have configured. As the participant begins typing, all node data that meets the criteria will be displayed as cards above the search box.
+When using a large roster that contains more than 100 nodes, participants must use the search function before any cards are shown. Nominating an alter from a large roster uses the following process:
+
+1. The participant types into the search box to search for roster members, based on the search options you have configured.
+2. As the participant begins typing, all node data that meets the criteria will be displayed as cards above the search box.
+3. The participant drags a matching card into the node panel to nominate that roster member.
+4. The participant can then search again, repeating this process until they have nominated all the roster members that the prompt asks about.
 
 By default, the cards will display the **name** attribute from the roster data as the card title. The display options of these cards are completely configurable. You should display all attributes that a participant might need to disambiguate roster nodes with similar names.
 
@@ -57,7 +63,14 @@ As a general rule of thumb search accuracy should increase as roster size increa
 
 Ensure that the roster data file used has `name` attribute to avoid seeing "No
 name variable!" on your cards. See our article on [node
-labelling](/en/get-started/advanced-topics/node-labelling) for more information on this topic.
+labeling](/en/design-protocols/key-concepts/node-labelling) for more information on this topic.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Configure the display and sorting options of the cards to help improve a
+participant's ability to locate nodes within the roster.
 
 </GoodPractice>
 

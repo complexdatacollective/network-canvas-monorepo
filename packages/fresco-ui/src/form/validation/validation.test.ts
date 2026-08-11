@@ -163,6 +163,15 @@ describe('Validation Utils', () => {
       ]);
     });
 
+    it('preserves years below 100 in formatted date hints', () => {
+      expect(hintTexts(makeValidationHints({ min: '0099-01-01' }))).toEqual([
+        'Must be on or after January 1, 99.',
+      ]);
+      expect(hintTexts(makeValidationHints({ max: '0099-12' }))).toEqual([
+        'Must be on or before December 99.',
+      ]);
+    });
+
     it('renders the numeric hint when min is a number', () => {
       expect(hintTexts(makeValidationHints({ min: 10 }))).toEqual([
         'Enter a value greater than or equal to 10.',

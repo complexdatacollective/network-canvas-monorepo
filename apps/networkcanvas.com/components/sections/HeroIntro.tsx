@@ -5,26 +5,39 @@ import { useLayoutEffect, useRef } from 'react';
 
 import { Header } from '~/components/layout/Header';
 import { Hero } from '~/components/sections/Hero';
+import { useHeroScrollDeparture } from '~/components/ui/useHeroScrollDeparture';
 import { createHeroEntrance } from '~/lib/heroEntrance';
 import type { NewsItem } from '~/lib/siteContent';
 
-export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
+type HeroIntroProps = {
+  newsItems: readonly NewsItem[];
+  onEntranceStart: () => void;
+};
+
+export function HeroIntro({ newsItems, onEntranceStart }: HeroIntroProps) {
   const reduceMotion = useReducedMotion();
   const entrance = createHeroEntrance(reduceMotion ?? true);
   const controls = useAnimationControls();
   const entranceStarted = useRef(false);
   const introRef = useRef<HTMLDivElement>(null);
+  const heroScrollStyle = useHeroScrollDeparture(introRef);
 
   useLayoutEffect(() => {
-    if (reduceMotion !== false || entranceStarted.current) {
+    if (reduceMotion === null || entranceStarted.current) {
       return;
     }
 
     entranceStarted.current = true;
+    if (reduceMotion) {
+      onEntranceStart();
+      return;
+    }
+
     controls.set('hidden');
+    onEntranceStart();
     introRef.current?.removeAttribute('data-entrance-pending');
     void controls.start('visible');
-  }, [controls, reduceMotion]);
+  }, [controls, onEntranceStart, reduceMotion]);
 
   return (
     <div
@@ -33,16 +46,18 @@ export function HeroIntro({ newsItems }: { newsItems: readonly NewsItem[] }) {
       className="tablet-portrait:min-h-svh relative isolate overflow-hidden"
     >
       <motion.div
-        className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col relative z-10"
+        className="tablet-portrait:flex tablet-portrait:min-h-svh tablet-portrait:flex-col"
         variants={entrance.pageVariants}
         initial={false}
         animate={controls}
       >
         <Header activeItemId="home" entranceVariants={entrance.itemVariants} />
         <Hero
+          backdropItemVariants={entrance.backdropItemVariants}
           containerVariants={entrance.heroVariants}
           itemVariants={entrance.itemVariants}
           newsItems={newsItems}
+          scrollStyle={heroScrollStyle}
         />
       </motion.div>
     </div>

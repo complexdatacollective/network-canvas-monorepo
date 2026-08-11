@@ -1,5 +1,6 @@
 ---
 title: Per Alter Form
+navOrder: 14
 ---
 
 <InterfaceSummary type="AlterForm">
@@ -16,7 +17,7 @@ The Per Alter Form is a _name interpreter_ interface that captures attribute dat
 
 ![](/assets/img/interface-documentation/per-alter-form/add-screen.png)
 
-A single edge type is selectable per screen. This screen supports [filtering](../key-concepts/network-filtering) for nodes that match the specified type.
+A single node type is selectable per screen. This screen supports [filtering](../key-concepts/network-filtering) for nodes that match the specified type.
 
 ![](/assets/img/interface-documentation/per-alter-form/architect-node-type.png)
 

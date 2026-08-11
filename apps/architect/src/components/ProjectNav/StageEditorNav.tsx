@@ -1,9 +1,18 @@
 import { Check, Eye, Loader2, Redo, Settings, Undo, X } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 import { submit } from 'redux-form';
 
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import type {
+  ComponentSegmentRenderProps,
+  ToolbarSegment,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import SplitButton from '@codaco/fresco-ui/SplitButton';
 import { useIssuesToolbarSegment } from '~/components/Issues';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -29,6 +38,63 @@ type StageEditorNavProps = {
   hasUnsavedChanges: boolean;
 };
 
+type PreviewSplitButtonContextValue = Pick<
+  StageEditorNavProps,
+  | 'onPreview'
+  | 'previewLabel'
+  | 'previewOptionsContent'
+  | 'isStageInvalid'
+  | 'isOpeningPreview'
+> & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+const PreviewSplitButtonContext =
+  createContext<PreviewSplitButtonContextValue | null>(null);
+
+function PreviewSplitButtonSegment({ size }: ComponentSegmentRenderProps) {
+  const preview = useContext(PreviewSplitButtonContext);
+
+  if (!preview) {
+    throw new Error(
+      'PreviewSplitButtonSegment must be rendered within PreviewSplitButtonContext.',
+    );
+  }
+
+  return (
+    <SplitButton
+      className={previewButtonClassName}
+      disabled={preview.isOpeningPreview || preview.isStageInvalid}
+      icon={
+        preview.isOpeningPreview ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Eye />
+        )
+      }
+      onClick={preview.onPreview}
+      onOpenChange={preview.onOpenChange}
+      open={preview.open}
+      popover={{
+        content: preview.previewOptionsContent,
+        side: 'top',
+        align: 'end',
+      }}
+      segment={{
+        'aria-label': 'Preview settings',
+        'className': previewButtonClassName,
+        'disabled': !preview.previewOptionsContent,
+        'icon': <Settings />,
+      }}
+      size={size}
+      variant="text"
+    >
+      {preview.isOpeningPreview ? preview.previewLabel : 'Preview'}
+    </SplitButton>
+  );
+}
+
 const StageEditorNav = ({
   stageName,
   onCancel,
@@ -49,6 +115,27 @@ const StageEditorNav = ({
     { label: protocolName ?? 'Untitled protocol', onClick: onCancel },
     { label: stageName },
   ];
+
+  const previewSplitButtonContextValue =
+    useMemo<PreviewSplitButtonContextValue>(
+      () => ({
+        onPreview,
+        previewLabel,
+        previewOptionsContent,
+        isStageInvalid,
+        isOpeningPreview,
+        open: previewOptionsOpen,
+        onOpenChange: setPreviewOptionsOpen,
+      }),
+      [
+        isOpeningPreview,
+        isStageInvalid,
+        onPreview,
+        previewLabel,
+        previewOptionsContent,
+        previewOptionsOpen,
+      ],
+    );
 
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {
     const items: ToolbarSegment[] = [
@@ -101,35 +188,7 @@ const StageEditorNav = ({
     items.push({
       type: 'component',
       id: 'preview',
-      component: function PreviewSplitButton({ size }) {
-        return (
-          <SplitButton
-            className={previewButtonClassName}
-            disabled={isOpeningPreview || isStageInvalid}
-            icon={
-              isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
-            }
-            onClick={onPreview}
-            onOpenChange={setPreviewOptionsOpen}
-            open={previewOptionsOpen}
-            popover={{
-              content: previewOptionsContent,
-              side: 'top',
-              align: 'end',
-            }}
-            segment={{
-              'aria-label': 'Preview settings',
-              'className': previewButtonClassName,
-              'disabled': !previewOptionsContent,
-              'icon': <Settings />,
-            }}
-            size={size}
-            variant="text"
-          >
-            {isOpeningPreview ? previewLabel : 'Preview'}
-          </SplitButton>
-        );
-      },
+      component: PreviewSplitButtonSegment,
     });
 
     return items;
@@ -138,15 +197,9 @@ const StageEditorNav = ({
     canUndo,
     dispatch,
     hasUnsavedChanges,
-    isOpeningPreview,
-    isStageInvalid,
     issuesSegment,
     onCancel,
-    onPreview,
     openIssues,
-    previewLabel,
-    previewOptionsContent,
-    previewOptionsOpen,
     redo,
     undo,
   ]);
@@ -154,7 +207,11 @@ const StageEditorNav = ({
   return (
     <>
       <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-      <ActionToolbar aria-label="Stage editor actions" items={toolbarItems} />
+      <PreviewSplitButtonContext.Provider
+        value={previewSplitButtonContextValue}
+      >
+        <ActionToolbar aria-label="Stage editor actions" items={toolbarItems} />
+      </PreviewSplitButtonContext.Provider>
     </>
   );
 };

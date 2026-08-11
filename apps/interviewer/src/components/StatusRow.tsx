@@ -76,7 +76,7 @@ export function StatusRowView({
   return (
     <motion.div
       variants={variants}
-      className="font-monospace text-text/60 tablet-landscape:px-11 tablet-landscape:justify-between flex items-center justify-end px-6 pb-4 text-xs"
+      className="font-monospace text-text/60 tablet-landscape:justify-between laptop:px-11 flex items-center justify-end px-6 pb-4 text-xs"
     >
       <Link
         href="/data"
@@ -184,10 +184,10 @@ export function StatusRowView({
             />
             {!durability.persisted && installed ? (
               <TooltipContent>
-                Storage best effort. The browser keeps installed-app data
-                separate from browsing data and does not clear it routinely, but
-                it has not guaranteed it against eviction if disk space runs
-                low. Export interviews regularly.
+                Storage best effort. Installed-app data is kept separate from
+                browsing data and is not cleared routinely, but it is not
+                guaranteed against eviction if disk space runs low. Export
+                interviews regularly.
                 {durability.usage !== null
                   ? ` ${formatBytes(durability.usage)} stored.`
                   : ''}

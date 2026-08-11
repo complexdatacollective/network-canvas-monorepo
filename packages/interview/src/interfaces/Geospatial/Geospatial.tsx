@@ -32,7 +32,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { getNetworkNodesForType } from '../../selectors/session';
 import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
-import type { Direction, StageProps } from '../../types';
+import type { Direction, NavigationIntent, StageProps } from '../../types';
 import CollapsablePrompts from '../Sociogram/CollapsablePrompts';
 import { isMapboxStubBrowser } from './isMapboxStubBrowser';
 import { useMapbox } from './useMapbox';
@@ -325,9 +325,14 @@ export default function GeospatialInterface({
     handleResetSelection();
   }, [handleResetSelection, navState.activeIndex]);
 
-  const beforeNext = (direction: Direction) => {
+  const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes
     if (stageNodes.length === 0) {
+      return true;
+    }
+
+    if (intent === 'jump') {
+      handleResetSelection();
       return true;
     }
 

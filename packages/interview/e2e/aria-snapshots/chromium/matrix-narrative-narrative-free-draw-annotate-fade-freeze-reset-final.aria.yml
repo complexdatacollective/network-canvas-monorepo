@@ -8,8 +8,7 @@
     - button "bleakly custody" [expanded]
     - button "Next preset" [disabled]
   - status
-  - dialog:
-    - region
+  - dialog
   - toolbar "Layout and drawing tools":
     - button "Disable drawing" [pressed]
     - button "Freeze annotations"

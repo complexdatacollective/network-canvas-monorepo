@@ -1,5 +1,251 @@
 # @codaco/architect
 
+## 8.1.0
+
+### Minor Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+### Patch Changes
+
+- 52a3fbb: Honor reduced-motion preferences in Architect and expose a shared provider for disabling Motion and Base UI animations together in automated hosts.
+- d5723ec: Prevent the Sociogram editor from showing Finished Editing until the stage has actually changed.
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- 8920223: Add a default-off Respect skip logic preview setting so disabled previews show every stage and enabled previews retain routing after the initially force-shown stage.
+- ea06b66: Validation rules now save what the editor shows.
+
+  Nudging a rule's value with the plus or minus button changed the number on
+  screen without saving it, and if the value was being edited at the time, the
+  older number was saved instead. Switching on a rule that needs no value — such
+  as Required — saved it even where it could never be satisfied, for instance
+  alongside a maximum length of zero. A rule held back because it clashed with
+  another one stayed unsaved even after the clash was resolved, so a rule could
+  sit switched on with a sensible value that was never written. And undoing a
+  change left the rule switched on with the old value still showing, ready to be
+  written out again.
+
+  A rule whose value was still being typed is no longer dropped when a different
+  rule in the same list is saved: changing a minimum and then nudging the maximum
+  now saves both, rather than putting the minimum back to its old number. And
+  switching the whole Validation section off and then undoing reopens the section
+  with the restored rules in view, instead of leaving rules that will be saved
+  hidden behind a switched-off section.
+
+  Each rule's plus and minus buttons are also now named after that rule, so a
+  screen reader announces "Increase Minimum value" rather than "Increase value"
+  on every numeric rule on the screen.
+
+  `InputField` gains two optional props to support this: `onStep`, which reports
+  a value settled by a stepper button or arrow key, and `stepperLabels`, which
+  names the stepper buttons. Both default to the previous behaviour.
+
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [90e0178]
+- Updated dependencies [e349137]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+  - @codaco/interview@8.0.0
+  - @codaco/protocol-utilities@3.2.1
+  - @codaco/protocol-validation@12.1.1
+
+## 8.0.2
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- Updated dependencies [3c8fe35]
+- Updated dependencies [fa88ae4]
+- Updated dependencies [2325d34]
+  - @codaco/protocol-utilities@3.2.0
+  - @codaco/fresco-ui@5.1.0
+  - @codaco/interview@7.1.1
+  - @codaco/shared-consts@5.6.1
+
+## 8.0.1
+
+### Patch Changes
+
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- Updated dependencies [ea589ec]
+- Updated dependencies [48572ed]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [c5f30fd]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [b95af22]
+- Updated dependencies [66da138]
+- Updated dependencies [d985cd3]
+- Updated dependencies [cd974f7]
+  - @codaco/fresco-ui@5.0.3
+  - @codaco/interview@7.1.0
+  - @codaco/tailwind-config@1.2.2
+  - @codaco/protocol-utilities@3.1.1
+
+## 8.0.0
+
+### Patch Changes
+
+- cd88c3e: Architect 8 and Interviewer 8 are now stable releases. Future app versions follow standard semantic versioning and deploy to production when the Version Packages release PR is merged.
+- Updated dependencies [fde9bb4]
+  - @codaco/fresco-ui@5.0.2
+  - @codaco/interview@7.0.2
+
+## 8.0.0-beta.13
+
+### Patch Changes
+
+- Marking a boolean option as negative now takes effect during an interview — the option is shown in red once a participant selects it. The BooleanChoice help text has been corrected to describe what participants actually see.
+
+## 8.0.0-beta.12
+
+### Minor Changes
+
+- Improve variable pills with clearer static and editable states, full-name details, and a focused variable rename workflow.
+
+### Patch Changes
+
+- Polish stage editing and preview workflows across Architect. Variable, subject,
+  color, and shape pickers now share consistent field styling; variable pills
+  offer a clearer accessible rename interaction; quick-add and categorical-bin
+  variables expose their validation rules; and newly created quick-add variables
+  are required by default. The stage editor now avoids false unsaved-state and
+  preview-settings transitions, while preview-only notices and the obsolete
+  relationship question in the Life Transitions template have been removed.
+- Fix being able to save an option that has no label or no value. Confirming an
+  option you had not filled in used to collapse it into the list with nothing to
+  show it was incomplete, leaving a protocol that failed validation later. The
+  option's editor now stays open and marks whichever field is still missing, and
+  an options list containing an incomplete option says so.
+- Fix the Input Control picker vanishing after you choose an input control for a
+  newly created variable, which left the field impossible to complete.
+- Previewing a protocol whose validation rules cannot all be satisfied now
+  explains why. The preview lists each clash — naming the entity type and the
+  variables involved, and describing the conflict — so you can go back, correct
+  the rules, and preview again. Previously this showed the same generic
+  "couldn't build the preview" screen as any other failure, with a "Try again"
+  button that could only fail in exactly the same way.
+
+  A preview that fails to rebuild also clears what was on screen, so an earlier
+  successful preview is never left showing as though it were the protocol you
+  just changed. Each attempt reports only its own reason for failing: a list of
+  rule clashes from an earlier attempt is never left up next to a failure that
+  had nothing to do with those rules, and a slow protocol that arrives after the
+  preview has given up waiting now reports what actually happened to it — the
+  rule clashes to correct, or the preview itself — instead of continuing to
+  blame the connection to Architect.
+
+- Fix a link that spans bold, italic, and plain text being saved as several
+  separate links. Adding one link across mixed formatting used to write out one
+  link per run of formatting, so a single citation became three links to the same
+  place — three things to hover, three underlines, and three links announced by a
+  screen reader. Such a link is now saved as one link, and the affected references
+  in the Life Transitions template have been repaired.
+- Prevent invalid protocol edits from being saved, and require authors to revert or return to the start screen before continuing.
+- The variable validation editor now prevents contradictory rules at authoring
+  time: contradictory drafts cannot be saved and explain why, reference pickers
+  only offer targets that keep the rules satisfiable, the whole field dialog is
+  checked on save (e.g. deleting an option out from under `minSelected`), and a
+  hint appears when `unique` is applied to a variable with only a few possible
+  values. Codebook edits are also checked against the current shared form and
+  every NetworkComposer stage-effective control overlay, and integer validation
+  bounds reject fractional values directly in the editor. Network Composer group
+  variables are kept separate from validated form fields, including in the Life
+  Transitions template.
+
+  Relative date anchors in years 0001 through 0099 now remain selectable and
+  valid in the editor, matching the protocol schema and interview runtime.
+
+- Keep the confirm and cancel buttons reachable when renaming a variable with a long name.
+- Variable pickers no longer offer variables that would end up written both with and without validation: form-field pickers exclude variables already written by a bin, sociogram highlight, census, or other direct writer, and those stages' pickers exclude form-collected variables (the current selection always stays available). Saving a stage that would create such a pairing is refused with an explanation of why, including conflicts between a Name Generator's still-unsaved form fields and prompt assignments. Protocols that already contain one show a warning on the protocol timeline listing each affected variable and the stages involved, with a badge on the Stages tab — nothing blocks opening, editing, or exporting. Newly created "other" and quick-add variables default to required.
+
+## 8.0.0-beta.11
+
+### Patch Changes
+
+- Refine the Codebook screen layout: the search bar, entity tables, and the
+  unused-variables alert now share a single width; the "Show unused only" toggle
+  moves onto the search row with its label beside the checkbox; and there is more
+  separation between entity types and between individual entities.
+- Fix two variable dropdowns that could produce protocols failing validation. The
+  sort-order rules for the sociogram bucket and bin (ordinal bin, categorical bin,
+  and one-to-many dyad census) now offer Ascending/Descending in the direction
+  dropdown instead of a list of variables. Scalar (visual analog scale) variables
+  now offer only the validation rules that scale supports — Required alongside the
+  comparison rules — and no longer offer "must be unique", "different from", or
+  "same as", which the schema has never accepted for a scale.
+- Reduce spacing around editable list item previews.
+- Protocol previews now reflect the refined interview typography, which scales
+  smoothly with the window size instead of stepping between fixed sizes.
+- Use medium-sized edit and delete buttons throughout editable lists.
+- The installed app's icon now fills its tile on the dock, home screen, and task
+  switcher, instead of sitting inside a white border, and renders at a consistent
+  size whether the app was installed from Safari or Chrome.
+- Protocol validation failures during import and stage preview now show a readable list of problems (one `path: message` line per issue) instead of raw JSON.
+- Add the Life Transitions & Turning Points protocol to Architect's built-in templates.
+
+## 8.0.0-beta.10
+
+### Minor Changes
+
+- Open protocol previews in a dedicated window instead of a browser tab. When Architect is installed as an app, the preview opens in its own app window.
+- Synthetic preview sessions now draw roster-stage people from the protocol's
+  actual roster assets instead of inventing them, so a preview lines up with the
+  roster file the way a real interview would. A roster that is missing or
+  unreadable — including a half-built draft stage — falls back to generated
+  people, so a roster problem never blocks a preview.
+- Allow Narrative stages to use custom image backgrounds, accept SVG image resources, preview canvas backgrounds at their full interview size and color, render resource cards responsively with contextual surface shading, and link every canvas background selector to responsive SVG guidance.
+
+### Patch Changes
+
+- Stop the stage editors from silently discarding variable settings they don't manage. Adding an editable attribute to a Network Composer stage no longer clears the input control from the variable in your codebook, which previously broke every other stage that used the same variable. Interface-owned option sets, such as the Family Pedigree biological sex values, also keep their locked state when you edit a form field that uses them.
+
+  Day offsets on a relative date picker can no longer be set to a negative number, and edge rules are no longer offered on side panels that draw their data from an external file, where they can never match. Switching an existing panel to an external file now offers to remove any edge rules its filter already contains.
+
+- Renaming an ego variable to a name already in use now shows an inline "already in use" message on the field, matching how node and edge variables behave. Previously it slipped past the inline check and surfaced a confusing "Misconfigured Protocol" dialog instead.
+- Closed several ways a protocol could be left in a state the validator rejects, where saving previously appeared to work but the stage silently reverted:
+
+  - Mapping a variable to a node shape now requires a variable to be chosen, and a breakpoint mapping requires at least one threshold with strictly increasing values. New thresholds start above the previous one, and an incomplete mapping blocks saving with an explanation instead of reverting without warning.
+  - Changing the node type of a Family Pedigree stage is now blocked, with an explanation, while a Narrative Pedigree stage depends on it — preventing a broken reference to a variable that no longer exists on the new type.
+  - The map stage now reads feature properties from every feature in a GeoJSON file rather than only the first, so the property selector appears whenever any feature has properties. When no feature has any, saving is blocked with a clear message rather than failing validation later.
+  - The codebook's "used in" display now names shape settings as a place a variable is used.
+
+- Make Architect's large startup spinner match the motion and colours of the loading indicator used throughout the app.
+- Fix the loading spinner covering the protocol upgrade dialog, which made the "Create upgraded copy" button unclickable when opening an older protocol.
+- Fix the update dialog so Install and reload opens the new version immediately and shows progress while the update is applied.
+- Clarify that protocols and settings are saved locally on this device, whether Architect is open in a browser tab or installed as an app.
+
 ## 8.0.0-beta.9
 
 ### Patch Changes
@@ -213,6 +459,7 @@
 ### Minor Changes
 
 - 273bcbe: Add optional showTransit and allowSearch configuration options to geospatial interface mapOptions:
+
   - showTransit: When enabled, Fresco displays transit layers on the map
   - allowSearch: When enabled, participants can search the map for locations
 

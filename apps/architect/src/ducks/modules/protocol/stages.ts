@@ -5,11 +5,10 @@ import { v1 as uuid } from 'uuid';
 
 import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
-import { getNodeTypes } from '~/selectors/codebook';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
 
-import { updateVariableByUUID } from './codebook';
+import { deleteStage } from './deleteStage';
 
 type StagesState = Stage[];
 
@@ -60,6 +59,13 @@ export const getFamilyPedigreeDependentStages = <
       candidate.type === 'NarrativePedigree' &&
       candidate.sourceStageId === stageId,
   );
+
+export const getFamilyPedigreeNodeTypeChangeBlock = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+  stageId: string,
+) => getFamilyPedigreeDependentStages(stages, stageId);
 
 export const getSkipDestinationDependentStages = <
   T extends StageDependencyCandidate,
@@ -143,43 +149,12 @@ const deleteStageAsync = createAppAsyncThunk(
       }
     }
 
-    if (stage?.type === 'Anonymisation') {
-      // Remove encrypted from all variables
-      const nodeTypes = getNodeTypes(state);
-      const encryptedVariables = Object.values(nodeTypes).reduce(
-        (
-          acc: Array<{
-            id: string;
-            encrypted?: boolean;
-            [key: string]: unknown;
-          }>,
-          nodeType: {
-            variables?: Record<
-              string,
-              { encrypted?: boolean; [key: string]: unknown }
-            >;
-          },
-        ) => {
-          const nodeTypeVariables = Object.entries(nodeType.variables || {})
-            .filter(([, variable]) => variable.encrypted)
-            .map(([variableId, variable]) => ({ ...variable, id: variableId }));
-
-          acc.push(...nodeTypeVariables);
-          return acc;
-        },
-        [],
-      );
-
-      await Promise.all(
-        encryptedVariables.map((variable) =>
-          dispatch(
-            updateVariableByUUID(variable.id, {}, ['encrypted']),
-          ).unwrap(),
-        ),
-      );
-    }
-
-    dispatch(stagesSlice.actions.deleteStage(stageId));
+    dispatch(
+      deleteStage({
+        stageId,
+        clearEncryptedVariables: stage?.type === 'Anonymisation',
+      }),
+    );
     return stageId;
   },
 );
@@ -252,15 +227,6 @@ const stagesSlice = createSlice({
       state.splice(oldIndex, 1);
       state.splice(newIndex, 0, movedStage);
     },
-    deleteStage: (state, action: PayloadAction<string>) => {
-      const stageId = action.payload;
-
-      if (isStageReferencedAsSkipDestination(state, stageId)) {
-        return;
-      }
-
-      return state.filter((stage) => stage.id !== stageId);
-    },
     deletePrompt: (state, action: PayloadAction<DeletePromptPayload>) => {
       const { stageId, promptId, deleteEmptyStage = false } = action.payload;
       const stageIsSkipDestination = isStageReferencedAsSkipDestination(
@@ -308,6 +274,17 @@ const stagesSlice = createSlice({
       ) as Stage[];
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase(deleteStage, (state, action) => {
+      const { stageId } = action.payload;
+
+      if (isStageReferencedAsSkipDestination(state, stageId)) {
+        return;
+      }
+
+      return state.filter((stage) => stage.id !== stageId);
+    });
+  },
 });
 
 // Export slice actions for middleware listeners
@@ -335,7 +312,8 @@ export const test = {
     stagesSlice.actions.createStage({ stage, index }),
   updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
     stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
-  deleteStage: (stageId: string) => stagesSlice.actions.deleteStage(stageId),
+  deleteStage: (stageId: string) =>
+    deleteStage({ stageId, clearEncryptedVariables: false }),
   moveStage: (oldIndex: number, newIndex: number) =>
     stagesSlice.actions.moveStage({ oldIndex, newIndex }),
   deletePrompt: (

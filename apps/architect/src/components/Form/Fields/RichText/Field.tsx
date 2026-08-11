@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit/compat';
 import type { ComponentType } from 'react';
 import type { WrappedFieldInputProps, WrappedFieldMetaProps } from 'redux-form';
 
@@ -60,9 +61,26 @@ const RichTextField = ({
     history: !disallowedTypes.includes('history'),
   };
 
+  const handleChange = (nextValue: unknown) => {
+    const currentMarkdown =
+      typeof input.value === 'string' ? input.value : null;
+    const nextMarkdown = typeof nextValue === 'string' ? nextValue : null;
+
+    if (
+      isEqual(
+        markdownToRichTextContent(currentMarkdown, inline),
+        markdownToRichTextContent(nextMarkdown, inline),
+      )
+    ) {
+      return;
+    }
+
+    input.onChange(nextValue);
+  };
+
   return (
     <ReduxFieldAdapter
-      input={input}
+      input={{ ...input, onChange: handleChange }}
       meta={meta}
       fieldComponent={FrescoRichTextEditorField}
       label={label ?? input.name ?? ''}

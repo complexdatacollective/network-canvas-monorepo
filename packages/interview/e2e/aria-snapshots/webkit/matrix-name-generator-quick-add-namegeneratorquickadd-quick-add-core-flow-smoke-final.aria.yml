@@ -4,11 +4,11 @@
   - listbox "Added Nodes":
     - option "Alice"
     - option "Bob"
-  - textbox "Type a label and press enter..." [invalid]
-  - button [pressed]
+    - option "Person"
+  - textbox "Type a label and press enter..."
+  - button "Quick add input" [pressed]
   - navigation:
-    - button "Previous Step"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"
-  - paragraph: You must enter a value before pressing enter.

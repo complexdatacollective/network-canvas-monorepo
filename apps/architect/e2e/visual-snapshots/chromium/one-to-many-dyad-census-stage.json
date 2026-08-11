@@ -1,5 +1,8 @@
 {
   "label": "Who Knows This Person?",
+  "behaviours": {
+    "removeAfterConsideration": true
+  },
   "type": "OneToManyDyadCensus",
   "subject": {
     "type": "id-1",

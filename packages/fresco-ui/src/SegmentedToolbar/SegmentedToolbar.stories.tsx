@@ -27,6 +27,7 @@ import {
 import { useState } from 'react';
 
 import SplitButton from '../SplitButton';
+import { withTooltipProvider } from '../storybook-support/withTooltipProvider';
 import { SegmentedToolbar, type ToolbarSegment } from './SegmentedToolbar';
 
 const componentDescription = `
@@ -94,6 +95,7 @@ Every segment shares **\`SegmentContent\`**: \`label\` (accessible name), \`icon
 const meta = {
   title: 'Components/SegmentedToolbar',
   component: SegmentedToolbar,
+  decorators: [withTooltipProvider],
   parameters: {
     layout: 'centered',
     docs: { description: { component: componentDescription } },

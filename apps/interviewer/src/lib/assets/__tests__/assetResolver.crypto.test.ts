@@ -52,25 +52,42 @@ describe('assetResolver decrypts encrypted-at-rest assets', () => {
     vi.unstubAllGlobals();
   });
 
-  it('mints a blob URL from decrypted asset bytes', async () => {
-    // Import so URL.createObjectURL is the stub set in beforeEach.
-    const { makeAssetResolver } = await import('../assetResolver');
-    const protocol = makeProtocol({
-      'img-1': { id: 'img-1', type: 'image', name: 'Photo', source: 'p.png' },
-    });
-    await saveProtocol(protocol, 'h1', [
-      { id: 'img-1', name: 'Photo', data: new Blob([new Uint8Array([7, 7])]) },
-    ]);
+  it(
+    'mints a blob URL from decrypted asset bytes',
+    {
+      // Dynamic module transformation can exceed the workspace's 20s default
+      // when every package test runs concurrently in CI.
+      timeout: 60_000,
+    },
+    async () => {
+      // Import so URL.createObjectURL is the stub set in beforeEach.
+      const { makeAssetResolver } = await import('../assetResolver');
+      const protocol = makeProtocol({
+        'img-1': {
+          id: 'img-1',
+          type: 'image',
+          name: 'Photo',
+          source: 'p.png',
+        },
+      });
+      await saveProtocol(protocol, 'h1', [
+        {
+          id: 'img-1',
+          name: 'Photo',
+          data: new Blob([new Uint8Array([7, 7])]),
+        },
+      ]);
 
-    const resolver = makeAssetResolver('h1', new Date().toISOString());
-    const url = await resolver('img-1');
-    expect(url).toBe('blob:mock-url');
-    expect(URL.createObjectURL).toHaveBeenCalledOnce();
-    const [passedBlob] = (
-      URL.createObjectURL as unknown as { mock: { calls: [Blob][] } }
-    ).mock.calls[0]!;
-    expect(passedBlob).toBeInstanceOf(Blob);
-  });
+      const resolver = makeAssetResolver('h1', new Date().toISOString());
+      const url = await resolver('img-1');
+      expect(url).toBe('blob:mock-url');
+      expect(URL.createObjectURL).toHaveBeenCalledOnce();
+      const [passedBlob] = (
+        URL.createObjectURL as unknown as { mock: { calls: [Blob][] } }
+      ).mock.calls[0]!;
+      expect(passedBlob).toBeInstanceOf(Blob);
+    },
+  );
 
   it('returns an apikey string directly (no blob URL)', async () => {
     const { makeAssetResolver } = await import('../assetResolver');

@@ -1,7 +1,19 @@
 # Release E2E equivalence reuse
 
 **Date:** 2026-07-17
-**Status:** Approved, not yet implemented
+**Status:** Partially superseded on 2026-08-03 and 2026-08-11
+
+> Architect and Interviewer now share the normal `changeset-release/main` lane
+> with libraries, so cross-branch reuse between a separate apps lane and the
+> library lane is no longer needed. See
+> `2026-08-03-stable-app-release-design.md` for the current topology.
+
+> **2026-08-11 update:** PR `quality` verdicts are now authoritative for the
+> merge queue. Full CI and E2E run on pull requests targeting `main`, including
+> generated release PRs; `merge_group` reports only a lightweight `quality`
+> acknowledgement and never runs E2E. The PR-time equivalence primitive below
+> remains current for refreshed release branches. The queue-time motivation,
+> alternatives, and design sections are retained as historical context.
 
 ## Problem
 
@@ -47,12 +59,12 @@ The refresh itself cannot simply be skipped:
 
 ## Design
 
-Branch generation is untouched. The decision moves entirely into the
-`e2e-policy` job / `scripts/release-e2e-policy.mjs`: a suite whose outcome
-provably cannot have changed since its last successful run on the same
-release branch is skipped, and the `quality` aggregate accepts that through
-the existing "policy says not required" path. Ordinary PRs are unaffected —
-they still never inherit an E2E verdict.
+The decision lives in the `e2e-policy` job /
+`scripts/release-e2e-policy.mjs`: a suite whose outcome provably cannot have
+changed since a trusted successful run on any generated release branch is
+skipped, and the `quality` aggregate accepts that through the existing "policy
+says not required" path. Ordinary PRs are unaffected — they still never inherit
+an E2E verdict.
 
 ### The equivalence primitive
 
@@ -63,14 +75,15 @@ pagination cap — means "run the suite".
 1. **Trusted context.** The run is for a generated `changeset-release/*`
    branch and, on `pull_request` events, the head repository is this
    repository (fork PRs never get reuse).
-2. **A prior conclusive native run exists.** Walking this branch's prior
-   `pull_request` runs of `ci-and-release.yml` (Actions API, newest first,
-   bounded), take the **newest run whose job for S has a conclusive verdict**
-   (`success`/`failure`/`timed_out`; skipped and cancelled runs are walked
-   past — a policy-skipped suite leaves no conclusive verdict, so chains of
-   skips collapse onto the original native run without provenance tracking).
-   Only a `success` at that run's head SHA **X** can qualify; a conclusive
-   failure means the suite runs — never walk past a failure to an older green.
+2. **A prior conclusive native run exists.** For every generated release branch
+   capable of running S, walk its `pull_request` runs of `ci-and-release.yml`
+   (Actions API, newest first, bounded) and take that branch's **newest run whose
+   job for S has a conclusive verdict** (`success`/`failure`/`timed_out`; skipped
+   and cancelled runs are walked past). Never walk past a same-branch failure to
+   an older green. After guard 3 removes verdicts whose code is not equivalent
+   to H, the newest remaining verdict across all release branches is
+   authoritative. Only `success` qualifies; a newer equivalent failure cannot
+   be hidden by an older success from another lane.
 3. **The delta cannot affect S.** `git diff --no-renames --name-only X H`
    (fetching X by SHA; force-pushed commits remain fetchable) contains only
    paths that are either
@@ -102,12 +115,10 @@ pagination cap — means "run the suite".
 ### PR time (the fix)
 
 On a `pull_request` run for a release ref, `e2e-policy` applies the primitive
-to each lane-required suite with H = the PR tip, before requiring it. A
-sibling product's release merge (its app dir, changelogs, consumed
-changesets) is outside the other lanes' relevance closures → their refreshes
-skip E2E and `quality` goes green in minutes. A merge touching
-`packages/interview` is inside every lane's closure → all lanes re-run
-exactly as today, preserving the snapshot auto-regen flow.
+to each lane-required suite with H = the PR tip, before requiring it. This
+allows the combined app lane and the separate library lane to reuse the same
+suite result when their suite relevance closures are identical, while a merge
+touching `packages/interview` remains relevant and forces fresh validation.
 
 PR-time comparison uses branch tips rather than the synthetic merge commits
 of the two runs; because release branches are regenerated on top of current
@@ -127,9 +138,9 @@ extra changes are irrelevant to S now also skips; anything relevant runs.
 
 ### What does not change
 
-- `product-release-pr`, `changesets/action`, and all branch generation.
-- The lane → suites table (`SUITES_BY_RELEASE_REF`) and its graph-derived
-  test.
+- `changesets/action` and library branch generation.
+- The graph-derived guard around the lane → suites table
+  (`SUITES_BY_RELEASE_REF`).
 - The `quality` aggregate contract and required-check configuration.
 - Ordinary (non-release) PRs: E2E verdicts are still never carried forward.
 - The snapshot auto-regen and snapshot-update-PR flows.

@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import Button from './Button';
+import { withTooltipProvider } from './storybook-support/withTooltipProvider';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 
 const meta = {
   title: 'Components/Tooltip',
   component: Tooltip,
+  decorators: [withTooltipProvider],
   parameters: {
     layout: 'centered',
   },

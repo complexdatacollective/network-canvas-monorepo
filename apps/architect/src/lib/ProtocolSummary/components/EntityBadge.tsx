@@ -9,6 +9,7 @@ import SummaryContext from './SummaryContext';
 type EntityBadgeProps = {
   type: string;
   entity: string;
+  iconSize?: 'default' | 'small' | 'tiny';
   link?: boolean;
   small?: boolean;
   tiny?: boolean;
@@ -16,6 +17,7 @@ type EntityBadgeProps = {
 const EntityBadge = ({
   type,
   entity,
+  iconSize,
   link = false,
   small = false,
   tiny = false,
@@ -26,7 +28,7 @@ const EntityBadge = ({
   const color = get(codebook, [entity, type, 'color']);
   const name = get(codebook, [entity, type, 'name']);
   const shape = get(codebook, [entity, type, 'shape', 'default']);
-  const size = tiny ? 'tiny' : small ? 'small' : 'default';
+  const size = iconSize ?? (tiny ? 'tiny' : small ? 'small' : 'default');
   const label = small || tiny ? name : <Heading level="h2">{name}</Heading>;
   const badge = (
     <EntityIcon

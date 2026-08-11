@@ -88,6 +88,9 @@ describe('Step3Configure — read-only summary reconciliation', () => {
     render(<Step3Configure allowChange={false} />);
 
     expect(await screen.findByText('PIN configured.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(setNextEnabledMock).toHaveBeenLastCalledWith(true),
+    );
     expect(
       screen.queryByRole('button', { name: 'Change' }),
     ).not.toBeInTheDocument();

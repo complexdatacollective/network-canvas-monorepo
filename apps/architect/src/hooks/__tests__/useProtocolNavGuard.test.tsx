@@ -104,6 +104,8 @@ describe('promptLeaveEditor', () => {
     expect(captured.intent).toBe('default');
     expect(captured.size).toBe('readable');
     expect(captured.description).toMatch(/saved automatically/i);
+    expect(captured.description).toMatch(/on this device/i);
+    expect(captured.description).not.toMatch(/browser/i);
 
     // No draft-reset thunk for a pristine editor.
     expect(dispatched.some((action) => typeof action === 'function')).toBe(

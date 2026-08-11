@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import CaptureStory, {
   type CaptureParameters,
-} from '../../../.storybook/CaptureStory';
+} from '../../storybook-support/CaptureStory';
 import {
   buildScenarioInterview,
   type StoryArgs,
@@ -17,7 +17,7 @@ import { clickDialogPrimary } from './familyPedigreeWizardHelpers';
  * Rather than seeding the network by hand (the pedigree's edge/metadata
  * invariants are owned by its wizards), this replays the
  * WithPartnerAndChildren scenario through the real quick-start wizard: ego,
- * both parents (Linda ⚭ Robert), partner Jennifer, and children Daniel and
+ * both parents (Linda ⚭ Robert), partner James, and children Daniel and
  * Emma. The capture runner waits for the play function to complete before
  * screenshotting, so the image shows the resulting three-generation
  * pedigree on the canvas.

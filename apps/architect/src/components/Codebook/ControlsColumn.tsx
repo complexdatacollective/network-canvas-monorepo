@@ -1,6 +1,6 @@
-import { DeleteIcon } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
-import Button from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 
 type ControlsColumnProps = {
   id: string;
@@ -11,14 +11,15 @@ type ControlsColumnProps = {
 const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => {
   const label = inUse ? 'In use — cannot be deleted' : 'Delete variable';
 
-  // The title lives on the wrapping span rather than the Button: a disabled
-  // Button gets `pointer-events-none`, so a `title` on it would never show on
+  // The title lives on the wrapping span rather than the IconButton: a disabled
+  // button gets `pointer-events-none`, so a `title` on it would never show on
   // hover. `disabled` already blocks the click, so no extra guard is needed.
   return (
     <span title={label} className="inline-block">
-      <Button
+      <IconButton
         color="destructive"
-        icon={<DeleteIcon />}
+        variant="text"
+        icon={<Trash2 />}
         onClick={() => onDelete(id)}
         disabled={inUse}
         aria-label={label}

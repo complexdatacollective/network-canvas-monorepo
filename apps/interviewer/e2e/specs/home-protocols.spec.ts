@@ -88,7 +88,10 @@ test.describe('protocol import & delete', () => {
     await expect(page.getByTestId('new-session-case-id')).toBeVisible();
     await expect(resumeNotification).not.toBeVisible();
 
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    // exact: true — the new-session backdrop is itself a button labelled
+    // "Cancel starting interview" (ProtocolDeck.tsx), so a substring name match
+    // resolves to two elements. Target the form's own "Cancel" button.
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(resumeNotification).toBeVisible();
   });
 

@@ -5,33 +5,31 @@
 > PWA — there is no service worker, no install prompt, and no update
 > indicator; a deploy is live for every visitor on their next page load.
 
-## Versioned beta releases (changeset-driven)
+## Stable releases (changeset-driven)
 
-Background Creator is on a `1.0.0-beta.N` line. It is `private` and in the
-changeset `ignore` list, so the library `changeset version` never touches it — a
-dedicated lane handles it instead. The base `1.0.0` is fixed (change it with a
-manual `package.json` edit, e.g. to graduate out of beta); a changeset's
-`major`/`minor`/`patch` type only categorises the release notes, it does not
-move the base while in beta.
+Background Creator is a private package in the normal Changesets lane. It uses
+standard semantic versioning: the `major`/`minor`/`patch` selected in a changeset
+controls the next version, and the normal generated **Version Packages** PR
+updates its `package.json` and `CHANGELOG.md` alongside affected libraries and
+other normal-lane apps. The initial patch changeset graduates `1.0.0-beta.0` to
+the stable `1.0.0` release.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/background-creator` (see the `creating-a-changeset` skill). Select
-   no other product or library in that file—CI (`pnpm check:changesets`)
-   rejects it.
-2. **The "Release Background Creator" PR.** On every push to `main`, the
-   Background Creator entry in the `product-release-pr` matrix increments
-   `-beta.N`, updates `CHANGELOG.md`, deletes the consumed Background Creator
-   changesets, and opens or updates its release PR. The PR is withdrawn when no
-   Background Creator changesets are pending.
+   `@codaco/background-creator` (see the `creating-a-changeset` skill). It may
+   share that changeset with normal-lane apps or libraries, but not Documentation
+   or Website.
+2. **The "Version Packages" PR.** On every push to `main`,
+   `changesets/action` updates the version and changelog, consumes the changeset,
+   and opens or updates `changeset-release/main`.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
    `apps-release-detect` job sees the version change and
    `apps-release-background-creator` builds, deploys to Netlify **production**,
-   and creates the prerelease GitHub release
+   and creates the stable GitHub release
    `@codaco/background-creator@<version>` with the CHANGELOG notes.
 
 Netlify's Git integration builds pull-request previews and reports their URLs
-directly on the PR. Production is deployed only when the Release Background
-Creator PR merges.
+directly on the PR. Production is deployed only when the Version Packages PR
+containing a Background Creator version bump merges.
 
 ## How CI builds
 
@@ -75,9 +73,9 @@ Done:
    `netlify deploy --no-build --prod --dir=apps/background-creator/dist --site=8ce0d202-ec6f-4a81-8c42-3c11e3180d33`
    after `pnpm exec turbo run build --filter=@codaco/background-creator` — so the
    URL resolves ahead of the first changeset-driven release; from there the
-   Release Background Creator PR keeps production current. The "Use the
+   Version Packages PR keeps production current. The "Use the
    Background Creator" section of
-   `apps/documentation/docs/design-protocols/key-concepts/responsive-svg-backgrounds.en.mdx`
+   `apps/documentation/docs/design-protocols/responsive-svg-backgrounds.en.mdx`
    links to it.
 
 Because the site and secret above are in place, the production deploy resolves

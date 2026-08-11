@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.0.0-beta.8",
+  "version": "8.1.2",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -14,15 +14,16 @@
     "dev": "vite",
     "build": "node scripts/build.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --build --noEmit",
+    "typecheck": "tsc --build --noEmit && tsc -p e2e/tsconfig.json --noEmit",
     "test": "vitest run --project=unit",
     "test:watch": "vitest --project=unit",
     "test:storybook": "vitest run --project=storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
-    "chromatic": "chromatic --only-changed --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static --storybook-base-dir=apps/interviewer",
+    "chromatic": "chromatic --only-changed --exit-zero-on-changes --storybook-build-dir=storybook-static --storybook-base-dir=apps/interviewer --storybook-config-dir=.storybook --untraced 'apps/architect/package.json' --untraced 'apps/architect-classic/package.json' --untraced 'apps/interviewer-classic/package.json' --untraced 'packages/site-navigation-element/package.json'",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
+    "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
     "test:e2e:headed": "pnpm turbo run build --filter=@codaco/interviewer && playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
@@ -55,8 +56,10 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
     "@playwright/test": "catalog:",
+    "@posthog/rollup-plugin": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
+    "@storybook/addon-mcp": "catalog:",
     "@storybook/addon-vitest": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",

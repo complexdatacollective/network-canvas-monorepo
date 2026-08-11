@@ -9,7 +9,9 @@ const Tag = ({ children = null, notUsed = false }: TagProps) => (
   <div
     className={cx(
       'inline-block rounded px-2.5 py-1 text-[0.9em] wrap-break-word',
-      notUsed ? 'bg-warning text-white' : 'bg-platinum text-charcoal',
+      notUsed
+        ? 'bg-warning text-white'
+        : 'bg-surface-2 text-surface-2-contrast',
     )}
   >
     {children}

@@ -90,14 +90,6 @@ export default function AddPersonFields({
           options={existingPartnerOptions}
           required
         />
-
-        <Field
-          name="current"
-          label="Are they a current or ex partner?"
-          component={RadioGroupField}
-          options={CURRENT_EX_OPTIONS}
-          initialValue="current"
-        />
       </FieldGroup>
 
       <FieldGroup
@@ -105,15 +97,27 @@ export default function AddPersonFields({
         condition={(v) => v.partnerType === 'new'}
       >
         <PersonFields />
+      </FieldGroup>
 
-        <Field
-          name="current"
-          label="Are they a current or ex partner?"
-          component={RadioGroupField}
-          options={CURRENT_EX_OPTIONS}
-          initialValue="current"
-        />
+      {/*
+        Hoisted out of the two mutually-exclusive branches above so exactly
+        one "current" Field is always mounted. Both branches asked this
+        question identically; keeping a single always-mounted instance means
+        the answer survives a partnerType switch as live form state, rather
+        than depending on dormant-field remount-restore.
+      */}
+      <Field
+        name="current"
+        label="Are they a current or ex partner?"
+        component={RadioGroupField}
+        options={CURRENT_EX_OPTIONS}
+        initialValue="current"
+      />
 
+      <FieldGroup
+        watch={['partnerType'] as const}
+        condition={(v) => v.partnerType === 'new'}
+      >
         {children.map((childId) => (
           <Field
             key={`parentType-${childId}`}

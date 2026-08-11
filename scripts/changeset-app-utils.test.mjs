@@ -1,33 +1,28 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
 import {
   classifyChangeset,
-  foreignIgnoredReleases,
   isMixedChangeset,
-  isMultiProductChangeset,
-  isProductWithForeignIgnoredAppChangeset,
-  nextBetaVersion,
+  isMultiProductLaneChangeset,
   nextStableVersion,
   parseChangeset,
   readChangesets,
+  releaseLaneForProduct,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
 
-// Mirrors the Changesets `ignore` list: every gated product plus the
-// maintenance-mode classic apps, which have no release lane of their own.
-const IGNORE = [
-  '@codaco/architect',
-  '@codaco/background-creator',
-  '@codaco/documentation',
-  '@codaco/interviewer',
-  'networkcanvas.com',
-  '@codaco/architect-classic',
-  '@codaco/interviewer-classic',
-];
+test('normal Changesets versions private Architect and Interviewer packages', () => {
+  const config = JSON.parse(
+    readFileSync(new URL('../.changeset/config.json', import.meta.url), 'utf8'),
+  );
+  assert.deepEqual(config.privatePackages, { version: true, tag: false });
+  assert.ok(!config.ignore.includes('@codaco/architect'));
+  assert.ok(!config.ignore.includes('@codaco/interviewer'));
+});
 
 test('parseChangeset extracts releases and summary', () => {
   const md = `---\n"@codaco/architect": minor\n'@codaco/interviewer': patch\n---\n\nDid a thing`;
@@ -62,7 +57,7 @@ test('readChangesets reads and ids each .md, skipping README/config', () => {
   ]);
 });
 
-test('classifyChangeset splits app vs library releases', () => {
+test('classifyChangeset splits separately gated vs normal releases', () => {
   const cs = {
     id: 'x',
     summary: '',
@@ -72,107 +67,55 @@ test('classifyChangeset splits app vs library releases', () => {
       { name: '@codaco/interview', type: 'patch' },
     ],
   };
-  const { productReleases, libReleases } = classifyChangeset(cs);
-  assert.deepEqual(productReleases, [
-    { name: '@codaco/architect', type: 'minor' },
+  const { gatedProductReleases, normalReleases } = classifyChangeset(cs);
+  assert.deepEqual(gatedProductReleases, [
     { name: 'networkcanvas.com', type: 'patch' },
   ]);
-  assert.deepEqual(libReleases, [{ name: '@codaco/interview', type: 'patch' }]);
+  assert.deepEqual(normalReleases, [
+    { name: '@codaco/architect', type: 'minor' },
+    { name: '@codaco/interview', type: 'patch' },
+  ]);
 });
 
-test('isMixedChangeset: true only when an app and a library share one changeset', () => {
+test('isMixedChangeset: true only across separate and normal release lanes', () => {
   const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
   const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
-  const both = { releases: [...app.releases, ...lib.releases] };
-  const twoApps = {
+  const normal = { releases: [...app.releases, ...lib.releases] };
+  const gated = {
+    releases: [{ name: '@codaco/documentation', type: 'patch' }],
+  };
+  const mixed = {
     releases: [
       { name: '@codaco/architect', type: 'minor' },
-      { name: '@codaco/interviewer', type: 'minor' },
+      { name: '@codaco/documentation', type: 'minor' },
     ],
   };
   assert.equal(isMixedChangeset(app), false);
   assert.equal(isMixedChangeset(lib), false);
-  assert.equal(isMixedChangeset(both), true);
-  assert.equal(isMixedChangeset(twoApps), false); // both ignored → not "mixed"
+  assert.equal(isMixedChangeset(normal), false);
+  assert.equal(isMixedChangeset(gated), false);
+  assert.equal(isMixedChangeset(mixed), true);
 });
 
-test('isMultiProductChangeset: true only when gated products share one changeset', () => {
+test('releaseLaneForProduct maps only separately gated products', () => {
+  assert.equal(releaseLaneForProduct('@codaco/architect'), null);
+  assert.equal(releaseLaneForProduct('@codaco/interviewer'), null);
+  assert.equal(releaseLaneForProduct('@codaco/documentation'), 'documentation');
+  assert.equal(releaseLaneForProduct('@codaco/interview'), null);
+});
+
+test('isMultiProductLaneChangeset allows products in one release lane', () => {
   const app = { releases: [{ name: '@codaco/architect', type: 'minor' }] };
   const lib = { releases: [{ name: '@codaco/interview', type: 'minor' }] };
-  const twoApps = {
-    releases: [...app.releases, { name: 'networkcanvas.com', type: 'patch' }],
-  };
-  assert.equal(isMultiProductChangeset(app), false);
-  assert.equal(isMultiProductChangeset(lib), false);
-  assert.equal(isMultiProductChangeset(twoApps), true);
-});
-
-test('foreignIgnoredReleases lists ignored apps that are not gated products', () => {
-  const cs = {
+  const twoLanes = {
     releases: [
-      { name: '@codaco/background-creator', type: 'patch' },
-      { name: '@codaco/architect-classic', type: 'patch' },
-      { name: '@codaco/interview', type: 'patch' },
+      { name: '@codaco/documentation', type: 'minor' },
+      { name: 'networkcanvas.com', type: 'patch' },
     ],
   };
-  // The gated product and the library are excluded; only the classic remains.
-  assert.deepEqual(foreignIgnoredReleases(cs, IGNORE), [
-    { name: '@codaco/architect-classic', type: 'patch' },
-  ]);
-});
-
-test('isProductWithForeignIgnoredAppChangeset: catches a gated product paired with a classic app', () => {
-  // The gap the other two guards miss: both entries sit in `ignore`, so it is
-  // not "mixed" (no library) and not "multi-product" (one gated product), yet
-  // the product release would delete the file and drop the classic entry.
-  const productPlusClassic = {
-    releases: [
-      { name: '@codaco/background-creator', type: 'patch' },
-      { name: '@codaco/architect-classic', type: 'patch' },
-    ],
-  };
-  const productAlone = {
-    releases: [{ name: '@codaco/background-creator', type: 'patch' }],
-  };
-  const classicAlone = {
-    releases: [{ name: '@codaco/architect-classic', type: 'patch' }],
-  };
-  const libraryOnly = {
-    releases: [{ name: '@codaco/interview', type: 'patch' }],
-  };
-
-  assert.equal(
-    isProductWithForeignIgnoredAppChangeset(productPlusClassic, IGNORE),
-    true,
-  );
-  // A gated product alone, a classic alone, and a library-only changeset are
-  // all still valid — this guard must not flag them.
-  assert.equal(
-    isProductWithForeignIgnoredAppChangeset(productAlone, IGNORE),
-    false,
-  );
-  assert.equal(
-    isProductWithForeignIgnoredAppChangeset(classicAlone, IGNORE),
-    false,
-  );
-  assert.equal(
-    isProductWithForeignIgnoredAppChangeset(libraryOnly, IGNORE),
-    false,
-  );
-});
-
-test('nextBetaVersion increments only the beta counter', () => {
-  assert.equal(nextBetaVersion('8.0.0-beta.0'), '8.0.0-beta.1');
-  assert.equal(nextBetaVersion('8.0.0-beta.9'), '8.0.0-beta.10');
-  assert.equal(nextBetaVersion('9.1.0-beta.0'), '9.1.0-beta.1');
-});
-
-test('nextBetaVersion rejects a non-beta version', () => {
-  assert.throws(() => nextBetaVersion('8.0.0'), /not on a -beta\.N line/);
-  assert.throws(
-    () => nextBetaVersion('8.0.0-alpha.3'),
-    /not on a -beta\.N line/,
-  );
+  assert.equal(isMultiProductLaneChangeset(app), false);
+  assert.equal(isMultiProductLaneChangeset(lib), false);
+  assert.equal(isMultiProductLaneChangeset(twoLanes), true);
 });
 
 test('nextStableVersion applies the highest requested semver bump', () => {

@@ -4,12 +4,18 @@ import type { VariableOptions } from '@codaco/protocol-validation';
 import FrescoReduxArrayField from '~/components/Form/FrescoReduxArrayField';
 
 import Option from './Option';
+import { isOptionComplete } from './optionCompleteness';
 
 export type OptionValue = VariableOptions[number];
 
 export const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
     ? 'Requires a minimum of two options. If you need fewer options, consider using a boolean variable.'
+    : undefined;
+
+export const completeOptions = (value: unknown) =>
+  Array.isArray(value) && !value.every(isOptionComplete)
+    ? 'Every option needs both a label and a value.'
     : undefined;
 
 type OptionsProps = {
@@ -30,7 +36,7 @@ const Options = ({ name, label = '' }: OptionsProps) => (
     immediateAdd
     sortable
     confirmDelete={false}
-    validate={minTwoOptions}
+    validate={[minTwoOptions, completeOptions]}
     rerenderOnEveryChange
   />
 );

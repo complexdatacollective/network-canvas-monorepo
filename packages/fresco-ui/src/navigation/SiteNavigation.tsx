@@ -139,6 +139,42 @@ const hoverAccentClasses: Record<SoftwareId, string> = {
   fresco: 'hover:bg-slate-blue/10 focus-visible:bg-slate-blue/10',
 };
 
+const softwareMenuVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      delayChildren: 0.05,
+      staggerChildren: 0.055,
+    },
+  },
+};
+
+const softwareCardVariants: Variants = {
+  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 500,
+      damping: 30,
+    },
+  },
+};
+
+const softwareIcons: Record<SoftwareId, string> = {
+  architect: new URL('./assets/architect.png', import.meta.url).href,
+  architectClassic: new URL('./assets/architect-classic.png', import.meta.url)
+    .href,
+  interviewer: new URL('./assets/interviewer.svg', import.meta.url).href,
+  interviewerClassic: new URL(
+    './assets/interviewer-classic.png',
+    import.meta.url,
+  ).href,
+  fresco: new URL('./assets/fresco.png', import.meta.url).href,
+};
+
 function defaultRenderLink({
   children,
   ...props
@@ -275,8 +311,8 @@ function ResourcesMenu({
           collisionPadding={16}
           className="z-50 outline-none"
         >
-          <NavigationMenu.Popup className="bg-surface origin-top rounded-[1.75rem] p-3 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-            <NavigationMenu.Viewport />
+          <NavigationMenu.Popup className="bg-surface h-(--popup-height) w-(--popup-width) origin-top rounded-[1.75rem] p-3 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+            <NavigationMenu.Viewport className="relative" />
           </NavigationMenu.Popup>
         </NavigationMenu.Positioner>
       </NavigationMenu.Portal>
@@ -292,39 +328,46 @@ function SoftwareCard({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const className = cx(
-    'focusable flex h-full w-[19rem] flex-col rounded p-5 transition-colors',
+    'focusable flex h-full w-[23rem] items-start gap-4 rounded p-5 transition-colors',
     hoverAccentClasses[link.id],
   );
   const content = (
     <>
-      <span
-        className={cx(
-          headingVariants({
-            level: 'h4',
-            variant: 'all-caps',
-            margin: 'none',
-          }),
-          'block',
-          accentClasses[link.id],
-        )}
-      >
-        {link.name}
-      </span>
-      <Paragraph
-        margin="none"
-        className="text-text/85 mt-1.5 text-sm leading-snug"
-      >
-        {link.description}
-      </Paragraph>
-      <span
-        className={cx(
-          'font-heading mt-auto inline-flex items-center gap-1.5 pt-2.5 text-xs font-bold tracking-[0.12em] uppercase',
-          accentClasses[link.id],
-        )}
-      >
-        {link.action}
-        <ArrowUpRight aria-hidden className="size-3.5 shrink-0" />
-      </span>
+      <img
+        alt=""
+        src={softwareIcons[link.id]}
+        className="size-12 shrink-0 rounded-[18%] object-contain"
+      />
+      <div className="flex min-w-0 flex-1 flex-col self-stretch">
+        <span
+          className={cx(
+            headingVariants({
+              level: 'h4',
+              variant: 'all-caps',
+              margin: 'none',
+            }),
+            'block',
+            accentClasses[link.id],
+          )}
+        >
+          {link.name}
+        </span>
+        <Paragraph
+          margin="none"
+          className="text-text/85 mt-1.5 text-sm leading-snug"
+        >
+          {link.description}
+        </Paragraph>
+        <span
+          className={cx(
+            'font-heading mt-auto inline-flex items-center gap-1.5 pt-2.5 text-xs font-bold tracking-[0.12em] uppercase',
+            accentClasses[link.id],
+          )}
+        >
+          {link.action}
+          <ArrowUpRight aria-hidden className="size-3.5 shrink-0" />
+        </span>
+      </div>
     </>
   );
   const props: SiteNavigationLinkRenderProps = {
@@ -362,6 +405,7 @@ function SoftwareMenu({
   renderLink: (props: SiteNavigationLinkRenderProps) => ReactElement;
 }) {
   const portalContainer = usePortalContainer();
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <NavigationMenu.Root
@@ -386,13 +430,22 @@ function SoftwareMenu({
             />
           </NavigationMenu.Trigger>
           <NavigationMenu.Content className="transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
-            <ul className="grid grid-cols-3 gap-1 p-1">
+            <motion.ul
+              initial={shouldReduceMotion ? false : 'hidden'}
+              animate="visible"
+              variants={softwareMenuVariants}
+              className="grid grid-cols-3 gap-1 p-1"
+            >
               {links.map((link) => (
-                <li key={link.id} className="flex">
+                <motion.li
+                  key={link.id}
+                  variants={softwareCardVariants}
+                  className="flex"
+                >
                   <SoftwareCard link={link} renderLink={renderLink} />
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           </NavigationMenu.Content>
         </NavigationMenu.Item>
       </NavigationMenu.List>
@@ -404,8 +457,8 @@ function SoftwareMenu({
           collisionPadding={16}
           className="z-50 outline-none"
         >
-          <NavigationMenu.Popup className="bg-surface max-h-[calc(100vh-7rem)] origin-top overflow-y-auto rounded p-3 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-            <NavigationMenu.Viewport />
+          <NavigationMenu.Popup className="bg-surface h-(--popup-height) max-h-[calc(100vh-7rem)] w-(--popup-width) origin-top overflow-y-auto rounded p-5 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+            <NavigationMenu.Viewport className="relative" />
           </NavigationMenu.Popup>
         </NavigationMenu.Positioner>
       </NavigationMenu.Portal>

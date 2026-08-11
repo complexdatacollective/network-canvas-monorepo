@@ -164,7 +164,12 @@ function WorkflowCard({ section }: { section: SectionConfig }) {
         <SectionIcon section={section} onColor large />
       </span>
       <div className="mt-auto flex flex-col gap-2">
-        <FancyHeading level="h2" margin="none" className="text-xl text-current">
+        <FancyHeading
+          level="h2"
+          variant="subheading"
+          margin="none"
+          className="text-current"
+        >
           {t(`${section.key}.label`)}
         </FancyHeading>
         <Paragraph className="text-base text-current/85">

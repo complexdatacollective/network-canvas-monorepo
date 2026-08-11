@@ -5,13 +5,8 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { AppChoiceCard } from '~/components/get-started/AppChoiceCard';
 import { Container } from '~/components/ui/Container';
 import { Reveal } from '~/components/ui/Reveal';
-import {
-  type classicApps,
-  type Workflow,
-  type webApps,
-} from '~/lib/getStarted';
-
-type AppRecord = (typeof webApps)[number] | (typeof classicApps)[number];
+import { scrollDrivenRevealMotion } from '~/components/ui/scrollDrivenMotion';
+import type { AppRecord, Workflow } from '~/lib/getStarted';
 
 export function WorkflowPath({
   workflow,
@@ -28,7 +23,7 @@ export function WorkflowPath({
       id={workflow}
       className="tablet-portrait:py-24 scroll-mt-8 py-16"
     >
-      <Reveal className="max-w-3xl">
+      <Reveal {...scrollDrivenRevealMotion} className="max-w-3xl">
         <Paragraph
           margin="none"
           className="font-heading text-neon-coral text-sm font-bold tracking-[0.14em] uppercase"
@@ -37,8 +32,9 @@ export function WorkflowPath({
         </Paragraph>
         <Heading
           level="h2"
+          variant="section-heading"
           margin="none"
-          className="font-heading text-text text-4xl font-black tracking-tight text-balance"
+          className="text-text"
         >
           {t(`sections.${workflow}.heading`)}
         </Heading>
@@ -54,7 +50,9 @@ export function WorkflowPath({
       <div className="tablet-landscape:grid-cols-12 mt-12 grid grid-cols-1 gap-6">
         {apps.map((app, index) => (
           <Reveal
+            {...scrollDrivenRevealMotion}
             key={app.id}
+            direction="zoom"
             delay={index * 0.08}
             className={
               workflow === 'collect'

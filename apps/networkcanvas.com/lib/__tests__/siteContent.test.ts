@@ -94,6 +94,12 @@ describe('loadSiteContent', () => {
         content.coreTeam,
       ].every((records) => records.length > 0),
     ).toBe(true);
+    expect(content.newsItems).toContainEqual(
+      expect.objectContaining({
+        id: 'summer-2026-app-release',
+        href: '/summer-2026-update',
+      }),
+    );
   });
 
   it.each([
@@ -123,6 +129,15 @@ grant,Grant,Subvención,PI: Person,IP: Persona,Description,,/images/logo.png,Ins
       field: 'href',
       source: `id,title_en,title_es,source_en,source_es,authors,href
 p1,Publication,Publicación,Journal,Revista,Author,http://example.com/p1
+`,
+    },
+    {
+      name: 'unsafe internal URL',
+      filename: 'latest-news.csv',
+      row: 'row 2',
+      field: 'href',
+      source: `id,title_en,title_es,href
+unsafe,Unsafe news,Noticia insegura,/\\evil.com
 `,
     },
     {

@@ -6,12 +6,9 @@ import type { NcNode } from '@codaco/shared-consts';
 
 import { useCaptureException } from '../analytics/useTrack';
 import { useContractHandlers } from '../contract/context';
+import { parseExternalNetworkAsset } from '../contract/rosterData';
 import { getAssetManifest, getCodebook } from '../store/modules/protocol';
 import { ensureError } from '../utils/ensureError';
-import { getVariableTypeReplacements } from '../utils/externalData';
-import loadExternalData, {
-  makeVariableUUIDReplacer,
-} from '../utils/loadExternalData';
 
 const useExternalData = (
   dataSource: Panel['dataSource'],
@@ -60,15 +57,12 @@ const useExternalData = (
         // Prefer the original source filename for the CSV-vs-JSON decision; the
         // display `name` may lack an extension on hand-edited protocols.
         const sourceFileName = asset.source ?? asset.name;
-        const { nodes } = await loadExternalData(sourceFileName, url);
-        const replacer = makeVariableUUIDReplacer(codebook, subject.type);
-        const uuidData = nodes.map(replacer);
-        const formatted = getVariableTypeReplacements(
+        const formatted = await parseExternalNetworkAsset({
           sourceFileName,
-          uuidData,
+          url,
           codebook,
           subject,
-        );
+        });
         if (!cancelled) {
           setExternalData(formatted);
           setStatus({ isLoading: false, error: null });

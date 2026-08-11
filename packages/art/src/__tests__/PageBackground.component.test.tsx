@@ -227,7 +227,7 @@ describe('PageBackground', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders a viewport-fixed network weave', () => {
+  it('renders a viewport-fixed network weave behind page content', () => {
     const { container } = render(<PageBackground />);
     const layer = container.firstElementChild as HTMLElement | null;
 
@@ -236,8 +236,12 @@ describe('PageBackground', () => {
       'pointer-events-none',
       'fixed',
       'inset-0',
-      'z-1',
       'overflow-hidden',
+    );
+    expect(motionDivProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        style: expect.objectContaining({ zIndex: -1 }),
+      }),
     );
     expect(screen.getByTestId('network-weave-background')).toBeInTheDocument();
     expect(networkWeaveProps).toHaveBeenCalledWith(
@@ -444,6 +448,49 @@ describe('PageBackground', () => {
         speedFactor: 0.39,
       }),
     );
+  });
+
+  it('renders directly controlled parameters without target animation', () => {
+    const { rerender } = render(
+      <PageBackground
+        convergence={{ x: 0.2, y: 0.4 }}
+        complexity={40}
+        intensity={0.62}
+        flare={1.45}
+        speedFactor={0.28}
+        motionMode="direct"
+        resolved
+      />,
+    );
+
+    animateMock.mockClear();
+    networkWeaveProps.mockClear();
+    rerender(
+      <PageBackground
+        convergence={{ x: 0.1, y: 0.2 }}
+        complexity={24}
+        intensity={0.2}
+        flare={1.85}
+        speedFactor={0.39}
+        motionMode="direct"
+        resolved
+      />,
+    );
+
+    expect(animateMock).not.toHaveBeenCalled();
+    expect(networkWeaveProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        convergence: { x: 0.1, y: 0.2 },
+        complexity: 24,
+        intensity: 0.2,
+        flare: 1.85,
+        speedFactor: 0.39,
+      }),
+    );
+    expect(motionDivProps.mock.lastCall?.[0].style).not.toHaveProperty(
+      'opacity',
+    );
+    expect(motionDivProps.mock.lastCall?.[0].style).not.toHaveProperty('scale');
   });
 
   it('updates the current target position immediately during scroll', () => {

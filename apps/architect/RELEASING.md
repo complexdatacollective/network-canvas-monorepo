@@ -3,30 +3,33 @@
 > **Offline-first PWA** hosted on Netlify. The app updates by the browser
 > fetching a new service worker (`vite-plugin-pwa`).
 
-## Versioned beta releases (changeset-driven)
+## Stable releases (changeset-driven)
 
-Architect is on a `8.0.0-beta.N` line. It is `private` and in the changeset
-`ignore` list, so the library `changeset version` never touches it — a dedicated
-lane handles it instead. The base `8.0.0` is fixed (change it with a manual
-`package.json` edit); a changeset's `major`/`minor`/`patch` type only categorises
-the release notes, it does not move the base while in beta.
+Architect is a private package in the normal Changesets lane. It uses standard
+semantic versioning: the `major`/`minor`/`patch` selected in a changeset controls
+the next version, and the normal generated **Version Packages** PR updates its
+`package.json` and `CHANGELOG.md` alongside any affected libraries or
+Interviewer.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/architect` (see the `creating-a-changeset` skill). Select no other
-   product or library in that file—CI (`pnpm check:changesets`) rejects it.
-2. **The "Release Architect" PR.** On every push to `main`, the Architect entry
-   in the `product-release-pr` matrix increments `-beta.N`, updates
-   `CHANGELOG.md`, deletes the consumed Architect changesets, and opens or updates
-   its release PR. The PR is withdrawn when no Architect changesets are pending.
+   `@codaco/architect` (see the `creating-a-changeset` skill). The same changeset
+   may also name `@codaco/interviewer` and/or library packages because they share
+   the normal release lane. Select no Documentation or Website package in that
+   file—CI (`pnpm check:changesets`) rejects cross-lane changesets.
+2. **The "Version Packages" PR.** On every push to `main`,
+   `changesets/action` runs the repository's `pnpm version-packages` command,
+   applies the requested semver bumps, updates changelogs, consumes the
+   changesets, and opens or updates `changeset-release/main`.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
    `apps-release-detect` job sees the change and `apps-release-architect` builds,
-   deploys to Netlify **production** (site secret `NETLIFY_SITE_ID_ARCHITECT`), and creates
-   the prerelease GitHub release `@codaco/architect@<version>` with the
-   CHANGELOG notes.
+   deploys to Netlify **production** (site secret
+   `NETLIFY_SITE_ID_ARCHITECT`), and creates the stable GitHub release
+   `@codaco/architect@<version>` with the CHANGELOG notes.
 
 Netlify's Git integration builds pull-request previews and reports their URLs
 directly on the PR. Production is no longer deployed on every push to `main`—it
-is deployed only when the Release Architect PR merges.
+is deployed only when the Version Packages PR containing an Architect version
+bump merges.
 
 ## Developer site
 
@@ -51,3 +54,20 @@ dropped from the workbox precache manifest (e.g. for exceeding the size limit) �
 which would 404 offline and break the offline boot. Treat an assertion failure as
 a hard release blocker. Architect asserts that _every_ chunk is precached because
 it uses no `globIgnores`.
+
+## PostHog source maps
+
+Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
+`POSTHOG_PROJECT_ID` (repository secrets shared with Interviewer and
+Documentation; the personal API key needs the _error tracking: write_ and
+_organization: read_ scopes). Their presence is what switches source-map upload
+on: the build emits `hidden` maps, `@posthog/rollup-plugin` injects the chunk ids
+PostHog matches on, uploads the maps, and deletes them from `dist/` — so the
+exceptions `posthog-js` reports symbolicate to real source while the deploy still
+ships no maps. Every other build — local, PR, Netlify preview, the `.dev` site —
+has no credentials and emits no maps at all.
+
+A failed upload fails the build rather than deploying unsymbolicated. Both
+variables are part of the Turbo cache key for `build`, so a production build can
+never replay a cached artefact whose maps were never uploaded, and
+`scripts/assert-pwa-build.mjs` fails if a map is left behind in `dist/assets`.

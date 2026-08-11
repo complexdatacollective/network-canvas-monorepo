@@ -1,8 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { buildSyntheticPayload } from './synthetic-payload.js';
+
+/** The smallest schema-valid EgoForm: an intro panel and one text field. */
+function egoFormWithTextField(
+  synth: SyntheticInterview,
+  variableName: string,
+): string {
+  const variable = synth.addEgoVariable({
+    type: 'text',
+    component: 'Text',
+    name: variableName,
+  });
+  const stage = synth.addStage('EgoForm', {
+    introductionPanel: { title: 'About you', text: 'Please answer.' },
+  });
+  stage.addFormField({
+    variable: variable.id,
+    component: 'Text',
+    prompt: 'What is your name?',
+  });
+  return variable.id;
+}
 
 describe('buildSyntheticPayload', () => {
   it('produces a schema-valid ProtocolPayload with hash and ResolvedAsset[]', () => {
@@ -43,6 +65,19 @@ describe('buildSyntheticPayload', () => {
     expect(session.network.nodes).toHaveLength(3);
   });
 
+  it('seeds the generated ego attributes when seedNetwork is set', () => {
+    const synth = new SyntheticInterview();
+    const name = egoFormWithTextField(synth, 'fullName');
+    const { session } = buildSyntheticPayload(synth, {
+      protocolName: 'seeded-ego',
+      seedNetwork: true,
+    });
+
+    expect(session.network.ego[entityAttributesProperty][name]).toEqual(
+      synth.getNetwork().ego[entityAttributesProperty][name],
+    );
+  });
+
   it('starts from an empty network when seedNetwork is not set', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
@@ -56,6 +91,19 @@ describe('buildSyntheticPayload', () => {
     });
     expect(session.network.nodes).toHaveLength(0);
     expect(session.network.edges).toHaveLength(0);
+  });
+
+  it('empties the ego attributes too when seedNetwork is not set', () => {
+    // `getNetwork()` answers every ego variable, so an unseeded run that kept
+    // them would open each EgoForm scenario on a form already filled in.
+    const synth = new SyntheticInterview();
+    egoFormWithTextField(synth, 'fullName');
+    const { session } = buildSyntheticPayload(synth, {
+      protocolName: 'unseeded-ego',
+    });
+
+    expect(synth.getNetwork().ego[entityAttributesProperty]).not.toEqual({});
+    expect(session.network.ego[entityAttributesProperty]).toEqual({});
   });
 
   it('rejects a protocol that fails CurrentProtocolSchema', () => {

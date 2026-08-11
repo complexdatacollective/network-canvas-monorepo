@@ -309,6 +309,58 @@ export const crossFamily: PedigreeInput = {
 };
 
 /**
+ * Cross-sibship partnership: one member of each three-person sibship partners,
+ * and the couple has two children. Both sibships should remain contiguous while
+ * the partners meet at the boundary between their family blocks.
+ *
+ *   gpA1(0) + gpA2(1)                    gpB1(2) + gpB2(3)
+ *            |                                      |
+ *   sibA1(4), sibA2(5), sibA3(6) -- sibB1(7), sibB2(8), sibB3(9)
+ *                                  |
+ *                         child1(10), child2(11)
+ */
+export const crossSibshipPartnership: PedigreeInput = {
+  id: [
+    'gpA1',
+    'gpA2',
+    'gpB1',
+    'gpB2',
+    'sibA1',
+    'sibA2',
+    'sibA3',
+    'sibB1',
+    'sibB2',
+    'sibB3',
+    'child1',
+    'child2',
+  ],
+  parents: [
+    [],
+    [],
+    [],
+    [],
+    [sp(0), sp(1)],
+    [sp(0), sp(1)],
+    [sp(0), sp(1)],
+    [sp(2), sp(3)],
+    [sp(2), sp(3)],
+    [sp(2), sp(3)],
+    [sp(4), sp(7)],
+    [sp(4), sp(7)],
+  ],
+  relation: [
+    { id1: 0, id2: 1, code: 4 },
+    { id1: 2, id2: 3, code: 4 },
+    { id1: 4, id2: 7, code: 4 },
+  ],
+  partners: [
+    { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+    { partnerIndex1: 2, partnerIndex2: 3, isActive: true },
+    { partnerIndex1: 4, partnerIndex2: 7, isActive: true },
+  ],
+};
+
+/**
  * A remarried parent who ALSO has a sibling shown. Grandparents (0,1) have two
  * children Mom(2) and Aunt(3); Mom is partnered to Dad(5, ex) and StepDad(6),
  * and Ego(4) descends from Mom+Dad. Mom is a multi-marriage anchor AND a member

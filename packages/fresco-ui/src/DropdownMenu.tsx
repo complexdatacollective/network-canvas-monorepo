@@ -235,7 +235,9 @@ const DropdownMenuRadioItem = React.forwardRef<
       keepMounted
       className={cx(
         proportionalLucideIconVariants(),
-        'flex items-center justify-center',
+        // keepMounted preserves label alignment across states, so the
+        // unchecked indicator must be hidden (not unmounted) here.
+        'flex items-center justify-center data-unchecked:invisible',
       )}
     >
       {icon}

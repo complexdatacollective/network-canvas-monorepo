@@ -5,7 +5,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createComposerInterview(seed: number) {
   const si = new SyntheticInterview(seed);
@@ -221,6 +221,12 @@ const buildConvexHulls = () => {
       { value: 'school', label: 'School' },
       { value: 'work', label: 'Work' },
       { value: 'family', label: 'Family' },
+      { value: 'partner-family', label: "My partner's family" },
+      { value: 'friends', label: 'Friends' },
+      { value: 'neighborhood', label: 'Neighborhood' },
+      { value: 'community', label: 'Community or faith group' },
+      { value: 'professionals', label: 'Services and professionals' },
+      { value: 'online', label: 'Online' },
     ],
   });
   const friendship = si.addEdgeType({ name: 'Friendship' });

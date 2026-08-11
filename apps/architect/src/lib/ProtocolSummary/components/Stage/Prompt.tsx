@@ -1,6 +1,7 @@
 import { get, isNull } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import Markdown from '~/components/Markdown';
 
 import EntityBadge from '../EntityBadge';
@@ -27,7 +28,7 @@ const SortOrder = ({ rules }: SortOrderProps) => {
       <small>({directionLabel(direction)})</small>
     </li>
   ));
-  return <ol className="ps-[inherit]">{result}</ol>;
+  return <UnorderedList>{result}</UnorderedList>;
 };
 
 const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [

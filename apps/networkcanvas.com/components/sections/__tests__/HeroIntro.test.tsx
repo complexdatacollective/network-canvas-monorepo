@@ -24,6 +24,8 @@ const animationControls = vi.hoisted(() => ({
   set: vi.fn(),
   start: vi.fn(() => Promise.resolve()),
 }));
+const entranceStart = vi.hoisted(() => vi.fn());
+const heroDepartureStyle = vi.hoisted(() => ({ opacity: 'scroll-opacity' }));
 
 type MotionDivProps = {
   animate?: unknown;
@@ -70,6 +72,10 @@ vi.mock('@codaco/art', () => ({
   },
 }));
 
+vi.mock('~/components/ui/useHeroScrollDeparture', () => ({
+  useHeroScrollDeparture: () => heroDepartureStyle,
+}));
+
 vi.mock('~/components/layout/Header', () => ({
   Header: ({ entranceVariants }: { entranceVariants?: unknown }) => (
     <div data-header-variants={entranceVariants ? 'active' : 'none'}>
@@ -80,17 +86,27 @@ vi.mock('~/components/layout/Header', () => ({
 
 vi.mock('~/components/sections/Hero', () => ({
   Hero: ({
+    backdropItemVariants,
     containerVariants,
     itemVariants,
     newsItems: heroNewsItems,
+    scrollStyle,
   }: {
+    backdropItemVariants?: unknown;
     containerVariants?: unknown;
     itemVariants?: unknown;
     newsItems: readonly NewsItem[];
+    scrollStyle?: unknown;
   }) => (
     <div
+      data-hero-backdrop-item-variants={
+        backdropItemVariants ? 'active' : 'none'
+      }
       data-hero-container-variants={containerVariants ? 'active' : 'none'}
       data-hero-item-variants={itemVariants ? 'active' : 'none'}
+      data-hero-scroll-style={
+        scrollStyle === heroDepartureStyle ? 'active' : 'none'
+      }
     >
       Hero content: {heroNewsItems[0]?.title}
     </div>
@@ -102,12 +118,13 @@ describe('HeroIntro', () => {
     animationControls.set.mockClear();
     animationControls.start.mockClear();
     backgroundProps.mockClear();
+    entranceStart.mockClear();
     motionPreference.reduced = null;
   });
 
   it('renders the header and hero without owning the page background', () => {
     motionPreference.reduced = false;
-    render(<HeroIntro newsItems={newsItems} />);
+    render(<HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />);
     const shell =
       screen.getByText('Header content').parentElement?.parentElement;
     const motionRoot = shell?.firstElementChild;
@@ -116,6 +133,9 @@ describe('HeroIntro', () => {
     expect(
       screen.getByText('Hero content: Fixture-only intro news'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('Hero content: Fixture-only intro news'),
+    ).toHaveAttribute('data-hero-scroll-style', 'active');
     expect(
       screen.queryByText('Network Canvas wins INSNA Award'),
     ).not.toBeInTheDocument();
@@ -126,10 +146,13 @@ describe('HeroIntro', () => {
       'tablet-portrait:min-h-svh',
       'tablet-portrait:flex-col',
     );
+    expect(motionRoot).not.toHaveClass('relative', 'z-10');
   });
 
   it('renders visible static server markup before the motion preference resolves', () => {
-    const serverMarkup = renderToString(<HeroIntro newsItems={newsItems} />);
+    const serverMarkup = renderToString(
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />,
+    );
     const container = document.createElement('div');
     container.innerHTML = serverMarkup;
 
@@ -156,21 +179,30 @@ describe('HeroIntro', () => {
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
     expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
+    expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');
   });
 
   it('hydrates reduced-motion users without activating entrance motion', async () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<HeroIntro newsItems={newsItems} />);
+    container.innerHTML = renderToString(
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />,
+    );
     const serverMotionRoot = container.querySelector('[data-motion-root]');
     document.body.append(container);
     motionPreference.reduced = true;
     const recoverableError = vi.fn();
 
-    const root = hydrateRoot(container, <HeroIntro newsItems={newsItems} />, {
-      onRecoverableError: recoverableError,
-    });
+    const root = hydrateRoot(
+      container,
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />,
+      {
+        onRecoverableError: recoverableError,
+      },
+    );
     await act(async () => {});
 
     expect(recoverableError).not.toHaveBeenCalled();
@@ -193,10 +225,14 @@ describe('HeroIntro', () => {
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
     expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
+    expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');
     expect(animationControls.set).not.toHaveBeenCalled();
     expect(animationControls.start).not.toHaveBeenCalled();
+    expect(entranceStart).toHaveBeenCalledOnce();
     expect(container.firstElementChild).toHaveAttribute(
       'data-entrance-pending',
     );
@@ -207,15 +243,21 @@ describe('HeroIntro', () => {
 
   it('activates the coordinated entrance only after normal-motion hydration', async () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<HeroIntro newsItems={newsItems} />);
+    container.innerHTML = renderToString(
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />,
+    );
     const serverMotionRoot = container.querySelector('[data-motion-root]');
     document.body.append(container);
     motionPreference.reduced = false;
     const recoverableError = vi.fn();
 
-    const root = hydrateRoot(container, <HeroIntro newsItems={newsItems} />, {
-      onRecoverableError: recoverableError,
-    });
+    const root = hydrateRoot(
+      container,
+      <HeroIntro newsItems={newsItems} onEntranceStart={entranceStart} />,
+      {
+        onRecoverableError: recoverableError,
+      },
+    );
     await act(async () => {});
 
     expect(recoverableError).not.toHaveBeenCalled();
@@ -238,15 +280,18 @@ describe('HeroIntro', () => {
       container.querySelector('[data-hero-container-variants]'),
     ).toHaveAttribute('data-hero-container-variants', 'active');
     expect(
+      container.querySelector('[data-hero-backdrop-item-variants]'),
+    ).toHaveAttribute('data-hero-backdrop-item-variants', 'active');
+    expect(
       container.querySelector('[data-hero-item-variants]'),
     ).toHaveAttribute('data-hero-item-variants', 'active');
     expect(animationControls.set).toHaveBeenCalledOnce();
     expect(animationControls.set).toHaveBeenCalledWith('hidden');
+    expect(entranceStart).toHaveBeenCalledOnce();
     expect(animationControls.start).toHaveBeenCalledOnce();
     expect(animationControls.start).toHaveBeenCalledWith('visible');
-    expect(animationControls.set).toHaveBeenCalledBefore(
-      animationControls.start,
-    );
+    expect(animationControls.set).toHaveBeenCalledBefore(entranceStart);
+    expect(entranceStart).toHaveBeenCalledBefore(animationControls.start);
     expect(container.firstElementChild).not.toHaveAttribute(
       'data-entrance-pending',
     );

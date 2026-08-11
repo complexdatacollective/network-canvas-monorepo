@@ -1,6 +1,6 @@
 import { find, get, has } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import { shallowEqual, useSelector } from 'react-redux';
 import { change, formValueSelector } from 'redux-form';
 
 import {
@@ -17,6 +17,9 @@ import {
   getVariableOptionsForSubjectSelector,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
+import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
+
+import { isVariableUsedBySibling } from './composerHelpers';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -24,12 +27,26 @@ type UseFieldHandlerProps = {
   form: string;
   entity: string;
   type: string;
+  /**
+   * Seventeenth-wave follow-up: the committed fields of the NetworkComposer
+   * form this editor edits a row of, and that row's array index. Supplied only
+   * by the composer editor: `ComposerFormSchema` rejects a form naming one
+   * variable twice, so a variable a sibling field already claims must not be
+   * offered. The regular Form editor omits both and is filtered exactly as
+   * before — its schema permits the repeat.
+   */
+  siblingFields?: unknown;
+  editIndex?: number;
+  currentStageIndex?: number;
 };
 
 export const useFieldHandlers = ({
   form,
   entity,
   type,
+  siblingFields,
+  editIndex,
+  currentStageIndex,
 }: UseFieldHandlerProps) => {
   const dispatch = useAppDispatch();
   const changeField = useCallback(
@@ -81,12 +98,42 @@ export const useFieldHandlers = ({
     getVariableOptionsForSubjectSelector(state, subject, {}),
   );
 
+  // This picker is a VALIDATED writer (Form, NetworkComposer fields,
+  // FamilyPedigree fields): a variable also written by a bin/highlight/census
+  // elsewhere would bypass that form's validation, so drop any option with an
+  // unvalidated hit. The currently-selected value is always kept.
+  const roleFilteredOptions = useSelector(
+    (state: RootState) =>
+      excludeUnvalidatedUses(
+        state,
+        subject,
+        baseVariableOptions,
+        variable,
+        currentStageIndex,
+      ),
+    // excludeUnvalidatedUses allocates a fresh array each call; compare
+    // elements (which baseVariableOptions already keeps stable) instead of
+    // the wrapper reference so unrelated store updates don't force a re-render.
+    shallowEqual,
+  );
+
   // Memoize the filtered and concatenated variable options
   const variableOptions = useMemo(() => {
-    const filtered = baseVariableOptions
+    const filtered = roleFilteredOptions
       // If not a variable with corresponding component, we can't use it here.
       .filter((option) =>
         VARIABLE_TYPES_WITH_COMPONENTS.includes(option.type as string),
+      )
+      // Seventeenth-wave follow-up: drop what a sibling composer field already
+      // collects, using the same predicate the save-time gate applies so the
+      // picker and the gate cannot drift apart. The value this field currently
+      // holds is always kept: excluding `editIndex` covers a committed row, but
+      // a picker whose value is missing from its options renders blank and
+      // silently drops the selection, so never let that happen.
+      .filter(
+        (option) =>
+          option.value === variable ||
+          !isVariableUsedBySibling(siblingFields, option.value, editIndex),
       );
 
     // with New variable
@@ -95,7 +142,14 @@ export const useFieldHandlers = ({
           { label: createNewVariable, value: createNewVariable },
         ])
       : filtered;
-  }, [baseVariableOptions, isNewVariable, createNewVariable]);
+  }, [
+    roleFilteredOptions,
+    isNewVariable,
+    createNewVariable,
+    siblingFields,
+    editIndex,
+    variable,
+  ]);
 
   // 1. If type defined use that (existing variable)
   // 2. Otherwise derive it from component (new variable)

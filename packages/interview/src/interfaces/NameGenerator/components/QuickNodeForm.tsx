@@ -1,11 +1,20 @@
 import { motion, type Variants } from 'motion/react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import Form from '@codaco/fresco-ui/form/Form';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FormSubmitHandler,
+  ValidationContext,
+} from '@codaco/fresco-ui/form/store/types';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import {
+  getValidationContext,
+  selectValidationMetadataForVariable,
+  validationPropsFor,
+} from '../../../selectors/forms';
+import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import QuickAddField from './QuickAddField';
 
@@ -40,35 +49,59 @@ const QuickNodeForm = ({
   addNode,
 }: QuickNodeFormProps) => {
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
+
+  // Derive the target variable's validation props directly from its
+  // codebook definition — quick-add renders its own QuickAddField and only
+  // ever needs `.validation`, so this skips component resolution entirely
+  // (see selectValidationMetadataForVariable).
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const targetValidationMetadata = selectValidationMetadataForVariable(
+    stageVariables,
+    targetVariable,
+  );
+  const validationProps = targetValidationMetadata
+    ? validationPropsFor(targetValidationMetadata)
+    : {};
+
+  // Context-dependent rules resolve against the live network and this stage's
+  // subject. Prompt-fixed attributes are the new node's sibling values even
+  // though only the quick-add target is registered as a form field.
+  // stageSubject is only ever null for stage types that carry no subject at
+  // all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
+  // NameGenerator always has a node subject, so the undefined fallback here
+  // is defensive only, matching the "Missing codebook entry" guard above.
+  const baseValidationContext = useStageSelector(getValidationContext);
+  const validationContext: ValidationContext | undefined =
+    baseValidationContext.stageSubject
+      ? {
+          codebook: baseValidationContext.codebook,
+          network: baseValidationContext.network,
+          stageSubject: baseValidationContext.stageSubject,
+          currentEntityAttributes: newNodeAttributes,
+        }
+      : undefined;
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
       const value = values as Record<string, unknown>;
-      if (!disabled) {
-        if (!value[targetVariable]) {
-          return {
-            success: false,
-            errors: {
-              form: ['Field is required'],
-            },
-          };
-        }
-
-        await addNode({
-          ...newNodeAttributes,
-          [targetVariable]: value[targetVariable] as string,
-        });
-
+      if (disabled) {
         return {
-          success: true,
+          success: false,
+          errors: {
+            form: ['Form is disabled'],
+          },
         };
       }
 
+      await addNode({
+        ...newNodeAttributes,
+        [targetVariable]: value[targetVariable] as string,
+      });
+      setSuccessfulSubmissionCount((count) => count + 1);
+
       return {
-        success: false,
-        errors: {
-          form: ['Form is disabled'],
-        },
+        success: true,
       };
     },
     [disabled, addNode, newNodeAttributes, targetVariable],
@@ -91,8 +124,9 @@ const QuickNodeForm = ({
             disabled={disabled}
             placeholder="Type a label and press enter..."
             onShowInput={onShowForm ?? undefined}
-            required="You must enter a value before pressing enter."
-            minLength={1}
+            successfulSubmissionCount={successfulSubmissionCount}
+            {...validationProps}
+            validationContext={validationContext}
           />
         </Form>
       </motion.div>

@@ -1,14 +1,24 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import { change, formValueSelector, getFormSyncErrors } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import Validations from '~/components/Validations';
 import { useAppDispatch } from '~/ducks/hooks';
-const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
+import type { RootState } from '~/ducks/modules/root';
+import useLatchedExpansion from '~/hooks/useLatchedExpansion';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const AnonymisationValidation = ({
+  form,
+  stagePath,
+  interfaceType,
+}: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
   // Create memoized selector for hasValidation
   const hasValidationSelector = useMemo(() => {
@@ -19,8 +29,22 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
     );
   }, [form]);
   const hasValidation = useSelector(hasValidationSelector);
+  const { startExpanded, onExplicitClose } =
+    useLatchedExpansion(!!hasValidation);
+  // Audit sweep: the shape ValidationSection was already fixed for. A
+  // collapsed toggleable Section unmounts its children, and redux-form only
+  // fails a submit over errors on REGISTERED fields — so a sync error keyed
+  // at `validation` while this section is shut would neither block the save
+  // nor be visible. This form ships no such validate today, which makes the
+  // section accidentally safe rather than correct; forcing it open while the
+  // error stands closes the class.
+  const hasValidationSyncError = useSelector((state: RootState) => {
+    const syncErrors: unknown = getFormSyncErrors(form)(state);
+    return isRecord(syncErrors) && typeof syncErrors.validation === 'string';
+  });
   const handleToggleValidation = (nextState: boolean) => {
     if (!nextState) {
+      onExplicitClose();
       dispatch(change(form, 'validation', null));
     }
     return true;
@@ -31,10 +55,11 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
       title="Passphrase Validation"
       summary={
         <Paragraph>
-          Add one or more validation rules for the passphrase.
+          Choose which validation rules apply to the passphrase.
         </Paragraph>
       }
-      startExpanded={!!hasValidation}
+      startExpanded={startExpanded}
+      forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
       <Row>
@@ -43,6 +68,12 @@ const AnonymisationValidation = ({ form }: StageEditorSectionProps) => {
           name="validation"
           variableType="passphrase"
           entity="ego"
+          // The stage editor reinitializes in place when the edited stage
+          // changes, and keeps same-interface sections mounted — so without
+          // stage identity the rule list would carry one passphrase's
+          // uncommitted rows onto the next stage's saved rules. `stagePath` is
+          // the edited stage's own slot, and is null only before it exists.
+          scopeId={stagePath ?? `new-${interfaceType}`}
         />
       </Row>
     </Section>

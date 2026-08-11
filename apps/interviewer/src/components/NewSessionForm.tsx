@@ -5,7 +5,6 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { createSession, getSettings } from '~/lib/db/api';
@@ -19,17 +18,19 @@ type NewSessionFormProps = {
   onCancel: () => void;
 };
 
+type NewSessionFormViewProps = {
+  requiresInternet: boolean;
+  online: boolean;
+  onSubmit: (caseId: string) => Promise<FormSubmissionResult>;
+  onCancel: () => void;
+};
+
 export function NewSessionFormView({
   requiresInternet,
   online,
   onSubmit,
   onCancel,
-}: {
-  requiresInternet: boolean;
-  online: boolean;
-  onSubmit: (caseId: string) => Promise<FormSubmissionResult>;
-  onCancel: () => void;
-}) {
+}: NewSessionFormViewProps) {
   const { openDialog } = useDialog();
 
   return (
@@ -63,15 +64,10 @@ export function NewSessionFormView({
         return onSubmit(caseId);
       }}
     >
-      <Paragraph>
-        Before the interview begins, enter a case ID. This will be shown on the
-        resume interview screen to help you quickly identify this session.
-      </Paragraph>
-
       <Field
         name="caseId"
         label="Case ID"
-        hint="A label used to identify this interview in exports."
+        hint="This will be shown on the resume interview screen to help you quickly identify this session."
         component={InputField}
         required="Case ID is required"
         minLength={1}

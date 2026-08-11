@@ -29,6 +29,7 @@ type SelectOption = {
 };
 type PromptFieldsProps = {
   variableOptions?: SelectOption[];
+  sortVariableOptions?: SelectOption[];
   entity: string;
   type: string;
   changeForm: (form: string, field: string, value: unknown) => void;
@@ -43,6 +44,7 @@ const PromptFields = ({
   type,
   variable,
   variableOptions = [],
+  sortVariableOptions = [],
   optionsForVariableDraft = [],
 }: PromptFieldsProps) => {
   const newVariableWindowInitialProps = {
@@ -72,7 +74,10 @@ const PromptFields = ({
   const ordinalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'ordinal',
   );
-  const getOptions = getSortOrderOptionGetter(variableOptions);
+  // Sort keys are read-only references outside the writer-exclusivity rule:
+  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
+  // by a form-collected variable the (role-filtered) writer pool above drops.
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const totalOptionsLength = optionsForVariableDraft?.length;
   const showVariableOptionsTip = totalOptionsLength > 5;
@@ -151,13 +156,13 @@ const PromptFields = ({
         form={form}
         disabled={!variable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
       />
       <BinSortOrderSection
         form={form}
         disabled={!variable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
       />
       <NewVariableWindow
         // eslint-disable-next-line react/jsx-props-no-spreading

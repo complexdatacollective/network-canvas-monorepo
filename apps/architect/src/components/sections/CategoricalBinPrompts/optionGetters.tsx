@@ -1,5 +1,3 @@
-import { map } from 'es-toolkit/compat';
-
 type VariableOption = {
   value: string;
   label: string;
@@ -18,6 +16,14 @@ const getOptionProperties = (option: VariableOption): OptionProperties => ({
   label: option.label,
 });
 
+// MultiSelect sources `allValues` from redux-form, so it is undefined until the
+// field holds rows, and a partially-filled row has no `property` yet.
+const hasSortProperty = (row: unknown): row is { property: string } =>
+  typeof row === 'object' &&
+  row !== null &&
+  'property' in row &&
+  typeof row.property === 'string';
+
 /**
  * Creates a optionGetter function for <MultiSelect />
  *
@@ -26,14 +32,12 @@ const getOptionProperties = (option: VariableOption): OptionProperties => ({
  */
 const getSortOrderOptionGetter =
   (variableOptions: VariableOption[]) =>
-  (
-    property: string,
-    _rowValues: unknown,
-    allValues: Record<string, unknown>[],
-  ) => {
+  (property: string, _rowValues: unknown, allValues: unknown) => {
     switch (property) {
       case 'property': {
-        const used = map(allValues, 'property') as string[];
+        const used = Array.isArray(allValues)
+          ? allValues.filter(hasSortProperty).map((row) => row.property)
+          : [];
 
         return [{ value: '*', label: '*' }, ...variableOptions]
           .filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ''))

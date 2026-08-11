@@ -8,20 +8,142 @@ import {
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
-import type { InterfaceScenarios } from './types.js';
+import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 
 export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
   interfaceType: 'NameGeneratorQuickAdd',
   scenarios: [
+    ((): ScenarioDefinition => {
+      let nameVarId = '';
+      return {
+        id: 'quick-add-core-flow',
+        covers: ['quickAdd', 'codebook.variables.quickAdd.validation=none'],
+        smoke: true,
+        visual: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const person = synth.addNodeType({ name: 'Person' });
+          // A variable distinct from the type's auto-seeded "name" (which
+          // addVariable would silently dedupe onto, dropping this variable's
+          // own definition). No `component` — this is the state Architect's
+          // "Create New Variable" dialog produces by default (the schema
+          // permits it), and quickAdd derives validation from the codebook
+          // variable without resolving a component.
+          const nameVar = person.addVariable({
+            type: 'text',
+            name: 'fullName',
+          });
+          nameVarId = nameVar.id;
+          const stage = synth.addStage('NameGeneratorQuickAdd', {
+            label: 'Add contacts',
+            subject: { entity: 'node', type: person.id },
+            quickAdd: nameVar.id,
+          });
+          stage.addPrompt({ text: 'Who do you know?' });
+          return synth;
+        },
+        run: async ({ stage, protocol, interview }) => {
+          await stage.quickAdd.addNode('Alice');
+          await stage.quickAdd.addNode('Bob');
+
+          await expect(stage.getNode('Alice')).toBeVisible();
+          await expect(stage.getNode('Bob')).toBeVisible();
+
+          const network = await protocol.getNetworkState(interview.interviewId);
+          expect(network?.nodes).toHaveLength(2);
+          const labels = network!.nodes.flatMap((n) =>
+            Object.values(n[entityAttributesProperty]).filter(
+              (v): v is string => typeof v === 'string',
+            ),
+          );
+          expect(labels.toSorted()).toEqual(['Alice', 'Bob']);
+          for (const node of network!.nodes) {
+            expect(node.promptIDs).toHaveLength(1);
+          }
+
+          // A valid value creates the third node. Keeping this representative
+          // visual scenario's final state stable avoids unrelated baseline
+          // churn; optional empty submission is covered separately below.
+          await stage.quickAdd.addNode('Person');
+          await expect(stage.getNode('Alice')).toBeVisible();
+          await expect(stage.getNode('Bob')).toBeVisible();
+          await expect(stage.getNode('Person')).toBeVisible();
+
+          const afterValid = await protocol.getNetworkState(
+            interview.interviewId,
+          );
+          expect(afterValid?.nodes).toHaveLength(3);
+          const thirdNode = afterValid!.nodes.find(
+            (n) => n[entityAttributesProperty][nameVarId] === 'Person',
+          );
+          expect(thirdNode).toBeDefined();
+          expect(thirdNode?.promptIDs).toHaveLength(1);
+        },
+      };
+    })(),
+
+    ((): ScenarioDefinition => {
+      let nameVarId = '';
+      return {
+        id: 'quick-add-optional-empty-value',
+        covers: [],
+        build: () => {
+          const synth = new SyntheticInterview();
+          const person = synth.addNodeType({ name: 'Person' });
+          const nameVar = person.addVariable({
+            type: 'text',
+            name: 'fullName',
+          });
+          nameVarId = nameVar.id;
+          const stage = synth.addStage('NameGeneratorQuickAdd', {
+            label: 'Add contacts',
+            subject: { entity: 'node', type: person.id },
+            quickAdd: nameVar.id,
+          });
+          stage.addPrompt({ text: 'Who do you know?' });
+          return synth;
+        },
+        run: async ({ page, protocol, interview }) => {
+          const toggle = page.getByTestId('quick-add-toggle');
+          const input = page.getByTestId('quick-add-input');
+          await toggle.click();
+          await input.fill('');
+          await input.press('Enter');
+
+          await expect
+            .poll(async () => {
+              const network = await protocol.getNetworkState(
+                interview.interviewId,
+              );
+              return network?.nodes.length ?? 0;
+            })
+            .toBe(1);
+
+          const network = await protocol.getNetworkState(interview.interviewId);
+          expect(network?.nodes[0]?.[entityAttributesProperty][nameVarId]).toBe(
+            '',
+          );
+          await expect(
+            page.getByText(/you must answer this question/i),
+          ).toHaveCount(0);
+        },
+      };
+    })(),
+
     {
-      id: 'quick-add-core-flow',
-      covers: ['quickAdd'],
-      smoke: true,
-      visual: true,
+      id: 'quick-add-required-variable',
+      covers: ['codebook.variables.quickAdd.validation=required'],
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        // No `component` — the codebook `required` rule below must still be
+        // honoured even though this is the component-less state Architect's
+        // "Create New Variable" dialog produces.
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          validation: { required: true },
+        });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Add contacts',
           subject: { entity: 'node', type: person.id },
@@ -31,26 +153,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage, protocol, interview }) => {
-        await stage.quickAdd.addNode('Alice');
-        await stage.quickAdd.addNode('Bob');
-
-        await expect(stage.getNode('Alice')).toBeVisible();
-        await expect(stage.getNode('Bob')).toBeVisible();
-
-        const network = await protocol.getNetworkState(interview.interviewId);
-        expect(network?.nodes).toHaveLength(2);
-        const labels = network!.nodes.flatMap((n) =>
-          Object.values(n[entityAttributesProperty]).filter(
-            (v): v is string => typeof v === 'string',
-          ),
-        );
-        expect(labels.toSorted()).toEqual(['Alice', 'Bob']);
-        for (const node of network!.nodes) {
-          expect(node.promptIDs).toHaveLength(1);
-        }
-
-        // Empty-submit validation: opening the input and pressing Enter with
-        // nothing typed must not create a node and must surface the tooltip.
+        // A codebook `required` rule on the quickAdd variable is still
+        // honoured: an empty submission is rejected and no node is created.
         const toggle = page.getByTestId('quick-add-toggle');
         const input = page.getByTestId('quick-add-input');
         if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
@@ -59,12 +163,20 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         await input.fill('');
         await input.press('Enter');
         await expect(
-          page.getByText(/must enter a value before pressing enter/i),
+          page.getByText(/you must answer this question/i),
         ).toBeVisible();
+
         const afterEmpty = await protocol.getNetworkState(
           interview.interviewId,
         );
-        expect(afterEmpty?.nodes).toHaveLength(2);
+        expect(afterEmpty?.nodes ?? []).toHaveLength(0);
+
+        // A non-empty submission still succeeds.
+        await stage.quickAdd.addNode('Priya');
+        await expect(stage.getNode('Priya')).toBeVisible();
+
+        const network = await protocol.getNetworkState(interview.interviewId);
+        expect(network?.nodes).toHaveLength(1);
       },
     },
 
@@ -74,7 +186,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'My QuickAdd',
           interviewScript: 'SECRET-SCRIPT',
@@ -120,7 +236,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         const closeTie = person.addVariable({
           type: 'boolean',
           name: 'closeTie',
@@ -197,18 +317,22 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'node-limits-and-panel-drag-gap',
+      id: 'node-limits-and-panel-drag',
       covers: [
         'behaviours.minNodes',
         'behaviours.maxNodes',
-        'behaviours.maxNodes-panel-drag-gap',
+        'behaviours.maxNodes-panel-drag',
       ],
       currentStep: 1,
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         const setup = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Setup',
           subject: { entity: 'node', type: person.id },
@@ -239,19 +363,21 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         expect(await interview.nextButtonHasPulse()).toBe(true);
         expect(await stage.quickAdd.isDisabled()).toBe(true);
 
-        // Known gap: NodePanel's disableDragging prop is declared but never
-        // read (NodePanel.tsx:21) and handleDropNode has no maxNodesReached
-        // guard (NameGenerator.tsx:171-190), so a panel drop still succeeds
-        // even though maxNodes: 1 was already reached via quick-add.
-        const setupNodeName = await stage.nodePanel
+        const panelOption = stage.nodePanel
           .getPanel('Prior contacts')
           .getByRole('option')
-          .first()
-          .textContent();
-        await stage.nodePanel.dragNodeToMainList(
+          .first();
+        await expect(panelOption).toHaveAttribute('aria-disabled', 'true');
+
+        const setupNodeName = await panelOption.textContent();
+        await stage.nodePanel.expectDragNodeToMainListNoOp(
           'Prior contacts',
           setupNodeName!.trim(),
         );
+
+        await expect(
+          page.getByTestId('node-list').getByRole('option'),
+        ).toHaveText(['Alice']);
 
         network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(2);
@@ -265,7 +391,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         synth.addAsset({
           id: 'previous-interview',
           name: 'previousInterview.json',
@@ -350,9 +480,17 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const place = synth.addNodeType({ name: 'Place' });
-        const placeName = place.addVariable({ type: 'text', name: 'name' });
+        const placeName = place.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         const person = synth.addNodeType({ name: 'Person' });
-        const personName = person.addVariable({ type: 'text', name: 'name' });
+        const personName = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
 
         const setup = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Setup places',
@@ -410,7 +548,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           color: 'node-color-seq-3',
           icon: 'add-a-place',
         });
-        const nameVar = person.addVariable({ type: 'text', name: 'name' });
+        const nameVar = person.addVariable({
+          type: 'text',
+          name: 'fullName',
+          component: 'Text',
+        });
         const isSquare = person.addVariable({
           type: 'boolean',
           name: 'isSquare',
@@ -477,7 +619,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',
-          name: 'name',
+          name: 'fullName',
+          component: 'Text',
           encrypted: true,
         });
         synth.setExperiments({ encryptedVariables: true });

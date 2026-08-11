@@ -70,11 +70,16 @@ updates:
         patterns:
           - 'next'
           - '@next/*'
+      # Tiptap packages release in lock-step and require exact peer versions.
+      tiptap:
+        patterns:
+          - '@tiptap/*'
       # Tailwind v4 core packages release together. NOT the independently-
       # versioned plugins (@tailwindcss/typography, @tailwindcss/container-queries).
       tailwindcss:
         patterns:
           - 'tailwindcss'
+          - '@tailwindcss/cli'
           - '@tailwindcss/postcss'
           - '@tailwindcss/vite'
 

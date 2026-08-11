@@ -20,7 +20,6 @@ import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGr
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import { addDays, todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import type {
   ComposerFormField,
   ComponentType,
@@ -36,6 +35,8 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
+import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
+import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { coerceFormValues } from './coerceFormValues';
 
 const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
@@ -77,6 +78,8 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
  *                  Required for SlidesForm where subject comes from item props.
  * @param namespace - Optional prefix for field names (e.g. "partner-0") to
  *                    avoid collisions when multiple instances share a form store.
+ * @param formValueAliases - Maps codebook variable IDs to interface-owned form
+ *                    keys while preserving the original ID for metadata lookup.
  */
 export default function useProtocolForm({
   fields,
@@ -85,6 +88,7 @@ export default function useProtocolForm({
   subject,
   namespace,
   currentEntityId,
+  formValueAliases,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -92,6 +96,7 @@ export default function useProtocolForm({
   subject?: Subject;
   namespace?: string;
   currentEntityId?: string;
+  formValueAliases?: Readonly<Record<string, string>>;
 }) {
   const baseValidationContext = useStageSelector(
     getValidationContext,
@@ -131,8 +136,9 @@ export default function useProtocolForm({
       ...baseValidationContext,
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
+      ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
-  }, [baseValidationContext, currentEntityId, stableSubject]);
+  }, [baseValidationContext, currentEntityId, formValueAliases, stableSubject]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
@@ -163,6 +169,21 @@ export default function useProtocolForm({
     (values: Record<string, FieldValue>): Record<string, FieldValue> =>
       coerceFormValues(values, numberFieldNames),
     [numberFieldNames],
+  );
+
+  // Audit sweep: the input control each field actually renders with, keyed by
+  // variable and resolved exactly as the rendered Field resolves it (stage
+  // field first, then codebook variable). Analytics needs the real control
+  // name, and the shared `FormFieldSchema` is a strictObject with no
+  // `component` key — only NetworkComposer fields carry their own — so the
+  // form interfaces' `'component' in field` test recorded 'unknown' for every
+  // field of every non-composer form.
+  const componentByVariable = useMemo(
+    () =>
+      Object.fromEntries(
+        fieldsMetadata.map((field) => [field.variable, field.component]),
+      ),
+    [fieldsMetadata],
   );
 
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
@@ -207,53 +228,16 @@ export default function useProtocolForm({
       props.initialValue = initialValues[field.variable];
     }
 
-    // Pass validation properties directly from the protocol validation object
+    // Pass validation properties derived from the protocol validation object
     if ('validation' in field && field.validation) {
-      const validation = field.validation as Record<string, unknown>;
-
-      if (validation.required !== undefined)
-        props.required = validation.required as boolean;
-      if (validation.minLength !== undefined)
-        props.minLength = validation.minLength as number;
-      if (validation.maxLength !== undefined)
-        props.maxLength = validation.maxLength as number;
-      if (validation.minValue !== undefined)
-        props.minValue = validation.minValue as number;
-      if (validation.maxValue !== undefined)
-        props.maxValue = validation.maxValue as number;
-      if (validation.minSelected !== undefined)
-        props.minSelected = validation.minSelected as number;
-      if (validation.maxSelected !== undefined)
-        props.maxSelected = validation.maxSelected as number;
-      if (validation.pattern !== undefined)
-        props.pattern =
-          validation.pattern as ValidationPropsCatalogue['pattern'];
-      // For 'unique', the protocol uses boolean but validation needs the attribute name
-      if (validation.unique === true) props.unique = field.variable;
-      if (validation.differentFrom !== undefined)
-        props.differentFrom = validation.differentFrom as string;
-      if (validation.sameAs !== undefined)
-        props.sameAs = validation.sameAs as string;
-      if (validation.greaterThanVariable !== undefined)
-        props.greaterThanVariable = {
-          attribute: validation.greaterThanVariable as string,
+      Object.assign(
+        props,
+        buildFieldValidationProps({
           type: field.type,
-        };
-      if (validation.lessThanVariable !== undefined)
-        props.lessThanVariable = {
-          attribute: validation.lessThanVariable as string,
-          type: field.type,
-        };
-      if (validation.greaterThanOrEqualToVariable !== undefined)
-        props.greaterThanOrEqualToVariable = {
-          attribute: validation.greaterThanOrEqualToVariable as string,
-          type: field.type,
-        };
-      if (validation.lessThanOrEqualToVariable !== undefined)
-        props.lessThanOrEqualToVariable = {
-          attribute: validation.lessThanOrEqualToVariable as string,
-          type: field.type,
-        };
+          variable: fieldName,
+          validation: field.validation,
+        }),
+      );
     }
 
     // Pass validation context for context-dependent validations (unique, sameAs, differentFrom, etc.)
@@ -285,41 +269,25 @@ export default function useProtocolForm({
     }
 
     // Handle VisualAnalogScale parameters
-    if (field.component === 'VisualAnalogScale') {
-      if (field.parameters) {
-        const params = field.parameters;
-        if (typeof params.minLabel === 'string')
-          props.minLabel = params.minLabel;
-        if (typeof params.maxLabel === 'string')
-          props.maxLabel = params.maxLabel;
-      }
-
-      // Forward scalar validation.minValue/maxValue onto the slider's display
-      // min/max (dual-use keys survive prop filtering) so the track physically
-      // constrains selection, in addition to the submit-time validators.
-      if ('validation' in field && field.validation) {
-        const validation = field.validation as Record<string, unknown>;
-        if (typeof validation.minValue === 'number')
-          props.min = validation.minValue;
-        if (typeof validation.maxValue === 'number')
-          props.max = validation.maxValue;
-      }
+    if (field.component === 'VisualAnalogScale' && field.parameters) {
+      const params = field.parameters;
+      if (typeof params.minLabel === 'string') props.minLabel = params.minLabel;
+      if (typeof params.maxLabel === 'string') props.maxLabel = params.maxLabel;
     }
 
-    // Handle DatePicker parameters
+    // Forward a DatePicker's resolution to the control. Its min/max validation
+    // bounds come from buildDatePickerBoundProps below, which forwards only
+    // AUTHORED bounds verbatim — with none authored, fresco-ui's
+    // DatePickerField deliberately leaves a full-resolution input unbounded
+    // (see 35ff5dfd1), so submission validation must stay unbounded too.
     if (field.component === 'DatePicker' && field.parameters) {
       const params = field.parameters;
-      if (typeof params.min === 'string') props.min = params.min;
-      if (typeof params.max === 'string') props.max = params.max;
       if (typeof params.type === 'string') props.type = params.type;
     }
 
-    // Handle RelativeDatePicker parameters. We forward anchor/before/after
-    // to the component for its UI-side range calculation AND pre-compute
-    // absolute min/max here so the Field-level min/max validators fire on
-    // submission. Without this, RelativeDatePicker's internally-computed
-    // min/max would only constrain the native picker UI — keyboard-typed
-    // out-of-range values would pass through validation.
+    // Forward RelativeDatePicker's anchor/before/after to the component for
+    // its own UI-side range calculation, separately from the absolute
+    // min/max computed below.
     if (field.component === 'RelativeDatePicker' && field.parameters) {
       const params = field.parameters;
       const paramAnchor =
@@ -332,13 +300,22 @@ export default function useProtocolForm({
       if (paramAnchor !== undefined) props.anchor = paramAnchor;
       if (paramBefore !== undefined) props.before = paramBefore;
       if (paramAfter !== undefined) props.after = paramAfter;
-
-      const anchor = paramAnchor ?? todayYmd();
-      const before = paramBefore ?? 180;
-      const after = paramAfter ?? 0;
-      props.min = addDays(anchor, -before);
-      props.max = addDays(anchor, after);
     }
+
+    // Pre-compute absolute min/max validation bounds for DatePicker and
+    // RelativeDatePicker fields so the Field-level min/max validators fire on
+    // submission. Without this, RelativeDatePicker's internally-computed
+    // min/max would only constrain the native picker UI — keyboard-typed
+    // out-of-range values would pass through validation. Runs whether or not
+    // a `parameters` record exists: a RelativeDatePicker with an ABSENT
+    // record still renders its default window (see buildDatePickerBoundProps).
+    Object.assign(
+      props,
+      buildDatePickerBoundProps({
+        component: field.component,
+        parameters: field.parameters,
+      }),
+    );
 
     return props;
   });
@@ -357,5 +334,5 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents, coerceValues };
+  return { fieldComponents, coerceValues, componentByVariable };
 }

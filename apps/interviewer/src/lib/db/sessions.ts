@@ -1,5 +1,10 @@
 import { v4 as uuid } from 'uuid';
 
+import {
+  getInterviewProgress,
+  getLastAvailableAuthoredStageIndex,
+} from '@codaco/interview';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
@@ -334,6 +339,40 @@ export function markSessionFinished(id: string): Promise<void> {
       ...existing,
       finishedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
+    });
+  });
+}
+
+export function markSessionUnfinished(
+  id: string,
+  stages: CurrentProtocol['stages'],
+): Promise<void> {
+  return enqueueSessionMutation(id, async () => {
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow?.finishedAt) return;
+
+    const existing = await decryptSession(existingRow);
+    const lastAvailableStage = getLastAvailableAuthoredStageIndex(
+      stages,
+      existing.network,
+    );
+    const currentStep = lastAvailableStage ?? 0;
+    const { progress } = getInterviewProgress(stages, currentStep);
+
+    await db.transaction('rw', db.sessions, async () => {
+      const latest = await db.sessions.get(id);
+      if (!latest?.finishedAt) return;
+
+      const now = new Date().toISOString();
+      await db.sessions.put({
+        ...latest,
+        finishedAt: null,
+        currentStep,
+        progress,
+        resumeStageOverrideIndex:
+          lastAvailableStage === undefined && stages.length > 0 ? 0 : undefined,
+        lastUpdatedAt: now,
+      });
     });
   });
 }

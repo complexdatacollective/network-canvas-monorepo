@@ -22,8 +22,8 @@ type NodeDrawerProps = {
   /**
    * When provided, the drawer registers as a DnD drop target so dragged nodes
    * can be returned to it (e.g. unplacing a placed sociogram node). Also makes
-   * the drawer manually expandable while empty, and auto-expands it whenever a
-   * compatible drag is in flight.
+   * the drawer manually expandable while empty, illuminates its tab during a
+   * compatible drag, and expands it when that drag reaches the tab.
    */
   dropTarget?: {
     accepts: string[];
@@ -33,6 +33,10 @@ type NodeDrawerProps = {
 };
 
 const MotionChevron = motion.create(ChevronDown);
+const activeDropTargetBackground =
+  'bg-[color-mix(in_oklab,var(--surface)_70%,var(--accent)_30%)]';
+const activeDropTargetOverBackground =
+  'bg-[color-mix(in_oklab,var(--surface)_20%,var(--accent)_80%)]';
 
 export default function NodeDrawer({
   nodes,
@@ -59,9 +63,10 @@ export default function NodeDrawer({
     focusBehaviorOnDrop: 'none',
   });
 
-  // While a compatible drag is in flight, hold the drawer open so the drop
-  // area is visible — without mutating the participant's chosen state.
-  const isExpandedEffective = isExpanded || willAccept;
+  // Hover expansion is temporary, so leaving the drawer restores the canvas
+  // without mutating the participant's chosen state.
+  const isExpandedEffective = isExpanded || isOver;
+  const dropZoneId = dropTarget ? dropProps['data-zone-id'] : undefined;
 
   // Collapse when emptied, expand when nodes arrive
   const prevHasNodes = usePrevious(hasNodes);
@@ -86,7 +91,7 @@ export default function NodeDrawer({
   // Safety timeout in case onLayoutAnimationComplete doesn't fire
   // (e.g. no nodes actually moved).
   useEffect(() => {
-    if (!isLayoutAnimating) return;
+    if (!isLayoutAnimating) return undefined;
     const timeout = setTimeout(() => setIsLayoutAnimating(false), 500);
     return () => clearTimeout(timeout);
   }, [isLayoutAnimating]);
@@ -105,12 +110,14 @@ export default function NodeDrawer({
       <motion.div
         layout
         {...(dropTarget ? dropProps : {})}
+        data-zone-id={isExpandedEffective ? dropZoneId : undefined}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className={cx(
           'tablet-landscape:min-w-sm tablet-landscape:w-fit z-10 mx-auto w-full max-w-2xl drop-shadow-xl',
           floating ? 'absolute inset-x-0 bottom-0' : 'shrink-0',
+          floating && !isExpandedEffective && 'pointer-events-none',
         )}
       >
         {/* Toggle button */}
@@ -123,10 +130,17 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface flex items-center gap-2 rounded-t-lg px-8 py-2 text-sm',
+              'bg-surface publish-colors pointer-events-auto flex h-12 items-center gap-2 rounded-t-lg px-8 text-sm transition-colors',
+              willAccept &&
+                (isOver
+                  ? activeDropTargetOverBackground
+                  : activeDropTargetBackground),
               headingVariants({ level: 'label' }),
               isToggleDisabled && 'cursor-not-allowed opacity-50',
             )}
+            data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
+            data-drop-target-valid={willAccept || undefined}
+            data-drop-target-over={isOver || undefined}
             aria-label={
               isExpandedEffective ? 'Collapse drawer' : 'Expand drawer'
             }
@@ -165,7 +179,10 @@ export default function NodeDrawer({
           className={cx(
             'publish-colors overflow-hidden rounded transition-colors',
             !willAccept && 'bg-surface',
-            willAccept && (isOver ? 'bg-drag-over' : 'bg-drag-valid'),
+            willAccept &&
+              (isOver
+                ? activeDropTargetOverBackground
+                : activeDropTargetBackground),
           )}
         >
           <ScrollArea

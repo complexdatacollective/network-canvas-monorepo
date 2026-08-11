@@ -6,20 +6,23 @@
 
 import type { Variant } from '~/components/ui/DeviceMockup';
 import { webDestinations } from '~/lib/getStarted';
+import { documentationUrl } from '~/lib/siteUrls';
 
 export const externalLinks = {
   community: 'https://community.networkcanvas.com/',
-  documentation: 'https://documentation.networkcanvas.com/',
+  documentation: documentationUrl(),
   github: 'https://github.com/complexdatacollective',
   twitter: 'https://twitter.com/networkcanvas?lang=en',
   youtube: 'https://www.youtube.com/@complexdatacollective2923',
   youtubeChannel: 'https://www.youtube.com/channel/UC3uFCh2HlR8iqiYhRNomUqQ',
-  publications:
-    'https://documentation.networkcanvas.com/en/get-started/project-information/citing-the-software',
+  publications: documentationUrl(
+    '/en/get-started/project-information/citing-the-software',
+  ),
   shareYourWork:
     'https://community.networkcanvas.com/t/share-your-work-using-network-canvas/149',
-  collaboration:
-    'https://documentation.networkcanvas.com/en/desktop/project-information/requests-for-collaboration',
+  collaboration: documentationUrl(
+    '/en/get-started/project-information/requests-for-collaboration',
+  ),
   terms:
     'https://assets.networkcanvas.com/public/files/Website/terms-and-conditions.txt',
   privacy: 'https://assets.networkcanvas.com/public/files/Website/privacy.txt',
@@ -73,23 +76,33 @@ type Principle = {
 export const principles: Principle[] = [
   {
     id: 'ontologicalFlexibility',
-    href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#ontological-flexibility',
+    href: documentationUrl(
+      '/en/get-started/project-information/project-overview#ontological-flexibility',
+    ),
   },
   {
     id: 'interviewerAssisted',
-    href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#in-person-and-interviewer-assisted',
+    href: documentationUrl(
+      '/en/get-started/project-information/project-overview#in-person-and-interviewer-assisted',
+    ),
   },
   {
     id: 'emphasisOnDesign',
-    href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#visuality-and-an-emphasis-on-user-experience',
+    href: documentationUrl(
+      '/en/get-started/project-information/project-overview#visuality-and-an-emphasis-on-user-experience',
+    ),
   },
   {
     id: 'endToEndWorkflow',
-    href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#end-to-end-workflow',
+    href: documentationUrl(
+      '/en/get-started/project-information/project-overview#end-to-end-workflow',
+    ),
   },
   {
     id: 'openSourceCommunity',
-    href: 'https://documentation.networkcanvas.com/en/desktop/project-information/project-overview#open-source-development',
+    href: documentationUrl(
+      '/en/get-started/project-information/project-overview#open-source-development',
+    ),
   },
 ];
 
@@ -110,6 +123,5 @@ export const institutions = [
 ];
 
 export const footerLinks = [
-  { id: 'terms', href: externalLinks.terms },
   { id: 'privacy', href: externalLinks.privacy },
 ] as const;

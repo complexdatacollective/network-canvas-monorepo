@@ -1,20 +1,18 @@
 import type { Driver } from 'redux-remember';
 
-// A redux-remember Driver backed by the tab's own sessionStorage, so the
-// persisted session slices (which protocol is open + its undo timeline) are
-// per-tab rather than shared across every tab of the origin. sessionStorage
-// survives reload but is cleared when the tab closes — see the design doc for
-// the crash-recovery trade-off (protocol content lives durably in IndexedDB).
+// A redux-remember Driver backed by the tab's own sessionStorage, so the active
+// protocol id and other app preferences are per-tab rather than origin-wide.
+// sessionStorage survives reload but is cleared when the tab closes; protocol
+// content lives durably in IndexedDB.
 //
 // If sessionStorage is present but rejects writes (e.g. Safari private
 // browsing) or runs out of quota, reads/writes degrade to a per-instance
 // in-memory map so the app still functions this session. The map is per
 // instance so a storage-blocked tab can never leak state into another tab.
 //
-// Falling back silently would drop autosaved edits on reload (the stale
-// sessionStorage `present` rehydrates over the newer durable IndexedDB row), so
-// the driver notifies `onStorageError` the first time it flips to memory. The
-// caller uses this to surface the storage-unavailable banner.
+// Only the active library id is stored here. A fallback can lose reload
+// convenience, but it cannot affect canonical IndexedDB protocol content or
+// disable otherwise-healthy persistence.
 const getSessionStorage = (): globalThis.Storage | null => {
   if (typeof window === 'undefined') return null;
   try {
@@ -24,20 +22,30 @@ const getSessionStorage = (): globalThis.Storage | null => {
   }
 };
 
-export const createSessionStorageDriver = (
-  onStorageError?: (error: unknown) => void,
-): Driver => {
+const REMEMBERED_APP_SESSION_KEY = '@@remember-app';
+
+// A failed startup rehydration may leave malformed or stale remembered state
+// behind. Remove it directly because redux-remember installs its persistence
+// subscription only after rehydration, so an immediate Redux reset is not
+// guaranteed to overwrite the stored payload.
+export const clearRememberedAppSession = (): void => {
+  const storage = getSessionStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(REMEMBERED_APP_SESSION_KEY);
+  } catch {
+    // Inaccessible session storage is already non-persistent. The in-memory
+    // Redux state is reset separately by startup recovery.
+  }
+};
+
+export const createSessionStorageDriver = (): Driver => {
   const memory = new Map<string, string>();
   let useMemory = false;
 
-  // Flip to the in-memory fallback and notify the caller once, so the banner
-  // fires a single time rather than on every subsequent write.
-  const fallBackToMemory = (error?: unknown): void => {
-    const alreadyFellBack = useMemory;
+  const fallBackToMemory = (): void => {
     useMemory = true;
-    if (!alreadyFellBack) {
-      onStorageError?.(error);
-    }
   };
 
   return {
@@ -47,8 +55,8 @@ export const createSessionStorageDriver = (
         if (storage) {
           try {
             return storage.getItem(key);
-          } catch (error) {
-            fallBackToMemory(error);
+          } catch {
+            fallBackToMemory();
           }
         } else {
           fallBackToMemory();
@@ -63,8 +71,8 @@ export const createSessionStorageDriver = (
           try {
             storage.setItem(key, value);
             return;
-          } catch (error) {
-            fallBackToMemory(error);
+          } catch {
+            fallBackToMemory();
           }
         } else {
           fallBackToMemory();

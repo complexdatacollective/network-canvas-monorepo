@@ -49,16 +49,6 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { openDialog } = useDialog();
   const track = useTrack();
 
-  useEffect(() => {
-    track('form_opened', {
-      form_kind: 'ego',
-      field_details: form.fields.map((f) =>
-        'component' in f ? f.component : 'unknown',
-      ),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const [nudgeVisible, setNudgeVisible] = useState(false);
 
   const { isDirty: isFormDirty, isValid: isFormValid } = useFormMeta();
@@ -88,23 +78,37 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
-    fields: form.fields,
-    initialValues: Object.fromEntries(
-      Object.entries(egoAttributes).filter(([, value]) => value !== null),
-    ) as Record<string, FieldValue>,
-  });
+  const { fieldComponents, coerceValues, componentByVariable } =
+    useProtocolForm({
+      fields: form.fields,
+      initialValues: Object.fromEntries(
+        Object.entries(egoAttributes).filter(([, value]) => value !== null),
+      ) as Record<string, FieldValue>,
+    });
 
-  const beforeNext: BeforeNextFunction = async (direction) => {
+  // Audit sweep: the input control comes from the codebook entry. The shared
+  // `FormFieldSchema` has no `component` key of its own, so the previous
+  // `'component' in field` test recorded 'unknown' for every field, always.
+  useEffect(() => {
+    track('form_opened', {
+      form_kind: 'ego',
+      field_details: form.fields.map(
+        (f) => componentByVariable[f.variable] ?? 'unknown',
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const beforeNext: BeforeNextFunction = async (direction, intent) => {
     // If direction is backwards, and the form is invalid, check if the user
     // wants to proceed anyway (causing the form to be reset)
-    if (direction === 'backwards') {
+    if (direction === 'backwards' || intent === 'jump') {
       if (isFormDirty && !isFormValid) {
         const result = await openDialog({
           type: 'choice',
           title: 'Discard changes?',
           description:
-            'This form contains invalid data, so it cannot be saved. If you continue it will be reset and your changes will be lost. Do you want to discard your changes?',
+            'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
           intent: 'destructive',
           actions: {
             primary: { label: 'Discard changes', value: true },
@@ -143,11 +147,7 @@ const EgoFormInner = (props: EgoFormProps) => {
         if (!Array.isArray(messages) || messages.length === 0) continue;
         const idx = form.fields.findIndex((f) => f.variable === name);
         if (idx === -1) continue;
-        const f = form.fields[idx];
-        const component =
-          f && 'component' in f && typeof f.component === 'string'
-            ? f.component
-            : 'unknown';
+        const component = componentByVariable[name] ?? 'unknown';
         for (const message of messages) {
           fieldErrorEntries.push({ field_index: idx, component, message });
         }

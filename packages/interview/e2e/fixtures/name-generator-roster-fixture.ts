@@ -104,6 +104,19 @@ export class NameGeneratorRosterFixture {
     return this.addedListbox.getByRole('option', { name: label });
   }
 
+  async waitForAddedNodeLayout(label: string): Promise<void> {
+    const node = this.getAddedNode(label);
+    await expect(node).toBeVisible();
+    await expect
+      .poll(() =>
+        node.evaluate(
+          (element) =>
+            element.parentElement?.parentElement?.style.transform ?? null,
+        ),
+      )
+      .toBe('none');
+  }
+
   /**
    * Keyboard-drag a card from the source roster into the Added Nodes list.
    * `navigateDndToTarget` presses Enter once the drop-target announcement

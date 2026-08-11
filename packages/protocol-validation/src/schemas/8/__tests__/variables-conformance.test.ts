@@ -305,4 +305,164 @@ describe('variable schema conformance', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe('scalar value bounds', () => {
+    const scalarVariables = (validation: Record<string, unknown>) => ({
+      closeness: {
+        name: 'closeness',
+        type: 'scalar',
+        component: 'VisualAnalogScale',
+        validation,
+      },
+    });
+
+    it('rejects a minValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a maxValue', () => {
+      expect(
+        VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })).success,
+      ).toBe(false);
+    });
+
+    it('rejects a complete pair', () => {
+      expect(
+        VariablesSchema.safeParse(
+          scalarVariables({ minValue: 2, maxValue: 10 }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it('accepts requiredness and comparisons against another scalar', () => {
+      const result = VariablesSchema.safeParse({
+        closeness: {
+          name: 'closeness',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          validation: { required: true, greaterThanVariable: 'trust' },
+        },
+        trust: {
+          name: 'trust',
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('leaves number variable bounds untouched', () => {
+      const result = VariablesSchema.safeParse({
+        age: {
+          name: 'age',
+          type: 'number',
+          component: 'Number',
+          validation: { minValue: 18 },
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('applies to edge and ego variables too', () => {
+      expect(
+        EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 }))
+          .success,
+      ).toBe(false);
+      expect(
+        EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })).success,
+      ).toBe(false);
+    });
+  });
+  // Thirteenth-wave Finding 2: fresco-ui's BooleanField applies its Yes/No
+  // default only when the `options` prop is `undefined` (a destructuring
+  // default), so an explicitly empty array renders a control with no buttons
+  // at all — unanswerable, and fatal on a required variable.
+  describe('boolean options', () => {
+    const booleanVariable = (options?: unknown) => ({
+      isClose: {
+        name: 'is_close',
+        type: 'boolean',
+        component: 'Boolean',
+        validation: { required: true },
+        ...(options !== undefined ? { options } : {}),
+      },
+    });
+
+    it('rejects an explicitly empty options array', () => {
+      const result = VariablesSchema.safeParse(booleanVariable([]));
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(
+        result.error.issues.some((issue) => issue.path.includes('options')),
+      ).toBe(true);
+    });
+
+    it('accepts a boolean variable with no options at all', () => {
+      expect(VariablesSchema.safeParse(booleanVariable()).success).toBe(true);
+    });
+
+    it('accepts a single-option (singleton-domain) boolean', () => {
+      expect(
+        VariablesSchema.safeParse(
+          booleanVariable([{ label: 'Yes', value: true }]),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('accepts a two-option boolean', () => {
+      expect(
+        VariablesSchema.safeParse(
+          booleanVariable([
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ]),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('applies to edge and ego variables too', () => {
+      expect(EdgeVariablesSchema.safeParse(booleanVariable([])).success).toBe(
+        false,
+      );
+      expect(EgoVariablesSchema.safeParse(booleanVariable([])).success).toBe(
+        false,
+      );
+    });
+
+    // Twenty-eighth-wave Finding 1: the empty-array rejection above only
+    // fires when the variable's OWN declared `component` is `Boolean` — its
+    // own rendering needs the options it can never fill. A componentless
+    // boolean is renderable by a NetworkComposer field with EITHER `Boolean`
+    // or `Toggle` (the field's own component, not the codebook default,
+    // decides the rendering), so the shape rule — with no stage in scope —
+    // can no longer assume `options: []` is unanswerable there.
+    const componentlessBooleanVariable = (options?: unknown) => ({
+      isClose: {
+        name: 'is_close',
+        type: 'boolean',
+        ...(options !== undefined ? { options } : {}),
+      },
+    });
+
+    it('accepts a componentless boolean variable with an explicitly empty options array', () => {
+      const result = VariablesSchema.safeParse(
+        componentlessBooleanVariable([]),
+      );
+      expect(
+        result.success,
+        JSON.stringify(!result.success && result.error.issues),
+      ).toBe(true);
+    });
+
+    it('accepts a componentless empty-options boolean on edge and ego variables too', () => {
+      expect(
+        EdgeVariablesSchema.safeParse(componentlessBooleanVariable([])).success,
+      ).toBe(true);
+      expect(
+        EgoVariablesSchema.safeParse(componentlessBooleanVariable([])).success,
+      ).toBe(true);
+    });
+  });
 });

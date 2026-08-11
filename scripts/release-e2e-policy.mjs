@@ -14,10 +14,17 @@ export const E2E_SUITE_SUBJECTS = {
   architect: '@codaco/architect',
 };
 
-const E2E_JOB_NAMES = {
-  interview: 'interview-e2e',
-  interviewer: 'interviewer-e2e',
-  architect: 'architect-e2e',
+// Each suite runs as two CI jobs: the Dockerized half that compares the
+// committed pixel baselines, and the native half that runs everything else.
+// A suite's verdict is the AND of both — reusing a green pixel verdict while
+// the functional half was red would skip exactly the coverage that failed.
+// Exported so scripts/ci-workflow.test.mjs can assert every name here is a
+// real job that the quality gate requires: an exact-string mismatch here does
+// not fail loudly, it silently disables verdict reuse.
+export const E2E_JOB_NAMES = {
+  interview: ['interview-e2e', 'interview-e2e-native'],
+  interviewer: ['interviewer-e2e', 'interviewer-e2e-native'],
+  architect: ['architect-e2e', 'architect-e2e-native'],
 };
 
 const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
@@ -121,10 +128,53 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
   });
 }
 
+// Select each suite whose subject or workspace dependency closure contains a
+// changed path. Unknown paths fail closed for every suite via
+// diffIrrelevantToSuite; a missing subject fails closed for that suite because
+// its relevance closure cannot be trusted.
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  const packages = collectWorkspacePackages(cwd);
+  const required = suites();
+  for (const key of SUITE_KEYS) {
+    const subject = E2E_SUITE_SUBJECTS[key];
+    if (!packages.has(subject)) {
+      required[key] = true;
+      continue;
+    }
+    const relevanceDirs = relevanceDirsForSubject(subject, packages);
+    required[key] = !diffIrrelevantToSuite(
+      changedPaths,
+      relevanceDirs,
+      packages,
+    );
+  }
+  return required;
+}
+
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
-// One bounded page of the branch's runs. A verdict older than this is stale
+// One bounded page per generated branch. A verdict older than this is stale
 // enough that re-running is the right call anyway (fail closed past the cap).
 const MAX_RUNS_SCANNED = 50;
+
+function compareRunsNewestFirst(a, b) {
+  const timeDelta =
+    Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? '');
+  if (Number.isFinite(timeDelta) && timeDelta !== 0) return timeDelta;
+  return Number(b.id ?? 0) - Number(a.id ?? 0);
+}
+
+function completedAt(job) {
+  const timestamp = Date.parse(job.completed_at ?? '');
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function compareVerdictsNewestFirst(a, b) {
+  const timeDelta = completedAt(b.job) - completedAt(a.job);
+  if (timeDelta !== 0) return timeDelta;
+  const jobDelta = Number(b.job.id ?? 0) - Number(a.job.id ?? 0);
+  if (jobDelta !== 0) return jobDelta;
+  return Number(b.run.id ?? 0) - Number(a.run.id ?? 0);
+}
 
 function ensureCommit(sha, cwd) {
   if (tryGit(['rev-parse', '--verify', `${sha}^{commit}`], cwd)) return true;
@@ -134,12 +184,17 @@ function ensureCommit(sha, cwd) {
 }
 
 // Equivalence reuse: suite S may be skipped at head H when the newest
-// conclusive native pull_request run of S on this generated release branch
-// succeeded at commit X and diff(X→H) touches only paths that provably
-// cannot affect S (see diffIrrelevantToSuite). Every failure mode — missing
-// input, API error, unfetchable commit, conclusive failure, fork run —
-// leaves the suite required (fail closed). Visual baselines are committed
-// in-tree inside the subject packages, so the diff covers them too.
+// equivalent conclusive native pull_request verdict across generated release
+// branches is a success. Each branch contributes only its newest conclusive
+// verdict (a same-branch failure is never walked past); verdicts whose X→H
+// diff can affect S do not describe H and are excluded. The remaining
+// equivalent verdicts are ordered globally, so a newer equivalent failure on
+// another release branch cannot be hidden by an older green.
+//
+// Every failure mode — missing input, API error, unfetchable current head,
+// missing subject package, fork run, truncated jobs page — leaves the suite
+// required (fail closed). Visual baselines are committed in-tree inside the
+// subject packages, so the diff covers them too.
 export async function equivalentValidatedSuites({
   cwd,
   repository,
@@ -151,6 +206,7 @@ export async function equivalentValidatedSuites({
 }) {
   const validated = suites();
   if (!repository || !token || !branch || !headSha) return validated;
+  if (!(branch in SUITES_BY_RELEASE_REF)) return validated;
   const required = SUITE_KEYS.filter((key) => requiredSuites[key]);
   if (required.length === 0) return validated;
   if (!ensureCommit(headSha, cwd)) return validated;
@@ -162,22 +218,27 @@ export async function equivalentValidatedSuites({
     },
   };
   try {
-    const runsResponse = await fetcher(
-      `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&branch=${encodeURIComponent(branch)}&per_page=${MAX_RUNS_SCANNED}`,
-      apiOptions,
-    );
-    if (!runsResponse.ok) return validated;
-    const { workflow_runs: runs = [] } = await runsResponse.json();
-
-    // Same-repo runs only: a fork branch may share the generated branch's
-    // name, but its runs must never vouch for ours. Sort defensively even
-    // though the API returns newest-first.
-    const trustedRuns = runs
-      .filter((run) => run.head_repository?.full_name === repository)
-      .toSorted(
-        (a, b) =>
-          Date.parse(b.created_at ?? '') - Date.parse(a.created_at ?? ''),
+    const candidateBranches = Object.entries(SUITES_BY_RELEASE_REF)
+      .filter(([, laneSuites]) => required.some((key) => laneSuites[key]))
+      .map(([releaseBranch]) => releaseBranch);
+    const trustedRunsByBranch = new Map();
+    for (const releaseBranch of candidateBranches) {
+      const runsResponse = await fetcher(
+        `https://api.github.com/repos/${repository}/actions/workflows/ci-and-release.yml/runs?event=pull_request&branch=${encodeURIComponent(releaseBranch)}&per_page=${MAX_RUNS_SCANNED}`,
+        apiOptions,
       );
+      if (!runsResponse.ok) return validated;
+      const { workflow_runs: runs = [] } = await runsResponse.json();
+      // Same-repo runs only: a fork branch may share the generated branch's
+      // name, but its runs must never vouch for ours. Sort defensively even
+      // though the API returns newest-first.
+      trustedRunsByBranch.set(
+        releaseBranch,
+        runs
+          .filter((run) => run.head_repository?.full_name === repository)
+          .toSorted(compareRunsNewestFirst),
+      );
+    }
 
     const jobsByRun = new Map();
     const jobsFor = async (run) => {
@@ -207,36 +268,94 @@ export async function equivalentValidatedSuites({
       // relevance judgment about it can be trusted — fail closed rather than
       // reason about a closure that's missing its own root.
       if (!packages.has(E2E_SUITE_SUBJECTS[key])) continue;
-      // The newest conclusive verdict is authoritative: a failure is never
-      // walked past to an older green.
-      let candidate = null;
-      for (const run of trustedRuns) {
-        const jobs = await jobsFor(run);
-        if (jobs === null) break;
-        const job = jobs.find((j) => j.name === E2E_JOB_NAMES[key]);
-        if (!job || !CONCLUSIVE.has(job.conclusion)) continue;
-        if (job.conclusion === 'success') candidate = run;
-        break;
-      }
-      if (!candidate?.head_sha) continue;
-      if (!ensureCommit(candidate.head_sha, cwd)) continue;
-      // --no-renames: with rename detection on, git lists only a renamed
-      // file's destination path. A relevant file moved to an inert path
-      // (e.g. out of a package directory) would then vanish from the diff
-      // entirely instead of surfacing its source path as changed.
-      const diff = tryGit(
-        ['diff', '--no-renames', '--name-only', candidate.head_sha, headSha],
-        cwd,
-      );
-      if (diff === null) continue;
-      const changedPaths = diff.split('\n').filter(Boolean);
       const relevanceDirs = relevanceDirsForSubject(
         E2E_SUITE_SUBJECTS[key],
         packages,
       );
-      if (diffIrrelevantToSuite(changedPaths, relevanceDirs, packages)) {
-        validated[key] = true;
+      const branchVerdicts = [];
+      let jobsListingDoubt = false;
+      for (const [releaseBranch, trustedRuns] of trustedRunsByBranch) {
+        if (!SUITES_BY_RELEASE_REF[releaseBranch][key]) continue;
+        // A rerun retains its workflow's original created_at, so inspect every
+        // bounded candidate and rank conclusive suite jobs by completed_at.
+        // The most recently completed verdict on each branch is authoritative:
+        // a later rerun failure is never hidden by a newer-created green.
+        const conclusiveVerdicts = [];
+        for (const run of trustedRuns) {
+          const jobs = await jobsFor(run);
+          if (jobs === null) {
+            jobsListingDoubt = true;
+            break;
+          }
+          const halves = E2E_JOB_NAMES[key].map((name) =>
+            jobs.find((candidate) => candidate.name === name),
+          );
+          // Only judge a run where EVERY half reported conclusively. A missing
+          // half — a run predating the lane split, say — is not a verdict, so
+          // the suite re-runs rather than inheriting a partial one.
+          if (halves.some((half) => !half || !CONCLUSIVE.has(half.conclusion)))
+            continue;
+          if (halves.some((half) => completedAt(half) === null)) {
+            jobsListingDoubt = true;
+            break;
+          }
+          // Represent the suite by its newest-completed half so the existing
+          // recency ranking is unchanged, but carry the AND of the halves'
+          // conclusions: one red half fails the whole suite.
+          const newestHalf = halves.toSorted(
+            (a, b) => completedAt(b) - completedAt(a),
+          )[0];
+          const job = {
+            ...newestHalf,
+            conclusion: halves.every((half) => half.conclusion === 'success')
+              ? 'success'
+              : 'failure',
+          };
+          conclusiveVerdicts.push({ job, releaseBranch, run });
+        }
+        if (jobsListingDoubt) break;
+        const newestVerdict = conclusiveVerdicts.toSorted(
+          compareVerdictsNewestFirst,
+        )[0];
+        if (newestVerdict) branchVerdicts.push(newestVerdict);
       }
+      if (jobsListingDoubt) continue;
+
+      const equivalentVerdicts = [];
+      let candidateDoubt = false;
+      for (const verdict of branchVerdicts) {
+        if (!verdict.run.head_sha || !ensureCommit(verdict.run.head_sha, cwd)) {
+          candidateDoubt = true;
+          break;
+        }
+        // --no-renames: with rename detection on, git lists only a renamed
+        // file's destination path. A relevant file moved to an inert path
+        // (e.g. out of a package directory) would then vanish from the diff
+        // entirely instead of surfacing its source path as changed.
+        const diff = tryGit(
+          [
+            'diff',
+            '--no-renames',
+            '--name-only',
+            verdict.run.head_sha,
+            headSha,
+          ],
+          cwd,
+        );
+        if (diff === null) {
+          candidateDoubt = true;
+          break;
+        }
+        const changedPaths = diff.split('\n').filter(Boolean);
+        if (diffIrrelevantToSuite(changedPaths, relevanceDirs, packages)) {
+          equivalentVerdicts.push(verdict);
+        }
+      }
+      if (candidateDoubt) continue;
+      const newestEquivalent = equivalentVerdicts.toSorted(
+        compareVerdictsNewestFirst,
+      )[0];
+      validated[key] = newestEquivalent?.job.conclusion === 'success';
     }
   } catch {
     return suites();
@@ -248,60 +367,14 @@ function suites(...keys) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, keys.includes(key)]));
 }
 
-// Which suites gate each release lane. Architect and Interviewer both bundle
-// the @codaco/interview runtime, so their lanes keep interview-e2e; the
-// library lane publishes packages consumed by every app and keeps all three;
-// Background Creator, Documentation, and Website ship none of the suite
-// subjects and need no E2E.
-// Hand-maintained for a simple CI hot path — release-e2e-policy.test.mjs
-// derives the expected mapping from the real package.json dependency graph
-// and fails when this table drifts.
+// Maximum suite set for each release lane. The normal Changesets lane versions
+// libraries, Architect, and Interviewer, so it always keeps all three suites.
+// Documentation and Website ship none of the suite subjects and need no E2E.
 export const SUITES_BY_RELEASE_REF = {
-  'changeset-release/architect': suites('architect', 'interview'),
-  'changeset-release/background-creator': suites(),
   'changeset-release/documentation': suites(),
-  'changeset-release/interviewer': suites('interviewer', 'interview'),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
   'changeset-release/website': suites(),
 };
-
-// Manifests whose version field moving in a merge group means that group is
-// about to trigger the mapped lane's release when it lands on main.
-const MANIFEST_LANES = [
-  {
-    pattern: /^packages\/[^/]+\/package\.json$/,
-    ref: 'changeset-release/main',
-  },
-  {
-    pattern: /^apps\/architect\/package\.json$/,
-    ref: 'changeset-release/architect',
-  },
-  {
-    pattern: /^apps\/background-creator\/package\.json$/,
-    ref: 'changeset-release/background-creator',
-  },
-  {
-    pattern: /^apps\/interviewer\/package\.json$/,
-    ref: 'changeset-release/interviewer',
-  },
-  {
-    pattern: /^apps\/documentation\/package\.json$/,
-    ref: 'changeset-release/documentation',
-  },
-  {
-    pattern: /^apps\/networkcanvas\.com\/package\.json$/,
-    ref: 'changeset-release/website',
-  },
-];
-
-const VERSIONED_MANIFESTS = [
-  'packages/*/package.json',
-  'apps/architect/package.json',
-  'apps/background-creator/package.json',
-  'apps/interviewer/package.json',
-  'apps/documentation/package.json',
-  'apps/networkcanvas.com/package.json',
-];
 
 export function releaseRefForEvent({ eventName, headRef, refName }) {
   const candidate =
@@ -329,55 +402,27 @@ function tryGit(args, cwd) {
   }
 }
 
-function readVersionAt(revision, manifest, cwd) {
-  const contents = tryGit(['show', `${revision}:${manifest}`], cwd);
-  if (contents === null) return null;
-  try {
-    const parsed = JSON.parse(contents);
-    return typeof parsed.version === 'string' ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
-
-// Union of the suites required by every versioned manifest whose version
-// field changes between the merge group's base and head — i.e. by every
-// release the group will trigger when it lands.
-export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
+// Feature PRs use their cumulative merge-base-to-head diff so every current
+// head is gated by the suites the PR can affect. This deliberately does not
+// use push-to-push carry-forward: an E2E verdict must describe the exact PR
+// head that the required quality check is evaluating.
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
-    throw new Error(
-      'merge_group release detection requires base and head SHAs',
-    );
+    throw new Error('feature PR E2E detection requires base and head SHAs');
   }
-
-  const changedManifests = execFileSync(
-    'git',
-    ['diff', '--name-only', baseSha, headSha, '--', ...VERSIONED_MANIFESTS],
-    { cwd, encoding: 'utf8' },
-  )
-    .split('\n')
-    .filter(Boolean);
-
-  const required = suites();
-  for (const manifest of changedManifests) {
-    if (
-      readVersionAt(baseSha, manifest, cwd) ===
-      readVersionAt(headSha, manifest, cwd)
-    ) {
-      continue;
-    }
-    const lane = MANIFEST_LANES.find(({ pattern }) => pattern.test(manifest));
-    if (!lane) continue;
-    for (const key of SUITE_KEYS) {
-      required[key] ||= SUITES_BY_RELEASE_REF[lane.ref][key];
-    }
-  }
-  return required;
+  const mergeBase = tryGit(['merge-base', baseSha, headSha], cwd);
+  if (!mergeBase) throw new Error('Unable to resolve feature PR merge base');
+  const diff = tryGit(
+    ['diff', '--no-renames', '--name-only', mergeBase, headSha, '--'],
+    cwd,
+  );
+  if (diff === null) throw new Error('Unable to read feature PR diff');
+  return affectedSuitesForPaths(diff.split('\n').filter(Boolean), cwd);
 }
 
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
-  mergeGroupDetector = mergeGroupRequiredSuites,
+  pullRequestDetector = pullRequestRequiredSuites,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
@@ -388,28 +433,21 @@ export function releaseE2EPolicy(
     };
   }
 
-  if (eventName === 'merge_group') {
+  if (eventName === 'pull_request') {
+    let required;
+    try {
+      required = pullRequestDetector(baseSha, headSha, process.cwd());
+    } catch {
+      required = suites('interview', 'interviewer', 'architect');
+    }
     return {
-      ...mergeGroupDetector(baseSha, headSha),
+      ...required,
       releaseRef: '',
       snapshotBranch: '',
     };
   }
 
   return { ...suites(), releaseRef: '', snapshotBranch: '' };
-}
-
-// Trust guard for merge-queue reuse: the queued merge's second parent must be
-// the current tip of a generated release branch — never an arbitrary PR that
-// happens to bump a version.
-export function releaseBranchForMergeQueue(cwd) {
-  const prTip = tryGit(['rev-parse', 'HEAD^2'], cwd);
-  if (!prTip) return '';
-  return (
-    Object.keys(SUITES_BY_RELEASE_REF).find(
-      (ref) => tryGit(['rev-parse', `origin/${ref}`], cwd) === prTip,
-    ) ?? ''
-  );
 }
 
 async function main() {
@@ -435,10 +473,6 @@ async function main() {
       ) {
         reuse = { branch: policy.releaseRef, headSha: process.env.HEAD_SHA };
       }
-    } else if (eventName === 'merge_group') {
-      const branch = releaseBranchForMergeQueue(cwd);
-      const headSha = tryGit(['rev-parse', 'HEAD'], cwd);
-      if (branch && headSha) reuse = { branch, headSha };
     }
     if (reuse) {
       const validated = await equivalentValidatedSuites({
@@ -452,7 +486,7 @@ async function main() {
         if (policy[key] && validated[key]) {
           policy[key] = false;
           console.error(
-            `${E2E_JOB_NAMES[key]}: skipping — an earlier successful run on ${reuse.branch} validated this suite and nothing relevant to it has changed since.`,
+            `${E2E_JOB_NAMES[key]}: skipping — the newest equivalent verdict across generated release branches is successful and nothing relevant to this suite has changed since.`,
           );
         }
       }

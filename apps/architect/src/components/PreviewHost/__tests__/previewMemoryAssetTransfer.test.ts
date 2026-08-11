@@ -80,7 +80,7 @@ describe('preview in-memory asset transfer (Safari private browsing)', () => {
       protocol: makeProtocol(),
       startStage: 0,
       useSyntheticData: false,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
     window.dispatchEvent(

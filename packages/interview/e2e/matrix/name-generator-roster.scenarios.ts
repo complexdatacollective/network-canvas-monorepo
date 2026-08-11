@@ -206,6 +206,73 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       run: async ({ page, stage, interview }) => {
         const roster = new NameGeneratorRosterFixture(page);
 
+        // A focused source card is removed after a successful keyboard drag.
+        // Keep the virtualized roster near that card instead of moving focus
+        // to the first item and scrolling the source list back to the top.
+        await expect
+          .poll(() =>
+            roster.sourceListbox.evaluate(
+              (element) => element.scrollHeight > element.clientHeight,
+            ),
+          )
+          .toBe(true);
+        const scrollTopBeforeDrag = await roster.sourceListbox.evaluate(
+          (element) => {
+            element.scrollTop = Math.min(
+              1200,
+              element.scrollHeight - element.clientHeight,
+            );
+            element.dispatchEvent(new Event('scroll'));
+            return element.scrollTop;
+          },
+        );
+        expect(scrollTopBeforeDrag).toBeGreaterThan(0);
+
+        await expect
+          .poll(() =>
+            roster.sourceListbox.evaluate((element) => {
+              const listboxRect = element.getBoundingClientRect();
+              return Array.from(
+                element.querySelectorAll<HTMLElement>('[role="option"]'),
+              ).some((option) => {
+                const optionRect = option.getBoundingClientRect();
+                return (
+                  option.getAttribute('aria-label') !== 'Charles' &&
+                  optionRect.top >= listboxRect.top &&
+                  optionRect.bottom <= listboxRect.bottom
+                );
+              });
+            }),
+          )
+          .toBe(true);
+
+        const visibleRosterLabel = await roster.sourceListbox.evaluate(
+          (element) => {
+            const listboxRect = element.getBoundingClientRect();
+            const option = Array.from(
+              element.querySelectorAll<HTMLElement>('[role="option"]'),
+            ).find((candidate) => {
+              const candidateRect = candidate.getBoundingClientRect();
+              return (
+                candidate.getAttribute('aria-label') !== 'Charles' &&
+                candidateRect.top >= listboxRect.top &&
+                candidateRect.bottom <= listboxRect.bottom
+              );
+            });
+            return option?.getAttribute('aria-label') ?? null;
+          },
+        );
+        if (!visibleRosterLabel) {
+          throw new Error('Could not find a visible roster card to drag');
+        }
+
+        await roster.addNode(visibleRosterLabel);
+        await expect
+          .poll(() =>
+            roster.sourceListbox.evaluate((element) => element.scrollTop),
+          )
+          .toBeGreaterThan(scrollTopBeforeDrag / 2);
+
         // Stage A: narrow the 98-row CSV to one match via search, then add it —
         // avoids asserting exact counts against a virtualized list.
         await roster.search('Charles');
@@ -664,6 +731,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
             '[role="option"]:not([aria-disabled="true"])',
           ),
         ).not.toHaveCount(0);
+        await roster.waitForAddedNodeLayout('Amy Adams');
       },
     },
 

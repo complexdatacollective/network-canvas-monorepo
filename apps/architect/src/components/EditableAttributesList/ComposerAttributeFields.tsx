@@ -1,12 +1,14 @@
 import type { ComponentType } from 'react';
+import type { WrappedFieldProps } from 'redux-form';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section, Subsection } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
 import ValidatedField from '~/components/Form/ValidatedField';
 import Options from '~/components/Options';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
@@ -30,15 +32,46 @@ const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
 
+/**
+ * Eighteenth-wave Finding 2: the contradiction check for this editor is a
+ * form-level validate (`makeFieldEditorValidate`, wired in
+ * EditableAttributesList) whose message belongs to no single control — it can
+ * follow from the input control, its options, or its parameters together with
+ * the codebook rules and the stage's sibling attributes. redux-form only
+ * fails a submit over errors on REGISTERED fields, so the message needs a
+ * field of its own: without one the error was inert and the contradictory
+ * edit saved straight back to the codebook. This field holds no value; it
+ * exists to register the error and render it.
+ */
+export const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
+
+const ContradictionAlert = ({ meta }: WrappedFieldProps) => {
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
+  if (!showErrors) return null;
+  return (
+    <Alert variant="destructive" className="my-7">
+      <AlertTitle>This attribute cannot be saved</AlertTitle>
+      <AlertDescription>{errors.join(' ')}</AlertDescription>
+    </Alert>
+  );
+};
+
 type ComposerAttributeFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
+  // The stage's committed composer fields and this row's index within them,
+  // supplied by DialogArrayField/EditableAttributesList so the variable picker
+  // can drop what a sibling attribute already collects.
+  composerFields?: unknown;
+  editIndex?: number;
 };
 const ComposerAttributeFields = ({
   form,
   entity = null,
   type = null,
+  composerFields,
+  editIndex,
 }: ComposerAttributeFieldsProps) => {
   const {
     variable,
@@ -56,12 +89,30 @@ const ComposerAttributeFields = ({
     form,
     entity: entity ?? '',
     type: type ?? '',
+    siblingFields: composerFields,
+    editIndex,
   });
   const lockedOptions = getLockedOptions(existingVariables, variable);
   return (
-    <Section layout="vertical">
-      <Subsection id={getFieldId('variable')} title="Variable">
-        {variable && !isNewVariable && (
+    <>
+      <ValidatedField
+        name={COMPOSER_CONTRADICTION_FIELD}
+        component={ContradictionAlert}
+        validation={{}}
+      />
+      <Section
+        layout="vertical"
+        id={getFieldId('variable')}
+        title="Variable"
+        summary={
+          <Paragraph>
+            Create or select a variable to collect this attribute. If you select
+            an existing variable, any changes you make to the input control or
+            validation options will also change other uses of this variable.
+          </Paragraph>
+        }
+      >
+        {/* {variable && !isNewVariable && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
               When selecting an existing variable, changes you make to the input
@@ -69,9 +120,10 @@ const ComposerAttributeFields = ({
               variable.
             </AlertDescription>
           </Alert>
-        )}
+        )} */}
         <ValidatedField
           name="variable"
+          labelHidden
           component={VariablePicker as ComponentType<Record<string, unknown>>}
           validation={{ required: true }}
           componentProps={{
@@ -82,9 +134,10 @@ const ComposerAttributeFields = ({
             onChange: handleChangeVariable,
           }}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('label')}
         title="Label"
         disabled={!variable}
@@ -106,9 +159,10 @@ const ComposerAttributeFields = ({
             placeholder: 'Defaults to the variable name',
           }}
         />
-      </Subsection>
+      </Section>
 
-      <Subsection
+      <Section
+        layout="vertical"
         id={getFieldId('component')}
         title="Input Control"
         disabled={!variable}
@@ -174,10 +228,11 @@ const ComposerAttributeFields = ({
               />
             </div>
           )}
-      </Subsection>
+      </Section>
 
       {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection
+        <Section
+          layout="vertical"
           id={getFieldId('options')}
           title="Categorical/Ordinal options"
           summary={
@@ -200,27 +255,35 @@ const ComposerAttributeFields = ({
           ) : (
             <Options name="options" label="Options" />
           )}
-        </Subsection>
+        </Section>
       )}
       {isBooleanWithOptions(component) && (
         // BooleanChoice writes to the `options` field, so anchor it there (it is
         // mutually exclusive with the Categorical/Ordinal options subsection
         // above, so the shared id never collides at runtime).
-        <Subsection id={getFieldId('options')} title="BooleanChoice Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('options')}
+          title="BooleanChoice Options"
+        >
           <BooleanChoice form={form} />
-        </Subsection>
+        </Section>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <Subsection id={getFieldId('parameters')} title="Input Options">
+        <Section
+          layout="vertical"
+          id={getFieldId('parameters')}
+          title="Input Options"
+        >
           <Parameters
             type={variableType}
             component={component ?? ''}
             name="parameters"
             form={form}
           />
-        </Subsection>
+        </Section>
       )}
-    </Section>
+    </>
   );
 };
 export default ComposerAttributeFields;

@@ -25,6 +25,11 @@ export const VariableTypes = {
   location: 'location',
 } as const;
 
+export const NON_RENDERABLE_VARIABLE_TYPES = new Set<string>([
+  VariableTypes.layout,
+  VariableTypes.location,
+]);
+
 export const ComponentTypesKeys = Object.keys(
   ComponentTypes,
 ) as (keyof typeof ComponentTypes)[];

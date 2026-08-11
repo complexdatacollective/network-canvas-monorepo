@@ -1,7 +1,11 @@
 import type * as z from 'zod/mini';
 
 import type { Codebook, StageSubject } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import type {
+  EntityAttributesProperty,
+  NcNetwork,
+  NcNode,
+} from '@codaco/shared-consts';
 
 // Re-export FieldValue for convenience
 export type { FieldValue } from '../Field/types';
@@ -59,6 +63,14 @@ export type ValidationContext = {
   codebook: Codebook;
   network: NcNetwork;
   currentEntityId?: string;
+  currentEntityAttributes?: NcNode[EntityAttributesProperty];
+  /** Resolve form-to-form comparison rules within this FieldNamespace. */
+  formValueNamespace?: string;
+  /**
+   * Map a codebook variable ID to the form key that currently represents it.
+   * The original ID remains authoritative for codebook and entity lookups.
+   */
+  formValueAliases?: Readonly<Record<string, string>>;
 };
 
 // ═══════════════════════════════════════════════════════════════

@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionPayload } from '@codaco/interview';
 
 const navigateMock = vi.fn();
+const useSearchMock = vi.fn(() => '');
 vi.mock('wouter', () => ({
   useLocation: () => ['/interview/s1', navigateMock],
+  useSearch: () => useSearchMock(),
 }));
 
 const requireFreshUnlockMock = vi.fn();
@@ -24,12 +26,13 @@ const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
 const updateSessionMock = vi.fn();
+const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
-  updateSettings: vi.fn(),
+  updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
 
@@ -50,20 +53,33 @@ vi.mock('~/lib/installationId', () => ({
 }));
 
 type CapturedShellProps = {
+  currentStep: number;
+  disableAnalytics: boolean;
+  finishConfirmationDescription: string;
+  initialStageOverrideIndex?: number;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
   onSync: (id: string, session: SessionPayload) => Promise<void>;
+  onStepChange: (
+    step: number,
+    meta: { progress: number; totalSteps: number },
+  ) => void;
+  reviewMode: boolean;
 };
 
 const { shellMock } = vi.hoisted(() => ({
   shellMock: vi.fn<(props: CapturedShellProps) => void>(),
 }));
-vi.mock('@codaco/interview', () => ({
-  Shell: (props: CapturedShellProps) => {
-    shellMock(props);
-    return <div data-testid="shell-mounted" />;
-  },
-}));
+vi.mock('@codaco/interview', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@codaco/interview')>();
+  return {
+    ...actual,
+    Shell: (props: CapturedShellProps) => {
+      shellMock(props);
+      return <div data-testid="shell-mounted" />;
+    },
+  };
+});
 
 import { InterviewRoute } from '../Interview';
 
@@ -88,7 +104,38 @@ function makeProtocol() {
     id: 'p1',
     hash: 'h1',
     importedAt: '2026-01-01T00:00:00.000Z',
-    protocol: { stages: [], codebook: { node: {}, edge: {}, ego: {} } },
+    protocol: {
+      stages: [
+        { id: 'stage-1' },
+        { id: 'stage-2' },
+        { id: 'stage-3' },
+        { id: 'stage-4' },
+      ],
+      codebook: { node: {}, edge: {}, ego: {} },
+    },
+  };
+}
+
+function makeProtocolWithNoActiveAuthoredStage() {
+  const base = makeProtocol();
+  return {
+    ...base,
+    protocol: {
+      ...base.protocol,
+      stages: [
+        {
+          id: 'stage-1',
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [] },
+            destination: { type: 'finish' },
+          },
+        },
+        { id: 'stage-2' },
+        { id: 'stage-3' },
+        { id: 'stage-4' },
+      ],
+    },
   };
 }
 
@@ -125,6 +172,7 @@ beforeEach(() => {
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
+  useSearchMock.mockReturnValue('');
 });
 
 describe('InterviewRoute enter gate', () => {
@@ -295,15 +343,117 @@ describe('InterviewRoute finish flow', () => {
     }
   });
 
-  it('renders the completion screen for an already-finished session', async () => {
+  it('opens an already-finished session in read-only review mode', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({
+        currentStep: 4,
+        finishedAt: '2026-01-02T00:00:00.000Z',
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(screen.getByText('Read-only review')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Changes made while reviewing this interview will not be saved.',
+      ),
+    ).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(3);
+    expect(lastShellProps().disableAnalytics).toBe(true);
+    expect(lastShellProps().reviewMode).toBe(true);
+    expect(lastShellProps().finishConfirmationDescription).toBe(
+      'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
+    );
+    expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
+  });
+
+  it('preserves the finish step for an ordinary unfinished session', async () => {
+    getProtocolByHashMock.mockResolvedValue(
+      makeProtocolWithNoActiveAuthoredStage(),
+    );
+    getSessionMock.mockResolvedValue(makeSession({ currentStep: 4 }));
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(4);
+    expect(lastShellProps().initialStageOverrideIndex).toBeUndefined();
+  });
+
+  it('forces the route-controlling stage after marking a session unfinished', async () => {
+    getProtocolByHashMock.mockResolvedValue(
+      makeProtocolWithNoActiveAuthoredStage(),
+    );
+    getSessionMock.mockResolvedValue(
+      makeSession({ currentStep: 0, resumeStageOverrideIndex: 0 }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().currentStep).toBe(0);
+    expect(lastShellProps().initialStageOverrideIndex).toBe(0);
+  });
+
+  it('clears the mark-unfinished stage override after navigation', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({ currentStep: 0, resumeStageOverrideIndex: 0 }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
+      currentStep: 1,
+      progress: 50,
+      resumeStageOverrideIndex: undefined,
+    });
+  });
+
+  it('honours explicit review intent when the stored session is unfinished', async () => {
+    useSearchMock.mockReturnValue('mode=review');
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onStepChange, onSync } = lastShellProps();
+
+    await act(async () => {
+      await onSync('s1', makeSyncPayload());
+      onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onFinish('s1');
+    });
+
+    expect(lastShellProps().reviewMode).toBe(true);
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it('suppresses every session write while reviewing a finished session', async () => {
     getSessionMock.mockResolvedValue(
       makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
     );
 
     render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const { onFinish, onStepChange, onSync } = lastShellProps();
 
-    expect(await screen.findByText('Interview complete')).toBeInTheDocument();
-    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    await act(async () => {
+      await onSync('s1', makeSyncPayload());
+      onStepChange(2, { progress: 75, totalSteps: 4 });
+      await onFinish('s1');
+    });
+
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
   it('clears authorization when returning home from the missing screen', async () => {

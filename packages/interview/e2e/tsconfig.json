@@ -1,12 +1,18 @@
 {
-  "extends": "@codaco/tsconfig/web.json",
+  "extends": "../../../tooling/typescript/web.json",
   "compilerOptions": {
+    "strict": true,
     "noEmit": true,
     "types": ["node", "@playwright/test", "vite/client"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // Mirrors the host's vite resolve.alias: the e2e host consumes the
+    // interview package by name but resolves it to source.
+    "paths": {
+      "@codaco/interview": ["../src/index.ts"]
+    }
   },
-  "include": ["fixtures/**/*.ts", "helpers/**/*.ts", "specs/**/*.ts", "*.ts"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }

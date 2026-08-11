@@ -471,6 +471,10 @@ describe('Validation Functions', () => {
     });
 
     it('should accept an empty array (required owns emptiness)', () => {
+      // Deliberate: a checkbox group produces the same `[]` whether the
+      // field was never touched or ticked then unticked, so `minSelected`
+      // cannot flag `[]` without also flagging an untouched field. Pair
+      // `minSelected` with `required: true` to reject an empty selection.
       const validator = validations.minSelected(1, createMockContext())({});
 
       expect(validator.safeParse([]).success).toBe(true);
@@ -602,6 +606,32 @@ describe('Validation Functions', () => {
 
       const result = validator.safeParse('Alice');
       expect(result.success).toBe(true);
+    });
+
+    it('should accept unanswered optional values even when another entity is also unanswered', () => {
+      const mockNetwork = {
+        nodes: [
+          {
+            _uid: 'node1',
+            type: 'person',
+            [entityAttributesProperty]: { name: '' },
+          },
+        ],
+        edges: [],
+        ego: {
+          _uid: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      } as NcNetwork;
+
+      const validator = validations.unique(
+        'name',
+        createMockContext({ network: mockNetwork }),
+      )({});
+
+      expect(validator.safeParse('').success).toBe(true);
+      expect(validator.safeParse('   ').success).toBe(true);
+      expect(validator.safeParse(undefined).success).toBe(true);
     });
 
     it('should throw error for ego entities', () => {
@@ -779,6 +809,46 @@ describe('Validation Functions', () => {
 
       const result = validator.safeParse('sameValue');
       expect(result.success).toBe(true);
+    });
+
+    it('resolves comparison fields relative to the active namespace', () => {
+      const validator = validations.sameAs(
+        'testAttribute',
+        createMockContext({ formValueNamespace: 'parent' }),
+      )({
+        testAttribute: 'wrong top-level person',
+        parent: { testAttribute: 'sameValue' },
+      });
+
+      expect(validator.safeParse('sameValue').success).toBe(true);
+      expect(validator.safeParse('differentValue').success).toBe(false);
+    });
+
+    it('uses an aliased live form key without changing the codebook variable ID', () => {
+      const validator = validations.sameAs(
+        'displayName',
+        createMockContext({
+          formValueAliases: { displayName: 'name' },
+          codebook: {
+            node: {
+              person: {
+                name: 'Person',
+                color: 'node-color-seq-1',
+                shape: { default: 'circle' },
+                variables: {
+                  displayName: {
+                    name: 'Display name',
+                    type: 'text',
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )({ name: 'live value' });
+
+      expect(validator.safeParse('live value').success).toBe(true);
+      expect(validator.safeParse('stale value').success).toBe(false);
     });
 
     it('should throw error when attribute is not specified', () => {

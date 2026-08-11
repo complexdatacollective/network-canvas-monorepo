@@ -1,10 +1,13 @@
 import { get } from 'es-toolkit/compat';
 import { Check, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import React, { useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
-import { IconButton } from '@codaco/fresco-ui/Button';
+import Button from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Modal from '@codaco/fresco-ui/Modal';
+import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import {
   Tooltip,
   TooltipContent,
@@ -22,125 +25,484 @@ import {
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
 
-const EDIT_COMPLETE_BUTTON_ID = 'editCompleteButton';
-
-type BaseVariablePillProps = {
-  type: VariableType;
-  children: React.ReactNode;
+type VariablePillSizingProps = {
   width?: string;
-  summary?: boolean;
+  minWidth?: string;
+  maxWidth?: string;
+};
+
+export type VariablePillProps = VariablePillSizingProps & {
+  label: string;
+  type: VariableType;
+  animated?: boolean;
+  editable?: boolean;
+  onLabelChange?: (label: string) => void;
+  validateLabel?: (label: string) => string | null | undefined;
+};
+
+export type ConnectedVariablePillProps = VariablePillSizingProps & {
+  uuid: string;
+  animated?: boolean;
+  editable?: boolean;
 };
 
 type VariablePillStyle = React.CSSProperties & {
   '--variable-pill-accent': string;
-  '--variable-pill-width'?: string;
+  '--variable-pill-width': string;
+  '--variable-pill-min-width': string;
+  '--variable-pill-max-width': string;
+};
+
+type VariablePillEditorAnchor = {
+  left: number;
+  maxWidth: number;
+  top: number;
+  width: number;
 };
 
 const DARK_COLOR_SUFFIX = '-dark';
+const DEFAULT_MIN_WIDTH = '12rem';
+const DEFAULT_MAX_WIDTH = '20rem';
+const EDIT_MODE_SCALE = 1.5;
+const EDITOR_FRAME_GUTTER = 32;
+const EDITOR_FRAME_MIN_WIDTH = 320;
+const EDITOR_FRAME_PADDING = 24;
+const EDIT_MODE_LAYOUT_SPRING = {
+  type: 'spring',
+  stiffness: 260,
+  damping: 30,
+  mass: 1.2,
+} as const;
 
 const getRawColorToken = (color: string) =>
   color.endsWith(DARK_COLOR_SUFFIX)
     ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
     : color;
 
-const BaseVariablePill = React.forwardRef<
-  HTMLDivElement,
-  BaseVariablePillProps
->(({ type, children, width, summary }, ref) => {
-  const icon = useMemo(() => getIconForType(type), [type]);
+const getResolvedMaximumWidth = (
+  element: HTMLElement,
+  currentWidth: number,
+) => {
+  const computedMaxWidth = window.getComputedStyle(element).maxWidth.trim();
+  const numericMaxWidth = Number.parseFloat(computedMaxWidth);
+
+  if (!Number.isFinite(numericMaxWidth)) {
+    return currentWidth;
+  }
+
+  if (computedMaxWidth.endsWith('%')) {
+    const containingWidth =
+      element.parentElement?.getBoundingClientRect().width ?? currentWidth;
+    return Math.max(currentWidth, containingWidth * (numericMaxWidth / 100));
+  }
+
+  return Math.max(currentWidth, numericMaxWidth);
+};
+
+const getVariablePillStyle = (
+  type: VariableType,
+  {
+    width,
+    minWidth,
+    maxWidth,
+  }: Pick<VariablePillProps, 'width' | 'minWidth' | 'maxWidth'>,
+): VariablePillStyle => {
   const accentColor = getRawColorToken(getColorForType(type));
-  const style: VariablePillStyle = {
+  return {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
+    '--variable-pill-width': width ?? 'fit-content',
+    '--variable-pill-min-width': minWidth ?? DEFAULT_MIN_WIDTH,
+    '--variable-pill-max-width': maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
+  };
+};
+
+const getVariablePillClassName = ({
+  animated,
+  fluid,
+  interactive,
+}: {
+  animated?: boolean;
+  fluid?: boolean;
+  interactive?: boolean;
+}) =>
+  cx(
+    // `variable-pill` marker — hook for same-area cascades in VariablePicker
+    // (nested margin), PreviewRule (zoom), and the printable summary (scale).
+    'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width) max-w-(--variable-pill-max-width) min-w-(--variable-pill-min-width) flex-nowrap rounded-full p-0.5 text-base',
+    'effect-shadow-sm',
+    animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
+    !interactive && 'cursor-default',
+    fluid && 'flex-1',
+    interactive &&
+      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+  );
+
+function VariablePillContents({
+  children,
+  type,
+}: {
+  children: React.ReactNode;
+  type: VariableType;
+}) {
+  const icon = useMemo(() => getIconForType(type), [type]);
+
+  return (
+    <span className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
+      <span className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
+        <img className="icon opacity-80" src={icon} alt={`${type} variable`} />
+      </span>
+      <span className="flex w-[calc(100%-3rem)] min-w-0 flex-1 items-center justify-between">
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * A variable reference whose interaction and visual treatment are independent.
+ * Static pills use `<data>` semantics; editable pills use a button that opens
+ * the focused name editor directly.
+ */
+export const VariablePill = ({
+  animated = false,
+  editable = false,
+  label,
+  maxWidth,
+  minWidth,
+  onLabelChange,
+  type,
+  validateLabel,
+  width,
+}: VariablePillProps) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef(false);
+  const closingRef = useRef(false);
+  const reduceMotion = useReducedMotion();
+  const validationId = useId();
+
+  const [editing, setEditing] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [editorAnchor, setEditorAnchor] =
+    useState<VariablePillEditorAnchor | null>(null);
+  const [isValid, setIsValid] = useState(false);
+  const [validation, setValidation] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+
+  const [newName, setNewName] = useState(label);
+  const hasChanges = newName !== label;
+
+  const getValidation = (value: string) => {
+    const required = validations.required('You must enter a variable name')(
+      value,
+    );
+    const external = validateLabel?.(value);
+    const allowed = validations.allowedVariableName()(value);
+
+    return required || external || allowed || null;
   };
 
-  if (width) {
-    style['--variable-pill-width'] = width;
+  useEffect(() => {
+    if (!editing && restoreFocusRef.current) {
+      triggerRef.current?.focus();
+      restoreFocusRef.current = false;
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) {
+      setNewName(label);
+    }
+  }, [editing, label]);
+
+  const handleStartEditing = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) {
+      return;
+    }
+    const triggerBounds = trigger.getBoundingClientRect();
+
+    closingRef.current = false;
+    setClosing(false);
+    setEditorAnchor({
+      left: triggerBounds.left,
+      maxWidth: getResolvedMaximumWidth(trigger, triggerBounds.width),
+      top: triggerBounds.top,
+      width: triggerBounds.width,
+    });
+    setNewName(label);
+    const nextValidation = getValidation(label);
+    setValidation(nextValidation);
+    setIsValid(!nextValidation);
+    setAnnouncement(`Editing variable ${label}`);
+    restoreFocusRef.current = true;
+    setEditing(true);
+  };
+
+  const closeEditor = ({
+    announcement: nextAnnouncement,
+    beforeClose,
+  }: {
+    announcement: string;
+    beforeClose?: () => void;
+  }) => {
+    if (closingRef.current) {
+      return;
+    }
+
+    closingRef.current = true;
+    setClosing(true);
+
+    beforeClose?.();
+    setEditing(false);
+    setValidation(null);
+    setAnnouncement(nextAnnouncement);
+  };
+
+  const handleCancel = () => {
+    closeEditor({
+      announcement: 'Variable name edit cancelled',
+    });
+  };
+
+  const onEditComplete = () => {
+    if (!isValid || !hasChanges || !onLabelChange) {
+      return;
+    }
+
+    closeEditor({
+      announcement: `Variable renamed to ${newName}`,
+      beforeClose: () => onLabelChange(newName),
+    });
+  };
+
+  const handleUpdateName = (value: string | undefined) => {
+    const nextValue = value ?? '';
+    setNewName(nextValue);
+
+    const validationResult = getValidation(nextValue);
+    setValidation(validationResult);
+    setIsValid(!validationResult);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+
+      if (isValid && hasChanges) {
+        onEditComplete();
+      }
+    }
+  };
+
+  const style = getVariablePillStyle(type, { width, minWidth, maxWidth });
+  const editorFrame = useMemo(() => {
+    if (!editorAnchor) {
+      return null;
+    }
+
+    const availableWidth = window.innerWidth - EDITOR_FRAME_GUTTER;
+    const targetPillWidth = Math.max(
+      editorAnchor.width,
+      Math.min(
+        editorAnchor.maxWidth,
+        (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE,
+      ),
+    );
+    const frameWidth = Math.min(
+      availableWidth,
+      Math.max(
+        EDITOR_FRAME_MIN_WIDTH,
+        targetPillWidth * EDIT_MODE_SCALE + EDITOR_FRAME_PADDING * 2,
+      ),
+    );
+
+    return {
+      targetPillWidth,
+      style: {
+        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        top: editorAnchor.top - EDITOR_FRAME_PADDING,
+        width: frameWidth,
+      } satisfies React.CSSProperties,
+      pillStyle: {
+        ...style,
+        '--variable-pill-width': `${targetPillWidth}px`,
+        '--variable-pill-min-width': `${editorAnchor.width}px`,
+        '--variable-pill-max-width': `${targetPillWidth}px`,
+      } satisfies VariablePillStyle,
+    };
+  }, [editorAnchor, style]);
+
+  if (!editable) {
+    return (
+      <data
+        value={label}
+        className={getVariablePillClassName({
+          animated,
+          fluid: width === '100%',
+        })}
+        style={style}
+      >
+        <VariablePillContents type={type}>
+          <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+            {label}
+          </span>
+        </VariablePillContents>
+      </data>
+    );
   }
 
   return (
-    // `variable-pill` marker — hook for two remaining same-area cascades:
-    // `VariablePicker.tsx` (mb on nested pills) and `PreviewRule.tsx` (zoom).
-    <motion.div
-      className={cx(
-        'variable-pill variable-pill-effect-border effect-shadow-sm font-monospace inline-flex h-12 w-(--variable-pill-width,20rem) flex-nowrap rounded-full p-0.5 text-base',
-        summary && 'm-2 max-w-[24rem] zoom-[0.8]',
-      )}
-      style={style}
-      ref={ref}
-    >
-      <div className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
-        <div className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-          <img className="icon opacity-80" src={icon} alt={type} />
-        </div>
-        <div className="flex w-[calc(100%-3rem)] flex-1 items-center justify-between">
-          {children}
-        </div>
-      </div>
-    </motion.div>
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-haspopup="dialog"
+              aria-label={`Edit variable name: ${label}`}
+              className={getVariablePillClassName({
+                animated,
+                fluid: width === '100%',
+                interactive: true,
+              })}
+              style={style}
+              onClick={handleStartEditing}
+            >
+              <VariablePillContents type={type}>
+                <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
+                  {label}
+                </span>
+              </VariablePillContents>
+            </button>
+          }
+        />
+        <TooltipContent side="top">Edit variable name: {label}</TooltipContent>
+      </Tooltip>
+
+      <Modal
+        open={editing}
+        forceBackdrop
+        backdropClassName="z-30"
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancel();
+          }
+        }}
+      >
+        {editorFrame && (
+          <ModalPopup
+            key="variable-pill-editor"
+            aria-label="Edit variable name"
+            className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
+            style={editorFrame.style}
+            initial={{ opacity: 0.9999 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0.9999 }}
+            transition={{ duration: reduceMotion ? 0 : 0.4 }}
+          >
+            <motion.div
+              initial={
+                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
+              }
+              animate={{
+                scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
+                width: editorFrame.targetPillWidth,
+              }}
+              exit={{
+                scale: 1,
+                width: editorAnchor?.width,
+              }}
+              transition={
+                reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING
+              }
+              className={getVariablePillClassName({
+                animated: false,
+              })}
+              style={editorFrame.pillStyle}
+            >
+              <VariablePillContents type={type}>
+                <InputField
+                  autoFocus
+                  aria-label="Variable name"
+                  aria-invalid={validation ? true : undefined}
+                  aria-describedby={validation ? validationId : undefined}
+                  className="h-full w-full rounded-l-none! outline-none!"
+                  placeholder="Enter a variable name..."
+                  value={newName}
+                  onChange={handleUpdateName}
+                  onKeyDown={handleKeyDown}
+                />
+              </VariablePillContents>
+            </motion.div>
+
+            {validation && (
+              <div className="[&>div]:bg-destructive! [&>div]:text-destructive-contrast! [&>div]:px-4 [&>div]:py-2">
+                <FieldErrors
+                  id={validationId}
+                  name="variable-name"
+                  errors={[validation]}
+                  show
+                />
+              </div>
+            )}
+
+            <motion.div
+              className="flex items-center gap-3"
+              initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.24,
+                delay: reduceMotion ? 0 : 0.12,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            >
+              <Button
+                size="sm"
+                variant="default"
+                icon={<X aria-hidden />}
+                disabled={closing}
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                color="primary"
+                icon={<Check aria-hidden />}
+                disabled={closing || !isValid || !hasChanges}
+                onClick={onEditComplete}
+              >
+                Save Changes
+              </Button>
+            </motion.div>
+          </ModalPopup>
+        )}
+      </Modal>
+
+      <span className="sr-only" aria-live="polite">
+        {announcement}
+      </span>
+    </>
   );
-});
-
-type SimpleVariablePillProps = {
-  label: string;
-} & BaseVariablePillProps;
-
-export const SimpleVariablePill = ({
-  label,
-  ...props
-}: SimpleVariablePillProps) => (
-  // eslint-disable-next-line react/jsx-props-no-spreading
-  <BaseVariablePill {...props}>
-    <motion.span className="m-0 shrink-0 grow px-6 break-keep">
-      {label}
-    </motion.span>
-  </BaseVariablePill>
-);
-
-type EditableVariablePillProps = {
-  uuid: string;
-  width?: string;
 };
 
-const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
+const ConnectedVariablePillComponent = ({
+  animated = false,
+  editable = false,
+  maxWidth,
+  minWidth,
+  uuid,
+  width,
+}: ConnectedVariablePillProps) => {
   const dispatch = useAppDispatch();
-  const ref = useRef<HTMLDivElement>(null);
-
-  const [editing, setIsEditing] = useState(false);
-  const [canSubmit, setCanSubmit] = useState(false);
-  const [validation, setValidation] = useState<string | null>(null);
-
   const variableSelector = useMemo(
     () => makeGetVariableWithEntity(uuid),
     [uuid],
   );
   const variable = useAppSelector(variableSelector);
   const { name, type, entity, entityType } = variable ?? {};
-
-  const [newName, setNewName] = useState(name ?? '');
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setValidation(null);
-    setNewName(name ?? '');
-  };
-
-  const handleBlur = (e: React.FocusEvent) => {
-    // relatedTarget is the element that the focus event was fired from
-    const target = get(e, 'relatedTarget.id', null);
-
-    // Don't cancel if the user clicked the submit button
-    if (target === EDIT_COMPLETE_BUTTON_ID) {
-      return;
-    }
-    handleCancel();
-  };
-
-  const onEditComplete = () => {
-    const action = updateVariableByUUID(uuid, { name: newName });
-    void dispatch(action);
-    setValidation(null);
-    setIsEditing(false);
-  };
 
   // Ego variables live at `codebook.ego.variables`, so `type` must stay
   // undefined for them rather than defaulting to an entity type name.
@@ -155,130 +517,33 @@ const EditableVariablePill = ({ uuid, width }: EditableVariablePillProps) => {
   const existingVariableNames = useMemo(
     () =>
       Object.entries(existingVariables ?? {})
-        .filter(([variableId]) => variableId !== uuid) // Exclude current variable being edited
+        .filter(([variableId]) => variableId !== uuid)
         .map(([, existingVariable]) => get(existingVariable, 'name')),
     [existingVariables, uuid],
   );
-
-  const handleUpdateName = (value: string | undefined) => {
-    const nextValue = value ?? '';
-    setNewName(nextValue);
-
-    const required = validations.required('You must enter a variable name')(
-      nextValue,
-    );
-    const unique = validations.uniqueByList(existingVariableNames)(nextValue);
-    const allowed = validations.allowedVariableName()(nextValue);
-
-    const validationResult = required || unique || allowed || null;
-    setValidation(validationResult);
-    setCanSubmit(!validationResult);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault(); // Prevent any parent form from submitting
-
-      if (canSubmit) {
-        onEditComplete();
-      }
-    }
-  };
 
   if (!type) {
     return null;
   }
 
   return (
-    <BaseVariablePill type={type as VariableType} width={width} ref={ref}>
-      <AnimatePresence initial={false} mode="wait">
-        {editing ? (
-          <motion.div
-            key="edit"
-            className="flex-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Tooltip open={!!validation}>
-              <TooltipTrigger
-                render={
-                  <div className="w-full flex-auto">
-                    <InputField
-                      autoFocus
-                      placeholder="Enter a new variable name..."
-                      value={newName}
-                      onChange={handleUpdateName}
-                      onBlur={handleBlur}
-                      onKeyDown={handleKeyDown}
-                      suffixComponent={
-                        <motion.div className="flex shrink-0 grow-0">
-                          <motion.div
-                            aria-label="Finished"
-                            initial={{ x: '100%', opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                          >
-                            <IconButton
-                              id={EDIT_COMPLETE_BUTTON_ID}
-                              aria-label="Finished"
-                              title="Finished"
-                              size="sm"
-                              variant="text"
-                              color="success"
-                              disabled={!canSubmit}
-                              onClick={onEditComplete}
-                              icon={<Check aria-hidden />}
-                            />
-                          </motion.div>
-                          <motion.div
-                            initial={{ x: '100%', opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: 0.6 }}
-                            className="ml-2.5"
-                          >
-                            <IconButton
-                              aria-label="Cancel"
-                              title="Cancel"
-                              size="sm"
-                              variant="text"
-                              color="destructive"
-                              onClick={handleCancel}
-                              icon={<X aria-hidden />}
-                            />
-                          </motion.div>
-                        </motion.div>
-                      }
-                    />
-                  </div>
-                }
-              />
-              <TooltipContent
-                side="bottom"
-                className="bg-destructive text-destructive-contrast"
-              >
-                {validation}
-              </TooltipContent>
-            </Tooltip>
-          </motion.div>
-        ) : (
-          <motion.button
-            type="button"
-            key="label"
-            className="focusable m-0 w-full shrink-0 grow cursor-text overflow-hidden border-0 bg-transparent px-6 text-left break-keep text-ellipsis whitespace-nowrap"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsEditing(true)}
-            title="Click to rename this variable..."
-            aria-label={`Rename variable ${name ?? ''}`}
-          >
-            {name}
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </BaseVariablePill>
+    <VariablePill
+      animated={animated}
+      editable={editable}
+      label={name ?? ''}
+      maxWidth={maxWidth}
+      minWidth={minWidth}
+      type={type}
+      width={width}
+      onLabelChange={(nextName) => {
+        const action = updateVariableByUUID(uuid, { name: nextName });
+        void dispatch(action);
+      }}
+      validateLabel={(nextName) =>
+        validations.uniqueByList(existingVariableNames)(nextName)
+      }
+    />
   );
 };
 
-export default React.memo(EditableVariablePill);
+export const ConnectedVariablePill = React.memo(ConnectedVariablePillComponent);

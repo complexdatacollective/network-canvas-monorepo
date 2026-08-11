@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within } from 'storybook/test';
 
 import Node, { NodeColors } from './Node';
 import Heading from './typography/Heading';
@@ -40,7 +41,7 @@ without needing explicit mode flags.
     label: {
       control: 'text',
       description:
-        'Text displayed inside the node. Long labels are truncated with ellipsis.',
+        'Text displayed inside the node. Labels wrap at locale-appropriate opportunities, fall back to safe character breaks, and are line-clamped with an ellipsis.',
       table: {
         type: { summary: 'string' },
         defaultValue: { summary: 'Node' },
@@ -392,31 +393,99 @@ export const FocusRing: Story = {
   },
 };
 
+const resilientLabelCases = [
+  {
+    caption: 'Short name',
+    label: 'Amina',
+    lang: 'en',
+  },
+  {
+    caption: 'Natural word boundaries',
+    label: 'María de los Ángeles Hernández García',
+    lang: 'es',
+  },
+  {
+    caption: 'Locale-aware hyphenation',
+    label: 'Alexandra Müller-Lüdenscheidt',
+    lang: 'de',
+  },
+  {
+    caption: 'CJK line breaking',
+    label: '佐藤アレクサンドラ美咲',
+    lang: 'ja',
+  },
+  {
+    caption: 'No natural break opportunities',
+    label: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    lang: 'en',
+  },
+] as const;
+
+const resilientLabelShapes = ['circle', 'square', 'diamond'] as const;
+
 /**
- * Long labels are automatically truncated with an ellipsis.
+ * Labels stay within the node shape across languages and pathological input.
  */
 export const LongLabels: Story = {
   render: () => (
-    <div className="flex gap-6">
-      <div className="flex flex-col items-center gap-2">
-        <Node label="Short" />
-        <span className="text-xs text-current/70">Short</span>
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        <Node label="Medium Label" color="node-color-seq-2" />
-        <span className="text-xs text-current/70">Medium</span>
-      </div>
-      <div className="flex flex-col items-center gap-2">
-        <Node label="This is a very long label" color="node-color-seq-3" />
-        <span className="text-xs text-current/70">Truncated</span>
-      </div>
+    <div className="flex flex-col gap-10">
+      {resilientLabelCases.map(({ caption, label, lang }, index) => (
+        <section key={caption} className="flex flex-col gap-3">
+          <Heading level="h3" margin="none" className="text-base">
+            {caption}
+          </Heading>
+          <div className="flex flex-wrap gap-8">
+            {resilientLabelShapes.map((shape) => (
+              <div
+                key={shape}
+                className="flex w-32 flex-col items-center gap-2"
+              >
+                <Node
+                  label={label}
+                  lang={lang}
+                  shape={shape}
+                  size="sm"
+                  color={
+                    `node-color-seq-${index + 1}` as (typeof NodeColors)[number]
+                  }
+                />
+                <span className="text-center text-xs text-current/70">
+                  {shape}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nodes = canvas.getAllByRole('button');
+
+    await expect(nodes).toHaveLength(
+      resilientLabelCases.length * resilientLabelShapes.length,
+    );
+
+    for (const node of nodes) {
+      const bounds = node.getBoundingClientRect();
+      await expect(Math.abs(bounds.width - bounds.height)).toBeLessThan(1);
+
+      const accessibleLabel = node.getAttribute('aria-label');
+      const visibleLabel = within(node).getByText(accessibleLabel ?? '');
+      await expect(visibleLabel).toHaveClass(
+        'hyphens-auto',
+        'wrap-anywhere',
+        'line-clamp-3',
+      );
+    }
+  },
   parameters: {
+    layout: 'padded',
     docs: {
       description: {
         story:
-          'Labels longer than 22 characters are truncated with a soft hyphen and ellipsis.',
+          'Every label scenario is shown on circle, square, and diamond nodes. The browser first uses Unicode and locale-aware line-breaking rules (including automatic hyphenation from the inherited `lang`). If a string has no meaningful break opportunity, it may break anywhere before reaching the shape edge. Labels that exhaust the available height are clamped with an ellipsis, while the full value remains the accessible name.',
       },
     },
   },

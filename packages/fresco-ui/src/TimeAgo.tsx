@@ -12,6 +12,32 @@ const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   minute: 'numeric',
 };
 
+const MINUTE_MS = 60000;
+const HOUR_MS = 3600000;
+const DAY_MS = 86400000;
+const WEEK_MS = 604800000;
+
+function formatTimeAgo(date: Date, localisedDate: string): string {
+  const distance = Date.now() - date.getTime();
+  if (distance < MINUTE_MS) {
+    return 'just now';
+  }
+  if (distance < HOUR_MS) {
+    const minutes = Math.floor(distance / MINUTE_MS);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  }
+  if (distance < DAY_MS) {
+    const hours = Math.floor(distance / HOUR_MS);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  if (distance < WEEK_MS) {
+    const days = Math.floor(distance / DAY_MS);
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  }
+  // More than a week ago, fall back to the locale-formatted timestamp.
+  return localisedDate;
+}
+
 type TimeAgoProps = Omit<
   React.TimeHTMLAttributes<HTMLTimeElement>,
   'onClick'
@@ -30,45 +56,31 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
 }) => {
   const date = useMemo(() => new Date(dateProp), [dateProp]);
   const opts = dateOptions ?? DEFAULT_DATE_OPTIONS;
-  const localisedDate = new Intl.DateTimeFormat(
-    navigator.language,
-    opts,
-  ).format(date);
+  const localisedDate = useMemo(
+    () => new Intl.DateTimeFormat(navigator.language, opts).format(date),
+    [date, opts],
+  );
 
-  const [timeAgo, setTimeAgo] = useState<string>('');
+  // Computed synchronously for the very first paint: deriving this in an
+  // effect rendered an empty element whose width then jumped — a visible
+  // flicker on every mount (and table cells remount on unrelated re-renders).
+  const [timeAgo, setTimeAgo] = useState(() =>
+    formatTimeAgo(date, localisedDate),
+  );
   // Click anywhere on the time element to flip between the relative
   // ("2 days ago") rendering and the raw locale-formatted timestamp.
   const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
-    const calculateTimeAgo = () => {
-      const now = new Date();
-      const distance = now.getTime() - date.getTime();
-
-      if (distance < 60000) {
-        setTimeAgo('just now');
-      } else if (distance < 3600000) {
-        const singleOrPlural =
-          Math.floor(distance / 60000) === 1 ? 'minute' : 'minutes';
-        setTimeAgo(`${Math.floor(distance / 60000)} ${singleOrPlural} ago`);
-      } else if (distance < 86400000) {
-        const singleOrPlural =
-          Math.floor(distance / 3600000) === 1 ? 'hour' : 'hours';
-        setTimeAgo(`${Math.floor(distance / 3600000)} ${singleOrPlural} ago`);
-      } else if (distance < 604800000) {
-        const singleOrPlural =
-          Math.floor(distance / 86400000) === 1 ? 'day' : 'days';
-        setTimeAgo(`${Math.floor(distance / 86400000)} ${singleOrPlural} ago`);
-      } else {
-        // More than a week ago, fall back to Intl.DateTimeFormat
-        setTimeAgo(localisedDate);
-      }
+    const update = () => {
+      // Setting an unchanged string is a no-op render-wise; React bails out.
+      setTimeAgo(formatTimeAgo(date, localisedDate));
     };
 
-    calculateTimeAgo();
+    update();
 
     // Update time ago every minute
-    const interval = setInterval(calculateTimeAgo, 60000);
+    const interval = setInterval(update, MINUTE_MS);
 
     return () => clearInterval(interval);
   }, [date, localisedDate]);

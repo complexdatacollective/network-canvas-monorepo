@@ -1,5 +1,17 @@
 # @codaco/site-navigation-element
 
+## 1.0.2
+
+### Patch Changes
+
+- d33236b: Compile the navigation styles with the catalog-managed Tailwind CLI so nested source files are scanned correctly.
+
+## 1.0.1
+
+### Patch Changes
+
+- a95c5e8: Reveal the software destinations in the shared site navigation with a staggered animation, keep the dropdown stable while it closes, and respect reduced-motion preferences.
+
 ## 1.0.0
 
 ### Major Changes

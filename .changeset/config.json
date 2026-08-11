@@ -7,14 +7,15 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  },
   "ignore": [
     "@codaco/architect-classic",
     "@codaco/interviewer-classic",
     "@codaco/documentation",
-    "networkcanvas.com",
-    "@codaco/architect",
-    "@codaco/interviewer",
-    "@codaco/background-creator"
+    "networkcanvas.com"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

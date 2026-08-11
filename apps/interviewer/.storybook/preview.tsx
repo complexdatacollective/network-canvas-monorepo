@@ -8,7 +8,6 @@ import {
 } from '@storybook/addon-docs/blocks';
 import addonVitest from '@storybook/addon-vitest';
 import { definePreview } from '@storybook/react-vite';
-import isChromatic from 'chromatic/isChromatic';
 import { type PropsWithChildren, StrictMode } from 'react';
 
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -63,27 +62,14 @@ export default definePreview({
     },
   },
   decorators: [
-    (Story) => {
-      // Disable Base UI / motion animations whenever the browser is being
-      // driven by automation (Playwright in vitest browser mode, or
-      // Storybook's play-function runner) or under Chromatic, so visual
-      // snapshots and interaction tests are deterministic. Manual browsing has
-      // `navigator.webdriver === false`, so interactive development keeps the
-      // full animations.
-      const disableAnimationsFromAutomation =
-        typeof navigator !== 'undefined' && navigator.webdriver;
-      const disableAnimations =
-        disableAnimationsFromAutomation || isChromatic();
-
-      return (
-        <StrictMode>
-          <ThemedRegion theme="interview" className="root h-full">
-            <Providers disableAnimations={disableAnimations}>
-              <Story />
-            </Providers>
-          </ThemedRegion>
-        </StrictMode>
-      );
-    },
+    (Story) => (
+      <StrictMode>
+        <ThemedRegion theme="interview" className="root h-full">
+          <Providers>
+            <Story />
+          </Providers>
+        </ThemedRegion>
+      </StrictMode>
+    ),
   ],
 });

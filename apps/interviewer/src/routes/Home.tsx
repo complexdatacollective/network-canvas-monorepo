@@ -174,8 +174,13 @@ export function HomeRoute() {
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
+      {/* Top padding measures from the bottom of the device's top safe area
+          (env() is 0 outside an installed PWA on a notched/status-bar device),
+          so the brand mark and action bar clear the clock/battery while the
+          gradient backdrop still shows through behind them (#1186). At laptop:
+          the design's 2.25rem floor wins unless the inset pushes past it. */}
       <header
-        className="tablet-landscape:px-11 tablet-landscape:pt-9 relative flex items-center justify-between px-6 pt-6"
+        className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] relative flex items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))]"
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -197,7 +202,7 @@ export function HomeRoute() {
             actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
             portrait width (~1024px) would otherwise trip a min-width
             breakpoint and pull the pill up into the header. */}
-        <div className="tablet-landscape:px-11 tablet-landscape:pt-9 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-6 landscape:translate-y-0">
+        <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />

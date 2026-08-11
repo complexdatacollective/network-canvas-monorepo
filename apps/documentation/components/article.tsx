@@ -1,4 +1,5 @@
 'use client';
+import { ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
@@ -42,9 +43,18 @@ export default function Article({
             level="h4"
             variant="all-caps"
             margin="none"
-            className="text-accent"
+            className="text-accent flex flex-wrap items-center gap-x-2"
           >
-            {sectionLabel} {subsection && <>🠖 {subsection}</>}
+            <span>{sectionLabel}</span>
+            {subsection && (
+              <>
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 -translate-y-px stroke-4"
+                />
+                <span>{subsection}</span>
+              </>
+            )}
           </Heading>
           {/* The title is the last child of <header>, so fresco's
               not-last:mb-[0.5em] never applies — force a bottom margin so the

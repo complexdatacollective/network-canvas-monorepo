@@ -8,6 +8,7 @@ import {
   type SiteLocale,
 } from '@codaco/shared-consts';
 
+import { CLASSIC_DOWNLOAD_PATH_PREFIX } from '../../lib/classicDownloads.ts';
 import { localeCookie } from '../../lib/i18n/locales.ts';
 
 type RequestedLocale = {
@@ -21,7 +22,6 @@ const legacyDownloadPaths = new Set([
   '/download/',
   '/download.html',
 ]);
-
 function canonicalizeLocale(value: string) {
   try {
     return Intl.getCanonicalLocales(value)[0];
@@ -88,6 +88,8 @@ function shouldBypass(pathname: string) {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/.netlify/') ||
+    pathname === CLASSIC_DOWNLOAD_PATH_PREFIX ||
+    pathname.startsWith(`${CLASSIC_DOWNLOAD_PATH_PREFIX}/`) ||
     /\.[^/]+$/.test(pathname)
   );
 }
@@ -128,10 +130,10 @@ export function getLocaleRedirect(request: Request, savedLocale?: string) {
     return undefined;
   }
 
-  const locale = detectLocale(request, savedLocale);
+  const detectedLocale = detectLocale(request, savedLocale);
   url.pathname = legacyDownloadPaths.has(url.pathname)
-    ? `/${locale}/get-started/`
-    : getLocalizedPathname(locale, url.pathname);
+    ? `/${detectedLocale}/get-started/`
+    : getLocalizedPathname(detectedLocale, url.pathname);
 
   return url;
 }

@@ -85,8 +85,8 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
 
   const { moveForward } = props.getNavigationHelpers();
 
-  useBeforeNext((direction) => {
-    if (mode === 'intro' && direction === 'forwards') {
+  useBeforeNext((direction, intent) => {
+    if (mode === 'intro' && direction === 'forwards' && intent === 'step') {
       setMode('form');
       return false;
     }

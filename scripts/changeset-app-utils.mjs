@@ -5,25 +5,33 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const GATED_PRODUCT_PACKAGES = [
-  '@codaco/architect',
-  '@codaco/background-creator',
   '@codaco/documentation',
-  '@codaco/interviewer',
   'networkcanvas.com',
 ];
 
 export const GATED_PRODUCT_DIRS = {
-  '@codaco/architect': 'apps/architect',
-  '@codaco/background-creator': 'apps/background-creator',
   '@codaco/documentation': 'apps/documentation',
-  '@codaco/interviewer': 'apps/interviewer',
   'networkcanvas.com': 'apps/networkcanvas.com',
 };
 
-export const STABLE_GATED_PRODUCT_PACKAGES = [
-  '@codaco/documentation',
-  'networkcanvas.com',
-];
+// Documentation and Website keep separately generated release PRs because they
+// deploy independently from the normal Changesets lane. Architect and
+// Interviewer are private packages in that normal lane alongside libraries.
+export const GATED_PRODUCT_RELEASE_LANES = {
+  documentation: ['@codaco/documentation'],
+  website: ['networkcanvas.com'],
+};
+
+export function releaseLaneForProduct(
+  product,
+  lanes = GATED_PRODUCT_RELEASE_LANES,
+) {
+  return (
+    Object.entries(lanes).find(([, products]) =>
+      products.includes(product),
+    )?.[0] ?? null
+  );
+}
 
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
@@ -54,72 +62,39 @@ export function classifyChangeset(
 ) {
   const products = new Set(productPackages);
   return {
-    productReleases: cs.releases.filter((r) => products.has(r.name)),
-    libReleases: cs.releases.filter((r) => !products.has(r.name)),
+    gatedProductReleases: cs.releases.filter((r) => products.has(r.name)),
+    normalReleases: cs.releases.filter((r) => !products.has(r.name)),
   };
 }
 
 export function isMixedChangeset(cs, productPackages = GATED_PRODUCT_PACKAGES) {
-  const { productReleases, libReleases } = classifyChangeset(
+  const { gatedProductReleases, normalReleases } = classifyChangeset(
     cs,
     productPackages,
   );
-  return productReleases.length > 0 && libReleases.length > 0;
+  return gatedProductReleases.length > 0 && normalReleases.length > 0;
 }
 
-export function isMultiProductChangeset(
+export function isMultiProductLaneChangeset(
   cs,
   productPackages = GATED_PRODUCT_PACKAGES,
+  lanes = GATED_PRODUCT_RELEASE_LANES,
 ) {
-  const { productReleases } = classifyChangeset(cs, productPackages);
-  return new Set(productReleases.map((release) => release.name)).size > 1;
-}
-
-// Releases that are in the Changesets `ignore` list but are NOT gated products —
-// i.e. the maintenance-mode "classic" apps. They have no release lane of their
-// own (`changeset version` ignores them and no product release PR consumes
-// them), so an entry for one is only valid when it stands alone.
-export function foreignIgnoredReleases(
-  cs,
-  ignore,
-  productPackages = GATED_PRODUCT_PACKAGES,
-) {
-  const products = new Set(productPackages);
-  return cs.releases.filter(
-    (r) => ignore.includes(r.name) && !products.has(r.name),
+  const { gatedProductReleases } = classifyChangeset(cs, productPackages);
+  const releaseLanes = gatedProductReleases.map((release) =>
+    releaseLaneForProduct(release.name, lanes),
   );
-}
-
-// A gated product must ship alone. `isMixedChangeset` catches product+library
-// and `isMultiProductChangeset` catches product+product, but both miss a gated
-// product paired with a foreign ignored app (a classic): the pair has no
-// library (so it is not "mixed") and only one gated product (so it is not
-// "multi-product"), yet version-beta-apps.mjs would consume the whole file for
-// the product and silently drop the classic entry. This closes that gap.
-export function isProductWithForeignIgnoredAppChangeset(
-  cs,
-  ignore,
-  productPackages = GATED_PRODUCT_PACKAGES,
-) {
-  const products = new Set(productPackages);
-  const hasProduct = cs.releases.some((r) => products.has(r.name));
+  // A gated product missing from the lane map is a configuration error. Treat
+  // it as its own lane so a changeset cannot silently couple it to another
+  // product.
   return (
-    hasProduct && foreignIgnoredReleases(cs, ignore, productPackages).length > 0
+    new Set(
+      releaseLanes.map(
+        (lane, index) =>
+          lane ?? `unconfigured:${gatedProductReleases[index].name}`,
+      ),
+    ).size > 1
   );
-}
-
-const BETA_RE = /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/;
-
-export function nextBetaVersion(current) {
-  const m = BETA_RE.exec(current);
-  if (!m) {
-    throw new Error(
-      `Version "${current}" is not on a -beta.N line (expected e.g. 8.0.0-beta.0). ` +
-        'Set the base version manually in the app package.json before releasing.',
-    );
-  }
-  const [, major, minor, patch, beta] = m;
-  return `${major}.${minor}.${patch}-beta.${Number(beta) + 1}`;
 }
 
 export function nextStableVersion(current, entries) {

@@ -33,6 +33,8 @@ pnpm --filter @codaco/architect dev
 pnpm --filter @codaco/interviewer dev
 pnpm --filter @codaco/documentation dev
 pnpm --filter networkcanvas.com dev
+# Fresco also starts PostgreSQL and MinIO in Docker
+pnpm --filter fresco dev
 ```
 
 ### Building & Testing
@@ -134,20 +136,39 @@ pnpm version-packages
 pnpm publish-packages
 ```
 
-#### Changeset lanes: libraries vs gated products
+#### Changeset lanes: normal vs separately gated products
 
-- **Publishable library packages** under `packages/*` release to npm via
-  `changesets/action` (the "Version Packages" PR). Private packages stay in the
-  same dependency graph but are not published.
-- **Each gated product** has its own release PR: Architect, Background Creator,
-  and Interviewer release on a `-beta.N` line and create a GitHub release, while
-  Documentation and networkcanvas.com use normal semver and receive a Git tag.
-  Merging a product's release PR deploys only that product to Netlify production.
-- **One release lane per changeset.** Never put a gated product and a library—or
-  two gated products—in the same changeset. `pnpm check:changesets` rejects both;
-  write one changeset per product or library lane.
+- **The normal Changesets lane** contains publishable libraries under
+  `packages/*` plus the private Architect, Background Creator, Interviewer, and
+  Fresco apps. All use normal semver and are versioned by `changesets/action` in
+  the **Version Packages** PR (`changeset-release/main`). Libraries publish to
+  npm; changed apps deploy and receive a GitHub release after that PR merges —
+  Architect, Background Creator, and Interviewer to Netlify, Fresco via the
+  mirror described below.
+- **Separately gated products** are Documentation and networkcanvas.com. They
+  keep independent stable-semver release PRs, production deploys, and Git tags.
+- **One release lane per changeset.** A normal-lane changeset may combine
+  libraries, Architect, Background Creator, Interviewer, and Fresco. Never mix
+  Documentation or Website with the normal lane or with each other; the
+  `pnpm check:changesets` guard rejects it.
 - See the `creating-a-changeset` skill and
-  `docs/superpowers/specs/2026-07-03-pwa-app-beta-releases-design.md`.
+  `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
+
+#### Apps that release by mirroring
+
+Fresco and the two classic apps are developed here but ship from their own
+GitHub repositories. `scripts/mirror-app.mjs` replaces the external repo's
+default branch with the app's source as a single linear-append commit, resolving
+every `workspace:`/`catalog:` specifier to a registry version
+(`scripts/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
+external repository is a mirror, never a source of truth — changes made there
+are overwritten by the next release.
+
+Fresco additionally gets a generated single-package `pnpm-workspace.yaml` and a
+pnpm lockfile, because its `Dockerfile` builds the mirrored tree directly. The
+push to the Fresco repo's `main` is what triggers its container image build and
+push to GHCR; see `apps-release-fresco` in `.github/workflows/ci-and-release.yml`
+and `apps/fresco/CLAUDE.md`.
 
 ## Architecture Overview
 
@@ -159,8 +180,9 @@ consistency:
 - **Apps**: Products and websites
   - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
   - `architect-classic` - Maintenance-mode Electron version of the original Architect
-  - `background-creator` - Vite/React editor for designing sociogram background images and matching position-generation scripts
+  - `background-creator` - Vite/React editor for designing responsive sociogram backgrounds and matching zone-assignment scripts
   - `documentation` - Localized Next.js documentation site built from Markdown/MDX
+  - `fresco` - Self-hosted Next.js server that runs Network Canvas interviews in the browser, backed by PostgreSQL and object storage
   - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
   - `interviewer-classic` - Maintenance-mode Interviewer for Electron desktop and Capacitor mobile
   - `networkcanvas.com` - Localized Next.js project website
@@ -189,8 +211,9 @@ consistency:
 ### Key Technologies
 
 - **Workspace orchestration**: pnpm workspaces and Turborepo
-- **Builds**: Vite for current web apps and libraries, Next.js for websites,
-  Electron Vite for classic desktop apps, and Wrangler for Cloudflare Workers
+- **Builds**: Vite for current web apps and libraries, Next.js for the websites
+  and Fresco, Electron Vite for classic desktop apps, and Wrangler for
+  Cloudflare Workers
 - **Validation**: Zod with complex cross-reference validation patterns
 - **Frontend**: React, with Redux or Zustand where application state requires it
 - **Styling**: Tailwind CSS, Base UI, and the shared Fresco design system
@@ -223,7 +246,7 @@ Synthetic network generation and interview-payload builder for Network Canvas pr
 Embeddable React interview engine containing the participant-facing interfaces,
 stage navigation, state management, analytics hooks, and the contract a host
 uses to synchronize and finish sessions. It is hosted by the current Interviewer
-app, Architect previews, and external consumers such as Fresco.
+app, Architect previews, and Fresco.
 
 #### @codaco/fresco-ui
 
@@ -324,25 +347,47 @@ required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
 its Chromatic externals so static-asset changes invalidate the relevant
 stories.
 
-#### Release-only E2E checks
+#### Affected E2E checks
 
-CI runs the Architect, Interview, and Interviewer E2E suites only for
-generated release branches (`changeset-release/*`) and merge groups whose
-package or product version changes will trigger a release — and only the
-suites whose subject ships in that release lane: the library lane
-(`changeset-release/main`) runs all three; the Architect and Interviewer lanes
-run their own suite plus Interview (both apps bundle the interview runtime);
-the Background Creator, Documentation, and Website lanes run none. The mapping
-lives in
-`scripts/release-e2e-policy.mjs`, and its test derives the expected lanes from
-the real package.json dependency graph so the table cannot silently drift.
-The required `quality` check requires exactly the suites the policy selects.
-Ordinary PRs skip E2E and never inherit an E2E verdict from an earlier
-commit.
+CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
+targeting `main` when the cumulative PR diff touches the suite subject or
+anything in its workspace dependency closure. A change to `@codaco/interview`,
+for example, runs all downstream suites; an Architect-only change runs
+Architect E2E. The classifier treats `docs/`, `.changeset/`, and Markdown as
+inert, and fails closed for root configs, workflows, scripts, the lockfile,
+unrecognised paths, or unreadable history.
 
-Generated release branches and their merge groups use equivalence reuse: a
-suite is skipped when a prior successful native pull-request run of it exists
-on the same branch and the diff since that commit touches only paths that
+Generated release branches (`changeset-release/*`) keep their release-aware
+selection: only suites whose subjects ship in that release lane run. The normal
+Changesets lane (`changeset-release/main`) runs all three because it versions
+libraries, Architect, and Interviewer; the Documentation and Website lanes run
+none. The mapping and feature-PR classifier live in
+`scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
+dependency graph. The required `quality` check requires exactly the suites the
+policy selects.
+
+Each suite runs as **two jobs**. `<suite>-e2e` runs inside the pinned
+Playwright image and compares the committed PNG baselines; `<suite>-e2e-native`
+runs everything else on a plain runner, where it gets the Turbo remote cache
+the container is structurally denied. The pinned image is required for
+rasterising pixels and nothing else — Architect's JSON stage snapshots come
+from IndexedDB protocol JSON rather than the DOM, and Interview's ARIA
+snapshots are accessibility-tree text that is already regenerated on developer
+macOS hosts and compared in Linux CI. The split key is the selector each
+suite's `test:e2e:update-snapshots` script already uses (`--grep @visual`, or
+`--project=*-visual` for Interview), so the lanes cannot drift from the
+regeneration workflow. Both halves are required by `quality`, and
+`E2E_JOB_NAMES` in `scripts/release-e2e-policy.mjs` requires both to be green
+before a verdict can be reused. The capture helpers throw when
+`E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
+instead of silently comparing container baselines against a runner's fonts.
+Feature PRs never inherit an E2E verdict from an earlier commit: suite
+selection uses the cumulative merge-base-to-current-head diff, so every
+required verdict describes the exact head under review.
+
+Generated release branches use equivalence reuse: a suite is skipped when the
+newest equivalent native pull-request verdict across the generated release
+branches is successful and the diff since that commit touches only paths that
 provably cannot affect the suite — files in workspace packages outside the
 suite subject's declared workspace dependency closure (dependencies,
 devDependencies, peerDependencies, optionalDependencies), or the inert
@@ -355,10 +400,18 @@ re-running, while any change that ships in the lane re-runs as before (see
 `scripts/release-e2e-policy.mjs` and
 `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
+Merge groups run only a lightweight `quality` acknowledgement. The main
+ruleset requires every pull request to pass its full `quality` check before it
+can enter the queue, so merge-group commits deliberately do not repeat lint,
+tests, typechecking, builds, E2E, or Chromatic. GitHub still requires the
+`quality` context to be reported on the merge-group SHA; the acknowledgement
+exists only to satisfy that protocol and does not revalidate the combined
+queue commit.
+
 The release jobs create and update generated branches with the fine-grained PAT
 stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to
 start without manual approval. Do not add a separate workflow dispatch: it would
-duplicate the native CI run and its release-only E2E suites.
+duplicate the native CI run and its selected E2E suites.
 
 #### E2E visual snapshot baselines
 

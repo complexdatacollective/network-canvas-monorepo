@@ -1,11 +1,11 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import posthogSourceMaps from '@posthog/rollup-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { loadEnv, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { defineConfig } from 'vitest/config';
 
 import { version } from './package.json';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
@@ -62,6 +62,18 @@ const injectCspMeta = (): Plugin => ({
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
 
+  // PostHog needs source maps to symbolicate the exceptions posthog-js reports
+  // (see src/analytics.ts). The credentials are set only on the production
+  // release job (.github/workflows/ci-and-release.yml), so every other build —
+  // local, PR, Netlify preview — emits no maps at all. When they are emitted
+  // they are `hidden` (no sourceMappingURL comment, so a browser never requests
+  // them), and the plugin deletes them from dist once uploaded, so the deployed
+  // site never serves a map. Both variables are declared in turbo.json's build
+  // `env` so an uploading build can never reuse a non-uploading cache entry.
+  const posthogPersonalApiKey = env.POSTHOG_PERSONAL_API_KEY;
+  const posthogProjectId = env.POSTHOG_PROJECT_ID;
+  const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
+
   return {
     define: {
       __APP_VERSION__: JSON.stringify(version),
@@ -92,6 +104,22 @@ export default defineConfig(({ mode }) => {
           display: 'standalone',
           start_url: '/',
           scope: '/',
+          // Listed explicitly so the maskable entry can point at its own
+          // artwork: pwa-assets generates the full-bleed `any` icons from
+          // public/architect-icon.png, while the maskable icon is committed
+          // separately at 0.85 scale (see pwa-assets.config.ts). Declaring
+          // `icons` also stops the generator overwriting this list.
+          icons: [
+            { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            {
+              src: 'maskable-icon-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
           // Register the installed app as a .netcanvas opener/editor (Chromium
           // desktop File Handling API; Safari has no equivalent, and the web
           // manifest has no viewer/editor role field — the role is functional:
@@ -284,6 +312,22 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
+      // Last: its writeBundle hook rewrites the emitted chunks (injecting the
+      // chunk ids PostHog matches maps by) and must see the final output.
+      ...(uploadSourceMaps
+        ? [
+            posthogSourceMaps({
+              personalApiKey: posthogPersonalApiKey,
+              projectId: posthogProjectId,
+              sourcemaps: {
+                enabled: true,
+                releaseName: 'Architect',
+                releaseVersion: version,
+                deleteAfterUpload: true,
+              },
+            }),
+          ]
+        : []),
     ],
     build: {
       rollupOptions: {
@@ -291,23 +335,6 @@ export default defineConfig(({ mode }) => {
           main: resolve(rootDir, 'index.html'),
           preview: resolve(rootDir, 'preview/index.html'),
         },
-      },
-    },
-    test: {
-      globals: true,
-      environment: 'jsdom',
-      // Parallelised with the rest of the workspace's tests in the CI quality
-      // job; a borderline jsdom test can be starved past the 5s default under
-      // peak runner load, so give generous headroom.
-      testTimeout: 20_000,
-      setupFiles: ['./src/test-setup.ts'],
-      // e2e/ holds Playwright specs — run via test:e2e, not vitest.
-      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
-      // Honour the app's own analytics gate (analytics.ts) so PostHog doesn't
-      // init a real client (in debug mode) against the production host during
-      // unit tests, spamming stderr with config dumps and $pageview payloads.
-      env: {
-        VITE_DISABLE_ANALYTICS: 'true',
       },
     },
   };

@@ -7,10 +7,15 @@ find the full documentation for it [in our repository](https://github.com/change
 We have a quick list of common questions to get you started engaging with this project in
 [our documentation](https://github.com/changesets/changesets/blob/main/docs/common-questions.md)
 
-## Gated product changesets
+## Release lanes
 
-These private workspaces are in the `ignore` list, so `changeset version`
-preserves their changesets. Architect and Interviewer release on `-beta.N`;
-Documentation and networkcanvas.com release with normal semver. Each has its own
-generated production release PR. Do not combine a gated product with a library
-or another gated product in one changeset (`pnpm check:changesets` rejects it).
+Architect and Interviewer are private packages in the normal Changesets lane.
+They use standard semver and are versioned in the generated **Version Packages**
+PR alongside publishable libraries; merging that PR deploys each changed app to
+Netlify production. A normal-lane changeset may name either app, both apps,
+libraries, or any combination of them.
+
+Documentation and networkcanvas.com remain in the `ignore` list because they
+keep independent production release PRs. A changeset must not combine one of
+those separately gated products with the normal lane or with the other gated
+product (`pnpm check:changesets` rejects either case).

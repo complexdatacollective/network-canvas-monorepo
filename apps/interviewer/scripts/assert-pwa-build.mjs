@@ -49,18 +49,29 @@ const precached = new Set(
 );
 
 const assetsDir = path.join(dist, 'assets');
-let jsAssets = [];
+let assetFiles = [];
 try {
-  jsAssets = (await readdir(assetsDir)).filter((f) => f.endsWith('.js'));
+  assetFiles = await readdir(assetsDir);
 } catch {
   fail('missing dist/assets');
+}
+const jsAssets = assetFiles.filter((f) => f.endsWith('.js'));
+
+// Source maps are emitted only to be uploaded to PostHog, and the upload
+// deletes them (see vite.config.ts). One surviving here would publish the
+// app's full source with the deploy.
+const strayMaps = assetFiles.filter((f) => f.endsWith('.map'));
+if (strayMaps.length > 0) {
+  fail(`source map(s) left in dist/assets: ${strayMaps.join(', ')}`);
 }
 
 const critical = jsAssets.filter(
   (f) =>
     f.startsWith('interview-engine') ||
     f.startsWith('main') ||
-    f.startsWith('index'),
+    f.startsWith('index') ||
+    // The export Web Worker chunk: offline data export depends on it.
+    f.startsWith('exportWorker'),
 );
 if (critical.length === 0) {
   fail('no critical chunks (interview-engine / entry) found');

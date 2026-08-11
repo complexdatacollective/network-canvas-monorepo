@@ -344,9 +344,7 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   return (
     <div
-      className={`interface h-full overflow-hidden${
-        stageBackground.image === undefined ? '' : ' p-0'
-      }`}
+      className="interface h-full overflow-hidden"
       ref={interfaceRef}
       data-testid="sociogram"
       data-layout-mode={layoutMode}
@@ -354,7 +352,22 @@ const Sociogram = (stageProps: SociogramProps) => {
     >
       {measurementContainer}
       <Canvas
-        background={<StageBackground background={stageBackground} />}
+        backgroundClassName={
+          stageBackground.image === undefined
+            ? undefined
+            : 'phone-landscape:-inset-4 tablet-landscape:-inset-6 desktop:-inset-x-8 -inset-2'
+        }
+        background={
+          stageBackground.image === undefined ? (
+            <StageBackground
+              background={stageBackground}
+              className="h-full"
+              data-testid="sociogram-concentric-background"
+            />
+          ) : (
+            <StageBackground background={stageBackground} />
+          )
+        }
         nodes={canvasNodes}
         edges={edges}
         store={store}

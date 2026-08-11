@@ -13,12 +13,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  affectedSuitesForPaths,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
   equivalentValidatedSuites,
   E2E_SUITE_SUBJECTS,
-  mergeGroupRequiredSuites,
-  releaseBranchForMergeQueue,
+  pullRequestRequiredSuites,
   releaseE2EPolicy,
   releaseRefForEvent,
   relevanceDirsForSubject,
@@ -27,6 +27,7 @@ import {
 } from './release-e2e-policy.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const NORMAL_RELEASE_REF = 'changeset-release/main';
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -34,8 +35,8 @@ function git(cwd, ...args) {
 
 function initRepo() {
   const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-'));
-  // -b main: the merge-queue tests check out `main` by name, which must not
-  // depend on the host's init.defaultBranch (CI runners default to master).
+  // -b main keeps fixture branch names independent of the host's
+  // init.defaultBranch (CI runners default to master).
   git(cwd, 'init', '-q', '-b', 'main');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
@@ -72,7 +73,8 @@ test('recognises only the generated release PR refs', () => {
   }
   for (const headRef of [
     'changeset-release/not-a-release',
-    'changeset-release/apps',
+    'changeset-release/architect',
+    'changeset-release/interviewer',
     'feature/add-changeset',
   ]) {
     assert.equal(
@@ -122,30 +124,33 @@ test('release lane suites match the workspace dependency graph', () => {
   };
 
   const productLanes = {
-    'changeset-release/architect': '@codaco/architect',
-    'changeset-release/background-creator': '@codaco/background-creator',
-    'changeset-release/documentation': '@codaco/documentation',
-    'changeset-release/interviewer': '@codaco/interviewer',
-    'changeset-release/website': 'networkcanvas.com',
+    [NORMAL_RELEASE_REF]: ['@codaco/architect', '@codaco/interviewer'],
+    'changeset-release/documentation': ['@codaco/documentation'],
+    'changeset-release/website': ['networkcanvas.com'],
   };
-  for (const [releaseRef, product] of Object.entries(productLanes)) {
-    assert.ok(
-      dependenciesByName.has(product),
-      `workspace package ${product} exists`,
-    );
-    const shipped = transitiveDependencies(product);
+  for (const [releaseRef, products] of Object.entries(productLanes)) {
+    for (const product of products) {
+      assert.ok(
+        dependenciesByName.has(product),
+        `workspace package ${product} exists`,
+      );
+    }
     for (const key of SUITE_KEYS) {
       const subject = E2E_SUITE_SUBJECTS[key];
+      const shipped = products.some(
+        (product) =>
+          subject === product || transitiveDependencies(product).has(subject),
+      );
       assert.equal(
         SUITES_BY_RELEASE_REF[releaseRef][key],
-        subject === product || shipped.has(subject),
-        `${releaseRef} requires the ${key} suite exactly when ${subject} ships in ${product}`,
+        shipped,
+        `${releaseRef} requires the ${key} suite exactly when ${subject} ships in its products`,
       );
     }
   }
 
-  // The library lane publishes packages consumed by every app, so it always
-  // requires every suite.
+  // The normal lane versions libraries and both apps, so it always requires
+  // every suite.
   for (const key of SUITE_KEYS) {
     assert.equal(SUITES_BY_RELEASE_REF['changeset-release/main'][key], true);
   }
@@ -182,10 +187,8 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
-    ['workflow_dispatch', 'changeset-release/architect'],
-    ['workflow_dispatch', 'changeset-release/background-creator'],
+    ['workflow_dispatch', NORMAL_RELEASE_REF],
     ['workflow_dispatch', 'changeset-release/documentation'],
-    ['workflow_dispatch', 'changeset-release/interviewer'],
     ['workflow_dispatch', 'changeset-release/website'],
   ]) {
     assert.deepEqual(
@@ -203,7 +206,17 @@ test('all release policies share the central snapshot PR target', () => {
   }
 });
 
-test('merge groups require the suites the detector reports', () => {
+test('merge groups never require E2E', () => {
+  assert.deepEqual(releaseE2EPolicy({ eventName: 'merge_group' }), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+    releaseRef: '',
+    snapshotBranch: '',
+  });
+});
+
+test('feature PRs require the suites the affected-path detector reports', () => {
   const detected = {
     interview: true,
     interviewer: false,
@@ -211,108 +224,40 @@ test('merge groups require the suites the detector reports', () => {
   };
   assert.deepEqual(
     releaseE2EPolicy(
-      { eventName: 'merge_group', baseSha: 'base', headSha: 'head' },
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
       () => detected,
     ),
     { ...detected, releaseRef: '', snapshotBranch: '' },
   );
-});
-
-test('merge-group version bumps require only the affected lanes', () => {
-  const cwd = initRepo();
-  commitManifest(
-    cwd,
-    'apps/networkcanvas.com/package.json',
-    '{"name":"networkcanvas.com","version":"0.1.1"}\n',
-    'add website',
-  );
-  const baseSha = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.0"}\n',
-    'base',
-  );
-
-  // A website bump releases nothing the suites test.
-  const websiteBump = commitManifest(
-    cwd,
-    'apps/networkcanvas.com/package.json',
-    '{"name":"networkcanvas.com","version":"0.1.2"}\n',
-    'release website',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(baseSha, websiteBump, cwd), {
-    interview: false,
-    interviewer: false,
-    architect: false,
-  });
-
-  // An architect bump releases the architect app, which ships the interview
-  // runtime.
-  const architectBump = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1"}\n',
-    'release architect',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(websiteBump, architectBump, cwd), {
-    interview: true,
-    interviewer: false,
-    architect: true,
-  });
-
-  // A library bump can ship in every app.
-  const libraryBump = commitManifest(
-    cwd,
-    'packages/protocol-validation/package.json',
-    '{"name":"@codaco/protocol-validation","version":"9.9.9"}\n',
-    'release library',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(architectBump, libraryBump, cwd), {
-    interview: true,
-    interviewer: true,
-    architect: true,
-  });
-
-  // Content-only manifest changes (no version movement) require nothing.
-  const scriptChange = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1","scripts":{}}\n',
-    'manifest content change',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(libraryBump, scriptChange, cwd), {
-    interview: false,
-    interviewer: false,
-    architect: false,
-  });
-});
-
-test('ordinary events do not require release E2E', () => {
-  const none = {
-    interview: false,
-    interviewer: false,
-    architect: false,
-    releaseRef: '',
-    snapshotBranch: '',
-  };
   assert.deepEqual(
-    releaseE2EPolicy({ eventName: 'pull_request', headRef: 'feature/example' }),
-    none,
-  );
-  assert.deepEqual(
-    releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
-    none,
+    releaseE2EPolicy(
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
+      () => {
+        throw new Error('unreadable PR history');
+      },
+    ),
+    {
+      interview: true,
+      interviewer: true,
+      architect: true,
+      releaseRef: '',
+      snapshotBranch: '',
+    },
   );
 });
 
-// Build a repo shaped like a merge-queue checkout: main, a release branch
-// with a version bump, and a merge commit of the branch into main (HEAD).
-// Returns the branch tip so tests can point origin/changeset-release/* at it.
-function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
+test('feature PR suite selection follows the workspace dependency graph', () => {
   const cwd = initRepo();
-  // @codaco/interview must be a real discovered package: equivalence reuse
-  // now refuses to trust a relevance judgment about a suite whose subject is
-  // missing from the graph entirely.
   commitManifest(
     cwd,
     'packages/interview/package.json',
@@ -321,126 +266,116 @@ function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
   );
   commitManifest(
     cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.0"}\n',
-    'base',
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add interviewer',
   );
-  git(cwd, 'checkout', '-qb', 'release');
-  const branchTip = commitManifest(
+  commitManifest(
     cwd,
     'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1"}\n',
-    'version architect',
+    '{"name":"@codaco/architect","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add architect',
+  );
+  const commonBase = commitManifest(
+    cwd,
+    'apps/documentation/package.json',
+    '{"name":"@codaco/documentation","version":"1.0.0"}\n',
+    'add documentation',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-architect', commonBase);
+  const architectHead = commitManifest(
+    cwd,
+    'apps/architect/src/main.tsx',
+    'export {};\n',
+    'change architect',
   );
   git(cwd, 'checkout', '-q', 'main');
-  if (advanceMainWith) {
-    commitManifest(cwd, advanceMainWith, 'moved\n', 'main moved');
-  }
-  git(cwd, 'merge', '-q', '--no-ff', '--no-edit', 'release');
-  return { cwd, branchTip };
-}
-
-function architectLaneQueueCall(cwd, fetcher) {
-  const branch = releaseBranchForMergeQueue(cwd);
-  return equivalentValidatedSuites({
+  const advancedBase = commitManifest(
     cwd,
-    repository: 'example/repo',
-    token: 'token',
-    branch,
-    headSha: git(cwd, 'rev-parse', 'HEAD'),
-    requiredSuites: { interview: true, interviewer: false, architect: true },
-    fetcher,
-  });
-}
-
-const ARCHITECT_LANE_SUCCESS_JOBS = [
-  { name: 'architect-e2e', conclusion: 'success' },
-  { name: 'interview-e2e', conclusion: 'success' },
-  { name: 'quality', conclusion: 'success' },
-];
-
-test('merge queue identifies the release lane from the merge second parent', () => {
-  const { cwd, branchTip } = initMergeQueueRepo();
-  assert.equal(releaseBranchForMergeQueue(cwd), '');
-  git(
-    cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    branchTip,
+    'apps/interviewer/src/main.tsx',
+    'export {};\n',
+    'advance main',
   );
-  assert.equal(releaseBranchForMergeQueue(cwd), 'changeset-release/architect');
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, architectHead, cwd),
+    { interview: false, interviewer: false, architect: true },
+    'merge-base diff excludes unrelated movement on the base branch',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-interview', commonBase);
+  const interviewHead = commitManifest(
+    cwd,
+    'packages/interview/src/index.ts',
+    'export {};\n',
+    'change interview',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, interviewHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'a shared runtime change selects every downstream suite',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-documentation', commonBase);
+  const documentationHead = commitManifest(
+    cwd,
+    'apps/documentation/src/page.tsx',
+    'export {};\n',
+    'change documentation',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, documentationHead, cwd),
+    { interview: false, interviewer: false, architect: false },
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-root-config', commonBase);
+  const rootConfigHead = commitManifest(
+    cwd,
+    'turbo.json',
+    '{}\n',
+    'change root config',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, rootConfigHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'an unrecognised root path fails closed',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-docs-only', commonBase);
+  const docsHead = commitManifest(cwd, 'README.md', 'Docs\n', 'change docs');
+  assert.deepEqual(pullRequestRequiredSuites(advancedBase, docsHead, cwd), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
 });
 
-test('merge-queue reuse skips suites validated at the branch tip', async () => {
-  const { cwd, branchTip } = initMergeQueueRepo();
-  git(
-    cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    branchTip,
+test('affected path selection fails closed when a suite subject is missing', () => {
+  const cwd = writeWorkspaceFixture();
+  const manifest = join(cwd, 'apps/architect/package.json');
+  writeFileSync(
+    manifest,
+    '{"name":"@codaco/not-architect","version":"1.0.0"}\n',
   );
-  // The merge added nothing beyond the branch: empty diff, trivial case.
-  assert.deepEqual(
-    await architectLaneQueueCall(
-      cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
-      }),
-    ),
-    { interview: true, interviewer: false, architect: true },
-  );
+  assert.deepEqual(affectedSuitesForPaths(['README.md'], cwd), {
+    interview: false,
+    interviewer: false,
+    architect: true,
+  });
 });
 
-test('merge-queue reuse classifies batched main movement by relevance', async () => {
-  // Main moved with a file inside the architect subject: the architect suite
-  // re-runs. The interview suite may still skip — apps/architect is outside
-  // the interview package's closure, so its e2e outcome cannot change.
-  const relevant = initMergeQueueRepo({
-    advanceMainWith: 'apps/architect/src/main.tsx',
-  });
-  git(
-    relevant.cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    relevant.branchTip,
-  );
+test('non-PR ordinary events do not require E2E', () => {
+  const none = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+    releaseRef: '',
+    snapshotBranch: '',
+  };
   assert.deepEqual(
-    await architectLaneQueueCall(
-      relevant.cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, relevant.branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
-      }),
-    ),
-    { interview: true, interviewer: false, architect: false },
+    releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
+    none,
   );
-
-  // Main moved with an inert file (README): the batched merge still cannot
-  // affect the suites, so reuse holds. (Old byte-identical semantics re-ran
-  // here; relevance classification is the intended improvement.)
-  const inert = initMergeQueueRepo({ advanceMainWith: 'README.md' });
-  git(
-    inert.cwd,
-    'update-ref',
-    'refs/remotes/origin/changeset-release/architect',
-    inert.branchTip,
-  );
-  assert.deepEqual(
-    await architectLaneQueueCall(
-      inert.cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, inert.branchTip)],
-        jobsByRun: { 1: ARCHITECT_LANE_SUCCESS_JOBS },
-      }),
-    ),
-    { interview: true, interviewer: false, architect: true },
-  );
-
-  // An ordinary PR that bumps a version must never satisfy reuse: without a
-  // matching origin/changeset-release/* tip there is no branch to walk.
-  const untrusted = initMergeQueueRepo();
-  assert.equal(releaseBranchForMergeQueue(untrusted.cwd), '');
 });
 
 // Scaffold a repo-shaped directory tree (no git needed for these tests):
@@ -583,6 +518,7 @@ test('diff classification is fail-closed', () => {
 // single-page response, so existing callers are unaffected.
 function fakeActionsApi({
   runs,
+  runsByBranch,
   jobsByRun,
   totalCountByRun = {},
   failRuns = false,
@@ -593,11 +529,24 @@ function fakeActionsApi({
       if (failRuns) return { ok: false };
       assert.match(url, /[?&]event=pull_request(?:&|$)/);
       assert.match(url, /[?&]branch=changeset-release%2F/);
-      return { ok: true, json: async () => ({ workflow_runs: runs }) };
+      const branch = new URL(url).searchParams.get('branch');
+      return {
+        ok: true,
+        json: async () => ({
+          workflow_runs: runsByBranch?.[branch] ?? runs ?? [],
+        }),
+      };
     }
     if (failJobs) return { ok: false };
     const runId = url.match(/\/fake-jobs\/(\d+)\?/)?.[1];
-    const jobs = jobsByRun[runId] ?? [];
+    const jobs = (jobsByRun[runId] ?? []).map((job) =>
+      Object.hasOwn(job, 'completed_at')
+        ? job
+        : {
+            ...job,
+            completed_at: `2026-07-${String(runId).padStart(2, '0')}T01:00:00Z`,
+          },
+    );
     return {
       ok: true,
       json: async () => ({
@@ -660,7 +609,7 @@ function interviewerLaneCall(cwd, headSha, fetcher) {
     cwd,
     repository: 'example/repo',
     token: 'token',
-    branch: 'changeset-release/interviewer',
+    branch: NORMAL_RELEASE_REF,
     headSha,
     requiredSuites: INTERVIEWER_LANE,
     fetcher,
@@ -669,7 +618,9 @@ function interviewerLaneCall(cwd, headSha, fetcher) {
 
 const INTERVIEWER_LANE_SUCCESS_JOBS = [
   { name: 'interview-e2e', conclusion: 'success' },
+  { name: 'interview-e2e-native', conclusion: 'success' },
   { name: 'interviewer-e2e', conclusion: 'success' },
+  { name: 'interviewer-e2e-native', conclusion: 'success' },
   { name: 'quality', conclusion: 'success' },
 ];
 
@@ -703,6 +654,25 @@ test('equivalence reuse skips suites when the delta cannot affect them', async (
   assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
     interview: true,
     interviewer: true,
+    architect: false,
+  });
+});
+
+test('equivalence reuse fails closed without a job completion time', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const fetcher = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: INTERVIEWER_LANE_SUCCESS_JOBS.map((job) => ({
+        ...job,
+        completed_at: null,
+      })),
+    },
+  });
+
+  assert.deepEqual(await interviewerLaneCall(cwd, validatedSha, fetcher), {
+    interview: false,
+    interviewer: false,
     architect: false,
   });
 });
@@ -747,6 +717,57 @@ test('equivalence reuse fails closed on relevant or unrecognised deltas', async 
   );
 });
 
+test('a suite needs BOTH of its halves green to be reusable', async () => {
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+
+  // Each suite runs as a Dockerized pixel half and a native functional half.
+  // A green pixel half must never carry a red functional half: that would
+  // reuse a verdict for precisely the coverage that failed.
+  const functionalHalfRed = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'failure' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
+      ],
+    },
+  });
+  // interview loses its verdict; interviewer, both halves green, keeps its
+  // own — a red half is scoped to its own suite.
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, functionalHalfRed), {
+    interview: false,
+    interviewer: true,
+    architect: false,
+  });
+
+  // A half that never reported is not a verdict either — this is what a run
+  // predating the lane split looks like, and it must re-run rather than
+  // inherit half a result.
+  const halfMissing = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
+      ],
+    },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, halfMissing), {
+    interview: false,
+    interviewer: true,
+    architect: false,
+  });
+});
+
 test('the newest conclusive verdict is authoritative', async () => {
   const { cwd, validatedSha } = initReleaseBranchRepo();
   const headSha = commitManifest(
@@ -763,7 +784,9 @@ test('the newest conclusive verdict is authoritative', async () => {
     jobsByRun: {
       2: [
         { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'success' },
         { name: 'interviewer-e2e', conclusion: 'failure' },
+        { name: 'interviewer-e2e-native', conclusion: 'success' },
       ],
       1: INTERVIEWER_LANE_SUCCESS_JOBS,
     },
@@ -781,7 +804,9 @@ test('the newest conclusive verdict is authoritative', async () => {
     jobsByRun: {
       2: [
         { name: 'interview-e2e', conclusion: 'cancelled' },
+        { name: 'interview-e2e-native', conclusion: 'cancelled' },
         { name: 'interviewer-e2e', conclusion: 'skipped' },
+        { name: 'interviewer-e2e-native', conclusion: 'skipped' },
       ],
       1: INTERVIEWER_LANE_SUCCESS_JOBS,
     },
@@ -1000,7 +1025,7 @@ test('equivalence reuse rejects a suite whose subject package is missing from th
       cwd,
       repository: 'example/repo',
       token: 'token',
-      branch: 'changeset-release/interviewer',
+      branch: NORMAL_RELEASE_REF,
       headSha,
       requiredSuites: {
         interview: true,
@@ -1009,7 +1034,12 @@ test('equivalence reuse rejects a suite whose subject package is missing from th
       },
       fetcher: fakeActionsApi({
         runs: [fakeRun(1, validatedSha)],
-        jobsByRun: { 1: [{ name: 'interview-e2e', conclusion: 'success' }] },
+        jobsByRun: {
+          1: [
+            { name: 'interview-e2e', conclusion: 'success' },
+            { name: 'interview-e2e-native', conclusion: 'success' },
+          ],
+        },
       }),
     }),
     { interview: false, interviewer: false, architect: false },

@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type {
   VariableOptions,
@@ -101,6 +102,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
+  const shouldSkipAnimations = useShouldSkipAnimations();
 
   const baseId = useId();
   const pairLabelId = `${baseId}-pair`;
@@ -227,7 +229,12 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   });
 
   // Navigation
-  useBeforeNext((direction) => {
+  useBeforeNext((direction, intent) => {
+    if (intent === 'jump') {
+      setPairIndex(0);
+      return true;
+    }
+
     if (direction === 'forwards') {
       setIsForwards(true);
 
@@ -279,19 +286,26 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   moveForwardRef.current = moveForward;
 
   useEffect(() => {
-    if (!isTouched) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    if (!isChanged) {
-      moveForwardRef.current();
-      return;
+    if (isTouched && hasEdge !== null) {
+      const advance = () => {
+        setIsTouched(false);
+        setIsChanged(false);
+        moveForwardRef.current();
+      };
+
+      if (!isChanged || shouldSkipAnimations) {
+        advance();
+      } else {
+        timer = setTimeout(advance, 350);
+      }
     }
 
-    const timer = setTimeout(() => {
-      moveForwardRef.current();
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [isTouched, isChanged]);
+    return () => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [isTouched, isChanged, hasEdge, shouldSkipAnimations]);
 
   // Handle option selection
   const handleChange = (value: VariableOptionValue | false) => {

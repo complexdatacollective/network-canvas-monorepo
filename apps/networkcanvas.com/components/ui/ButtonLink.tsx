@@ -15,6 +15,7 @@ type ButtonLinkProps = {
   external?: boolean;
   color?: NonNullable<Variants>['color'];
   size?: NonNullable<Variants>['size'];
+  textStyle?: NonNullable<Variants>['textStyle'];
   variant?: NonNullable<Variants>['variant'];
 } & Omit<ComponentProps<'a'>, 'href' | 'color'>;
 
@@ -30,10 +31,14 @@ export function ButtonLink({
   external,
   color = 'primary',
   size,
+  textStyle,
   variant = 'default',
   ...props
 }: ButtonLinkProps) {
-  const classes = cn(buttonVariants({ color, size, variant }), className);
+  const classes = cn(
+    buttonVariants({ color, size, textStyle, variant }),
+    className,
+  );
 
   if (external) {
     return (

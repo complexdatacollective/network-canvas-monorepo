@@ -1,13 +1,12 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-// Regression for #803: the autosave flush GCs orphaned asset blobs via
+// Regression for #803: accepted commits eventually GC orphaned asset blobs via
 // putStoredProtocol -> deleteOrphanedAssets, which operates on the `assets`
-// table. The flush transaction must therefore include `assets` in its scope;
-// if it doesn't, Dexie throws NotFoundError, which the best-effort GC swallows,
-// leaving the orphan blob undeleted (an IndexedDB storage leak).
+// table. The write transaction must include `assets`, but GC must also retain
+// blobs referenced by Undo/Redo history until that history is discarded.
 //
 // jsdom has no IndexedDB and fake-indexeddb is not a dependency, so this test
 // faithfully models Dexie's transaction-scope enforcement instead of running a
@@ -130,11 +129,12 @@ vi.mock('~/utils/inMemoryAssetStore', () => ({
 
 import activeProtocol, {
   setActiveProtocol,
-  updateProtocolDescription,
 } from '../../modules/activeProtocol';
 import app, { setActiveProtocolId } from '../../modules/app';
+import { deleteAsset } from '../../modules/protocol/assetManifest';
+import { protocolCommitAccepted } from '../../protocolCommit';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
-import createTimeline from '../timeline';
+import createTimeline, { timelineActions } from '../timeline';
 
 const reducer = combineReducers({
   app,
@@ -164,9 +164,8 @@ const makeProtocol = (manifestKeys: string[]): CurrentProtocol =>
     ),
   }) as unknown as CurrentProtocol;
 
-describe('protocolLibraryListener — orphan asset GC on autosave (#803)', () => {
+describe('protocolLibraryListener — undo-safe orphan asset GC (#803)', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     db.assetRows.clear();
     db.protocolRows.clear();
 
@@ -194,25 +193,34 @@ describe('protocolLibraryListener — orphan asset GC on autosave (#803)', () =>
     });
   });
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-  });
-
-  it('deletes the orphaned blob when an autosave commits a manifest that dropped it', async () => {
-    // Active protocol references only a1 now; a2 was deleted from the manifest.
+  it('retains an orphaned blob while undo can restore its manifest entry', async () => {
     const store = makeStore();
     store.dispatch(setActiveProtocolId('p1'));
-    store.dispatch(setActiveProtocol(makeProtocol(['a1'])));
+    store.dispatch(setActiveProtocol(makeProtocol(['a1', 'a2'])));
+    store.dispatch(deleteAsset('a2'));
+    store.dispatch(
+      protocolCommitAccepted({
+        id: 'p1',
+        protocol: makeProtocol(['a1']),
+        persistenceAllowed: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    store.dispatch(updateProtocolDescription({ description: 'edited' }));
-    await vi.advanceTimersByTimeAsync(700);
-    // Let the write-lock promise chain settle.
-    await vi.runOnlyPendingTimersAsync();
-
-    // The orphaned blob a2 must have been GC'd inside the flush transaction.
-    expect(db.assetRows.has('p1::a2')).toBe(false);
-    // The still-referenced blob a1 must remain.
+    expect(db.assetRows.has('p1::a2')).toBe(true);
     expect(db.assetRows.has('p1::a1')).toBe(true);
+
+    // Once history is reset, a later accepted commit may reclaim the blob.
+    store.dispatch(timelineActions.reset(makeProtocol(['a1'])));
+    store.dispatch(
+      protocolCommitAccepted({
+        id: 'p1',
+        protocol: makeProtocol(['a1']),
+        persistenceAllowed: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(db.assetRows.has('p1::a2')).toBe(false);
   });
 });

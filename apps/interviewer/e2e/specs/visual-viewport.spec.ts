@@ -112,24 +112,67 @@ async function expectInsideVisualViewport(
     .toBe(true);
 }
 
+test('keeps the selected protocol card stable above the backdrop when the software keyboard makes the viewport compact', async ({
+  protocol,
+  page,
+}) => {
+  await installVisualViewportStub(page, LAYOUT_VISUAL_VIEWPORT);
+  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+  await page.getByRole('button', { name: 'Start new interview' }).click();
+  const card = page.getByLabel(`${LEAN_E2E_PROTOCOL_NAME} (active)`);
+  const caseIdInput = card.getByTestId('new-session-case-id');
+  await expect(page.getByTestId('new-session-backdrop')).toBeVisible();
+  await expect(caseIdInput).toBeVisible();
+  await expect(page.getByText('Import a protocol')).toBeVisible();
+  await expect(
+    page.getByTestId('protocol-deck-inactive-backdrop').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('button[aria-label="Previous protocol"]'),
+  ).toBeVisible();
+  const restingCardBox = await getBox(card);
+
+  await setVisualViewport(page, KEYBOARD_VIEWPORT);
+  await expect
+    .poll(async () =>
+      page
+        .locator('#root')
+        .evaluate((root) => root.getBoundingClientRect().height),
+    )
+    .toBe(526);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+  const keyboardCardBox = await getBox(card);
+
+  expect(keyboardCardBox.width).toBeCloseTo(restingCardBox.width, 1);
+  expect(keyboardCardBox.height).toBeCloseTo(restingCardBox.height, 1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(caseIdInput).toBeFocused();
+  await expect(page.getByTestId('new-session-case-id')).toHaveCount(1);
+
+  await setVisualViewport(page, LAYOUT_VISUAL_VIEWPORT);
+  await expect(caseIdInput).toBeVisible();
+});
+
 test('keeps the Name Generator prompt, quick add, and new node inside the iOS visual viewport', async ({
   protocol,
   interviewNav,
   page,
 }) => {
-  // Keep setup at the full layout size so the deck carousel cannot overlap
-  // the new-session dialog at this deliberately large test resolution. The
-  // regression begins once the interview is running and Safari chrome reduces
-  // and offsets the visible viewport.
+  // Keep setup at the full layout size. The regression begins once the
+  // interview is running and Safari chrome reduces and offsets the visible
+  // viewport.
   await installVisualViewportStub(page, LAYOUT_VISUAL_VIEWPORT);
   await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
   await page.getByRole('button', { name: 'Start new interview' }).click();
   const caseId = page.getByTestId('new-session-case-id');
   await caseId.fill('IOS-VIEWPORT');
-  // At this iPad-sized resolution, a fanned protocol card's 2D hit box
-  // overlaps the submit button even though the card is visually behind the
-  // dialog. Submitting the real form with Enter avoids that unrelated deck
-  // actionability quirk.
+  // Submitting the card-hosted form with Enter avoids neighboring fanned-card
+  // hit boxes at this deliberately large test resolution.
   await caseId.press('Enter');
   await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
   await interviewNav.waitForStage();

@@ -3,6 +3,6 @@
   "extends": "./base.json",
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "ES2024"],
-    "types": []
+    "types": ["@total-typescript/ts-reset"]
   }
 }

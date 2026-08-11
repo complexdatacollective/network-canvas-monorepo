@@ -117,7 +117,6 @@ const NodePanel = ({
           onMove={onMove}
           disabled={interactionDisabled}
           label={`Reorder side panel ${index + 1} of ${itemCount}`}
-          size="lg"
         />
       )}
       <div className="min-w-0 flex-1">
@@ -183,7 +182,6 @@ const NodePanel = ({
       <IconButton
         icon={<Trash2 />}
         aria-label="Remove side panel"
-        size="lg"
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}

@@ -21,11 +21,11 @@ describe('SiteNavigation', () => {
       'href',
       'https://community.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -56,13 +56,13 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Inicio de Network Canvas' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentación' })).toHaveAttribute(
       'href',
       '/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).not.toHaveAttribute(
-      'target',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Documentación' }),
+    ).not.toHaveAttribute('target');
     expect(
       screen.getByRole('link', { name: 'Galería de protocolos' }),
     ).toHaveAttribute('href', 'https://protocolgallery.networkcanvas.com/');
@@ -149,9 +149,18 @@ describe('SiteNavigation', () => {
       name: 'Architect Classic',
     });
     const softwareGrid = architectClassicLink.closest('ul');
+    const softwarePopup = architectClassicLink.closest('nav');
     if (!softwareGrid) throw new Error('Expected the software grid.');
+    if (!softwarePopup) throw new Error('Expected the software popup.');
+    const softwareViewport = softwarePopup.querySelector(':scope > div');
+    if (!softwareViewport) throw new Error('Expected the software viewport.');
 
     expect(softwareGrid).toHaveClass('grid', 'grid-cols-3');
+    expect(softwarePopup).toHaveClass(
+      'h-(--popup-height)',
+      'w-(--popup-width)',
+    );
+    expect(softwareViewport).toHaveClass('relative');
     expect(within(softwareGrid).getAllByRole('listitem')).toHaveLength(5);
     expect(
       within(softwareGrid)
@@ -165,10 +174,15 @@ describe('SiteNavigation', () => {
       'Interviewer Classic',
     ]);
     expect(architectClassicLink).toHaveClass(
-      'flex-col',
+      'items-start',
+      'gap-4',
       'p-5',
       'hover:bg-cyber-grape/10',
       '[[data-theme=dark]_&]:hover:bg-platinum-dark/10',
+    );
+    expect(architectClassicLink.querySelector('img')).toHaveAttribute(
+      'alt',
+      '',
     );
     expect(
       within(architectClassicLink).getByText('Architect Classic'),
@@ -270,11 +284,11 @@ describe('SiteNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Network Canvas home' }),
     ).toHaveAttribute('href', 'https://networkcanvas.com/');
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'href',
       'https://documentation.networkcanvas.com/',
     );
-    expect(screen.getByRole('link', { name: 'Docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute(
       'target',
       '_blank',
     );

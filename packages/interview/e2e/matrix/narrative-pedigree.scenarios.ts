@@ -5,6 +5,7 @@ import {
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
 
+import type { ProtocolPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { buildSyntheticPayload } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
@@ -941,10 +942,31 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       stageMetadata: {
         0: {
           isNetworkCommitted: true,
+          edgeIdVersion: 1,
           nodes: [
             { id: 'mother', label: 'Mother', isEgo: false },
             { id: 'father', label: 'Father', isEgo: false },
             { id: 'ego', label: 'You', isEgo: true },
+          ],
+          edges: [
+            {
+              id: 'b1',
+              from: 'mother',
+              to: 'ego',
+              attributes: {
+                [REL_TYPE_VAR]: ['biological'],
+                [IS_ACTIVE_VAR]: true,
+              },
+            },
+            {
+              id: 'b2',
+              from: 'father',
+              to: 'ego',
+              attributes: {
+                [REL_TYPE_VAR]: ['biological'],
+                [IS_ACTIVE_VAR]: true,
+              },
+            },
           ],
         },
       },
@@ -965,6 +987,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           [nameVarId]: 'Outsider',
           [BIO_SEX_VAR]: 'intersex',
         });
+        // A later same-typed edge must not pull the outsider into the source
+        // pedigree's layout or genetics graph.
+        bioEdge('later-outsider-edge', 'outsider', 'ego');
         synth.addStage('NarrativePedigree', {
           label: 'Inheritance Pathways',
           sourceStageId: fpStageId,
@@ -1014,8 +1039,11 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const corrupted = { ...built.protocol, stages: corruptedStages };
 
         await page.evaluate(
-          (protocolPayload) => window.__test.installProtocol(protocolPayload),
-          corrupted,
+          (serializedPayload: string) =>
+            window.__test.installProtocol(
+              JSON.parse(serializedPayload) as ProtocolPayload,
+            ),
+          JSON.stringify(corrupted),
         );
         const interviewId = await protocol.createInterview(
           corrupted.id,

@@ -4,6 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 
 import preview from '../../../.storybook/preview';
 import Node, { type NodeColorSequence } from '../../Node';
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import Paragraph from '../../typography/Paragraph';
 import { cx } from '../../utils/cva';
@@ -523,6 +524,7 @@ function DragDropStoryRender(args: DragDropStoryArgs) {
 const meta = preview.meta({
   title: 'Systems/Collection',
   tags: ['autodocs'],
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -1088,11 +1090,9 @@ export const KeyboardNavigation = meta.story({
     const canvas = within(canvasElement);
 
     // Click first item to establish focus
-    await userEvent.click(canvas.getByTestId('item-1'));
-    await expect(canvas.getByTestId('item-1')).toHaveAttribute(
-      'data-focused',
-      'true',
-    );
+    const firstItem = await canvas.findByTestId('item-1');
+    await userEvent.click(firstItem);
+    await expect(firstItem).toHaveAttribute('data-focused', 'true');
 
     // ArrowDown moves focus to next item
     await userEvent.keyboard('{ArrowDown}');
@@ -1141,11 +1141,9 @@ export const SingleSelection = meta.story({
     const canvas = within(canvasElement);
 
     // Click item-1 to select it
-    await userEvent.click(canvas.getByTestId('item-1'));
-    await expect(canvas.getByTestId('item-1')).toHaveAttribute(
-      'data-selected',
-      'true',
-    );
+    const firstItem = await canvas.findByTestId('item-1');
+    await userEvent.click(firstItem);
+    await expect(firstItem).toHaveAttribute('data-selected', 'true');
 
     // Click item-3 replaces selection (single mode)
     await userEvent.click(canvas.getByTestId('item-3'));
@@ -1189,11 +1187,9 @@ export const MultipleSelection = meta.story({
     const canvas = within(canvasElement);
 
     // Click item-1 to select
-    await userEvent.click(canvas.getByTestId('item-1'));
-    await expect(canvas.getByTestId('item-1')).toHaveAttribute(
-      'data-selected',
-      'true',
-    );
+    const firstItem = await canvas.findByTestId('item-1');
+    await userEvent.click(firstItem);
+    await expect(firstItem).toHaveAttribute('data-selected', 'true');
 
     // Click item-3 adds to selection (toggle behavior)
     await userEvent.click(canvas.getByTestId('item-3'));
@@ -1242,11 +1238,9 @@ export const TypeAheadSearch = meta.story({
     const canvas = within(canvasElement);
 
     // Click first item to establish focus
-    await userEvent.click(canvas.getByTestId('item-1'));
-    await expect(canvas.getByTestId('item-1')).toHaveAttribute(
-      'data-focused',
-      'true',
-    );
+    const firstItem = await canvas.findByTestId('item-1');
+    await userEvent.click(firstItem);
+    await expect(firstItem).toHaveAttribute('data-focused', 'true');
 
     // Type 'b' to jump to Bob Baker
     await userEvent.keyboard('b');
@@ -1286,10 +1280,8 @@ export const DisabledItems = meta.story({
     const canvas = within(canvasElement);
 
     // Verify disabled items have the disabled attribute
-    await expect(canvas.getByTestId('item-2')).toHaveAttribute(
-      'data-disabled',
-      'true',
-    );
+    const firstDisabledItem = await canvas.findByTestId('item-2');
+    await expect(firstDisabledItem).toHaveAttribute('data-disabled', 'true');
     await expect(canvas.getByTestId('item-4')).toHaveAttribute(
       'data-disabled',
       'true',

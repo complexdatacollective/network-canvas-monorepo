@@ -6,6 +6,7 @@ import type { AppDispatch } from '~/ducks/store';
 
 import reducer, {
   actionCreators,
+  getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
   test,
@@ -164,6 +165,43 @@ describe('protocol.stages', () => {
         expect(violation?.sourceStage.id).toBe('source');
         expect(violation?.destinationStage).toBeUndefined();
         expect(violation?.destinationStageId).toBe('destination');
+      });
+    });
+
+    describe('getFamilyPedigreeNodeTypeChangeBlock', () => {
+      const familyPedigreeWithDependent = [
+        { id: 'fp', type: 'FamilyPedigree', label: 'Family Pedigree' },
+        {
+          id: 'np',
+          type: 'NarrativePedigree',
+          label: 'Narrative Pedigree',
+          sourceStageId: 'fp',
+        },
+      ] as Stage[];
+
+      it('returns dependent NarrativePedigree stages when present', () => {
+        expect(
+          getFamilyPedigreeNodeTypeChangeBlock(
+            familyPedigreeWithDependent,
+            'fp',
+          ).map((stage) => stage.id),
+        ).toEqual(['np']);
+      });
+
+      it('returns nothing when no NarrativePedigree sources the stage', () => {
+        const withoutDependent = [
+          { id: 'fp', type: 'FamilyPedigree', label: 'Family Pedigree' },
+          {
+            id: 'np',
+            type: 'NarrativePedigree',
+            label: 'Narrative Pedigree',
+            sourceStageId: 'other',
+          },
+        ] as Stage[];
+
+        expect(
+          getFamilyPedigreeNodeTypeChangeBlock(withoutDependent, 'fp'),
+        ).toEqual([]);
       });
     });
 
@@ -362,25 +400,31 @@ describe('protocol.stages', () => {
 
         await store.dispatch(actionCreators.deleteStage('anon'));
 
-        // The real codebook updateVariable action is dispatched (not the dead
-        // legacy PROTOCOL/UPDATE_VARIABLE type).
-        const updateVariableAction = dispatched.find(
-          (a) => a.type === 'codebook/updateVariable',
+        const deleteStageAction = dispatched.find(
+          (a) => a.type === 'stages/deleteStage',
         );
-        expect(updateVariableAction).toBeDefined();
+        expect(deleteStageAction).toBeDefined();
         expect(
           dispatched.some((a) => a.type === 'PROTOCOL/UPDATE_VARIABLE'),
         ).toBe(false);
+        expect(
+          dispatched.filter(
+            (a) =>
+              a.type === 'stages/deleteStage' ||
+              a.type === 'codebook/updateVariable',
+          ),
+        ).toHaveLength(1);
 
-        const payload = updateVariableAction?.payload as
+        const payload = deleteStageAction?.payload as
           | {
-              configuration: Record<string, unknown>;
-              replaceProperties: readonly string[];
+              stageId: string;
+              clearEncryptedVariables: boolean;
             }
           | undefined;
-        expect(payload?.replaceProperties).toEqual(['encrypted']);
-        expect(payload?.configuration).not.toHaveProperty('id');
-        expect(payload?.configuration).not.toHaveProperty('encrypted');
+        expect(payload).toEqual({
+          stageId: 'anon',
+          clearEncryptedVariables: true,
+        });
 
         expect(dispatched.some((a) => a.type === 'stages/deleteStage')).toBe(
           true,

@@ -242,7 +242,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     setActiveNominationVariable(prompt?.variable ?? null);
   };
 
-  useBeforeNext((direction) => {
+  useBeforeNext((direction, intent) => {
     if (direction === 'forwards') {
       // Step 0 → finalize before advancing
       if (currentStepIndex === 0) {
@@ -254,7 +254,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
         }
 
         if (isNetworkCommitted) {
-          if (hasNominationPrompts) {
+          if (hasNominationPrompts && intent === 'step') {
             // Already finalized (revisiting) — skip straight to nomination
             setCurrentStepIndex(1);
             updateNominationVariable(1);
@@ -284,7 +284,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       }
 
       const isLastStep = currentStepIndex === allPrompts.length - 1;
-      if (isLastStep) {
+      if (intent === 'jump' || isLastStep) {
         syncMetadata();
         return true;
       }
@@ -296,6 +296,11 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     }
     if (direction === 'backwards') {
       if (currentStepIndex === 0) {
+        return true;
+      }
+
+      if (intent === 'jump') {
+        syncMetadata();
         return true;
       }
 

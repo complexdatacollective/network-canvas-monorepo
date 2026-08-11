@@ -14,10 +14,10 @@
 
 - **The aggregator job MUST be named `quality`.** Every downstream `needs: quality` / `needs.quality.result` reference and the ruleset's required-check _context_ depend on that exact name. Never rename it.
 - **Rollout order is a hard dependency chain:** PR 1 (interview vitest stub — test hygiene) → PR 2 (remote cache) → PR 3 (fan-out + inert `merge_group` trigger) → **enable ruleset** → PR 4 (drop push-time `quality`). **Never land PR 4 before the merge queue is live** — doing so publishes from an unverified `main`.
-- **Pin every third-party action by commit SHA** with a trailing `# vX.Y.Z` comment. Remote cache action: `rharkor/caching-for-turbo@75f8ebf4a43d2c60b23bc2a27082cfea94ffdad9 # v2.5.0`. Reuse the existing pinned SHAs for `actions/checkout`, `pnpm/action-setup`, `actions/setup-node` already in the workflow.
+- **Pin every third-party action by commit SHA** with a trailing `# vX.Y.Z` comment. Remote cache action: `rharkor/caching-for-turbo@75f8ebf4a43d2c60b23bc2a27082cfea94ffdad9 # v2.5.0`. Reuse the existing pinned SHAs for `actions/checkout`, `pnpm/setup`, `actions/setup-node` already in the workflow.
 - **Do NOT tune `turbo.json` `inputs` to fight version-bump cache misses.** Turbo always hashes each package's `package.json`/`turbo.json`/lockfile regardless of `inputs` (verified: docs + a hash test), so it is a no-op. This workstream was cut; version-PR rebuilds are inherent. The merge queue still removes the _duplicate_ version-PR build.
 - **Do not re-plumb `detect` / `carry-forward-statuses` for `merge_group`.** Only `quality` runs in the queue; all conditional jobs (chromatic, e2e, deploys) stay `pull_request`-scoped and non-required.
-- **Node** from `.nvmrc`; **pnpm** via `pnpm/action-setup`. Never `any`, never barrel files.
+- **Node** from `.nvmrc`; **pnpm** via `pnpm/setup`. Never `any`, never barrel files.
 - **Branching:** never commit to `main`; one feature branch per PR, based on `main` (the app-rename PR #821 has merged, so this plan's post-rename paths/names match `main`). `oxfmt` runs in the pre-commit hook and will reformat JSON/MD/YAML — expect it.
 
 ---
@@ -131,7 +131,9 @@ description: pnpm + Node + install + Turborepo remote cache (GitHub Actions Cach
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+    - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      with:
+        install: false
     - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
       with:
         node-version-file: .nvmrc
@@ -177,7 +179,9 @@ In the `quality` job, replace these steps:
 
 ```yaml
 - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
-- uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+- uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+  with:
+    install: false
 - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
   with:
     node-version-file: '.nvmrc'
@@ -236,7 +240,7 @@ Expected: one line per job listed above (~12).
 
 - [ ] **Step 2: Convert each job** (repeat the Task 2.2 replacement per job)
 
-For each job, delete its `pnpm/action-setup`, `actions/setup-node`, `pnpm install …`, and `actions/cache (path: .turbo)` steps and insert `- uses: ./.github/actions/turbo-ci-setup` immediately after that job's `actions/checkout`. Preserve every other step (env writes, `netlify-cli` deploys, `turbo run build --filter=…`, Chromatic, release actions). Do not change any `needs:`/`if:` here.
+For each job, delete its `pnpm/setup`, `actions/setup-node`, `pnpm install …`, and `actions/cache (path: .turbo)` steps and insert `- uses: ./.github/actions/turbo-ci-setup` immediately after that job's `actions/checkout`. Preserve every other step (env writes, `netlify-cli` deploys, `turbo run build --filter=…`, Chromatic, release actions). Do not change any `needs:`/`if:` here.
 
 - [ ] **Step 3: Verify no `.turbo` cache steps remain**
 

@@ -7,31 +7,34 @@
 > worker, same mechanism as Architect (another `vite-plugin-pwa` app in
 > this monorepo).
 
-## Versioned beta releases (changeset-driven)
+## Stable releases (changeset-driven)
 
-Network Canvas Interviewer is on a `8.0.0-beta.N` line. It is `private` and in the changeset
-`ignore` list, so the library `changeset version` never touches it — a dedicated
-lane handles it instead. The base `8.0.0` is fixed (change it with a manual
-`package.json` edit, e.g. to graduate out of beta); a changeset's `major`/
-`minor`/`patch` type only categorises the release notes, it does not move the
-base while in beta.
+Network Canvas Interviewer is a private package in the normal Changesets lane.
+It uses standard semantic versioning: the `major`/`minor`/`patch` selected in a
+changeset controls the next version, and the normal generated **Version
+Packages** PR updates its `package.json` and `CHANGELOG.md` alongside any
+affected libraries or Architect.
 
 1. **Author a changeset.** Run `pnpm changeset` and select
-   `@codaco/interviewer` (see the `creating-a-changeset` skill). Select no other
-   product or library in that file—CI (`pnpm check:changesets`) rejects it.
-2. **The "Release Interviewer" PR.** On every push to `main`, the Interviewer
-   entry in the `product-release-pr` matrix increments `-beta.N`, updates
-   `CHANGELOG.md`, deletes the consumed Interviewer changesets, and opens or
-   updates its release PR. The PR is withdrawn when no Interviewer changesets are
-   pending.
+   `@codaco/interviewer` (see the `creating-a-changeset` skill). The same
+   changeset may also name `@codaco/architect` and/or library packages because
+   they share the normal release lane. Select no Documentation or Website
+   package in that file—CI (`pnpm check:changesets`) rejects cross-lane
+   changesets.
+2. **The "Version Packages" PR.** On every push to `main`,
+   `changesets/action` runs the repository's `pnpm version-packages` command,
+   applies the requested semver bumps, updates changelogs, consumes the
+   changesets, and opens or updates `changeset-release/main`.
 3. **Merge to release.** Merging the PR bumps `package.json` on `main`; the
-   `apps-release-detect` job sees the version change and `apps-release-interviewer`
-   builds, deploys to Netlify **production**, and creates the prerelease GitHub release
-   `@codaco/interviewer@<version>` with the CHANGELOG notes.
+   `apps-release-detect` job sees the version change and
+   `apps-release-interviewer` builds, deploys to Netlify **production**, and
+   creates the stable GitHub release `@codaco/interviewer@<version>` with the
+   CHANGELOG notes.
 
 Netlify's Git integration builds pull-request previews and reports their URLs
 directly on the PR. Production is no longer deployed on every push to `main`—it
-is deployed only when the Release Interviewer PR merges.
+is deployed only when the Version Packages PR containing an Interviewer version
+bump merges.
 
 ## Developer site
 
@@ -103,6 +106,25 @@ tabs: a researcher mid-session on the previous build keeps running it until
 they leave the interview and either the auto-apply or the "update available"
 control catches up. There is no forced-update mechanism and none should be
 added — see the interview-active guard above.
+
+## PostHog source maps
+
+Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
+`POSTHOG_PROJECT_ID` (repository secrets shared with Architect and Documentation;
+the personal API key needs the _error tracking: write_ and _organization: read_
+scopes). Their presence is what switches source-map upload on: the build emits
+`hidden` maps, `@posthog/rollup-plugin` injects the chunk ids PostHog matches on,
+uploads the maps, and deletes them from `dist/` — so the exceptions `posthog-js`
+reports symbolicate to real source while the deploy still ships no maps. Every
+other build — local, PR, Netlify preview, the `.dev` site — has no credentials
+and emits no maps at all.
+
+A failed upload fails the build rather than deploying unsymbolicated. Both
+variables are part of the Turbo cache key for `build`, so a production build can
+never replay a cached artefact whose maps were never uploaded, and
+`scripts/assert-pwa-build.mjs` fails if a map is left behind in `dist/assets`
+(the workbox precache globs only `js`/`css`/`html`, so a stray map would ship
+silently otherwise).
 
 ## What used to be here
 

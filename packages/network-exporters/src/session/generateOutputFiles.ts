@@ -105,6 +105,7 @@ export const generateOutputFilesEffect = (
       stage: 'generating',
       message: 'Generating files...',
     });
+    yield* Effect.sleep(0);
 
     const results: GenerationResult[] = yield* Effect.forEach(
       items,
@@ -119,6 +120,12 @@ export const generateOutputFilesEffect = (
                   current,
                   total,
                 }),
+              ),
+              // Periodic macrotask boundary: file generation is synchronous
+              // CPU work on the one JS thread, so without it browser hosts
+              // never paint the progress they are being sent.
+              Effect.tap((current) =>
+                current % 10 === 0 ? Effect.sleep(0) : Effect.void,
               ),
             ),
           ),

@@ -61,6 +61,7 @@ const TooltipContent = React.forwardRef<
               newly opened tooltip is the only one visible. */}
           <BaseTooltip.Popup
             ref={ref}
+            role="tooltip"
             render={
               <MotionSurface
                 floating

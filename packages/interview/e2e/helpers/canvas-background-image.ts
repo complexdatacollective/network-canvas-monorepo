@@ -49,11 +49,11 @@ const getFullBleedChecks = (image: Locator, orientation: Orientation) =>
         close(imageRect.top, interfaceRect.top) &&
         close(imageRect.right, interfaceRect.right) &&
         close(imageRect.bottom, interfaceRect.bottom),
-      fillsCanvas:
-        close(imageRect.left, canvasRect.left) &&
-        close(imageRect.top, canvasRect.top) &&
-        close(imageRect.right, canvasRect.right) &&
-        close(imageRect.bottom, canvasRect.bottom),
+      coversCanvas:
+        imageRect.left <= canvasRect.left + 1 &&
+        imageRect.top <= canvasRect.top + 1 &&
+        imageRect.right >= canvasRect.right - 1 &&
+        imageRect.bottom >= canvasRect.bottom - 1,
       excludesOnlyNavigation:
         expectedOrientation === 'landscape'
           ? close(imageRect.left, navigationRect.right) &&
@@ -87,7 +87,7 @@ export async function expectResponsiveCanvasBackgroundImage(
     .poll(() => getFullBleedChecks(image, 'landscape'))
     .toEqual({
       fillsInterface: true,
-      fillsCanvas: true,
+      coversCanvas: true,
       excludesOnlyNavigation: true,
     });
 
@@ -102,7 +102,7 @@ export async function expectResponsiveCanvasBackgroundImage(
     .poll(() => getFullBleedChecks(image, 'portrait'))
     .toEqual({
       fillsInterface: true,
-      fillsCanvas: true,
+      coversCanvas: true,
       excludesOnlyNavigation: true,
     });
 }

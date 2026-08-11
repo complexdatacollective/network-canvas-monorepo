@@ -5,8 +5,8 @@
   "items": [
     {
       "id": "id-1",
-      "type": "text",
-      "content": "Thanks for taking part."
+      "content": "Thanks for taking part.",
+      "type": "text"
     }
   ],
   "id": "id-2"

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -14,6 +15,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -107,7 +109,7 @@ const NODE_C_ID = 'node-c';
 //  - B: (0.5, 0.2) — top-center
 //  - C: (0.8, 0.8) — bottom-right quadrant
 // The lasso polygon will enclose A and B but NOT C.
-function makePreloadedNodes() {
+function makePreloadedNodes(): NcNode[] {
   return [
     {
       [entityPrimaryKeyProperty]: NODE_A_ID,
@@ -136,7 +138,11 @@ function makePreloadedNodes() {
   ];
 }
 
-function makeStore(extraEdges: NcEdge[] = [], stageDef: StageFixture = stage) {
+function makeStore(
+  extraEdges: NcEdge[] = [],
+  stageDef: StageFixture = stage,
+  preloadedNodes = makePreloadedNodes(),
+) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -144,7 +150,7 @@ function makeStore(extraEdges: NcEdge[] = [], stageDef: StageFixture = stage) {
         id: 's',
         promptIndex: 0,
         network: {
-          nodes: makePreloadedNodes(),
+          nodes: preloadedNodes,
           edges: extraEdges,
           ego: { [entityAttributesProperty]: {} },
         },
@@ -236,7 +242,7 @@ function shiftTapNode(nodeEl: HTMLElement) {
 }
 
 // The Groups tool lives behind a popover; open it and pick "Team Red" so the
-// group tool is active and its lasso/"Add all" flow is available.
+// group tool is active and its lasso/bulk-membership flow is available.
 async function activateTeamRedGroup() {
   fireEvent.click(screen.getByRole('button', { name: /groups/i }));
   fireEvent.click(await screen.findByRole('button', { name: /team red/i }));
@@ -291,7 +297,7 @@ function lassoAB(canvas: HTMLElement) {
 }
 
 describe('NetworkComposer — group lasso', () => {
-  it('lasso in group mode selects the enclosed nodes; "Add all" adds them to the group', async () => {
+  it('lasso in group mode selects the enclosed nodes and adds them to the group', async () => {
     const store = makeStore();
     renderInterface(store);
 
@@ -303,13 +309,12 @@ describe('NetworkComposer — group lasso', () => {
     const canvas = screen.getByRole('application');
     lassoAB(canvas);
 
-    // "Add all to Team Red" appears only when ≥2 nodes are selected (A and B).
-    const addAllBtn = await screen.findByRole('button', {
-      name: /add all to team red/i,
+    const groupToggle = await screen.findByRole('button', {
+      name: /team red/i,
     });
 
     await act(async () => {
-      fireEvent.click(addAllBtn);
+      fireEvent.click(groupToggle);
     });
 
     // A and B gain the 'red' membership; C (outside the lasso) does not.
@@ -334,7 +339,7 @@ describe('NetworkComposer — group lasso', () => {
 });
 
 describe('NetworkComposer — select-mode lasso', () => {
-  it('lasso in select mode selects nodes and offers an "Add all" button per group', async () => {
+  it('lasso in select mode selects nodes and offers a toggle per group', async () => {
     const store = makeStore();
     renderInterface(store);
 
@@ -344,15 +349,13 @@ describe('NetworkComposer — select-mode lasso', () => {
     const canvas = screen.getByRole('application');
     lassoAB(canvas);
 
-    // One button per option of the configured hull variable.
-    await screen.findByRole('button', { name: /add all to team red/i });
-    const addAllButtons = screen.getAllByRole('button', {
-      name: /add all to/i,
+    const membershipGroup = await screen.findByRole('group', {
+      name: /group membership for selected people/i,
     });
-    expect(addAllButtons).toHaveLength(2);
+    expect(within(membershipGroup).getAllByRole('button')).toHaveLength(2);
   }, 15_000);
 
-  it('clicking an "Add all" button writes the group value to every selected node', async () => {
+  it('pressing a group toggle writes the value to every selected node', async () => {
     const store = makeStore();
     renderInterface(store);
 
@@ -361,11 +364,11 @@ describe('NetworkComposer — select-mode lasso', () => {
     const canvas = screen.getByRole('application');
     lassoAB(canvas);
 
-    const addAllBlue = await screen.findByRole('button', {
-      name: /add all to team blue/i,
+    const blueToggle = await screen.findByRole('button', {
+      name: /team blue/i,
     });
     await act(async () => {
-      fireEvent.click(addAllBlue);
+      fireEvent.click(blueToggle);
     });
 
     // A and B gain the 'blue' membership; C (outside the lasso) does not.
@@ -388,6 +391,56 @@ describe('NetworkComposer — select-mode lasso', () => {
     });
   }, 15_000);
 
+  it('shows mixed membership as pressed and toggles membership for every selected node', async () => {
+    const preloadedNodes = makePreloadedNodes();
+    const alice = preloadedNodes.find(
+      (node) => node[entityPrimaryKeyProperty] === NODE_A_ID,
+    );
+    if (!alice) throw new Error('expected Alice in the fixture');
+    alice[entityAttributesProperty][GROUP_VAR] = ['red'];
+
+    const store = makeStore([], stage, preloadedNodes);
+    renderInterface(store);
+
+    await screen.findByRole('button', { name: /alice/i });
+    lassoAB(screen.getByRole('application'));
+
+    expect(
+      screen.getByRole('region', { name: /group membership options/i }),
+    ).toBeInTheDocument();
+    const redToggle = await screen.findByRole('button', {
+      name: /team red/i,
+    });
+    expect(redToggle).toHaveAttribute('aria-pressed', 'true');
+
+    await act(async () => {
+      fireEvent.click(redToggle);
+    });
+
+    const groupValues = (id: string) =>
+      store
+        .getState()
+        .session.network.nodes.find(
+          (node) => node[entityPrimaryKeyProperty] === id,
+        )?.[entityAttributesProperty][GROUP_VAR];
+
+    await waitFor(() => {
+      expect(groupValues(NODE_A_ID)).toEqual([]);
+      expect(groupValues(NODE_B_ID)).toBeUndefined();
+      expect(redToggle).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    await act(async () => {
+      fireEvent.click(redToggle);
+    });
+
+    await waitFor(() => {
+      expect(groupValues(NODE_A_ID)).toEqual(['red']);
+      expect(groupValues(NODE_B_ID)).toEqual(['red']);
+      expect(redToggle).toHaveAttribute('aria-pressed', 'true');
+    });
+  }, 15_000);
+
   it('lasso in select mode selects nothing when no hull variable is configured', async () => {
     const stageWithoutHullVariable: StageFixture = {
       ...stage,
@@ -401,7 +454,11 @@ describe('NetworkComposer — select-mode lasso', () => {
     const canvas = screen.getByRole('application');
     lassoAB(canvas);
 
-    expect(screen.queryByRole('button', { name: /add all to/i })).toBeNull();
+    expect(
+      screen.queryByRole('group', {
+        name: /group membership for selected people/i,
+      }),
+    ).toBeNull();
   });
 });
 

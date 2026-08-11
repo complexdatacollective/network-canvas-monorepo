@@ -14,6 +14,7 @@ export const nameGeneratorQuickAddStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorQuickAdd'),
   quickAdd: entityAttributeReference({
     subject: 'stageSubject',
+    usage: 'validatedAttribute',
   }),
   subject: NodeStageSubjectSchema,
   panels: z

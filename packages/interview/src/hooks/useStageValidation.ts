@@ -14,7 +14,7 @@ import { useTrack } from '../analytics/useTrack';
 import { StageMetadataContext } from '../contexts/StageMetadataContext';
 import { useInterviewToastContext } from '../toast/InterviewToast';
 import { interviewToastManager } from '../toast/interviewToastManager';
-import type { Direction } from '../types';
+import type { Direction, NavigationIntent } from '../types';
 
 type StageConstraint = {
   direction: 'forwards' | 'backwards' | 'both';
@@ -115,7 +115,11 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
 
   // Register the keyed beforeNext handler
   useEffect(() => {
-    const handler = (direction: Direction) => {
+    const handler = (direction: Direction, intent: NavigationIntent) => {
+      if (intent === 'jump') {
+        return true;
+      }
+
       const currentConstraints = constraintsRef.current;
       const activeToasts = activeToastsRef.current;
 

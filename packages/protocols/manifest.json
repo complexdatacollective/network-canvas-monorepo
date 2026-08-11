@@ -55,6 +55,24 @@
       "architectTemplate": true
     },
     {
+      "id": "life-transition-networks",
+      "kind": "template",
+      "name": "Life Transitions & Turning Points",
+      "description": "A narrative interview about how a life change reshaped the people around you",
+      "protocolPath": "templates/life-transition-networks/protocol.json",
+      "assetDir": "templates/life-transition-networks/assets",
+      "architectTemplate": true
+    },
+    {
+      "id": "eco-genetic-relationship-maps",
+      "kind": "template",
+      "name": "Colored Eco-Genetic Relationship Map (CEGRM)",
+      "description": "An implementation of the CEGRM method that overlays a family pedigree with the support network around an inherited condition",
+      "protocolPath": "templates/eco-genetic-relationship-maps/protocol.json",
+      "assetDir": "templates/eco-genetic-relationship-maps/assets",
+      "architectTemplate": true
+    },
+    {
       "id": "sample",
       "kind": "sample",
       "name": "Sample Protocol",

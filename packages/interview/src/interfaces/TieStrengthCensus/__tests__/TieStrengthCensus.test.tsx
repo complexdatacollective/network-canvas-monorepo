@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MotionConfig } from 'motion/react';
 import { act, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -94,6 +95,7 @@ const makeNodes = () => [
 function renderInterface(
   edges: NcEdge[] = [],
   codebookOverride: ReturnType<typeof makeCodebook> = codebook,
+  skipAnimations = false,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -137,11 +139,13 @@ function renderInterface(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <StageMetadataContext.Provider value={registerBeforeNext}>
-            {children}
-          </StageMetadataContext.Provider>
-        </CurrentStepProvider>
+        <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <StageMetadataContext.Provider value={registerBeforeNext}>
+              {children}
+            </StageMetadataContext.Provider>
+          </CurrentStepProvider>
+        </MotionConfig>
       </Provider>
     );
   }
@@ -150,14 +154,14 @@ function renderInterface(
 
   const advancePastIntro = async () => {
     await act(async () => {
-      await beforeNext?.('forwards');
+      await beforeNext?.('forwards', 'step');
     });
     await waitFor(() =>
       expect(screen.getAllByRole('option').length).toBeGreaterThan(0),
     );
   };
 
-  return { store, advancePastIntro };
+  return { store, advancePastIntro, moveForward };
 }
 
 describe('TieStrengthCensus interface', () => {
@@ -196,6 +200,29 @@ describe('TieStrengthCensus interface', () => {
       'n2',
       false,
     ]);
+  });
+
+  it('waits for the selection animation before advancing normally', async () => {
+    const { advancePastIntro, moveForward } = renderInterface();
+    await advancePastIntro();
+
+    fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
+
+    expect(moveForward).not.toHaveBeenCalled();
+    await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+  });
+
+  it('advances immediately when animations are disabled', async () => {
+    const { advancePastIntro, moveForward } = renderInterface(
+      [],
+      codebook,
+      true,
+    );
+    await advancePastIntro();
+
+    fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
+
+    expect(moveForward).toHaveBeenCalledOnce();
   });
 
   it('does not treat a sibling-type edge without this edgeVariable as answered', async () => {

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
-import CloseButton from '@codaco/fresco-ui/CloseButton';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -12,18 +11,34 @@ import {
   type SessionPayload,
   Shell,
 } from '@codaco/interview';
-import { generateNetwork } from '@codaco/protocol-utilities';
+import {
+  type ConstraintConflict,
+  generateNetwork,
+  SyntheticDataConstraintError,
+} from '@codaco/protocol-utilities';
+import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
+import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 const noopFinish = async () => {};
-function buildSession(payload: PreviewPayload): SessionPayload {
+
+function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
+  return {
+    ...protocol,
+    stages: protocol.stages.map(
+      ({ skipLogic: _skipLogic, ...stage }) => stage as Stage,
+    ),
+  };
+}
+
+async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   const now = new Date().toISOString();
   const base: SessionPayload = {
     id: uuid(),
@@ -36,16 +51,22 @@ function buildSession(payload: PreviewPayload): SessionPayload {
   if (!payload.useSyntheticData) {
     return base;
   }
-  const generated = generateNetwork(
-    payload.protocol.codebook,
-    payload.protocol.stages,
-    {
-      // Leave the previewed stage partially complete so interaction-driven
-      // interfaces (ordinal/categorical bins, sociogram) still have
-      // unplaced nodes to work with.
-      inProgressStageIndex: payload.startStage,
-    },
+  // Draw roster-stage people from the protocol's real roster assets. Failures
+  // are isolated per-asset and never throw, so a roster problem degrades to
+  // fabricated people rather than blocking the preview.
+  const externalData = await collectPreviewRosterData(
+    payload.protocol,
+    payload.protocolId,
   );
+  const generated = generateNetwork({
+    codebook: payload.protocol.codebook,
+    stages: payload.protocol.stages,
+    externalData,
+    // Leave the previewed stage partially complete so interaction-driven
+    // interfaces (ordinal/categorical bins, sociogram) still have
+    // unplaced nodes to work with.
+    inProgressStageIndex: payload.startStage,
+  });
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
@@ -68,21 +89,25 @@ function buildSession(payload: PreviewPayload): SessionPayload {
     stageMetadata,
   };
 }
+// A preview fails for exactly one reason — the payload never arrived, or the
+// build it started failed — so the reasons share one slot: a later failure can
+// never leave an earlier one's screen behind. A payload that arrives is no
+// longer a timeout, so recording its outcome is what retires the timeout.
+type PreviewFailure =
+  | { kind: 'timeout' }
+  | { kind: 'constraints'; conflicts: ConstraintConflict[] }
+  | { kind: 'processing' };
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
   const [protocolId, setProtocolId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [timedOut, setTimedOut] = useState(false);
-  const [processingFailed, setProcessingFailed] = useState(false);
+  const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   // Index of the stage receiving a one-stage preview override, or null.
-  // The notice only shows while that stage is the one being viewed.
-  const [bypassedStageIndex, setBypassedStageIndex] = useState<number | null>(
-    null,
-  );
-  const [skipLogicNoticeDismissed, setSkipLogicNoticeDismissed] =
-    useState(false);
+  const [initialStageOverrideIndex, setInitialStageOverrideIndex] = useState<
+    number | null
+  >(null);
   const onRequestAsset = useAssetResolver(protocolId);
   // biome-ignore lint/correctness/useExhaustiveDependencies: retryNonce is the deliberate retrigger key
   useEffect(() => {
@@ -90,6 +115,41 @@ export function PreviewHost() {
     if (!opener) return;
     const expectedOrigin = window.location.origin;
     let received = false;
+    let cancelled = false;
+    const processPayload = async (previewPayload: PreviewPayload) => {
+      let nextPayload: InterviewPayload;
+      try {
+        // Resolve the protocol payload first (a throw here means an invalid
+        // protocol shape), then build the session, which is async because
+        // synthetic previews fetch and parse the protocol's roster assets.
+        const previewProtocol = previewPayload.respectSkipLogic
+          ? previewPayload.protocol
+          : protocolWithoutSkipLogic(previewPayload.protocol);
+        const protocol = currentProtocolToPayload(previewProtocol);
+        const session = await buildSession(previewPayload);
+        if (cancelled) return;
+        nextPayload = { protocol, session };
+      } catch (error) {
+        if (cancelled) return;
+        // Clear any previously successful preview so a failed rebuild never
+        // leaves a stale network on screen with no sign that this build failed.
+        setInterviewPayload(null);
+        if (error instanceof SyntheticDataConstraintError) {
+          setFailure({ kind: 'constraints', conflicts: error.conflicts });
+        } else {
+          console.error('Failed to build preview payload', error);
+          setFailure({ kind: 'processing' });
+        }
+        return;
+      }
+      setFailure(null);
+      setInterviewPayload(nextPayload);
+      setProtocolId(previewPayload.protocolId);
+      setCurrentStep(previewPayload.startStage);
+      setInitialStageOverrideIndex(
+        previewPayload.respectSkipLogic ? previewPayload.startStage : null,
+      );
+    };
     const onMessage = (event: MessageEvent) => {
       if (event.source !== opener) return;
       if (event.origin !== expectedOrigin) return;
@@ -108,38 +168,19 @@ export function PreviewHost() {
           data: asset.data,
         });
       }
-      let nextPayload: InterviewPayload;
-      try {
-        // Build the payload before marking the handshake received: a throw here
-        // (invalid protocol shape, synthetic-network generation) must surface an
-        // error rather than leave the loader stuck forever.
-        nextPayload = {
-          protocol: currentProtocolToPayload(previewPayload.protocol),
-          session: buildSession(previewPayload),
-        };
-      } catch (error) {
-        console.error('Failed to build preview payload', error);
-        received = true;
-        setProcessingFailed(true);
-        return;
-      }
+      // The payload message arrived — the handshake succeeded, so disarm the
+      // "couldn't reach Architect" timeout. If it already fired, processPayload
+      // replaces that state with this build's own outcome.
       received = true;
-      setProcessingFailed(false);
-      setInterviewPayload(nextPayload);
-      setProtocolId(previewPayload.protocolId);
-      setCurrentStep(previewPayload.startStage);
-      setBypassedStageIndex(
-        previewPayload.skipLogicBypassed ? previewPayload.startStage : null,
-      );
-      setSkipLogicNoticeDismissed(false);
-      setTimedOut(false);
+      void processPayload(previewPayload);
     };
     window.addEventListener('message', onMessage);
     opener.postMessage({ type: 'preview:ready' }, expectedOrigin);
     const timeoutId = setTimeout(() => {
-      if (!received) setTimedOut(true);
+      if (!received) setFailure({ kind: 'timeout' });
     }, PAYLOAD_TIMEOUT_MS);
     return () => {
+      cancelled = true;
       window.removeEventListener('message', onMessage);
       clearTimeout(timeoutId);
     };
@@ -159,7 +200,7 @@ export function PreviewHost() {
       </div>
     );
   }
-  if (!interviewPayload && timedOut) {
+  if (!interviewPayload && failure?.kind === 'timeout') {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
@@ -173,7 +214,7 @@ export function PreviewHost() {
           <Button
             color="primary"
             onClick={() => {
-              setTimedOut(false);
+              setFailure(null);
               setRetryNonce((n) => n + 1);
             }}
           >
@@ -186,7 +227,41 @@ export function PreviewHost() {
       </div>
     );
   }
-  if (!interviewPayload && processingFailed) {
+  if (!interviewPayload && failure?.kind === 'constraints') {
+    return (
+      <div className="flex h-dvh w-full flex-col items-center gap-4 overflow-y-auto p-8 pt-16 text-center">
+        <Heading level="h1" margin="none" className="text-2xl font-semibold">
+          This protocol can't be previewed
+        </Heading>
+        <Paragraph margin="none" className="max-w-xl">
+          Synthetic data couldn't be generated because these validation rules
+          can't all be satisfied. Return to Architect, update the protocol, and
+          preview it again.
+        </Paragraph>
+        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
+          {failure.conflicts.map((conflict, index) => (
+            <Alert
+              key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
+              variant="destructive"
+              density="compact"
+            >
+              <AlertTitle>
+                {conflict.entity === 'ego'
+                  ? 'Ego'
+                  : (conflict.entityTypeName ?? 'This type')}
+                : {conflict.variableNames.join(', ')}
+              </AlertTitle>
+              <AlertDescription>{conflict.reason}</AlertDescription>
+            </Alert>
+          ))}
+        </div>
+        <Button color="primary" onClick={() => window.close()}>
+          Close tab
+        </Button>
+      </div>
+    );
+  }
+  if (!interviewPayload && failure?.kind === 'processing') {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
@@ -200,7 +275,7 @@ export function PreviewHost() {
           <Button
             color="primary"
             onClick={() => {
-              setProcessingFailed(false);
+              setFailure(null);
               setRetryNonce((n) => n + 1);
             }}
           >
@@ -222,21 +297,6 @@ export function PreviewHost() {
   }
   return (
     <div className="h-screen">
-      {currentStep === bypassedStageIndex && !skipLogicNoticeDismissed && (
-        <div className="fixed right-8 bottom-6 z-50 max-w-sm">
-          <Alert variant="info" icon={false} className="my-0">
-            <AlertDescription className="pr-10 text-sm">
-              This stage is being shown for preview. During an interview, skip
-              logic may make it unavailable.
-            </AlertDescription>
-            <CloseButton
-              size="sm"
-              onClick={() => setSkipLogicNoticeDismissed(true)}
-              className="absolute top-2 right-2"
-            />
-          </Alert>
-        </div>
-      )}
       <Shell
         payload={interviewPayload}
         onSync={noopSync}
@@ -244,7 +304,8 @@ export function PreviewHost() {
         onRequestAsset={onRequestAsset}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
-        initialStageOverrideIndex={bypassedStageIndex ?? undefined}
+        flags={{ isDevelopment: import.meta.env.DEV }}
+        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
         allowStageNavigation
         disableAnalytics
         analytics={{

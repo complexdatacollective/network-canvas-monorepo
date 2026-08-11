@@ -10,6 +10,7 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import withSubject from '../../enhancers/withSubject';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import ValidatedField from '../../Form/ValidatedField';
+import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import withOptions from './withOptions';
 import withQuickAddVariable from './withQuickAddVariable';
 type VariableOption = {
@@ -24,6 +25,7 @@ type QuickAddProps = StageEditorSectionProps & {
     value: string,
     variableType: string,
     fieldName: string,
+    validation?: { required: true },
   ) => void;
   options?: VariableOption[];
   type?: string | null;
@@ -32,6 +34,7 @@ type QuickAddProps = StageEditorSectionProps & {
 const QuickAdd = ({
   disabled = false,
   entity,
+  form,
   handleCreateVariable,
   options = [],
   type = null,
@@ -73,13 +76,28 @@ const QuickAdd = ({
         validation={{ required: true }}
         componentProps={{
           options,
+          // NameGeneratorQuickAdd's quickAdd is a VALIDATED writer (see
+          // `withOptions.tsx`), so a variable created here requires a value
+          // from the start. NetworkComposer seeds the same rule for its own
+          // validated quick-add writer.
           onCreateOption: (value: string) =>
-            handleCreateVariable(value, 'text', 'quickAdd'),
+            handleCreateVariable(value, 'text', 'quickAdd', {
+              required: true,
+            }),
           type,
           entity,
           variable: quickAdd,
         }}
       />
+      {quickAdd && (
+        <CodebookVariableValidationSection
+          form={form}
+          fieldName="quickAdd"
+          entity={entity}
+          type={type}
+          variableId={quickAdd}
+        />
+      )}
     </Section>
   );
 };

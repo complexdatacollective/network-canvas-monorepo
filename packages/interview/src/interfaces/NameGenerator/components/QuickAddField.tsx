@@ -7,6 +7,7 @@ import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/type
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -68,6 +69,20 @@ type QuickAddFieldProps = {
   placeholder: string;
   disabled: boolean;
   onShowInput?: () => void;
+  /**
+   * Monotonically increasing count of successful parent submissions.
+   *
+   * QuickNodeForm supplies this because adding a node updates the live
+   * validation context before the form finishes submitting. That update
+   * re-registers the field and can reset `meta.isValid`, so the field cannot
+   * infer submission success from its post-submit validation state.
+   */
+  successfulSubmissionCount?: number;
+  /**
+   * Context required for context-dependent validations like unique, sameAs,
+   * etc. — forwarded to useField exactly as Field forwards it.
+   */
+  validationContext?: ValidationContext;
 } & Partial<ValidationPropsCatalogue>;
 
 export default function QuickAddField({
@@ -75,6 +90,8 @@ export default function QuickAddField({
   name: targetVariable,
   disabled,
   onShowInput,
+  successfulSubmissionCount,
+  validationContext,
   ...validationProps
 }: QuickAddFieldProps) {
   const [checked, setChecked] = useState(false);
@@ -88,34 +105,75 @@ export default function QuickAddField({
     disabled,
     validateOnChange: true,
     validateOnChangeDelay: 0,
+    validationContext,
     ...validationProps,
   });
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
+  const resetFormField = useFormStore((state) => state.resetField);
   const wasSubmittingRef = useRef(false);
+  const explicitSuccessPendingRef = useRef(false);
+  const previousSuccessfulSubmissionCountRef = useRef(
+    successfulSubmissionCount,
+  );
 
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const circleRef = useRef<HTMLDivElement>(null);
   const celebrate = useCelebrate(circleRef, { particles: true });
 
+  const resetAfterSuccessfulSubmission = useCallback(() => {
+    // A successful write starts a fresh entry rather than entering a new,
+    // invalid blank value. Resetting restores the field's initial value and
+    // clears its dirty/blurred/error state without running required validation.
+    resetFormField(targetVariable);
+    setSubmissionCount((count) => count + 1);
+    setShowErrors(false);
+    celebrate();
+  }, [resetFormField, targetVariable, celebrate]);
+
+  useEffect(() => {
+    if (
+      successfulSubmissionCount === undefined ||
+      successfulSubmissionCount === previousSuccessfulSubmissionCountRef.current
+    ) {
+      return;
+    }
+
+    previousSuccessfulSubmissionCountRef.current = successfulSubmissionCount;
+    explicitSuccessPendingRef.current = true;
+    resetAfterSuccessfulSubmission();
+  }, [successfulSubmissionCount, resetAfterSuccessfulSubmission]);
+
   // Reset field (but stay open) when form submission succeeds, or show
-  // validation errors on failed submission attempts.
+  // validation errors on failed submission attempts. Standalone consumers
+  // (stories and focused tests) fall back to observing the submitting state.
   useEffect(() => {
     // Detect transition from submitting to not submitting
     if (wasSubmittingRef.current && !isFormSubmitting) {
-      if (meta.isValid && fieldProps.value) {
-        fieldProps.onChange('');
-        setSubmissionCount((c) => c + 1);
-        setShowErrors(false);
-        celebrate();
+      if (explicitSuccessPendingRef.current) {
+        explicitSuccessPendingRef.current = false;
+      } else if (
+        successfulSubmissionCount === undefined &&
+        meta.isValid &&
+        fieldProps.value
+      ) {
+        // Standalone QuickAddField consumers do not have a parent success
+        // counter. Preserve the original inference for them.
+        resetAfterSuccessfulSubmission();
       } else {
         setShowErrors(true);
       }
       inputRef.current?.focus();
     }
     wasSubmittingRef.current = isFormSubmitting;
-  }, [isFormSubmitting, meta.isValid, fieldProps, celebrate]);
+  }, [
+    isFormSubmitting,
+    meta.isValid,
+    fieldProps.value,
+    resetAfterSuccessfulSubmission,
+    successfulSubmissionCount,
+  ]);
 
   const handleChange = useCallback(
     (value: string | undefined) => {
@@ -259,6 +317,7 @@ export default function QuickAddField({
           <button
             type="button"
             ref={buttonRef}
+            aria-label={checked ? 'Quick add input' : undefined}
             className="focusable relative aspect-square size-28 rounded-full"
             data-testid="quick-add-toggle"
           >
@@ -286,7 +345,7 @@ export default function QuickAddField({
                     animate={{ y: 0 }}
                     exit={{ y: '-100%' }}
                     className={cx(
-                      'flex h-full items-center justify-center',
+                      'flex h-full w-full items-center justify-center',
                       // Counter-rotate content inside the rotated diamond,
                       // mirroring the Node component's treatment.
                       nodeShape === 'diamond' && 'scale-[1.176] -rotate-45',

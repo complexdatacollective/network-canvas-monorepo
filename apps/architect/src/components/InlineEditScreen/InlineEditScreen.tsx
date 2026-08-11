@@ -16,6 +16,7 @@ type InlineEditScreenProps = {
   onCancel: () => void;
   children?: React.ReactNode;
   initialValues?: Record<string, unknown>;
+  validate?: (values: Record<string, unknown>) => Record<string, unknown>;
 };
 
 const InlineEditScreen = ({
@@ -26,6 +27,7 @@ const InlineEditScreen = ({
   onCancel,
   children = null,
   initialValues,
+  validate,
 }: InlineEditScreenProps) => {
   const dispatch = useAppDispatch();
   const submitting = useAppSelector(isSubmitting(form));
@@ -58,7 +60,12 @@ const InlineEditScreen = ({
       }
     >
       <Layout>
-        <Form form={form} onSubmit={onSubmit} initialValues={initialValues}>
+        <Form
+          form={form}
+          onSubmit={onSubmit}
+          initialValues={initialValues}
+          validate={validate}
+        >
           {children}
         </Form>
       </Layout>

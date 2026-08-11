@@ -11,18 +11,21 @@ const variants = {
 
 export function BrandHeader() {
   return (
-    <motion.div variants={variants} className="flex items-center gap-4">
+    <motion.div
+      variants={variants}
+      className="tablet-landscape:gap-3 laptop:gap-4 flex items-center gap-4"
+    >
       <span className="inline-flex shrink-0">
         <img
           src={ncMarkUrl}
           alt=""
-          className="tablet-landscape:h-20 h-16 w-auto"
+          className="tablet-landscape:h-14 laptop:h-20 h-16 w-auto"
         />
       </span>
       <Heading
         level="h1"
         margin="none"
-        className="tablet-landscape:not-sr-only sr-only font-black tracking-tight"
+        className="tablet-landscape:not-sr-only tablet-landscape:text-2xl laptop:text-3xl sr-only font-black tracking-tight"
       >
         Interviewer
       </Heading>

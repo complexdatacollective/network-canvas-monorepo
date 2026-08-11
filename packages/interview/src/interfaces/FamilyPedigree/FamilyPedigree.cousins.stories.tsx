@@ -4,8 +4,9 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
-import StoryInterviewShell from '../../../.storybook/StoryInterviewShell';
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
   clickDialogPrimary,
   clickGetStarted,
@@ -60,15 +61,13 @@ function buildCousinProtocol(seed: number) {
   });
 
   const edgeType = si.addEdgeType({ name: 'Family' });
+  // The relationship-type variable is locked to the canonical option set: the
+  // FamilyPedigree superRefine rejects a protocol whose options differ, and the
+  // interface reads and writes exactly these values.
   const relationshipVar = edgeType.addVariable({
     name: 'Relationship',
     type: 'categorical',
-    options: [
-      { label: 'Parent', value: 'parent' },
-      { label: 'Child', value: 'child' },
-      { label: 'Sibling', value: 'sibling' },
-      { label: 'Partner', value: 'partner' },
-    ],
+    options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
     name: 'Is Active',
@@ -227,24 +226,40 @@ export const FirstCousinRepresentation: Story = {
       );
 
       // Relationship types stored as single-element arrays (categorical variable).
+      //
+      // Every variable the edge type declares is set on every edge, including
+      // isGestCarrierVar. A variable the fixture leaves unset is not absent:
+      // SyntheticInterview draws a value for it, so a `true` could land on a
+      // parent edge and record a gestational carriage this pedigree does not
+      // mean. Nobody here carried for anybody, so the flag is pinned false
+      // throughout — which is what an absent value already resolved to.
       si.setEdgeAttribute(0, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(0, isActiveVar.id, true);
+      si.setEdgeAttribute(0, isGestCarrierVar.id, false);
       si.setEdgeAttribute(1, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(1, isActiveVar.id, true);
+      si.setEdgeAttribute(1, isGestCarrierVar.id, false);
       si.setEdgeAttribute(2, relationshipVar.id, ['partner']);
       si.setEdgeAttribute(2, isActiveVar.id, true);
+      si.setEdgeAttribute(2, isGestCarrierVar.id, false);
       si.setEdgeAttribute(3, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(3, isActiveVar.id, true);
+      si.setEdgeAttribute(3, isGestCarrierVar.id, false);
       si.setEdgeAttribute(4, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(4, isActiveVar.id, true);
+      si.setEdgeAttribute(4, isGestCarrierVar.id, false);
       si.setEdgeAttribute(5, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(5, isActiveVar.id, true);
+      si.setEdgeAttribute(5, isGestCarrierVar.id, false);
       si.setEdgeAttribute(6, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(6, isActiveVar.id, true);
+      si.setEdgeAttribute(6, isGestCarrierVar.id, false);
       si.setEdgeAttribute(7, relationshipVar.id, ['partner']);
       si.setEdgeAttribute(7, isActiveVar.id, true);
+      si.setEdgeAttribute(7, isGestCarrierVar.id, false);
       si.setEdgeAttribute(8, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(8, isActiveVar.id, true);
+      si.setEdgeAttribute(8, isGestCarrierVar.id, false);
 
       return si;
     };
@@ -405,11 +420,15 @@ export const FirstCousinCreationViaWizard: Story = {
 
     // DefineParentsWizard opens on BioTriadStep. Robert has no existing parents,
     // so the egg-/sperm-source selectors auto-resolve to "new" (rendered hidden)
-    // and we fill the new-person fields. is-donor defaults false and
-    // egg-parent-carried defaults true, so those are left at their defaults.
+    // and we fill the new-person fields. Sex recorded at birth is required for
+    // each new person (BioTriadStep supplies no initial value, unlike the
+    // quick-start steps); is-donor defaults false and egg-parent-carried
+    // defaults true, so those are left at their defaults.
     await setFieldInput('new-egg-source.name', 'Helen');
+    await setFieldInput('new-egg-source.biologicalSex', 'female');
     await setFieldInput('new-egg-source.gender_identity', 'woman');
     await setFieldInput('new-sperm-source.name', 'George');
+    await setFieldInput('new-sperm-source.biologicalSex', 'male');
     await setFieldInput('new-sperm-source.gender_identity', 'man');
     await clickNext(); // BioTriadStep → Other parents
 
@@ -472,8 +491,10 @@ export const FirstCousinCreationViaWizard: Story = {
 
     // Carol is preselected as the egg source. She has no recorded partner, so
     // the sperm source is unset and required — create a new (unknown) person for
-    // Emma's other parent so the step can advance.
+    // Emma's other parent so the step can advance. The new person's sex recorded
+    // at birth is required too; "Don't know" is the answer for an unknown parent.
     await setFieldInput('sperm-source', 'new');
+    await setFieldInput('new-sperm-source.biologicalSex', 'unknown');
     await clickNext(); // BioTriadStep → Other parents
 
     await setFieldInput('hasOtherParents', false);

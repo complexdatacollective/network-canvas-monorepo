@@ -1,0 +1,28 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbfbfa"></stop>
+      <stop offset="1" stop-color="#e9e8e4"></stop>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#8f1038" flood-opacity="0.22"></feDropShadow>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"></rect>
+  <g filter="url(#shadow)" transform="translate(512,512) scale(0.96) translate(-490,-495)">
+    <g stroke="#dd1f5a" stroke-width="58" stroke-linecap="round">
+      <line x1="310" y1="355" x2="680" y2="265"></line>
+      <line x1="310" y1="355" x2="635" y2="725"></line>
+    </g>
+    <g fill="#dd1f5a">
+      <circle cx="310" cy="355" r="105"></circle>
+      <circle cx="680" cy="265" r="85"></circle>
+      <circle cx="635" cy="725" r="140"></circle>
+    </g>
+    <g fill="#f29db4">
+      <circle cx="270" cy="317" r="31"></circle>
+      <circle cx="648" cy="233" r="25"></circle>
+      <circle cx="583" cy="673" r="40"></circle>
+    </g>
+  </g>
+</svg>

@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
+import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import {
   SegmentedToolbar,
   type ToolbarSegment,
@@ -36,7 +38,12 @@ type ToolPaletteProps = {
   edges: EdgeEntry[];
   /** Protocol label for the node entity, shown in the add-node field. */
   nodeLabel: string;
-  onAddNode: (name: string) => void;
+  /** Codebook variable the quick-add name is written to. */
+  quickAddTargetVariable: string;
+  onAddNode: (name: string) => Promise<void>;
+  /** Validation props derived from quickAddTargetVariable's codebook definition. */
+  quickAddValidationProps?: Partial<ValidationPropsCatalogue>;
+  quickAddValidationContext?: ValidationContext;
   /** Categorical variable configured for convex-hull groups (null = no tool). */
   groupVariable: GroupVariable | null;
   activeGroup: ActiveGroup | null;
@@ -81,7 +88,10 @@ export default function ToolPalette({
   undoStore,
   edges,
   nodeLabel,
+  quickAddTargetVariable,
   onAddNode,
+  quickAddValidationProps,
+  quickAddValidationContext,
   groupVariable,
   activeGroup,
   onSelectGroup,
@@ -139,7 +149,15 @@ export default function ToolPalette({
       open: activeTool.kind === 'addNode',
       onOpenChange: (open) =>
         setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' }),
-      children: <AddNodeInput entityLabel={nodeLabel} onCreate={onAddNode} />,
+      children: (
+        <AddNodeInput
+          entityLabel={nodeLabel}
+          targetVariable={quickAddTargetVariable}
+          onCreate={onAddNode}
+          validationContext={quickAddValidationContext}
+          {...quickAddValidationProps}
+        />
+      ),
     },
     // Every edge type shares the link icon, so a single edge button opens a menu
     // to pick the type rather than crowding the toolbar with identical buttons.

@@ -45,6 +45,18 @@ type WrappedFormProps = {
   id?: string;
   onSubmit?: (values: unknown) => void | Promise<void>;
   initialValues?: unknown;
+  /**
+   * Eleventh-wave Finding 4: when this form edits one member of a field
+   * array, its committed array index. redux-form passes the decorated
+   * component's props as `validate`'s second argument, so a validate closure
+   * can scope itself to the edited row (e.g. excluding that row from a
+   * sibling overlay) without the row needing a stable id of its own.
+   */
+  editIndex?: number;
+  validate?: (
+    values: Record<string, unknown>,
+    props?: { editIndex?: number },
+  ) => Record<string, unknown>;
 };
 
 /**

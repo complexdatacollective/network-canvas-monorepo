@@ -20,6 +20,7 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 
+import { CARD_RADIUS_PX } from './cardStyles';
 import {
   DECK_PERSPECTIVE_PX,
   SLOT_TO_CARD_RATIO,
@@ -86,6 +87,7 @@ type DeckCarouselProps = {
   activeIndex: number;
   onActiveIndexChange: (index: number) => void;
   disabled: boolean;
+  isolateActiveSlide?: boolean;
   cardWidth: number;
   cardHeight: number;
   ref?: Ref<DeckCarouselHandle>;
@@ -107,6 +109,7 @@ export function DeckCarousel({
   activeIndex,
   onActiveIndexChange,
   disabled,
+  isolateActiveSlide = false,
   cardWidth,
   cardHeight,
   ref,
@@ -239,6 +242,7 @@ export function DeckCarousel({
             cardWidth={cardWidth}
             cardHeight={cardHeight}
             disabled={disabled}
+            isolateActiveSlide={isolateActiveSlide}
             onSelect={onActiveIndexChange}
           />
         ))}
@@ -255,6 +259,7 @@ type DeckSlideProps = {
   cardWidth: number;
   cardHeight: number;
   disabled: boolean;
+  isolateActiveSlide: boolean;
   onSelect: (index: number) => void;
 };
 
@@ -266,6 +271,7 @@ function DeckSlide({
   cardWidth,
   cardHeight,
   disabled,
+  isolateActiveSlide,
   onSelect,
 }: DeckSlideProps) {
   const isPresent = useIsPresent();
@@ -298,10 +304,11 @@ function DeckSlide({
   );
 
   const isActive = index === activeIndex;
+  const isolated = isolateActiveSlide && !isActive;
   // Matches the pose's opacity-0 plateau: fully invisible slides must not
   // be reachable by assistive tech or the tab order. Exiting slides
   // likewise.
-  const hidden = Math.abs(index - activeIndex) >= 4 || !isPresent;
+  const hidden = isolated || Math.abs(index - activeIndex) >= 4 || !isPresent;
 
   const activate = () => {
     if (disabled || !isPresent) return;
@@ -349,16 +356,25 @@ function DeckSlide({
       inert={hidden}
       className={`absolute inset-0 m-auto origin-[center_bottom] will-change-transform ${
         slide.backdropBlur ? 'backdrop-blur-md' : ''
-      }`}
+      } ${isolateActiveSlide && isActive ? 'pointer-events-auto' : ''}`}
     >
       <motion.div
         initial={SLIDE_ENTER}
         animate={SLIDE_REST}
         exit={SLIDE_EXIT}
         transition={SLIDE_ENTER_SPRING}
-        className={`h-full w-full ${isPresent ? '' : 'pointer-events-none'}`}
+        className={`relative h-full w-full ${isPresent ? '' : 'pointer-events-none'}`}
       >
         {slide.render(isActive, activate)}
+        <motion.div
+          aria-hidden
+          data-testid={isolated ? 'protocol-deck-inactive-backdrop' : undefined}
+          className="bg-overlay publish-colors pointer-events-none absolute inset-0 z-50 backdrop-blur-xs"
+          style={{ borderRadius: CARD_RADIUS_PX }}
+          initial={false}
+          animate={{ opacity: isolated ? 1 : 0 }}
+          transition={{ duration: 0.25 }}
+        />
       </motion.div>
     </motion.div>
   );

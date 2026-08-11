@@ -100,6 +100,7 @@ function renderStatefulNavigation(
   stages: TestStage[],
   initialStep = 0,
   initialStageOverrideIndex?: number,
+  reviewMode = false,
 ) {
   const store = makeStore(stages);
   const onStepChange = vi.fn();
@@ -122,13 +123,17 @@ function renderStatefulNavigation(
   }
 
   const { result } = renderHook(
-    () => useInterviewNavigation(initialStageOverrideIndex),
+    () => useInterviewNavigation(initialStageOverrideIndex, reviewMode),
     { wrapper: Wrapper },
   );
   return { result, onStepChange, store };
 }
 
-function renderNavigation(stageCount: number, currentStep: number) {
+function renderNavigation(
+  stageCount: number,
+  currentStep: number,
+  reviewMode = false,
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -174,9 +179,12 @@ function renderNavigation(stageCount: number, currentStep: number) {
     );
   }
 
-  const { result } = renderHook(() => useInterviewNavigation(), {
-    wrapper: Wrapper,
-  });
+  const { result } = renderHook(
+    () => useInterviewNavigation(undefined, reviewMode),
+    {
+      wrapper: Wrapper,
+    },
+  );
   return { result, onStepChange, store };
 }
 
@@ -208,6 +216,36 @@ describe('useInterviewNavigation step-change meta', () => {
       progress: 100,
       totalSteps: 3,
     });
+  });
+
+  it('stops review mode at the final authored stage', async () => {
+    const { result, onStepChange } = renderNavigation(2, 1, true);
+
+    expect(result.current.disableMoveForward).toBe(true);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('allows stage-local navigation on the final authored review stage', async () => {
+    const { result, onStepChange } = renderNavigation(2, 1, true);
+    const beforeNext = vi.fn(() => false);
+
+    act(() => {
+      result.current.registerBeforeNext(beforeNext);
+    });
+
+    expect(result.current.disableMoveForward).toBe(false);
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(beforeNext).toHaveBeenCalledWith('forwards', 'step');
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 });
 
@@ -269,6 +307,47 @@ describe('useInterviewNavigation targeted skip routes', () => {
     });
 
     expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('keeps the current authored stage when a review edit changes its route to finish', async () => {
+    const stages = makeStages(3);
+    stages[0]!.skipLogic = skipWhenDeclined({ type: 'finish' });
+    const { result, onStepChange, store } = renderStatefulNavigation(
+      stages,
+      0,
+      undefined,
+      true,
+    );
+
+    act(() => {
+      result.current.registerBeforeNext(async () => {
+        await store.dispatch(updateEgo({ agrees: false }));
+        return true;
+      });
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(result.current.currentStep).toBe(0);
+    expect(result.current.canRenderStage).toBe(true);
+    expect(result.current.disableMoveForward).toBe(true);
+  });
+
+  it('still recovers backward from an untargeted hidden review stage', () => {
+    const stages = makeStages(3);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(
+      stages,
+      2,
+      undefined,
+      true,
+    );
+
+    expect(result.current.canRenderStage).toBe(false);
+    expect(onStepChange).toHaveBeenLastCalledWith(1, expect.anything());
   });
 
   it('returns Back to the decision screen and reopens the range when the answer changes', async () => {
@@ -405,6 +484,68 @@ describe('useInterviewNavigation targeted skip routes', () => {
   });
 });
 
+describe('useInterviewNavigation Back at the interview start', () => {
+  it('keeps Back disabled on a fresh first stage even when a beforeNext handler registers', () => {
+    const { result } = renderStatefulNavigation(makeStages(2), 0);
+
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    expect(result.current.disableMoveBackward).toBe(true);
+  });
+
+  it('enables Back once the participant has attempted navigation on a handler stage', async () => {
+    const { result } = renderStatefulNavigation(makeStages(2), 0);
+
+    act(() => {
+      // Consumes the step internally, like a census moving intro -> first pair.
+      result.current.registerBeforeNext(() => false);
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(result.current.disableMoveBackward).toBe(false);
+  });
+
+  it('keeps Back disabled on a handler stage when every earlier screen is off the active route', () => {
+    const stages = makeStages(3);
+    stages[0]!.skipLogic = ALWAYS_SKIPPED;
+    const { result } = renderStatefulNavigation(stages, 1);
+
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    expect(result.current.disableMoveBackward).toBe(true);
+  });
+
+  it('leaves beforeNext handlers registered when Back has nowhere to go', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(2), 0);
+    const handler = vi.fn(() => true);
+
+    act(() => {
+      result.current.registerBeforeNext(handler);
+    });
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+
+    // No previous stage: nothing to navigate to, and the stage's handler must
+    // survive so it still intercepts the next Forward.
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
   it('jumps directly to a non-skipped stage', async () => {
     const { result, onStepChange } = renderStatefulNavigation(makeStages(4), 0);
@@ -469,6 +610,87 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
     expect(directions).toEqual(['forwards', 'backwards']);
   });
 
+  it("passes intent 'jump' to beforeNext, and 'step' for button navigation", async () => {
+    const intents: string[] = [];
+    const record = (_direction: string, intent: string) => {
+      intents.push(intent);
+      return true;
+    };
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+    act(() => {
+      stepped.result.current.registerBeforeNext(record);
+    });
+    await act(async () => {
+      await stepped.result.current.moveBackward();
+    });
+
+    expect(intents).toEqual(['jump', 'step', 'step']);
+  });
+
+  it('lets a handler deny a jump while still allowing a step', async () => {
+    const denyJumps = (_direction: string, intent: string) => intent !== 'jump';
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(denyJumps);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    expect(jumped.onStepChange).not.toHaveBeenCalled();
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(denyJumps);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+
+    expect(stepped.onStepChange).toHaveBeenCalledWith(3, expect.anything());
+  });
+
+  it('lets a handler allow a jump while still blocking a step', async () => {
+    const allowOnlyJumps = (_direction: string, intent: string) =>
+      intent === 'jump';
+
+    const jumped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      jumped.result.current.registerBeforeNext(allowOnlyJumps);
+    });
+    await act(async () => {
+      await jumped.result.current.goToStage(4);
+    });
+
+    expect(jumped.onStepChange).toHaveBeenCalledWith(4, expect.anything());
+
+    const stepped = renderStatefulNavigation(makeStages(5), 2);
+    act(() => {
+      stepped.result.current.registerBeforeNext(allowOnlyJumps);
+    });
+    await act(async () => {
+      await stepped.result.current.moveForward();
+    });
+
+    expect(stepped.onStepChange).not.toHaveBeenCalled();
+  });
+
   it('still navigates when a beforeNext handler returns FORCE', async () => {
     const { result, onStepChange } = renderStatefulNavigation(makeStages(4), 0);
 
@@ -499,6 +721,40 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       expect.objectContaining({ kind: 'local-skip' }),
     );
     expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('does not run beforeNext handlers when an unavailable target is declined', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const beforeNext = vi.fn(() => true);
+    act(() => {
+      result.current.registerBeforeNext(beforeNext);
+    });
+
+    const confirmSkip = vi.fn().mockResolvedValue(false);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(beforeNext).not.toHaveBeenCalled();
+    expect(onStepChange).not.toHaveBeenCalled();
+  });
+
+  it('confirms an unavailable target once when it is already unavailable', async () => {
+    const stages = makeStages(4);
+    stages[2]!.skipLogic = ALWAYS_SKIPPED;
+    const { result, onStepChange } = renderStatefulNavigation(stages, 0);
+
+    const confirmSkip = vi.fn().mockResolvedValue(true);
+    await act(async () => {
+      await result.current.goToStage(2, confirmSkip);
+    });
+
+    expect(confirmSkip).toHaveBeenCalledTimes(1);
+    expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
   });
 
   it('lands on a confirmed skipped stage without being bounced by recovery', async () => {

@@ -18,6 +18,7 @@ import { getFieldId } from '~/utils/issues';
 import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
+import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { getSortOrderOptionGetter } from './optionGetters';
 import withVariableHandlers from './withVariableHandlers';
 import withVariableOptions from './withVariableOptions';
@@ -33,6 +34,8 @@ type PromptFieldsProps = {
   onCreateOtherVariable: (value: string, field: string) => void;
   optionsForVariableDraft?: Array<Record<string, unknown>>;
   otherVariable?: string;
+  otherVariableOptions?: VariableOption[];
+  sortVariableOptions?: VariableOption[];
   type: string;
   variable?: string;
   variableOptions?: VariableOption[];
@@ -44,6 +47,8 @@ const PromptFields = ({
   onCreateOtherVariable,
   optionsForVariableDraft = [],
   otherVariable,
+  otherVariableOptions = [],
+  sortVariableOptions = [],
   type,
   variable,
   variableOptions = [],
@@ -83,10 +88,16 @@ const PromptFields = ({
   const categoricalVariableOptions = variableOptions.filter(
     ({ type: variableType }) => variableType === 'categorical',
   );
-  const otherVariableOptions = variableOptions.filter(
+  // otherVariable is a VALIDATED writer, so it draws from the HOC's
+  // otherVariable-role-filtered pool rather than the (unvalidated-role-
+  // filtered) variableOptions pool used above.
+  const otherVariableTextOptions = otherVariableOptions.filter(
     ({ type: variableType }) => variableType === 'text',
   );
-  const getOptions = getSortOrderOptionGetter(variableOptions);
+  // Sort keys are read-only references outside the writer-exclusivity rule:
+  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
+  // by a form-collected variable the (role-filtered) writer pool above drops.
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
   const totalOptionsLength =
     optionsForVariableDraft &&
@@ -164,13 +175,22 @@ const PromptFields = ({
             componentProps={{
               entity,
               type,
-              options: otherVariableOptions,
+              options: otherVariableTextOptions,
               onCreateOption: (value: string) =>
                 onCreateOtherVariable(value, 'otherVariable'),
               variable: otherVariable,
             }}
           />
         </Row>
+        {otherVariable && (
+          <CodebookVariableValidationSection
+            form={form}
+            fieldName="otherVariable"
+            entity={entity}
+            type={type}
+            variableId={otherVariable}
+          />
+        )}
         <Row>
           <ValidatedField
             name="otherOptionLabel"
@@ -202,13 +222,13 @@ const PromptFields = ({
         form={form}
         disabled={!variable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
       />
       <BinSortOrderSection
         form={form}
         disabled={!variable}
         maxItems={sortMaxItems}
-        optionGetter={() => getOptions('property', undefined, [])}
+        optionGetter={getOptions}
       />
       <NewVariableWindow
         // eslint-disable-next-line react/jsx-props-no-spreading

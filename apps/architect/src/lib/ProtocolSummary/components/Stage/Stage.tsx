@@ -185,128 +185,129 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       }
     | undefined;
   return (
-    <div className="page-break-marker break-before-page" id={`stage-${id}`}>
-      <div className="overflow-hidden">
-        <div className="flex items-center pb-10">
-          <div className="me-5 flex-1">
-            <div
-              className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
-              data-number={stageNumber}
-            >
-              <Heading level="h1">{label}</Heading>
-            </div>
-            {(subject || edgeType || !isEmpty(stageVariables)) && (
-              <MiniTable
-                rotated
-                rows={[
-                  ...(subject
-                    ? [
-                        [
-                          'Subject',
-                          <EntityBadge
-                            key="subject"
-                            small
-                            type={subject.type}
-                            entity={subject.entity}
-                            link
-                          />,
-                        ],
-                      ]
-                    : []),
-                  ...(edgeType
-                    ? [
-                        [
-                          'Edge Type',
-                          <EntityBadge
-                            key="edge-type"
-                            small
-                            type={edgeType.type}
-                            entity="edge"
-                            link
-                          />,
-                        ],
-                      ]
-                    : []),
-                  ...(!isEmpty(stageVariables)
-                    ? [
-                        [
-                          'Variables',
-                          <React.Fragment key="vars">
-                            {stageVariables.map(([variableId, variable], i) => (
-                              <React.Fragment key={`${id}-${variableId}`}>
-                                <DualLink to={`#variable-${variableId}`}>
-                                  {variable}
-                                </DualLink>
-                                {i !== stageVariables.length - 1 && ', '}
-                              </React.Fragment>
-                            ))}
-                          </React.Fragment>,
-                        ],
-                      ]
-                    : []),
-                ]}
-              />
-            )}
+    <div
+      className="page-break-marker flex break-before-page flex-col gap-6"
+      id={`stage-${id}`}
+    >
+      <div className="flex items-center">
+        <div className="me-5 flex-1">
+          <div
+            className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
+            data-number={stageNumber}
+          >
+            <Heading level="h1">{label}</Heading>
           </div>
-          <div className="relative flex flex-[0_0_5cm] items-center">
-            <div className="flex-1 [&_img]:w-full [&_img]:rounded">
-              {/* eager: the summary is rendered for print, where lazy
-            images may never load before the print snapshot. */}
-              <StageTypeImage
-                type={type}
-                ratio="4:3"
-                sizes="5cm"
-                loading="eager"
-                alt=""
-              />
-            </div>
-          </div>
-        </div>
-        {filter && (
-          <SectionFrame title="Network Filtering">
+          {(subject || edgeType || !isEmpty(stageVariables)) && (
             <MiniTable
               rotated
-              wide
-              rows={[['Rules', <Filter key="filter" filter={filter} />]]}
+              rows={[
+                ...(subject
+                  ? [
+                      [
+                        'Subject',
+                        <EntityBadge
+                          key="subject"
+                          small
+                          iconSize="tiny"
+                          type={subject.type}
+                          entity={subject.entity}
+                          link
+                        />,
+                      ],
+                    ]
+                  : []),
+                ...(edgeType
+                  ? [
+                      [
+                        'Edge Type',
+                        <EntityBadge
+                          key="edge-type"
+                          small
+                          iconSize="tiny"
+                          type={edgeType.type}
+                          entity="edge"
+                          link
+                        />,
+                      ],
+                    ]
+                  : []),
+                ...(!isEmpty(stageVariables)
+                  ? [
+                      [
+                        'Variables',
+                        <React.Fragment key="vars">
+                          {stageVariables.map(([variableId, variable], i) => (
+                            <React.Fragment key={`${id}-${variableId}`}>
+                              <DualLink to={`#variable-${variableId}`}>
+                                {variable}
+                              </DualLink>
+                              {i !== stageVariables.length - 1 && ', '}
+                            </React.Fragment>
+                          ))}
+                        </React.Fragment>,
+                      ],
+                    ]
+                  : []),
+              ]}
             />
-          </SectionFrame>
-        )}
-        {skipLogic && (
-          <SectionFrame title="Skip Logic">
-            <SkipLogic skipLogic={skipLogic} />
-          </SectionFrame>
-        )}
-        <div>
-          <IntroductionPanel introductionPanel={introductionPanel ?? null} />
-          <MapOptions mapOptions={mapOptions ?? null} />
-          <DataSource dataSource={dataSource ?? null} />
-          <QuickAdd quickAdd={quickAdd ?? null} />
-          <Panels panels={panels ?? null} />
-          <Prompts prompts={prompts ?? null} />
-          <Form form={form ?? null} />
-          <Behaviours behaviours={behaviours ?? null} />
-          <Presets presets={presets ?? null} />
-          <PageHeading heading={title ?? null} />
-          <Items items={items ?? null} />
-          <FamilyTreeVariables
-            relationshipTypeVariable={relationshipTypeVariable}
-            relationshipToEgoVariable={relationshipToEgoVariable}
-            egoSexVariable={egoSexVariable}
-            nodeSexVariable={nodeSexVariable}
-            nodeIsEgoVariable={nodeIsEgoVariable}
-          />
-          <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
-          <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-          <DiseaseNominationPrompts
-            diseaseNominationStep={diseaseNominationStep ?? null}
-          />
-          <Anonymisation
-            explanationText={explanationText ?? null}
-            validation={validation ?? null}
-          />
-          <InterviewScript interviewScript={interviewScript ?? null} />
+          )}
+        </div>
+        <div className="relative flex flex-[0_0_4.25cm] items-center">
+          <div className="flex-1 [&_img]:w-full [&_img]:rounded-sm">
+            {/* eager: the summary is rendered for print, where lazy
+            images may never load before the print snapshot. */}
+            <StageTypeImage
+              type={type}
+              ratio="4:3"
+              sizes="4.25cm"
+              loading="eager"
+              alt=""
+            />
+          </div>
         </div>
       </div>
+      {filter && (
+        <SectionFrame title="Network Filtering">
+          <MiniTable
+            rotated
+            wide
+            rows={[['Rules', <Filter key="filter" filter={filter} />]]}
+          />
+        </SectionFrame>
+      )}
+      {skipLogic && (
+        <SectionFrame title="Skip Logic">
+          <SkipLogic skipLogic={skipLogic} />
+        </SectionFrame>
+      )}
+      <IntroductionPanel introductionPanel={introductionPanel ?? null} />
+      <MapOptions mapOptions={mapOptions ?? null} />
+      <DataSource dataSource={dataSource ?? null} />
+      <QuickAdd quickAdd={quickAdd ?? null} />
+      <Panels panels={panels ?? null} />
+      <Prompts prompts={prompts ?? null} />
+      <Form form={form ?? null} />
+      <Behaviours behaviours={behaviours ?? null} />
+      <Presets presets={presets ?? null} />
+      <PageHeading heading={title ?? null} />
+      <Items items={items ?? null} />
+      <FamilyTreeVariables
+        relationshipTypeVariable={relationshipTypeVariable}
+        relationshipToEgoVariable={relationshipToEgoVariable}
+        egoSexVariable={egoSexVariable}
+        nodeSexVariable={nodeSexVariable}
+        nodeIsEgoVariable={nodeIsEgoVariable}
+      />
+      <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
+      <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
+      <DiseaseNominationPrompts
+        diseaseNominationStep={diseaseNominationStep ?? null}
+      />
+      <Anonymisation
+        explanationText={explanationText ?? null}
+        validation={validation ?? null}
+      />
+      <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );
 };

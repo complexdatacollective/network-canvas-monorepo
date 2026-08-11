@@ -84,7 +84,6 @@ const ColorPickerControl = ({
       aria-required={ariaRequired || required || undefined}
       className={cx(
         'bg-input text-input-contrast @container flex w-full flex-wrap gap-3 rounded border-2 p-4',
-        'border-transparent',
         ariaInvalid && 'border-destructive',
         disabled && 'cursor-not-allowed opacity-50',
         readOnly && 'cursor-default opacity-70',

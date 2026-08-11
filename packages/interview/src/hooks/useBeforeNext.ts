@@ -12,7 +12,9 @@ export default function useBeforeNext(handler: BeforeNextFunction) {
   const key = useId();
 
   useEffect(() => {
-    registerBeforeNext(key, (direction) => handlerRef.current(direction));
+    registerBeforeNext(key, (direction, intent) =>
+      handlerRef.current(direction, intent),
+    );
     return () => registerBeforeNext(key, null);
   }, [registerBeforeNext, key]);
 }

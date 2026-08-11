@@ -3,11 +3,13 @@
 **Date:** 2026-07-03
 **Status:** Implemented (PR #747)
 
-> **Superseded release-gate topology (2026-07-15):** the combined app release PR
-> described below was split into independent Architect, Interviewer, and
-> Documentation gates. See
-> `2026-07-15-independent-product-release-gates-design.md`. The beta-versioning
-> rationale and ignored-package behaviour documented here still apply.
+> **Topology history:** the combined app release PR described below was split
+> into independent product gates on 2026-07-15, then Architect and Interviewer
+> were recombined on 2026-07-31 to eliminate duplicate shared-runtime E2E work.
+> Documentation and Website remain independent. See
+> `2026-07-31-combined-app-release-lane-ci-efficiency-design.md` for the current
+> topology. The beta-versioning rationale and ignored-package behaviour
+> documented here still apply.
 
 ## Problem
 

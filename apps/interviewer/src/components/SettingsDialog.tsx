@@ -24,6 +24,8 @@ import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
+import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
 import {
   ManageAuthenticator,
@@ -99,6 +101,10 @@ export function SettingsDialog({
   const auth = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
+  const addToastRef = useRef(toast.add);
+  useEffect(() => {
+    addToastRef.current = toast.add;
+  }, [toast.add]);
   const { confirm } = useDialog();
   const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
   const [section, setSection] = useState<Section>('about');
@@ -162,19 +168,33 @@ export function SettingsDialog({
     });
   }, []);
 
+  const reloadSyntheticWithFeedback = useCallback(async () => {
+    try {
+      await reloadSynthetic();
+    } catch {
+      addToastRef.current({
+        title: 'Could not refresh synthetic session info',
+        description:
+          'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+        variant: 'destructive',
+        timeout: 0,
+      });
+    }
+  }, [reloadSynthetic]);
+
   useEffect(() => {
     if (!open) return;
     void reload();
-    void reloadSynthetic();
-  }, [open, reload, reloadSynthetic]);
+    void reloadSyntheticWithFeedback();
+  }, [open, reload, reloadSyntheticWithFeedback]);
 
   // Re-query protocols whenever the Synthetic tab is (re)selected, so a protocol
   // imported moments before Settings opened — its DB write lands ~0.6-2.1s after
   // the deck shows its pending name — becomes selectable without reopening.
   useEffect(() => {
     if (!open || section !== 'synthetic') return;
-    void reloadSynthetic();
-  }, [open, section, reloadSynthetic]);
+    void reloadSyntheticWithFeedback();
+  }, [open, section, reloadSyntheticWithFeedback]);
 
   const persist = useCallback(
     async (patch: Partial<Omit<StoredSettings, 'id'>>) => {
@@ -223,17 +243,32 @@ export function SettingsDialog({
         title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
         variant: 'success',
       });
-      await reloadSynthetic();
-      onDataChange?.();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.add({
-        title: 'Generation failed',
-        description: message,
-        variant: 'destructive',
-      });
+      // A refused generation (unsatisfiable validation rules) carries a
+      // structured `conflicts` array that renders as a readable list; any
+      // other failure falls back to its flat message. Either way, this needs
+      // a researcher to read and act on it, so it doesn't auto-dismiss.
+      if (error instanceof SyntheticDataConstraintError) {
+        toast.add({
+          title: 'Generation failed',
+          description: <GenerationFailureDescription error={error} />,
+          variant: 'destructive',
+          timeout: 0,
+        });
+      } else {
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
+        toast.add({
+          title: 'Generation failed',
+          description: message,
+          variant: 'destructive',
+          timeout: 0,
+        });
+      }
     } finally {
       setIsGenerating(false);
+      await reloadSyntheticWithFeedback();
+      onDataChange?.();
     }
   }, [
     selectedProtocolHash,
@@ -241,7 +276,7 @@ export function SettingsDialog({
     simulateDropOut,
     respectSkipLogicAndFiltering,
     toast,
-    reloadSynthetic,
+    reloadSyntheticWithFeedback,
     onDataChange,
   ]);
 
@@ -254,20 +289,36 @@ export function SettingsDialog({
       intent: 'destructive',
       onConfirm: async () => {
         setIsDeleting(true);
+        // deleteSyntheticSessions()'s own rejection is deliberately left
+        // uncaught here: useDialog's confirm() already gives a failed
+        // onConfirm its own handling — DialogProvider.handleConfirm catches
+        // it, keeps this confirm dialog open, and shows the error inline so
+        // the researcher can retry (see fresco-ui's "Async Confirm — Error
+        // Handling" story). Catching it here too would swallow that
+        // rejection, which would make handleConfirm see a *resolved*
+        // promise and close the dialog as if the delete had succeeded —
+        // exactly the "looks fine, actually didn't happen" failure mode this
+        // fix is about, just moved one level up.
         try {
           const deleted = await deleteSyntheticSessions();
           toast.add({
             title: `Deleted ${deleted} synthetic session${deleted === 1 ? '' : 's'}`,
             variant: 'success',
           });
-          await reloadSynthetic();
-          onDataChange?.();
         } finally {
           setIsDeleting(false);
+          await reloadSyntheticWithFeedback();
+          onDataChange?.();
         }
       },
     });
-  }, [confirm, onDataChange, reloadSynthetic, syntheticCount, toast]);
+  }, [
+    confirm,
+    onDataChange,
+    reloadSyntheticWithFeedback,
+    syntheticCount,
+    toast,
+  ]);
 
   const storagePercent = storage.percent !== null ? storage.percent / 100 : 0;
   const storageHasValues = storage.usage !== null && storage.quota !== null;
@@ -287,7 +338,7 @@ export function SettingsDialog({
               ? ` · ${formatBytes(storage.usage)} used`
               : ''
           }`
-        : 'Offline storage: best-effort — the browser may clear it under storage pressure';
+        : 'Offline storage: best-effort — it may be cleared under storage pressure';
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,

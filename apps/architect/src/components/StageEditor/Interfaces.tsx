@@ -52,6 +52,8 @@ import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfi
 import { FilteredNodeType } from '~/components/sections/NodeType';
 import { interfaceDocumentationUrl } from '~/utils/documentationLinks';
 
+import { getInterfaceTemplate } from './interfaceTemplates';
+
 /**
  * Props that are passed to all stage editor section components.
  * These props are provided by the StageEditor component when rendering sections.
@@ -84,12 +86,6 @@ type InterfaceConfig = {
   readonly documentation: string;
   /** Optional display name override for the interface */
   readonly name?: string;
-  /**
-   * Optional template object containing default configuration values
-   * that will be merged into the initial stage values when creating
-   * a new stage of this type. Commonly used for setting default behaviors.
-   */
-  readonly template?: Record<string, unknown>;
 };
 
 /**
@@ -114,7 +110,6 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('per-alter-edge-form'),
-    template: {},
   },
   AlterForm: {
     sections: [
@@ -154,16 +149,10 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('one-to-many-dyad-census'),
-    template: {
-      behaviours: {
-        removeAfterConsideration: true,
-      },
-    },
   },
   EgoForm: {
     sections: [IntroductionPanel, Form, SkipLogic, InterviewScript],
     documentation: interfaceDocumentationUrl('ego-form'),
-    template: {},
   },
   Information: {
     sections: [Title, ContentGrid, SkipLogic, InterviewScript],
@@ -220,12 +209,6 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('narrative'),
-    template: {
-      behaviours: {
-        allowRepositioning: true,
-        automaticLayout: true,
-      },
-    },
   },
   OrdinalBin: {
     sections: [FilteredNodeType, OrdinalBinPrompts, SkipLogic, InterviewScript],
@@ -252,11 +235,6 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('network-composer'),
-    template: {
-      behaviours: {
-        automaticLayout: true,
-      },
-    },
   },
   TieStrengthCensus: {
     sections: [
@@ -300,23 +278,6 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('family-pedigree'),
-    template: {
-      framing: { mode: 'fixed', value: 'gamete' },
-      boundaries: {
-        requireGrandparents: 'off',
-        requireChildrenContributors: 'off',
-      },
-      introScreen: {
-        items: [
-          {
-            id: 'intro-text',
-            type: 'text',
-            content:
-              "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
-          },
-        ],
-      },
-    },
   },
   NarrativePedigree: {
     sections: [
@@ -327,11 +288,6 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('narrative-pedigree'),
-    template: {
-      sourceStageId: '',
-      diseases: [],
-      showAtRiskStatuses: false,
-    },
   },
 };
 
@@ -348,9 +304,10 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
 			...,
 		], documentation: "...", name: "Name Generator (using forms)" }
  */
-export function getInterface(
-  interfaceType: StageType,
-): InterfaceConfig & { readonly name: string } {
+export function getInterface(interfaceType: StageType): InterfaceConfig & {
+  readonly name: string;
+  readonly template: Record<string, unknown>;
+} {
   const config = INTERFACE_CONFIGS[interfaceType];
 
   if (!config) {
@@ -362,5 +319,6 @@ export function getInterface(
   return {
     ...config,
     name: config.name ?? startCase(interfaceType),
+    template: getInterfaceTemplate(interfaceType),
   };
 }

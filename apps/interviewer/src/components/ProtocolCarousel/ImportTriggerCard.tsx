@@ -5,7 +5,9 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { ExternalLink } from '../ExternalLink';
-import { CARD_RADIUS_PX, cardBase } from './cardStyles';
+import { CARD_RADIUS_PX, cardBase, cardHeadingSizeClass } from './cardStyles';
+
+const IMPORT_HEADING = 'Import a protocol';
 
 type ImportTriggerCardProps = {
   // Carousel activation (click / Enter on the active card): opens the file
@@ -61,12 +63,23 @@ export function ImportTriggerCard({
       >
         <span
           aria-hidden
-          className="bg-surface text-sea-green inline-flex h-[84px] w-[84px] items-center justify-center rounded-full"
+          className="bg-surface text-sea-green inline-flex size-[clamp(52px,17.5cqi,84px)] items-center justify-center rounded-full"
         >
-          <Upload size={36} strokeWidth={2.5} aria-hidden />
+          <Upload
+            className="size-[clamp(24px,7.5cqi,36px)]"
+            strokeWidth={2.5}
+            aria-hidden
+          />
         </span>
-        <Heading level="h2" margin="none" className="text-text font-black">
-          Import a protocol
+        <Heading
+          level="h2"
+          margin="none"
+          className={cx(
+            'text-text font-black',
+            cardHeadingSizeClass(IMPORT_HEADING),
+          )}
+        >
+          {IMPORT_HEADING}
         </Heading>
         <span className="text-sm">
           Drop a <span className="font-monospace text-text">.netcanvas</span>{' '}

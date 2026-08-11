@@ -322,7 +322,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const ab = edges.find((e) => e[entityPrimaryKeyProperty] === 'ab');
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
         expect(ab?.attributes['met-at']).toBe('Work');
-        expect(bc?.attributes).not.toHaveProperty('met-at');
+        // SyntheticInterview materialises every declared variable on manual
+        // entities with its type-neutral value. The filtered edge remains
+        // untouched; only the visible A-B edge receives the submitted answer.
+        expect(bc?.attributes['met-at']).toBe('');
         expect(edges).toHaveLength(2);
       },
     },
@@ -825,6 +828,12 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           type: 'scalar',
           component: 'VisualAnalogScale',
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
+        });
+        et.addVariable({
+          id: 'contact-count',
+          name: 'contactCount',
+          type: 'number',
+          component: 'Number',
           validation: { minValue: 10, maxValue: 90 },
         });
         et.addVariable({
@@ -855,6 +864,11 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           prompt: 'How important is this relationship?',
         });
         stage.addFormField({
+          component: 'Number',
+          variable: 'contact-count',
+          prompt: 'How many times have you spoken?',
+        });
+        stage.addFormField({
           component: 'DatePicker',
           variable: 'met-month',
           prompt: 'Roughly when did you first meet?',
@@ -879,16 +893,21 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.dismissIntro();
 
-        // VAS parameter labels render; validation min/max clamp the slider.
+        // Scalar values use the protocol's normalized 0-1 range.
         await expect(page.getByText('Not at all')).toBeVisible();
         await expect(page.getByText('Extremely')).toBeVisible();
         const vasSlider = page
           .locator('[data-field-name="importance"]')
           .getByRole('slider');
-        await expect(vasSlider).toHaveAttribute('min', '10');
-        await expect(vasSlider).toHaveAttribute('max', '90');
+        await expect(vasSlider).toHaveAttribute('min', '0');
+        await expect(vasSlider).toHaveAttribute('max', '1');
         await vasSlider.focus();
-        await vasSlider.press('End'); // drives to the clamped max (90)
+        await vasSlider.press('End');
+
+        const contactCount = page
+          .locator('[data-field-name="contact-count"]')
+          .getByRole('spinbutton');
+        await contactCount.fill('95');
 
         const monthField = page.locator('[data-field-name="met-month"]');
         await monthField.locator('select').first().selectOption('2024');
@@ -899,12 +918,22 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           .locator('input[type="date"]');
         await relDateInput.fill('2026-08-15'); // after anchor+after → invalid
         await interview.nextButton.click();
+        await expect(stage.form.getFieldError('contact-count')).toBeVisible();
         await expect(stage.form.getFieldError('last-contact')).toBeVisible();
         await expect(
           page.getByRole('heading', { name: 'Complete' }),
         ).not.toBeVisible();
 
+        await stage.form.fillNumber('contact-count', '5');
         await relDateInput.fill('2026-06-15'); // within 2026-06-01..2026-07-01
+        await interview.nextButton.click();
+        await expect(stage.form.getFieldError('contact-count')).toBeVisible();
+        await expect(stage.form.getFieldError('last-contact')).toBeHidden();
+        await expect(
+          page.getByRole('heading', { name: 'Complete' }),
+        ).not.toBeVisible();
+
+        await stage.form.fillNumber('contact-count', '42');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -915,8 +944,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const edge = (network?.edges ?? [])[0];
         const importance = edge?.attributes.importance;
         expect(typeof importance).toBe('number');
-        expect(importance).toBeGreaterThanOrEqual(10);
-        expect(importance).toBeLessThanOrEqual(90);
+        expect(importance).toBe(1);
+        expect(edge?.attributes['contact-count']).toBe(42);
         expect(edge?.attributes['met-month']).toBe('2024-06');
         expect(edge?.attributes['last-contact']).toBe('2026-06-15');
       },
@@ -1027,7 +1056,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('story')).toBeVisible();
         await expect(stage.form.getFieldError('contexts')).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
-        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeUndefined();
+        // Manually seeded entities carry the variable type's neutral value
+        // until a valid submission replaces it.
+        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeNull();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.
         await stage.form.selectCheckbox('contexts', 'Social');
@@ -1220,7 +1251,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           (before?.edges ?? []).find(
             (e) => e[entityPrimaryKeyProperty] === 'e2',
           )?.attributes['code-name'],
-        ).toBeUndefined();
+        ).toBe('');
 
         // Fix every violation.
         await stage.form.fillText('code-name', 'different');

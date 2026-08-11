@@ -1,5 +1,5 @@
 ---
-'@codaco/background-creator': minor
+'@codaco/background-creator': patch
 ---
 
 Introduce Network Canvas Background Creator — a browser-based editor for

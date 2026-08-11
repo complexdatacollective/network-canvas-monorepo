@@ -22,6 +22,9 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
   let aborted: unknown = null;
 
   const onChunk = (chunk: Uint8Array, final: boolean) => {
+    // After an abort the consumer is gone; buffering further chunks would
+    // only retain memory nothing will ever drain.
+    if (aborted) return;
     queue.push(chunk);
     if (final) queue.push(null);
     if (resolveNext) {
@@ -102,8 +105,21 @@ function createFflateZipStream(fileName: string): ZipStreamHandle {
     const passThrough = new ZipPassThrough(name);
     zip.add(passThrough);
     try {
+      let chunkCount = 0;
       for await (const chunk of data) {
+        // Interrupting the pipeline cannot cancel this already-running
+        // promise, so the producer observes the abort itself: throwing here
+        // also closes `data`'s source iterator via its return() hook.
+        if (aborted) throw aborted;
         passThrough.push(chunk);
+        chunkCount += 1;
+        // Periodic macrotask boundary: a single large entry can stream
+        // entirely through immediately-resolved promises, which would block
+        // event dispatch (the Cancel click that sets `aborted`, paints) for
+        // the whole file.
+        if (chunkCount % 25 === 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
       }
       passThrough.push(new Uint8Array(0), true);
     } catch (cause) {
@@ -181,5 +197,19 @@ export const makeZipOutput = (sink: ZipSink): Layer.Layer<Output> =>
           ),
         ),
       );
+    },
+
+    // The sink fiber lives on the global runtime (see begin), so pipeline
+    // interruption alone would strand it awaiting the next chunk forever,
+    // pinning everything it buffered. Rejecting the iterable unblocks it;
+    // the interrupt then reaps it regardless of where it was suspended.
+    abort: (rawHandle) => {
+      const { handle, sinkFiber } = rawHandle as {
+        handle: ZipStreamHandle;
+        sinkFiber: Fiber.RuntimeFiber<OutputResult, OutputError>;
+      };
+      return Effect.sync(() =>
+        handle.abort(new Error('Export was cancelled')),
+      ).pipe(Effect.zipRight(Fiber.interrupt(sinkFiber)), Effect.asVoid);
     },
   });

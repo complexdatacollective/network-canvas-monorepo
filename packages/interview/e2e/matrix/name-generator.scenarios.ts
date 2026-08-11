@@ -301,7 +301,6 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           name: 'closeness',
           type: 'scalar',
           component: 'VisualAnalogScale',
-          validation: { minValue: 0, maxValue: 100 },
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
         });
         person.addVariable({
@@ -422,7 +421,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         expect(typeof vas).toBe('number');
         if (typeof vas === 'number') {
           expect(vas).toBeGreaterThanOrEqual(0);
-          expect(vas).toBeLessThanOrEqual(100);
+          expect(vas).toBeLessThanOrEqual(1);
         }
       },
     },

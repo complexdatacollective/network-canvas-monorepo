@@ -6,22 +6,14 @@ import { notFound } from 'next/navigation';
 import { GetStartedIntro } from '~/components/get-started/GetStartedIntro';
 import { WorkflowPath } from '~/components/get-started/WorkflowPath';
 import { Footer } from '~/components/layout/Footer';
-import { GetStartedPageBackground } from '~/components/ui/GetStartedPageBackground';
-import { classicApps, webApps } from '~/lib/getStarted';
+import { HomepagePageBackground } from '~/components/ui/HomepagePageBackground';
+import { getLatestClassicApps } from '~/lib/classicReleases';
+import { webApps } from '~/lib/getStarted';
 import { routing } from '~/lib/i18n/routing';
 
 type GetStartedPageProps = {
   params: Promise<{ locale: string }>;
 };
-
-const designApps = [
-  ...webApps.filter((app) => app.workflow === 'design'),
-  ...classicApps.filter((app) => app.workflow === 'design'),
-];
-const collectApps = [
-  ...webApps.filter((app) => app.workflow === 'collect'),
-  ...classicApps.filter((app) => app.workflow === 'collect'),
-];
 
 export async function generateMetadata({
   params,
@@ -46,15 +38,27 @@ export async function generateMetadata({
 }
 
 export default async function GetStartedPage({ params }: GetStartedPageProps) {
-  const { locale } = await params;
+  const [{ locale }, classicApps] = await Promise.all([
+    params,
+    getLatestClassicApps(),
+  ]);
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
 
+  const designApps = [
+    ...webApps.filter((app) => app.workflow === 'design'),
+    ...classicApps.filter((app) => app.workflow === 'design'),
+  ];
+  const collectApps = [
+    ...webApps.filter((app) => app.workflow === 'collect'),
+    ...classicApps.filter((app) => app.workflow === 'collect'),
+  ];
+
   return (
     <main className="relative isolate">
-      <GetStartedPageBackground />
-      <div className="relative z-10">
+      <HomepagePageBackground target="[data-get-started-weave-target]" />
+      <div>
         <GetStartedIntro />
         <WorkflowPath workflow="design" apps={designApps} />
         <WorkflowPath workflow="collect" apps={collectApps} />

@@ -273,6 +273,13 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         await expect(stage.getPrompt('Prompt one: friendship')).toBeVisible();
         await expect.poll(() => census.getActivePipIndex()).toBe(0);
         await expect.poll(() => census.getSourceLabel()).toBe('Bob');
+        // The boundary crossing re-runs the target list's exit + entrance
+        // choreography, and the source label settles before the targets do.
+        // Wait for both targets so the visual capture (and baseline
+        // regeneration) can't record the transient empty panel — the bad
+        // chromium baseline committed in #1057.
+        await census.waitForTargetSettled('Carol');
+        await census.waitForTargetSettled('Alice');
       },
     },
 

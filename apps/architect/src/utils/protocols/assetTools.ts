@@ -195,9 +195,14 @@ export const getGeoJsonVariables = async (assetId: string) => {
     features?: { properties?: Record<string, unknown> }[];
   };
 
-  if (geoJson?.features?.[0]?.properties) {
-    return Object.keys(geoJson.features[0].properties);
+  const keys = new Set<string>();
+  for (const feature of geoJson?.features ?? []) {
+    if (feature?.properties) {
+      for (const key of Object.keys(feature.properties)) {
+        keys.add(key);
+      }
+    }
   }
 
-  return [];
+  return Array.from(keys);
 };

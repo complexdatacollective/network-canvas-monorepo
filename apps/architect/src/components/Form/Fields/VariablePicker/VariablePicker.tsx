@@ -1,17 +1,24 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState, type ComponentType, type FocusEventHandler } from 'react';
+import {
+  useId,
+  useState,
+  type ComponentType,
+  type FocusEventHandler,
+  type ReactNode,
+} from 'react';
 import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import Hint from '@codaco/fresco-ui/form/Hint';
+import { Label } from '@codaco/fresco-ui/Label';
 import type { VariableType } from '@codaco/protocol-validation';
-import EditableVariablePill, {
-  SimpleVariablePill,
-} from '~/components/VariablePill';
+import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
-import FrescoReduxField from '../../FrescoReduxField';
+import { getReduxFieldErrorState } from '../../reduxFieldMeta';
 import VariableSpotlight from './VariableSpotlight';
 
 export type VariableOption = {
@@ -81,7 +88,9 @@ export const VariablePickerControl = ({
     if (!selectedOption) return null;
 
     if (has(selectedOption, 'type') && selectedOption.type) {
-      return <EditableVariablePill uuid={selectedOption.value} />;
+      return (
+        <ConnectedVariablePill animated editable uuid={selectedOption.value} />
+      );
     }
 
     const selectedLabel = get(selectedOption, 'label', null);
@@ -89,44 +98,49 @@ export const VariablePickerControl = ({
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (selectedOption.type ?? 'text') as VariableType;
 
-    return (
-      <SimpleVariablePill label={finalLabel} type={variableType}>
-        <span />
-      </SimpleVariablePill>
-    );
+    return <VariablePill label={finalLabel} type={variableType} />;
   };
 
   return (
     <>
-      <fieldset
-        id={id}
-        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
-        aria-describedby={ariaDescribedBy}
-        aria-disabled={readOnly || undefined}
-        disabled={disabled}
+      <div
         data-name={name}
         onBlur={onBlur}
         onFocus={onFocus}
-        className={cx(
-          'bg-input text-input-contrast flex w-full flex-col items-start gap-4 rounded border-2 border-transparent p-4',
-          ariaInvalid && 'border-destructive',
-          disabled && 'opacity-50',
-          readOnly && 'opacity-70',
-          '[&_.variable-pill]:mb-0',
-        )}
+        className="flex w-full flex-col items-start gap-4"
       >
-        {value && (
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              key={value}
-            >
-              {variablePill()}
-            </motion.div>
-          </AnimatePresence>
-        )}
+        <fieldset
+          id={id}
+          aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+          aria-describedby={ariaDescribedBy}
+          aria-disabled={readOnly || undefined}
+          disabled={disabled}
+          className={cx(
+            'bg-input text-input-contrast flex w-full flex-col items-start rounded border-2 p-4',
+            ariaInvalid && 'border-destructive',
+            disabled && 'opacity-50',
+            readOnly && 'opacity-70',
+            '[&_.variable-pill]:mb-0',
+          )}
+        >
+          {!value && (
+            <p className="w-full py-6 text-center text-sm text-current/70 italic">
+              No variable selected
+            </p>
+          )}
+          {value && (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                key={value}
+              >
+                {variablePill()}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </fieldset>
         <Button
           type="button"
           icon={<Plus />}
@@ -136,7 +150,7 @@ export const VariablePickerControl = ({
         >
           {value ? 'Change variable' : 'Select variable'}
         </Button>
-      </fieldset>
+      </div>
       <VariableSpotlight
         open={showPicker}
         onOpenChange={(open) => {
@@ -159,29 +173,69 @@ type VariablePickerProps = WrappedFieldProps & {
   entity?: string | null;
   type?: string | null;
   label?: string;
+  hint?: ReactNode;
   options?: VariableOption[];
   onCreateOption?: (value: string) => void;
   disabled?: boolean;
   readOnly?: boolean;
+  required?: boolean;
 };
 
-const FrescoVariablePickerControl = VariablePickerControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
 const VariablePickerBase = ({
+  input,
+  meta,
   label = 'Create or select a variable',
+  hint,
+  required = false,
   ...props
-}: VariablePickerProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoVariablePickerControl}
-  />
-);
+}: VariablePickerProps) => {
+  const id = useId();
+  const { errors, showErrors } = getReduxFieldErrorState(meta);
+  const describedBy = [
+    required && `${id}-required`,
+    hint && `${id}-hint`,
+    errors.length > 0 && `${id}-error`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div
+      className="group flex w-full grow flex-col not-last:mb-8"
+      data-field-name={input.name}
+    >
+      <div className="mb-2">
+        <Label id={`${id}-label`} htmlFor={id} required={required}>
+          {label}
+        </Label>
+        {required && (
+          <span id={`${id}-required`} className="sr-only">
+            Required
+          </span>
+        )}
+        {hint && <Hint id={`${id}-hint`}>{hint}</Hint>}
+      </div>
+      <VariablePickerControl
+        {...props}
+        id={id}
+        name={input.name}
+        value={typeof input.value === 'string' ? input.value : undefined}
+        onChange={(value) => input.onChange(value)}
+        onBlur={() => input.onBlur?.(undefined)}
+        onFocus={input.onFocus}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={describedBy || undefined}
+        aria-invalid={showErrors}
+      />
+      <FieldErrors
+        id={`${id}-error`}
+        name={input.name}
+        errors={errors}
+        show={showErrors}
+      />
+    </div>
+  );
+};
 
 const VariablePicker = VariablePickerBase as unknown as ComponentType<
   Record<string, unknown>

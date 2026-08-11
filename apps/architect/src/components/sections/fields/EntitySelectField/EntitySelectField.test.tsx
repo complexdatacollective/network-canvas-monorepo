@@ -5,9 +5,10 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const confirm = vi.fn();
+const openDialog = vi.fn();
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
-  default: () => ({ confirm }),
+  default: () => ({ confirm, openDialog }),
 }));
 
 vi.mock('~/components/Dialog/NewTypeDialog', () => ({
@@ -76,6 +77,7 @@ const renderControl = (
 describe('EntitySelectControl', () => {
   beforeEach(() => {
     confirm.mockReset();
+    openDialog.mockReset();
   });
 
   it('exposes selectable entity types as a radio group', () => {
@@ -103,6 +105,25 @@ describe('EntitySelectControl', () => {
 
     expect(confirm).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenCalledWith('place');
+  });
+
+  it('refuses a change and warns when blockChangeReason is set', () => {
+    const onChange = renderControl({
+      blockChangeReason: 'A Narrative Pedigree depends on this stage.',
+    });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Select node Place' }));
+
+    expect(openDialog).toHaveBeenCalledOnce();
+    expect(openDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'acknowledge',
+        intent: 'warning',
+        description: 'A Narrative Pedigree depends on this stage.',
+      }),
+    );
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('creates and selects a new entity type', () => {

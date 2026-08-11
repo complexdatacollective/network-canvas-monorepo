@@ -8,8 +8,10 @@ import { change, formValues } from 'redux-form';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import DatePicker from '~/components/Form/Fields/DatePicker';
-import { DATE_FORMATS, DATE_TYPES } from '~/components/Form/Fields/DatePicker';
+import DatePicker, {
+  DATE_FORMATS,
+  DATE_TYPES,
+} from '~/components/Form/Fields/DatePicker';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
 
@@ -95,11 +97,15 @@ const DateTimeParameters = ({
       <ValidatedField
         component={DatePicker}
         name={`${name}.max`}
+        // Audit sweep: the schema only rejects `min > max`, so a collapsed
+        // single-day window is legal — and it is the shape the contradiction
+        // analyser reads as pinning the variable to one value. A strict
+        // `greaterThan` here refused to author it.
         validation={{
           ISODate: dateFormat,
-          greaterThan: {
+          greaterThanOrEqualTo: {
             value: `${name}.min`,
-            message: 'End date must be after start date',
+            message: 'End date must not be before start date',
           },
         }}
         componentProps={{

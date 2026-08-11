@@ -111,7 +111,7 @@ export const LongDescription: Story = {
   args: {
     title: 'Return to start screen?',
     description:
-      "Your work is saved automatically in your browser, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data. This additional sentence demonstrates that generated descriptions retain a readable line length rather than expanding the dialog shell.",
+      "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data. This additional sentence demonstrates that generated descriptions retain a readable line length rather than expanding the dialog shell.",
     size: 'readable',
   },
   render: (args) => <DialogTemplate {...args} />,

@@ -66,12 +66,14 @@ test('reorders stages via drag and commits one moveStage', async ({
   await gotoProtocol(architectPage);
 
   const before = stagesOf(await readProtocolJson(architectPage));
+  const [first, , third] = before;
+  if (!first || !third) throw new Error('fixture must have at least 3 stages');
   const timeline = new Timeline(architectPage);
-  await timeline.dragStage(before[0].label, before[2].label);
+  await timeline.dragStage(first.label, third.label);
 
   await expect
-    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0].id)
-    .not.toBe(before[0].id);
+    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0]?.id)
+    .not.toBe(first.id);
 });
 
 test('inserts a new Information stage at the clicked index', async ({
@@ -158,7 +160,9 @@ test('inserts a new Information stage at the clicked index', async ({
   });
   // The stage previously at `insertIndex` shifted down by one rather than
   // being replaced.
-  expect(after[insertIndex + 1].id).toBe(before[insertIndex].id);
+  const displaced = before[insertIndex];
+  if (!displaced) throw new Error('insertIndex out of range in fixture');
+  expect(after[insertIndex + 1]?.id).toBe(displaced.id);
 });
 
 test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', async ({
@@ -190,8 +194,8 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
 
   // Dialog shown AND deletion did not proceed. The guard returns before any
   // deleteStage dispatch, so no store change happens; acknowledging then
-  // waiting past the 600ms autosave debounce lets any (regression) erroneous
-  // delete's write land in IndexedDB before we assert it did NOT — closing
+  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
+  // before we assert it did NOT — closing
   // the "dialog shown but deletion silently proceeds anyway" gap.
   await guardDialog.getByRole('button', { name: 'OK' }).click();
   await architectPage.waitForTimeout(1000);

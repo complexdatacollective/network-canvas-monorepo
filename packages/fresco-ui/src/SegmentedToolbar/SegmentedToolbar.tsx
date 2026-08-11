@@ -886,6 +886,7 @@ export function SegmentedToolbar({
   return (
     <LayoutGroup>
       <MotionSurface
+        data-motion-drag-container="segmented-toolbar"
         floating
         shadow="none"
         spacing="none"

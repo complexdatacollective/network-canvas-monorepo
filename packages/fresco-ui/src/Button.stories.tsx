@@ -41,6 +41,7 @@ const meta = {
       options: [
         'default',
         'default-inverted',
+        'raised',
         'outline',
         'text',
         'dashed',
@@ -54,6 +55,12 @@ const meta = {
     size: {
       control: 'select',
       options: ['xs', 'sm', 'md', 'lg', 'xl'],
+    },
+    textStyle: {
+      control: 'select',
+      options: ['default', 'uppercase'],
+      description:
+        'Controls casing and letter spacing. Uppercase text uses wider spacing and one smaller text-size step. Raised buttons use it when omitted.',
     },
     disabled: {
       control: 'boolean',
@@ -106,6 +113,9 @@ export const Variants: Story = {
         <Button {...args} variant="default-inverted">
           Default inverted
         </Button>
+        <Button {...args} variant="raised">
+          Raised
+        </Button>
         <Button {...args} variant="outline">
           Outline
         </Button>
@@ -141,6 +151,51 @@ export const Colors: Story = {
         <Button color="info">Info</Button>
         <Button color="destructive">Destructive</Button>
         <Button color="success">Success</Button>
+      </div>
+    </div>
+  ),
+};
+
+export const Raised: Story = {
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        story:
+          'The raised variant derives its bottom edge from the selected color, scales that edge with Button size, and increases both the edge and elevation on hover. It defaults to wider-spaced uppercase text one size step smaller and moves down when pressed.',
+      },
+    },
+  },
+  render: () => (
+    <div className="flex flex-col gap-10">
+      <div className="flex flex-wrap items-end gap-6">
+        <Button variant="raised" color="success" size="sm">
+          Small
+        </Button>
+        <Button variant="raised" color="success" size="md">
+          Medium
+        </Button>
+        <Button variant="raised" color="success" size="lg">
+          Large
+        </Button>
+        <Button variant="raised" color="success" size="xl">
+          Extra large
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-6">
+        {BUTTON_COLORS.map((color) => (
+          <Button key={color} variant="raised" color={color} size="lg">
+            {color}
+          </Button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-6">
+        <Button variant="raised" color="success" textStyle="default">
+          Default text
+        </Button>
+        <Button variant="raised" color="success" textStyle="uppercase">
+          Uppercase text
+        </Button>
       </div>
     </div>
   ),
@@ -522,8 +577,8 @@ export const AdaptiveToContext: Story = {
         </Heading>
         <Paragraph margin="none" className="text-text/70 mb-6 text-sm">
           The dynamic button variant uses CSS custom properties to adapt to the
-          text and background colors of its container. Hover to see the lighter
-          shade effect.
+          text and background colors of its container. The raised treatment also
+          derives its lower edge from those contextual colors.
         </Paragraph>
       </div>
 
@@ -532,6 +587,9 @@ export const AdaptiveToContext: Story = {
           <span className="w-40 text-sm font-medium">Background:</span>
           <Button variant="default" color="dynamic">
             Default
+          </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
@@ -552,6 +610,9 @@ export const AdaptiveToContext: Story = {
           <Button variant="default" color="dynamic">
             Default
           </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
+          </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
@@ -570,6 +631,9 @@ export const AdaptiveToContext: Story = {
           <span className="w-40 text-sm font-medium">Secondary:</span>
           <Button variant="default" color="dynamic">
             Default
+          </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
@@ -590,6 +654,9 @@ export const AdaptiveToContext: Story = {
           <Button variant="default" color="dynamic">
             Default
           </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
+          </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
@@ -608,6 +675,9 @@ export const AdaptiveToContext: Story = {
           <span className="w-40 text-sm font-medium">Surface 2:</span>
           <Button variant="default" color="dynamic">
             Default
+          </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
@@ -628,6 +698,9 @@ export const AdaptiveToContext: Story = {
           <Button variant="default" color="dynamic">
             Default
           </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
+          </Button>
           <Button variant="dashed" color="dynamic">
             Dashed
           </Button>
@@ -646,6 +719,9 @@ export const AdaptiveToContext: Story = {
           <span className="w-40 text-sm font-medium">Success:</span>
           <Button variant="default" color="dynamic">
             Default
+          </Button>
+          <Button variant="raised" color="dynamic">
+            Raised
           </Button>
           <Button variant="dashed" color="dynamic">
             Dashed

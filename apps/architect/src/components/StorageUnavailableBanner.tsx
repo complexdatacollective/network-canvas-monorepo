@@ -26,9 +26,9 @@ const StorageUnavailableBanner = () => {
     >
       <AlertDescription className="flex items-center justify-between gap-5 text-sm">
         <span>
-          This protocol isn&apos;t being saved on this device — your
-          browser&apos;s storage is unavailable, which is common in private
-          browsing. Download a copy to keep your work.
+          This protocol isn&apos;t being saved on this device — local app
+          storage is unavailable, which is common in private browsing. Download
+          a copy to keep your work.
         </span>
         <Button
           size="sm"

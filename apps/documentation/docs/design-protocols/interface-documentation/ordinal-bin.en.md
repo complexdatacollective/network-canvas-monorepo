@@ -1,5 +1,6 @@
 ---
 title: Ordinal Bin
+navOrder: 12
 ---
 
 <InterfaceSummary type="OrdinalBin">

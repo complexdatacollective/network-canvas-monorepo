@@ -16,5 +16,6 @@
   "files.associations": {
     "*.css": "tailwindcss"
   },
-  "java.configuration.updateBuildConfiguration": "disabled"
+  "java.configuration.updateBuildConfiguration": "disabled",
+  "js/ts.tsdk.path": "./node_modules/typescript/lib"
 }

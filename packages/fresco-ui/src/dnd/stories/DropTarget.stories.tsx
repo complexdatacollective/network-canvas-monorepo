@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 
+import { withDndStoreProvider } from '../../storybook-support/withDndStoreProvider';
 import Heading from '../../typography/Heading';
 import { UnorderedList } from '../../typography/UnorderedList';
 import { type DragMetadata, useDragSource, useDropTarget } from '../dnd';
@@ -112,6 +113,7 @@ function DropTargetExample({
 
 const meta: Meta = {
   title: 'Systems/DragAndDrop/DropTarget',
+  decorators: [withDndStoreProvider],
   parameters: {
     layout: 'fullscreen',
     docs: {

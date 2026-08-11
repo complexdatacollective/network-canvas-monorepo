@@ -37,8 +37,8 @@ test('reads a seeded stage back from the store', async ({
 }) => {
   // A minimal Information stage (the simplest schema-8 stage type). The stage
   // is seeded synchronously before navigation, so this verifies readStageJson
-  // returns the seeded stage at the given index — the 600ms autosave-debounce
-  // path readStageJson polls past is genuinely exercised later by the UI-save
+  // returns the seeded stage at the given index — the asynchronous commit path
+  // readStageJson polls is exercised later by the UI-save
   // interface specs, not here.
   const protocol: CurrentProtocol = {
     ...emptyProtocol(),

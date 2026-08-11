@@ -112,9 +112,14 @@ export const showProtocolOpenResultDialog = async ({
       children: (
         <>
           <Paragraph>
-            The protocol file could not be opened due to validation errors:
+            The protocol could not be opened due to validation errors:
           </Paragraph>
-          <pre className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm">
+          <pre
+            tabIndex={0}
+            role="region"
+            aria-label="Protocol validation errors"
+            className="bg-surface-1 max-h-64 overflow-auto rounded-sm p-4 text-sm"
+          >
             {result.message}
           </pre>
           <Paragraph className="text-sm">

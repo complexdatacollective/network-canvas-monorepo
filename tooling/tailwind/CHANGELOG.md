@@ -1,5 +1,86 @@
 # @codaco/tailwind-config
 
+## 1.2.2
+
+### Patch Changes
+
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+## 1.2.1
+
+### Patch Changes
+
+- 1a3fe60: Improve node entry and display across interview interfaces. Synthetic `name`
+  variables now use realistic personal names whenever their validation rules
+  allow it, long labels wrap and truncate without distorting node shapes, and
+  Network Composer quick add retains focus after submitting a node. Shared modal,
+  form-field, and theme refinements support the updated Architect editing
+  experience.
+
+## 1.2.0
+
+### Minor Changes
+
+- 00e16c0: Refine interview typography scaling and unify the type-scale base.
+
+  The shared Fresco theme now uses a single `0.9rem` base for `--theme-root-size`
+  across product surfaces, and exposes a new `--theme-root-size-fluid` token — an
+  opt-in `clamp()` ramp for presentation surfaces that want type and spacing to
+  grow on wide or scaled-up displays. The participant interview adopts the shared
+  `0.9rem` base and scales it with a continuous ramp (reaching ~`1rem` at typical
+  screen sizes and up to `1.25rem` on large displays), replacing the previous
+  three-step ramp. Dense product UI keeps a constant, compact base.
+
+  Also fixes the scroll-to-bottom "ready" detection in scrolling forms
+  (`useScrolledToBottom`): it now measures scroll position directly instead of
+  relying on a zero-height sentinel's edge intersection, which some browsers
+  (notably Firefox) fail to report when the form is scrolled to the exact bottom —
+  so the "ready to continue" cue reliably appears.
+
+- 711c77a: Add raised buttons, uppercase text styling, larger heading variants, and the supporting shared type-scale tokens for expressive product pages. Add the accessible Definition tooltip for inline terms, including touch activation.
+
+### Patch Changes
+
+- 0134e88: Reduce the default Fresco theme root scale so shared typography, spacing, and component dimensions render more compactly across consuming applications.
+
 ## 1.1.0
 
 ### Minor Changes

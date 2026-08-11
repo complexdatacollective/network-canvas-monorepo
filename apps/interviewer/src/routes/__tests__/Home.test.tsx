@@ -142,6 +142,28 @@ describe('HomeRoute resume notification', () => {
     });
   });
 
+  it('uses safe-area-aware page insets that increase at laptop width', () => {
+    const { container } = render(<HomeRoute />);
+    const header = container.querySelector('header');
+
+    // Top padding measures from the bottom of the device's top safe area
+    // (env() is 0 outside an installed PWA), so the header clears the status
+    // bar on iPad while staying unchanged in browsers (#1186).
+    expect(header).toHaveClass(
+      'px-6',
+      'pt-[calc(1rem+env(safe-area-inset-top))]',
+      'laptop:px-11',
+      'laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))]',
+    );
+    expect(header).not.toHaveClass(
+      'pt-4',
+      'pt-6',
+      'tablet-landscape:px-11',
+      'tablet-landscape:pt-4',
+      'tablet-landscape:pt-9',
+    );
+  });
+
   it('hides while the case ID form is active and returns when it closes', async () => {
     render(<HomeRoute />);
 

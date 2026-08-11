@@ -1,9 +1,9 @@
-import { type z } from 'zod';
-import type * as core from 'zod/v4/core';
+import { z } from 'zod';
 
 import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
+  type AttributeWriterUsage,
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
@@ -15,6 +15,7 @@ export type EntityAttributeReferenceHit = {
   variableId: string;
   subject?: StageSubject;
   requireType?: readonly VariableType[];
+  usage?: AttributeWriterUsage;
 };
 
 export type EntityTypeReferenceHit = {
@@ -39,6 +40,12 @@ type WalkContext = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+// Zod types its child accessors (`.unwrap()`, `.in`, `.element`, `.valueType`,
+// `.options`, `.shape`) against the structural schema type, which lacks the
+// `.meta()` / `.safeParse()` surface this walk uses; instanceof recovers it.
+const isZodType = (value: unknown): value is z.ZodType =>
+  value instanceof z.ZodType;
+
 // Peel optional / nullable / default wrappers to reach the meaningful node.
 // A pipe (loose-shape-with-refine piped into a narrowing union) is peeled to
 // its INPUT side: it carries the same reference tags at the same paths as the
@@ -47,17 +54,16 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const unwrap = (schema: z.ZodType): z.ZodType => {
   let current = schema;
   for (;;) {
-    const type = current._zod.def.type;
-    if (type === 'optional' || type === 'nullable' || type === 'default') {
-      current = (current._zod.def as core.$ZodOptionalDef)
-        .innerType as z.ZodType;
-      continue;
-    }
-    if (type === 'pipe') {
-      current = (current._zod.def as core.$ZodPipeDef).in as z.ZodType;
-      continue;
-    }
-    return current;
+    const inner =
+      current instanceof z.ZodOptional ||
+      current instanceof z.ZodNullable ||
+      current instanceof z.ZodDefault
+        ? current.unwrap()
+        : current instanceof z.ZodPipe
+          ? current.in
+          : undefined;
+    if (!isZodType(inner)) return current;
+    current = inner;
   }
 };
 
@@ -73,32 +79,24 @@ const hasReference = (schema: z.ZodType): boolean => {
   if (cached !== undefined) return cached;
   // Provisional false guards against schema cycles while computing.
   subtreeHasReference.set(node, false);
-  const def = node._zod.def;
   let result =
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined;
   if (!result) {
-    switch (def.type) {
-      case 'object':
-        result = Object.values((def as core.$ZodObjectDef).shape).some(
-          (child) => hasReference(child as z.ZodType),
-        );
-        break;
-      case 'array':
-        result = hasReference((def as core.$ZodArrayDef).element as z.ZodType);
-        break;
-      case 'record':
-        result = hasReference(
-          (def as core.$ZodRecordDef).valueType as z.ZodType,
-        );
-        break;
-      case 'union':
-        result = ((def as core.$ZodUnionDef).options as z.ZodType[]).some(
-          (option) => hasReference(option),
-        );
-        break;
-      default:
-        result = false;
+    if (node instanceof z.ZodObject) {
+      result = Object.values(node.shape).some(
+        (child: unknown) => isZodType(child) && hasReference(child),
+      );
+    } else if (node instanceof z.ZodArray) {
+      const element = node.element;
+      result = isZodType(element) && hasReference(element);
+    } else if (node instanceof z.ZodRecord) {
+      const valueType = node.valueType;
+      result = isZodType(valueType) && hasReference(valueType);
+    } else if (node instanceof z.ZodUnion) {
+      result = node.options.some(
+        (option) => isZodType(option) && hasReference(option),
+      );
     }
   }
   subtreeHasReference.set(node, result);
@@ -107,13 +105,9 @@ const hasReference = (schema: z.ZodType): boolean => {
 
 // Literal/enum values a schema node accepts, for virtual-discriminator detection.
 const literalValuesOf = (schema: z.ZodType): unknown[] | undefined => {
-  const def = unwrap(schema)._zod.def;
-  if (def.type === 'literal') {
-    return (def as core.$ZodLiteralDef<core.util.Literal>).values as unknown[];
-  }
-  if (def.type === 'enum') {
-    return Object.values((def as core.$ZodEnumDef).entries);
-  }
+  const node = unwrap(schema);
+  if (node instanceof z.ZodLiteral) return [...node.values];
+  if (node instanceof z.ZodEnum) return node.options;
   return undefined;
 };
 
@@ -135,22 +129,22 @@ const getVirtualDiscriminator = (
   const cached = virtualDiscriminatorCache.get(union);
   if (cached !== undefined) return cached;
   const shapes = options.map((option) => {
-    const def = unwrap(option)._zod.def;
-    return def.type === 'object'
-      ? ((def as core.$ZodObjectDef).shape as Record<string, z.ZodType>)
-      : undefined;
+    const node = unwrap(option);
+    return node instanceof z.ZodObject ? node.shape : undefined;
   });
   let result: VirtualDiscriminator | null = null;
   if (shapes.every((shape) => shape !== undefined)) {
     for (const field of Object.keys(shapes[0] ?? {})) {
       const map = new Map<unknown, z.ZodType[]>();
-      const usable = shapes.every((shape, index) => {
-        const fieldSchema = shape?.[field];
-        const values = fieldSchema ? literalValuesOf(fieldSchema) : undefined;
+      const usable = options.every((option, index) => {
+        const fieldSchema: unknown = shapes[index]?.[field];
+        const values = isZodType(fieldSchema)
+          ? literalValuesOf(fieldSchema)
+          : undefined;
         if (!values?.length) return false;
         for (const value of values) {
           const branches = map.get(value) ?? [];
-          branches.push(options[index] as z.ZodType);
+          branches.push(option);
           map.set(value, branches);
         }
         return true;
@@ -222,129 +216,124 @@ const walk = (
   const node = unwrap(schema);
   // Prune reference-free subtrees: nothing below can produce a hit.
   if (!hasReference(node)) return [];
-  const def = node._zod.def;
 
-  switch (def.type) {
-    case 'string': {
-      if (typeof value !== 'string') return [];
-      const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
-      if (attributeDescriptor) {
-        return [
-          {
-            kind: 'attribute',
-            path,
-            variableId: value,
-            subject: resolveSubject(attributeDescriptor.subject, path, ctx),
-            requireType: attributeDescriptor.requireType,
-          },
-        ];
-      }
-      const typeDescriptor = getEntityTypeReferenceDescriptor(node);
-      if (typeDescriptor) {
-        const entity =
-          typeDescriptor.entity === 'filterRule'
-            ? ctx.filterRuleEntity
-            : typeDescriptor.entity;
-        // Unresolvable (e.g. an ego filter rule) references no codebook type.
-        if (entity === undefined) return [];
-        return [{ kind: 'type', path, typeId: value, entity }];
-      }
-      return [];
+  if (node instanceof z.ZodString) {
+    if (typeof value !== 'string') return [];
+    const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
+    if (attributeDescriptor) {
+      return [
+        {
+          kind: 'attribute',
+          path,
+          variableId: value,
+          subject: resolveSubject(attributeDescriptor.subject, path, ctx),
+          requireType: attributeDescriptor.requireType,
+          usage: attributeDescriptor.usage,
+        },
+      ];
     }
-    case 'object': {
-      if (!isRecord(value)) return [];
-      const shape = (def as core.$ZodObjectDef).shape;
-      const childCtx: WalkContext = {
-        stageSubject: stageSubjectOf(value) ?? ctx.stageSubject,
-        parent: value,
-        filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
-      };
-      return Object.keys(shape).flatMap((key) => {
-        const child = shape[key] as z.ZodType;
-        if (!hasReference(child)) return [];
-        return walk(child, value[key], [...path, key], childCtx);
-      });
+    const typeDescriptor = getEntityTypeReferenceDescriptor(node);
+    if (typeDescriptor) {
+      const entity =
+        typeDescriptor.entity === 'filterRule'
+          ? ctx.filterRuleEntity
+          : typeDescriptor.entity;
+      // Unresolvable (e.g. an ego filter rule) references no codebook type.
+      if (entity === undefined) return [];
+      return [{ kind: 'type', path, typeId: value, entity }];
     }
-    case 'array': {
-      if (!Array.isArray(value)) return [];
-      const element = (def as core.$ZodArrayDef).element as z.ZodType;
-      return value.flatMap((item, index) =>
-        walk(element, item, [...path, index], ctx),
-      );
-    }
-    case 'record': {
-      if (!isRecord(value)) return [];
-      const valueType = (def as core.$ZodRecordDef).valueType as z.ZodType;
-      return Object.keys(value).flatMap((key) =>
-        walk(valueType, value[key], [...path, key], ctx),
-      );
-    }
-    case 'union': {
-      const unionDef = def as
-        | core.$ZodDiscriminatedUnionDef
-        | core.$ZodUnionDef;
-      const options = unionDef.options as z.ZodType[];
-      const discriminator =
-        'discriminator' in unionDef ? unionDef.discriminator : undefined;
-      if (discriminator !== undefined && isRecord(value)) {
-        const discValue = value[discriminator];
-        const match = options.find((option) => {
-          const shape = (option._zod.def as core.$ZodObjectDef).shape;
-          const discField = shape[discriminator] as z.ZodType | undefined;
-          if (!discField) return false;
-          const literalValues = (
-            discField._zod.def as core.$ZodLiteralDef<core.util.Literal>
-          ).values;
-          return (
-            Array.isArray(literalValues) &&
-            literalValues.includes(discValue as core.util.Literal)
-          );
-        });
-        return match ? walk(match, value, path, ctx) : [];
-      }
-      // plain union: only reference-bearing branches can yield hits, so restrict
-      // both the branch search and safeParse cost to them (the top-level guard
-      // guarantees at least one such branch exists). Prefer the branch that
-      // fully parses — unchanged behaviour for valid data.
-      const refOptions = options.filter((option) => hasReference(option));
-      // Narrow the branch search with a virtual discriminator — a literal/enum
-      // field every option shares (e.g. a variable's `type`). This restricts the
-      // safeParse probes to the branches whose discriminator matches the value
-      // (usually one) instead of every reference-bearing branch.
-      const virtualDiscriminator = getVirtualDiscriminator(node, options);
-      const discriminated =
-        virtualDiscriminator && isRecord(value)
-          ? virtualDiscriminator.map.get(value[virtualDiscriminator.field])
-          : undefined;
-      const searchOptions = discriminated
-        ? discriminated.filter((option) => hasReference(option))
-        : refOptions;
-      const match = searchOptions.find(
-        (option) => option.safeParse(value).success,
-      );
-      if (match) return walk(match, value, path, ctx);
-      // No reference-bearing branch matched. If the value validly belongs to a
-      // reference-free branch there is nothing to collect; only when it matches
-      // no branch at all (structurally-invalid, in-progress edit) do we merge
-      // references across the reference-bearing branches so they still surface.
-      const matchesRefFreeBranch = options.some(
-        (option) => !hasReference(option) && option.safeParse(value).success,
-      );
-      if (matchesRefFreeBranch) return [];
-      // De-dupe on the full hit (path AND resolved subject/requireType): two
-      // branches can expose the same path with different validation metadata,
-      // and those are distinct references that must both survive.
-      const merged = new Map<string, ReferenceHit>();
-      for (const option of refOptions) {
-        for (const hit of walk(option, value, path, ctx)) {
-          merged.set(JSON.stringify(hit), hit);
-        }
-      }
-      return [...merged.values()];
-    }
-    default:
-      return [];
+    return [];
   }
+
+  if (node instanceof z.ZodObject) {
+    if (!isRecord(value)) return [];
+    const shape = node.shape;
+    const childCtx: WalkContext = {
+      stageSubject: stageSubjectOf(value) ?? ctx.stageSubject,
+      parent: value,
+      filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
+    };
+    return Object.keys(shape).flatMap((key) => {
+      const child: unknown = shape[key];
+      if (!isZodType(child) || !hasReference(child)) return [];
+      return walk(child, value[key], [...path, key], childCtx);
+    });
+  }
+
+  if (node instanceof z.ZodArray) {
+    if (!Array.isArray(value)) return [];
+    const element = node.element;
+    if (!isZodType(element)) return [];
+    return value.flatMap((item, index) =>
+      walk(element, item, [...path, index], ctx),
+    );
+  }
+
+  if (node instanceof z.ZodRecord) {
+    if (!isRecord(value)) return [];
+    const valueType = node.valueType;
+    if (!isZodType(valueType)) return [];
+    return Object.keys(value).flatMap((key) =>
+      walk(valueType, value[key], [...path, key], ctx),
+    );
+  }
+
+  if (node instanceof z.ZodUnion) {
+    const options = node.options.filter(isZodType);
+    if (node instanceof z.ZodDiscriminatedUnion && isRecord(value)) {
+      const discriminator = node.def.discriminator;
+      const discValue = value[discriminator];
+      const match = options.find((option) => {
+        if (!(option instanceof z.ZodObject)) return false;
+        const discField: unknown = option.shape[discriminator];
+        if (!(discField instanceof z.ZodLiteral)) return false;
+        const accepted: ReadonlySet<unknown> = discField.values;
+        return accepted.has(discValue);
+      });
+      return match ? walk(match, value, path, ctx) : [];
+    }
+    // plain union: only reference-bearing branches can yield hits, so restrict
+    // both the branch search and safeParse cost to them (the top-level guard
+    // guarantees at least one such branch exists). Prefer the branch that
+    // fully parses — unchanged behaviour for valid data.
+    const refOptions = options.filter((option) => hasReference(option));
+    // Narrow the branch search with a virtual discriminator — a literal/enum
+    // field every option shares (e.g. a variable's `type`). This restricts the
+    // safeParse probes to the branches whose discriminator matches the value
+    // (usually one) instead of every reference-bearing branch.
+    const virtualDiscriminator = getVirtualDiscriminator(node, options);
+    const discriminated =
+      virtualDiscriminator && isRecord(value)
+        ? virtualDiscriminator.map.get(value[virtualDiscriminator.field])
+        : undefined;
+    const searchOptions = discriminated
+      ? discriminated.filter((option) => hasReference(option))
+      : refOptions;
+    const match = searchOptions.find(
+      (option) => option.safeParse(value).success,
+    );
+    if (match) return walk(match, value, path, ctx);
+    // No reference-bearing branch matched. If the value validly belongs to a
+    // reference-free branch there is nothing to collect; only when it matches
+    // no branch at all (structurally-invalid, in-progress edit) do we merge
+    // references across the reference-bearing branches so they still surface.
+    const matchesRefFreeBranch = options.some(
+      (option) => !hasReference(option) && option.safeParse(value).success,
+    );
+    if (matchesRefFreeBranch) return [];
+    // De-dupe on the full hit (path AND resolved subject/requireType): two
+    // branches can expose the same path with different validation metadata,
+    // and those are distinct references that must both survive.
+    const merged = new Map<string, ReferenceHit>();
+    for (const option of refOptions) {
+      for (const hit of walk(option, value, path, ctx)) {
+        merged.set(JSON.stringify(hit), hit);
+      }
+    }
+    return [...merged.values()];
+  }
+
+  return [];
 };
 
 const isAttributeHit = (
@@ -367,10 +356,7 @@ export const collectEntityAttributeReferencesFromSchema = (
 export const collectEntityAttributeReferences = (
   protocol: unknown,
 ): EntityAttributeReferenceHit[] =>
-  collectEntityAttributeReferencesFromSchema(
-    CurrentProtocolSchema as unknown as z.ZodType,
-    protocol,
-  );
+  collectEntityAttributeReferencesFromSchema(CurrentProtocolSchema, protocol);
 
 /**
  * Every codebook node/edge TYPE referenced by a protocol, discovered from the
@@ -382,6 +368,6 @@ export const collectEntityAttributeReferences = (
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  walk(CurrentProtocolSchema as unknown as z.ZodType, protocol, [], {})
+  walk(CurrentProtocolSchema, protocol, [], {})
     .filter(isTypeHit)
     .map(({ kind: _kind, ...hit }) => hit);

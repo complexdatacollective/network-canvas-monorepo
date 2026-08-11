@@ -41,6 +41,7 @@ const SCROLL_OPACITY_RANGE = [1, 0];
 const SCROLL_SCALE_RANGE = [1, 1.8];
 
 type ScrollFlareRange = readonly [number, number];
+type PageBackgroundMotionMode = 'direct' | 'scroll' | 'target';
 
 // The weave is hidden behind an inverse-radial mask until the convergence target
 // (the hero video) resolves, then the masked disc shrinks to nothing at the
@@ -178,6 +179,7 @@ export function usePageBackgroundTargetRef() {
 
 export function PageBackgroundProvider({
   children,
+  colors,
   fallbackConvergence = DEFAULT_CONVERGENCE,
   intensity = INITIAL_INTENSITY,
   motionMode = 'scroll',
@@ -185,9 +187,10 @@ export function PageBackgroundProvider({
   waitForTarget = true,
 }: {
   children: ReactNode;
+  colors?: readonly string[];
   fallbackConvergence?: NetworkWeaveConvergence;
   intensity?: number;
-  motionMode?: 'scroll' | 'target';
+  motionMode?: PageBackgroundMotionMode;
   scrollFlareRange?: ScrollFlareRange;
   waitForTarget?: boolean;
 }) {
@@ -286,6 +289,7 @@ export function PageBackgroundProvider({
   return (
     <>
       <PageBackground
+        colors={colors}
         convergence={convergence}
         intensity={intensity}
         layerRef={layerRef}
@@ -332,8 +336,8 @@ function useConvergenceReveal(
   const innerRadius = useTransform(radius, (value) =>
     Math.max(0, value * (1 - REVEAL_EDGE_FEATHER)),
   );
-  const centerX = convergence.x * 100;
-  const centerY = convergence.y * 100;
+  const centerX = String(convergence.x * 100);
+  const centerY = String(convergence.y * 100);
   const maskImage = useMotionTemplate`radial-gradient(circle at ${centerX}% ${centerY}%, transparent ${innerRadius}px, #000 ${radius}px)`;
 
   const [masked, setMasked] = useState(resolved !== undefined);
@@ -407,6 +411,7 @@ function useResponsiveOrientation(): NetworkWeaveOrientation {
 }
 
 export function PageBackground({
+  colors,
   convergence = DEFAULT_CONVERGENCE,
   complexity = DEFAULT_COMPLEXITY,
   intensity = INITIAL_INTENSITY,
@@ -419,12 +424,13 @@ export function PageBackground({
   targetChangeVersion = 0,
   layerRef,
 }: {
+  colors?: readonly string[];
   convergence?: NetworkWeaveConvergence;
   complexity?: number;
   intensity?: number;
   flare?: number;
   speedFactor?: number;
-  motionMode?: 'scroll' | 'target';
+  motionMode?: PageBackgroundMotionMode;
   resolved?: boolean;
   scrollFadeEnd?: number;
   scrollFlareRange?: ScrollFlareRange;
@@ -584,15 +590,15 @@ export function PageBackground({
     reduceMotion,
   );
   const renderedSettings =
-    motionMode === 'scroll'
-      ? {
+    motionMode === 'target'
+      ? weaveSettings
+      : {
           convergence,
           complexity,
           intensity,
           flare,
           speedFactor,
-        }
-      : weaveSettings;
+        };
   const renderedFlare =
     scrollFlareRange && reduceMotion === false
       ? scrollFlare
@@ -613,11 +619,17 @@ export function PageBackground({
       ref={layerRef}
       aria-hidden="true"
       data-testid="page-background-layer"
-      className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
-      style={{ ...maskStyle, ...scrollStyle }}
+      className="pointer-events-none fixed inset-0 overflow-hidden"
+      style={{
+        ...maskStyle,
+        ...scrollStyle,
+        zIndex: -1,
+        visibility: resolved === false ? 'hidden' : undefined,
+      }}
     >
       <NetworkWeaveBackground
         seed="networkcanvas.com"
+        colors={colors}
         convergence={renderedSettings.convergence}
         complexity={renderedSettings.complexity}
         intensity={renderedSettings.intensity}

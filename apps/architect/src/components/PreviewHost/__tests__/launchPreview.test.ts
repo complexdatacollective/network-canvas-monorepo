@@ -64,10 +64,14 @@ describe('launchPreview', () => {
       protocol,
       startStage: 2,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
-    expect(openSpy).toHaveBeenCalledWith('/preview/', '_blank');
+    expect(openSpy).toHaveBeenCalledWith(
+      '/preview/',
+      '_blank',
+      'popup,width=1280,height=800',
+    );
 
     postReadyFromSource(popup);
     await promise;
@@ -79,7 +83,7 @@ describe('launchPreview', () => {
         protocolId: 'lib-protocol-1',
         startStage: 2,
         useSyntheticData: true,
-        skipLogicBypassed: false,
+        respectSkipLogic: false,
         memoryAssets: [],
       },
       window.location.origin,
@@ -92,7 +96,7 @@ describe('launchPreview', () => {
       protocol,
       startStage: 1,
       useSyntheticData: false,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
     postReadyFromSource(popup);
     await promise;
@@ -112,7 +116,7 @@ describe('launchPreview', () => {
         protocol: makeProtocol(),
         startStage: 0,
         useSyntheticData: true,
-        skipLogicBypassed: false,
+        respectSkipLogic: false,
       }),
     ).resolves.toEqual({
       kind: 'popup-blocked',
@@ -124,7 +128,7 @@ describe('launchPreview', () => {
       protocol: makeProtocol(),
       startStage: 0,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
     (popup as unknown as { closed: boolean }).closed = true;
@@ -140,7 +144,7 @@ describe('launchPreview', () => {
         protocol: makeProtocol(),
         startStage: 0,
         useSyntheticData: true,
-        skipLogicBypassed: false,
+        respectSkipLogic: false,
       }),
     ).rejects.toThrow(/no active protocol/i);
     expect(openSpy).not.toHaveBeenCalled();
@@ -151,7 +155,7 @@ describe('launchPreview', () => {
       protocol: makeProtocol(),
       startStage: 0,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
     // Forged message from a different window
@@ -170,7 +174,7 @@ describe('launchPreview', () => {
       protocol,
       startStage: 0,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
     postReadyFromSource(popup, 'https://attacker.example');
@@ -185,7 +189,7 @@ describe('launchPreview', () => {
       protocol: makeProtocol(),
       startStage: 0,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
     const expectation = expect(promise).rejects.toThrow(/didn't load/i);
     await vi.advanceTimersByTimeAsync(10_000);
@@ -197,7 +201,7 @@ describe('launchPreview', () => {
       protocol: makeProtocol(),
       startStage: 0,
       useSyntheticData: true,
-      skipLogicBypassed: false,
+      respectSkipLogic: false,
     });
 
     postReadyFromSource(popup);

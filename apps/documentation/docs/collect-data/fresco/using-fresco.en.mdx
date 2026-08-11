@@ -336,7 +336,7 @@ Once participants have completed interviews, you can export the data from the in
 1. Navigate to the interviews page in the dashboard.
 2. Select the checkboxes next to the interviews you wish to export.
 3. Click the **Export selected** button at the bottom of the table.
-4. Confirm the [file types and export options](/en/collect-data/fresco/using-fresco#file-types) that you wish to use.
+4. Confirm the [file types and export options](/en/analyze-data/data-export) that you wish to use.
 5. Click **Start export process**.
 
 ### To export all interviews:
@@ -344,7 +344,7 @@ Once participants have completed interviews, you can export the data from the in
 1. Navigate to the interviews page in the dashboard.
 2. Click the **Export Interview Data** button.
 3. Select **Export all interviews** from the dropdown.
-4. Confirm the [file types and export options](/en/collect-data/fresco/using-fresco#file-types) that you wish to use.
+4. Confirm the [file types and export options](/en/analyze-data/data-export) that you wish to use.
 5. Click **Start export process**.
 
 ### To export all _unexported_ interviews:
@@ -352,31 +352,11 @@ Once participants have completed interviews, you can export the data from the in
 1. Navigate to the interviews page in the dashboard.
 2. Click the **Export Interview Data** button.
 3. Select **Export all unexported interviews** from the dropdown.
-4. Confirm the [file types and export options](/en/collect-data/fresco/using-fresco#file-types) that you wish to use.
+4. Confirm the [file types and export options](/en/analyze-data/data-export) that you wish to use.
 5. Click **Start export process**.
 
-## File types
+### File types and export options
 
-Fresco will prompt you to choose file types for the export. The file types are identical to those found in Interviewer. The two options are:
+Before an export begins, Fresco prompts you to choose the file types (CSV, GraphML, or both) and any export options you wish to use. To learn what the exported files contain — the entity files and their columns, the identifiers used to link them, and what each export option does — see the [Data Export guide](/en/analyze-data/data-export).
 
-- **CSV**. A common format for representing network data. This format is readable as a table (or series of tables) in Excel, LibreOffice, Keynote, and other tabular programs. The CSV version also complies with the `egor` package standard. Selecting this option will output multiple files, including node and edge lists for each type, and an ego attribute list that also includes session metadata:
-  - **Ego attribute list**: This file will have one row per ego, with ego-level variables session metadata. The filename will be in the format `caseID_sessionUUID_ego.csv`.
-  - **Alter attribute list**: This file will have one row per alter (i.e. per nominated node). All alters have their own unique ID, as well as an automatically incrementing ID that is only consistent on a per-export basis. The filename will be in the format `caseID_sessionUUID_alterType.csv`.
-  - **Edge attribute list**: This will have one row per relationship, with columns representing edge attributes. Each row will have a key to link to ego (`networkCanvasEgoUUID`), as well as source and target columns that reference both the UUID and the automatically incrementing export ID. The filename will be in the format `caseID_sessionUUID_edgeType.csv`.
-- **GraphML**. An XML based open standard for representing graph data, that is compatible with many social network analysis programs including UCINET, Gephi, NodeXL, Pajek, Visone, and ORA. The filename will be in the format `caseID_sessionUUID.graphml`.
-
-Which file type you should choose depends largely on the needs of your analysis tools. We recommend exporting data in both formats and experimenting with the data you receive to ensure that it meets your needs.
-
-<TipBox>
-
-For comprehensive information about data export, file types, and using exported data in analysis tools, see the [Data Export guide](/en/analyze-data/data-export).
-
-</TipBox>
-
-## Export options
-
-You can configure a variety of specialized export options that will impact the data you receive in various ways. You can leave these options at their default values unless you know that you need to change them.
-
-#### Use screen layout coordinates
-
-Position data from layout variables used on the Sociogram interface in Interviewer is stored on nodes as normalized x/y coordinates, with the origin in the top left of the screen. This allows you to later visualize these layouts on a canvas of arbitrary size, and to compare layouts that were created on screens with different proportions.
+If you would rather retrieve interview data automatically than download files from the dashboard by hand, Fresco also provides a read-only [Fresco API](/en/analyze-data/fresco-api).

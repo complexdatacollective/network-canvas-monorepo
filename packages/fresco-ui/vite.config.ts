@@ -44,6 +44,26 @@ const cssCopyPlugin = () => ({
   },
 });
 
+// Source constructs workers the portable way (`new Worker(new URL(...))`) so
+// non-Vite bundlers can consume this package's source. That form is wrong for
+// the published dist, where a library-mode worker chunk emits an absolute
+// `/assets/<hash>.js` URL consumers cannot resolve — so for the library build
+// only, redirect the factory module to its `?worker&inline` twin, which bakes
+// the worker into a blob URL. Storybook and Vitest load this config too and
+// resolve source directly, so the swap is scoped to `vite build`.
+const inlineWorkerPlugin = () => ({
+  name: 'fresco-ui-inline-worker',
+  apply: 'build' as const,
+  enforce: 'pre' as const,
+  resolveId(source: string, importer: string | undefined) {
+    if (!importer || !source.endsWith('createSearchWorker.ts')) return null;
+    return resolve(
+      srcRoot,
+      'collection/filtering/createSearchWorker.inline.ts',
+    );
+  },
+});
+
 export default defineConfig({
   oxc: {
     jsx: { runtime: 'automatic' },
@@ -111,5 +131,6 @@ export default defineConfig({
         entryRoot: 'src',
       }),
     cssCopyPlugin(),
+    inlineWorkerPlugin(),
   ],
 });

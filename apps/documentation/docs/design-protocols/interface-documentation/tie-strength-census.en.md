@@ -1,10 +1,11 @@
 ---
 title: Tie-Strength Census
+navOrder: 19
 ---
 
 <InterfaceSummary type="TieStrengthCensus">
 
-<InterfaceMeta type="Edge Generator/Edge Interpreter" creates="Edges with weight stored on an ordinal variable" usesprompts="true">
+<InterfaceMeta type="Name Interpreter" creates="Edges with weight stored on an ordinal variable" usesprompts="true">
 
 </InterfaceMeta>
 
@@ -12,7 +13,7 @@ title: Tie-Strength Census
 
 The Tie-Strength Census interface is similar to the [Dyad Census](../interface-documentation/dyad-census) in terms of user experience, but has the additional benefit of assigning an ordinal variable value to each edge that is created.
 
-For each pair of alters, the participant will be able to indicate if a tie is present by indicating the strength of that tie. The participant can also indicate that a tie is not present between the pair. Selecting an option will automatically advance to the next pair, creating a stremlined and low-burden experience.
+For each pair of alters, the participant will be able to indicate if a tie is present by indicating the strength of that tie. The participant can also indicate that a tie is not present between the pair. Selecting an option will automatically advance to the next pair, creating a streamlined and low-burden experience.
 
 If your interview uses the dyad census method (as opposed to creating edges using the [Sociogram](../interface-documentation/sociogram) interface) and you are also interested in tie strength, consider using this interface to reduce the response burden on your participants.
 

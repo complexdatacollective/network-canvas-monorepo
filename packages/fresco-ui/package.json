@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "4.1.1",
+  "version": "6.0.0",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -18,7 +18,9 @@
   "exports": {
     "./Accordion": "./src/Accordion.tsx",
     "./Alert": "./src/Alert.tsx",
+    "./AnimationProvider": "./src/AnimationProvider.tsx",
     "./Badge": "./src/Badge.tsx",
+    "./Definition": "./src/Definition.tsx",
     "./NativeLink": "./src/NativeLink.tsx",
     "./Pips": "./src/Pips.tsx",
     "./ProgressBar": "./src/ProgressBar.tsx",
@@ -128,6 +130,7 @@
     "./form/utils/focusFirstError": "./src/form/utils/focusFirstError.ts",
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
+    "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./styles.css": "./src/styles.css",
     "./DataTable/DataTable": "./src/DataTable/DataTable.tsx",
     "./DataTable/DataTablePagination": "./src/DataTable/DataTablePagination.tsx",
@@ -169,9 +172,17 @@
         "types": "./dist/Alert.d.ts",
         "default": "./dist/Alert.js"
       },
+      "./AnimationProvider": {
+        "types": "./dist/AnimationProvider.d.ts",
+        "default": "./dist/AnimationProvider.js"
+      },
       "./Badge": {
         "types": "./dist/Badge.d.ts",
         "default": "./dist/Badge.js"
+      },
+      "./Definition": {
+        "types": "./dist/Definition.d.ts",
+        "default": "./dist/Definition.js"
       },
       "./NativeLink": {
         "types": "./dist/NativeLink.d.ts",
@@ -609,6 +620,10 @@
         "types": "./dist/form/utils/ymd.d.ts",
         "default": "./dist/form/utils/ymd.js"
       },
+      "./form/validation/helpers": {
+        "types": "./dist/form/validation/helpers.d.ts",
+        "default": "./dist/form/validation/helpers.js"
+      },
       "./styles.css": "./dist/styles.css",
       "./DataTable/DataTable": {
         "types": "./dist/DataTable/DataTable.d.ts",
@@ -737,29 +752,29 @@
     "test:storybook": "vitest run --project=storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build --stats-json",
-    "chromatic": "chromatic --only-changed --exit-once-uploaded --auto-accept-changes main --storybook-build-dir=storybook-static --storybook-base-dir=packages/fresco-ui",
+    "chromatic": "chromatic --only-changed --exit-zero-on-changes --storybook-build-dir=storybook-static --storybook-base-dir=packages/fresco-ui --storybook-config-dir=.storybook --untraced 'apps/architect/package.json' --untraced 'apps/architect-classic/package.json' --untraced 'apps/interviewer/package.json' --untraced 'apps/interviewer-classic/package.json' --untraced 'packages/interview/package.json' --untraced 'packages/site-navigation-element/package.json'",
     "prepublishOnly": "pnpm build",
     "clean": "rm -rf .turbo node_modules dist",
     "sync-exports": "node scripts/generate-publish-exports.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "catalog:",
-    "@tiptap/core": "^3.24.0",
-    "@tiptap/extension-bullet-list": "^3.24.0",
-    "@tiptap/extension-heading": "^3.24.0",
-    "@tiptap/extension-ordered-list": "^3.24.0",
-    "@tiptap/extension-paragraph": "^3.24.0",
-    "@tiptap/extension-placeholder": "^3.24.0",
-    "@tiptap/pm": "^3.24.0",
-    "@tiptap/react": "^3.27.3",
-    "@tiptap/starter-kit": "^3.24.0",
+    "@tiptap/core": "^3.29.2",
+    "@tiptap/extension-bullet-list": "^3.29.2",
+    "@tiptap/extension-heading": "^3.29.2",
+    "@tiptap/extension-ordered-list": "^3.29.2",
+    "@tiptap/extension-paragraph": "^3.29.2",
+    "@tiptap/extension-placeholder": "^3.29.2",
+    "@tiptap/pm": "^3.29.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "nanoid": "^5.1.16",
+    "nanoid": "^6.0.0",
     "react-aria-components": "^1.18.0",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",
@@ -778,6 +793,7 @@
     "@faker-js/faker": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
+    "@storybook/addon-mcp": "catalog:",
     "@storybook/addon-vitest": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",

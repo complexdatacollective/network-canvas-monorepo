@@ -71,6 +71,34 @@ const payload = {
   },
 } satisfies InterviewPayload;
 
+const noActiveAuthoredStagePayload = {
+  ...payload,
+  protocol: {
+    ...payload.protocol,
+    stages: [
+      {
+        id: 'route-controlling-stage',
+        type: 'Information',
+        label: 'Route-controlling stage',
+        title: 'Route-controlling stage',
+        items: [],
+        skipLogic: {
+          action: 'SKIP',
+          filter: { join: 'AND', rules: [] },
+          destination: { type: 'finish' },
+        },
+      },
+      {
+        id: 'bypassed-stage',
+        type: 'Information',
+        label: 'Bypassed stage',
+        title: 'Bypassed stage',
+        items: [],
+      },
+    ],
+  },
+} satisfies InterviewPayload;
+
 function ControlledShell() {
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -84,6 +112,46 @@ function ControlledShell() {
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics
+      hideNavigation
+    />
+  );
+}
+
+function ControlledReviewShell() {
+  const [currentStep, setCurrentStep] = useState(
+    payload.protocol.stages.length,
+  );
+
+  return (
+    <Shell
+      payload={payload}
+      currentStep={currentStep}
+      onStepChange={setCurrentStep}
+      onSync={() => Promise.resolve()}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      reviewMode
+      hideNavigation
+    />
+  );
+}
+
+function ControlledNoActiveStageReviewShell() {
+  const [currentStep, setCurrentStep] = useState(
+    noActiveAuthoredStagePayload.protocol.stages.length,
+  );
+
+  return (
+    <Shell
+      payload={noActiveAuthoredStagePayload}
+      currentStep={currentStep}
+      onStepChange={setCurrentStep}
+      onSync={() => Promise.resolve()}
+      onFinish={() => Promise.resolve()}
+      onRequestAsset={() => Promise.resolve('')}
+      analytics={{ installationId: 'test', hostApp: 'test' }}
+      reviewMode
       hideNavigation
     />
   );
@@ -138,5 +206,28 @@ describe('Shell render gating', () => {
       view.unmount();
       container.remove();
     }
+  });
+
+  it('opens a review saved on finish at the last available authored stage', () => {
+    const view = render(<ControlledReviewShell />);
+
+    expect(
+      view.container.querySelector('[data-stage-interface="available-stage"]'),
+    ).toBeInTheDocument();
+    expect(
+      view.container.querySelector(
+        '[data-stage-interface="unavailable-stage"]',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the route-controlling stage when no authored stage is active', () => {
+    const view = render(<ControlledNoActiveStageReviewShell />);
+
+    expect(
+      view.container.querySelector(
+        '[data-stage-interface="route-controlling-stage"]',
+      ),
+    ).toBeInTheDocument();
   });
 });

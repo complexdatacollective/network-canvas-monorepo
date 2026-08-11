@@ -46,6 +46,8 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
 
   if (!focusableElement) return;
 
+  const ownerDocument = container.ownerDocument;
+
   // Focus after smooth scroll completes. Using preventScroll avoids the
   // browser snap-scrolling the element into view and interrupting the
   // smooth animation.
@@ -55,9 +57,10 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
   // and yanking focus back to a stale error field is hostile (and made
   // e2e snapshots nondeterministic — chromium scrolls a date input's
   // segment selection into view even with preventScroll).
-  const initiallyActive = document.activeElement;
+  const initiallyActive = ownerDocument.activeElement;
   const focusTarget = () => {
-    if (document.activeElement !== initiallyActive) return;
+    if (!focusableElement.isConnected) return;
+    if (ownerDocument.activeElement !== initiallyActive) return;
     focusableElement.focus({ preventScroll: true });
   };
 

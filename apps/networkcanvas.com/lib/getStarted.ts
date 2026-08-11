@@ -1,3 +1,12 @@
+import {
+  getClassicDownloadAssetUrl,
+  getClassicDownloadDefinition,
+  getClassicDownloadPath,
+  type ClassicDownloadApp,
+  type ClassicDownloadPlatform,
+} from '~/lib/classicDownloads';
+import { documentationUrl } from '~/lib/siteUrls';
+
 export type Workflow = 'design' | 'collect';
 export type WebAppId = 'architect' | 'interviewer' | 'fresco';
 export type ClassicAppId = 'architect-classic' | 'interviewer-classic';
@@ -36,7 +45,7 @@ type BestForKey =
   | 'apps.interviewerClassic.bestFor.desktopTablet'
   | 'apps.interviewerClassic.bestFor.offlineCollection';
 
-type WebApp = {
+export type WebApp = {
   id: WebAppId;
   messageKey: 'architect' | 'interviewer' | 'fresco';
   workflow: Workflow;
@@ -57,16 +66,48 @@ type PlatformLink = {
   href: string;
 };
 
-type ClassicApp = {
+export type ClassicApp = {
   id: ClassicAppId;
   messageKey: 'architectClassic' | 'interviewerClassic';
   workflow: Workflow;
   name: string;
   bestFor: readonly BestForKey[];
-  version: '6.6.0';
+  version: string;
   platforms: readonly PlatformLink[];
   treatment: 'classic';
 };
+
+export type AppRecord = WebApp | ClassicApp;
+
+export type ClassicRelease = {
+  version: string;
+  latestUrl: string;
+  assets: readonly {
+    name: string;
+    browserDownloadUrl: string;
+  }[];
+};
+
+function getReleaseAssetPath(
+  release: ClassicRelease,
+  app: ClassicDownloadApp,
+  platform: ClassicDownloadPlatform,
+) {
+  const definition = getClassicDownloadDefinition(app, platform);
+  if (!definition) {
+    throw new Error(
+      `Missing Classic download definition for ${app} (${platform}).`,
+    );
+  }
+
+  try {
+    void getClassicDownloadAssetUrl(definition, release.assets);
+  } catch {
+    // Ignore: the /downloads/classic edge resolver will fall back to the release page.
+  }
+
+  return getClassicDownloadPath(app, platform, release.version);
+}
 
 export const GET_STARTED_PATH = '/get-started';
 
@@ -74,26 +115,14 @@ export const webDestinations = {
   architect: 'https://architect.networkcanvas.com/',
   interviewer: 'https://interviewer.networkcanvas.com/',
   frescoSandbox: 'https://fresco-sandbox.networkcanvas.com/',
-  frescoSandboxGuide:
-    'https://documentation.networkcanvas.com/en/collect-data/fresco/sandbox',
-  frescoDeployment:
-    'https://documentation.networkcanvas.com/en/collect-data/fresco/guide',
+  frescoSandboxGuide: documentationUrl('/en/collect-data/fresco/sandbox'),
+  frescoDeployment: documentationUrl('/en/collect-data/fresco/guide'),
 } as const;
 
 export const documentationDestinations = {
-  schemaVersions:
-    'https://documentation.networkcanvas.com/en/get-started/advanced-topics/protocol-schema-information',
-} as const;
-
-const classicDestinations = {
-  architectRelease:
-    'https://github.com/complexdatacollective/architect/releases/tag/v6.6.0',
-  interviewerRelease:
-    'https://github.com/complexdatacollective/interviewer/releases/tag/v6.6.0',
-  architectDownload:
-    'https://github.com/complexdatacollective/architect/releases/download/v6.6.0',
-  interviewerDownload:
-    'https://github.com/complexdatacollective/interviewer/releases/download/v6.6.0',
+  schemaVersions: documentationUrl(
+    '/en/get-started/protocol-schema-information',
+  ),
 } as const;
 
 export const webApps = [
@@ -160,79 +189,91 @@ export const webApps = [
   },
 ] satisfies readonly WebApp[];
 
-export const classicApps = [
-  {
-    id: 'architect-classic',
-    messageKey: 'architectClassic',
-    workflow: 'design',
-    name: 'Architect Classic',
-    bestFor: [
-      'apps.architectClassic.bestFor.classicCompatibility',
-      'apps.architectClassic.bestFor.editWithoutMigration',
-    ],
-    version: '6.6.0',
-    platforms: [
-      {
-        id: 'apple-silicon',
-        labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-arm64.dmg`,
-      },
-      {
-        id: 'apple-intel',
-        labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-mac-x64.dmg`,
-      },
-      {
-        id: 'windows',
-        labelKey: 'platforms.windows',
-        href: `${classicDestinations.architectDownload}/Network%20Canvas%20Architect-6.6.0-win-x64.exe`,
-      },
-      {
-        id: 'linux',
-        labelKey: 'platforms.linux',
-        href: classicDestinations.architectRelease,
-      },
-    ],
-    treatment: 'classic',
-  },
-  {
-    id: 'interviewer-classic',
-    messageKey: 'interviewerClassic',
-    workflow: 'collect',
-    name: 'Interviewer Classic',
-    bestFor: [
-      'apps.interviewerClassic.bestFor.schema7Study',
-      'apps.interviewerClassic.bestFor.desktopTablet',
-      'apps.interviewerClassic.bestFor.offlineCollection',
-    ],
-    version: '6.6.0',
-    platforms: [
-      {
-        id: 'apple-silicon',
-        labelKey: 'platforms.appleSilicon',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0-arm64.dmg`,
-      },
-      {
-        id: 'apple-intel',
-        labelKey: 'platforms.appleIntel',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer-6.6.0.dmg`,
-      },
-      {
-        id: 'windows',
-        labelKey: 'platforms.windows',
-        href: `${classicDestinations.interviewerDownload}/Network%20Canvas%20Interviewer%20Setup%206.6.0.exe`,
-      },
-      {
-        id: 'linux',
-        labelKey: 'platforms.linux',
-        href: classicDestinations.interviewerRelease,
-      },
-      {
-        id: 'android',
-        labelKey: 'platforms.android',
-        href: 'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
-      },
-    ],
-    treatment: 'classic',
-  },
-] satisfies readonly ClassicApp[];
+export function createClassicApps({
+  architect,
+  interviewer,
+}: {
+  architect: ClassicRelease;
+  interviewer: ClassicRelease;
+}): readonly ClassicApp[] {
+  return [
+    {
+      id: 'architect-classic',
+      messageKey: 'architectClassic',
+      workflow: 'design',
+      name: 'Architect Classic',
+      bestFor: [
+        'apps.architectClassic.bestFor.classicCompatibility',
+        'apps.architectClassic.bestFor.editWithoutMigration',
+      ],
+      version: architect.version,
+      platforms: [
+        {
+          id: 'apple-silicon',
+          labelKey: 'platforms.appleSilicon',
+          href: getReleaseAssetPath(architect, 'architect', 'apple-silicon'),
+        },
+        {
+          id: 'apple-intel',
+          labelKey: 'platforms.appleIntel',
+          href: getReleaseAssetPath(architect, 'architect', 'apple-intel'),
+        },
+        {
+          id: 'windows',
+          labelKey: 'platforms.windows',
+          href: getReleaseAssetPath(architect, 'architect', 'windows'),
+        },
+        {
+          id: 'linux',
+          labelKey: 'platforms.linux',
+          href: architect.latestUrl,
+        },
+      ],
+      treatment: 'classic',
+    },
+    {
+      id: 'interviewer-classic',
+      messageKey: 'interviewerClassic',
+      workflow: 'collect',
+      name: 'Interviewer Classic',
+      bestFor: [
+        'apps.interviewerClassic.bestFor.schema7Study',
+        'apps.interviewerClassic.bestFor.desktopTablet',
+        'apps.interviewerClassic.bestFor.offlineCollection',
+      ],
+      version: interviewer.version,
+      platforms: [
+        {
+          id: 'apple-silicon',
+          labelKey: 'platforms.appleSilicon',
+          href: getReleaseAssetPath(
+            interviewer,
+            'interviewer',
+            'apple-silicon',
+          ),
+        },
+        {
+          id: 'apple-intel',
+          labelKey: 'platforms.appleIntel',
+          href: getReleaseAssetPath(interviewer, 'interviewer', 'apple-intel'),
+        },
+        {
+          id: 'windows',
+          labelKey: 'platforms.windows',
+          href: getReleaseAssetPath(interviewer, 'interviewer', 'windows'),
+        },
+        {
+          id: 'linux',
+          labelKey: 'platforms.linux',
+          href: interviewer.latestUrl,
+        },
+        {
+          id: 'android',
+          labelKey: 'platforms.android',
+          href: 'https://play.google.com/store/apps/details?id=org.codaco.NetworkCanvasInterviewer6',
+        },
+      ],
+      treatment: 'classic',
+    },
+  ];
+}

@@ -1,9 +1,7 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
-import { readStageJson } from '../../helpers/read-store.js';
+import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import {
@@ -11,57 +9,6 @@ import {
   createVariableWithOptions,
 } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
-
-// KNOWN APP BUG, worked around below (see the long comment on the
-// `addPrompt` call for the full trace) — TieStrengthCensusPrompts/
-// PromptFields.tsx's `createEdge` NativeSelect wires `onCreateOption:
-// (option) => { handleChangeCreateEdge(handleCreateEdge(option)); }`.
-// `handleCreateEdge` (withCreateEdgeHandler.tsx) is `async`, so calling it
-// returns a *pending Promise*, not the created edge type's id — and nothing
-// awaits it, so `handleChangeCreateEdge` stores that raw Promise object into
-// the `createEdge` redux-form field. That value later flows into
-// `createVariableAsync`/`updateVariableAsync` as an edge-type key, where it
-// gets string-coerced to the literal `"[object Promise]"` and written into
-// `codebook.edge` — corrupting the protocol (fails the record-key regex,
-// `/^[a-zA-Z0-9._:-]+$/`, and pops the "Misconfigured Protocol" recovery
-// dialog with no clean way back). This reproduced deterministically every
-// time (not a timing flake — a Promise is always synchronously truthy, so
-// the corrupted value gets committed on every "Create" click), and traces
-// back to the original architect-classic port (`git log -p --follow`), not
-// anything on this branch.
-//
-// A live "pre-create the edge type through a working flow, then select it"
-// workaround (creating it via the standalone Codebook page's correctly-
-// awaited `EntityTypeDialog`, e.g.) was tried first, but that ALSO doesn't
-// survive to the TieStrengthCensus stage: `seed.ts`'s `page.addInitScript`
-// re-runs on *every* subsequent navigation (Playwright re-executes it before
-// each new document load, not just the first), re-stamping
-// `sessionStorage`'s `@@remember-*` keys back to the ORIGINAL seeded
-// snapshot — so any live edit made through a page reached via a hard
-// `page.goto` (both the Codebook page and `editor.createNew`'s own
-// navigation) is silently discarded the next time either of those fires.
-// That's a property of this test harness's seeding contract, not an app bug.
-// The edge type is seeded directly into the protocol's `codebook` below
-// instead — a legitimate starting state (an author's protocol can easily
-// already have an edge type defined before adding a TieStrengthCensus
-// stage) that sidesteps both issues at once: the census interface's own
-// `createEdge` select only ever needs to SELECT that already-existing option
-// (`selectOption`), never its own broken "_create" inline path.
-function protocolWithCloseEdgeType(): CurrentProtocol {
-  return {
-    ...emptyProtocol(),
-    codebook: {
-      edge: {
-        // uuid-shaped so `normalize-stage.ts`'s `UUID_RE` placeholder-maps it
-        // the same way a live-created type's id would be.
-        '11111111-1111-4111-8111-111111111111': {
-          name: 'close',
-          color: 'edge-color-seq-1',
-        },
-      },
-    },
-  };
-}
 
 type TieStrengthPrompt = {
   id: string;
@@ -112,7 +59,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   architectPage,
   seed,
 }) => {
-  await seed(protocolWithCloseEdgeType());
+  await seed(emptyProtocol());
   await gotoProtocol(architectPage);
 
   const editor = new StageEditor(architectPage);
@@ -138,14 +85,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //
   // - `createEdge` is a `NativeSelect` (Form/Fields/NativeSelect.tsx, wrapping
   //   fresco-ui's real `<select>`) — NOT an `EntitySelectField` pill picker.
-  //   Its reserved `value="_create"` option (label `createLabelText`, "✨
-  //   Create new edge type ✨" — PromptFields.tsx's `componentProps`) is
-  //   real and does work UI-wise (swaps the `<select>` for an inline "New
-  //   edge type name" `InputField` + "Create" button, `onCreateNew` isn't
-  //   wired so NativeSelect's own `showCreateOptionForm` state handles it) —
-  //   but actually clicking that "Create" button hits the app bug documented
-  //   above, so this test selects the pre-created "close" type instead
-  //   (`selectOption`) and never exercises "_create" here.
+  //   Exercise its inline creation flow directly. This guards the async
+  //   contract between `handleCreateEdge` and `handleChangeCreateEdge`: the
+  //   created edge-type id, never the pending Promise, must become the form
+  //   value before the ordinal variable is created.
   // - `edgeVariable` is a `VariablePicker` (same "Select variable" button +
   //   VariableSpotlight `createVariableViaSpotlight` already drives), but its
   //   `onCreateOption` is wired to `handleNewVariable`, which opens
@@ -179,7 +122,15 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
 
     await architectPage
       .getByLabel('Select an edge type')
-      .selectOption({ label: 'close' });
+      .selectOption({ label: '✨ Create new edge type ✨' });
+    await architectPage
+      .getByRole('textbox', { name: 'New edge type name' })
+      .fill('close');
+    await architectPage.getByRole('button', { name: 'Create' }).click();
+
+    await expect(
+      architectPage.getByRole('button', { name: 'Select variable' }),
+    ).toBeVisible();
 
     await createVariableViaSpotlight(architectPage, {
       variableName: 'strength',
@@ -211,6 +162,12 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   const prompt = toTieStrengthPrompt(prompts[0]);
   expect(prompt.text).toContain('How close are you?');
   expect(prompt.negativeLabel).toContain('We are not close');
+
+  const protocol = await readProtocolJson(architectPage);
+  expect(protocol.codebook.edge?.[prompt.createEdge]?.name).toBe('close');
+  expect(Object.keys(protocol.codebook.edge ?? {})).not.toContain(
+    '[object Promise]',
+  );
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'tie-strength-census-stage.json',

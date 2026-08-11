@@ -1,19 +1,19 @@
 ---
 title: About Fresco
-date: 13th March 2024
+date: 22nd July 2026
 navOrder: 1
 ---
 
 <Paragraph variant="lead">
-  Fresco is an exciting new project that brings Network Canvas interviews to the
-  web browser.
+  Fresco is a mature web platform for conducting Network Canvas interviews in
+  the browser.
 </Paragraph>
 
 It allows you to take any existing Network Canvas protocol file, upload it to your own private instance of the app, and then share a URL with participants to allow them to complete the interview on their own device.
 
 The interview experience for participants is identical to that of the desktop applications, but you conduct all protocol, participant, and data management through a secure web-based dashboard.
 
-Although Fresco does not add new features to Network Canvas, it provides an entirely new way to conduct interviews using
+Although Fresco does not add new features to Network Canvas, it provides a flexible way to conduct interviews using
 your existing Network Canvas protocols.
 
 ![The Fresco dashboard.](/assets/img/fresco-images/features/dashboard.png)
@@ -38,19 +38,16 @@ in particular with managing protocol deployment and the aggregation of data.
 
 Fresco is our response to these challenges. It allows researchers to conduct interviews remotely and manage protocols, participants, and interview data through a centralized web-based dashboard.
 
-We also see Fresco as a milestone in the development of Network Canvas Studio, which will be a web-based
-platform for designing and conducting interviews that we hope to complete in the coming years.
-
 It is important to remember that Fresco does not replace the desktop applications, but rather provides an
 alternative way to conduct interviews. The desktop software will continue to be supported, and may be a better choice for your study depending on your specific needs.
 
 <TipBox>
 
-The platform that powers Fresco also underpins the new **Interviewer** (beta) app, which brings the same updated interview experience and data export to a browser-based interviewer-assisted app you can install to a device you control. See [Running Interviews](/en/collect-data) for a comparison of the interview apps.
+The platform that powers Fresco also underpins the new **Interviewer** app, which brings the same updated interview experience and data export to a browser-based interviewer-assisted app you can install to a device you control. See [Running Interviews](/en/collect-data) for a comparison of the interview apps.
 
 </TipBox>
 
-Fresco is also a pilot project, with modest scope and aims. We will not be adding significant new functionality to Fresco over its lifespan, but we _are_ actively seeking feedback from users to help us improve it and to shape the direction we take with Studio.
+Fresco is a fully supported part of the Network Canvas ecosystem, and we actively seek feedback from users to help us improve it.
 
 ## Features and Functionality
 
@@ -87,18 +84,18 @@ Although there are no new features added to the interview experience, there are 
 
 You should be aware of several key differences between Fresco and the desktop applications:
 
-- Fresco is a web-based platform for administering Network Canvas interviews. It is not a replacement for the desktop applications, but rather a new way to conduct interviews. Fresco works with all existing Network Canvas protocols and does not add new features to Network Canvas.
+- Fresco is a web-based platform for administering Network Canvas interviews. It complements the desktop applications by supporting browser-based interviews. Fresco works with all existing Network Canvas protocols and does not add new features to Network Canvas.
 - In Fresco, **participants complete interviews in a browser** by visiting a URL. This means you can conduct interviews remotely, and participants can use their own devices to complete the interview. **Note that mobile phones are not supported!**
 - **You also conduct interview management in the browser** via a researcher-facing dashboard. You can manage protocols, participants, interviews, and settings configuration through the browser interface.
 - **Fresco stores all data in a database**. This means data is stored on a server on the internet, rather than on a local computer. This has implications for data security and privacy, so you will need to consider the legal and ethical implications of using Fresco.
 - You are responsible for **hosting and maintaining Fresco** on your own servers. This means you will need some technical knowledge to deploy and maintain Fresco.
-- Fresco is **a pilot project** and does not yet support all features of the desktop apps. For example, custom node label workers are not implemented, and videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [known limitations](#known-limitations) section below.
+- Fresco does not currently support all features of the desktop apps. For example, custom node label workers are not implemented, and videos and audio cannot autoplay on first load due to browser limitations. For a full list of known issues, see the [known limitations](#known-limitations) section below.
 
 ## Known limitations
 
 Because of the nature of the web platform, we could not implement some features from Interviewer. These include:
 
-- [Custom node label workers](/en/get-started/advanced-topics/node-labelling#custom-node-labelling-advanced) are not implemented. This would have posed a potential security risk, so we made the decision not to implement them. If you were using this feature and need help with an alternative, please contact us.
+- [Custom node label workers](/en/design-protocols/key-concepts/node-labelling#custom-node-labeling-advanced) are not implemented. This would have posed a potential security risk, so we made the decision not to implement them. If you were using this feature and need help with an alternative, please contact us.
 - Videos and audio on your information screens cannot autoplay on first load due to browser limitations. Participants must have interacted with the interview before media can autoplay.
 - The 'Use fullscreen forms' visual preference is not supported. This preference was useful for devices that have large software keyboards, such as tablets. However, Fresco is designed to be used on a desktop or laptop computer, and so this preference is not necessary.
 - The interaction sounds feature introduced in the last release of Interviewer has not been brought over to Fresco yet.

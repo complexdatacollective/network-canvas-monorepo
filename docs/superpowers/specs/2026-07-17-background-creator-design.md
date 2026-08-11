@@ -411,13 +411,14 @@ On top of #1018's article:
 - `knip.json`: add `apps/background-creator` workspace entry
   (`entry: ["index.html!"]`, `vite: true`, `project: ["src/**/*.{ts,tsx}"]`,
   `paths: { "~/*": ["./src/*"] }`).
-- `.changeset/config.json` `ignore`: add `@codaco/background-creator` (private,
-  never released — matches the classic apps' hygiene pattern).
+- `.changeset/config.json`: keep `@codaco/background-creator` in the normal
+  private-package versioning lane so releases use standard semver.
 - `.claude/launch.json`: add `background-creator` on **port 5185** (5173, 5180,
   5189, 5199, 3000, 6006/6009 are taken).
 - `turbo.json`: no changes (generic `dev`/`build`/`typecheck`/`test` apply).
-- No PWA, no Netlify, no Chromatic, no e2e suite (unit tests only), no release
-  lane. A Documentation changeset covers the docs edits.
+- No PWA, Chromatic project, or e2e suite (unit tests only). Netlify preview and
+  stable production releases use the normal Changesets lane. A separate
+  Documentation changeset covers the docs edits.
 - Dependencies: `catalog:` — react, react-dom, zustand, zod, lucide-react,
   react-dropzone, motion, @base-ui/react (only if directly imported);
   `workspace:*` — @codaco/fresco-ui, @codaco/tailwind-config, @codaco/tsconfig.

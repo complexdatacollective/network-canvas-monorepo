@@ -9,7 +9,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Section } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import ValidatedField from '~/components/Form/ValidatedField';
@@ -42,11 +42,13 @@ type PromptFieldsProps = {
   form: string;
   entity?: string | null;
   type?: string | null;
+  currentStageIndex?: number;
 };
 const PromptFields = ({
   form,
   entity = null,
   type = null,
+  currentStageIndex,
 }: PromptFieldsProps) => {
   const dispatch = useAppDispatch();
   const {
@@ -65,6 +67,7 @@ const PromptFields = ({
     form,
     entity: entity ?? '',
     type: type ?? '',
+    currentStageIndex,
   });
   const showValidationHints = useSelector(
     (state: RootState) =>
@@ -102,38 +105,37 @@ const PromptFields = ({
       <Section
         layout="vertical"
         id={getFieldId('prompt')}
-        title="Question"
+        title="Prompt Text"
         summary={
-          <Paragraph>
-            Configure the question prompt and optional hints for the
-            participant.
-          </Paragraph>
-        }
-      >
-        <div>
-          <Heading level="h4">Prompt Text</Heading>
           <Paragraph className="mb-2.5 text-sm text-current/70">
             Enter the question to display to the participant. Supports markdown
             formatting.
           </Paragraph>
-          <ValidatedField
-            name="prompt"
-            component={RichText as ComponentType<Record<string, unknown>>}
-            validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              label: 'Prompt text',
-              labelHidden: true,
-              placeholder: "What is this person's name?",
-            }}
-          />
-        </div>
-        <div>
-          <Heading level="h4">Hint Text</Heading>
-          <Paragraph className="mb-2.5 text-sm text-current/70">
-            Optionally display a markdown-formatted hint below the question to
-            help participants understand how to answer.
-          </Paragraph>
+        }
+      >
+        <ValidatedField
+          name="prompt"
+          component={RichText as ComponentType<Record<string, unknown>>}
+          validation={{ required: true }}
+          componentProps={{
+            inline: true,
+            label: 'Prompt text',
+            labelHidden: true,
+            placeholder: "What is this person's name?",
+          }}
+        />
+      </Section>
+      <Section layout="vertical">
+        <Subsection
+          id={getFieldId('hint')}
+          title="Hint Text"
+          summary={
+            <Paragraph className="mb-2.5 text-sm text-current/70">
+              Optionally display a markdown-formatted hint below the question to
+              help participants understand how to answer.
+            </Paragraph>
+          }
+        >
           <Field
             name="hint"
             component={RichText as ComponentType<Record<string, unknown>>}
@@ -142,26 +144,27 @@ const PromptFields = ({
             labelHidden
             placeholder="e.g. Select all that apply..."
           />
-        </div>
-        <div className="flex items-center justify-between gap-5">
-          <div>
-            <Heading level="h4">Show validation hints?</Heading>
-            <Paragraph className="text-sm text-current/70">
-              Automatically display hints derived from this field&apos;s
-              validation rules, helping participants understand input
-              requirements.
+        </Subsection>
+        <Subsection
+          id={getFieldId('showValidationHints')}
+          title="Show validation hints"
+          summary={
+            <Paragraph className="mb-2.5 text-sm text-current/70">
+              Automatically display hints derived from this field's validation
+              rules, helping participants understand input requirements.
             </Paragraph>
-          </div>
-          <ToggleField
-            value={!!showValidationHints}
-            onChange={(checked) =>
-              dispatch(
-                change(form, 'showValidationHints', checked) as UnknownAction,
-              )
-            }
-            className="shrink-0"
-          />
-        </div>
+          }
+          action={
+            <ToggleField
+              value={!!showValidationHints}
+              onChange={(checked) =>
+                dispatch(
+                  change(form, 'showValidationHints', checked) as UnknownAction,
+                )
+              }
+            />
+          }
+        />
       </Section>
 
       <Section
@@ -295,6 +298,17 @@ const PromptFields = ({
           typeof variableType === 'string' ? variableType : undefined
         }
         existingVariables={omit(existingVariables, variable)}
+        allVariables={existingVariables}
+        // Audit sweep: `handleNewVariable` writes the typed DISPLAY NAME into
+        // `variable` as well as `_createNewVariable`, so a non-empty
+        // `variable` is only a committed codebook id once the variable
+        // exists. Commit 02f3e9cbe taught the form-level validator this; the
+        // row-level check kept the conflation, so a typed name colliding with
+        // a real codebook id let the row offer a reference rule the dialog
+        // then rejected on save.
+        currentVariableId={
+          !isNewVariable && typeof variable === 'string' ? variable : ''
+        }
       />
     </>
   );

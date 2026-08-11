@@ -8,9 +8,12 @@
     "NEXT_PUBLIC_ALGOLIA_API_KEY",
     "NEXT_PUBLIC_MENDABLE_ANON_KEY",
     "NEXT_PUBLIC_GA_ID",
+    "NEXT_PUBLIC_DOCUMENTATION_URL",
+    "NEXT_PUBLIC_NETWORK_CANVAS_URL",
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
-    "VITE_DISABLE_ANALYTICS"
+    "VITE_DISABLE_ANALYTICS",
+    "VITE_DISABLE_ANIMATIONS"
   ],
   "tasks": {
     "topo": {
@@ -26,7 +29,11 @@
         "next.config.*",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      // The PostHog credentials decide whether a build emits and uploads source
+      // maps (see apps/*/vite.config.ts). They must be part of the cache key, or
+      // a production build could replay a cached artefact whose maps were never
+      // uploaded.
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/documentation#build": {
@@ -60,7 +67,14 @@
         "NEXT_PUBLIC_ALGOLIA_INDEX_NAME",
         "NEXT_PUBLIC_ALGOLIA_API_KEY",
         "NEXT_PUBLIC_MENDABLE_ANON_KEY",
-        "NEXT_PUBLIC_GA_ID"
+        "NEXT_PUBLIC_GA_ID",
+        "NEXT_PUBLIC_NETWORK_CANVAS_URL",
+        "CONTEXT",
+        "REVIEW_ID",
+        "SITE_URL",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
@@ -97,10 +111,17 @@
         "vite-env.d.ts",
         "package.json"
       ],
+      // A package-specific `env` replaces the generic build task's list rather
+      // than extending it, so the PostHog credentials have to be repeated here
+      // — otherwise strict mode hides them from the build and the source-map
+      // upload silently never runs. See the note on the generic build task.
       "env": [
         "VITE_FRESCO_PREVIEW_URL",
         "VITE_FRESCO_PREVIEW_API_TOKEN",
-        "VITE_DISABLE_ANALYTICS"
+        "VITE_DISABLE_ANALYTICS",
+        "VITE_DISABLE_ANIMATIONS",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["dist/**"]
     },
@@ -118,7 +139,14 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      // See the note on @codaco/architect#build: a package-specific `env`
+      // replaces the generic list, it does not extend it.
+      "env": [
+        "NODE_ENV",
+        "VITE_DISABLE_ANALYTICS",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
+      ],
       "outputs": ["dist/**"]
     },
     "@codaco/background-creator#build": {
@@ -153,6 +181,7 @@
         "components/**",
         "content/**",
         "font-modules.d.ts",
+        "instrumentation-client.ts",
         "lib/**",
         "messages/**",
         "netlify/**",
@@ -164,7 +193,15 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_DOCUMENTATION_URL",
+        "CONTEXT",
+        "REVIEW_ID",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
+      ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
     "networkcanvas.com#typecheck": {
@@ -174,6 +211,7 @@
         "components/**",
         "content/**",
         "font-modules.d.ts",
+        "instrumentation-client.ts",
         "lib/**",
         "messages/**",
         "netlify/**",
@@ -281,7 +319,8 @@
         "!**/storybook-static/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#codegen"]
     },
     "//#knip": {
       "inputs": [
@@ -296,7 +335,8 @@
         "!**/.next/**",
         "!**/node_modules/**"
       ],
-      "outputs": []
+      "outputs": [],
+      "dependsOn": ["fresco#codegen"]
     },
     "dev": {
       "cache": false,
@@ -363,7 +403,13 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
         "scripts/**",
+        "*.config.ts",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -377,7 +423,13 @@
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
         "scripts/**",
+        "*.config.ts",
         "vite.config.*",
         "tsconfig*.json",
         "package.json"
@@ -461,9 +513,119 @@
     },
     "typecheck": {
       "dependsOn": ["^topo"],
-      "inputs": ["src/**", "tsconfig*.json", "package.json"],
+      "inputs": [
+        "src/**",
+        "e2e/**/*.ts",
+        "e2e/**/*.tsx",
+        "e2e/tsconfig.json",
+        ".storybook/**/*.ts",
+        ".storybook/**/*.tsx",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
       "env": ["NODE_ENV"],
       "outputs": []
+    },
+    "fresco#build": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "passThroughEnv": ["SKIP_ENV_VALIDATION"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        "next.config.ts",
+        ".env"
+      ],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "fresco#typecheck": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        ".storybook/**"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
+    "fresco#test": {
+      "dependsOn": ["^topo", "fresco#codegen"],
+      "inputs": [
+        "app/**",
+        "actions/**",
+        "components/**",
+        "hooks/**",
+        "lib/**",
+        "queries/**",
+        "schemas/**",
+        "scripts/**",
+        "styles/**",
+        "types/**",
+        "utils/**",
+        "public/**",
+        "env.js",
+        "fresco.config.ts",
+        "instrumentation.ts",
+        "instrumentation-client.ts",
+        "*.config.ts",
+        "*.config.js",
+        "*.config.mjs",
+        "tsconfig*.json",
+        "package.json",
+        "vitest.config.*",
+        "vitest.setup.*",
+        ".env"
+      ],
+      "outputs": []
+    },
+    "fresco#codegen": {
+      "inputs": [
+        "lib/db/schema.prisma",
+        "prisma.config.ts",
+        "env.js",
+        "next.config.ts",
+        "app/**",
+        "package.json"
+      ],
+      "outputs": ["lib/db/generated/**", "next-env.d.ts", ".next/types/**"]
     }
   },
   "futureFlags": {

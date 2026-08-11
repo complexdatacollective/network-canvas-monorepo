@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MotionConfig } from 'motion/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -87,6 +88,7 @@ const makeNodes = () => [
 function renderInterface(
   stage: typeof twoPromptStage | typeof onePromptStage,
   edges: NcEdge[] = [],
+  skipAnimations = false,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -129,10 +131,13 @@ function renderInterface(
     }
   };
 
-  const runValidation = async (direction: 'forwards' | 'backwards') => {
+  const runValidation = async (
+    direction: 'forwards' | 'backwards',
+    intent: 'step' | 'jump' = 'step',
+  ) => {
     let result: boolean | 'FORCE' | undefined;
     await act(async () => {
-      result = await handlers.get('stageValidation')?.(direction);
+      result = await handlers.get('stageValidation')?.(direction, intent);
     });
     return result;
   };
@@ -141,7 +146,7 @@ function renderInterface(
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;
-        await fn(direction);
+        await fn(direction, 'step');
       }
     });
   };
@@ -155,11 +160,13 @@ function renderInterface(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <StageMetadataContext.Provider value={registerBeforeNext}>
-            {children}
-          </StageMetadataContext.Provider>
-        </CurrentStepProvider>
+        <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <StageMetadataContext.Provider value={registerBeforeNext}>
+              {children}
+            </StageMetadataContext.Provider>
+          </CurrentStepProvider>
+        </MotionConfig>
       </Provider>
     );
   }
@@ -182,10 +189,19 @@ function renderInterface(
     runValidation,
     yesButton,
     noButton,
+    moveForward,
   };
 }
 
 describe('DyadCensus interface', () => {
+  it('blocks stepping forwards on an unanswered pair but allows a direct jump', async () => {
+    const { advancePastIntro, runValidation } = renderInterface(onePromptStage);
+    await advancePastIntro();
+
+    expect(await runValidation('forwards')).toBe(false);
+    expect(await runValidation('forwards', 'jump')).toBe(true);
+  });
+
   it('reflects a shared-graph edge on a later prompt but still requires a per-prompt answer', async () => {
     const { store, advancePastIntro, runValidation, yesButton } =
       renderInterface(twoPromptStage);
@@ -253,5 +269,29 @@ describe('DyadCensus interface', () => {
     });
 
     expect(store.getState().session.network.edges).toHaveLength(1);
+  });
+
+  it('waits for the selection animation before advancing normally', async () => {
+    const { advancePastIntro, noButton, moveForward } =
+      renderInterface(onePromptStage);
+    await advancePastIntro();
+
+    fireEvent.click(noButton());
+
+    expect(moveForward).not.toHaveBeenCalled();
+    await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+  });
+
+  it('advances immediately when animations are disabled', async () => {
+    const { advancePastIntro, noButton, moveForward } = renderInterface(
+      onePromptStage,
+      [],
+      true,
+    );
+    await advancePastIntro();
+
+    fireEvent.click(noButton());
+
+    expect(moveForward).toHaveBeenCalledOnce();
   });
 });

@@ -10,6 +10,11 @@
 
 export { isValidAssetType } from './assets';
 export { createInitialNetwork } from './network';
+export {
+  collectRosterExternalData,
+  filterExternalPanelNodes,
+  parseExternalNetworkAsset,
+} from './rosterData';
 
 export type {
   AssetRequestHandler,
@@ -24,3 +29,4 @@ export type {
   StepChangeMeta,
   SyncHandler,
 } from './types';
+export type { ResolvedRosterAsset, ResolveRosterAsset } from './rosterData';

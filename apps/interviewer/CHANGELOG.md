@@ -1,5 +1,216 @@
 # @codaco/interviewer
 
+## 8.1.2
+
+### Patch Changes
+
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [90e0178]
+- Updated dependencies [e349137]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+  - @codaco/interview@8.0.0
+  - @codaco/protocol-utilities@3.2.1
+  - @codaco/protocol-validation@12.1.1
+
+## 8.1.1
+
+### Patch Changes
+
+- 3c8fe35: Generate realistic, source-backed family pedigrees with reproductive scenarios and multi-generational disease lineages, while respecting each stage's collected variables, keeping pedigree membership isolated from other interview stages, correctly rendering shared and multiple unions, widening partnership response columns, and warning participants before discarding onboarding progress.
+
+  Improve pedigree editing and parentage capture by confirming destructive deletions, preserving biological-sex values, allowing current/ex-partner status changes, and recording reproductive roles independently from sex recorded at birth.
+
+- Updated dependencies [3c8fe35]
+- Updated dependencies [fa88ae4]
+- Updated dependencies [2325d34]
+  - @codaco/protocol-utilities@3.2.0
+  - @codaco/fresco-ui@5.1.0
+  - @codaco/interview@7.1.1
+  - @codaco/shared-consts@5.6.1
+
+## 8.1.0
+
+### Minor Changes
+
+- 7d5c062: Exporting interview data now runs in a single guided dialog. Tapping Export
+  shows build progress (with the option to cancel), then presents a Save, Share,
+  or Download action matched to your platform — replacing the separate "Save
+  export" toolbar button and its notification. Interviews are still marked as
+  exported only once the archive is genuinely saved, and your selection is kept
+  if you dismiss the dialog without saving.
+- 8ff0e2d: Participants can now adjust the interview's text size.
+
+  The Shell accepts a new `allowUserScaling` prop. When a host enables it (as
+  Interviewer now does), the interview Navigation shows a settings menu with a
+  "Text size" control offering 90%–130% of the default size. The chosen size
+  scales the whole interview — text, spacing, and touch targets together, with
+  every step of the fluid type scale changing by exactly the chosen percentage —
+  takes effect immediately with the menu open for live preview, and lasts for
+  the current session. The control is fully keyboard operable and announces its
+  state to screen readers. Hosts can persist the choice across remounts with the
+  optional `initialTextScale`/`onTextScaleChange` props; Interviewer uses them so
+  an idle-lock/unlock cycle no longer resets a participant's chosen size.
+
+  The standalone exit button has moved into the same settings menu as an
+  "Exit interview" action. Hosts that provide neither an exit handler nor
+  `allowUserScaling` render no settings menu.
+
+### Patch Changes
+
+- 8f06a93: Export archives are now built in a background worker, so the export dialog's
+  progress animations stay smooth during large exports. Interview data is still
+  read and decrypted only in the app itself; cancelling an export now also
+  releases all partially built archive data immediately.
+- c5f30fd: Restore the full-size interview type scale on tablets.
+
+  The interview's viewport ramp for `--theme-root-size` rendered below the full
+  `1rem` base for every viewport narrower than 1280px — sitting at its `0.9rem`
+  floor (14.4px) up to tablet-portrait width and only climbing to 15.7px by iPad
+  Pro landscape width — so tablets rendered the participant interview at the
+  smallest text sizes in the product, with spacing and touch targets
+  (checkboxes, radios) shrinking in lockstep below recommended minimum sizes.
+  The ramp is now piecewise: phones keep the dense `0.9rem`-floored curve in
+  both orientations, tablets (768–1280px) get the full `1rem` base — matching
+  the interview's pre-July size and returning default form controls to the 24px
+  WCAG 2.5.8 minimum — and displays at 1280px and above are unchanged.
+
+  The interview theme also gains a 16px font-size floor for text-entry elements
+  (text inputs, textareas, selects, and rich-text editors), expressed as
+  `max(16px, 1em)` so explicitly larger sizes pass through. iOS Safari zooms the
+  page when a focused editable element renders below 16px; with the phone-width
+  type scale this made every form field a zoom trigger in browser hosts. Editable
+  text in the interview now never renders below 16px at any viewport size. To
+  support this, `SegmentedCodeField` now carries its text-size class on the
+  segment group wrapper (segment inputs inherit), so the floor preserves its
+  `lg`/`xl` sizes; computed sizes are unchanged.
+
+- 66da138: Keep content clear of the device status bar in the installed app. On iPads and
+  other devices with a status bar, the home screen's brand mark, view switcher,
+  and settings button — and interview stage content — now start below the system
+  status bar instead of sliding underneath the clock and battery indicators,
+  while the background still fills the entire screen. The interview navigation
+  bar also sits evenly against the bottom edge of the screen in both
+  orientations, rather than reserving extra space below its buttons.
+- Updated dependencies [ea589ec]
+- Updated dependencies [48572ed]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [0bf9a05]
+- Updated dependencies [c5f30fd]
+- Updated dependencies [8ff0e2d]
+- Updated dependencies [b95af22]
+- Updated dependencies [66da138]
+- Updated dependencies [d985cd3]
+- Updated dependencies [cd974f7]
+  - @codaco/fresco-ui@5.0.3
+  - @codaco/interview@7.1.0
+  - @codaco/network-exporters@1.1.7
+  - @codaco/tailwind-config@1.2.2
+  - @codaco/protocol-utilities@3.1.1
+
+## 8.0.0
+
+### Patch Changes
+
+- cd88c3e: Architect 8 and Interviewer 8 are now stable releases. Future app versions follow standard semantic versioning and deploy to production when the Version Packages release PR is merged.
+- Updated dependencies [fde9bb4]
+  - @codaco/fresco-ui@5.0.2
+  - @codaco/interview@7.0.2
+
+## 8.0.0-beta.12
+
+### Patch Changes
+
+- Boolean questions now show an option in red once it is selected, where the protocol marks that option as a negative response.
+
+## 8.0.0-beta.11
+
+### Patch Changes
+
+- When generating synthetic sessions fails, the reason is now readable. A
+  protocol whose validation rules cannot all be satisfied lists each clash on its
+  own line, naming the variables involved and what conflicts, instead of running
+  the whole explanation together into a single unbroken line.
+
+  Any generation failure now stays on screen until you dismiss it, rather than
+  timing out while you are still reading it. A protocol with many clashing rules
+  no longer grows the message taller than the screen, which used to carry its own
+  heading and close button out of view: the list of clashes now scrolls within the
+  message, and can be scrolled from the keyboard as well as the mouse.
+  Conflicts on locally scoped variables with the same ID now remain distinct as
+  the message updates.
+
+  A failed generation also no longer leaves part of a batch behind. Most protocols
+  whose rules cannot be satisfied are refused before anything is saved, but a
+  protocol can pass that check and still run out of usable values part-way through
+  a batch, or fail to save one. Every session written during a failed batch is now
+  removed — including the one being written when the failure struck — so the number
+  of synthetic sessions shown always matches what is actually stored, and
+  generating again cannot quietly leave you with a half-finished duplicate set.
+
+- Generating or deleting synthetic sessions could sometimes leave the Synthetic
+  data screen showing a stale protocol list and session count if the screen
+  couldn't refresh right after the action finished. Generating gave no
+  indication anything was wrong; deleting was worse — it could show a
+  "Deleted" success message while also reopening the delete confirmation with an
+  unrelated error, even though the sessions had already been removed. Both cases
+  now tell you clearly when the refresh itself is what failed, so you know to
+  reopen Settings rather than trust an out-of-date count.
+
+## 8.0.0-beta.10
+
+### Minor Changes
+
+- Finished interviews can now be reviewed without saving changes, or marked
+  unfinished when further editing is needed.
+
+### Patch Changes
+
+- Bring the Import a protocol card to the front when a protocol file is dragged
+  over Interviewer, and improve the card's text and icon scaling on smaller
+  screens.
+- The installed app's icon is now optically centred, correcting a slight rightward
+  lean, and renders at a consistent size whether the app was installed from Safari
+  or Chrome.
+- Interview text now scales smoothly with your screen size — comfortably compact
+  on smaller screens and larger on wide or high-resolution displays.
+
+## 8.0.0-beta.9
+
+### Minor Changes
+
+- Synthetic sessions now pick people from a protocol's actual rosters. Previously,
+  a roster screen generated invented people, so test data never lined up with the
+  roster file and that mismatch carried into every later stage. Generated sessions
+  now draw from the real roster rows, and a stage that also allows adding people
+  manually gets a mix of both. Where a side panel filters its roster, generation
+  draws only from the people that panel would actually show. A roster that loads
+  but has no rows — or whose panel filters out everyone — now generates an empty
+  roster stage rather than inventing people. Protocols whose roster files are
+  missing or unreadable still generate as before.
+
+### Patch Changes
+
+- Keep the case ID form stable when starting an interview on short tablet viewports, with compact responsive spacing and a focused backdrop that preserves the surrounding protocol deck.
+- Animate the resume-last-interview notification out while entering a case ID for
+  a new interview, then bring it back when returning to the protocol card.
+- Clarify that interview data is stored locally on this device and encrypted there when app security is configured, whether Interviewer is open in a browser tab or installed as an app.
+- Preserve the existing analytics preference when app security is enabled from
+  Settings, and keep mandatory setup available after the optional wizard is
+  exited without choosing a security method.
+- Replace the startup loading ring with the same large Network Canvas spinner used by Architect for a consistent first-load experience.
+- Preserve SVG image types when importing protocol assets so responsive canvas backgrounds display correctly.
+- Let browser users enable app security from the Security settings with the Get
+  started wizard. Settings-launched setup preserves existing data if it is exited
+  after a device lock has been created.
+- Fix the update dialog so Install and reload opens the new version immediately and shows progress while the update is applied.
+- Use a consistent authentication and recovery dialog throughout Interviewer, avoid a duplicate identity check when refreshing an active interview, and suppress destructive recovery while an interview is protected without blocking biometric passphrase recovery.
+
 ## 8.0.0-beta.8
 
 ### Patch Changes
@@ -84,6 +295,7 @@
 ### Patch Changes
 
 - Close data-loss and setup gaps surfaced by the pre-release audit follow-up:
+
   - **Export marking:** on browsers that can't report whether a file download completed (the object-URL fallback), the app now confirms the archive was saved before marking sessions as exported — a cancelled or blocked Save-As can no longer falsely mark a session "exported" (which fed the filter-to-exported → bulk-delete data-loss path).
   - **Setup wizard:** a failed same-method re-enrolment (e.g. cancelling the biometric prompt after the old vault was revoked) can no longer finish the wizard claiming a lock mode the vault doesn't actually hold.
   - **Lock screen:** a destructive "reset app data" confirmation opened while locked is now dismissed when the app unlocks, so it can't survive the lock boundary and fire over Home.

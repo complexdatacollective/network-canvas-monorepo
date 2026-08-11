@@ -24,8 +24,11 @@ vi.mock('react-redux', () => {
 // redux-form selectors report a node type so the Form Fields DialogArrayField
 // and its onBeforeSave -> handleChangeFields wiring render.
 vi.mock('redux-form', () => ({
+  reduxForm: () => (Component: React.ComponentType<Record<string, unknown>>) =>
+    Component,
   formValueSelector: () => () => 'person',
   getFormValues: () => () => ({}),
+  getFormInitialValues: () => () => ({}),
   change: (form: string, field: string, value: unknown) => ({
     type: 'CHANGE',
     form,
@@ -45,7 +48,12 @@ vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => noop }));
 
 vi.mock('~/selectors/codebook', () => ({
   getVariableOptionsForSubject: () => [],
+  getVariablesForSubjectSelector: () => ({}),
   makeGetVariable: () => () => undefined,
+}));
+
+vi.mock('~/selectors/protocol', () => ({
+  getProtocol: () => undefined,
 }));
 
 vi.mock('~/components/EditorLayout', () => ({

@@ -49,16 +49,54 @@ vi.mock('@codaco/art', () => ({
   PageBackground: () => <div data-testid="page-background" />,
 }));
 
+vi.mock('~/lib/classicReleases', async () => {
+  const { classicApps } = await import('~/test/classicApps');
+
+  return {
+    getLatestClassicApps: vi.fn(async () => classicApps),
+  };
+});
+
 vi.mock('~/components/ui/Reveal', () => ({
-  Reveal: ({ children, ...props }: HTMLAttributes<HTMLDivElement>) => (
-    <div {...props}>{children}</div>
+  Reveal: ({
+    children,
+    delay: _delay,
+    direction,
+    distance: _distance,
+    duration: _duration,
+    easing: _easing,
+    scrollLinked,
+    scrollStagger: _scrollStagger,
+    ...props
+  }: HTMLAttributes<HTMLDivElement> & {
+    delay?: number;
+    direction?: string;
+    distance?: number;
+    duration?: number;
+    easing?: readonly number[];
+    scrollLinked?: boolean;
+    scrollStagger?: number;
+  }) => (
+    <div
+      data-scroll-direction={direction}
+      data-scroll-linked={scrollLinked ? 'true' : undefined}
+      {...props}
+    >
+      {children}
+    </div>
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('localized Get Started page', () => {
   it('renders Spanish research stages and preserves the approved card layout', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('Network access is unavailable in tests.'));
     const page = await GetStartedPage({
       params: Promise.resolve({ locale: 'es' }),
     });
@@ -97,6 +135,13 @@ describe('localized Get Started page', () => {
     expect(cards[0]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     expect(cards[1]?.parentElement).toHaveClass('tablet-landscape:col-span-6');
     expect(cards[2]?.parentElement).toHaveClass('tablet-landscape:col-span-12');
+    for (const card of cards) {
+      expect(card?.parentElement).toHaveAttribute('data-scroll-linked', 'true');
+      expect(card?.parentElement).toHaveAttribute(
+        'data-scroll-direction',
+        'zoom',
+      );
+    }
     expect(cards[1]).toHaveClass('bg-slate-blue/10', 'backdrop-blur-md');
     expect(
       document.querySelectorAll('[data-get-started-weave-target]'),
@@ -107,6 +152,8 @@ describe('localized Get Started page', () => {
     expect(
       document.querySelectorAll('[data-testid="page-background"]'),
     ).toHaveLength(1);
+    expect(document.querySelectorAll('.relative.z-10')).toHaveLength(0);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it('generates Spanish metadata and language alternates', async () => {

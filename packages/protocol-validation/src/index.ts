@@ -19,7 +19,12 @@ import {
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
-import validateProtocol from './validation/validate-protocol.ts';
+import validateProtocol, {
+  formatProtocolValidationIssues,
+  ProtocolValidationError,
+  type ProtocolValidationIssue,
+  type ProtocolValidationResult,
+} from './validation/validate-protocol.ts';
 
 export {
   MigrationChain,
@@ -40,6 +45,17 @@ export {
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 export {
+  findValidationContradictions,
+  type ValidationContradiction,
+} from './schemas/8/variables/validation-contradictions.ts';
+export {
+  collectVariableRoleHits,
+  findVariableRoleConflicts,
+  type VariableRoleConflict,
+  type VariableRoleGroup,
+  type VariableRoleHit,
+} from './utils/findVariableRoleConflicts.ts';
+export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -48,12 +64,16 @@ export {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  formatProtocolValidationIssues,
   getAssetMimeType,
   getVariableNamesFromNetwork,
   hashProtocol,
   MAX_INFLATED_BYTES,
   type Network,
   NetcanvasInflationLimitError,
+  ProtocolValidationError,
+  type ProtocolValidationIssue,
+  type ProtocolValidationResult,
   validateNames,
   validateProtocol,
 };

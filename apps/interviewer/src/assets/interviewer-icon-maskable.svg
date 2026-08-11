@@ -1,0 +1,37 @@
+<!-- Maskable variant. Safari's "Add to Dock" picks the maskable manifest
+     entry and renders it 1:1 into the icon shape, while Chrome uses the
+     `any` entry and magnifies it ~1.057x. So this file carries the mark at
+     1.057x the full-bleed icon's 0.96 to make both come out the same size.
+     Measured from the generated .icns of both installed apps on macOS. -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbfbfa"/>
+      <stop offset="1" stop-color="#e9e8e4"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#8f1038" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- The anchor is optical, not geometric: the large bottom-right node
+       outweighs the other two, so centring the bounding box (anchor x 490)
+       leaves the mark looking right-heavy. 513 is half way to the ink
+       centroid at 536. -->
+  <g filter="url(#shadow)" transform="translate(512,512) scale(1.0146) translate(-513,-495)">
+    <g stroke="#dd1f5a" stroke-width="58" stroke-linecap="round">
+      <line x1="310" y1="355" x2="680" y2="265"/>
+      <line x1="310" y1="355" x2="635" y2="725"/>
+    </g>
+    <g fill="#dd1f5a">
+      <circle cx="310" cy="355" r="105"/>
+      <circle cx="680" cy="265" r="85"/>
+      <circle cx="635" cy="725" r="140"/>
+    </g>
+    <g fill="#f29db4">
+      <circle cx="270" cy="317" r="31"/>
+      <circle cx="648" cy="233" r="25"/>
+      <circle cx="583" cy="673" r="40"/>
+    </g>
+  </g>
+</svg>

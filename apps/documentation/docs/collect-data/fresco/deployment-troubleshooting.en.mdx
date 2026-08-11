@@ -1,6 +1,6 @@
 ---
 title: Deployment Troubleshooting
-date: 9th October 2025
+date: 22nd July 2026
 navOrder: 8
 ---
 
@@ -37,19 +37,9 @@ You may be redirected to a page that informs you that your instance has expired.
 
 </summary>
 
-When completing the initial setup for Fresco, you have 2 hours to complete the process. If you exceed this time, you will be redirected to a page that informs you that your instance has expired. If this happens, you must delete your database and create a new one.
+When completing the initial setup for Fresco, you have 2 hours to complete the process. If you exceed this time, you will be redirected to a page that informs you that your instance has expired.
 
-To delete your database:
-
-1. Navigate to your [Neon dashboard](https://console.neon.tech/) and select your project.
-
-   ![Select database](/assets/img/fresco-images/reset-db-1.png)
-
-2. Select the **Settings** tab, scroll to the bottom, and click **Delete project**.
-
-   ![Remove project connection](/assets/img/fresco-images/reset-db-2.png)
-
-3. After confirming, you can follow the instructions again to [Create a Database](/en/collect-data/fresco/guide#create-a-database) and replace the environment variables in your Netlify project.
+To recover, follow the steps in [Reset your database](#reset-your-database) below, and then complete the setup process again.
 
 </details>
 
@@ -72,3 +62,35 @@ This error means that you are using the deployment specific URL, which requires 
    ![URL](/assets/img/fresco-images/netlify-5.png)
 
 </details>
+
+## Reset your database
+
+Resetting your database erases everything stored in your Fresco instance's database — all protocols, participants, settings, accounts, and any unexported interviews — and returns the app to its first-run setup wizard. It is a last-resort recovery procedure: use it if your instance expired during initial setup, or if every account is locked out and no other [recovery options](/en/collect-data/fresco/accounts#recovering-access) remain.
+
+Note that files in your configured storage backend — protocol assets and roster files in UploadThing, S3, or self-hosted MinIO — are **not** removed by a database reset. If you are decommissioning a study, delete them from the storage provider separately.
+
+Export any interview data you can before you begin. The steps depend on how you deployed Fresco.
+
+### Netlify deployments using Neon
+
+If you followed the [Deployment Guide](/en/collect-data/fresco/guide), your database is hosted by Neon:
+
+1. Navigate to your [Neon dashboard](https://console.neon.tech/) and select your project.
+
+   ![Select database](/assets/img/fresco-images/reset-db-1.png)
+
+2. Select the **Settings** tab, scroll to the bottom, and click **Delete project**.
+
+   ![Remove project connection](/assets/img/fresco-images/reset-db-2.png)
+
+3. After confirming, follow the deployment guide to [create a new database](/en/collect-data/fresco/guide#create-a-database) and replace the environment variables in your Netlify project.
+
+### Vercel deployments (legacy)
+
+If you deployed with the legacy [Vercel guide](/en/collect-data/fresco/guide-vercel), your database is also hosted by Neon: follow the Neon steps above, then replace the database environment variables in your **Vercel** project settings (rather than Netlify) and redeploy.
+
+### Docker deployments
+
+If you followed the [Advanced Deployment](/en/collect-data/fresco/advanced) guide and use the bundled `postgres` service from one of the official Docker Compose files, stop the stack, remove the volume that stores the PostgreSQL data, and start the stack again. Fresco will create an empty database and show the setup wizard the next time you visit your instance. The Advanced Deployment guide describes the compose files and their environment configuration.
+
+If your Docker deployment points at an external PostgreSQL database (such as Neon) instead, delete and recreate the database with that provider, and update the connection strings in your `.env` file if they have changed.

@@ -3,6 +3,7 @@ import { action } from 'storybook/actions';
 import { fn } from 'storybook/test';
 
 import Button from '../Button';
+import { withDialogProvider } from '../storybook-support/withDialogProvider';
 import useDialog from './useDialog';
 
 // Footer component that opens a nested confirmation dialog
@@ -49,6 +50,7 @@ type ConfirmUtilityArgs = {
 const meta = {
   title: 'Systems/Dialogs/useDialog',
   tags: ['autodocs'],
+  decorators: [withDialogProvider],
   parameters: {
     layout: 'fullscreen',
   },

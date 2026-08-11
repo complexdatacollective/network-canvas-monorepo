@@ -55,10 +55,11 @@ type ComposerActions = {
     variable: string,
     value: string,
   ) => Promise<void>;
-  addGroupMembership: (
+  setGroupMembership: (
     ids: string[],
     variable: string,
     value: string,
+    member: boolean,
   ) => Promise<void>;
 };
 
@@ -531,17 +532,23 @@ export function useComposerActions({
     );
   }
 
-  async function addGroupMembership(
+  async function setGroupMembership(
     ids: string[],
     variable: string,
     value: string,
+    member: boolean,
   ): Promise<void> {
-    // Add the value to every node that doesn't already have it, as one undo step.
     const changes: { id: string; prior: string[]; next: string[] }[] = [];
     for (const id of ids) {
       const prior = readGroupValues(id, variable);
-      if (prior.includes(value)) continue;
-      changes.push({ id, prior, next: [...prior, value] });
+      if (prior.includes(value) === member) continue;
+      changes.push({
+        id,
+        prior,
+        next: member
+          ? [...prior, value]
+          : prior.filter((groupValue) => groupValue !== value),
+      });
     }
 
     if (changes.length === 0) return;
@@ -557,7 +564,7 @@ export function useComposerActions({
     }
 
     void undoStore.getState().push({
-      label: `Add ${changes.length} to group`,
+      label: `${member ? 'Add' : 'Remove'} ${changes.length} ${member ? 'to' : 'from'} group`,
       undo: async () => {
         for (const { id, prior } of changes) {
           await dispatch(
@@ -593,6 +600,6 @@ export function useComposerActions({
     updateEdgeAttributes,
     repositionNode,
     toggleGroupMembership,
-    addGroupMembership,
+    setGroupMembership,
   };
 }

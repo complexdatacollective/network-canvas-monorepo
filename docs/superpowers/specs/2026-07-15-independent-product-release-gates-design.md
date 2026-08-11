@@ -1,7 +1,14 @@
 # Independent product release gates
 
 **Date:** 2026-07-15
-**Status:** Implemented by this change
+**Status:** Partially superseded on 2026-07-31
+
+> Architect and Interviewer were recombined into one
+> `changeset-release/apps` gate to eliminate duplicate shared-runtime E2E work.
+> Documentation, Website, libraries, and post-merge per-product deployments
+> remain independent. This document records the earlier topology; see
+> `2026-07-31-combined-app-release-lane-ci-efficiency-design.md` for the current
+> design.
 
 ## Goal
 
@@ -67,11 +74,11 @@ Netlify production before tagging `networkcanvas.com@<version>`. The classic
 Architect and Interviewer release jobs remain version/tag driven and continue
 to publish to their external repositories.
 
-## Addendum — 2026-07-20: Background Creator lane
+## Addendum — 2026-08-11: Background Creator release lane
 
-Background Creator (`@codaco/background-creator`, branch
-`changeset-release/background-creator`, "Release Background Creator" PR) was
-added as a fifth matrix entry, releasing on a `1.0.0-beta.N` line like Architect
-and Interviewer. Its lane requires no E2E suites: no suite subject package is in
-the app's workspace dependency closure. See
-`apps/background-creator/RELEASING.md`.
+Background Creator (`@codaco/background-creator`) follows the stable app model
+that superseded the beta release gates described above. It is versioned through
+the normal `changeset-release/main` PR and deployed by its own production job.
+It has no dedicated E2E suite; its full Vite build runs in the pull-request
+quality gate instead. See `apps/background-creator/RELEASING.md` and
+`docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
