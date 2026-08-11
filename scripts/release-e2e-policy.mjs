@@ -128,6 +128,29 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
   });
 }
 
+// Select each suite whose subject or workspace dependency closure contains a
+// changed path. Unknown paths fail closed for every suite via
+// diffIrrelevantToSuite; a missing subject fails closed for that suite because
+// its relevance closure cannot be trusted.
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  const packages = collectWorkspacePackages(cwd);
+  const required = suites();
+  for (const key of SUITE_KEYS) {
+    const subject = E2E_SUITE_SUBJECTS[key];
+    if (!packages.has(subject)) {
+      required[key] = true;
+      continue;
+    }
+    const relevanceDirs = relevanceDirsForSubject(subject, packages);
+    required[key] = !diffIrrelevantToSuite(
+      changedPaths,
+      relevanceDirs,
+      packages,
+    );
+  }
+  return required;
+}
+
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
 // One bounded page per generated branch. A verdict older than this is stale
 // enough that re-running is the right call anyway (fail closed past the cap).
@@ -414,6 +437,24 @@ function tryGit(args, cwd) {
   }
 }
 
+// Feature PRs use their cumulative merge-base-to-head diff so every current
+// head is gated by the suites the PR can affect. This deliberately does not
+// use push-to-push carry-forward: an E2E verdict must describe the exact PR
+// head that the required quality check is evaluating.
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+  if (!baseSha || !headSha) {
+    throw new Error('feature PR E2E detection requires base and head SHAs');
+  }
+  const mergeBase = tryGit(['merge-base', baseSha, headSha], cwd);
+  if (!mergeBase) throw new Error('Unable to resolve feature PR merge base');
+  const diff = tryGit(
+    ['diff', '--no-renames', '--name-only', mergeBase, headSha, '--'],
+    cwd,
+  );
+  if (diff === null) throw new Error('Unable to read feature PR diff');
+  return affectedSuitesForPaths(diff.split('\n').filter(Boolean), cwd);
+}
+
 function readVersionAt(revision, manifest, cwd) {
   const contents = tryGit(['show', `${revision}:${manifest}`], cwd);
   if (contents === null) return null;
@@ -470,6 +511,7 @@ export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
   mergeGroupDetector = mergeGroupRequiredSuites,
+  pullRequestDetector = pullRequestRequiredSuites,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
@@ -484,6 +526,20 @@ export function releaseE2EPolicy(
     let required;
     try {
       required = mergeGroupDetector(baseSha, headSha, process.cwd());
+    } catch {
+      required = suites('interview', 'interviewer', 'architect');
+    }
+    return {
+      ...required,
+      releaseRef: '',
+      snapshotBranch: '',
+    };
+  }
+
+  if (eventName === 'pull_request') {
+    let required;
+    try {
+      required = pullRequestDetector(baseSha, headSha, process.cwd());
     } catch {
       required = suites('interview', 'interviewer', 'architect');
     }

@@ -122,7 +122,7 @@ test('website dead-link crawl waits for the documentation preview it links to', 
   );
 });
 
-test('each release E2E suite gates on its own policy flag', () => {
+test('each E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
     ['interview-e2e-native', 'interview'],
@@ -435,9 +435,14 @@ test('the informational Pages deploy has a bounded failure window', () => {
   );
 });
 
-test('e2e-policy receives the equivalence-reuse inputs', () => {
+test('e2e-policy receives affected-PR and equivalence-reuse inputs', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
+  assert.match(
+    policyJob,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
+    'policy step receives the PR base (or merge-group base) as BASE_SHA',
+  );
   assert.match(
     policyJob,
     /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \}\}/,

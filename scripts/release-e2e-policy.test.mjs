@@ -13,11 +13,13 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  affectedSuitesForPaths,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
   equivalentValidatedSuites,
   E2E_SUITE_SUBJECTS,
   mergeGroupRequiredSuites,
+  pullRequestRequiredSuites,
   releaseBranchForMergeQueue,
   releaseE2EPolicy,
   releaseRefForEvent,
@@ -362,7 +364,157 @@ test('merge-group version bumps require only the affected lanes', () => {
   });
 });
 
-test('ordinary events do not require release E2E', () => {
+test('feature PRs require the suites the affected-path detector reports', () => {
+  const detected = {
+    interview: true,
+    interviewer: false,
+    architect: true,
+  };
+  assert.deepEqual(
+    releaseE2EPolicy(
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
+      undefined,
+      () => detected,
+    ),
+    { ...detected, releaseRef: '', snapshotBranch: '' },
+  );
+  assert.deepEqual(
+    releaseE2EPolicy(
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
+      undefined,
+      () => {
+        throw new Error('unreadable PR history');
+      },
+    ),
+    {
+      interview: true,
+      interviewer: true,
+      architect: true,
+      releaseRef: '',
+      snapshotBranch: '',
+    },
+  );
+});
+
+test('feature PR suite selection follows the workspace dependency graph', () => {
+  const cwd = initRepo();
+  commitManifest(
+    cwd,
+    'packages/interview/package.json',
+    '{"name":"@codaco/interview","version":"1.0.0"}\n',
+    'add interview',
+  );
+  commitManifest(
+    cwd,
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add interviewer',
+  );
+  commitManifest(
+    cwd,
+    'apps/architect/package.json',
+    '{"name":"@codaco/architect","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add architect',
+  );
+  const commonBase = commitManifest(
+    cwd,
+    'apps/documentation/package.json',
+    '{"name":"@codaco/documentation","version":"1.0.0"}\n',
+    'add documentation',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-architect', commonBase);
+  const architectHead = commitManifest(
+    cwd,
+    'apps/architect/src/main.tsx',
+    'export {};\n',
+    'change architect',
+  );
+  git(cwd, 'checkout', '-q', 'main');
+  const advancedBase = commitManifest(
+    cwd,
+    'apps/interviewer/src/main.tsx',
+    'export {};\n',
+    'advance main',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, architectHead, cwd),
+    { interview: false, interviewer: false, architect: true },
+    'merge-base diff excludes unrelated movement on the base branch',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-interview', commonBase);
+  const interviewHead = commitManifest(
+    cwd,
+    'packages/interview/src/index.ts',
+    'export {};\n',
+    'change interview',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, interviewHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'a shared runtime change selects every downstream suite',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-documentation', commonBase);
+  const documentationHead = commitManifest(
+    cwd,
+    'apps/documentation/src/page.tsx',
+    'export {};\n',
+    'change documentation',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, documentationHead, cwd),
+    { interview: false, interviewer: false, architect: false },
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-root-config', commonBase);
+  const rootConfigHead = commitManifest(
+    cwd,
+    'turbo.json',
+    '{}\n',
+    'change root config',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, rootConfigHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'an unrecognised root path fails closed',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-docs-only', commonBase);
+  const docsHead = commitManifest(cwd, 'README.md', 'Docs\n', 'change docs');
+  assert.deepEqual(pullRequestRequiredSuites(advancedBase, docsHead, cwd), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
+});
+
+test('affected path selection fails closed when a suite subject is missing', () => {
+  const cwd = writeWorkspaceFixture();
+  const manifest = join(cwd, 'apps/architect/package.json');
+  writeFileSync(
+    manifest,
+    '{"name":"@codaco/not-architect","version":"1.0.0"}\n',
+  );
+  assert.deepEqual(affectedSuitesForPaths(['README.md'], cwd), {
+    interview: false,
+    interviewer: false,
+    architect: true,
+  });
+});
+
+test('non-PR ordinary events do not require E2E', () => {
   const none = {
     interview: false,
     interviewer: false,
@@ -370,10 +522,6 @@ test('ordinary events do not require release E2E', () => {
     releaseRef: '',
     snapshotBranch: '',
   };
-  assert.deepEqual(
-    releaseE2EPolicy({ eventName: 'pull_request', headRef: 'feature/example' }),
-    none,
-  );
   assert.deepEqual(
     releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
     none,
