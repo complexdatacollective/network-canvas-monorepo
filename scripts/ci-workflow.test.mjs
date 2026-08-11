@@ -239,6 +239,23 @@ test('classic release builds use the proven macOS signing secrets', () => {
   }
 });
 
+test('Classic release names remain bare semver for legacy update checks', () => {
+  for (const [jobName, app] of [
+    ['interviewer-mirror', 'interviewer'],
+    ['architect-mirror', 'architect'],
+  ]) {
+    const mirrorJob = job(jobName);
+    assert.ok(mirrorJob, `${jobName} exists`);
+    assert.match(
+      mirrorJob,
+      new RegExp(
+        `name: \\$\\{\\{ needs\\.legacy-release-detect\\.outputs\\.${app}_version \\}\\}`,
+      ),
+    );
+    assert.doesNotMatch(mirrorJob, /name: Network Canvas/);
+  }
+});
+
 test('Fresco postinstall is portable to Windows release runners', () => {
   assert.equal(
     frescoPackage.scripts.postinstall,
