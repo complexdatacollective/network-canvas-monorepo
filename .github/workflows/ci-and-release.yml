@@ -2340,7 +2340,7 @@ jobs:
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           tag_name: v${{ needs.legacy-release-detect.outputs.interviewer_version }}
           target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
-          name: Network Canvas Interviewer v${{ needs.legacy-release-detect.outputs.interviewer_version }}
+          name: ${{ needs.legacy-release-detect.outputs.interviewer_version }}
           body_path: ${{ runner.temp }}/notes.md
           draft: true
           make_latest: 'false'
@@ -2419,7 +2419,7 @@ jobs:
           token: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           tag_name: v${{ needs.legacy-release-detect.outputs.architect_version }}
           target_commitish: ${{ steps.mirror.outputs.mirror_sha }}
-          name: Network Canvas Architect v${{ needs.legacy-release-detect.outputs.architect_version }}
+          name: ${{ needs.legacy-release-detect.outputs.architect_version }}
           body_path: ${{ runner.temp }}/notes.md
           draft: true
           make_latest: 'false'
