@@ -479,6 +479,7 @@
     },
     "fresco#build": {
       "dependsOn": ["^topo", "fresco#codegen"],
+      "passThroughEnv": ["SKIP_ENV_VALIDATION"],
       "inputs": [
         "app/**",
         "actions/**",
