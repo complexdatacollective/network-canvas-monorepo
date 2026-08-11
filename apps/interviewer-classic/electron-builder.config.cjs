@@ -43,7 +43,10 @@ module.exports = {
     '!node_modules/**/vite/**',
     '!node_modules/**/@babel/core/**',
     '!node_modules/**/@babel/parser/**',
-    '!node_modules/**/lodash/**',
+    // lodash MUST be packaged: it is a runtime dependency of archiver-utils
+    // (require('lodash/defaults') at module load), and the main process
+    // requires archiver at startup. Excluding it crashes the packaged app at
+    // launch with "Cannot find module 'lodash/defaults'".
   ],
   extraResources: ['./build-resources/externals/**'],
   appId: 'Network-Canvas-Interviewer-6',

@@ -1,5 +1,11 @@
 # network-canvas-interviewer
 
+## 6.6.1
+
+- **Fixed a crash on launch.** Version 6.6.0 could fail to start with a "Cannot find module
+  'lodash/defaults'" error, caused by a required dependency being left out of the packaged
+  app. The app now starts correctly.
+
 ## 6.6.0
 
 - **Updated core dependencies.** The technology the app is built on has been brought up to
