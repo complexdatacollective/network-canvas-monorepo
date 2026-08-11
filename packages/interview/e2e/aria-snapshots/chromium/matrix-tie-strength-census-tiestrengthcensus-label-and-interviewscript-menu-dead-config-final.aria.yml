@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad and Charlie
-  - button "Mohammad"
-  - button "Charlie"
+  - text: Mohammad Crist and Laury Wisozk
+  - button "Mohammad Crist"
+  - button "Laury Wisozk"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad and Charlie How close are these two people?":
+  - listbox "Mohammad Crist and Laury Wisozk How close are these two people?":
     - option "Weak"
     - option "Moderate"
     - option "Strong"
