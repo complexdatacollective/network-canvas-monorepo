@@ -123,3 +123,77 @@ describe('EditableAttributesList', () => {
     expect(getHistory().canUndo).toBe(true);
   });
 });
+
+const EDGE_FIELDS = [
+  { id: 'field-1', variable: 'close', component: 'Boolean' },
+  { id: 'field-2', variable: 'nearby', component: 'Boolean' },
+];
+
+const setupControlled = () => {
+  const onChange = vi.fn();
+  const view = renderStageForm({
+    committedStage: asStage({
+      id: 'stage-1',
+      edges: [
+        {
+          id: 'edge-1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: { fields: EDGE_FIELDS },
+        },
+      ],
+    }),
+    children: (
+      <EditableAttributesList
+        fieldName="edges[0].form.fields"
+        entity="edge"
+        type="knows"
+        handleChangeFields={vi.fn((value: unknown) => value)}
+        value={EDGE_FIELDS}
+        onChange={onChange}
+      />
+    ),
+  });
+
+  return { ...view, onChange };
+};
+
+describe('EditableAttributesList controlled by its owner', () => {
+  it('registers nothing and contributes nothing to the form’s output', async () => {
+    const { getStoreApi, getFormValues } = setupControlled();
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Edit attribute' }),
+      ).toHaveLength(2),
+    );
+
+    // The owner (`EdgeConfiguration`'s `edges` field) holds this array inside
+    // its own value. A field registered here as well would be a positional
+    // name over a deletable list, which is the resurrection hazard
+    // `ArchitectArrayField` documents — and `getFormValues()` would replay it
+    // over the owner's copy.
+    expect([...getStoreApi().getState().fields.keys()]).toEqual([]);
+    expect(getFormValues()).toEqual({});
+  });
+
+  it('reports a removal to its owner instead of writing the form store', async () => {
+    const { getStoreApi, onChange } = setupControlled();
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Remove attribute' }),
+      ).toHaveLength(2),
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Remove attribute' })[1]!,
+    );
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'field-1' }),
+      ]),
+    );
+    expect(getStoreApi().getState().fields.size).toBe(0);
+    expect(getStoreApi().getState().dormantValues.size).toBe(0);
+  });
+});

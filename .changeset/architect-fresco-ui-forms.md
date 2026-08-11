@@ -28,6 +28,7 @@ Fixes a number of editing bugs found along the way:
 - Removing a categorical bin prompt's "Other" variable now removes its validation settings from the editor too. They stayed on screen belonging to the variable just removed, and editing them wrote straight to that variable, which another stage may still be collecting.
 - The Issues list now names each field properly the first time it opens. Every entry showed an internal field name until the stage was checked a second time, and a field with more than one problem kept showing it even then.
 - A name generator's generated stage name mentions its side panels again after the panels have been turned off and on.
+- Removing one of a network composer's edge types no longer hands its editable attributes to the type that remains, and undoing the removal no longer leaves an invalid half-edge on the undo history.
 
 Half-finished settings can no longer be saved. Previously the field showed an error but "Finished Editing" accepted it anyway, and the problem resurfaced later as a protocol-wide "Misconfigured Protocol" message far from the field that caused it:
 

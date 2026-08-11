@@ -2,10 +2,12 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ComposerAttributeFields, {
   COMPOSER_CONTRADICTION_FIELD,
 } from '~/components/EditableAttributesList/ComposerAttributeFields';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import IssueAnchor from '~/components/IssueAnchor';
 import ComposerFieldPreview from '~/components/sections/Form/ComposerFieldPreview';
 import {
   buildComposerFieldOverlay,
@@ -87,6 +89,29 @@ type EditableAttributesListProps = {
   label?: string;
   handleChangeFields: (field: Record<string, unknown>) => unknown;
   siblingUnvalidatedVariableIds?: string[];
+  /**
+   * Controlled mode. Supplying `onChange` makes the caller the owner of the
+   * array: nothing is registered here, and every read and write goes through
+   * these two props.
+   *
+   * Required wherever this list sits INSIDE another registered field's value,
+   * which is `edges[N].form.fields` — `edges` is itself one registered array
+   * field. Registering the leaf too would make `fieldName` positional over a
+   * list the researcher can delete from: removing an edge type re-indexes the
+   * survivors, and the removed block's unmount parks its value dormant under
+   * the name the survivor is rebinding TO. `registerField` prefers a dormant
+   * value over `initialValue`, so the survivor silently adopts the deleted
+   * edge type's attributes. Deleting also snapshots a `getFormValues()` taken
+   * before the leaves re-register, where the stale `edges[1].form.fields`
+   * replays onto a one-element array and invents an `id`-less, `subject`-less
+   * second edge the protocol schema rejects.
+   *
+   * `nodeForm.fields` and the plain Form's `form.fields` are fixed paths with
+   * no container field above them, so they stay uncontrolled.
+   */
+  value?: Record<string, unknown>[];
+  /** `undefined` is DialogArrayField's empty case; the owner picks the shape. */
+  onChange?: (fields: Record<string, unknown>[] | undefined) => void;
 };
 
 /**
@@ -106,6 +131,8 @@ const EditableAttributesList = ({
   label = 'Editable attributes',
   handleChangeFields,
   siblingUnvalidatedVariableIds,
+  value,
+  onChange,
 }: EditableAttributesListProps) => {
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
@@ -126,7 +153,11 @@ const EditableAttributesList = ({
   // draft in this dialog must see how its siblings actually render in THIS
   // stage, not just the codebook definition. Read live from the stage form,
   // which the row dialog's own form store deliberately does not shadow.
-  const composerFields = useStageFormValues(stagePaths)[fieldName];
+  //
+  // A controlled list is not in the store under `fieldName` at all — its owner
+  // holds it — so the prop is the live list there.
+  const registeredFields = useStageFormValues(stagePaths)[fieldName];
+  const composerFields = onChange ? value : registeredFields;
 
   const { committedStage, stageId } = useStageFormContext();
   // Per-Field `initialValue`: the form store has no whole-form initial values.
@@ -245,6 +276,46 @@ const EditableAttributesList = ({
   );
   const previewProps = useMemo(() => ({ entity, type }), [entity, type]);
 
+  const normalizeItem = (item: unknown) =>
+    composerNormalizeField(item as Record<string, unknown>);
+  const onBeforeSave = (item: unknown) =>
+    handleChangeFields(item as Record<string, unknown>);
+
+  if (onChange) {
+    return (
+      <>
+        {/*
+          `ArchitectField` renders this for every field it owns, and the
+          Issues panel resolves an issue path to the nearest anchor
+          (`candidateIdsFor`). Rendering it here too keeps the DOM seam
+          identical either side of the controlled/uncontrolled split.
+        */}
+        <IssueAnchor fieldName={`${fieldName}._error`} description={label} />
+        <UnconnectedField
+          name={fieldName}
+          label={label}
+          labelHidden
+          component={DialogArrayField}
+          value={value ?? NO_FIELDS}
+          onChange={onChange}
+          addTitle={title}
+          editorTitle={title}
+          editorFieldsComponent={EditorFields}
+          editorProps={editorProps}
+          editorValidate={editorValidate}
+          itemLabel="attribute"
+          itemSelector={itemSelector}
+          normalizeItem={normalizeItem}
+          onBeforeSave={onBeforeSave}
+          previewComponent={Preview}
+          previewProps={previewProps}
+          requestedEditFormName={editFormName}
+          sortable
+        />
+      </>
+    );
+  }
+
   return (
     <ArchitectArrayField
       name={fieldName}
@@ -265,12 +336,8 @@ const EditableAttributesList = ({
       editorValidate={editorValidate}
       itemLabel="attribute"
       itemSelector={itemSelector}
-      normalizeItem={(value: unknown) =>
-        composerNormalizeField(value as Record<string, unknown>)
-      }
-      onBeforeSave={(value: unknown) =>
-        handleChangeFields(value as Record<string, unknown>)
-      }
+      normalizeItem={normalizeItem}
+      onBeforeSave={onBeforeSave}
       previewComponent={Preview}
       previewProps={previewProps}
       requestedEditFormName={editFormName}
