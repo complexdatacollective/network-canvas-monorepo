@@ -571,14 +571,16 @@ export const DeclaredGestures: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Focusable exactly when focusing does something: activation or a drag
-    // earns a tab stop, a display-only node stays out of the tab order.
+    // Focusable exactly when focus does something for a keyboard user.
+    // Activation earns a tab stop; a pointer-only drag with no keyboard
+    // handler would be a dead control under focus, so it earns none — hosts
+    // that supply keyboard equivalents (as the canvas does) earn it back.
     await expect(
       canvas.getByRole('button', { name: 'Clickable' }).tabIndex,
     ).toBe(0);
     await expect(
       canvas.getByRole('button', { name: 'Draggable' }).tabIndex,
-    ).toBe(0);
+    ).toBe(-1);
     await expect(canvas.getByRole('button', { name: 'Both' }).tabIndex).toBe(0);
     await expect(canvas.getByRole('button', { name: 'Display' }).tabIndex).toBe(
       -1,
@@ -1009,9 +1011,11 @@ export const DragStates: Story = {
     const canvas = within(canvasElement);
     const node = canvas.getByRole('button', { name: 'Drag me' });
 
-    // At rest: draggable means grab cursor, a tab stop, and not grabbed.
+    // At rest: draggable means grab cursor and not grabbed. A pointer-only
+    // drag earns no tab stop — a keyboard user could do nothing with it; a
+    // host supplying keyboard handlers (as the canvas does) earns one.
     await expect(getComputedStyle(node).cursor).toBe('grab');
-    await expect(node.tabIndex).toBe(0);
+    await expect(node.tabIndex).toBe(-1);
     await expect(node).toHaveAttribute('aria-grabbed', 'false');
 
     // Mid-drag: grabbing cursor, aria-grabbed, and the dragging data state.

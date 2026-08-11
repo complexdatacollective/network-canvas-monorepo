@@ -135,7 +135,9 @@ export default function CanvasNode({
       // Declaring drag handlers makes Node the drag's gesture owner — cursor,
       // pointer capture, aria-grabbed, and never-also-a-tap all follow.
       {...(canReposition ? dragHandlers : null)}
-      onKeyDown={onKeyDown}
+      // The keyboard handler is the node's claim to a tab stop, so it is only
+      // passed while its actions (nudging, Delete) can actually run.
+      onKeyDown={canReposition ? onKeyDown : undefined}
       // The canvas itself watches pointer-down for background taps and lasso
       // starts; a press on a node is neither.
       onPointerDown={stopPropagation}

@@ -434,10 +434,13 @@ export default function Node(props: UINodeProps) {
             ? 'pointer'
             : 'default'));
 
-  // Focusable exactly when focusing does something: activation, a hold, a
-  // drag, or a clipped label that focus will reveal.
+  // Focusable exactly when focus does something *for a keyboard user*:
+  // activation (Enter/Space work natively), a clipped label that focus will
+  // reveal, or keyboard handlers the host supplies (a canvas provides
+  // arrow-key nudging and Delete). Holds and drags are pointer-only gestures —
+  // granting them a tab stop would hand keyboard users a dead control.
   const focusable =
-    hasClickHandler || dragEnabled || !!onLongPress || canRevealLabel;
+    hasClickHandler || canRevealLabel || !!externalKeyDown || !!externalKeyUp;
 
   // Scope for selected state animation (box-shadow on the shape layer, so
   // the ring follows the shape's border radius and rotation)
