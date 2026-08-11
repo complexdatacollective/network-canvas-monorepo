@@ -41,7 +41,14 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, extname, join, resolve } from 'node:path';
+import {
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+} from 'node:path';
 import { parseArgs } from 'node:util';
 
 const requireCjs = createRequire(import.meta.url);
@@ -68,13 +75,13 @@ function fail(message) {
 // Find every packaged build (asar + launchable binary) under root.
 // mac:       <dir>/<Product>.app/Contents/Resources/app.asar
 // win/linux: <arch>-unpacked/resources/app.asar
-function discoverTargets(root, relative = '') {
+function discoverTargets(root, relativeDir = '') {
   const targets = [];
-  for (const entry of readdirSync(join(root, relative), {
+  for (const entry of readdirSync(join(root, relativeDir), {
     withFileTypes: true,
   })) {
     if (!entry.isDirectory()) continue;
-    const relPath = relative ? `${relative}/${entry.name}` : entry.name;
+    const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
     const absPath = join(root, relPath);
     if (entry.name.endsWith('.app')) {
       const asar = join(absPath, 'Contents/Resources/app.asar');
@@ -243,7 +250,13 @@ function checkVendoredResources(target, appName) {
         }
         try {
           const resolved = createRequire(filePath).resolve(specifier);
-          if (!resolved.startsWith(resourcesDir + '/')) {
+          // path.relative, not a string prefix — resolve() returns
+          // backslash paths on Windows.
+          const relativeToResources = relative(resourcesDir, resolved);
+          if (
+            relativeToResources.startsWith('..') ||
+            isAbsolute(relativeToResources)
+          ) {
             problems.push(
               `${label} -> ${specifier}: resolves outside the vendored resources tree (${resolved})`,
             );
@@ -301,7 +314,19 @@ function evaluateInPage(webSocketDebuggerUrl, expression) {
 const RENDERER_MOUNT_EXPRESSION =
   "(document.getElementById('root') ?? document.body).childElementCount";
 
-async function runBootSmoke(target) {
+// Windows each app creates at startup, keyed by the asar's package name.
+// Architect launches its main window AND the hidden Interviewer preview
+// window together (dist/main/index.js), so the smoke must see BOTH mount —
+// otherwise a broken renderer hides behind the healthy one, and the sweep
+// cannot catch it because renderer bundles are bundler-verified and skipped.
+const EXPECTED_STARTUP_PAGES = {
+  '@codaco/architect-classic': 2,
+};
+const DEFAULT_EXPECTED_STARTUP_PAGES = 1;
+
+async function runBootSmoke(target, appName) {
+  const expectedPages =
+    EXPECTED_STARTUP_PAGES[appName] ?? DEFAULT_EXPECTED_STARTUP_PAGES;
   // Port 0 lets the OS choose; the chosen port is announced on stderr.
   const args = ['--remote-debugging-port=0'];
   if (target.platform === 'linux') {
@@ -356,28 +381,41 @@ async function runBootSmoke(target) {
       };
       break;
     }
-    for (const page of pages) {
-      if (page.url === '' || page.url === 'about:blank') continue;
+    // EVERY expected startup window must commit and mount — passing on the
+    // first healthy page would let a broken sibling renderer ship (Architect
+    // opens its main window and the hidden preview window together).
+    const committedPages = pages.filter(
+      (p) => p.url !== '' && p.url !== 'about:blank',
+    );
+    if (committedPages.length < expectedPages) continue;
+    const mountedUrls = [];
+    for (const page of committedPages) {
       const mounted = await evaluateInPage(
         page.webSocketDebuggerUrl,
         RENDERER_MOUNT_EXPRESSION,
       ).catch(() => undefined);
       if (typeof mounted === 'number' && mounted > 0) {
-        verdict = {
-          ok: true,
-          summary: `window loaded ${page.url} and mounted ${mounted} root element(s)`,
-        };
-        break;
+        mountedUrls.push(page.url);
       }
+    }
+    if (
+      mountedUrls.length === committedPages.length &&
+      mountedUrls.length >= expectedPages
+    ) {
+      verdict = {
+        ok: true,
+        summary: `${mountedUrls.length} window(s) loaded and mounted: ${mountedUrls.join(', ')}`,
+      };
     }
   }
   if (verdict === null) {
     verdict = {
       ok: false,
       summary:
-        'no window loaded and mounted renderer content before timeout — ' +
-        'either the main process is stalled at an uncaught-exception dialog ' +
-        'or the renderer failed to bootstrap',
+        `fewer than ${expectedPages} expected window(s) loaded and mounted ` +
+        'renderer content before timeout — the main process is stalled at an ' +
+        'uncaught-exception dialog, a renderer failed to bootstrap, or a ' +
+        'startup window never opened',
     };
   }
   if (exited === null) {
@@ -450,7 +488,7 @@ for (const target of targets) {
 
   if (smokeEnabled) {
     if (runnable.has(target)) {
-      const smokeResult = await runBootSmoke(target);
+      const smokeResult = await runBootSmoke(target, sweepResult.name);
       console.log(
         `boot smoke: ${smokeResult.ok ? 'ok' : 'FAIL'} — ${smokeResult.summary}`,
       );
