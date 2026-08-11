@@ -125,6 +125,18 @@
       ],
       "outputs": ["dist/**"]
     },
+    "@codaco/studio-client#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "index.html",
+        "src/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**"]
+    },
     "@codaco/interviewer#build": {
       "dependsOn": ["^topo"],
       "inputs": [

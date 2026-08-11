@@ -1,5 +1,8 @@
 packages:
   - apps/*
+  # Studio is two deployables plus a leaf boundary package (#1244); its
+  # halves nest under apps/studio/.
+  - apps/studio/*
   - packages/*
   - tooling/*
   - workers/*
@@ -168,3 +171,5 @@ minimumReleaseAgeExclude:
   - '@codaco/network-query@1.2.0'
   - '@codaco/protocol-validation@11.9.0'
   - '@codaco/shared-consts@5.5.0'
+  - '@tanstack/react-router@1.170.22'
+  - '@tanstack/router-core@1.171.19'
