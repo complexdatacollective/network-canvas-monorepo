@@ -1,5 +1,25 @@
 # @codaco/interview
 
+## 8.0.0
+
+### Patch Changes
+
+- fec9536: Add a Colored Eco-Genetic Relationship Map (CEGRM) template for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records relationship closeness and contact frequency alongside exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.
+
+  Treat the Family Pedigree node label as a validated codebook field, apply its rules to every family-member name entry point, and expose those rules beside the label-variable selector in Architect. Keep the iconically rendered ego node outside label and additional family-member form collection, including in synthetic previews. Reduce the default synthetic Sociogram edge density so preview networks remain legible as their node count grows.
+
+  Keep optional unique fields empty without false duplicate errors, scope comparison rules to the active field namespace, and prevent dormant or duplicate pedigree name controls from affecting validation.
+
+- 90e0178: The "current or ex partner?" answer in the family pedigree's Add Person form is now preserved when switching between selecting an existing person and adding a new one.
+- e349137: Update runtime dependencies to resolve security vulnerabilities in analytics sanitization, uploads, and form state handling.
+- Updated dependencies [52a3fbb]
+- Updated dependencies [fec9536]
+- Updated dependencies [90e0178]
+- Updated dependencies [13e5e99]
+- Updated dependencies [673d5f3]
+- Updated dependencies [ea06b66]
+  - @codaco/fresco-ui@6.0.0
+
 ## 7.1.1
 
 ### Patch Changes

@@ -1,228 +1,103 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
-import { createElement, type ComponentType } from 'react';
-import { Provider } from 'react-redux';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-const mockDispatch = vi.fn();
-
-let mockIntroScreenValue: unknown = undefined;
-
-vi.mock('redux-form', () => ({
-  change: (form: string, field: string, value: unknown) => ({
-    type: 'redux-form/CHANGE',
-    form,
-    field,
-    value,
-  }),
-  formValueSelector: () => () => mockIntroScreenValue,
-}));
-
-vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
-  return {
-    ...actual,
-    useSelector: (selector: (state: unknown) => unknown) => selector({}),
-    useDispatch: () => mockDispatch,
-  };
-});
-
-vi.mock('~/ducks/hooks', () => ({
-  useAppDispatch: () => mockDispatch,
-}));
-
-let capturedToggleChange: ((state: boolean) => Promise<boolean>) | undefined;
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-    startExpanded,
-    handleToggleChange,
-    toggleable,
-  }: {
-    children: React.ReactNode;
-    title: string;
-    startExpanded?: boolean;
-    handleToggleChange?: (state: boolean) => Promise<boolean>;
-    toggleable?: boolean;
-  }) => {
-    if (toggleable && handleToggleChange) {
-      capturedToggleChange = handleToggleChange;
-    }
-    return (
-      <div>
-        <h2>{title}</h2>
-        {toggleable && (
-          <button
-            data-testid="section-toggle"
-            data-expanded={startExpanded ? 'true' : 'false'}
-            onClick={() => handleToggleChange?.(!startExpanded)}
-          >
-            Toggle
-          </button>
-        )}
-        {startExpanded && children}
-      </div>
-    );
-  },
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
-}));
-
-vi.mock('~/components/Form/ValidatedFieldArray', () => ({
-  default: ({
-    name,
-    component,
-    componentProps,
-    label,
-  }: {
-    name: string;
-    component: ComponentType<Record<string, unknown>>;
-    componentProps?: Record<string, unknown>;
-    label?: string;
-  }) => createElement(component, { ...componentProps, label, name }),
-}));
-
-let capturedArrayFieldProps: Record<string, unknown> | undefined;
-
-vi.mock('~/components/Form/DialogArrayField', () => ({
-  default: (props: Record<string, unknown>) => {
-    capturedArrayFieldProps = props;
-    const items = (
-      mockIntroScreenValue as { items?: unknown[] } | null | undefined
-    )?.items;
-
-    return (
-      <div data-testid={`dialog-array-field-${String(props.name)}`}>
-        {!items?.length && String(props.emptyStateMessage)}
-        <button>Create new</button>
-      </div>
-    );
-  },
-}));
-
+// The row renderers IntroScreen's DialogArrayField mounts, stubbed so this
+// test covers the array plumbing only.
 vi.mock('~/components/sections/ContentGrid/ItemEditor', () => ({
   default: () => <div data-testid="item-editor" />,
 }));
-
 vi.mock('~/components/sections/ContentGrid/ItemPreview', () => ({
-  default: () => <div data-testid="item-preview" />,
+  default: ({ content }: { content?: string }) => (
+    <div data-testid="item-preview">{content}</div>
+  ),
 }));
 
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
+
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import IntroScreen from '../IntroScreen';
 
-const renderSection = () => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
-  return render(
-    <Provider store={store}>
+const renderSection = (committedStage: Record<string, unknown> = {}) =>
+  renderStageForm({
+    committedStage: asStage(committedStage),
+    children: (
       <IntroScreen
-        form="edit-stage"
         stagePath={null}
         stagePosition={0}
         interfaceType="FamilyPedigree"
       />
-    </Provider>,
-  );
-};
+    ),
+  });
 
 describe('IntroScreen', () => {
   it('renders a toggle when introScreen is not set', () => {
-    mockIntroScreenValue = undefined;
     renderSection();
-    expect(screen.getByTestId('section-toggle')).toBeDefined();
+    expect(screen.getByRole('switch')).toBeInTheDocument();
   });
 
   it('section starts collapsed when introScreen is undefined', () => {
-    mockIntroScreenValue = undefined;
     renderSection();
-    expect(screen.getByTestId('section-toggle').dataset.expanded).toBe('false');
+    expect(screen.getByRole('switch')).not.toBeChecked();
   });
 
   it('section starts expanded when introScreen has a value', () => {
-    mockIntroScreenValue = { items: [] };
-    renderSection();
-    expect(screen.getByTestId('section-toggle').dataset.expanded).toBe('true');
+    renderSection({ introScreen: { items: [] } });
+    expect(screen.getByRole('switch')).toBeChecked();
   });
 
   it('shows the content-item list when enabled', () => {
-    mockIntroScreenValue = { items: [] };
-    renderSection();
-    expect(
-      screen.getByTestId('dialog-array-field-introScreen.items'),
-    ).toBeDefined();
-  });
-
-  it('configures content items for dialog editing', () => {
-    mockIntroScreenValue = { items: [] };
-    renderSection();
-
-    expect(capturedArrayFieldProps).toMatchObject({
-      name: 'introScreen.items',
-      label: 'Content sections',
-      addTitle: 'Edit Section',
-      editorTitle: 'Edit Section',
-      itemLabel: 'content section',
-      requestedEditFormName: 'editable-list-form',
-      sortable: true,
-    });
-    expect(capturedArrayFieldProps?.normalizeItem).toBeTypeOf('function');
-    expect(capturedArrayFieldProps?.itemSelector).toBeTypeOf('function');
-  });
-
-  it('shows an empty-state message when there are no items', () => {
-    mockIntroScreenValue = { items: [] };
-    renderSection();
+    renderSection({ introScreen: { items: [] } });
     expect(
       screen.getByText(/No content sections have been created yet/),
-    ).toBeDefined();
+    ).toBeInTheDocument();
   });
 
-  it('hides the empty-state message when items exist', () => {
-    mockIntroScreenValue = {
-      items: [{ id: 't1', type: 'text', content: 'Hello' }],
-    };
-    renderSection();
+  it('hides the empty-state message and shows items when items exist', () => {
+    renderSection({
+      introScreen: { items: [{ id: 't1', type: 'text', content: 'Hello' }] },
+    });
     expect(
       screen.queryByText(/No content sections have been created yet/),
     ).toBeNull();
+    expect(screen.getByTestId('item-preview')).toHaveTextContent('Hello');
   });
 
-  it('dispatches change to an empty items list when toggled on', async () => {
-    mockIntroScreenValue = undefined;
-    mockDispatch.mockClear();
-    renderSection();
+  it('sets an empty items list when toggled on', () => {
+    const view = renderSection();
 
-    expect(capturedToggleChange).toBeTypeOf('function');
-    await capturedToggleChange?.(true);
+    fireEvent.click(screen.getByRole('switch'));
 
-    expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'redux-form/CHANGE',
-        field: 'introScreen',
-        value: { items: [] },
-      }),
-    );
+    expect(view.getFormValues().introScreen).toEqual({ items: [] });
   });
 
-  it('dispatches change to null when toggled off', async () => {
-    mockIntroScreenValue = { items: [] };
-    mockDispatch.mockClear();
-    renderSection();
+  it('clears introScreen when toggled off', () => {
+    const view = renderSection({ introScreen: { items: [] } });
 
-    expect(capturedToggleChange).toBeTypeOf('function');
-    await capturedToggleChange?.(false);
+    fireEvent.click(screen.getByRole('switch'));
 
-    expect(mockDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'redux-form/CHANGE',
-        field: 'introScreen',
-        value: null,
-      }),
-    );
+    expect(view.getFormValues().introScreen).toBeUndefined();
+  });
+
+  // Regression: writing the whole-object container key (`introScreen`)
+  // rather than the registered leaf (`introScreen.items`) is silently
+  // inert — the array field's own dormant slot never gets touched, so a
+  // toggle-off/toggle-on cycle would resurrect the previous session's items
+  // instead of starting fresh.
+  it('does not resurrect previous items after toggling off and back on', () => {
+    const view = renderSection({
+      introScreen: {
+        items: [{ id: 't1', type: 'text', content: 'Hello' }],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('switch')); // off
+    fireEvent.click(screen.getByRole('switch')); // on again
+
+    expect(view.getFormValues().introScreen).toEqual({ items: [] });
+    expect(screen.queryByTestId('item-preview')).toBeNull();
   });
 });

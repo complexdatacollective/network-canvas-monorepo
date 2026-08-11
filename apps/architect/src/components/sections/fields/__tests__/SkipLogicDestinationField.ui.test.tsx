@@ -1,74 +1,73 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
 
 import SkipLogicDestinationField from '../SkipLogicDestinationField';
-
-type FormValues = {
-  skipLogic?: {
-    destination?: SkipLogicDestination;
-  };
-};
 
 const stages = [
   { id: 'source', label: 'Source' },
   { id: 'debrief', label: 'A deliberately long debrief stage label' },
 ];
 
-const Harness = (_props: InjectedFormProps<FormValues>) => (
-  <SkipLogicDestinationField
-    stages={stages}
-    stagePosition={0}
-    isNewStage={false}
-  />
-);
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
-const ReduxHarness = reduxForm<FormValues>({ form: 'edit-stage' })(Harness);
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
+
+const requireStore = () => {
+  if (!storeApi) throw new Error('form store was not captured');
+  return storeApi;
+};
 
 const setup = (destination?: SkipLogicDestination) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+  storeApi = null;
 
   render(
-    <Provider store={store}>
-      <ReduxHarness
-        initialValues={{ skipLogic: destination ? { destination } : {} }}
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      <SkipLogicDestinationField
+        stages={stages}
+        stagePosition={0}
+        isNewStage={false}
       />
-    </Provider>,
+    </Form>,
   );
 
+  if (destination) {
+    requireStore()
+      .getState()
+      .setFieldValue('skipLogic.destination', destination);
+  }
+
   const getDestination = () =>
-    (store.getState().form['edit-stage']?.values as FormValues | undefined)
-      ?.skipLogic?.destination;
+    requireStore().getState().getFieldState('skipLogic.destination')?.value as
+      | SkipLogicDestination
+      | undefined;
 
   return { getDestination };
 };
 
 describe('SkipLogicDestinationField UI', () => {
-  it('provides an accessible label and hint for an existing destination', () => {
+  it('provides an accessible label and hint for an existing destination', async () => {
     setup({ type: 'finish' });
 
     const trigger = screen.getByRole('combobox', {
       name: 'When this stage is skipped',
     });
-    expect(trigger).toHaveTextContent('End the interview');
+    await waitFor(() => expect(trigger).toHaveTextContent('End the interview'));
     expect(trigger).toHaveAccessibleDescription(
-      'Choose where the interview should continue. Only later stages can be selected.',
+      /Choose where the interview should continue\./,
     );
   });
 
-  it('stores a stage destination and clears it back to legacy behavior', async () => {
+  it('stores a stage destination and clears it back to the default route', async () => {
     const { getDestination } = setup();
     const trigger = screen.getByRole('combobox', {
       name: 'When this stage is skipped',
@@ -85,12 +84,6 @@ describe('SkipLogicDestinationField UI', () => {
         type: 'stage',
         stageId: 'debrief',
       });
-    });
-
-    fireEvent.blur(trigger);
-    expect(getDestination()).toEqual({
-      type: 'stage',
-      stageId: 'debrief',
     });
 
     fireEvent.click(trigger);

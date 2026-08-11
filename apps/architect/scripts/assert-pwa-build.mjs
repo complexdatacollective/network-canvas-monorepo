@@ -49,15 +49,24 @@ const precached = new Set(
   ),
 );
 
-let jsAssets = [];
+let assetFiles = [];
 try {
-  jsAssets = (await readdir(path.join(dist, 'assets')))
-    .filter((f) => f.endsWith('.js'))
-    .map((f) => `assets/${f}`);
+  assetFiles = await readdir(path.join(dist, 'assets'));
 } catch {
   fail('missing dist/assets');
 }
+const jsAssets = assetFiles
+  .filter((f) => f.endsWith('.js'))
+  .map((f) => `assets/${f}`);
 if (jsAssets.length === 0) fail('no JS chunks emitted to dist/assets');
+
+// Source maps are emitted only to be uploaded to PostHog, and the upload
+// deletes them (see vite.config.ts). One surviving here would publish the
+// app's full source with the deploy.
+const strayMaps = assetFiles.filter((f) => f.endsWith('.map'));
+if (strayMaps.length > 0) {
+  fail(`source map(s) left in dist/assets: ${strayMaps.join(', ')}`);
+}
 
 // The entry module (referenced by index.html) boots the app; it must be
 // precached for an offline start. Derive it rather than hardcode the hash.

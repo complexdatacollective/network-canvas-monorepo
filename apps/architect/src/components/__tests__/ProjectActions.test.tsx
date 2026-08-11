@@ -28,7 +28,7 @@ const clearActiveProtocolMock = vi.fn(() => ({
 }));
 
 vi.mock('~/ducks/modules/activeProtocol', () => ({
-  // useScopedUndoRedo dispatches the navigation-aware variants on the main timeline.
+  // useProtocolUndoRedo dispatches the navigation-aware variants on the main timeline.
   undoWithNavigation: () => undoMock(),
   redoWithNavigation: () => redoMock(),
   undo: () => undoMock(),
@@ -107,7 +107,7 @@ const createTestStore = ({
           future: canRedo ? [{}] : [],
         },
       ) => state,
-      // ProjectActions now reads draft undo/redo state via useScopedUndoRedo.
+      // ProjectActions now reads draft undo/redo state via useProtocolUndoRedo.
       // On the '/protocol' route the draft scope is inactive, but the hook
       // still reads these selectors unconditionally, so the slice must exist.
       stageEditorDraft: (

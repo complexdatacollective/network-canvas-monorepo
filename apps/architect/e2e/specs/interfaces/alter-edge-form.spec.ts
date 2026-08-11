@@ -29,7 +29,7 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
     .fill('About Each Relationship');
   // See ego-form.spec.ts: the accessible name is the literal string
   // IntroductionPanel.tsx passes as `label`, "Introduction text" — not the
-  // field's redux-form name.
+  // field's name.
   await editor.fillRichText(
     'Introduction text',
     'Tell us a bit about how these two people know each other.',

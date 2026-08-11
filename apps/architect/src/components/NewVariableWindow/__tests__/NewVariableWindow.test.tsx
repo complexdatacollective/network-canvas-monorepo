@@ -2,39 +2,39 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Capture the props InlineEditScreen receives so the test can invoke the
-// backdrop/Esc dismiss path (onCancel) the same way the base-ui Dialog does.
-const inlineEditScreenSpy = vi.fn<(props: { onCancel: () => void }) => void>();
-vi.mock('~/components/InlineEditScreen', () => ({
-  default: (props: { onCancel: () => void; children?: ReactNode }) => {
-    inlineEditScreenSpy(props);
-    return (
-      <div data-testid="inline-edit-screen">
-        <button type="button" onClick={() => props.onCancel()}>
-          dismiss
-        </button>
-        {props.children}
-      </div>
-    );
-  },
-}));
+// Capture the props DialogForm receives so the test can invoke the
+// backdrop/Esc dismiss path (onClose) the same way the base-ui Dialog does,
+// while still mounting a real form store around the fields.
+const dialogFormSpy = vi.fn<(props: { onClose: () => void }) => void>();
+vi.mock('~/components/DialogForm/DialogForm', async () => {
+  const { default: FormStoreProvider } =
+    await import('@codaco/fresco-ui/form/store/formStoreProvider');
+  return {
+    default: (props: { onClose: () => void; children?: ReactNode }) => {
+      dialogFormSpy(props);
+      return (
+        <FormStoreProvider>
+          <div data-testid="dialog-form">
+            <button type="button" onClick={() => props.onClose()}>
+              dismiss
+            </button>
+            {props.children}
+          </div>
+        </FormStoreProvider>
+      );
+    },
+  };
+});
 
 vi.mock('~/components/EditorLayout', () => ({
   Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Subsection: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('redux-form', () => ({
-  Field: () => <div data-testid="field" />,
-  formValueSelector: () => () => 'text',
-  isDirty: (form: string) => (state: { dirty: Record<string, boolean> }) =>
-    state.dirty[form] ?? false,
+vi.mock('~/components/Form/arrayFields/Options', () => ({
+  default: () => null,
+  optionsValidation: {},
 }));
-
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: () => <div data-testid="validated-field" />,
-}));
-vi.mock('~/components/Options', () => ({ default: () => null }));
 vi.mock('~/components/Options/LockedOptions', () => ({ default: () => null }));
 vi.mock('~/selectors/codebook', () => ({ getVariablesForSubject: () => ({}) }));
 vi.mock('~/ducks/modules/protocol/codebook', () => ({
@@ -49,13 +49,10 @@ type ChoiceDialogConfig = {
   description?: string;
 };
 
-// Router for the two useAppSelector calls: `type` value and the dirty flag.
-let dirtyState: Record<string, boolean> = {};
 const dispatchSpy = vi.fn();
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => dispatchSpy,
-  useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector({ dirty: dirtyState }),
+  useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
 import NewVariableWindow from '../NewVariableWindow';
@@ -71,10 +68,14 @@ const renderWindow = (onCancel: () => void) =>
     />,
   );
 
+const dirtyTheForm = () =>
+  fireEvent.change(screen.getByRole('textbox', { name: 'Variable name' }), {
+    target: { value: 'Nickname' },
+  });
+
 describe('NewVariableWindow dirty-guard on dismiss', () => {
   beforeEach(() => {
-    dirtyState = {};
-    inlineEditScreenSpy.mockClear();
+    dialogFormSpy.mockClear();
     openDialogSpy.mockClear();
     dispatchSpy.mockClear();
   });
@@ -90,7 +91,6 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
   });
 
   it('confirms before discarding when the form is dirty', async () => {
-    dirtyState = { 'create-new-variable': true };
     let resolveDialog: ((value: boolean) => void) | undefined;
     openDialogSpy.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -99,6 +99,7 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
     );
     const onCancel = vi.fn();
     renderWindow(onCancel);
+    dirtyTheForm();
 
     fireEvent.click(screen.getByText('dismiss'));
 
@@ -116,5 +117,54 @@ describe('NewVariableWindow dirty-guard on dismiss', () => {
     expect(resolveDialog).toBeDefined();
     resolveDialog!(true);
     await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
+  });
+});
+
+// Variable names are NMTOKENs, so the characters safeName strips can never be
+// typed into the field.
+describe('NewVariableWindow name normalisation', () => {
+  it('drops characters a variable name cannot contain', () => {
+    renderWindow(vi.fn());
+    const input = screen.getByRole('textbox', { name: 'Variable name' });
+
+    fireEvent.change(input, { target: { value: 'my.name[0]' } });
+
+    expect(input).toHaveValue('myname0');
+  });
+});
+
+// The window is mounted for the lifetime of the picker that owns it and only
+// toggles `show`, so nothing but its DialogForm `key` guarantees the next
+// variable a clean field store. This mirrors the case the key exists for: the
+// form stays mounted across the close (in the app, an exit animation cancelled
+// by an immediate reopen), so the second variable's fields re-register over
+// the first one's parked values — which `registerField` prefers over
+// `initialValue`.
+describe('NewVariableWindow seeding across opens', () => {
+  it('seeds the next variable from its own initial values, not the last one', () => {
+    const first = { name: 'firstVariable', type: 'text' };
+    const second = { name: 'secondVariable', type: 'boolean' };
+    const props = {
+      entity: 'node' as const,
+      type: 'person',
+      onComplete: vi.fn(),
+      onCancel: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <NewVariableWindow {...props} show initialValues={first} />,
+    );
+    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+      'firstVariable',
+    );
+
+    rerender(
+      <NewVariableWindow {...props} show={false} initialValues={first} />,
+    );
+    rerender(<NewVariableWindow {...props} show initialValues={second} />);
+
+    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+      'secondVariable',
+    );
   });
 });

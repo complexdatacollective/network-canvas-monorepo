@@ -1,1 +1,1 @@
-export { default } from './NodePanels';
+export { NodePanels as default } from './NodePanels';

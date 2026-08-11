@@ -7,7 +7,7 @@ import {
   usePresence,
   type VariantLabels,
 } from 'motion/react';
-import { type ComponentProps, useEffect, useId } from 'react';
+import { type ComponentProps, useEffect, useId, useRef } from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
 
@@ -92,6 +92,20 @@ export default function ModalPopup({
 
   const [isPresent, safeToRemove] = usePresence(!usesDeclarativeAnimation);
 
+  /**
+   * `usePresence`'s `safeToRemove` is a NEW function on every render of the
+   * surrounding `AnimatePresence` (it closes over an `onExit` callback that
+   * `AnimatePresence` re-creates each render, and `PresenceChild` clones its
+   * context whenever `presenceAffectsLayout` is on). Depending on it in the
+   * animation effect below would restart the exit animation on every ancestor
+   * re-render — and an app that re-renders more often than the exit's ~0.3s
+   * duration would then never reach `safeToRemove()`, leaving the popup
+   * mounted (and animating) forever. Reading it through a ref keeps the effect
+   * keyed on `isPresent` alone, so the exit runs exactly once.
+   */
+  const safeToRemoveRef = useRef(safeToRemove);
+  safeToRemoveRef.current = safeToRemove;
+
   useEffect(() => {
     if (usesDeclarativeAnimation) {
       return;
@@ -124,12 +138,12 @@ export default function ModalPopup({
           scale: [1, 1.5],
           filter: ['blur(0px)', 'blur(10px)'],
         });
-        safeToRemove();
+        safeToRemoveRef.current?.();
       };
 
       void exitAnimation();
     }
-  }, [isPresent, scope, safeToRemove, animate, usesDeclarativeAnimation]);
+  }, [isPresent, scope, animate, usesDeclarativeAnimation]);
 
   const popup = (
     <Dialog.Popup

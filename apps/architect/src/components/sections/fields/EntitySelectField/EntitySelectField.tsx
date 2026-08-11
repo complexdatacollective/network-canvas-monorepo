@@ -2,25 +2,13 @@ import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { createSelector } from '@reduxjs/toolkit';
 import { Plus } from 'lucide-react';
-import {
-  useCallback,
-  useId,
-  useMemo,
-  useState,
-  type ComponentType,
-  type FocusEventHandler,
-  type ReactNode,
-} from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import type { WrappedFieldProps } from 'redux-form';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
-import Hint from '@codaco/fresco-ui/form/Hint';
-import { Label } from '@codaco/fresco-ui/Label';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
-import { getReduxFieldErrorState } from '~/components/Form/reduxFieldMeta';
 import { cx } from '~/utils/cva';
 
 import { getEdgeTypes, getNodeTypes } from '../../../../selectors/codebook';
@@ -35,25 +23,27 @@ const getNodeOptions = createSelector([getNodeTypes], (nodeTypes) =>
   asOptions(nodeTypes),
 );
 
-type EntitySelectControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'entityType': 'node' | 'edge';
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'promptBeforeChange'?: string | null;
-  'blockChangeReason'?: string | null;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'required'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-  'aria-required'?: boolean;
-};
+type EntitySelectFieldProps = CreateFormFieldProps<
+  string,
+  'div',
+  {
+    entityType: 'node' | 'edge';
+    /** Asks for confirmation before replacing an existing selection. */
+    promptBeforeChange?: string | null;
+    /** Refuses any change and explains why. */
+    blockChangeReason?: string | null;
+    /** Only reaches the control through `UnconnectedField`; `Field` strips
+     * validation props and signals the same thing via `aria-required`. */
+    required?: boolean;
+  }
+>;
 
+/**
+ * Picks a node or edge type, with an inline "create a new type" flow.
+ * Labelling belongs to the surrounding field — pass it through
+ * `ArchitectField`'s `label`/`hint`. The `aria-label` fallbacks below only
+ * apply to standalone use (the Query rule editors), where there is no field.
+ */
 export const EntitySelectControl = ({
   id,
   name,
@@ -71,7 +61,7 @@ export const EntitySelectControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: EntitySelectControlProps) => {
+}: EntitySelectFieldProps) => {
   const { confirm, openDialog } = useDialog();
   const edgeOptions = useSelector(getEdgeOptions);
   const nodeOptions = useSelector(getNodeOptions);
@@ -80,6 +70,7 @@ export const EntitySelectControl = ({
     () => (entityType === 'edge' ? edgeOptions : nodeOptions),
     [entityType, edgeOptions, nodeOptions],
   );
+  const isRequired = required || Boolean(ariaRequired);
 
   const refuseBlockedChange = useCallback(() => {
     if (!value || !blockChangeReason) return false;
@@ -170,7 +161,7 @@ export const EntitySelectControl = ({
               }}
               disabled={disabled}
               readOnly={readOnly}
-              required={required}
+              required={isRequired}
               aria-label={
                 ariaLabelledBy
                   ? undefined
@@ -179,7 +170,7 @@ export const EntitySelectControl = ({
               aria-labelledby={ariaLabelledBy}
               aria-describedby={ariaDescribedBy}
               aria-invalid={ariaInvalid || undefined}
-              aria-required={ariaRequired || required || undefined}
+              aria-required={isRequired || undefined}
               className="flex flex-row flex-wrap justify-start gap-3"
             >
               {options.map(
@@ -244,88 +235,3 @@ export const EntitySelectControl = ({
     </>
   );
 };
-
-type EntitySelectFieldProps = WrappedFieldProps & {
-  entityType: 'node' | 'edge';
-  label?: string | null;
-  labelHidden?: boolean;
-  hint?: ReactNode;
-  promptBeforeChange?: string | null;
-  blockChangeReason?: string | null;
-  disabled?: boolean;
-  readOnly?: boolean;
-  required?: boolean;
-};
-
-const EntitySelectFieldBase = ({
-  input,
-  meta,
-  entityType,
-  label,
-  labelHidden = false,
-  hint,
-  required = false,
-  ...props
-}: EntitySelectFieldProps) => {
-  const id = useId();
-  const { errors, showErrors } = getReduxFieldErrorState(meta);
-  const describedBy = [
-    required && `${id}-required`,
-    hint && `${id}-hint`,
-    errors.length > 0 && `${id}-error`,
-  ]
-    .filter(Boolean)
-    .join(' ');
-  const fieldLabel = label ?? `${entityType === 'node' ? 'Node' : 'Edge'} type`;
-
-  return (
-    <div
-      className="group flex w-full grow flex-col not-last:mb-8"
-      data-field-name={input.name}
-    >
-      <div className={cx((!labelHidden || Boolean(hint)) && 'mb-2')}>
-        <Label
-          id={`${id}-label`}
-          htmlFor={id}
-          required={required}
-          className={labelHidden ? 'sr-only' : undefined}
-        >
-          {fieldLabel}
-        </Label>
-        {required && (
-          <span id={`${id}-required`} className="sr-only">
-            Required
-          </span>
-        )}
-        {hint && <Hint id={`${id}-hint`}>{hint}</Hint>}
-      </div>
-      <EntitySelectControl
-        {...props}
-        id={id}
-        name={input.name}
-        entityType={entityType}
-        value={typeof input.value === 'string' ? input.value : undefined}
-        onChange={(value) => input.onChange(value)}
-        onBlur={() => input.onBlur?.(undefined)}
-        onFocus={input.onFocus}
-        required={required}
-        aria-required={required || undefined}
-        aria-labelledby={`${id}-label`}
-        aria-describedby={describedBy || undefined}
-        aria-invalid={showErrors}
-      />
-      <FieldErrors
-        id={`${id}-error`}
-        name={input.name}
-        errors={errors}
-        show={showErrors}
-      />
-    </div>
-  );
-};
-
-const EntitySelectField = EntitySelectFieldBase as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-export default EntitySelectField;

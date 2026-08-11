@@ -1,37 +1,41 @@
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
-
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { Row, Section } from '~/components/EditorLayout';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import ValidatedField from '~/components/Form/ValidatedField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
 import PromptText from '~/components/sections/PromptText';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/store';
+import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
 type NominationPromptFieldsProps = {
   nodeType?: string;
+  /**
+   * The row being edited, supplied by DialogArrayField's `item` spread. This
+   * dialog mounts its own `FormStoreProvider` (a different store per row), so
+   * it cannot resolve its own initial values from stage context — every
+   * control seeds its `initialValue` from here instead.
+   */
+  item?: Record<string, unknown>;
 };
 
 const nodeEntity: Entity = 'node';
 
-const EDITABLE_LIST_FORM = 'editable-list-form';
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
-const NominationPromptFields = ({ nodeType }: NominationPromptFieldsProps) => {
-  const dispatch = useAppDispatch();
-  const variable = useSelector(
-    (state: RootState) =>
-      formValueSelector(EDITABLE_LIST_FORM)(state, 'variable') as
-        | string
-        | undefined,
-  );
-  const variableOptions = useSelector((state: RootState) =>
+const NominationPromptFields = ({
+  nodeType,
+  item,
+}: NominationPromptFieldsProps) => {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const { variable } = useFormValue(['variable'] as const);
+  const variableOptions = useAppSelector((state) =>
     getVariableOptionsForSubject(state, { entity: 'node', type: nodeType }),
   );
 
@@ -40,13 +44,18 @@ const NominationPromptFields = ({ nodeType }: NominationPromptFieldsProps) => {
   // The nomination-toggle picker is an UNVALIDATED writer: drop options a
   // form elsewhere already validates.
   const subject = { entity: 'node', type: nodeType };
-  const availableVariables = useSelector((state: RootState) =>
-    excludeValidatedUses(state, subject, booleanVariables, variable),
+  const availableVariables = useAppSelector((state) =>
+    excludeValidatedUses(
+      state,
+      subject,
+      booleanVariables,
+      typeof variable === 'string' ? variable : undefined,
+    ),
   );
 
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
-    dispatch(change(EDITABLE_LIST_FORM, params.field, id));
+    setFieldValue(params.field, id);
   };
 
   const [newVariableWindowProps, openNewVariableWindow] =
@@ -68,20 +77,21 @@ const NominationPromptFields = ({ nodeType }: NominationPromptFieldsProps) => {
 
   return (
     <>
-      <PromptText />
+      <PromptText initialValue={asString(item?.text)} />
       <Section title="Variable" layout="vertical">
         <Row>
           <div id={getFieldId('variable')} />
-          <ValidatedField
+          <ArchitectField
             name="variable"
-            component={VariablePicker}
+            component={VariablePickerControl}
             validation={{ required: true }}
-            componentProps={{
-              entity: 'node',
-              type: nodeType,
-              options: availableVariables,
-              onCreateOption: handleNewVariable,
-            }}
+            label="Variable"
+            labelHidden
+            initialValue={asString(item?.variable)}
+            entity="node"
+            type={nodeType}
+            options={availableVariables}
+            onCreateOption={handleNewVariable}
           />
         </Row>
       </Section>

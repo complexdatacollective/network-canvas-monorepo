@@ -1,22 +1,24 @@
-import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  change,
-  formValueSelector,
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
-import { describe, expect, it } from 'vitest';
+import { useContext, type ContextType } from 'react';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-// The connected component (withStoreState around the presentational
-// Validations.tsx) is rendered for real, inside a redux-form + Provider
-// harness — the same idiom DialogArrayField.test.tsx and NativeSelect.test.tsx
-// use — so these behaviours are exercised through the actual wiring (real
-// checkDraft, real findDraftContradictions, real ToggleField/NativeSelectField),
-// not a hand-rolled restatement of the logic.
-import Validations from '../index';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+
+// The real component is rendered inside a real fresco-ui form — the same idiom
+// DialogArrayField.test.tsx and NativeSelect.test.tsx use — so these behaviours
+// are exercised through the actual wiring (real checkDraft, real
+// findDraftContradictions, real ToggleField/InputField/NativeSelectField), not
+// a hand-rolled restatement of the logic.
+import Validations from '../Validations';
+
+beforeAll(() => {
+  // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field
+  // into view; jsdom implements no scrolling (see ArchitectField.test.tsx).
+  Element.prototype.scrollTo ??= () => undefined;
+});
+
+type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 type TestVariable = {
   name: string;
@@ -35,66 +37,65 @@ type OwnProps = {
   currentVariableId: string;
 };
 
-type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
-  OwnProps;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const FORM_NAME = 'validations-behaviour-test';
-
-const Harness = ({
-  variableType,
-  entity,
-  existingVariables,
-  allVariables,
-  currentVariableId,
-}: HarnessProps) => (
-  <Validations
-    form={FORM_NAME}
-    name="validation"
-    variableType={variableType}
-    entity={entity}
-    existingVariables={existingVariables}
-    allVariables={allVariables}
-    currentVariableId={currentVariableId}
-  />
-);
-
-const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
-  form: FORM_NAME,
-})(Harness);
-
-// `component`/`parameters` are seeded as ordinary form values, exactly as the
-// field editor's own controls write them — the connected Validations reads
-// them off the same form through `formValueSelector`.
+// `component`/`parameters` stand in for sibling fields in the surrounding
+// field-editor dialog — the real `ValidationSection` reads them reactively off
+// that form and forwards them as `draftComponent`/`draftParameters`; none of
+// these scenarios change them mid-test, so passing them straight through as
+// static props here is equivalent.
 const setup = ({
   validation = {},
   component,
   parameters,
   ...ownProps
 }: OwnProps & {
-  validation?: Record<string, unknown>;
+  validation?: Record<string, boolean | number | string | null>;
   component?: string;
   parameters?: Record<string, unknown>;
 }) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+  let captured: FormStoreApi | null = null;
+
+  const StoreProbe = () => {
+    captured = useContext(FormStoreContext) ?? null;
+    return null;
+  };
 
   render(
-    <Provider store={store}>
-      <ReduxHarness
-        initialValues={{ validation, component, parameters }}
+    <Form onSubmit={() => ({ success: true })}>
+      <StoreProbe />
+      <Validations
+        name="validation"
+        initialValue={validation}
+        draftComponent={component}
+        draftParameters={parameters}
         {...ownProps}
       />
-    </Provider>,
+    </Form>,
   );
 
-  const committedValidation = (): Record<string, unknown> =>
-    (formValueSelector(FORM_NAME)(store.getState(), 'validation') ??
-      {}) as Record<string, unknown>;
+  const storeApi = (): FormStoreApi => {
+    if (!captured) throw new Error('form store was not captured');
+    return captured;
+  };
 
-  return { store, committedValidation };
+  const committedValidation = (): Record<string, unknown> => {
+    const { validation: value } = storeApi().getState().getFormValues();
+    return isRecord(value) ? value : {};
+  };
+
+  /**
+   * Stands in for the stage editor's Undo, or for a reinitialize: the
+   * committed map is rewritten from outside the rule list entirely.
+   */
+  const rollBackTo = (next: Record<string, unknown>) => {
+    act(() => {
+      storeApi().getState().setFieldValue('validation', next);
+    });
+  };
+
+  return { committedValidation, rollBackTo };
 };
 
 const toggle = (label: string) =>
@@ -1065,7 +1066,7 @@ describe('Validations behaviour', () => {
 
   describe('rolling the committed map back', () => {
     it('switches a rule back off when its commit is undone', () => {
-      const { store, committedValidation } = setup({
+      const { committedValidation, rollBackTo } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -1079,9 +1080,7 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ maxLength: 4 });
       expect(toggle('Maximum length')).toBeChecked();
 
-      act(() => {
-        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
-      });
+      rollBackTo({});
 
       expect(committedValidation()).toEqual({});
       expect(toggle('Maximum length')).not.toBeChecked();
@@ -1091,7 +1090,7 @@ describe('Validations behaviour', () => {
     });
 
     it('does not write a rolled-back value out again on the next commit', () => {
-      const { store, committedValidation } = setup({
+      const { committedValidation, rollBackTo } = setup({
         variableType: 'number',
         entity: 'node',
         currentVariableId: 'number-var',
@@ -1103,9 +1102,7 @@ describe('Validations behaviour', () => {
       fireEvent.click(toggle('Minimum value'));
       fireEvent.blur(typeValue('Minimum value', '3'));
 
-      act(() => {
-        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
-      });
+      rollBackTo({});
 
       fireEvent.click(toggle('Maximum value'));
       fireEvent.blur(typeValue('Maximum value', '9'));

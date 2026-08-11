@@ -46,6 +46,25 @@ export function getValue(obj: Record<string, unknown>, path: string): unknown {
 }
 
 /**
+ * A container this function is allowed to write into. Anything that is not an
+ * object gets replaced outright; an object that is frozen or sealed — values
+ * read out of an Immer-managed store always are — is shallow-copied first, so
+ * writing `a.b` after `a` was set to a frozen object mutates the copy instead
+ * of throwing "object is not extensible".
+ */
+function writableContainer(existing: unknown): Record<string, unknown> {
+  if (existing == null || typeof existing !== 'object') {
+    return {};
+  }
+  if (Object.isExtensible(existing)) {
+    return existing as Record<string, unknown>;
+  }
+  return Array.isArray(existing)
+    ? ([...existing] as unknown as Record<string, unknown>)
+    : { ...(existing as Record<string, unknown>) };
+}
+
+/**
  * Sets a value at a given path in an object, creating nested objects/arrays as needed.
  * Supports both dot notation ("a.b.c") and bracket notation ("a[0].b").
  * Bracket notation creates real arrays; dot notation creates objects.
@@ -68,32 +87,25 @@ export function setValue(
     const isLast = i === segments.length - 1;
 
     if (segment.index !== undefined) {
-      if (!Array.isArray(current[segment.key])) {
-        current[segment.key] = [];
-      }
+      const existingArray = current[segment.key];
+      current[segment.key] = Array.isArray(existingArray)
+        ? Object.isExtensible(existingArray)
+          ? existingArray
+          : [...existingArray]
+        : [];
       const arr = current[segment.key] as unknown[];
 
       if (isLast) {
         arr[segment.index] = value;
       } else {
-        if (
-          arr[segment.index] == null ||
-          typeof arr[segment.index] !== 'object'
-        ) {
-          arr[segment.index] = {};
-        }
+        arr[segment.index] = writableContainer(arr[segment.index]);
         current = arr[segment.index] as Record<string, unknown>;
       }
     } else {
       if (isLast) {
         current[segment.key] = value;
       } else {
-        if (
-          current[segment.key] == null ||
-          typeof current[segment.key] !== 'object'
-        ) {
-          current[segment.key] = {};
-        }
+        current[segment.key] = writableContainer(current[segment.key]);
         current = current[segment.key] as Record<string, unknown>;
       }
     }

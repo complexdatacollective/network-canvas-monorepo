@@ -50,8 +50,8 @@ const buildState = (overrides?: Record<string, unknown>): RootState =>
     activeProtocol: {
       present: { ...protocol, ...overrides },
     },
-    // redux-form state, empty (no open editors)
-    form: {},
+    // No stage editor open, so nothing is in use by an unsaved draft.
+    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 describe('issues selectors', () => {

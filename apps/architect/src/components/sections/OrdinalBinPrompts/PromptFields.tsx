@@ -1,65 +1,141 @@
-import type React from 'react';
-import { compose } from 'react-recompose';
+import { useEffect, useMemo, useRef } from 'react';
+import { shallowEqual, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { Row, Section } from '~/components/EditorLayout';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options, {
+  optionsValidation,
+  type OptionValue,
+} from '~/components/Form/arrayFields/Options';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
-import ValidatedField from '~/components/Form/ValidatedField';
-import IssueAnchor from '~/components/IssueAnchor';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import Options from '~/components/Options';
 import { getSortOrderOptionGetter } from '~/components/sections/CategoricalBinPrompts/optionGetters';
-import withVariableHandlers from '~/components/sections/CategoricalBinPrompts/withVariableHandlers';
-import withVariableOptions from '~/components/sections/CategoricalBinPrompts/withVariableOptions';
 import PromptText from '~/components/sections/PromptText';
+import type { RootState } from '~/ducks/modules/root';
+import {
+  getVariableOptionsForSubject,
+  getVariablesForSubject,
+} from '~/selectors/codebook';
+import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
+
 type SelectOption = {
   label: string;
   value: string;
   type?: string;
-  [key: string]: unknown;
 };
+
+type SortOrderRow = Record<string, unknown>;
+
+const EMPTY_OPTIONS: SelectOption[] = [];
+const EMPTY_VARIABLE_OPTIONS: OptionValue[] = [];
+
 type PromptFieldsProps = {
-  variableOptions?: SelectOption[];
-  sortVariableOptions?: SelectOption[];
-  entity: string;
-  type: string;
-  changeForm: (form: string, field: string, value: unknown) => void;
-  form: string;
-  variable?: string | null;
-  optionsForVariableDraft?: SelectOption[];
+  entity?: 'node' | 'edge' | 'ego' | null;
+  type?: string | null;
+  text?: string;
+  variable?: string;
+  color?: string;
+  variableOptions?: OptionValue[];
+  bucketSortOrder?: SortOrderRow[];
+  binSortOrder?: SortOrderRow[];
 };
+
 const PromptFields = ({
-  changeForm,
-  entity,
-  form,
-  type,
+  entity = null,
+  type = null,
+  text,
   variable,
-  variableOptions = [],
-  sortVariableOptions = [],
-  optionsForVariableDraft = [],
+  color,
+  variableOptions = EMPTY_VARIABLE_OPTIONS,
+  bucketSortOrder,
+  binSortOrder,
 }: PromptFieldsProps) => {
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const { variable: liveVariable, variableOptions: liveVariableOptions } =
+    useFormValue(['variable', 'variableOptions'] as const);
+  const currentVariable =
+    typeof liveVariable === 'string' ? liveVariable : variable;
+  const currentVariableOptions = Array.isArray(liveVariableOptions)
+    ? (liveVariableOptions as OptionValue[])
+    : variableOptions;
+
+  const subject = useMemo(
+    () => (entity ? { entity, type: type ?? undefined } : null),
+    [entity, type],
+  );
+
+  // Sort keys are read-only references outside the writer-exclusivity rule: a
+  // bin may still be bucket/bin-sorted by a form-collected variable that the
+  // role-filtered writer pool below drops, so they draw from this RAW pool.
+  const sortVariableOptions = useSelector(
+    (state: RootState) =>
+      subject
+        ? (getVariableOptionsForSubject(state, subject) as SelectOption[])
+        : EMPTY_OPTIONS,
+    shallowEqual,
+  );
+
+  // The `variable` picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates. The current pick is always kept.
+  const ordinalVariableOptions = useSelector(
+    (state: RootState) =>
+      subject
+        ? (excludeValidatedUses(
+            state,
+            subject,
+            sortVariableOptions.filter(
+              ({ type: variableType }) => variableType === 'ordinal',
+            ),
+            currentVariable,
+          ) as SelectOption[])
+        : EMPTY_OPTIONS,
+    shallowEqual,
+  );
+
+  const optionsForCurrentVariable = useSelector((state: RootState) => {
+    if (!subject || !currentVariable) return EMPTY_VARIABLE_OPTIONS;
+    const variables = getVariablesForSubject(state, subject);
+    const found = variables[currentVariable];
+    return found && 'options' in found
+      ? ((found.options ?? EMPTY_VARIABLE_OPTIONS) as OptionValue[])
+      : EMPTY_VARIABLE_OPTIONS;
+  }, shallowEqual);
+
+  // Picking a different variable replaces the draft options with that
+  // variable's already-committed ones (the `withVariableOptions` lifecycle
+  // this replaces) — but only on an actual change, so opening the dialog on
+  // an already-configured prompt doesn't clobber its live draft.
+  const previousVariableRef = useRef(currentVariable);
+  useEffect(() => {
+    if (previousVariableRef.current === currentVariable) return;
+    previousVariableRef.current = currentVariable;
+    setFieldValue('variableOptions', optionsForCurrentVariable);
+  }, [currentVariable, optionsForCurrentVariable, setFieldValue]);
+
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
+  const sortMaxItems = getOptions('property', undefined, []).length;
+  const showVariableOptionsTip = currentVariableOptions.length > 5;
+
   const newVariableWindowInitialProps = {
-    entity: entity as Entity,
-    type,
+    entity: (entity ?? 'node') as Entity,
+    type: type ?? '',
     initialValues: { name: '', type: '' },
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [
-      string,
-      {
-        field: string;
-      },
-    ];
-    changeForm(form, params.field, id);
+    const [id, params] = args as [string, { field: string }];
+    setFieldValue(params.field, id);
   };
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
@@ -71,48 +147,37 @@ const PromptFields = ({
       { initialValues: { name, type: 'ordinal' } },
       { field: 'variable' },
     );
-  const ordinalVariableOptions = variableOptions.filter(
-    ({ type: variableType }) => variableType === 'ordinal',
-  );
-  // Sort keys are read-only references outside the writer-exclusivity rule:
-  // they draw from the HOC's RAW pool so a bin can still be bucket/bin-sorted
-  // by a form-collected variable the (role-filtered) writer pool above drops.
-  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
-  const sortMaxItems = getOptions('property', undefined, []).length;
-  const totalOptionsLength = optionsForVariableDraft?.length;
-  const showVariableOptionsTip = totalOptionsLength > 5;
+
   return (
     <>
-      <PromptText />
-      <Section title="Ordinal Variable" layout="vertical">
+      <PromptText initialValue={text} />
+      <Section
+        title="Ordinal Variable"
+        id={getFieldId('variable')}
+        layout="vertical"
+      >
         <Row>
-          <div id={getFieldId('variable')} />
-          <ValidatedField
+          <ArchitectField
             name="variable"
+            label="Ordinal variable"
+            labelHidden
             component={VariablePicker}
             validation={{ required: true }}
-            componentProps={{
-              entity,
-              type,
-              options: ordinalVariableOptions,
-              onCreateOption: handleNewVariable,
-              variable,
-            }}
+            initialValue={variable}
+            entity={entity}
+            type={type}
+            options={ordinalVariableOptions}
+            onCreateOption={handleNewVariable}
           />
         </Row>
       </Section>
-      {variable && (
+      {currentVariable && (
         <Section
           title="Variable Options"
-          summary={
-            <Paragraph>
-              Create <strong>up to 5</strong> options for this variable.
-            </Paragraph>
-          }
+          id={getFieldId('variableOptions')}
           layout="vertical"
         >
           <Row>
-            <div id={getFieldId('variableOptions')} />
             {showVariableOptionsTip && (
               <Alert variant="destructive" className="my-7">
                 <AlertTitle>Too many option values</AlertTitle>
@@ -124,45 +189,46 @@ const PromptFields = ({
                 </AlertDescription>
               </Alert>
             )}
-            <Options name="variableOptions" label="Option values" />
+            <ArchitectArrayField
+              name="variableOptions"
+              label="Option values"
+              hint={
+                <>
+                  Create <strong>up to 5</strong> options for this variable.
+                </>
+              }
+              component={Options}
+              validation={optionsValidation}
+              initialValue={variableOptions}
+            />
           </Row>
         </Section>
       )}
-      <Section
-        title="Color"
-        summary={
-          <Paragraph>
-            Interviewer will render each option in your ordinal variable using a
-            color gradient.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
+      <Section title="Color" id={getFieldId('color')} layout="vertical">
         <Row>
-          <IssueAnchor fieldName="color" description="Gradient color" />
-          <ValidatedField
+          <ArchitectField
             name="color"
-            component={ColorPicker as React.ComponentType}
+            label="Which color would you like to use for this scale?"
+            hint="Interviewer will render each option in your ordinal variable using a color gradient."
+            component={ColorPicker}
             validation={{ required: true }}
-            componentProps={{
-              label: 'Which color would you like to use for this scale?',
-              palette: 'ord-color-seq',
-              paletteRange: 8,
-            }}
+            initialValue={color}
+            palette="ord-color-seq"
+            paletteRange={8}
           />
         </Row>
       </Section>
       <BucketSortOrderSection
-        form={form}
-        disabled={!variable}
+        disabled={!currentVariable}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={bucketSortOrder}
       />
       <BinSortOrderSection
-        form={form}
-        disabled={!variable}
+        disabled={!currentVariable}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={binSortOrder}
       />
       <NewVariableWindow
         // eslint-disable-next-line react/jsx-props-no-spreading
@@ -171,7 +237,5 @@ const PromptFields = ({
     </>
   );
 };
-export default compose<PromptFieldsProps, Record<string, never>>(
-  withVariableOptions,
-  withVariableHandlers,
-)(PromptFields);
+
+export default PromptFields;

@@ -1,28 +1,42 @@
 import { isEqual, map, omit } from 'es-toolkit/compat';
-import { useId, useMemo, useState, type ReactNode } from 'react';
-import { Field } from 'redux-form';
+import { useMemo, useState, type ReactNode } from 'react';
 
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { Variable } from '@codaco/protocol-validation';
 
+import ArchitectField from '../Form/ArchitectField';
 import {
   findDraftContradictions,
   findLegalReferenceTargets,
   floorIssue,
 } from './contradictions';
 import {
+  getGroupedValidationsForVariableType,
   isValidationWithListValue,
   isValidationWithoutValue,
   type ValidationGroup,
 } from './options';
-import { formatCommitted, isDraftComplete, parseForRule } from './ruleValue';
+import {
+  formatCommitted,
+  isDraftComplete,
+  parseForRule,
+  type ValidationValue,
+} from './ruleValue';
 import ValidationRule, { type TargetOption } from './ValidationRule';
 
-const EMPTY_KEYS: ReadonlySet<string> = new Set();
-const EMPTY_RECORD: Record<string, unknown> = {};
+type ValidationMap = Record<string, ValidationValue>;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
+
+// `initialValue` is a register-effect dependency (`useField`'s registration
+// effect): an absent committed value must fall back to a REFERENTIALLY STABLE
+// empty object, not a fresh `{}` literal recreated every render — the latter
+// re-registers the field on every render of a parent that also happens to
+// re-render for an unrelated reason (e.g. a sibling `errors` update), which
+// silently drops any error the store had just attached to this field name.
+const EMPTY_VALIDATION: ValidationMap = {};
+
+const isRecord = (value: unknown): value is ValidationMap =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
@@ -35,52 +49,26 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * then parse the displayed rule as `true`, inventing a contradiction the
  * saved protocol does not have.
  */
-const holdsRule = (rules: Record<string, unknown>, ruleKey: string) =>
+const holdsRule = (rules: ValidationMap, ruleKey: string) =>
   Object.hasOwn(rules, ruleKey) &&
   (!isValidationWithoutValue(ruleKey) || rules[ruleKey] === true);
-
-type ValidationsFieldProps = {
-  meta: {
-    submitFailed: boolean;
-    error?: string;
-  };
-  children?: ReactNode;
-};
-
-const ValidationsField = ({
-  meta: { submitFailed, error },
-  children = null,
-}: ValidationsFieldProps) => {
-  const errorId = useId();
-
-  return (
-    <div className="flex flex-col gap-2">
-      {children}
-      <FieldErrors
-        id={errorId}
-        errors={error ? [error] : []}
-        show={!!(submitFailed && error)}
-      />
-    </div>
-  );
-};
 
 type CheckDraft = (
   ruleKey: string,
   ruleValue: unknown,
-  base?: Record<string, unknown>,
+  base?: ValidationMap,
 ) => string[];
 
 type SettleOutcome = {
-  next: Record<string, unknown>;
+  next: ValidationMap;
   /** The keys this pass resolved — the only rows safe to clear. */
   settled: string[];
 };
 
 type RuleListProps = {
   groups: ValidationGroup[];
-  committed: Record<string, unknown>;
-  update: (value: Record<string, unknown>) => void;
+  committed: ValidationMap;
+  update: (value: ValidationMap) => void;
   checkDraft: CheckDraft;
   legalTargetsByRule: ReadonlyMap<string, Set<string>>;
   existingVariableOptions: TargetOption[];
@@ -110,10 +98,7 @@ const RuleList = ({
       ? drafts[ruleKey]!
       : formatCommitted(committed[ruleKey]);
 
-  const settle = (
-    base: Record<string, unknown>,
-    skip?: string,
-  ): SettleOutcome => {
+  const settle = (base: ValidationMap, skip?: string): SettleOutcome => {
     const next = { ...base };
     const settled: string[] = [];
     // A row that still holds a draft is pending even when `base` already
@@ -302,19 +287,12 @@ const RuleList = ({
   );
 };
 
-type ValidationsProps = {
-  name: string;
+type ValidationsFieldProps = {
+  value?: ValidationMap;
+  onChange?: (value: ValidationMap) => void;
   entity?: string;
-  /**
-   * Identity of whatever owns these rules when it is not a codebook variable —
-   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
-   * uncommitted row state, which `currentVariableId` cannot scope there.
-   */
   scopeId?: string;
-  validationGroups?: ValidationGroup[];
-  value?: Record<string, unknown> | null;
-  update: (value: Record<string, unknown>) => void;
-  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
   variableType?: string;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
@@ -324,14 +302,19 @@ type ValidationsProps = {
   draftVariableName?: unknown;
 };
 
-const Validations = ({
-  name,
+/**
+ * The `withStoreState`/`withAddNew`/`withUpdateHandlers` HOC stack collapsed
+ * into the field component itself: `value`/`onChange` (from `ArchitectField`)
+ * replace the old `formValueSelector`/`change` reads and writes, and the rule
+ * list's uncommitted row state — previously spread across `withState`
+ * injections — is local state inside `RuleList`.
+ */
+const ValidationsField = ({
+  value,
+  onChange,
   entity,
   scopeId,
-  validationGroups = [],
-  existingVariables = {},
-  value,
-  update,
+  existingVariables,
   variableType,
   allVariables,
   currentVariableId,
@@ -339,8 +322,14 @@ const Validations = ({
   draftComponent,
   draftParameters,
   draftVariableName,
-}: ValidationsProps) => {
-  const committed = isRecord(value) ? value : EMPTY_RECORD;
+}: ValidationsFieldProps) => {
+  const committed = isRecord(value) ? value : EMPTY_VALIDATION;
+
+  const validationGroups = useMemo(
+    () =>
+      getGroupedValidationsForVariableType(variableType ?? '', entity ?? ''),
+    [variableType, entity],
+  );
 
   const uniqueValueCount = useMemo(() => {
     if (variableType !== 'boolean' && variableType !== 'ordinal') {
@@ -374,11 +363,7 @@ const Validations = ({
 
   const checkDraft = useMemo(
     (): CheckDraft =>
-      (
-        ruleKey: string,
-        ruleValue: unknown,
-        base?: Record<string, unknown>,
-      ): string[] => {
+      (ruleKey: string, ruleValue: unknown, base?: ValidationMap): string[] => {
         // R1 floor check runs ahead of the contradiction analyser: a
         // below-floor value is input the schema would reject outright, so
         // there is no point feeding it into findDraftContradictions.
@@ -480,21 +465,87 @@ const Validations = ({
 
   return (
     <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-      <Field name={name} component={ValidationsField}>
-        <RuleList
-          key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
-          groups={validationGroups}
-          committed={committed}
-          update={update}
-          checkDraft={checkDraft}
-          legalTargetsByRule={legalTargetsByRule}
-          existingVariableOptions={existingVariableOptions}
-          candidateCount={candidateIds.length}
-          uniqueValueCount={uniqueValueCount}
-        />
-      </Field>
+      <RuleList
+        key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
+        groups={validationGroups}
+        committed={committed}
+        update={(next) => onChange?.(next)}
+        checkDraft={checkDraft}
+        legalTargetsByRule={legalTargetsByRule}
+        existingVariableOptions={existingVariableOptions}
+        candidateCount={candidateIds.length}
+        uniqueValueCount={uniqueValueCount}
+      />
     </div>
   );
 };
+
+type ValidationsProps = {
+  name: string;
+  /** The committed validation record, for the field's `initialValue`. */
+  initialValue?: ValidationMap;
+  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  entity?: string;
+  /**
+   * Identity of whatever owns these rules when it is not a codebook variable —
+   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
+   * uncommitted row state, which `currentVariableId` cannot scope there.
+   */
+  scopeId?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  /**
+   * Sibling draft values from whatever form surrounds this field — read (and
+   * kept reactive) by the caller, since this component may be nested inside
+   * the field-editor dialog (where they are live sibling fields) or inside
+   * `CodebookVariableValidationSection`'s isolated form (where they are not
+   * fields at all, just the committed variable's own values).
+   */
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+};
+
+/**
+ * A validation-rule editor bound to one stage or codebook-variable form
+ * field. Renders the whole `Record<ruleName, value>` as ONE opaque field
+ * value (the same governing rule every array/record field follows in this
+ * migration) — individual rows are rendered from that value locally, never
+ * registered as their own form fields.
+ */
+const Validations = ({
+  name,
+  initialValue,
+  existingVariables = {},
+  variableType,
+  entity,
+  scopeId,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+}: ValidationsProps): ReactNode => (
+  <ArchitectField
+    name={name}
+    component={ValidationsField}
+    label="Validation rules"
+    labelHidden
+    initialValue={initialValue ?? EMPTY_VALIDATION}
+    existingVariables={existingVariables}
+    variableType={variableType}
+    entity={entity}
+    scopeId={scopeId}
+    allVariables={allVariables}
+    currentVariableId={currentVariableId}
+    draftOptions={draftOptions}
+    draftComponent={draftComponent}
+    draftParameters={draftParameters}
+    draftVariableName={draftVariableName}
+  />
+);
 
 export default Validations;

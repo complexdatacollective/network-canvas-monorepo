@@ -1,34 +1,15 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ComponentType } from 'react';
-import { Provider } from 'react-redux';
-import { reducer as formReducer, reduxForm } from 'redux-form';
 import { describe, expect, it } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
 
 import DatePicker from '../DatePicker';
 
-const DatePickerParametersField = DatePicker as unknown as ComponentType<{
-  name: string;
-  form: string;
-}>;
-
-const FORM = 'date-picker-parameters-test';
-
-const Harness = reduxForm({ form: FORM })(() => (
-  <DatePickerParametersField name="parameters" form={FORM} />
-));
-
 const renderParameters = (min: string) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
   render(
-    <Provider store={store}>
-      <Harness initialValues={{ parameters: { type: 'full', min } }} />
-    </Provider>,
+    <Form onSubmit={() => ({ success: true })}>
+      <DatePicker name="parameters" initialParameters={{ type: 'full', min }} />
+    </Form>,
   );
 
   return screen.getByLabelText(/End range/);
@@ -79,6 +60,32 @@ describe('DatePicker range parameters', () => {
     fireEvent.change(max, { target: { value: '2024-06-15' } });
     await waitFor(() => {
       expect(screen.queryByText(ANY_RANGE_ERROR)).not.toBeInTheDocument();
+    });
+  });
+});
+
+// The resolution field used to clear the range through the field's `onChange`,
+// which the form store now owns. The replacement observer must not fire on the
+// first render, or opening the editor would wipe a committed range.
+describe('DatePicker resolution changes', () => {
+  it('keeps the committed range on mount', () => {
+    const max = renderParameters('2024-06-15');
+
+    expect(screen.getByLabelText(/Start range/)).toHaveValue('2024-06-15');
+    expect(max).toBeInTheDocument();
+  });
+
+  it('clears both range dates when the resolution changes', async () => {
+    renderParameters('2024-06-15');
+
+    fireEvent.change(screen.getByLabelText(/Date resolution/), {
+      target: { value: 'year' },
+    });
+
+    // The control is re-rendered for the new resolution, so the input has to be
+    // looked up again rather than held across the change.
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Start range/)).toHaveValue('');
     });
   });
 });

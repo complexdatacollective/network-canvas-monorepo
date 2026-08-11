@@ -1,21 +1,29 @@
 import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import SkipLogicFields from '~/components/sections/fields/SkipLogicFields';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useSetStageValue,
+  useStageFormValue,
+} from '~/components/StageEditor/stageFormHooks';
+
 const SkipLogicSection = (props: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
+  const setStageValue = useSetStageValue();
   const { confirm } = useDialog();
-  const getFormValue = formValueSelector('edit-stage');
-  const hasSkipLogic = useSelector((state: RootState) =>
-    getFormValue(state, 'skipLogic'),
-  );
+  // `SkipLogicFields` registers three separate leaf fields
+  // (`skipLogic.action`/`.filter`/`.destination`) — `skipLogic` itself is
+  // never a registered field, and the store has no hierarchical relationship
+  // between a path and its sub-paths. Reading (or writing) the parent path
+  // would fall through to the stale committed value once the leaves are
+  // unregistered, resurrecting "cleared" rules the next time the section
+  // opens — so presence and clearing both go through the real leaves.
+  const action = useStageFormValue('skipLogic.action');
+  const filter = useStageFormValue('skipLogic.filter');
+  const destination = useStageFormValue('skipLogic.destination');
+  const hasSkipLogic = action != null || filter != null || destination != null;
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
       // When turning skip logic on
@@ -33,12 +41,14 @@ const SkipLogicSection = (props: StageEditorSectionProps) => {
         onConfirm: () => {},
       });
       if (confirmed) {
-        dispatch(change('edit-stage', 'skipLogic', null));
+        setStageValue('skipLogic.action', undefined);
+        setStageValue('skipLogic.filter', undefined);
+        setStageValue('skipLogic.destination', undefined);
         return true;
       }
       return false;
     },
-    [confirm, dispatch, hasSkipLogic],
+    [confirm, setStageValue, hasSkipLogic],
   );
   return (
     <Section
@@ -50,7 +60,7 @@ const SkipLogicSection = (props: StageEditorSectionProps) => {
           the interview continues when it is skipped.
         </Paragraph>
       }
-      startExpanded={!!hasSkipLogic}
+      startExpanded={hasSkipLogic}
       handleToggleChange={handleToggleChange}
     >
       <SkipLogicFields

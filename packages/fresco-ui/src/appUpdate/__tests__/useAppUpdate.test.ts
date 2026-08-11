@@ -114,6 +114,48 @@ describe('auto-apply', () => {
     expect(installUpdate).not.toHaveBeenCalled();
   });
 
+  it('consults checkUnsavedWork over a stale hasUnsavedWork before auto-applying', async () => {
+    // The host's rendered `hasUnsavedWork` can lag work already done — an
+    // editor mirroring its live values on a debounce reports pristine for an
+    // edit typed inside the coalescing window. Auto-apply reloads without
+    // asking, so it must re-check synchronously rather than trust the render.
+    const installUpdate = vi.fn().mockResolvedValue(true);
+    const checkUnsavedWork = vi.fn().mockReturnValue(true);
+    const { result } = renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        hasUnsavedWork: false,
+        checkUnsavedWork,
+        installUpdate,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('available'));
+    expect(checkUnsavedWork).toHaveBeenCalled();
+    expect(installUpdate).not.toHaveBeenCalled();
+  });
+
+  it('still auto-applies when checkUnsavedWork reports nothing in progress', async () => {
+    const installUpdate = vi.fn().mockResolvedValue(true);
+    const checkUnsavedWork = vi.fn().mockReturnValue(false);
+    renderHook(() =>
+      useAppUpdate({
+        app: 'architect',
+        currentVersion: '2.0.0',
+        needRefresh: true,
+        // Deliberately the opposite of the check, to prove which one auto-apply
+        // reads.
+        hasUnsavedWork: true,
+        checkUnsavedWork,
+        installUpdate,
+      }),
+    );
+
+    await waitFor(() => expect(installUpdate).toHaveBeenCalled());
+  });
+
   it('does not auto-apply an update surfaced after the fresh-load window', async () => {
     const installUpdate = vi.fn().mockResolvedValue(true);
     const { result, rerender } = renderHook(

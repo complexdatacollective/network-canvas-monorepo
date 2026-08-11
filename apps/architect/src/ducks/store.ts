@@ -16,7 +16,6 @@ import logger from './middleware/logger';
 import { protocolLibraryListenerMiddleware } from './middleware/protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from './middleware/protocolValidationListener';
 import { scrollPositionsListenerMiddleware } from './middleware/scrollPositionsListener';
-import { stageEditorDraftListenerMiddleware } from './middleware/stageEditorDraftListener';
 import { getActiveProtocolId } from './modules/app';
 import type { RootState } from './modules/root';
 import { rootReducer } from './modules/root';
@@ -68,7 +67,6 @@ const store = configureStore({
       serializableCheck: false,
       immutableCheck: {
         warnAfter: 32, // Warn after 32ms to catch performance issues
-        ignorePaths: ['form'], // Ignore paths with functions/non-serializable data
       },
       // thunk is included by default in RTK
     })
@@ -76,8 +74,7 @@ const store = configureStore({
       .prepend(protocolValidationListenerMiddleware.middleware)
       .prepend(protocolLibraryListenerMiddleware.middleware)
       .prepend(analyticsListenerMiddleware.middleware)
-      .prepend(scrollPositionsListenerMiddleware.middleware)
-      .prepend(stageEditorDraftListenerMiddleware.middleware),
+      .prepend(scrollPositionsListenerMiddleware.middleware),
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(
       rememberEnhancer(rememberDriver, rememberedKeys, {

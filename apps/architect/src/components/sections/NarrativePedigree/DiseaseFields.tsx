@@ -1,17 +1,14 @@
 import { startCase } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useSelector } from 'react-redux';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
-import type { RootState } from '~/ducks/store';
+import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 
 const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
@@ -19,17 +16,22 @@ const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
   label: startCase(value),
 }));
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoStyledSelectField = StyledSelectField as ComponentType<
-  Record<string, unknown>
->;
-
 type DiseaseFieldsProps = {
   nodeType: string | undefined;
+  /**
+   * The row being edited, supplied by DialogArrayField's `item` spread. This
+   * dialog mounts its own `FormStoreProvider` (a different store per row), so
+   * it cannot resolve its own initial values from stage context — every
+   * control seeds its `initialValue` from here instead.
+   */
+  item?: Record<string, unknown>;
 };
 
-const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
-  const booleanNodeVariables = useSelector((state: RootState) => {
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const DiseaseFields = ({ nodeType, item }: DiseaseFieldsProps) => {
+  const booleanNodeVariables = useAppSelector((state) => {
     if (!nodeType) return [];
     return getVariableOptionsForSubject(state, {
       entity: 'node',
@@ -42,47 +44,43 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
       <Section title="Disease Label" layout="vertical">
         <Row>
           <IssueAnchor fieldName="label" description="Disease label" />
-          <ValidatedField
+          <ArchitectField
             name="label"
             label="Disease label"
             labelHidden
-            component={FrescoReduxField}
+            component={InputField}
             validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Enter a name for this disease...',
-            }}
+            initialValue={asString(item?.label)}
+            placeholder="Enter a name for this disease..."
           />
         </Row>
       </Section>
       <Section title="Color" layout="vertical">
         <Row>
           <IssueAnchor fieldName="color" description="Disease color" />
-          <ValidatedField
+          <ArchitectField
             name="color"
-            component={ColorPicker as React.ComponentType}
+            component={ColorPicker}
             validation={{ required: true }}
-            componentProps={{
-              palette: 'node-color-seq',
-              paletteRange: 10,
-              label: 'Select a color for this disease',
-            }}
+            label="Select a color for this disease"
+            initialValue={asString(item?.color)}
+            palette="node-color-seq"
+            paletteRange={10}
           />
         </Row>
       </Section>
       <Section title="Node Variable" layout="vertical">
         <Row>
           <IssueAnchor fieldName="variable" description="Disease variable" />
-          <ValidatedField
+          <ArchitectField
             name="variable"
-            component={VariablePicker}
+            component={VariablePickerControl}
             validation={{ required: true }}
-            componentProps={{
-              entity: 'node',
-              type: nodeType ?? '',
-              label: 'Select boolean node variable',
-              options: booleanNodeVariables,
-            }}
+            label="Select boolean node variable"
+            initialValue={asString(item?.variable)}
+            entity="node"
+            type={nodeType ?? ''}
+            options={booleanNodeVariables}
           />
         </Row>
       </Section>
@@ -92,17 +90,15 @@ const DiseaseFields = ({ nodeType }: DiseaseFieldsProps) => {
             fieldName="inheritancePattern"
             description="Inheritance pattern"
           />
-          <ValidatedField
+          <ArchitectField
             name="inheritancePattern"
             label="Inheritance pattern"
             labelHidden
-            component={FrescoReduxField}
+            component={StyledSelectField}
             validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoStyledSelectField,
-              options: INHERITANCE_PATTERN_OPTIONS,
-              placeholder: 'Select an inheritance pattern...',
-            }}
+            initialValue={asString(item?.inheritancePattern)}
+            options={INHERITANCE_PATTERN_OPTIONS}
+            placeholder="Select an inheritance pattern..."
           />
         </Row>
       </Section>

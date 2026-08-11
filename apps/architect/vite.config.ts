@@ -1,6 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import posthogSourceMaps from '@posthog/rollup-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
@@ -60,6 +61,18 @@ const injectCspMeta = (): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
+
+  // PostHog needs source maps to symbolicate the exceptions posthog-js reports
+  // (see src/analytics.ts). The credentials are set only on the production
+  // release job (.github/workflows/ci-and-release.yml), so every other build —
+  // local, PR, Netlify preview — emits no maps at all. When they are emitted
+  // they are `hidden` (no sourceMappingURL comment, so a browser never requests
+  // them), and the plugin deletes them from dist once uploaded, so the deployed
+  // site never serves a map. Both variables are declared in turbo.json's build
+  // `env` so an uploading build can never reuse a non-uploading cache entry.
+  const posthogPersonalApiKey = env.POSTHOG_PERSONAL_API_KEY;
+  const posthogProjectId = env.POSTHOG_PROJECT_ID;
+  const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
   return {
     define: {
@@ -299,6 +312,22 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
+      // Last: its writeBundle hook rewrites the emitted chunks (injecting the
+      // chunk ids PostHog matches maps by) and must see the final output.
+      ...(uploadSourceMaps
+        ? [
+            posthogSourceMaps({
+              personalApiKey: posthogPersonalApiKey,
+              projectId: posthogProjectId,
+              sourcemaps: {
+                enabled: true,
+                releaseName: 'Architect',
+                releaseVersion: version,
+                deleteAfterUpload: true,
+              },
+            }),
+          ]
+        : []),
     ],
     build: {
       rollupOptions: {

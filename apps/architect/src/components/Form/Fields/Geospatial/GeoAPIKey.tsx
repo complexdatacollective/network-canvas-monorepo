@@ -1,28 +1,19 @@
-import { useState, type ComponentType, type FocusEventHandler } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
+import { useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import APIKeyThumbnail from '~/components/Thumbnail/APIKey';
 import { cx } from '~/utils/cva';
 
 import APIKeyBrowser from './APIKeyBrowser';
 
-type GeoAPIKeyControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-};
+type GeoAPIKeyProps = CreateFormFieldProps<string, 'fieldset'>;
 
-const GeoAPIKeyControl = ({
+/**
+ * Picks a stored Mapbox API key. Labelling belongs to the surrounding field —
+ * pass it through `ArchitectField`'s `label`/`hint`.
+ */
+const GeoAPIKey = ({
   id,
   name,
   value = '',
@@ -34,7 +25,7 @@ const GeoAPIKeyControl = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
-}: GeoAPIKeyControlProps) => {
+}: GeoAPIKeyProps) => {
   const [showAPIKeyBrowser, setShowAPIKeyBrowser] = useState(false);
 
   return (
@@ -73,33 +64,5 @@ const GeoAPIKeyControl = ({
     </>
   );
 };
-
-type GeoAPIKeyProps = WrappedFieldProps & {
-  label?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoGeoAPIKeyControl = GeoAPIKeyControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const GeoAPIKeyBase = ({
-  label = 'Mapbox API key',
-  ...props
-}: GeoAPIKeyProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoGeoAPIKeyControl}
-  />
-);
-
-const GeoAPIKey = GeoAPIKeyBase as unknown as ComponentType<
-  Record<string, unknown>
->;
 
 export default GeoAPIKey;

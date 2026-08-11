@@ -1,6 +1,6 @@
 {
   "name": "@codaco/fresco-ui",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "description": "Fresco UI components, styles, and utilities",
   "license": "MIT",
   "repository": {
@@ -774,7 +774,7 @@
     "fuse.js": "catalog:",
     "immer": "^11.1.8",
     "lucide-react": "catalog:",
-    "nanoid": "^5.1.16",
+    "nanoid": "^6.0.0",
     "react-aria-components": "^1.18.0",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",

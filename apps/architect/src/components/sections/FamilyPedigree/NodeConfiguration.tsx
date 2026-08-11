@@ -1,32 +1,29 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { difference, get, keys } from 'es-toolkit/compat';
-import { useCallback, useMemo } from 'react';
-import { compose, withHandlers } from 'react-recompose';
-import { connect, type ConnectedProps, useSelector } from 'react-redux';
+import { get, union } from 'es-toolkit/compat';
 import {
-  change,
-  type FormAction,
-  formValueSelector,
-  getFormInitialValues,
-  getFormValues,
-  SubmissionError,
-} from 'redux-form';
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ComponentType,
+} from 'react';
+import { useSelector } from 'react-redux';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableOptions } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import VariablePicker from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import ValidatedField from '~/components/Form/ValidatedField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
+import { clearFieldValue } from '~/components/Form/clearFieldValue';
+import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import EntitySelectField from '~/components/sections/fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import {
   composerValidationViews,
   sharedFormValidationView,
@@ -39,6 +36,13 @@ import {
   normalizeField,
 } from '~/components/sections/Form/helpers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
+import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   makeFieldEditorValidate,
@@ -53,12 +57,12 @@ import {
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
+import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import {
   EMPTY_VARIABLES,
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
-  makeGetVariable,
 } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
@@ -71,7 +75,16 @@ import { optionsMatch } from '~/utils/variables';
 
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import NodeFormFieldPreview from './NodeFormFieldPreview';
+
+// `FieldFields`/`NodeFormFieldPreview` carry their own specific prop types
+// rather than the array field's generic `Renderer` bag; DialogArrayField
+// spreads item values plus a `form` DOM-id string into whatever they declare
+// (FieldFields' `PromptFields` still requires it, pre-Form-batch), so the
+// cast is safe.
+type Renderer = ComponentType<Record<string, unknown>>;
+
 const nodeEntity: Entity = 'node';
+
 // Stage-level configuration that does not reference node variables survives a
 // node-type change; framing/boundaries/introScreen are required (or
 // self-contained) schema fields, so clearing them would make the stage fail
@@ -90,6 +103,7 @@ export const PRESERVE_ON_NODE_TYPE_CHANGE = [
   'introScreen',
   'nodeConfig.type',
 ];
+
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
@@ -99,6 +113,7 @@ type VariableWindowInitialProps = {
   };
   lockedOptions: VariableOptions | null;
 };
+
 type VariableRowProps = {
   name: string;
   label: string;
@@ -111,12 +126,15 @@ type VariableRowProps = {
   }[];
   onCreateOption: (name: string) => void;
   /**
-   * Save-time cross-class gate for this slot (an UNVALIDATED writer): a sync
-   * field validator, so an invalid pick blocks the stage editor's save — the
-   * same field-level `crossClassPick` shape NetworkComposer's quickAdd uses.
+   * Save-time cross-class gate for this slot, in whichever direction its
+   * writer class demands (the node label validates; the structural slots do
+   * not): a sync field validator, so an invalid pick blocks the stage
+   * editor's save — the same field-level `crossClassPick` shape
+   * NetworkComposer's quickAdd uses.
    */
   crossClassPick: (value: unknown, allValues?: unknown) => string | undefined;
 };
+
 const VariableRow = ({
   name,
   label,
@@ -125,32 +143,36 @@ const VariableRow = ({
   options,
   onCreateOption,
   crossClassPick,
-}: VariableRowProps) => (
-  <div className="flex items-start gap-5">
-    <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
-      <span className="font-semibold">
-        {label}
-        <span className="text-destructive ms-1">*</span>
-      </span>
-      <span className="text-text/60 text-sm leading-snug">{description}</span>
+}: VariableRowProps) => {
+  const initialValue = useStageInitialValue<string>(name);
+
+  return (
+    <div className="flex items-start gap-5">
+      <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
+        <span className="font-semibold">
+          {label}
+          <span className="text-destructive ms-1">*</span>
+        </span>
+        <span className="text-text/60 text-sm leading-snug">{description}</span>
+      </div>
+      <div className="relative flex-1 basis-0">
+        <IssueAnchor fieldName={name} description={`${label} Variable`} />
+        <ArchitectField
+          name={name}
+          component={VariablePickerControl}
+          validation={{ required: true, crossClassPick }}
+          label={`${label} variable`}
+          labelHidden
+          initialValue={initialValue}
+          entity="node"
+          type={entityType}
+          options={options}
+          onCreateOption={onCreateOption}
+        />
+      </div>
     </div>
-    <div className="relative flex-1 basis-0">
-      <IssueAnchor fieldName={name} description={`${label} Variable`} />
-      <ValidatedField
-        name={name}
-        component={VariablePicker}
-        validation={{ required: true, crossClassPick }}
-        componentProps={{
-          entity: 'node',
-          type: entityType,
-          label: 'Select variable',
-          options,
-          onCreateOption,
-        }}
-      />
-    </div>
-  </div>
-);
+  );
+};
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -160,27 +182,14 @@ const UNVALIDATED_NODE_SLOT_FIELDS = [
   'relationshipVariable',
   'biologicalSexVariable',
 ] as const;
-type NodeConfigurationInnerProps = StageEditorSectionProps & {
-  handleChangeFields: (
-    fields: Record<string, unknown>,
-  ) => Promise<Record<string, unknown>>;
-};
-const NodeConfigurationInner = ({
-  form,
-  handleChangeFields,
-}: NodeConfigurationInnerProps) => {
+
+const NodeConfiguration = (_props: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
-  const formSelector = formValueSelector(form);
-  const nodeType = useSelector(
-    (state: RootState) =>
-      formSelector(state, 'nodeConfig.type') as string | undefined,
-  );
-  const formValues = useSelector((state: RootState) =>
-    getFormValues(form)(state),
-  );
-  const stageId = useSelector(
-    (state: RootState) => formSelector(state, 'id') as string | undefined,
-  );
+  const { storeApi, committedStage, stageId, draft } = useStageFormContext();
+  const setStageValue = useSetStageValue();
+  const nodeType = useStageFormValue<string>('nodeConfig.type');
+  const nodeTypeInitial = useStageInitialValue<string>('nodeConfig.type');
+  const excludeStageId = stageId ?? undefined;
   const stages = useSelector(
     (state: RootState) => getProtocol(state)?.stages ?? [],
   );
@@ -195,13 +204,60 @@ const NodeConfigurationInner = ({
             ', ',
           )}. Change or remove those stage(s) before changing its node type.`
       : null;
-  const formFields = keys(formValues);
-  const handleResetStage = useCallback(() => {
-    const fieldsToReset = difference(formFields, PRESERVE_ON_NODE_TYPE_CHANGE);
-    for (const field of fieldsToReset) {
-      dispatch(change(form, field, null) as UnknownAction);
-    }
-  }, [dispatch, formFields, form]);
+
+  // The `with*ChangeHandler` enhancer's replacement — a caller `onChange` on
+  // ArchitectField would replace the store write instead of running alongside
+  // it, so the reset is an observer effect. Every non-preserved top-level key
+  // is cleared as a whole TREE (registered + dormant descendants — see
+  // `clearFieldValue`), unioning currently-assembled keys with the committed
+  // stage's own keys so a collapsed section's stale value is cleared too.
+  // `nodeConfig` clears as a tree like every other reset key — including its
+  // own `type` descendant, the field that just changed — so it is restored
+  // immediately after, matching `PRESERVE_ON_NODE_TYPE_CHANGE`'s intent.
+  const previousNodeType = useRef(nodeType);
+  const restoreVersion = useStageRestoreVersion();
+  const previousRestoreVersion = useRef(restoreVersion);
+  useEffect(() => {
+    const previous = previousNodeType.current;
+    previousNodeType.current = nodeType;
+    const previousVersion = previousRestoreVersion.current;
+    previousRestoreVersion.current = restoreVersion;
+    if (!previous || previous === nodeType) return;
+
+    // An undo/redo restores the node type together with the configuration
+    // that belongs to it, so resetting here would wipe the half of the restore
+    // the user was reaching for — and, since this reset clears nearly the whole
+    // stage, would leave that configuration unrecoverable.
+    if (previousVersion !== restoreVersion) return;
+
+    const topLevelPreserved = new Set(
+      PRESERVE_ON_NODE_TYPE_CHANGE.filter((key) => !key.includes('.')),
+    );
+    const fieldsToReset = union(
+      Object.keys(storeApi.getState().getFormValues()),
+      Object.keys(committedStage ?? {}),
+    ).filter((key) => !topLevelPreserved.has(key));
+
+    // As ONE gesture: the loop reaches `nodeConfig.type` (cleared here,
+    // re-seeded below) before `nodeConfig.form`, an array that snapshots on
+    // the write. Unbatched, undo therefore stopped on a stage with no node
+    // type and no configuration at all — an unconfigured state the researcher
+    // never created, reading as "undo destroyed my stage".
+    draft.runGesture(() => {
+      for (const field of fieldsToReset) {
+        clearFieldValue(storeApi, field);
+      }
+      setStageValue('nodeConfig.type', nodeType);
+    });
+  }, [
+    committedStage,
+    draft,
+    nodeType,
+    restoreVersion,
+    setStageValue,
+    storeApi,
+  ]);
+
   const nodeVariableOptions = useSelector((state: RootState) =>
     nodeType
       ? getVariableOptionsForSubject(state, { entity: 'node', type: nodeType })
@@ -224,13 +280,13 @@ const NodeConfigurationInner = ({
       composerValidationViews(
         stages,
         { entity: 'node', type: nodeType ?? null },
-        stageId,
+        excludeStageId,
       ),
-    [stages, nodeType, stageId],
+    [stages, nodeType, excludeStageId],
   );
-  const pedigreeFormFields = useSelector((state: RootState) =>
-    formSelector(state, 'nodeConfig.form'),
-  );
+  const pedigreeFormFields = useStageFormValue('nodeConfig.form');
+  const nodeConfigFormInitial =
+    useStageInitialValue<Record<string, unknown>[]>('nodeConfig.form');
   const resolvedFormViews = useMemo(
     () => [
       sharedFormValidationView(pedigreeFormFields),
@@ -239,28 +295,22 @@ const NodeConfigurationInner = ({
     [pedigreeFormFields, resolvedComposerViews],
   );
   const roleMap = useSelector(getVariableRoleMap);
-  const stageInitialValues = useSelector((state: RootState) =>
-    getFormInitialValues(form)(state),
-  );
-  const slotDraftValue = (
-    slotField: (typeof UNVALIDATED_NODE_SLOT_FIELDS)[number],
-  ): string | undefined => {
-    const value: unknown = get(formValues, `nodeConfig.${slotField}`);
-    return typeof value === 'string' ? value : undefined;
-  };
-  const nodeLabelDraftRaw: unknown = get(
-    formValues,
+  const committedNodeConfig =
+    useStageInitialValue<Record<string, unknown>>('nodeConfig');
+  const nodeLabelDraft = useStageFormValue<string>(
     'nodeConfig.nodeLabelVariable',
   );
-  const nodeLabelDraft =
-    typeof nodeLabelDraftRaw === 'string' ? nodeLabelDraftRaw : undefined;
-  const egoDraft = slotDraftValue('egoVariable');
-  const relationshipDraft = slotDraftValue('relationshipVariable');
-  const biologicalSexDraft = slotDraftValue('biologicalSexVariable');
-  // Memoized on the structural scalar picks (NOT `formValues`, whose identity
-  // changes on every keystroke) so `hasUnvalidatedUse` — and through it
-  // `editorValidate` and its per-dialog-session baseline cache — keeps a
-  // stable identity while unrelated fields are edited.
+  const egoDraft = useStageFormValue<string>('nodeConfig.egoVariable');
+  const relationshipDraft = useStageFormValue<string>(
+    'nodeConfig.relationshipVariable',
+  );
+  const biologicalSexDraft = useStageFormValue<string>(
+    'nodeConfig.biologicalSexVariable',
+  );
+  // Memoized on the structural scalar picks (NOT the whole assembled form
+  // values, whose identity changes on every keystroke) so `hasUnvalidatedUse`
+  // — and through it `editorValidate` and its per-dialog-session baseline
+  // cache — keeps a stable identity while unrelated fields are edited.
   const draftUnvalidatedSlotVariables = useMemo(
     () =>
       [egoDraft, relationshipDraft, biologicalSexDraft].filter(
@@ -315,10 +365,9 @@ const NodeConfigurationInner = ({
       if (!nodeVariablesSubject) return undefined;
       const variableId = typeof value === 'string' ? value : '';
       if (!variableId) return undefined;
-      const committedRaw: unknown = get(
-        stageInitialValues,
-        `nodeConfig.${slotField}`,
-      );
+      const committedRaw: unknown = isRecord(committedNodeConfig)
+        ? committedNodeConfig[slotField]
+        : undefined;
       const committed = typeof committedRaw === 'string' ? committedRaw : '';
       if (variableId === committed) return undefined;
       const draftFormFields: unknown = get(allValues, 'nodeConfig.form');
@@ -350,10 +399,9 @@ const NodeConfigurationInner = ({
     if (!nodeVariablesSubject) return undefined;
     const variableId = typeof value === 'string' ? value : '';
     if (!variableId) return undefined;
-    const committedRaw: unknown = get(
-      stageInitialValues,
-      'nodeConfig.nodeLabelVariable',
-    );
+    const committedRaw: unknown = isRecord(committedNodeConfig)
+      ? committedNodeConfig.nodeLabelVariable
+      : undefined;
     const committed = typeof committedRaw === 'string' ? committedRaw : '';
     if (variableId === committed) return undefined;
     if (draftUnvalidatedSlotVariables.includes(variableId)) {
@@ -436,7 +484,7 @@ const NodeConfigurationInner = ({
         field: string;
       },
     ];
-    dispatch(change(form, params.field, id));
+    setStageValue(params.field, id);
   };
   const initialWindowProps: VariableWindowInitialProps = {
     entity: nodeEntity,
@@ -474,6 +522,74 @@ const NodeConfigurationInner = ({
       },
       { field: 'nodeConfig.biologicalSexVariable' },
     );
+
+  // `handleChangeFields`'s replacement for the `withHandlers`/`connect`
+  // composition: creates or updates the codebook variable a form field picks
+  // before the row is committed. `_modified` is retired — an external
+  // codebook edit now dispatches `markExternalEdit()` to force the stage
+  // dirty. Failures return `{success:false, ...}` instead of throwing
+  // `SubmissionError`.
+  const handleChangeFields = useCallback(
+    async (values: unknown): Promise<unknown> => {
+      const { variable, component, _createNewVariable, ...rest } = values as {
+        variable?: string;
+        component?: string;
+        _createNewVariable?: string;
+        [key: string]: unknown;
+      };
+      const variableType = getTypeForComponent(component);
+      const codebookProperties = getCodebookProperties(rest);
+      const configuration = {
+        type: variableType,
+        component,
+        ...codebookProperties,
+      };
+      dispatch(markExternalEdit());
+      if (!_createNewVariable) {
+        // `allVariables` is this render's codebook snapshot for the node
+        // type, already scoped by `nodeVariablesSubject` — reused here rather
+        // than re-selecting, since a plain Redux selector isn't reachable
+        // from inside this async callback (rendering, not dispatching, is
+        // where `useSelector` runs).
+        const current = get(allVariables, variable ?? '');
+        if (!current) {
+          return { success: false, formErrors: ['Variable not found'] };
+        }
+        await dispatch(
+          updateVariableAsync({
+            entity: 'node',
+            type: nodeType ?? '',
+            variable: variable ?? '',
+            configuration: configuration as Record<string, unknown>,
+            replaceProperties: CODEBOOK_PROPERTIES,
+          }),
+        );
+        return { variable, ...rest };
+      }
+      try {
+        // unwrap() re-throws the thunk's error instead of resolving to a
+        // rejected action whose payload is undefined.
+        const { variable: createdVariable } = await dispatch(
+          createVariableAsync({
+            entity: 'node',
+            type: nodeType ?? '',
+            configuration: {
+              ...configuration,
+              name: _createNewVariable,
+            } as Record<string, unknown>,
+          }),
+        ).unwrap();
+        return { variable: createdVariable, ...rest };
+      } catch (e) {
+        return {
+          success: false,
+          fieldErrors: { variable: [ensureError(e).message] },
+        };
+      }
+    },
+    [allVariables, dispatch, nodeType],
+  );
+
   return (
     <>
       <Section
@@ -487,14 +603,15 @@ const NodeConfigurationInner = ({
       >
         <Row>
           <IssueAnchor fieldName="nodeConfig.type" description="Node Type" />
-          <ValidatedField
+          <ArchitectField
             name="nodeConfig.type"
+            component={EntitySelectControl}
             entityType="node"
             promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
             blockChangeReason={nodeTypeChangeBlockReason}
-            component={EntitySelectField}
-            onChange={handleResetStage}
             validation={{ required: true }}
+            label="Node type"
+            initialValue={nodeTypeInitial}
           />
         </Row>
 
@@ -517,7 +634,6 @@ const NodeConfigurationInner = ({
               />
               {nodeLabelDraft && (
                 <CodebookVariableValidationSection
-                  form={form}
                   fieldName="nodeConfig.nodeLabelVariable"
                   entity="node"
                   type={nodeType}
@@ -564,28 +680,27 @@ const NodeConfigurationInner = ({
               }
               layout="vertical"
             >
-              <ValidatedFieldArray
+              <ArchitectArrayField
                 name="nodeConfig.form"
                 label="Form fields"
                 labelHidden
                 component={DialogArrayField}
                 validation={{}}
-                componentProps={{
-                  addTitle: 'Edit Field',
-                  editorFieldsComponent: FieldFields,
-                  editorProps: { type: nodeType, entity: 'node' },
-                  previewComponent: NodeFormFieldPreview,
-                  editorTitle: 'Edit Field',
-                  editorValidate,
-                  itemLabel: 'field',
-                  sortable: true,
-                  onBeforeSave: (value: unknown) =>
-                    handleChangeFields(value as Record<string, unknown>),
-                  normalizeItem: (value: unknown) =>
-                    normalizeField(value as Record<string, unknown>),
-                  itemSelector: itemSelector('node', nodeType),
-                  requestedEditFormName: 'editable-list-form',
-                }}
+                initialValue={nodeConfigFormInitial ?? []}
+                addTitle="Edit Field"
+                editorFieldsComponent={FieldFields as unknown as Renderer}
+                editorProps={{ type: nodeType, entity: 'node' }}
+                previewComponent={NodeFormFieldPreview as unknown as Renderer}
+                editorTitle="Edit Field"
+                editorValidate={editorValidate}
+                itemLabel="field"
+                sortable
+                onBeforeSave={handleChangeFields}
+                normalizeItem={(value: unknown) =>
+                  normalizeField(value as Record<string, unknown>)
+                }
+                itemSelector={itemSelector('node', nodeType ?? null)}
+                requestedEditFormName="editable-list-form"
               />
             </Section>
           </>
@@ -595,91 +710,4 @@ const NodeConfigurationInner = ({
     </>
   );
 };
-const mapStateToProps = (
-  state: RootState,
-  {
-    form,
-  }: {
-    form: string;
-  },
-) => ({
-  getVariable: (uuid: string) => makeGetVariable(uuid)(state),
-  getNodeType: () =>
-    formValueSelector(form)(state, 'nodeConfig.type') as string | undefined,
-});
-const mapDispatchToProps = {
-  changeForm: change as (
-    form: string,
-    field: string,
-    value: unknown,
-  ) => FormAction,
-  updateVariable: updateVariableAsync,
-  createVariable: createVariableAsync,
-};
-const connector = connect(mapStateToProps, mapDispatchToProps);
-// ConnectedProps resolves the object-form thunk creators to their dispatched
-// form — functions returning the thunk promise (with `.unwrap()`) — matching
-// react-redux's runtime binding.
-type FormHandlerProps = ConnectedProps<typeof connector> & {
-  form: string;
-};
-const formHandlers = withHandlers({
-  handleChangeFields:
-    (props: FormHandlerProps) => async (values: Record<string, unknown>) => {
-      const { variable, component, _createNewVariable, ...rest } = values as {
-        variable?: string;
-        component?: string;
-        _createNewVariable?: string;
-        [key: string]: unknown;
-      };
-      const nodeType = props.getNodeType();
-      const variableType = getTypeForComponent(component);
-      const codebookProperties = getCodebookProperties(rest);
-      const configuration = {
-        type: variableType,
-        component,
-        ...codebookProperties,
-      };
-      props.changeForm(props.form, '_modified', Date.now());
-      if (!_createNewVariable) {
-        const current = props.getVariable(variable ?? '');
-        if (!current) {
-          throw new SubmissionError({ _error: 'Variable not found' });
-        }
-        await props.updateVariable({
-          entity: 'node',
-          type: nodeType ?? '',
-          variable: variable ?? '',
-          configuration: configuration as Record<string, unknown>,
-          replaceProperties: CODEBOOK_PROPERTIES,
-        });
-        return { variable, ...rest };
-      }
-      try {
-        // unwrap() re-throws the thunk's error instead of resolving to a
-        // rejected action whose payload is undefined (which would make
-        // payload.payload.variable a TypeError).
-        const { variable: createdVariable } = await props
-          .createVariable({
-            entity: 'node',
-            type: nodeType ?? '',
-            configuration: {
-              ...configuration,
-              name: _createNewVariable,
-            } as Record<string, unknown>,
-          })
-          .unwrap();
-        return { variable: createdVariable, ...rest };
-      } catch (e) {
-        throw new SubmissionError({ variable: ensureError(e).message });
-      }
-    },
-});
-const NodeConfiguration = compose<
-  NodeConfigurationInnerProps,
-  StageEditorSectionProps
->(
-  connector,
-  formHandlers,
-)(NodeConfigurationInner);
 export default NodeConfiguration;

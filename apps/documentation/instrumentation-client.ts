@@ -1,12 +1,17 @@
 import posthog from 'posthog-js';
 
+import { isProductionHost } from '~/lib/analytics/isProductionHost';
+
 const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
 const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 
-if (process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true') {
+if (isProductionHost(window.location.hostname)) {
   posthog.init(POSTHOG_API_KEY, {
     api_host: POSTHOG_HOST,
-    capture_pageview: true,
+    // 'history_change', not `true`: the site navigates client-side through the App
+    // Router, and plain `true` only captures the initial load, not the pages
+    // visited after it.
+    capture_pageview: 'history_change',
     capture_pageleave: true,
     capture_exceptions: true,
     autocapture: true,

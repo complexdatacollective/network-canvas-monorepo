@@ -1,14 +1,15 @@
-/* eslint-disable react/jsx-props-no-spreading */
-import { useCallback, useMemo } from 'react';
-import { compose } from 'react-recompose';
+import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
-import { getFormInitialValues, SubmissionError } from 'redux-form';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageInitialValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,
@@ -21,21 +22,14 @@ import {
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
-import withSubject from '../../enhancers/withSubject';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 
-// The shared row-editor form name every DialogArrayField editor requests
-// (see this file's own `requestedEditFormName`) — only one editor dialog is
-// ever open at a time, so this is safe to read unqualified.
-const EDIT_FORM_NAME = 'editable-list-form';
+type Prompt = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// Narrows the section's loosely-typed subject entity (sourced from
-// redux-form state via withSubject) to the literal union
-// getVariablesForSubjectSelector requires.
 const isSubjectEntity = (
   value: string | undefined,
 ): value is 'node' | 'edge' | 'ego' =>
@@ -45,18 +39,23 @@ const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-type GeospatialPromptsProps = StageEditorSectionProps & {
-  entity?: string;
-  type?: string;
+
+// Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
+// only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
+// disabledMessage}` (injected) — the component it wraps must accept exactly
+// that shape (or less) for the composition below to typecheck. `stagePath`/
+// `stagePosition` pass through unread (the section doesn't need them).
+type GeospatialPromptsProps = {
   disabled?: boolean;
   disabledMessage?: string;
 };
+
 const GeospatialPrompts = ({
-  entity,
-  type,
   disabled,
   disabledMessage,
 }: GeospatialPromptsProps) => {
+  const { entity, type } = useSubject();
+  const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   const subject = useMemo(
     () => (isSubjectEntity(entity) && type ? { entity, type } : null),
     [entity, type],
@@ -65,36 +64,40 @@ const GeospatialPrompts = ({
     subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
-  const originalVariable = useSelector((state: RootState) => {
-    const initial = getFormInitialValues(EDIT_FORM_NAME)(state);
-    return isRecord(initial) && typeof initial.variable === 'string'
-      ? initial.variable
-      : '';
-  });
   // Cross-class exclusivity gate: the geospatial selection is an UNVALIDATED
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
   // exclusion — see the shared withVariableOptions' excludeValidatedUses
-  // call). `variable` is a plain field on the prompt form (PromptFields.tsx's
-  // ValidatedField name="variable"), so a STRING value renders correctly.
-  const onBeforeSave = useCallback(
-    (value: unknown) => {
-      if (!subject || !isRecord(value)) return value;
-      const variable = typeof value.variable === 'string' ? value.variable : '';
+  // call). Implemented as `editorValidate` rather than `onBeforeSave`: only
+  // the dialog's own `initialValues` context (the row's pre-edit value) can
+  // supply the "picked before this edit" escape hatch — `onBeforeSave`
+  // receives the already-merged post-edit value with no way to tell an
+  // unchanged pick from a changed one.
+  const editorValidate = useCallback(
+    (
+      values: Record<string, unknown>,
+      context?: { initialValues?: unknown },
+    ) => {
+      if (!subject) return undefined;
+      const variable =
+        typeof values.variable === 'string' ? values.variable : '';
+      const original =
+        isRecord(context?.initialValues) &&
+        typeof context.initialValues.variable === 'string'
+          ? context.initialValues.variable
+          : '';
       const issue = crossClassPickIssue({
         variableId: variable,
-        originalVariableId: originalVariable,
+        originalVariableId: original,
         hasConflictingUse: (variableId) =>
           (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
         allVariables,
         message: validatedElsewhereMessage,
       });
-      if (issue) {
-        throw new SubmissionError({ variable: issue });
-      }
-      return value;
+      if (!issue) return undefined;
+      return { variable: issue };
     },
-    [subject, roleMap, allVariables, originalVariable],
+    [subject, roleMap, allVariables],
   );
 
   return (
@@ -109,28 +112,46 @@ const GeospatialPrompts = ({
       }
       title="Prompts"
     >
-      <ValidatedFieldArray
+      <ArchitectArrayField
         name="prompts"
         label="Prompts"
         labelHidden
         component={DialogArrayField}
         validation={{ notEmpty }}
-        componentProps={{
-          addTitle: 'Edit Prompt',
-          previewComponent: PromptPreview,
-          editorFieldsComponent: PromptFields,
-          editorTitle: 'Edit Prompt',
-          itemLabel: 'prompt',
-          editorProps: { entity, type },
-          onBeforeSave,
-          requestedEditFormName: 'editable-list-form',
-          sortable: true,
-        }}
+        initialValue={initialPrompts}
+        addTitle="Edit Prompt"
+        previewComponent={
+          PromptPreview as ComponentType<Record<string, unknown>>
+        }
+        editorFieldsComponent={
+          PromptFields as ComponentType<Record<string, unknown>>
+        }
+        editorTitle="Edit Prompt"
+        itemLabel="prompt"
+        editorProps={{ entity, type }}
+        editorValidate={editorValidate}
+        requestedEditFormName="editable-list-form"
+        sortable
       />
     </Section>
   );
 };
-export default compose<GeospatialPromptsProps, StageEditorSectionProps>(
-  withSubject,
-  withDisabledSubjectRequired,
-)(GeospatialPrompts);
+
+const GeospatialPromptsWithDisabledState =
+  withDisabledSubjectRequired(GeospatialPrompts);
+
+/**
+ * `withDisabledSubjectRequired` computes `disabled`/`disabledMessage` from
+ * `interfaceType`/`type` props (the `withSubject` enhancer used to inject
+ * `type`). Sections no longer receive `type` as a prop — it comes from
+ * `useSubject()` — so this forwards it explicitly rather than composing the
+ * two enhancers as before.
+ */
+const GeospatialPromptsSection = (props: StageEditorSectionProps) => {
+  const { type } = useSubject();
+  return (
+    <GeospatialPromptsWithDisabledState {...props} type={type ?? undefined} />
+  );
+};
+
+export default GeospatialPromptsSection;

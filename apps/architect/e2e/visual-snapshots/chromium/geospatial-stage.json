@@ -1,27 +1,27 @@
 {
   "label": "Where Do You Live?",
+  "id": "id-1",
   "type": "Geospatial",
   "subject": {
-    "type": "id-1",
-    "entity": "node"
+    "entity": "node",
+    "type": "id-2"
   },
   "mapOptions": {
-    "tokenAssetId": "id-2",
-    "showTransit": false,
-    "allowSearch": false,
-    "dataSourceAssetId": "geo_data",
+    "center": [0, 0],
+    "initialZoom": 2,
     "targetFeatureProperty": "name",
+    "tokenAssetId": "id-3",
+    "dataSourceAssetId": "geo_data",
     "color": "ord-color-seq-1",
     "style": "mapbox://styles/mapbox/streets-v12",
-    "center": [0, 0],
-    "initialZoom": 2
+    "showTransit": false,
+    "allowSearch": false
   },
   "prompts": [
     {
-      "id": "id-3",
+      "id": "id-4",
       "text": "Where do you live?",
-      "variable": "id-4"
+      "variable": "id-5"
     }
-  ],
-  "id": "id-5"
+  ]
 }
