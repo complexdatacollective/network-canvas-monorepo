@@ -568,6 +568,22 @@ export const DeclaredGestures: Story = {
       </div>
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Focusable exactly when focusing does something: activation or a drag
+    // earns a tab stop, a display-only node stays out of the tab order.
+    await expect(
+      canvas.getByRole('button', { name: 'Clickable' }).tabIndex,
+    ).toBe(0);
+    await expect(
+      canvas.getByRole('button', { name: 'Draggable' }).tabIndex,
+    ).toBe(0);
+    await expect(canvas.getByRole('button', { name: 'Both' }).tabIndex).toBe(0);
+    await expect(canvas.getByRole('button', { name: 'Display' }).tabIndex).toBe(
+      -1,
+    );
+  },
   parameters: {
     layout: 'padded',
     docs: {
@@ -608,11 +624,22 @@ export const SelectionDemo: Story = {
   args: {
     label: 'Click Me',
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button', { name: 'Click Me' });
+
+    // A clickable node is a toggle, and announces its state from `selected`.
+    await expect(node).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(node);
+    await waitFor(() => expect(node).toHaveAttribute('aria-pressed', 'true'));
+    await userEvent.click(node);
+    await waitFor(() => expect(node).toHaveAttribute('aria-pressed', 'false'));
+  },
   parameters: {
     docs: {
       description: {
         story:
-          'Click the node to toggle selection. Notice the spring animation when selecting and the smooth fade when deselecting.',
+          'Click the node to toggle selection. Notice the spring animation when selecting and the smooth fade when deselecting. The announced toggle state (`aria-pressed`) follows `selected`, so what assistive technology hears always matches what is shown.',
       },
     },
   },
@@ -926,6 +953,190 @@ the drag threshold drags (and the click that pointer capture still delivers is
 swallowed), and a press held still holds (its release is swallowed too). Each
 gesture resolves as exactly one thing.
         `,
+      },
+    },
+  },
+};
+
+const downOn = (node: Element, pointerId: number, x = 100, y = 100) =>
+  node.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: x,
+      clientY: y,
+      pointerId,
+      isPrimary: pointerId === 1,
+    }),
+  );
+
+const moveTo = (pointerId: number, x: number, y: number) =>
+  window.dispatchEvent(
+    new PointerEvent('pointermove', {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      pointerId,
+    }),
+  );
+
+const upFrom = (pointerId: number, x = 100, y = 100) =>
+  window.dispatchEvent(
+    new PointerEvent('pointerup', {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      pointerId,
+    }),
+  );
+
+/**
+ * The visual and semantic states a drag moves through.
+ */
+export const DragStates: Story = {
+  render: () => (
+    <div className="p-16">
+      <Node
+        label="Drag me"
+        onDragStart={fn()}
+        onDragMove={fn()}
+        onDragEnd={fn()}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button', { name: 'Drag me' });
+
+    // At rest: draggable means grab cursor, a tab stop, and not grabbed.
+    await expect(getComputedStyle(node).cursor).toBe('grab');
+    await expect(node.tabIndex).toBe(0);
+    await expect(node).toHaveAttribute('aria-grabbed', 'false');
+
+    // Mid-drag: grabbing cursor, aria-grabbed, and the dragging data state.
+    downOn(node, 7);
+    moveTo(7, 160, 100);
+    await waitFor(() => {
+      expect(node).toHaveAttribute('aria-grabbed', 'true');
+      expect(node).toHaveAttribute('data-node-dragging');
+      expect(getComputedStyle(node).cursor).toBe('grabbing');
+    });
+
+    // Released: everything returns to rest.
+    upFrom(7, 160, 100);
+    await waitFor(() => {
+      expect(node).toHaveAttribute('aria-grabbed', 'false');
+      expect(node).not.toHaveAttribute('data-node-dragging');
+      expect(getComputedStyle(node).cursor).toBe('grab');
+    });
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story:
+          'Declaring drag handlers makes the node render its own drag states: grab cursor at rest, grabbing plus `aria-grabbed` while the drag is live, and back to rest on release.',
+      },
+    },
+  },
+};
+
+/**
+ * A hold hands off to a drag: indicator withdrawn, label withdrawn, drag live.
+ */
+export const HoldToDragHandoff: Story = {
+  render: () => (
+    <div className="p-24">
+      <Node
+        label={fittingLabelCases[4].label}
+        onClick={fn()}
+        onDragStart={fn()}
+        onDragEnd={fn()}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button');
+    const openPopup = () =>
+      document.querySelector(
+        '[data-base-ui-portal] [data-open][role="tooltip"]',
+      );
+
+    // The press becomes a deliberate hold: the indicator fills the shape.
+    downOn(node, 3);
+    await waitFor(() =>
+      expect(node.querySelector('[data-node-holding]')).not.toBeNull(),
+    );
+
+    // The hold runs its course and reveals the clipped label.
+    await waitFor(() => expect(openPopup()).not.toBeNull(), { timeout: 2000 });
+
+    // Movement past the threshold turns the gesture into a drag: the label
+    // comes down rather than trailing the node, and the drag goes live.
+    moveTo(3, 170, 100);
+    await waitFor(() => {
+      expect(openPopup()).toBeNull();
+      expect(node).toHaveAttribute('data-node-dragging');
+    });
+
+    upFrom(3, 170, 100);
+    await waitFor(() => expect(node).not.toHaveAttribute('data-node-dragging'));
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story:
+          'One pointer sequence passing through all three phases: hold feedback, the revealed label, then a drag that withdraws the reveal. Each phase ends cleanly before the next begins.',
+      },
+    },
+  },
+};
+
+/**
+ * A second finger cannot disturb a hold it does not own.
+ */
+export const TwoFingerHold: Story = {
+  render: () => (
+    <div className="p-24">
+      <Node label={fittingLabelCases[4].label} onClick={fn()} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button');
+    const openPopup = () =>
+      document.querySelector(
+        '[data-base-ui-portal] [data-open][role="tooltip"]',
+      );
+
+    // One finger holds until the label appears.
+    downOn(node, 21);
+    await waitFor(() => expect(openPopup()).not.toBeNull(), { timeout: 2000 });
+
+    // A second finger lands on the same node and lifts again: the hold owns
+    // the gesture, so the label must not be snatched away mid-read.
+    downOn(node, 22);
+    upFrom(22);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(openPopup()).not.toBeNull();
+
+    // Releasing the owning finger is not an interruption either.
+    upFrom(21);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(openPopup()).not.toBeNull();
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story:
+          'Multi-touch ownership: the finger that began a hold is the only one that can end it. A second finger touching the node neither dismisses the revealed label nor starts a new gesture.',
       },
     },
   },
