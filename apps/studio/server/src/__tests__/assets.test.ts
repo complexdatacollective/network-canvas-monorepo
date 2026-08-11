@@ -4,7 +4,12 @@ import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
-import { createAssetRoutes, createAssetStore } from '../assets.ts';
+import {
+  type AssetStore,
+  createAssetRoutes,
+  createAssetStore,
+  deliveryFor,
+} from '../assets.ts';
 import { readEnv } from '../env.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
@@ -77,7 +82,6 @@ describe.skipIf(!reachable)('asset storage', () => {
     expect(res.headers.get('Cache-Control')).toBe(
       'public, max-age=31536000, immutable',
     );
-    expect(res.headers.get('Content-Type')).toContain('text/plain');
     expect(res.headers.get('ETag')).toBe(`"${expectedHash}"`);
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
   });
@@ -128,9 +132,6 @@ describe.skipIf(!reachable)('asset storage', () => {
     const again = (await second.json()) as { hash: string; mediaType: string };
     expect(again.hash).toBe(stored.hash);
     expect(again.mediaType).toBe('text/plain');
-
-    const got = await app.request(`/storage/${stored.hash}`);
-    expect(got.headers.get('Content-Type')).toContain('text/plain');
   });
 
   it('enforces the upload cap while streaming, before buffering the body', async () => {
@@ -146,6 +147,92 @@ describe.skipIf(!reachable)('asset storage', () => {
     expect(res.status).toBe(413);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
+    );
+  });
+});
+
+// The delivery policy is origin security, not storage: it runs against an
+// in-memory store so it is exercised on every unit run, with or without an
+// object store.
+function memoryStore(): AssetStore {
+  const objects = new Map<string, { bytes: Uint8Array; mediaType: string }>();
+  return {
+    async put(bytes, mediaType) {
+      const hash = createHash('sha256').update(bytes).digest('hex');
+      if (!objects.has(hash)) objects.set(hash, { bytes, mediaType });
+      const stored = objects.get(hash)!;
+      return {
+        hash,
+        size: stored.bytes.byteLength,
+        mediaType: stored.mediaType,
+      };
+    },
+    async get(hash) {
+      const stored = objects.get(hash);
+      if (!stored) return null;
+      return {
+        body: new Response(stored.bytes).body!,
+        mediaType: stored.mediaType,
+        size: stored.bytes.byteLength,
+      };
+    },
+  };
+}
+
+describe('asset delivery policy', () => {
+  const routes = createAssetRoutes(memoryStore());
+
+  async function upload(body: string, mediaType: string): Promise<string> {
+    const res = await routes.request('/', {
+      method: 'POST',
+      body: bytesOf(body),
+      headers: { 'Content-Type': mediaType },
+    });
+    return ((await res.json()) as { hash: string }).hash;
+  }
+
+  it.each([
+    ['text/html', '<script>alert(document.domain)</script>'],
+    [
+      'image/svg+xml',
+      '<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>',
+    ],
+    ['application/xhtml+xml', '<html><body>x</body></html>'],
+    ['text/plain; charset=utf-8', 'plain'],
+  ])('serves %s as an opaque download', async (mediaType, body) => {
+    const hash = await upload(body, mediaType);
+    const res = await routes.request(`/${hash}`);
+    // Uploads are untrusted and this is the app's own origin: nothing a
+    // browser could execute as a document may be served with a type that
+    // invites it to.
+    expect(res.headers.get('Content-Type')).toBe('application/octet-stream');
+    expect(res.headers.get('Content-Disposition')).toBe('attachment');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'none'; sandbox",
+    );
+    expect(await res.text()).toBe(body);
+  });
+
+  it('serves recognised media inline with its own type', async () => {
+    const hash = await upload('not really a png', 'image/png');
+    const res = await routes.request(`/${hash}`);
+    expect(res.headers.get('Content-Type')).toBe('image/png');
+    expect(res.headers.get('Content-Disposition')).toBe('inline');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  });
+
+  it('classifies a parameterised media type by its essence', () => {
+    expect(deliveryFor('image/png; charset=binary')).toEqual({
+      contentType: 'image/png',
+      disposition: 'inline',
+    });
+    expect(deliveryFor('IMAGE/PNG')).toEqual({
+      contentType: 'image/png',
+      disposition: 'inline',
+    });
+    expect(deliveryFor('text/html;charset=utf-8').disposition).toBe(
+      'attachment',
     );
   });
 });

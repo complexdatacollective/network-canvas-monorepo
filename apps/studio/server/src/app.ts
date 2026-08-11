@@ -1,6 +1,6 @@
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';
@@ -36,19 +36,18 @@ export function createApp(env = readEnv()) {
     await next();
   });
 
-  // Unknown API and RPC paths must 404 as JSON (RFC 9457 problem shape, per
-  // the API ADR #1248) — never fall through to the SPA fallback and return
-  // HTML.
-  app.all('/api/*', (c) =>
+  // Unknown machine-surface paths must 404 as JSON (RFC 9457 problem shape,
+  // per the API ADR #1248) — never fall through to the SPA fallback, which
+  // would answer an API, RPC, or asset request with 200 and the app shell's
+  // HTML for a caller to cache.
+  const notFound = (c: Context) =>
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',
-    }),
-  );
-  app.all('/rpc/*', (c) =>
-    c.json({ title: 'Not Found', status: 404 }, 404, {
-      'Content-Type': 'application/problem+json',
-    }),
-  );
+    });
+  for (const prefix of ['/api', '/rpc', '/storage']) {
+    app.all(prefix, notFound);
+    app.all(`${prefix}/*`, notFound);
+  }
 
   // Placeholder handlers proving the WebSocket topology end to end; the real
   // protocol ("studio.sync.v1", #1247) replaces the echo behaviour, not the

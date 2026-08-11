@@ -49,6 +49,15 @@ Objects are keyed by content hash, so `/storage/:hash` responses are
 immutable-cacheable by construction. Files ride plain HTTP rather than the
 RPC surface — uploads must stream, retrievals must cache.
 
+Uploaded bytes are untrusted and `/storage` is the app's own origin, so
+retrieval never reflects the uploaded `Content-Type` blindly: only media a
+browser cannot turn into script (the common image, audio, and video types) is
+served inline with its own type, and everything else — HTML, SVG, anything
+unrecognised — is served as `application/octet-stream` with
+`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a
+`default-src 'none'; sandbox` CSP. Rendering SVG stimuli inline needs an
+isolated asset origin first.
+
 ## Development
 
 ```bash

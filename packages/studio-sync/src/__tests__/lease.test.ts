@@ -1,10 +1,17 @@
 // The lease state machine's specified failure modes, each exercised against
 // real atomic conditional statements on Postgres. Time passage (a slept
 // laptop) is simulated by forceExpire, which touches only expires_at.
+import { randomUUID } from 'node:crypto';
+
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import {
+  forceExpire,
+  LeaseRejectedError,
+  type SyncServer,
+  UnknownSectionError,
+} from '../server.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -165,6 +172,26 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     await server.release(draft, 'stage-1', 'tab-A', a!.epoch);
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
+  });
+
+  it('refuses a lease for a section the draft does not contain', async () => {
+    const draft = await makeDraft(server);
+    await expect(
+      server.acquire(draft, 'stage-does-not-exist', 'tab-A'),
+    ).rejects.toThrow(UnknownSectionError);
+    // And leaves nothing behind: an unconditional insert would accumulate
+    // meaningless rows for every arbitrary id a client sends.
+    const rows = await db.query(
+      `SELECT count(*)::int AS c FROM leases WHERE draft_id = $1`,
+      [draft],
+    );
+    expect((rows.rows[0] as { c: number }).c).toBe(0);
+  });
+
+  it('refuses a lease for a draft that does not exist', async () => {
+    await expect(
+      server.acquire(randomUUID(), 'stage-1', 'tab-A'),
+    ).rejects.toThrow(UnknownSectionError);
   });
 
   it('racing acquires on an expired lease admit exactly one winner', async () => {

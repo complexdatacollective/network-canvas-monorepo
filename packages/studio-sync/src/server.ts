@@ -18,6 +18,23 @@ export class LeaseRejectedError extends Error {
   }
 }
 
+/** A lease was requested for a draft or section that does not exist. */
+export class UnknownSectionError extends Error {
+  constructor(draftId: string, sectionId: string) {
+    super(`no section ${sectionId} in draft ${draftId}`);
+  }
+}
+
+// Lease lifetimes are wall-clock, so every expiry comparison below uses
+// clock_timestamp() rather than now(): now() is the transaction's start time,
+// and a transaction that waits on a row lock past the TTL would otherwise read
+// an expired lease as live.
+
+/** A section is real only if the draft's head manifest lists it. */
+const SECTION_EXISTS = `SELECT 1 FROM drafts d
+   JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
+   WHERE d.id = $1 AND m.section_hashes ->> $2 IS NOT NULL`;
+
 export type Lease = { epoch: bigint; expiresAt: Date };
 
 export type CommitResult = {
@@ -77,6 +94,11 @@ export class SyncServer {
    * unavailable until expiry. Re-acquiring one's own EXPIRED lease still
    * bumps the epoch — that fences out the owner's pre-sleep in-flight
    * commits.
+   *
+   * The statement grants a lease only for a section that the draft's head
+   * manifest actually contains, so an unknown draft or section throws instead
+   * of returning a meaningless epoch (and leaving a lease row behind) that
+   * only fails later, when the client looks the absent section up.
    */
   async acquire(
     draftId: string,
@@ -85,21 +107,36 @@ export class SyncServer {
   ): Promise<Lease | null> {
     const res = await this.db.query(
       `INSERT INTO leases (draft_id, section_id, owner, epoch, expires_at)
-       VALUES ($1, $2, $3, 1, now() + make_interval(secs => $4::float / 1000))
+       SELECT $1, $2, $3, 1,
+              clock_timestamp() + make_interval(secs => $4::float / 1000)
+       WHERE EXISTS (${SECTION_EXISTS})
        ON CONFLICT (draft_id, section_id) DO UPDATE
          SET owner = excluded.owner,
              epoch = CASE
-               WHEN leases.owner = excluded.owner AND leases.expires_at > now()
+               WHEN leases.owner = excluded.owner
+                 AND leases.expires_at > clock_timestamp()
                  THEN leases.epoch
                ELSE leases.epoch + 1
              END,
              expires_at = excluded.expires_at
-         WHERE leases.expires_at < now() OR leases.owner = excluded.owner
+         WHERE leases.expires_at < clock_timestamp()
+            OR leases.owner = excluded.owner
        RETURNING epoch, expires_at`,
       [draftId, sectionId, owner, this.ttlMs],
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
-    return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
+    if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
+    // No row means either "another owner holds it" or "no such section" —
+    // only the failure path pays for the distinction.
+    await this.assertSectionExists(draftId, sectionId);
+    return null;
+  }
+
+  private async assertSectionExists(draftId: string, sectionId: string) {
+    const known = await this.db.query(SECTION_EXISTS, [draftId, sectionId]);
+    if (known.rowCount === 0) {
+      throw new UnknownSectionError(draftId, sectionId);
+    }
   }
 
   /**
@@ -117,7 +154,7 @@ export class SyncServer {
     const res = await this.db.query(
       `UPDATE leases
        SET owner = $3, epoch = epoch + 1,
-           expires_at = now() + make_interval(secs => $4::float / 1000)
+           expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
        WHERE draft_id = $1 AND section_id = $2
        RETURNING epoch, expires_at`,
       [draftId, sectionId, owner, this.ttlMs],
@@ -135,9 +172,9 @@ export class SyncServer {
   ): Promise<Lease | null> {
     const res = await this.db.query(
       `UPDATE leases
-       SET expires_at = now() + make_interval(secs => $5::float / 1000)
+       SET expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
        WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-         AND expires_at > now()
+         AND expires_at > clock_timestamp()
        RETURNING epoch, expires_at`,
       [draftId, sectionId, owner, String(epoch), this.ttlMs],
     );
@@ -156,9 +193,9 @@ export class SyncServer {
     epoch: bigint,
   ): Promise<void> {
     await this.db.query(
-      `UPDATE leases SET expires_at = now()
+      `UPDATE leases SET expires_at = clock_timestamp()
        WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-         AND expires_at > now()`,
+         AND expires_at > clock_timestamp()`,
       [draftId, sectionId, owner, String(epoch)],
     );
   }
@@ -235,10 +272,15 @@ export class SyncServer {
       // and its epoch bump linearizes AFTER this commit — without the lock, a
       // takeover could bump the epoch between this check and the apply,
       // and the stale owner would still write.
+      //
+      // The expiry compares against clock_timestamp(), not now(): this
+      // transaction may have waited on the draft-head lock for longer than
+      // the TTL, and now() would still report the moment it started, so a
+      // lease that expired while queueing would validate.
       const lease = await client.query(
         `SELECT 1 FROM leases
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND expires_at > now()
+           AND expires_at > clock_timestamp()
          FOR UPDATE`,
         [draftId, sectionId, owner, String(epoch)],
       );

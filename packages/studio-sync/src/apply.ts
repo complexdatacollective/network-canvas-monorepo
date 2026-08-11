@@ -85,7 +85,14 @@ export function applyCommands(
 // hashes identically to the JSONB representation Postgres stores.
 function canon(value: unknown): string | undefined {
   if (Array.isArray(value)) {
-    return `[${value.map((v) => canon(v) ?? 'null').join(',')}]`;
+    // Indexed, not `map`: map skips holes, so a sparse array would serialize
+    // as if the holes were not there, while JSON (and therefore the JSONB the
+    // row stores) renders every hole as null.
+    const items: string[] = [];
+    for (let i = 0; i < value.length; i++) {
+      items.push(canon(value[i]) ?? 'null');
+    }
+    return `[${items.join(',')}]`;
   }
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)

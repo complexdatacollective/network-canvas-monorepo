@@ -79,4 +79,17 @@ describe('studio server', () => {
       'application/problem+json',
     );
   });
+
+  it('does not serve unmatched storage paths', async () => {
+    const app = createApp();
+    // An asset caller must never be handed the SPA shell with a 200 to
+    // cache: unmatched storage paths belong to the machine surface.
+    for (const path of ['/storage/', '/storage/deadbeef/extra']) {
+      const res = await app.request(path);
+      expect(res.status).toBe(404);
+      expect(res.headers.get('Content-Type')).toContain(
+        'application/problem+json',
+      );
+    }
+  });
 });

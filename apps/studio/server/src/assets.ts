@@ -113,6 +113,41 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
+// Uploaded bytes are untrusted, and they are served from the Studio origin —
+// the same origin as the SPA and its RPC surface. Only media the browser
+// cannot turn into script is served with its declared type and inline;
+// everything else (HTML, SVG, and anything unrecognised) is delivered as an
+// opaque download, so opening an asset URL can never run attacker script
+// against a signed-in participant's session. SVG is deliberately absent: it
+// carries <script>. Serving it for real needs an isolated origin.
+const INLINE_MEDIA_TYPES = new Set([
+  'image/apng',
+  'image/avif',
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'audio/aac',
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+  'video/mp4',
+  'video/ogg',
+  'video/webm',
+]);
+
+/** The delivery policy for a stored media type: type + disposition. */
+export function deliveryFor(mediaType: string): {
+  contentType: string;
+  disposition: 'inline' | 'attachment';
+} {
+  const essence = mediaType.split(';')[0]?.trim().toLowerCase() ?? '';
+  return INLINE_MEDIA_TYPES.has(essence)
+    ? { contentType: essence, disposition: 'inline' }
+    : { contentType: 'application/octet-stream', disposition: 'attachment' };
+}
+
 function problem(status: number, title: string) {
   return { title, status };
 }
@@ -201,7 +236,14 @@ export function createAssetRoutes(
     if (asset === null) {
       return c.json(problem(404, 'Not Found'), 404, PROBLEM_HEADERS);
     }
-    c.header('Content-Type', asset.mediaType);
+    const delivery = deliveryFor(asset.mediaType);
+    c.header('Content-Type', delivery.contentType);
+    c.header('Content-Disposition', delivery.disposition);
+    // Belt and braces around the type decision above: no sniffing back into
+    // an executable type, and no scripts or subresources if a browser renders
+    // the response as a document anyway.
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Content-Security-Policy', "default-src 'none'; sandbox");
     // A content hash never changes its bytes: immutable by construction.
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     c.header('ETag', `"${hash}"`);

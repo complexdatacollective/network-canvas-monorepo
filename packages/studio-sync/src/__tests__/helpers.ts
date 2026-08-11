@@ -55,6 +55,23 @@ export async function makeDraft(
   return draftId;
 }
 
+/**
+ * Wait until some backend in this database is blocked on a lock — the signal
+ * that a transaction under test has reached its `FOR UPDATE` and is queueing
+ * behind another one.
+ */
+export async function waitForLockWait(db: pg.Pool): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const res = await db.query(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    if ((res.rows[0] as { waiting: number }).waiting > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error('no backend ever blocked on a lock');
+}
+
 export async function assertLinearChain(
   server: SyncServer,
   draftId: string,

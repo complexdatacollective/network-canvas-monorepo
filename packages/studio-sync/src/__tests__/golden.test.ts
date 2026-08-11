@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   applyCommands,
+  canonicalize,
   type Command,
   contentHash,
   type SectionDoc,
@@ -112,6 +113,25 @@ describe('canonical serialization', () => {
     );
     expect(contentHash({ list: [1, undefined, 2] })).toBe(
       contentHash({ list: [1, null, 2] }),
+    );
+  });
+
+  it('renders sparse array slots as null, like JSON', () => {
+    // A hole is not an absent element: JSON.stringify(Array(1)) is "[null]",
+    // and node-postgres stores the same. Hashing it as an empty array would
+    // both disagree with the stored row and collide with a genuinely empty
+    // list.
+    // oxlint-disable-next-line no-sparse-arrays -- the case under test
+    const sparse = [1, , 3];
+    expect(contentHash({ list: sparse })).toBe(
+      contentHash({ list: [1, null, 3] }),
+    );
+    expect(contentHash({ list: Array(2) })).toBe(
+      contentHash({ list: [null, null] }),
+    );
+    expect(contentHash({ list: Array(1) })).not.toBe(contentHash({ list: [] }));
+    expect(canonicalize({ list: sparse })).toBe(
+      JSON.stringify({ list: sparse }),
     );
   });
 

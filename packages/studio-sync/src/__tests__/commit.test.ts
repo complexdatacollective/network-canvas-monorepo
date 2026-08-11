@@ -12,6 +12,7 @@ import {
   DEFAULT_SECTIONS,
   makeDraft,
   makeServer,
+  waitForLockWait,
 } from './helpers.ts';
 
 describe.skipIf(!dbAvailable)('commit path', () => {
@@ -130,6 +131,46 @@ describe.skipIf(!dbAvailable)('commit path', () => {
     );
     expect((log.rows[0] as { c: number }).c).toBe(1);
     expect(await assertLinearChain(server, draft)).toBe(2); // seq 0 + one commit
+  });
+
+  it('a commit that waits out its TTL on the head lock is rejected', async () => {
+    const draft = await makeDraft(server);
+    const a = await server.acquire(draft, 'stage-1', 'tab-A');
+
+    // Hold the draft-head row so the commit blocks immediately after its
+    // transaction (and therefore its now()) starts.
+    const blocker = await db.connect();
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
+        draft,
+      ]);
+
+      const commit = server
+        .commit({
+          draftId: draft,
+          sectionId: 'stage-1',
+          owner: 'tab-A',
+          epoch: a!.epoch,
+          clientSeq: 1n,
+          commands: [{ op: 'set', key: 'label', value: 'waited too long' }],
+        })
+        .then(
+          () => 'committed' as const,
+          (err: unknown) => err,
+        );
+      await waitForLockWait(db);
+
+      // The lease expires while the commit queues. Transaction-start time
+      // would still read it as live at the serialization point.
+      await forceExpire(db, draft, 'stage-1');
+      await blocker.query('ROLLBACK');
+
+      expect(await commit).toBeInstanceOf(LeaseRejectedError);
+    } finally {
+      blocker.release();
+    }
+    expect(await assertLinearChain(server, draft)).toBe(1); // seed only
   });
 
   it('concurrent identical retransmissions admit exactly one application', async () => {

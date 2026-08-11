@@ -26,8 +26,10 @@ CREATE TABLE manifests (
 );
 
 -- Lease table: owner is a connection/tab-scoped session id, never a user id.
+-- The draft reference is a real constraint: a lease for a draft that does not
+-- exist can only ever be dead weight.
 CREATE TABLE leases (
-  draft_id uuid NOT NULL,
+  draft_id uuid NOT NULL REFERENCES drafts (id),
   section_id text NOT NULL,
   owner text NOT NULL,
   epoch bigint NOT NULL,

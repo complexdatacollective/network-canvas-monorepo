@@ -20,6 +20,12 @@ type SectionState = {
   local: SectionDoc;
   nextClientSeq: bigint;
   pending: PendingBatch[];
+  /**
+   * Bumped whenever an acknowledgement advances base and drops its batch.
+   * A resume snapshot read before a bump describes a state this client has
+   * already moved past, so reconnect discards it rather than assigning it.
+   */
+  version: number;
 };
 
 export class SyncClient {
@@ -46,12 +52,22 @@ export class SyncClient {
     const doc = await this.server.getSection(
       resume.sectionHashes[sectionId] ?? '',
     );
+    // Reopening a still-active lease (a retried acquire, or a second
+    // openSection for the same section) keeps its epoch, and client_seq is
+    // unique per (owner, section, epoch): restarting at 1 would reuse an
+    // idempotency key the server has already logged, so the next edit would
+    // be deduplicated against an older command while the client counted it
+    // as committed.
+    const acked = resume.lastApplied[sectionId];
+    const nextClientSeq =
+      acked && acked.epoch === lease.epoch ? acked.clientSeq + 1n : 1n;
     this.sections.set(sectionId, {
       epoch: lease.epoch,
       base: doc,
       local: doc,
-      nextClientSeq: 1n,
+      nextClientSeq,
       pending: [],
+      version: 0,
     });
     return true;
   }
@@ -92,6 +108,7 @@ export class SyncClient {
       if (index !== -1) {
         s.pending.splice(index, 1);
         s.base = applyCommands(s.base, batch.commands);
+        s.version += 1;
       }
       return 'committed';
     } catch (err) {
@@ -114,22 +131,37 @@ export class SyncClient {
    * Reconnect: manifest-hash resync plus retransmission of unacknowledged
    * batches. Batches the server already applied (client_seq <= lastApplied)
    * are dropped locally; the rest retransmit through the idempotent path.
+   *
+   * A push can commit while the resume reads are in flight. Its continuation
+   * advances base and removes the batch from the queue, so adopting the older
+   * snapshot afterwards would move base backwards with no queue entry left to
+   * replay the difference — the client would sit silently behind the server.
+   * The state version detects exactly that and re-reads instead; each retry
+   * requires another acknowledgement to have landed, so it settles as soon as
+   * the in-flight pushes do.
    */
   async reconnect(sectionId: string): Promise<void> {
-    const s = this.state(sectionId);
-    const resume = await this.server.resume(this.draftId, this.owner);
-    const last = resume.lastApplied[sectionId];
-    if (last && last.epoch === s.epoch) {
-      s.pending = s.pending.filter((b) => b.clientSeq > last.clientSeq);
+    for (;;) {
+      const s = this.state(sectionId);
+      const version = s.version;
+      const resume = await this.server.resume(this.draftId, this.owner);
+      const serverDoc = await this.server.getSection(
+        resume.sectionHashes[sectionId] ?? '',
+      );
+      if (s.version !== version) continue;
+
+      const last = resume.lastApplied[sectionId];
+      if (last && last.epoch === s.epoch) {
+        s.pending = s.pending.filter((b) => b.clientSeq > last.clientSeq);
+      }
+      s.base = serverDoc;
+      s.local = s.pending.reduce(
+        (doc, b) => applyCommands(doc, b.commands),
+        serverDoc,
+      );
+      s.version += 1;
+      break;
     }
-    const serverDoc = await this.server.getSection(
-      resume.sectionHashes[sectionId] ?? '',
-    );
-    s.base = serverDoc;
-    s.local = s.pending.reduce(
-      (doc, b) => applyCommands(doc, b.commands),
-      serverDoc,
-    );
     await this.pushAll(sectionId);
   }
 

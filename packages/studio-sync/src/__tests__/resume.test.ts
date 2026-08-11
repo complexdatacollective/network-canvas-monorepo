@@ -7,8 +7,36 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { contentHash } from '../apply.ts';
 import { SyncClient } from '../client.ts';
-import { forceExpire, type SyncServer } from '../server.ts';
+import { forceExpire, SyncServer } from '../server.ts';
 import { dbAvailable, makeDraft, makeServer } from './helpers.ts';
+
+/**
+ * A server whose next getSection parks until released — the deterministic
+ * stand-in for a slow read overtaken by a concurrent commit.
+ */
+class GatedServer extends SyncServer {
+  private gate: PromiseWithResolvers<void> | null = null;
+  private arrival: PromiseWithResolvers<void> | null = null;
+
+  /** Park the next getSection; `reached` resolves once that call arrives. */
+  armGetSection() {
+    const gate = Promise.withResolvers<void>();
+    const arrival = Promise.withResolvers<void>();
+    this.gate = gate;
+    this.arrival = arrival;
+    return { reached: arrival.promise, release: () => gate.resolve() };
+  }
+
+  override async getSection(hash: string) {
+    const gate = this.gate;
+    if (gate) {
+      this.gate = null;
+      this.arrival?.resolve();
+      await gate.promise;
+    }
+    return super.getSection(hash);
+  }
+}
 
 describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   let db: Pool;
@@ -97,6 +125,60 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
     expect(await sleeper.push('stage-1')).toBe('rejected');
     expect(sleeper.pendingCount('stage-1')).toBe(0);
     expect(sleeper.localHash('stage-1')).toBe(sleeper.baseHash('stage-1'));
+  });
+
+  it('reopening a still-active lease continues the client sequence', async () => {
+    const draft = await makeDraft(server);
+    const client = new SyncClient(randomUUID(), server, draft);
+    expect(await client.openSection('stage-1')).toBe(true);
+    client.edit('stage-1', [{ op: 'set', key: 'label', value: 'first' }]);
+    await client.pushAll('stage-1');
+
+    // The same tab reopens the section — a retried acquire returns the same
+    // still-active epoch. client_seq is unique per (owner, section, epoch),
+    // so restarting the count would reuse an idempotency key the server has
+    // already logged and the next edit would be silently deduplicated.
+    expect(await client.openSection('stage-1')).toBe(true);
+    client.edit('stage-1', [{ op: 'set', key: 'note', value: 'second' }]);
+    await client.pushAll('stage-1');
+
+    const resume = await server.resume(draft, client.owner);
+    const serverDoc = await server.getSection(
+      resume.sectionHashes['stage-1'] ?? '',
+    );
+    expect(serverDoc.label).toBe('first');
+    expect(serverDoc.note).toBe('second');
+    expect(client.localHash('stage-1')).toBe(contentHash(serverDoc));
+  });
+
+  it('reconnect discards a resume snapshot a concurrent push has overtaken', async () => {
+    const gated = new GatedServer(db);
+    const draft = await makeDraft(gated);
+    const client = new SyncClient(randomUUID(), gated, draft);
+    expect(await client.openSection('stage-1')).toBe(true);
+    client.edit('stage-1', [{ op: 'set', key: 'label', value: 'first' }]);
+    client.edit('stage-1', [{ op: 'set', key: 'note', value: 'second' }]);
+
+    // The reconnect reads resume, then parks on the section fetch; the push
+    // commits underneath it and removes that batch from the queue. Adopting
+    // the pre-commit document now would move base backwards with nothing
+    // left in the queue to replay the difference.
+    const gate = gated.armGetSection();
+    const reconnecting = client.reconnect('stage-1');
+    await gate.reached;
+    expect(await client.push('stage-1')).toBe('committed');
+    gate.release();
+    await reconnecting;
+
+    const resume = await gated.resume(draft, client.owner);
+    const serverDoc = await gated.getSection(
+      resume.sectionHashes['stage-1'] ?? '',
+    );
+    expect(serverDoc.label).toBe('first');
+    expect(serverDoc.note).toBe('second');
+    expect(client.pendingCount('stage-1')).toBe(0);
+    expect(client.baseHash('stage-1')).toBe(contentHash(serverDoc));
+    expect(client.localHash('stage-1')).toBe(contentHash(serverDoc));
   });
 
   it('concurrent flushes of the same head batch never drop an uncommitted batch', async () => {
