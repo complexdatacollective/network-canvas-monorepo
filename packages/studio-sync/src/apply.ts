@@ -79,17 +79,30 @@ export function applyCommands(
 
 // Canonical serialization: recursively key-sorted JSON, so structurally equal
 // documents always hash identically (the #1276 deterministic-ordering rule).
-export function canonicalize(value: unknown): string {
+// Non-JSON values follow JSON.stringify semantics exactly — array elements
+// JSON cannot represent (undefined, functions, symbols) serialize as null,
+// and object properties holding them are dropped — so a document always
+// hashes identically to the JSONB representation Postgres stores.
+function canon(value: unknown): string | undefined {
   if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(',')}]`;
+    return `[${value.map((v) => canon(v) ?? 'null').join(',')}]`;
   }
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, canon(v)] as const)
+      .filter(
+        (entry): entry is readonly [string, string] => entry[1] !== undefined,
+      )
       .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalize(v)}`).join(',')}}`;
+    return `{${entries.map(([k, c]) => `${JSON.stringify(k)}:${c}`).join(',')}}`;
   }
+  // JSON.stringify returns undefined (not a string) for undefined, functions,
+  // and symbols; the callers above substitute per JSON semantics.
   return JSON.stringify(value);
+}
+
+export function canonicalize(value: unknown): string {
+  return canon(value) ?? 'null';
 }
 
 export function contentHash(doc: SectionDoc): string {

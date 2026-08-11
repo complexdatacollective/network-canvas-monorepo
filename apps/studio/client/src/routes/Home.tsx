@@ -18,15 +18,25 @@ export default function Home() {
           Design network interview protocols and collect network data remotely.
         </Paragraph>
         {status.isPending && <Spinner size="sm" />}
+        {/* One persistent live region: the pending→success transition swaps
+            its content, so screen readers announce the connectivity check
+            completing. Failures keep their own alert below. */}
+        <Paragraph
+          className="text-sm"
+          role="status"
+          data-testid="server-status"
+        >
+          {status.isPending && 'Checking the server connection…'}
+          {status.isSuccess && (
+            <>
+              {status.data.name} server, version {status.data.version}.
+            </>
+          )}
+        </Paragraph>
         {status.isError && (
           <Paragraph role="alert">
             The server could not be reached. Check that it is running, then
             reload this page.
-          </Paragraph>
-        )}
-        {status.isSuccess && (
-          <Paragraph className="text-sm" data-testid="server-status">
-            {status.data.name} server, version {status.data.version}.
           </Paragraph>
         )}
       </Surface>

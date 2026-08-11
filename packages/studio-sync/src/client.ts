@@ -82,8 +82,17 @@ export class SyncClient {
         clientSeq: batch.clientSeq,
         commands: batch.commands,
       });
-      s.pending.shift();
-      s.base = applyCommands(s.base, batch.commands);
+      // Remove exactly the acknowledged batch, never positionally: concurrent
+      // push() calls can capture the same head batch (the server deduplicates
+      // the second send), and an unconditional shift() would let the second
+      // continuation drop the NEXT, uncommitted batch and re-apply this one
+      // to base. Only the continuation that actually removes the batch
+      // advances base.
+      const index = s.pending.findIndex((b) => b.clientSeq === batch.clientSeq);
+      if (index !== -1) {
+        s.pending.splice(index, 1);
+        s.base = applyCommands(s.base, batch.commands);
+      }
       return 'committed';
     } catch (err) {
       if (err instanceof LeaseRejectedError) {

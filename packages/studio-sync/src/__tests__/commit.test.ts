@@ -5,7 +5,7 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { applyCommands, contentHash } from '../apply.ts';
-import type { SyncServer } from '../server.ts';
+import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -78,6 +78,51 @@ describe.skipIf(!dbAvailable)('commit path', () => {
     expect(second.deduped).toBe(true);
     expect(second.manifestSeq).toBe(first.manifestSeq);
     expect(second.sectionHash).toBe(first.sectionHash);
+  });
+
+  it('a committed batch retried after lease loss is deduplicated, not rejected', async () => {
+    const draft = await makeDraft(server);
+    const a = await server.acquire(draft, 'stage-1', 'tab-A');
+    const params = {
+      draftId: draft,
+      sectionId: 'stage-1',
+      owner: 'tab-A',
+      epoch: a!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'label', value: 'persisted' } as const],
+    };
+
+    // The commit lands but the acknowledgement is lost…
+    const first = await server.commit({
+      ...params,
+      commands: [...params.commands],
+    });
+
+    // …and before the retry arrives, the lease expires and another tab
+    // takes the section over (epoch bump).
+    await forceExpire(db, draft, 'stage-1');
+    const b = await server.acquire(draft, 'stage-1', 'tab-B');
+    expect(b?.epoch).toBe(2n);
+
+    // The exact retransmission must return the recorded result — treating
+    // it as a lease rejection would make the client roll back a batch the
+    // server has already persisted.
+    const retry = await server.commit({
+      ...params,
+      commands: [...params.commands],
+    });
+    expect(retry.deduped).toBe(true);
+    expect(retry.manifestSeq).toBe(first.manifestSeq);
+    expect(retry.sectionHash).toBe(first.sectionHash);
+
+    // NEW work under the stale lease is still fenced out.
+    await expect(
+      server.commit({
+        ...params,
+        clientSeq: 2n,
+        commands: [{ op: 'set', key: 'label', value: 'stale' } as const],
+      }),
+    ).rejects.toThrow(LeaseRejectedError);
 
     const log = await db.query(
       `SELECT count(*)::int AS c FROM command_log WHERE draft_id = $1`,

@@ -169,12 +169,23 @@ describe.skipIf(!dbAvailable)(
               } else if (o === 'acquireA' || o === 'acquireB') {
                 const who = o === 'acquireA' ? 'A' : 'B';
                 const lease = await server.acquire(draft, 's', `tab-${who}`);
-                const shouldSucceed = model === null || model.expired;
+                // Same-owner re-acquire of an ACTIVE lease is idempotent
+                // (same epoch); everything else succeeds only on a free or
+                // expired lease and bumps the epoch. (Derived consts appear
+                // only inside expressions, never as branch conditions — the
+                // loop back-edge makes branch-narrowing over aliases of
+                // `model` circular for the checker.)
+                const shouldSucceed =
+                  model === null || model.expired || model.who === who;
                 expect(lease !== null).toBe(shouldSucceed);
                 if (lease) {
+                  const wasIdempotent =
+                    model !== null && !model.expired && model.who === who;
                   expect(
-                    lease.epoch > lastEpoch ||
-                      (model === null && lease.epoch === 1n),
+                    wasIdempotent
+                      ? lease.epoch === model?.epoch
+                      : lease.epoch > lastEpoch ||
+                          (model === null && lease.epoch === 1n),
                   ).toBe(true);
                   lastEpoch = lease.epoch;
                   leases[who] = lease.epoch;

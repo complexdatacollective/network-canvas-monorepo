@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -53,10 +54,28 @@ export function createAssetStore(env: S3Env): AssetStore {
   return {
     async put(bytes, mediaType) {
       const hash = createHash('sha256').update(bytes).digest('hex');
+      const key = `${KEY_PREFIX}${hash}`;
+      // First write wins: the stored representation (bytes AND metadata) is
+      // canonical and immutable. Re-uploading identical bytes with a
+      // different media type must not rewrite the object's metadata — cached
+      // copies of /storage/:hash live for a year, and a changed type would
+      // make the same hash mean different things to different clients.
+      try {
+        const existing = await client.send(
+          new HeadObjectCommand({ Bucket: env.bucket, Key: key }),
+        );
+        return {
+          hash,
+          size: existing.ContentLength ?? bytes.byteLength,
+          mediaType: existing.ContentType ?? mediaType,
+        };
+      } catch (error) {
+        if (!isNotFound(error)) throw error;
+      }
       await client.send(
         new PutObjectCommand({
           Bucket: env.bucket,
-          Key: `${KEY_PREFIX}${hash}`,
+          Key: key,
           Body: bytes,
           ContentType: mediaType,
           ContentLength: bytes.byteLength,
@@ -80,16 +99,18 @@ export function createAssetStore(env: S3Env): AssetStore {
           size: response.ContentLength,
         };
       } catch (error) {
-        if (
-          error instanceof Error &&
-          (error.name === 'NoSuchKey' || error.name === 'NotFound')
-        ) {
-          return null;
-        }
+        if (isNotFound(error)) return null;
         throw error;
       }
     },
   };
+}
+
+function isNotFound(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'NoSuchKey' || error.name === 'NotFound')
+  );
 }
 
 function problem(status: number, title: string) {
@@ -98,7 +119,43 @@ function problem(status: number, title: string) {
 
 const PROBLEM_HEADERS = { 'Content-Type': 'application/problem+json' };
 
-export function createAssetRoutes(store: AssetStore | undefined) {
+/**
+ * Read a request body while enforcing the size cap DURING the read — the cap
+ * must bound server memory, so an oversized (or unlength'd chunked) body is
+ * abandoned the moment it crosses the limit, never buffered first.
+ */
+async function readBodyCapped(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<Uint8Array | 'too-large'> {
+  if (body === null) return new Uint8Array(0);
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return 'too-large';
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
+export function createAssetRoutes(
+  store: AssetStore | undefined,
+  options?: { maxUploadBytes?: number },
+) {
+  const maxUploadBytes = options?.maxUploadBytes ?? MAX_UPLOAD_BYTES;
   const routes = new Hono();
 
   routes.post('/', async (c) => {
@@ -109,12 +166,18 @@ export function createAssetRoutes(store: AssetStore | undefined) {
         PROBLEM_HEADERS,
       );
     }
-    const bytes = new Uint8Array(await c.req.arrayBuffer());
+    // A truthful Content-Length is rejected before reading a single byte;
+    // bodies without one are capped while streaming (readBodyCapped).
+    const declared = Number(c.req.header('Content-Length'));
+    if (Number.isFinite(declared) && declared > maxUploadBytes) {
+      return c.json(problem(413, 'Content Too Large'), 413, PROBLEM_HEADERS);
+    }
+    const bytes = await readBodyCapped(c.req.raw.body, maxUploadBytes);
+    if (bytes === 'too-large') {
+      return c.json(problem(413, 'Content Too Large'), 413, PROBLEM_HEADERS);
+    }
     if (bytes.byteLength === 0) {
       return c.json(problem(400, 'Empty body'), 400, PROBLEM_HEADERS);
-    }
-    if (bytes.byteLength > MAX_UPLOAD_BYTES) {
-      return c.json(problem(413, 'Content Too Large'), 413, PROBLEM_HEADERS);
     }
     const mediaType =
       c.req.header('Content-Type') ?? 'application/octet-stream';

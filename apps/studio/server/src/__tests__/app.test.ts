@@ -40,18 +40,28 @@ describe('studio server', () => {
     expect(res.status).toBe(200);
     const doc = (await res.json()) as {
       openapi: string;
+      servers: { url: string }[];
       paths: Record<string, unknown>;
       components: { schemas: Record<string, unknown> };
     };
     expect(doc.openapi).toMatch(/^3\.1\./);
+    // Paths are relative to the mount prefix; the document must say so, or
+    // generated clients resolve /status against the host root.
+    expect(doc.servers).toEqual([{ url: '/api/v1' }]);
     expect(Object.keys(doc.paths)).toContain('/status');
     expect(Object.keys(doc.components.schemas)).toContain('Status');
   });
 
-  it('does not serve unknown API paths', async () => {
+  it('does not serve unknown API paths, refusing as problem JSON', async () => {
     const app = createApp();
     const res = await app.request('/api/v1/nope');
     expect(res.status).toBe(404);
+    // The guarantee is RFC 9457 problem details — never a fall-through to
+    // the SPA fallback's HTML.
+    expect(res.headers.get('Content-Type')).toContain(
+      'application/problem+json',
+    );
+    expect(await res.json()).toEqual({ title: 'Not Found', status: 404 });
   });
 
   it('serves instance status over the typed RPC surface', async () => {

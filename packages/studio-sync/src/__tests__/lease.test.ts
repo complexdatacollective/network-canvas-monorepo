@@ -31,6 +31,30 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
     expect(b).toBeNull();
   });
 
+  it("re-acquiring one's own active lease is idempotent (lost acquire response)", async () => {
+    const draft = await makeDraft(server);
+    const first = await server.acquire(draft, 'stage-1', 'tab-A');
+    expect(first?.epoch).toBe(1n);
+    // The response was lost; the same tab retries. It must get its lease
+    // back immediately — same epoch, refreshed TTL — not read the section
+    // as unavailable until expiry.
+    const retry = await server.acquire(draft, 'stage-1', 'tab-A');
+    expect(retry?.epoch).toBe(1n);
+    // Another owner is still refused.
+    expect(await server.acquire(draft, 'stage-1', 'tab-B')).toBeNull();
+  });
+
+  it("re-acquiring one's own expired lease still bumps the epoch", async () => {
+    const draft = await makeDraft(server);
+    const first = await server.acquire(draft, 'stage-1', 'tab-A');
+    expect(first?.epoch).toBe(1n);
+    await forceExpire(db, draft, 'stage-1');
+    // The same owner after expiry is a fresh claim: pre-sleep in-flight
+    // commits must be fenced out, so the epoch advances.
+    const again = await server.acquire(draft, 'stage-1', 'tab-A');
+    expect(again?.epoch).toBe(2n);
+  });
+
   it('sleep/wake takeover: expired lease is taken over with a bumped epoch; the sleeper is fenced out', async () => {
     const draft = await makeDraft(server);
     const a = await server.acquire(draft, 'stage-1', 'tab-A');

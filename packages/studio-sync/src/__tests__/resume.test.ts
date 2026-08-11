@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { contentHash } from '../apply.ts';
 import { SyncClient } from '../client.ts';
 import { forceExpire, type SyncServer } from '../server.ts';
 import { dbAvailable, makeDraft, makeServer } from './helpers.ts';
@@ -96,5 +97,32 @@ describe.skipIf(!dbAvailable)('reconnect and resume', () => {
     expect(await sleeper.push('stage-1')).toBe('rejected');
     expect(sleeper.pendingCount('stage-1')).toBe(0);
     expect(sleeper.localHash('stage-1')).toBe(sleeper.baseHash('stage-1'));
+  });
+
+  it('concurrent flushes of the same head batch never drop an uncommitted batch', async () => {
+    const draft = await makeDraft(server);
+    const client = new SyncClient(randomUUID(), server, draft);
+    expect(await client.openSection('stage-1')).toBe(true);
+
+    client.edit('stage-1', [{ op: 'set', key: 'label', value: 'first' }]);
+    client.edit('stage-1', [{ op: 'set', key: 'note', value: 'second' }]);
+
+    // Two flush triggers race: both capture the head batch; the server
+    // deduplicates the second send. Only one continuation may remove the
+    // batch and advance base — the second must not shift off the next,
+    // uncommitted batch or re-apply the first to base.
+    await Promise.all([client.push('stage-1'), client.push('stage-1')]);
+    expect(client.pendingCount('stage-1')).toBe(1);
+
+    await client.pushAll('stage-1');
+    expect(client.pendingCount('stage-1')).toBe(0);
+
+    // Client and server converge on the same section state.
+    const resume = await server.resume(draft, client.owner);
+    const serverDoc = await server.getSection(
+      resume.sectionHashes['stage-1'] ?? '',
+    );
+    expect(client.baseHash('stage-1')).toBe(contentHash(serverDoc));
+    expect(client.localHash('stage-1')).toBe(contentHash(serverDoc));
   });
 });

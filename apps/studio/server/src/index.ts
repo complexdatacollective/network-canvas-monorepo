@@ -70,18 +70,26 @@ const server = serve(
 );
 
 // Graceful shutdown is a requirement, not a nicety (#1247): every backend
-// deploy drops live sync sessions, so connections are told to go away
-// (1001) and the listener drains before the process exits. The timer is the
-// backstop for connections that never close.
+// deploy drops live sync sessions, so connections are told to go away (1001)
+// and their close handshakes are awaited before the listener drains and the
+// process exits — the HTTP server does not track upgraded sockets, so
+// exiting on server.close alone could cut close frames off mid-flight. The
+// timer is the backstop for connections that never complete the handshake.
 let shuttingDown = false;
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
-  for (const client of wsServer.clients) {
-    client.close(1001, 'Server shutting down');
-  }
-  server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 10_000).unref();
+  const closing = [...wsServer.clients].map(
+    (client) =>
+      new Promise<void>((done) => {
+        client.once('close', () => done());
+        client.close(1001, 'Server shutting down');
+      }),
+  );
+  void Promise.all(closing).then(() => {
+    server.close(() => process.exit(0));
+  });
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

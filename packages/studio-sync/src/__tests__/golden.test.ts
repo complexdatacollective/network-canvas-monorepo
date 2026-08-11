@@ -99,4 +99,24 @@ describe('canonical serialization', () => {
     const b: SectionDoc = { z: null, y: { a: [1, 2, 3], b: 2 }, x: 1 };
     expect(contentHash(a)).toBe(contentHash(b));
   });
+
+  it('follows JSON array semantics for non-JSON elements', () => {
+    // JSONB stores [undefined] as [null]; the hash must agree, and must not
+    // collide with a genuinely empty array (which would let ON CONFLICT
+    // DO NOTHING silently retain the wrong document).
+    expect(contentHash({ list: [undefined] })).toBe(
+      contentHash({ list: [null] }),
+    );
+    expect(contentHash({ list: [undefined] })).not.toBe(
+      contentHash({ list: [] }),
+    );
+    expect(contentHash({ list: [1, undefined, 2] })).toBe(
+      contentHash({ list: [1, null, 2] }),
+    );
+  });
+
+  it('follows JSON object semantics for non-JSON values', () => {
+    // JSON.stringify drops undefined-valued properties entirely.
+    expect(contentHash({ a: 1, b: undefined })).toBe(contentHash({ a: 1 }));
+  });
 });

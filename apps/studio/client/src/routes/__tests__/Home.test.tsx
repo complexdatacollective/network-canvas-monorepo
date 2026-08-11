@@ -31,15 +31,22 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  it('shows the server status once loaded', async () => {
+  it('announces the server status through one persistent live region', async () => {
     renderHome();
 
     expect(
       screen.getByRole('heading', { name: 'Network Canvas Studio' }),
     ).toBeInTheDocument();
 
-    expect(await screen.findByTestId('server-status')).toHaveTextContent(
+    // The live region exists from first render (announcing the pending
+    // check), and the pending→success transition swaps its content.
+    const region = screen.getByRole('status');
+    expect(region).toHaveTextContent('Checking the server connection');
+
+    await screen.findByText(/version 0\.1\.0/);
+    expect(region).toHaveTextContent(
       'Network Canvas Studio server, version 0.1.0.',
     );
+    expect(screen.getByTestId('server-status')).toBe(region);
   });
 });

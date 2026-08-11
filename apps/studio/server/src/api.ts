@@ -78,6 +78,10 @@ export function createApiV1() {
           title: 'Network Canvas Studio API',
           version: 'v1',
         },
+        // Generated paths are relative to the mount prefix; without this
+        // base, tooling would resolve /status against the host root and
+        // miss the API.
+        servers: [{ url: '/api/v1' }],
       },
     });
     return c.json(doc);

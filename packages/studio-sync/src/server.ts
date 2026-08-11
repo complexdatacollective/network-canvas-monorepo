@@ -71,7 +71,12 @@ export class SyncServer {
   /**
    * Acquire a free lease or take over an expired one — one CAS. Takeover is
    * only possible on an expired lease and always bumps the epoch. Returns
-   * null when another owner holds an unexpired lease.
+   * null when ANOTHER owner holds an unexpired lease; re-acquiring one's own
+   * active lease is idempotent (same epoch, refreshed TTL), so a lost
+   * acquire response can be retried without the section reading as
+   * unavailable until expiry. Re-acquiring one's own EXPIRED lease still
+   * bumps the epoch — that fences out the owner's pre-sleep in-flight
+   * commits.
    */
   async acquire(
     draftId: string,
@@ -83,9 +88,13 @@ export class SyncServer {
        VALUES ($1, $2, $3, 1, now() + make_interval(secs => $4::float / 1000))
        ON CONFLICT (draft_id, section_id) DO UPDATE
          SET owner = excluded.owner,
-             epoch = leases.epoch + 1,
+             epoch = CASE
+               WHEN leases.owner = excluded.owner AND leases.expires_at > now()
+                 THEN leases.epoch
+               ELSE leases.epoch + 1
+             END,
              expires_at = excluded.expires_at
-         WHERE leases.expires_at < now()
+         WHERE leases.expires_at < now() OR leases.owner = excluded.owner
        RETURNING epoch, expires_at`,
       [draftId, sectionId, owner, this.ttlMs],
     );
@@ -173,20 +182,11 @@ export class SyncServer {
     try {
       await client.query('BEGIN');
 
-      // Commit-time lease validation, including the expiry check that closes
-      // the slept-laptop window.
-      const lease = await client.query(
-        `SELECT 1 FROM leases
-         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND expires_at > now()`,
-        [draftId, sectionId, owner, String(epoch)],
-      );
-      if (lease.rowCount === 0) {
-        throw new LeaseRejectedError('lease not held (owner/epoch/expiry)');
-      }
-
       // Per-draft serialization: every commit advances the head under this
-      // row lock, so concurrent section commits cannot fork the chain.
+      // row lock, so concurrent section commits cannot fork the chain. Taken
+      // FIRST — the dedup and lease checks below are only meaningful at the
+      // serialization point. (Lock order is head-then-lease in every
+      // transaction, so the two locks cannot deadlock.)
       const head = await client.query(
         `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
         [draftId],
@@ -196,9 +196,11 @@ export class SyncServer {
         head_manifest_hash: string;
       };
 
-      // Idempotency: a retransmitted client_seq returns the original result
-      // without re-applying. (Checked under the draft lock so a concurrent
-      // duplicate serializes behind the original.)
+      // Idempotency BEFORE lease validation: a retransmitted client_seq
+      // returns its original recorded result even when the lease has since
+      // expired or been taken over — a commit that succeeded but lost its
+      // acknowledgement must never read as rejected, or the client rolls
+      // back state the server already persisted.
       const dup = await client.query(
         `SELECT manifest_seq FROM command_log
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
@@ -224,6 +226,24 @@ export class SyncServer {
           manifestHash: row.hash,
           sectionHash: row.section_hashes[sectionId] ?? '',
         };
+      }
+
+      // Commit-time lease validation at the serialization point, including
+      // the expiry check that closes the slept-laptop window. FOR UPDATE
+      // locks the lease row through the rest of the transaction: a takeover
+      // or expiry-acquire (both single-row UPDATEs) blocks behind this lock
+      // and its epoch bump linearizes AFTER this commit — without the lock, a
+      // takeover could bump the epoch between this check and the apply,
+      // and the stale owner would still write.
+      const lease = await client.query(
+        `SELECT 1 FROM leases
+         WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+           AND expires_at > now()
+         FOR UPDATE`,
+        [draftId, sectionId, owner, String(epoch)],
+      );
+      if (lease.rowCount === 0) {
+        throw new LeaseRejectedError('lease not held (owner/epoch/expiry)');
       }
 
       const manifest = await client.query(
@@ -311,44 +331,59 @@ export class SyncServer {
    * the client knows exactly what to retransmit.
    */
   async resume(draftId: string, owner: string) {
-    const head = await this.db.query(
-      `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
-       FROM drafts d
-       JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-       WHERE d.id = $1`,
-      [draftId],
-    );
-    const row = head.rows[0] as {
-      head_seq: string;
-      head_manifest_hash: string;
-      section_hashes: Record<string, string>;
-    };
-    const acked = await this.db.query(
-      `SELECT section_id, epoch, max(client_seq) AS last_seq
-       FROM command_log WHERE draft_id = $1 AND owner = $2
-       GROUP BY section_id, epoch`,
-      [draftId, owner],
-    );
-    const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
-      {};
-    for (const r of acked.rows as {
-      section_id: string;
-      epoch: string;
-      last_seq: string;
-    }[]) {
-      const existing = lastApplied[r.section_id];
-      if (!existing || BigInt(r.epoch) > existing.epoch) {
-        lastApplied[r.section_id] = {
-          epoch: BigInt(r.epoch),
-          clientSeq: BigInt(r.last_seq),
-        };
+    // Both reads come from ONE MVCC snapshot: read separately, an in-flight
+    // commit landing between them would pair pre-commit sectionHashes with a
+    // post-commit lastApplied — the client would drop the acknowledged batch
+    // yet load the older document, leaving its base behind the server.
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      const head = await client.query(
+        `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
+         FROM drafts d
+         JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
+         WHERE d.id = $1`,
+        [draftId],
+      );
+      const acked = await client.query(
+        `SELECT section_id, epoch, max(client_seq) AS last_seq
+         FROM command_log WHERE draft_id = $1 AND owner = $2
+         GROUP BY section_id, epoch`,
+        [draftId, owner],
+      );
+      await client.query('COMMIT');
+
+      const row = head.rows[0] as {
+        head_seq: string;
+        head_manifest_hash: string;
+        section_hashes: Record<string, string>;
+      };
+      const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
+        {};
+      for (const r of acked.rows as {
+        section_id: string;
+        epoch: string;
+        last_seq: string;
+      }[]) {
+        const existing = lastApplied[r.section_id];
+        if (!existing || BigInt(r.epoch) > existing.epoch) {
+          lastApplied[r.section_id] = {
+            epoch: BigInt(r.epoch),
+            clientSeq: BigInt(r.last_seq),
+          };
+        }
       }
+      return {
+        head: { seq: BigInt(row.head_seq), hash: row.head_manifest_hash },
+        sectionHashes: row.section_hashes,
+        lastApplied,
+      };
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
     }
-    return {
-      head: { seq: BigInt(row.head_seq), hash: row.head_manifest_hash },
-      sectionHashes: row.section_hashes,
-      lastApplied,
-    };
   }
 
   async getSection(hash: string): Promise<SectionDoc> {
