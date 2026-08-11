@@ -30,6 +30,7 @@ export default defineConfig({
     proxy: {
       '/api': SERVER_ORIGIN,
       '/rpc': SERVER_ORIGIN,
+      '/storage': SERVER_ORIGIN,
       '/healthz': SERVER_ORIGIN,
       '/ws': { target: SERVER_ORIGIN, ws: true },
     },

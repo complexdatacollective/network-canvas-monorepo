@@ -36,11 +36,18 @@ when its boundary moved.
 Three surfaces, one domain layer beneath them, none generated from another
 (per the 2026-08-11 decision on #1248):
 
-| Path      | Surface                | Consumers                   | Stability                                             |
-| --------- | ---------------------- | --------------------------- | ----------------------------------------------------- |
-| `/rpc`    | Internal RPC (oRPC v2) | The SPA only                | Unpublished, free-moving                              |
-| `/api/v1` | Public data API (REST) | Researchers, external tools | OpenAPI 3.1 (`/api/v1/openapi.json`), RFC 9457 errors |
-| `/ws`     | Sync protocol          | The SPA's editor            | Unpublished, protocol-versioned (#1247)               |
+| Path       | Surface                  | Consumers                              | Stability                                             |
+| ---------- | ------------------------ | -------------------------------------- | ----------------------------------------------------- |
+| `/rpc`     | Internal RPC (oRPC v2)   | The SPA only                           | Unpublished, free-moving                              |
+| `/api/v1`  | Public data API (REST)   | Researchers, external tools            | OpenAPI 3.1 (`/api/v1/openapi.json`), RFC 9457 errors |
+| `/ws`      | Sync protocol            | The SPA's editor                       | Unpublished, protocol-versioned (#1247)               |
+| `/storage` | Asset bytes (plain HTTP) | The SPA (upload), interviews (stimuli) | Unpublished; content-addressed, immutable (#1278)     |
+
+Asset bytes live in S3-compatible object storage (#1246): Cloudflare R2 in
+the managed topology, MinIO (or any S3-compatible endpoint) self-hosted.
+Objects are keyed by content hash, so `/storage/:hash` responses are
+immutable-cacheable by construction. Files ride plain HTTP rather than the
+RPC surface — uploads must stream, retrievals must cache.
 
 ## Development
 
@@ -50,10 +57,16 @@ pnpm --filter @codaco/studio-client dev
 ```
 
 Two processes, one origin: the Vite dev server (port 5173) serves the SPA and
-proxies `/api`, `/rpc`, `/healthz`, and `/ws` to the server (port 3000) —
-playing the role the CDN plays in the managed topology, so the browser sees a
-single origin in every topology. The server restarts on server and
-`studio-rpc` source changes; the client has HMR.
+proxies `/api`, `/rpc`, `/storage`, `/healthz`, and `/ws` to the server
+(port 3000) — playing the role the CDN plays in the managed topology, so the
+browser sees a single origin in every topology. The server restarts on server
+and `studio-rpc` source changes; the client has HMR.
+
+The server's dev script also provisions **MinIO in Docker** (branch-scoped
+container and volume, port 9100, bucket auto-created — mirroring Fresco's
+`dev-s3` script), so asset storage works locally without any third-party
+service. Docker must be running. The server's asset integration tests run
+against this MinIO and skip when no object store is reachable.
 
 ## Production
 
@@ -101,6 +114,8 @@ graph LR
         RR[(Read replicas<br/>replica-tolerant<br/>reads only)]
     end
 
+    R2[(R2 object storage<br/>content-addressed assets)]
+
     P -->|assets| CDN
     P -->|"/rpc · /ws (cookie)"| RT
     X -->|"/api/v1 (PAT)"| RT
@@ -108,25 +123,35 @@ graph LR
     S --> PG
     S -.-> RR
     PG -.->|streaming replication| RR
+    S -->|S3 API| R2
+    CDN -.->|stimuli, signed URLs| R2
 ```
 
 ### Self-host
 
-The same server image embeds and serves the client assets itself: one app
-container plus Postgres, no CDN, no other moving parts.
+The same server image embeds and serves the client assets itself: the app
+container, Postgres, and an S3-compatible object store (MinIO by default, or
+bring your own endpoint) — the same shape Fresco self-hosters already run.
 
 ```mermaid
 graph LR
     B[Browser]
 
     subgraph H[Researcher-operated host — Docker]
-        C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws]
+        C[studio container<br/>server + embedded client assets<br/>assets · /api · /rpc · /ws · /storage]
         PG[(Postgres<br/>container)]
+        M[(MinIO container<br/>or BYO S3 endpoint)]
     end
 
     B -->|one origin| C
     C --> PG
+    C -->|S3 API| M
 ```
+
+The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
+`S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
+none (partial configuration fails fast). Unset means asset routes refuse
+with 503; outside production, unset defaults to the dev MinIO.
 
 ### What deploys when
 

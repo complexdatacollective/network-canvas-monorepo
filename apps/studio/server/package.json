@@ -11,7 +11,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "node --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts",
+    "dev": "concurrently -k -n s3,server \"node scripts/dev-s3.ts\" \"node --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts\"",
     "build": "vite build",
     "start": "CLIENT_DIST=../client/dist node dist/index.js",
     "typecheck": "tsc --build --noEmit",
@@ -19,6 +19,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
     "@codaco/studio-rpc": "workspace:^",
     "@hono/node-server": "^2.1.0",
     "@orpc/contract": "2.0.0-beta.26",
@@ -33,6 +34,7 @@
     "@codaco/tsconfig": "workspace:^",
     "@orpc/client": "2.0.0-beta.26",
     "@types/ws": "^8.18.1",
+    "concurrently": "^10.0.4",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

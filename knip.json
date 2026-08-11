@@ -140,7 +140,7 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [

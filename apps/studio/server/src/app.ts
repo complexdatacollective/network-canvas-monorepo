@@ -3,6 +3,8 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { Hono } from 'hono';
 
 import { createApiV1 } from './api.ts';
+import { createAssetRoutes, createAssetStore } from './assets.ts';
+import { readEnv } from './env.ts';
 import { rpcRouter } from './rpc.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -10,7 +12,7 @@ import { rpcRouter } from './rpc.ts';
 // origin in both topologies — the single-origin invariant from #1245.
 const WS_PATH = '/ws';
 
-export function createApp() {
+export function createApp(env = readEnv()) {
   const app = new Hono();
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
@@ -18,6 +20,10 @@ export function createApp() {
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
   app.route('/api/v1', createApiV1());
+
+  // Content-addressed asset bytes over plain HTTP (#1278) — /storage, not
+  // /assets, which the client build claims for its hashed chunks.
+  app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
