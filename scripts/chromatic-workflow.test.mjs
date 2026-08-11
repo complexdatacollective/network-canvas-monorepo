@@ -41,9 +41,9 @@ function untraced(script) {
   return [...script.matchAll(/--untraced '([^']+)'/g)].map((match) => match[1]);
 }
 
-test('all required UI Test contexts are emitted for PR and merge queue SHAs', () => {
-  assert.match(workflow, /^  pull_request:$/m);
-  assert.match(workflow, /^  merge_group:$/m);
+test('all UI Test contexts are emitted for PR SHAs without merge-queue work', () => {
+  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.doesNotMatch(workflow, /^  merge_group:/m);
   assert.match(workflow, /^  workflow_run:$/m);
   assert.doesNotMatch(workflow, /pull_request_target/);
   assert.match(workflow, /- CI and Release/);
@@ -54,7 +54,7 @@ test('all required UI Test contexts are emitted for PR and merge queue SHAs', ()
 
   const statuses = job('required-statuses');
   assert.ok(statuses, 'required-statuses job exists');
-  assert.match(statuses, /github\.event_name == 'merge_group'/);
+  assert.doesNotMatch(statuses, /merge_group/);
   assert.match(statuses, /github\.actor != 'dependabot\[bot\]'/);
   assert.match(statuses, /github\.event_name == 'workflow_run'/);
   assert.match(statuses, /workflow_run\.actor\.login == 'dependabot\[bot\]'/);
@@ -68,7 +68,7 @@ test('all required UI Test contexts are emitted for PR and merge queue SHAs', ()
   );
   assert.match(
     statuses,
-    /CHROMATIC_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
+    /CHROMATIC_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
   );
   assert.match(statuses, /refs\/pull\/\$PR_NUMBER\/head/);
   for (const packageName of [
@@ -115,7 +115,7 @@ test('release selection uses the fail-closed lockfile-aware detector', () => {
   assert.match(detect, /GITHUB_STEP_SUMMARY/);
 });
 
-test('default-branch pushes replace merge-queue skip builds with real builds', () => {
+test('default-branch pushes replace release-branch skip builds with real builds', () => {
   const detect = job('detect');
   assert.ok(detect, 'detect job exists');
   assert.match(

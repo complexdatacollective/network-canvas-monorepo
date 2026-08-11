@@ -22,12 +22,21 @@ type PromptFieldsProps = {
   type?: string;
   /** The row's own pre-edit `variable`, from DialogArrayField's `item` spread. */
   variable?: string;
+  /**
+   * The row's committed prompt text, from the same spread. `PromptText`
+   * cannot resolve this itself — the dialog runs its own form store, not the
+   * stage's — so dropping it rendered an existing prompt's required text
+   * field blank, and the dialog refused to save any other edit until the
+   * researcher re-typed the wording.
+   */
+  text?: string;
 };
 
 const PromptFields = ({
   entity = '',
   type = '',
   variable,
+  text,
 }: PromptFieldsProps) => {
   const subject = useMemo(
     () => ({ entity: entity as 'node' | 'edge' | 'ego', type }),
@@ -74,7 +83,7 @@ const PromptFields = ({
 
   return (
     <>
-      <PromptText />
+      <PromptText initialValue={text} />
       <Section title="Selection Variable" layout="vertical">
         <Row>
           <ArchitectField

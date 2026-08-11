@@ -32,8 +32,8 @@ import {
 //   key can never be removed once written — so: omit → never touch,
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
-// - Required validation goes through the toggleable Validation section:
-//   open the section, then switch the 'Required' rule on in the rule list.
+// - Required validation goes through the toggleable Validation section,
+//   then the directly toggleable 'Required' rule.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults

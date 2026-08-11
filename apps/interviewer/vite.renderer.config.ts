@@ -51,7 +51,7 @@ export function arrayBufferAssetPlugin(): Plugin {
 const pkg = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')) as {
   version: string;
 };
-const appVersion = pkg.version;
+export const appVersion = pkg.version;
 
 // Production CSP injected into index.html as a meta tag. Vite HMR needs
 // 'unsafe-eval' / inline scripts in dev, so this is build-only.
