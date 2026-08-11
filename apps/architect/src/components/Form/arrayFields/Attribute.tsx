@@ -17,6 +17,7 @@ import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
   validatedElsewhereMessage,
+  variableDisplayName,
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
@@ -58,11 +59,12 @@ export type AssignAttributesContextValue = {
   draftValidatedVariables: ReadonlySet<string>;
   currentStageIndex?: number;
   /**
-   * The array's committed value. A row's committed pick is the escape hatch
-   * for the cross-class gate: reselecting what is already saved is never a new
-   * contradiction.
+   * Every variable id the array's COMMITTED value holds — the escape hatch for
+   * the cross-class gate: reselecting what is already saved is never a NEW
+   * contradiction. See `committedAttributeVariableIds` for why this is a set
+   * and not the committed array itself.
    */
-  committedValue: AttributeValue[];
+  committedVariableIds: ReadonlySet<string>;
   /**
    * Reveal every row's errors without waiting for an edit, set once the array
    * field is showing `completeAttributes`' refusal — otherwise the save is
@@ -87,6 +89,88 @@ const BOOLEAN_OPTIONS = [
   { label: 'False', value: false },
 ];
 
+/**
+ * Every variable id an array's COMMITTED value holds.
+ *
+ * Rows carry no stable identity. `committedValue` is frozen when the dialog
+ * opens, while row indices renumber the moment a row is deleted — so
+ * `committedValue[rowIndex]` resolves a SURVIVING row against a DELETED row's
+ * saved pick: a false "collected elsewhere" accusation against a row's own
+ * untouched selection, and a silent pass for the row that reselects the
+ * vanished one. The escape's question is a MEMBERSHIP one, and it is the same
+ * question the picker pool already asks (`PromptFields`' `draftSafeOptions`
+ * and `getAdditionalAttributesOptionsForSubject`): a variable this prompt
+ * already saved is not a NEW contradiction, whichever row now holds it.
+ *
+ * This deliberately does NOT read fresco-ui's `committedIndex`, which tracks
+ * the LIVE value (it keeps field paths attached to items during drag
+ * previews); reading the live value here would escape every fresh pick and the
+ * gate would never fire at all.
+ */
+export const committedAttributeVariableIds = (
+  committedValue: readonly AttributeValue[] = [],
+): ReadonlySet<string> =>
+  new Set(
+    committedValue
+      .map(({ variable }) => variable)
+      .filter(
+        (variable): variable is string =>
+          typeof variable === 'string' && variable !== '',
+      ),
+  );
+
+export type AssignAttributesCrossClassContext = {
+  /** The subject's codebook variables, read only for display names. */
+  allVariables: Record<string, unknown>;
+  /** See `committedAttributeVariableIds`. */
+  committedVariableIds: ReadonlySet<string>;
+  /** Variables this stage's LIVE (unsaved) form fields already collect. */
+  draftValidatedVariables: ReadonlySet<string>;
+  /** Whether a SAVED form outside this stage already validates the variable. */
+  hasValidatedUseElsewhere: (variableId: string) => boolean;
+};
+
+/**
+ * The cross-class gate for ONE pick: this stamp is an UNVALIDATED writer, so
+ * its variable may not be one a form elsewhere already collects. Saved roles
+ * from other stages and this stage's live form fields are the authoritative
+ * sources; this stage's saved roles are stale once editing begins.
+ *
+ * Shared verbatim by the row's DISPLAYED error and the owning array field's
+ * BLOCKING rule (`makeAssignAttributesValidation`). A `RowField` error can
+ * only display — nothing there reaches the form's validity — so an error with
+ * no array-level counterpart is a contradiction the researcher is shown and
+ * then invited to save. The two layers must therefore be one function,
+ * escape included: an escape that differed by even a row's identity would have
+ * one layer refuse what the other renders as fine.
+ */
+export const assignAttributeCrossClassIssue = (
+  variableId: string,
+  {
+    allVariables,
+    committedVariableIds,
+    draftValidatedVariables,
+    hasValidatedUseElsewhere,
+  }: AssignAttributesCrossClassContext,
+): string | undefined => {
+  if (!variableId) return undefined;
+  const isCommittedPick = committedVariableIds.has(variableId);
+  if (draftValidatedVariables.has(variableId) && !isCommittedPick) {
+    return draftValidatedElsewhereMessage(
+      variableDisplayName(allVariables, variableId),
+    );
+  }
+  return crossClassPickIssue({
+    variableId,
+    // `crossClassPickIssue` escapes a single unchanged pick; membership is
+    // expressed by handing a committed pick its own id.
+    originalVariableId: isCommittedPick ? variableId : '',
+    hasConflictingUse: hasValidatedUseElsewhere,
+    allVariables,
+    message: validatedElsewhereMessage,
+  });
+};
+
 const Attribute = ({
   item,
   index,
@@ -103,20 +187,22 @@ const Attribute = ({
     variableOptions,
     draftValidatedVariables,
     currentStageIndex,
-    committedValue,
+    committedVariableIds,
     forceShowErrors,
   } = useAssignAttributesContext();
-  const rowIndex = committedIndex ?? index;
-  const rowFieldName = `${arrayName}[${rowIndex}]`;
+  // A DISPLAY path only — the `data-field-name` seam E2E specs target. It is
+  // the live position (fresco-ui's `committedIndex` holds it steady through a
+  // drag preview) and is never an identity: nothing about this row's VALUE may
+  // be looked up by it. See `committedAttributeVariableIds`.
+  const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
   const variable =
     typeof item.variable === 'string' ? item.variable : undefined;
   const createVariable = useCreateVariable(entity, type);
 
-  // Save-time cross-class gate (the same field-level `crossClassPick` shape
-  // as NetworkComposer's quickAdd): this stamp is an UNVALIDATED writer, so
-  // its variable may not be one a form elsewhere already collects. Saved roles
-  // from other stages and this stage's live form fields are the authoritative
-  // sources; this stage's saved roles are stale once editing begins.
+  // The DISPLAY half of the cross-class gate (the same field-level
+  // `crossClassPick` shape as NetworkComposer's quickAdd). Its blocking
+  // counterpart is the owning array field's `crossClassPicks` rule, which runs
+  // this identical function — see `assignAttributeCrossClassIssue`.
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const roleMap = useSelector((state: RootState) =>
     getVariableRoleMapOutsideStage(state, currentStageIndex),
@@ -124,32 +210,19 @@ const Attribute = ({
   const allVariables = useSelector((state: RootState) =>
     getVariablesForSubject(state, subject),
   );
-  const committedVariable = committedValue[rowIndex]?.variable ?? '';
 
   const crossClassValidate = useCallback(
-    (value: unknown): string | undefined => {
-      const variableId = typeof value === 'string' ? value : '';
-      if (!variableId) return undefined;
-      if (
-        draftValidatedVariables.has(variableId) &&
-        variableId !== committedVariable
-      ) {
-        return draftValidatedElsewhereMessage(
-          allVariables[variableId]?.name ?? variableId,
-        );
-      }
-      return crossClassPickIssue({
-        variableId,
-        originalVariableId: committedVariable,
-        hasConflictingUse: (id) =>
-          (roleMap[roleMapKey(subject, id)]?.validated ?? 0) > 0,
+    (value: unknown): string | undefined =>
+      assignAttributeCrossClassIssue(typeof value === 'string' ? value : '', {
         allVariables,
-        message: validatedElsewhereMessage,
-      });
-    },
+        committedVariableIds,
+        draftValidatedVariables,
+        hasValidatedUseElsewhere: (id) =>
+          (roleMap[roleMapKey(subject, id)]?.validated ?? 0) > 0,
+      }),
     [
       allVariables,
-      committedVariable,
+      committedVariableIds,
       draftValidatedVariables,
       roleMap,
       subject,

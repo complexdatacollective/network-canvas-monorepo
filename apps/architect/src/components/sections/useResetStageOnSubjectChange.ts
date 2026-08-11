@@ -29,7 +29,7 @@ const SUBJECT_INDEPENDENT_FIELDS = [
  * instead of running alongside it, so side effects have to watch the value.
  */
 const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
-  const { storeApi, committedStage } = useStageFormContext();
+  const { storeApi, committedStage, draft } = useStageFormContext();
   const subject = useStageFormValue<StageSubject>('subject');
   const setStageValue = useSetStageValue();
 
@@ -69,29 +69,37 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
       SUBJECT_INDEPENDENT_FIELDS,
     );
 
-    fieldsToReset.forEach((field) => {
-      // The store keys fields by exact name with no hierarchy, so writing a
-      // container (`form`, `background`, `behaviours`) is only parked as a
-      // dormant value and never replaces the descendants a section actually
-      // registers (`form.fields`, `background.image`) — which would then be
-      // saved still carrying the previous subject's variable references.
-      clearFieldValue(storeApi, field);
+    // As ONE gesture: the loop below makes a write per field, and an array
+    // field (`prompts`, `form.fields`, `panels`) snapshots on the write, so
+    // unbatched it would leave half-reset stops on the undo timeline — the NEW
+    // subject still carrying the OLD subject's variable references, reachable
+    // by undo and saveable from there.
+    draft.runGesture(() => {
+      fieldsToReset.forEach((field) => {
+        // The store keys fields by exact name with no hierarchy, so writing a
+        // container (`form`, `background`, `behaviours`) is only parked as a
+        // dormant value and never replaces the descendants a section actually
+        // registers (`form.fields`, `background.image`) — which would then be
+        // saved still carrying the previous subject's variable references.
+        clearFieldValue(storeApi, field);
 
-      setStageValue(field, template[field] ?? null);
+        setStageValue(field, template[field] ?? null);
 
-      const { fields, dormantValues } = storeApi.getState();
-      const names = new Set([...fields.keys(), ...dormantValues.keys()]);
-      for (const name of names) {
-        if (!name.startsWith(`${field}.`) && !name.startsWith(`${field}[`)) {
-          continue;
+        const { fields, dormantValues } = storeApi.getState();
+        const names = new Set([...fields.keys(), ...dormantValues.keys()]);
+        for (const name of names) {
+          if (!name.startsWith(`${field}.`) && !name.startsWith(`${field}[`)) {
+            continue;
+          }
+          // A nested template default has to be addressed by the same name the
+          // section registered, or it lands on the container instead.
+          setStageValue(name, get(template, name));
         }
-        // A nested template default has to be addressed by the same name the
-        // section registered, or it lands on the container instead.
-        setStageValue(name, get(template, name));
-      }
+      });
     });
   }, [
     committedStage,
+    draft,
     interfaceType,
     restoreVersion,
     setStageValue,

@@ -6,6 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import {
   type StageFormContextValue,
@@ -283,6 +287,105 @@ describe('NodeConfiguration node-type change', () => {
       expect(
         view.getFieldValue('nodeConfig.nodeLabelVariable'),
       ).toBeUndefined();
+    });
+  });
+
+  // The reset clears `nodeConfig` as a TREE, which reaches `nodeConfig.type`
+  // (cleared, then re-seeded after the loop) before `nodeConfig.form` (an
+  // array, so it snapshots on the write). Unbatched, one undo therefore landed
+  // on a stage with no node type and no configuration at all — the type select
+  // blank and every dependent section unmounted — instead of the previous
+  // type's setup.
+  describe('timeline', () => {
+    const renderPedigree = () =>
+      renderStageForm({
+        committedStage: asStage({
+          id: 's1',
+          type: 'FamilyPedigree',
+          ...COMMITTED_NODE_CONFIG,
+        }),
+        extraReducers: {
+          activeProtocol: (
+            state = {
+              present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+            },
+          ) => state,
+        },
+        children: (
+          <NodeConfiguration
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        ),
+      });
+
+    const setNodeType = (
+      view: ReturnType<typeof renderPedigree>,
+      value: string,
+    ) => {
+      act(() => {
+        view.getStoreApi().getState().setFieldValue('nodeConfig.type', value);
+      });
+    };
+
+    /** Past the leaf debounce, so a trailing entry would have landed. */
+    const settle = async () => {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+      });
+    };
+
+    it('records the node-type change and the whole reset as one entry', async () => {
+      const view = renderPedigree();
+
+      setNodeType(view, 'other');
+      await settle();
+
+      expect(view.snapshots).toHaveLength(1);
+      // The one stop the gesture leaves behind is coherent: the new type, and
+      // nothing of the old type's configuration.
+      expect(view.getPresent()).toEqual({ nodeConfig: { type: 'other' } });
+    });
+
+    it('takes the node-type change back in one undo, and redoes it whole', async () => {
+      const view = renderPedigree();
+
+      setNodeType(view, 'other');
+      await settle();
+
+      act(() => {
+        view.getHistory().undo();
+      });
+
+      expect(view.getFieldState('nodeConfig.type')?.value).toBe('person');
+      expect(view.getFieldState('nodeConfig.nodeLabelVariable')?.value).toBe(
+        'labelVar',
+      );
+      expect(view.getFieldState('nodeConfig.egoVariable')?.value).toBe(
+        'egoVar',
+      );
+      expect(view.getFieldState('nodeConfig.form')?.value).toEqual(
+        COMMITTED_NODE_CONFIG.nodeConfig.form,
+      );
+      expect(view.store.getState().stageEditorDraft.history.past).toHaveLength(
+        0,
+      );
+
+      act(() => {
+        view.getHistory().redo();
+      });
+
+      expect(view.getFieldState('nodeConfig.type')?.value).toBe('other');
+      expect(
+        view.getFieldState('nodeConfig.nodeLabelVariable')?.value,
+      ).toBeUndefined();
+      expect(view.getFieldState('nodeConfig.form')?.value).toBeUndefined();
+      expect(view.snapshots).toHaveLength(1);
+      expect(
+        view.store.getState().stageEditorDraft.history.future,
+      ).toHaveLength(0);
+      expect(view.getHistory().canUndo).toBe(true);
     });
   });
 });

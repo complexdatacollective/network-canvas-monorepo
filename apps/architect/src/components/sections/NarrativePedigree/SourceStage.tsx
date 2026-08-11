@@ -33,7 +33,7 @@ const clearDiseasesValue = (storeApi: StageFormStoreApi) => {
 };
 
 const SourceStage = (_props: StageEditorSectionProps) => {
-  const { storeApi } = useStageFormContext();
+  const { storeApi, draft } = useStageFormContext();
   const sourceStageId = useStageFormValue<string>('sourceStageId');
   const sourceStageIdInitial = useStageInitialValue<string>('sourceStageId');
   const familyPedigreeStages = useSelector((state: RootState) =>
@@ -67,8 +67,17 @@ const SourceStage = (_props: StageEditorSectionProps) => {
     // user was reaching for.
     if (previousVersion !== restoreVersion) return;
 
-    clearDiseasesValue(storeApi);
-  }, [restoreVersion, sourceStageId, storeApi]);
+    // As ONE gesture: `clearDiseasesValue` is two writes to a field the
+    // sibling Diseases section keeps registered, and each of them is a
+    // structural array change that would snapshot on its own. The stop between
+    // them (`diseases` momentarily `undefined`) renders identically to the
+    // final one, so undo appeared to do nothing for a press. The clear also
+    // belongs in the SAME entry as the source-stage change it follows from,
+    // which is what the gesture's single trailing snapshot gives it.
+    draft.runGesture(() => {
+      clearDiseasesValue(storeApi);
+    });
+  }, [draft, restoreVersion, sourceStageId, storeApi]);
 
   return (
     <Section

@@ -6,6 +6,7 @@ import { Row, Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
+import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
   useSetStageValue,
   useStageFormValue,
@@ -26,6 +27,7 @@ const ExternalDataSource = ({
   disabledMessage,
 }: ExternalDataSourceProps) => {
   const setStageValue = useSetStageValue();
+  const { draft } = useStageFormContext();
   const dataSource = useStageFormValue<string | undefined>('dataSource');
   const initialDataSource = useStageInitialValue<string>('dataSource');
   // Guards against firing on mount: `dataSource` also "changes" from its
@@ -52,12 +54,20 @@ const ExternalDataSource = ({
     // own right (only their children are), and the store has no
     // hierarchical relationship between a path and its sub-paths, so writing
     // the parent would not reach any of them.
-    setStageValue('cardOptions.additionalProperties', undefined);
-    setStageValue('sortOptions.sortOrder', undefined);
-    setStageValue('sortOptions.sortableProperties', undefined);
-    setStageValue('searchOptions.matchProperties', undefined);
-    setStageValue('searchOptions.fuzziness', undefined);
-  }, [dataSource, restoreVersion, setStageValue]);
+    //
+    // As ONE gesture: four of these leaves are arrays, which snapshot on the
+    // write, so clearing them one at a time would put four half-cleared
+    // states — the new roster still carrying some of the old roster's
+    // attribute references — on the undo timeline, where they are reachable
+    // and saveable.
+    draft.runGesture(() => {
+      setStageValue('cardOptions.additionalProperties', undefined);
+      setStageValue('sortOptions.sortOrder', undefined);
+      setStageValue('sortOptions.sortableProperties', undefined);
+      setStageValue('searchOptions.matchProperties', undefined);
+      setStageValue('searchOptions.fuzziness', undefined);
+    });
+  }, [dataSource, draft, restoreVersion, setStageValue]);
 
   return (
     <Section

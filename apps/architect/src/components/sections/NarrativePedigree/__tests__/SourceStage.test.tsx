@@ -1,10 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import {
   type StageFormContextValue,
@@ -13,6 +19,9 @@ import {
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import SourceStage from '../SourceStage';
+
+/** Stable identity: `component` remounting the field would churn the store. */
+const ValueProbe = (() => null) as ComponentType<Record<string, unknown>>;
 
 const FAMILY_PEDIGREE_STAGES = [
   { id: 'stage-1', type: 'FamilyPedigree', label: 'My Family Tree' },
@@ -219,6 +228,115 @@ describe('SourceStage', () => {
       view.setSourceStageId('stage-3');
 
       expect(view.getDiseasesValue()).toEqual([]);
+    });
+  });
+
+  // The clear is two writes (`undefined` for every registered/dormant
+  // descendant, then the empty array the Diseases validator expects), and the
+  // sibling Diseases section keeps `diseases` REGISTERED, so both writes are
+  // structural array changes that snapshot on the spot. Unbatched, the source
+  // stage change therefore pushed two entries whose only difference —
+  // `undefined` vs `[]` — renders identically, so the first undo press looked
+  // like it did nothing.
+  describe('timeline', () => {
+    const DISEASES = [{ id: 'd1', variable: 'v1' }];
+
+    const renderWithDiseases = () =>
+      renderStageForm({
+        committedStage: asStage({
+          id: 'narrative-1',
+          type: 'NarrativePedigree',
+          sourceStageId: 'stage-1',
+          diseases: DISEASES,
+        }),
+        extraReducers: {
+          activeProtocol: (
+            state = {
+              present: {
+                schemaVersion: 8,
+                codebook: {},
+                stages: FAMILY_PEDIGREE_STAGES,
+              },
+            },
+          ) => state,
+        },
+        children: (
+          <>
+            <SourceStage
+              stagePath={null}
+              stagePosition={0}
+              interfaceType="NarrativePedigree"
+            />
+            {/* The Diseases section is always mounted in the real editor, so
+                `diseases` is always a registered field. */}
+            <Field
+              name="diseases"
+              label="Diseases"
+              component={ValueProbe}
+              initialValue={DISEASES}
+            />
+          </>
+        ),
+      });
+
+    const setSourceStageId = (
+      view: ReturnType<typeof renderWithDiseases>,
+      value: string,
+    ) => {
+      act(() => {
+        view.getStoreApi().getState().setFieldValue('sourceStageId', value);
+      });
+    };
+
+    /** Past the leaf debounce, so a trailing entry would have landed. */
+    const settle = async () => {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+      });
+    };
+
+    it('records the source-stage change and the diseases clear as one entry', async () => {
+      const view = renderWithDiseases();
+
+      setSourceStageId(view, 'stage-3');
+      await settle();
+
+      expect(view.snapshots).toHaveLength(1);
+      expect(view.getPresent()).toEqual({
+        sourceStageId: 'stage-3',
+        diseases: [],
+      });
+    });
+
+    it('takes the source-stage change back in one undo, and redoes it whole', async () => {
+      const view = renderWithDiseases();
+
+      setSourceStageId(view, 'stage-3');
+      await settle();
+
+      act(() => {
+        view.getHistory().undo();
+      });
+
+      // The intermediate `diseases: undefined` stop must not exist: one press
+      // is the whole gesture.
+      expect(view.getFieldState('sourceStageId')?.value).toBe('stage-1');
+      expect(view.getFieldState('diseases')?.value).toEqual(DISEASES);
+      expect(view.store.getState().stageEditorDraft.history.past).toHaveLength(
+        0,
+      );
+
+      act(() => {
+        view.getHistory().redo();
+      });
+
+      expect(view.getFieldState('sourceStageId')?.value).toBe('stage-3');
+      expect(view.getFieldState('diseases')?.value).toEqual([]);
+      expect(view.snapshots).toHaveLength(1);
+      expect(
+        view.store.getState().stageEditorDraft.history.future,
+      ).toHaveLength(0);
+      expect(view.getHistory().canUndo).toBe(true);
     });
   });
 });

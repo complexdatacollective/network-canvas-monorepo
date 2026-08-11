@@ -124,7 +124,7 @@ const VariableRow = ({
 };
 
 const EdgeConfiguration = (_props: StageEditorSectionProps) => {
-  const { storeApi } = useStageFormContext();
+  const { storeApi, draft } = useStageFormContext();
   const setStageValue = useSetStageValue();
   const edgeType = useStageFormValue<string>('edgeConfig.type');
   const edgeTypeInitial = useStageInitialValue<string>('edgeConfig.type');
@@ -149,10 +149,16 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     // reaching for.
     if (previousVersion !== restoreVersion) return;
 
-    for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
-      clearFieldValue(storeApi, field);
-    }
-  }, [edgeType, restoreVersion, storeApi]);
+    // As ONE gesture, like its NodeConfiguration sibling: the edge-type change
+    // and every slot it invalidates are a single point on the undo timeline,
+    // landing with the gesture rather than at the mercy of which of the loop's
+    // writes happens to be the last one to arm a debounce.
+    draft.runGesture(() => {
+      for (const field of EDGE_DEPENDENT_VARIABLE_FIELDS) {
+        clearFieldValue(storeApi, field);
+      }
+    });
+  }, [draft, edgeType, restoreVersion, storeApi]);
 
   const edgeVariableOptions = useSelector((state: RootState) =>
     edgeType

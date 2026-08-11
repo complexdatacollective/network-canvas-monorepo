@@ -28,6 +28,11 @@ Fixes a number of editing bugs found along the way:
 - Removing a categorical bin prompt's "Other" variable now removes its validation settings from the editor too. They stayed on screen belonging to the variable just removed, and editing them wrote straight to that variable, which another stage may still be collecting.
 - The Issues list now names each field properly the first time it opens. Every entry showed an internal field name until the stage was checked a second time, and a field with more than one problem kept showing it even then.
 - A name generator's generated stage name mentions its side panels again after the panels have been turned off and on.
+- The anonymisation stage editor gained the Skip Logic section every other stage type already had. Without it, a protocol whose anonymisation stage carried skip logic lost that logic silently the first time the stage was saved.
+- Assigning a variable that a form elsewhere already collects is now refused at save, as it was before this release. The red warning was shown but the contradictory assignment saved anyway.
+- Switching a roster data source, a stage's node or edge type, a narrative pedigree's source stage, or a family pedigree's types now lands on the undo history as one step. Undo previously stopped at half-reset states — a new roster with the old roster's columns, a new type with the old type's configuration — and reverting the switch could take six presses.
+- Closing or refreshing the browser mid-edit now asks before discarding the stage draft, matching every in-app exit.
+- Automatic stage naming keeps working after an undo. The first undo on a new stage used to switch it off for the rest of the session.
 - Removing one of a network composer's edge types no longer hands its editable attributes to the type that remains, and undoing the removal no longer leaves an invalid half-edge on the undo history.
 
 Half-finished settings can no longer be saved. Previously the field showed an error but "Finished Editing" accepted it anyway, and the problem resurfaced later as a protocol-wide "Misconfigured Protocol" message far from the field that caused it:

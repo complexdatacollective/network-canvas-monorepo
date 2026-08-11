@@ -239,4 +239,118 @@ describe('ExternalDataSource', () => {
       });
     });
   });
+
+  // Four of the five dependent leaves are ARRAY-valued, and an array write
+  // snapshots immediately, so an unbatched clear loop pushed one timeline
+  // entry per clear — each one the new roster carrying some of the OLD
+  // roster's attribute references. Those are saveable and reference columns
+  // no validation layer can see, so they must never be reachable by undo.
+  describe('timeline', () => {
+    const ASSET_1_VALUES = {
+      dataSource: 'asset-1',
+      cardOptions: { additionalProperties: [{ variable: 'x' }] },
+      sortOptions: {
+        sortOrder: [{ property: 'x', direction: 'asc' }],
+        sortableProperties: [{ variable: 'x' }],
+      },
+      searchOptions: { matchProperties: ['x'], fuzziness: 0.5 },
+    };
+
+    const renderRoster = () =>
+      renderStageForm({
+        committedStage: asStage({
+          dataSource: 'asset-1',
+          subject: { entity: 'node', type: 'person' },
+        }),
+        children: (
+          <>
+            <ExternalDataSource {...STAGE_PROPS} />
+            <DependentFields />
+          </>
+        ),
+      });
+
+    const changeDataSource = (value: string) => {
+      fireEvent.change(screen.getByLabelText('Roster data source'), {
+        target: { value },
+      });
+    };
+
+    it('records the roster switch and every dependent clear as one entry', async () => {
+      const { snapshots, getFieldState, getPresent } = renderRoster();
+
+      changeDataSource('asset-2');
+      await waitFor(() => {
+        expect(
+          getFieldState('cardOptions.additionalProperties')?.value,
+        ).toBeUndefined();
+      });
+      // Past the leaf debounce, so a trailing debounced entry would show up.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+      });
+
+      expect(snapshots).toHaveLength(1);
+      // The cleared leaves still assemble their containers, with no value
+      // inside — the new roster and nothing of the old one.
+      expect(getPresent()).toEqual({
+        dataSource: 'asset-2',
+        cardOptions: {},
+        sortOptions: {},
+        searchOptions: {},
+      });
+    });
+
+    it('takes the whole roster switch back in one undo, and redoes it whole', async () => {
+      const { snapshots, getFieldState, getHistory, store } = renderRoster();
+
+      changeDataSource('asset-2');
+      await waitFor(() => {
+        expect(
+          getFieldState('cardOptions.additionalProperties')?.value,
+        ).toBeUndefined();
+      });
+
+      act(() => {
+        getHistory().undo();
+      });
+
+      // No half-reset stop in between: one press is the whole gesture.
+      expect(getFieldState('dataSource')?.value).toBe('asset-1');
+      for (const path of DEPENDENT_LEAF_PATHS) {
+        expect(getFieldState(path)?.value).not.toBeUndefined();
+      }
+      expect(store.getState().stageEditorDraft.history.past).toHaveLength(0);
+      expect(getHistory().canUndo).toBe(false);
+
+      act(() => {
+        getHistory().redo();
+      });
+
+      expect(getFieldState('dataSource')?.value).toBe('asset-2');
+      for (const path of DEPENDENT_LEAF_PATHS) {
+        expect(getFieldState(path)?.value).toBeUndefined();
+      }
+      // The restore must not have branched the timeline, and the undo/redo
+      // round trip must not have added an entry of its own.
+      expect(snapshots).toHaveLength(1);
+      expect(store.getState().stageEditorDraft.history.future).toHaveLength(0);
+      expect(getHistory().canUndo).toBe(true);
+    });
+
+    it('leaves the pre-gesture roster configuration reachable in one step', async () => {
+      const { getHistory, store } = renderRoster();
+
+      changeDataSource('asset-2');
+      await waitFor(() =>
+        expect(store.getState().stageEditorDraft.history.past).toHaveLength(1),
+      );
+
+      // The only stop behind the switch is the untouched asset-1 stage.
+      expect(store.getState().stageEditorDraft.history.past[0]).toEqual(
+        ASSET_1_VALUES,
+      );
+      expect(getHistory().canUndo).toBe(true);
+    });
+  });
 });

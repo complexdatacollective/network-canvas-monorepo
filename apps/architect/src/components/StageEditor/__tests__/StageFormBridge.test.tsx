@@ -4,12 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { useStageRestoreVersion } from '../StageFormBridge';
 import {
   asStage,
   NO_PROMPTS,
   PromptListControl,
   renderStageForm,
 } from './stageFormTestHarness';
+
+/**
+ * `restoreVersion` is published through its own context rather than the stage
+ * form context, so it can only be read from inside the provider.
+ */
+let latestRestoreVersion = 0;
+const RestoreVersionProbe = () => {
+  latestRestoreVersion = useStageRestoreVersion();
+  return null;
+};
 
 const committedStage = asStage({
   id: 'stage-1',
@@ -286,6 +297,207 @@ describe('StageFormBridge', () => {
       prompts: [{ id: 'p1', text: 'Prompt 1' }],
     });
     expect(store.getState().stageEditorDraft.ui.restoring).toBe(false);
+  });
+
+  // `runGesture` is the batching primitive the reset-on-change sections use:
+  // a loop of writes is one logical change, so the half-reset states between
+  // those writes must never reach the timeline.
+  describe('runGesture', () => {
+    const renderGestureForm = () =>
+      renderStageForm({
+        committedStage,
+        children: (
+          <>
+            <LabelField />
+            <PromptsField />
+            <RestoreVersionProbe />
+          </>
+        ),
+      });
+
+    it('records a multi-write gesture as exactly one entry', () => {
+      const { snapshots, getContext, getStoreApi, getPresent } =
+        renderGestureForm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+      expect(snapshots).toHaveLength(2);
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          const formStore = getStoreApi().getState();
+          // Two structural array writes plus a leaf: unbatched this is three
+          // separate entries, two of them half-done.
+          formStore.setFieldValue('prompts', [{ id: 'p1', text: 'Prompt 1' }]);
+          formStore.setFieldValue('prompts', []);
+          formStore.setFieldValue('label', 'Reset');
+        });
+      });
+
+      expect(snapshots).toHaveLength(3);
+      expect(getPresent()).toEqual({ label: 'Reset', prompts: [] });
+
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(snapshots).toHaveLength(3);
+    });
+
+    it('supersedes the pending debounce of the edit that triggered it', () => {
+      const { snapshots, getContext, getStoreApi, getPresent } =
+        renderGestureForm();
+
+      // The trigger: a leaf edit whose own snapshot is still 400ms away.
+      typeLabel('Stage two');
+      expect(snapshots).toHaveLength(0);
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          getStoreApi().getState().setFieldValue('prompts', []);
+        });
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+
+      // The trigger and everything the gesture reset are the same entry — the
+      // one an undo press has to take back.
+      expect(snapshots).toHaveLength(1);
+      expect(getPresent()).toEqual({ label: 'Stage two', prompts: [] });
+    });
+
+    it('does not count as a restore', () => {
+      const { getContext, getStoreApi } = renderGestureForm();
+
+      const before = latestRestoreVersion;
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          getStoreApi().getState().setFieldValue('label', 'Reset');
+        });
+      });
+
+      // `useStageRestoreVersion` means "an undo/redo happened". Moving it here
+      // would make every guarded observer read the user's next edit as a
+      // restore and skip the reset it deserves.
+      expect(latestRestoreVersion).toBe(before);
+
+      act(() => {
+        getContext().draft.runRestore(() => {
+          getStoreApi().getState().setFieldValue('label', 'Restored');
+        });
+      });
+
+      expect(latestRestoreVersion).toBe(before + 1);
+    });
+
+    it('refreshes the mirror without waiting for the coalescing window', () => {
+      const { getContext, getStoreApi, getLiveValues } = renderGestureForm();
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          getStoreApi().getState().setFieldValue('label', 'Reset');
+        });
+      });
+
+      expect(getLiveValues()).toEqual({ label: 'Reset', prompts: [] });
+    });
+
+    it('leaves a gesture that changes nothing off the timeline', () => {
+      const { snapshots, getContext, getStoreApi } = renderGestureForm();
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          getStoreApi().getState().setFieldValue('label', 'Stage one');
+        });
+      });
+
+      expect(snapshots).toHaveLength(0);
+    });
+
+    it('keeps a nested gesture inside the outer one', () => {
+      const { snapshots, getContext, getStoreApi, getPresent } =
+        renderGestureForm();
+
+      act(() => {
+        const { draft } = getContext();
+        draft.runGesture(() => {
+          getStoreApi().getState().setFieldValue('label', 'Outer');
+          draft.runGesture(() => {
+            getStoreApi().getState().setFieldValue('prompts', []);
+          });
+          getStoreApi().getState().setFieldValue('label', 'Reset');
+        });
+      });
+
+      expect(snapshots).toHaveLength(1);
+      expect(getPresent()).toEqual({ label: 'Reset', prompts: [] });
+    });
+
+    it('still commits the writes that landed when a gesture throws', () => {
+      const { snapshots, getContext, getStoreApi, getPresent, getLiveValues } =
+        renderGestureForm();
+
+      expect(() =>
+        act(() => {
+          getContext().draft.runGesture(() => {
+            getStoreApi().getState().setFieldValue('label', 'Reset');
+            throw new Error('a section blew up mid-reset');
+          });
+        }),
+      ).toThrow('a section blew up mid-reset');
+
+      // Suppression must not outlive the gesture, and neither the timeline nor
+      // the mirror may be left describing the state before it.
+      expect(snapshots).toHaveLength(1);
+      expect(getPresent()).toEqual({ label: 'Reset', prompts: [] });
+      expect(getLiveValues()).toEqual({ label: 'Reset', prompts: [] });
+
+      typeLabel('Stage three');
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(snapshots).toHaveLength(2);
+    });
+
+    it('undoes a gesture in one step and redoes it without branching', () => {
+      const { snapshots, getContext, getHistory, getStoreApi, store } =
+        renderGestureForm();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add prompt' }));
+      expect(snapshots).toHaveLength(1);
+
+      act(() => {
+        getContext().draft.runGesture(() => {
+          const formStore = getStoreApi().getState();
+          formStore.setFieldValue('prompts', []);
+          formStore.setFieldValue('label', 'Reset');
+        });
+      });
+
+      act(() => {
+        getHistory().undo();
+      });
+
+      const { storeApi } = getContext();
+      expect(storeApi.getState().getFieldState('label')?.value).toBe(
+        'Stage one',
+      );
+      expect(storeApi.getState().getFieldState('prompts')?.value).toEqual([
+        { id: 'p1', text: 'Prompt 1' },
+      ]);
+
+      act(() => {
+        getHistory().redo();
+      });
+
+      expect(storeApi.getState().getFieldState('label')?.value).toBe('Reset');
+      expect(storeApi.getState().getFieldState('prompts')?.value).toEqual([]);
+      expect(snapshots).toHaveLength(2);
+      expect(store.getState().stageEditorDraft.history.future).toHaveLength(0);
+      expect(getHistory().canUndo).toBe(true);
+    });
   });
 
   it('cancels a pending snapshot and clears the mirror on unmount', () => {

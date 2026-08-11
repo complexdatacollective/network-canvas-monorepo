@@ -21,6 +21,7 @@ import {
   getStageList,
 } from '~/selectors/protocol';
 
+import { useStageRestoreVersion } from '../StageFormBridge';
 import { useStageFormContext } from '../stageFormContext';
 import { useSetStageValue, useStageFormValue } from '../stageFormHooks';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate';
@@ -103,6 +104,9 @@ export function useAutoStageName(isNewStage: boolean): {
   const lastGeneratedRef = useRef<string | undefined>(undefined);
   const hasFilledRef = useRef(false);
 
+  const restoreVersion = useStageRestoreVersion();
+  const lastRestoreVersionRef = useRef(restoreVersion);
+
   // Kept current each render so the stable blur handler reads the latest values.
   const liveLabelRef = useRef(liveLabel);
   liveLabelRef.current = liveLabel;
@@ -130,6 +134,25 @@ export function useAutoStageName(isNewStage: boolean): {
   );
 
   useEffect(() => {
+    // An undo/redo rewrites the label as a *restore*, not a user edit, and the
+    // restore commit always carries a new restore version. Without this guard
+    // the classification below would compare the restored label against the
+    // newest generated name, read the mismatch as the researcher taking
+    // ownership, and silently kill auto-naming for the rest of the session.
+    // Skipping the run alone is not enough: `lastGeneratedRef` would still
+    // hold the pre-restore name, so the very next run would latch anyway —
+    // the ref has to be resynced to the restored label. Only while still in
+    // auto mode, though: once the researcher owns the name, a restore must
+    // not re-arm auto-naming (the next config change would overwrite their
+    // hand-typed text).
+    if (lastRestoreVersionRef.current !== restoreVersion) {
+      lastRestoreVersionRef.current = restoreVersion;
+      if (!isCustomRef.current) {
+        lastGeneratedRef.current = liveLabel;
+      }
+      return;
+    }
+
     const update = computeAutoNameUpdate({
       isNewStage,
       isCustom: isCustomRef.current,
@@ -141,7 +164,7 @@ export function useAutoStageName(isNewStage: boolean): {
     if (update.label !== undefined) {
       applyLabel(update.label);
     }
-  }, [generatedLabel, liveLabel, isNewStage, applyLabel]);
+  }, [generatedLabel, liveLabel, isNewStage, applyLabel, restoreVersion]);
 
   // Re-engage on blur: if the researcher cleared the name and tabs away while it
   // is still empty, fill the generated name back in (rather than fighting their

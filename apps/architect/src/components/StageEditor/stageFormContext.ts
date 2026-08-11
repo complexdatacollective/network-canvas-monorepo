@@ -27,6 +27,14 @@ export type StageDraftController = {
    * Every write an undo/redo makes to the form store goes through here.
    */
   runRestore: (apply: () => void) => void;
+  /**
+   * Run `apply` — a multi-write reset gesture — as ONE logical change: the
+   * writes it makes are suppressed, then a single snapshot lands at the end.
+   * Unlike `runRestore` it does snapshot, and it does NOT count as a restore
+   * (`useStageRestoreVersion` is unmoved), so a section observing the values
+   * the gesture wrote still classifies the user's next edit as an edit.
+   */
+  runGesture: (apply: () => void) => void;
   /** Write the form's current values into `stageEditorDraft.ui.liveValues` now. */
   refreshLiveValues: () => void;
 };

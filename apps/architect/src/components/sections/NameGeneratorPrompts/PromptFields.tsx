@@ -5,7 +5,8 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
-  assignAttributesValidation,
+  committedAttributeVariableIds,
+  makeAssignAttributesValidation,
   type AttributeValue,
   type VariableOption,
 } from '~/components/Form/arrayFields/AssignAttributes';
@@ -13,7 +14,15 @@ import PromptText from '~/components/sections/PromptText';
 import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 import { draftFormFieldVariableIds } from '~/components/Validations/draftWriterRoles';
 import type { RootState } from '~/ducks/modules/root';
-import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import {
+  EMPTY_VARIABLES,
+  getVariableOptionsForSubject,
+  getVariablesForSubject,
+} from '~/selectors/codebook';
+import {
+  getVariableRoleMapOutsideStage,
+  roleMapKey,
+} from '~/selectors/indexes';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 
 /**
@@ -71,12 +80,17 @@ const PromptFields = ({
   additionalAttributes = EMPTY_ATTRIBUTES,
   currentStageIndex,
 }: PromptFieldsProps) => {
-  const committedVariables = useMemo(
-    () =>
-      additionalAttributes
-        .map(({ variable }) => variable)
-        .filter((variable): variable is string => typeof variable === 'string'),
+  // ONE committed-pick set, shared by all three layers that need the same
+  // escape: the picker pool below, the row's displayed cross-class error, and
+  // the array field's blocking rule. Membership, never a row's position — see
+  // `committedAttributeVariableIds`.
+  const committedVariableIds = useMemo(
+    () => committedAttributeVariableIds(additionalAttributes),
     [additionalAttributes],
+  );
+  const committedVariables = useMemo(
+    () => [...committedVariableIds],
+    [committedVariableIds],
   );
 
   // The outer stage's live form fields, read from the stage store rather than
@@ -116,9 +130,44 @@ const PromptFields = ({
       variableOptions.filter(
         ({ value }) =>
           !draftValidatedVariables.has(value) ||
-          committedVariables.includes(value),
+          committedVariableIds.has(value),
       ),
-    [committedVariables, draftValidatedVariables, variableOptions],
+    [committedVariableIds, draftValidatedVariables, variableOptions],
+  );
+
+  // The gate's two authoritative sources, read once here rather than per row:
+  // saved roles outside the stage being edited, and the subject's codebook
+  // (for the message's display name).
+  const roleMap = useSelector((state: RootState) =>
+    getVariableRoleMapOutsideStage(state, currentStageIndex),
+  );
+  const allVariables = useSelector((state: RootState) =>
+    subject ? getVariablesForSubject(state, subject) : EMPTY_VARIABLES,
+  );
+
+  /**
+   * Built per instance — the cross-class rule has to close over THIS prompt's
+   * committed picks and this stage's live form roles, which no module-level
+   * constant can carry. Memoized on those real inputs so the field's props do
+   * not churn a fresh object every render.
+   */
+  const validation = useMemo(
+    () =>
+      makeAssignAttributesValidation({
+        allVariables,
+        committedVariableIds,
+        draftValidatedVariables,
+        hasValidatedUseElsewhere: (variableId) =>
+          subject !== null &&
+          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+      }),
+    [
+      allVariables,
+      committedVariableIds,
+      draftValidatedVariables,
+      roleMap,
+      subject,
+    ],
   );
 
   return (
@@ -155,13 +204,14 @@ const PromptFields = ({
               variableOptions={draftSafeOptions}
               draftValidatedVariables={draftValidatedVariables}
               currentStageIndex={currentStageIndex}
-              committedValue={additionalAttributes}
-              // The rows' own `required` rules are display-only (see
-              // `RowField`), so completeness has to exist here too or a
-              // half-finished stamp saves into the protocol unchallenged.
+              committedVariableIds={committedVariableIds}
+              // The rows' own rules are display-only (see `RowField`), so both
+              // of them have to exist here too or the dialog saves what it has
+              // just refused in red: a half-finished stamp, or a variable a
+              // form elsewhere already collects.
               // `NameGeneratorRosterPrompts` shares this component, so both
               // stages are covered from here.
-              validation={assignAttributesValidation}
+              validation={validation}
             />
           )}
         </Row>

@@ -185,7 +185,7 @@ const UNVALIDATED_NODE_SLOT_FIELDS = [
 
 const NodeConfiguration = (_props: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
-  const { storeApi, committedStage, stageId } = useStageFormContext();
+  const { storeApi, committedStage, stageId, draft } = useStageFormContext();
   const setStageValue = useSetStageValue();
   const nodeType = useStageFormValue<string>('nodeConfig.type');
   const nodeTypeInitial = useStageInitialValue<string>('nodeConfig.type');
@@ -238,11 +238,25 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       Object.keys(committedStage ?? {}),
     ).filter((key) => !topLevelPreserved.has(key));
 
-    for (const field of fieldsToReset) {
-      clearFieldValue(storeApi, field);
-    }
-    setStageValue('nodeConfig.type', nodeType);
-  }, [committedStage, nodeType, restoreVersion, setStageValue, storeApi]);
+    // As ONE gesture: the loop reaches `nodeConfig.type` (cleared here,
+    // re-seeded below) before `nodeConfig.form`, an array that snapshots on
+    // the write. Unbatched, undo therefore stopped on a stage with no node
+    // type and no configuration at all — an unconfigured state the researcher
+    // never created, reading as "undo destroyed my stage".
+    draft.runGesture(() => {
+      for (const field of fieldsToReset) {
+        clearFieldValue(storeApi, field);
+      }
+      setStageValue('nodeConfig.type', nodeType);
+    });
+  }, [
+    committedStage,
+    draft,
+    nodeType,
+    restoreVersion,
+    setStageValue,
+    storeApi,
+  ]);
 
   const nodeVariableOptions = useSelector((state: RootState) =>
     nodeType

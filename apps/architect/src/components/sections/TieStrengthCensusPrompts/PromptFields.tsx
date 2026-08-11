@@ -45,12 +45,15 @@ type PromptFieldsProps = {
   variableOptions?: SelectOption[];
 };
 
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const NO_OPTIONS: SelectOption[] = [];
+
 const PromptFields = ({
   text,
   createEdge,
   edgeVariable,
   negativeLabel,
-  variableOptions = [],
+  variableOptions = NO_OPTIONS,
 }: PromptFieldsProps) => {
   const dispatch = useAppDispatch();
   const setFieldValue = useFormStore((state) => state.setFieldValue);

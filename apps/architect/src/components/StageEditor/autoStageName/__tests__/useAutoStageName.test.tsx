@@ -9,6 +9,7 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import StageForm from '../../StageForm';
 import { useSetStageValue } from '../../stageFormHooks';
 import StageHeading from '../../StageHeading';
+import { useStageDraftHistory } from '../../useStageDraftHistory';
 
 // The interface registry pulls in every section component; the heading only
 // needs the display metadata for one type.
@@ -49,8 +50,10 @@ function renderHeading(
   });
 
   let setStageValue: ((path: string, value: unknown) => void) | null = null;
+  let history: ReturnType<typeof useStageDraftHistory> | null = null;
   const Probe = () => {
     setStageValue = useSetStageValue();
+    history = useStageDraftHistory();
     return null;
   };
 
@@ -80,6 +83,10 @@ function renderHeading(
     setSubject: (subject: unknown) =>
       act(() => {
         setStageValue?.('subject', subject);
+      }),
+    undo: () =>
+      act(() => {
+        history?.undo();
       }),
   };
 }
@@ -142,6 +149,54 @@ describe('useAutoStageName (wired into StageHeading)', () => {
     // Blurring while still empty re-engages auto-naming.
     fireEvent.blur(input);
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+  });
+
+  it('keeps auto-naming alive after undo restores an auto-generated name', async () => {
+    const { input, setSubject, undo } = renderHeading({
+      type: 'NameGenerator',
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    setSubject({ entity: 'node', type: 'person' });
+    await waitFor(() =>
+      expect(input).toHaveValue('Person Form Name Generator'),
+    );
+    // Let the debounced snapshot land so undo has a step to consume.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+
+    undo();
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    // The restored label is stale relative to the newest generated name.
+    // Without resyncing on restore, the hook reads that mismatch as the
+    // researcher taking ownership and auto-naming is silently dead from the
+    // first undo onward.
+    setSubject({ entity: 'node', type: 'person' });
+    await waitFor(() =>
+      expect(input).toHaveValue('Person Form Name Generator'),
+    );
+  });
+
+  it('does not re-arm auto-naming when undo restores a hand-typed name', async () => {
+    const { input, setSubject, undo } = renderHeading({
+      type: 'NameGenerator',
+    });
+    await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
+
+    fireEvent.change(input, { target: { value: 'My custom stage' } });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+
+    fireEvent.change(input, { target: { value: 'Renamed again' } });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 450)));
+
+    undo();
+    await waitFor(() => expect(input).toHaveValue('My custom stage'));
+
+    // A restored hand-typed name is still owned: the next config change must
+    // not overwrite the researcher's text with a generated name.
+    setSubject({ entity: 'node', type: 'person' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(input).toHaveValue('My custom stage');
   });
 
   it('does not mark a new stage dirty or add undo history on entry', async () => {

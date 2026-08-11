@@ -20,10 +20,11 @@ test('creates a valid Anonymisation stage from scratch', async ({
   await editor.setStageName('Anonymise Your Data');
 
   // Anonymisation's sections are `[AnonymisationExplanation,
-  // AnonymisationValidation, EncryptedVariables, InterviewScript]`
+  // AnonymisationValidation, EncryptedVariables, SkipLogic, InterviewScript]`
   // (StageEditor/Interfaces.tsx) — no `FilteredNodeType`/`NodeType` subject
   // section and no `prompts` array, unlike every other interface this suite
-  // covers so far.
+  // covers so far. SkipLogic stays collapsed here (toggleable, off by
+  // default), so it registers nothing and the saved stage is unchanged.
   //
   // AnonymisationExplanation.tsx's "Title" field is a plain
   // `FrescoReduxField`/`InputField` (`ValidatedField label="Title"

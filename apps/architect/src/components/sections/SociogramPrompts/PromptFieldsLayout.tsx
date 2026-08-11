@@ -31,6 +31,9 @@ const SORT_RULE_VALIDATION = {
   completeRows: completeRows(SORT_RULE_PROPERTIES),
 };
 
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const EMPTY_SORT_ORDER: Record<string, unknown>[] = [];
+
 type PromptFieldsProps = {
   entity?: string;
   type?: string;
@@ -140,7 +143,7 @@ const PromptFieldsLayout = ({
             label="Sort order"
             labelHidden
             component={MultiSelect}
-            initialValue={initialSortOrder ?? []}
+            initialValue={initialSortOrder ?? EMPTY_SORT_ORDER}
             properties={SORT_RULE_PROPERTIES}
             validation={SORT_RULE_VALIDATION}
             maxItems={5}

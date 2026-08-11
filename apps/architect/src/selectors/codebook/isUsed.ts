@@ -1,5 +1,4 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { get } from 'es-toolkit/compat';
 
 import type { RootState } from '~/ducks/store';
 
@@ -8,16 +7,20 @@ import { getProtocol } from '../protocol';
 import { getIdsFromCodebook } from './helpers';
 
 // Types
-type IsUsedMap = {
+export type IsUsedMap = {
   [variableId: string]: boolean;
 };
 
-type VariableOption = {
-  label: string;
-  value: string;
-  type?: string;
-  color?: string;
-  isUsed?: boolean;
+/**
+ * Shallow map equality for `getIsUsed`'s `resultEqualityCheck`: same variable
+ * ids mapping to the same booleans. Values are always booleans, so a key
+ * missing from `b` reads as `undefined` and fails the comparison.
+ */
+const isUsedMapEquals = (a: IsUsedMap, b: IsUsedMap): boolean => {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) return false;
+  return aKeys.every((key) => a[key] === b[key]);
 };
 
 // The stage form's live values, mirrored into Redux by `StageFormBridge` —
@@ -35,6 +38,13 @@ const getLiveStageValues = (state: RootState) =>
  *
  * The unsaved stage is matched by JSON string search, because the shape of a
  * stage's in-progress values is dynamic and cannot be walked at known paths.
+ *
+ * The combiner reruns on every `liveValues` mirror tick (that reactivity is
+ * the feature: a variable referenced only by unsaved in-progress values must
+ * still read as used), but `resultEqualityCheck` hands back the PREVIOUS map
+ * reference whenever the recomputed content is unchanged — the common case
+ * while typing — so downstream selectors and `useSelector` equality guards
+ * keyed on this map's identity stay quiet.
  *
  * @returns a key value object describing which variables are in use
  */
@@ -60,17 +70,5 @@ export const getIsUsed = createSelector(
       return memo;
     }, {});
   },
-);
-
-/**
- * Adds an `isUsed` property to a list of variable options.
- */
-export const optionsWithIsUsedSelector = createSelector(
-  [getIsUsed, (_state: RootState, options: VariableOption[]) => options],
-  (isUsed, options): VariableOption[] =>
-    options.map(({ value, ...rest }) => ({
-      ...rest,
-      value,
-      isUsed: get(isUsed, value, false),
-    })),
+  { memoizeOptions: { resultEqualityCheck: isUsedMapEquals } },
 );

@@ -14,7 +14,7 @@ import type { RootState } from '~/ducks/store';
 
 import { getCodebook } from '../protocol';
 import { asOptions } from '../utils';
-import { optionsWithIsUsedSelector } from './isUsed';
+import { getIsUsed } from './isUsed';
 
 // Types
 type Subject = {
@@ -274,11 +274,21 @@ export const makeGetVariable = (uuid: string) => (state: RootState) => {
   return get(variables, uuid, null);
 };
 
-// Main selector for getting variable options - properly memoized
+// Main selector for getting variable options. Its inputs are chosen for
+// identity stability: `getIsUsed` keeps its map reference across live-value
+// mirror ticks that don't change which variables are used (see its
+// `resultEqualityCheck`), and `getVariablesForSubjectSelector` is keyed on the
+// codebook slice — so the returned array (and its element objects) keep their
+// identity across unrelated store changes, and consumers' `useSelector` /
+// `shallowEqual` guards actually hold. Taking whole state as an input here
+// would mint a fresh array per dispatch and defeat every such guard.
 export const getVariableOptionsForSubjectSelector = createSelector(
-  [(state: RootState) => state, getVariablesForSubjectSelector],
-  (state, variables): VariableOption[] =>
-    optionsWithIsUsedSelector(state, asOptions(variables)),
+  [getIsUsed, getVariablesForSubjectSelector],
+  (isUsed, variables): VariableOption[] =>
+    asOptions(variables).map((option) => ({
+      ...option,
+      isUsed: isUsed[option.value] ?? false,
+    })),
 );
 
 export const getVariableOptionsForSubject = (

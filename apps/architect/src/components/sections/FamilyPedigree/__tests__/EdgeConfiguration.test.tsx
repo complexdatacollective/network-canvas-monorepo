@@ -9,6 +9,10 @@ import {
   RELATIONSHIP_TYPE_OPTIONS,
   RELATIONSHIP_TYPES,
 } from '@codaco/shared-consts';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import {
   type StageFormContextValue,
@@ -260,6 +264,103 @@ describe('EdgeConfiguration edge-type change', () => {
       expect(
         view.getFieldValue('edgeConfig.relationshipTypeVariable'),
       ).toBeUndefined();
+    });
+  });
+
+  // The same reset-loop shape as NodeConfiguration, held to the same
+  // guarantee. All four slots happen to be scalars today, so the loop
+  // debounces into a single entry by luck rather than by design; giving one
+  // an array value would have started pushing half-cleared stops.
+  describe('timeline', () => {
+    const renderPedigree = () =>
+      renderStageForm({
+        committedStage: asStage({
+          id: 's1',
+          type: 'FamilyPedigree',
+          ...COMMITTED_EDGE_CONFIG,
+        }),
+        extraReducers: {
+          activeProtocol: (
+            state = {
+              present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+            },
+          ) => state,
+        },
+        children: (
+          <EdgeConfiguration
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        ),
+      });
+
+    const setEdgeType = (
+      view: ReturnType<typeof renderPedigree>,
+      value: string,
+    ) => {
+      act(() => {
+        view.getStoreApi().getState().setFieldValue('edgeConfig.type', value);
+      });
+    };
+
+    /** Past the leaf debounce, so a trailing entry would have landed. */
+    const settle = async () => {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 450));
+      });
+    };
+
+    it('records the edge-type change and every slot clear as one entry', async () => {
+      const view = renderPedigree();
+
+      setEdgeType(view, 'marriage');
+
+      // A discrete gesture, not typing: the entry lands with it rather than
+      // waiting out the leaf debounce the last clear happened to arm, so undo
+      // is available the moment the reset is on screen.
+      expect(view.snapshots).toHaveLength(1);
+
+      await settle();
+
+      expect(view.snapshots).toHaveLength(1);
+      expect(view.getPresent()).toEqual({ edgeConfig: { type: 'marriage' } });
+    });
+
+    it('takes the edge-type change back in one undo, and redoes it whole', async () => {
+      const view = renderPedigree();
+
+      setEdgeType(view, 'marriage');
+      await settle();
+
+      act(() => {
+        view.getHistory().undo();
+      });
+
+      expect(view.getFieldState('edgeConfig.type')?.value).toBe('partner');
+      expect(
+        view.getFieldState('edgeConfig.relationshipTypeVariable')?.value,
+      ).toBe('relVar');
+      expect(view.getFieldState('edgeConfig.gameteRoleVariable')?.value).toBe(
+        'gameteVar',
+      );
+      expect(view.store.getState().stageEditorDraft.history.past).toHaveLength(
+        0,
+      );
+
+      act(() => {
+        view.getHistory().redo();
+      });
+
+      expect(view.getFieldState('edgeConfig.type')?.value).toBe('marriage');
+      expect(
+        view.getFieldState('edgeConfig.relationshipTypeVariable')?.value,
+      ).toBeUndefined();
+      expect(view.snapshots).toHaveLength(1);
+      expect(
+        view.store.getState().stageEditorDraft.history.future,
+      ).toHaveLength(0);
+      expect(view.getHistory().canUndo).toBe(true);
     });
   });
 });

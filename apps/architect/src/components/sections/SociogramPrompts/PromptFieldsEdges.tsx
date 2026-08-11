@@ -30,6 +30,9 @@ type DisplayEdgesProps = {
   edges?: { create?: string | null; display?: string[] | null };
 };
 
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const EMPTY_DISPLAY_EDGES: string[] = [];
+
 const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
   const edgesForSubject = useSelector(getEdgesForSubject);
   const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
@@ -144,7 +147,7 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
           options={displayEdgesOptions}
           label="Display edges of the following type(s)"
           labelHidden
-          initialValue={initialEdges?.display ?? []}
+          initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
         />
       </Row>
     </Section>

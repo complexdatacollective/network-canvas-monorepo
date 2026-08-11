@@ -191,6 +191,10 @@ const StageFormBridge = ({
   // the `setFieldValue` call that a restore makes, so it needs an answer that
   // does not depend on a Redux round trip.
   const restoring = useRef(false);
+  // The same trick for a multi-write GESTURE (see `runGesture`). Separate from
+  // `restoring` because the two ends differ: a restore must never snapshot,
+  // and a gesture must snapshot exactly once.
+  const batching = useRef(false);
 
   const cancelPendingSnapshot = useCallback(() => {
     if (snapshotTimer.current === null) return;
@@ -267,11 +271,66 @@ const StageFormBridge = ({
     [dispatch, refreshLiveValues],
   );
 
+  /**
+   * Runs a multi-write reset gesture as ONE logical change.
+   *
+   * A section that resets dependent configuration — a roster source, a
+   * stage subject, a pedigree node/edge type — writes a whole loop of fields
+   * one `setFieldValue` at a time, and the subscriber below runs inside every
+   * one of them. Structural array writes snapshot immediately, so without
+   * suppression the half-reset states *between* those writes land on the undo
+   * timeline: a new subject still carrying the old subject's prompts, a new
+   * roster still carrying the old roster's attribute references. Undo then
+   * stops on states the user never created, and fully reverting the gesture
+   * takes as many presses as the loop made structural writes.
+   *
+   * Deliberately NOT `runRestore`, in both directions:
+   * - it must not bump `restoreVersion`. That counter means "an undo/redo
+   *   happened", and every section that resets dependents reads it to tell a
+   *   restored value from an edit. Bumping it here would make the user's next
+   *   real edit read as a restore and skip the reset it deserves.
+   * - it must take the trailing snapshot. `runRestore` takes none (the
+   *   timeline already moved), whereas a gesture is a new point on the
+   *   timeline; leaving it out would fold the whole reset into whatever the
+   *   user edited next.
+   */
+  const runGesture = useCallback(
+    (apply: () => void) => {
+      // A nested gesture belongs to the outer one: only the outermost call may
+      // end the suppression and snapshot, or the gesture splits in two again.
+      if (batching.current) {
+        apply();
+        return;
+      }
+
+      batching.current = true;
+      try {
+        apply();
+      } finally {
+        batching.current = false;
+        // The edit that TRIGGERED the gesture (the new subject, roster or node
+        // type) is a leaf with its debounce still armed. Superseding it puts
+        // the trigger and everything the gesture reset in the same entry —
+        // which is what the one undo press has to take back.
+        cancelPendingSnapshot();
+        // In `finally` so a throwing section leaves the timeline and the
+        // mirror describing the writes that did land, rather than stale.
+        takeSnapshot();
+        refreshLiveValues();
+      }
+    },
+    [cancelPendingSnapshot, refreshLiveValues, takeSnapshot],
+  );
+
   const handleStoreChange = useCallback(
     (next: { fields: FieldsMap }, previous: { fields: FieldsMap }) => {
       // Restores write through `setFieldValue`; they must not snapshot, and
       // `runRestore` refreshes the mirror once at the end.
       if (restoring.current) return;
+
+      // A gesture's writes are one logical change: `runGesture` snapshots and
+      // refreshes the mirror once, after the last of them.
+      if (batching.current) return;
 
       if (next.fields === previous.fields) return;
 
@@ -349,8 +408,13 @@ const StageFormBridge = ({
   }, [cancelPendingSnapshot, dispatch, handleStoreChange, storeApi]);
 
   const draft = useMemo(
-    () => ({ cancelPendingSnapshot, runRestore, refreshLiveValues }),
-    [cancelPendingSnapshot, refreshLiveValues, runRestore],
+    () => ({
+      cancelPendingSnapshot,
+      runRestore,
+      runGesture,
+      refreshLiveValues,
+    }),
+    [cancelPendingSnapshot, refreshLiveValues, runGesture, runRestore],
   );
 
   const value = useMemo<StageFormContextValue>(

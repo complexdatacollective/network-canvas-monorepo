@@ -1,5 +1,11 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   openDialog: vi.fn(),
   setLocation: vi.fn(),
   launchPreview: vi.fn(),
+  hasSkipLogicSection: vi.fn(() => true),
 }));
 
 vi.mock('wouter', () => ({
@@ -96,6 +103,7 @@ vi.mock('../Interfaces', async () => {
 
   return {
     getInterface: () => ({ sections: [StageFields], template: {} }),
+    interfaceHasSkipLogicSection: () => mocks.hasSkipLogicSection(),
   };
 });
 
@@ -103,7 +111,24 @@ import StageEditor from '../StageEditor';
 
 const STAGE_ID = 'stage-1';
 
-const makeProtocol = (): CurrentProtocol =>
+// Schema-valid skip logic (single-rule filter against the test codebook), as a
+// hand-authored or externally generated protocol may carry on any stage type.
+const SKIP_LOGIC = {
+  action: 'SKIP',
+  filter: {
+    rules: [
+      {
+        type: 'node',
+        id: 'rule-1',
+        options: { type: 'person', operator: 'EXISTS' },
+      },
+    ],
+  },
+};
+
+const makeProtocol = (
+  stageOverrides: Record<string, unknown> = {},
+): CurrentProtocol =>
   ({
     name: 'Test Protocol',
     schemaVersion: 8,
@@ -133,12 +158,40 @@ const makeProtocol = (): CurrentProtocol =>
           fields: [{ variable: 'name', prompt: 'Name' }],
         },
         prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+        ...stageOverrides,
       } as Stage,
     ],
   }) as CurrentProtocol;
 
-const renderEditor = () => {
-  const protocol = makeProtocol();
+type RecordedAction = { type?: string; payload?: unknown };
+
+type UpdateStageAction = {
+  type: string;
+  payload: {
+    stageId: string;
+    stage: Record<string, unknown>;
+    overwrite?: boolean;
+  };
+};
+
+const findUpdateStage = (
+  dispatched: RecordedAction[],
+): UpdateStageAction | undefined =>
+  dispatched.find((action) => action.type === 'stages/updateStage') as
+    | UpdateStageAction
+    | undefined;
+
+const renderEditor = (
+  options: { stageOverrides?: Record<string, unknown> } = {},
+) => {
+  const protocol = makeProtocol(options.stageOverrides);
+  const dispatched: RecordedAction[] = [];
+  // Sits after the thunk middleware, so it records only resolved plain
+  // actions (the `stages/updateStage` dispatch the save produces).
+  const recordDispatch: Middleware = () => (next) => (action) => {
+    dispatched.push(action as RecordedAction);
+    return next(action);
+  };
   const store = configureStore({
     reducer: {
       activeProtocol: () => ({ past: [], present: protocol, future: [] }),
@@ -149,11 +202,12 @@ const renderEditor = () => {
       getDefaultMiddleware({
         serializableCheck: false,
         immutableCheck: false,
-      }),
+      }).concat(recordDispatch),
   });
 
   return {
     store,
+    dispatched,
     ...render(
       <Provider store={store}>
         <StageEditor id={STAGE_ID} />
@@ -167,6 +221,9 @@ describe('StageEditor', () => {
     vi.clearAllMocks();
     mocks.openDialog.mockResolvedValue(false);
     mocks.launchPreview.mockResolvedValue({ kind: 'delivered' });
+    // Most interfaces render the SkipLogic section; the Anonymisation-shaped
+    // tests below opt out per test.
+    mocks.hasSkipLogicSection.mockReturnValue(true);
   });
 
   it('enables Preview for a valid stage', async () => {
@@ -224,5 +281,138 @@ describe('StageEditor', () => {
       );
     });
     expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  describe('browser unload guard', () => {
+    it('blocks unload only while the draft is dirty, flushing the mirror first', async () => {
+      renderEditor();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      // Pristine draft: unload proceeds without a prompt.
+      const cleanEvent = new Event('beforeunload', { cancelable: true });
+      act(() => {
+        window.dispatchEvent(cleanEvent);
+      });
+      expect(cleanEvent.defaultPrevented).toBe(false);
+      // jsdom's legacy `returnValue` alias reflects cancellation: still true
+      // (not cancelled) because the handler never assigned it.
+      expect(cleanEvent.returnValue).toBe(true);
+
+      // Edit, then unload inside the mirror's coalescing window with no await
+      // in between: only a synchronous in-handler flush can see this edit, so
+      // this also proves the flush happens before the dirty read.
+      fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+        target: { value: 'Renamed stage' },
+      });
+      const dirtyEvent = new Event('beforeunload', { cancelable: true });
+      act(() => {
+        window.dispatchEvent(dirtyEvent);
+      });
+      expect(dirtyEvent.defaultPrevented).toBe(true);
+      expect(dirtyEvent.returnValue).toBe(false);
+    });
+
+    it('removes the unload listener when the editor unmounts', async () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      const removeSpy = vi.spyOn(window, 'removeEventListener');
+      try {
+        const { unmount } = renderEditor();
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+        });
+
+        const added = addSpy.mock.calls
+          .filter(([type]) => type === 'beforeunload')
+          .map(([, listener]) => listener);
+        expect(added.length).toBeGreaterThan(0);
+
+        unmount();
+
+        // Every attached unload listener is detached with the editor, so a
+        // clean session elsewhere in the app stays eligible for the
+        // back/forward cache.
+        const removed = removeSpy.mock.calls
+          .filter(([type]) => type === 'beforeunload')
+          .map(([, listener]) => listener);
+        for (const listener of added) {
+          expect(removed).toContain(listener);
+        }
+      } finally {
+        addSpy.mockRestore();
+        removeSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('committed skipLogic preservation', () => {
+    const submitStageForm = (container: HTMLElement) => {
+      const form = container.querySelector('form');
+      expect(form).not.toBeNull();
+      fireEvent.submit(form!);
+    };
+
+    it('carries committed skipLogic through a zero-edit save when no section owns it', async () => {
+      // Anonymisation-shaped interface: its section list omits SkipLogic, so
+      // no field can ever register the key.
+      mocks.hasSkipLogicSection.mockReturnValue(false);
+      const { container, dispatched } = renderEditor({
+        stageOverrides: { skipLogic: SKIP_LOGIC },
+      });
+      // Preview enabling proves the merged wip stage still validates.
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      const action = findUpdateStage(dispatched)!;
+      expect(action.payload.overwrite).toBe(true);
+      // The overwrite save must not silently delete the schema-valid,
+      // runtime-honored key the editor never showed.
+      expect(action.payload.stage.skipLogic).toEqual(SKIP_LOGIC);
+    });
+
+    it('does not invent a skipLogic key for a stage that never had one', async () => {
+      mocks.hasSkipLogicSection.mockReturnValue(false);
+      const { container, dispatched } = renderEditor();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      expect('skipLogic' in findUpdateStage(dispatched)!.payload.stage).toBe(
+        false,
+      );
+    });
+
+    it('still drops an absent skipLogic when the interface owns a SkipLogic section', async () => {
+      // The form carries no skipLogic (section toggled off); on an interface
+      // that renders the section, that absence means the researcher removed
+      // it, and the save must not resurrect the committed value.
+      const { container, dispatched } = renderEditor({
+        stageOverrides: { skipLogic: SKIP_LOGIC },
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      expect('skipLogic' in findUpdateStage(dispatched)!.payload.stage).toBe(
+        false,
+      );
+    });
   });
 });

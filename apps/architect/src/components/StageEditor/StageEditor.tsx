@@ -33,7 +33,7 @@ import { reportError } from '~/utils/reportError';
 import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
-import { getInterface } from './Interfaces';
+import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
@@ -119,6 +119,12 @@ const StageEditor = (props: StageEditorProps) => {
   const hasUnsavedChanges = useSelector(getLiveStageDraftDirty);
   const formValues = useSelector(getLiveStageValues);
 
+  // Whether this interface renders the SkipLogic section. When it does not
+  // (Anonymisation), no field can ever register under `skipLogic.*`, so a
+  // committed `skipLogic` key — schema-valid on every stage and honored by the
+  // interview runtime — could never survive a trip through the form.
+  const stageFormCarriesSkipLogic = interfaceHasSkipLogicSection(interfaceType);
+
   /**
    * The stage's `id` and `type` belong to no field, so neither survives a trip
    * through the form. Every consumer of the form's values has to merge them
@@ -134,8 +140,18 @@ const StageEditor = (props: StageEditorProps) => {
         // them keeps that explicit, and keeps the committed identity
         // authoritative if a future field ever does register one.
         ...omit(values as unknown as Record<string, unknown>, ['id', 'type']),
+        // Like the identity above, a committed `skipLogic` on an interface
+        // that renders no SkipLogic section structurally cannot be carried by
+        // `values`; without this merge the overwrite save would silently
+        // delete it on the first Finished Editing. Interfaces that DO render
+        // the section are excluded on purpose: there an absent key means the
+        // researcher toggled skip logic off, and restoring it would resurrect
+        // exactly what they removed.
+        ...(!stageFormCarriesSkipLogic && committedStage.skipLogic !== undefined
+          ? { skipLogic: committedStage.skipLogic }
+          : {}),
       }) as unknown as Stage,
-    [committedStage],
+    [committedStage, stageFormCarriesSkipLogic],
   );
 
   // Preview state
@@ -270,6 +286,37 @@ const StageEditor = (props: StageEditorProps) => {
 
     return false;
   }, [openDialog, reduxStore, setLocation, dispatch]);
+
+  // A browser-level exit (refresh, tab close, window close) is the one way out
+  // of a dirty editor that no in-app guard can intercept, and the draft lives
+  // only in memory — without this it is silently discarded while every in-app
+  // exit prompts. The listener is attached for the editor's whole mount (not
+  // gated on the debounced dirty selector): dirtiness is decided inside the
+  // handler, after a synchronous mirror flush, so an edit made milliseconds
+  // before unload still counts. Scoping the listener to the editor mount keeps
+  // the rest of the app eligible for the back/forward cache, and it is kept
+  // separate from `beforeUnloadGuard`, whose arm/disarm lifecycle belongs to
+  // storage availability. Dialog-confirmed in-app discards dispatch
+  // `resetDraft` before navigating, so this handler stays silent there.
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // The mirror is debounced and the flush is synchronous, so the dirty
+      // read below always sees the user's very last edit.
+      flushStageLiveValues();
+      if (!getLiveStageDraftDirty(reduxStore.getState())) {
+        return;
+      }
+      // Setting returnValue triggers the browser's native "leave site?"
+      // prompt; the string is legacy and ignored by modern browsers.
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [reduxStore]);
 
   const handlePreview = useCallback(async () => {
     // Preview must show the stage as it is on screen, not as the mirror last

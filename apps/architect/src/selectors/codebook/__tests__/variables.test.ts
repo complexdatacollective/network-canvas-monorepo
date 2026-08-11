@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RootState } from '~/ducks/modules/root';
 
-import { getIsUsed, optionsWithIsUsedSelector } from '../isUsed';
+import { getIsUsed } from '../isUsed';
 
 const variable1 = '1234-1234-1234-1';
 const variable2 = '1234-1234-1234-2';
@@ -203,41 +203,43 @@ describe('getIsUsed', () => {
     });
   });
 
-  describe('optionsWithIsUsedSelector', () => {
-    it('appends used state to options', () => {
-      const state = {
-        activeProtocol: {
-          present: {
-            schemaVersion: 8,
-            name: 'test-protocol',
-            codebook: mockCodebookWithoutUse,
-            stages: [],
-          },
-        },
-        stageEditorDraft: {
-          ui: {
-            liveValues: {
-              foo: variable1,
-            },
-          },
-        },
+  // `getIsUsed` recomputes on every live-value mirror tick (that reactivity
+  // is the feature), but its `resultEqualityCheck` must hand back the SAME
+  // map reference when the recomputed content is unchanged — the common case
+  // while typing — so that selectors composed on it (variable options) and
+  // `useSelector` guards keyed on its identity stay quiet.
+  describe('reference identity across live-value ticks', () => {
+    it('returns the identical map when only the liveValues object identity changes', () => {
+      // Content-equal but referentially distinct liveValues, over the same
+      // protocol reference: a debounced mirror tick that changed nothing.
+      const tickA = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
+      };
+      const tickB = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
       };
 
-      const mockOptions = [
-        { value: variable1, label: '1' },
-        { value: variable2, label: '2' },
-        { value: variable3, label: '3' },
-        { value: variable4, label: '4' },
-      ];
+      expect(getIsUsed(asState(tickB))).toBe(getIsUsed(asState(tickA)));
+    });
 
-      const result = optionsWithIsUsedSelector(asState(state), mockOptions);
+    it('returns a new map when a tick changes which variables are used', () => {
+      const before = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
+      };
+      const after = {
+        ...mockStateWithoutUse,
+        stageEditorDraft: { ui: { liveValues: { someField: variable1 } } },
+      };
 
-      expect(result).toEqual([
-        { value: variable1, label: '1', isUsed: true },
-        { value: variable2, label: '2', isUsed: false },
-        { value: variable3, label: '3', isUsed: false },
-        { value: variable4, label: '4', isUsed: false },
-      ]);
+      const beforeResult = getIsUsed(asState(before));
+      const afterResult = getIsUsed(asState(after));
+
+      expect(afterResult).not.toBe(beforeResult);
+      expect(beforeResult[variable1]).toBe(false);
+      expect(afterResult[variable1]).toBe(true);
     });
   });
 });
