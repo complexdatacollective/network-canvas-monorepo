@@ -192,7 +192,14 @@ function runSweep(sweeperBinary, target, expectedVersion) {
 const VENDORED_RESOURCES = {
   '@codaco/architect-classic': {
     preloadDirs: ['interviewer/preload'],
-    requiredFiles: ['interviewer/renderer/index.html'],
+    // The exact runtime entry paths: createPreviewWindow.js builds
+    // path.join(resourcesPath, 'interviewer', 'preload', 'index.js') — a
+    // multi-argument join the sweep's path-literal scan cannot see — and
+    // loads the renderer's index.html beside it.
+    requiredFiles: [
+      'interviewer/preload/index.js',
+      'interviewer/renderer/index.html',
+    ],
   },
 };
 
@@ -221,11 +228,6 @@ function checkVendoredResources(target, appName) {
     const preloadFiles = readdirSync(absDir).filter((entry) =>
       ['.js', '.cjs', '.mjs'].includes(extname(entry)),
     );
-    if (preloadFiles.length === 0) {
-      problems.push(
-        `${relDir}: vendored preload directory contains no scripts`,
-      );
-    }
     for (const entry of preloadFiles) {
       const filePath = join(absDir, entry);
       const label = `${relDir}/${entry}`;
