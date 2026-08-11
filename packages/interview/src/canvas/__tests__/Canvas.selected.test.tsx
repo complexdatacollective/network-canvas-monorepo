@@ -10,9 +10,17 @@ import {
 
 // Stand in for the real node so this exercises what Canvas hands down, without
 // pulling in the store and protocol context ConnectedNode needs.
-const received: { selected?: boolean; onSelect?: unknown }[] = [];
+const received: {
+  selected?: boolean;
+  onSelect?: unknown;
+  style?: React.CSSProperties;
+}[] = [];
 vi.mock('../CanvasNode', () => ({
-  default: (props: { selected?: boolean; onSelect?: unknown }) => {
+  default: (props: {
+    selected?: boolean;
+    onSelect?: unknown;
+    style?: React.CSSProperties;
+  }) => {
     received.push(props);
     return null;
   },

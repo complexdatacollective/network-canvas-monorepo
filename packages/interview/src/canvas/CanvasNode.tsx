@@ -148,7 +148,11 @@ export default function CanvasNode({
       style={{
         left: `${position.x * 100}%`,
         top: `${position.y * 100}%`,
-        transform: 'translate(-50%, -50%)',
+        // The independent `translate` property, not `transform`: the press
+        // animation writes `transform: scale(...)` on this same element, and a
+        // transform-based centering would be replaced by it — shifting the
+        // node by half its size on every press. Separate properties compose.
+        translate: '-50% -50%',
       }}
     />
   );
