@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract';
 
-import { StatusSchema } from './schemas.ts';
+import { MeSchema, StatusSchema } from './schemas.ts';
 
 // The SPA's internal RPC contract (oRPC v2, per the 2026-08-10 decision on
 // #1244). This is the only shared code between the two Studio deployables —
@@ -19,4 +19,6 @@ import { StatusSchema } from './schemas.ts';
 
 export const contract = {
   status: oc.output(StatusSchema),
+  /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
+  me: oc.output(MeSchema),
 };

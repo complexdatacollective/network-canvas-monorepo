@@ -140,6 +140,7 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
+      "entry": ["scripts/auth-cli-config.ts!"],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {

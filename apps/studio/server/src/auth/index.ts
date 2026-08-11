@@ -1,0 +1,24 @@
+import type pg from 'pg';
+
+import { createPool } from '../db/pool.ts';
+import type { StudioEnv } from '../env.ts';
+import { createBetterAuthService } from './better-auth.ts';
+import { createMailer } from './email.ts';
+import { type AuthService, createDisabledAuthService } from './service.ts';
+
+export type { AuthService, Principal, SessionPrincipal } from './service.ts';
+
+/**
+ * Build the auth service the environment describes: the real implementation
+ * when a database is configured, the refusing one otherwise. Pass `pool` to
+ * share an existing connection pool (the entry point's); omitted, a new lazy
+ * pool is created from the same configuration.
+ */
+export function createAuthService(env: StudioEnv, pool?: pg.Pool): AuthService {
+  if (!env.db || !env.auth) return createDisabledAuthService();
+  return createBetterAuthService(
+    env.auth,
+    pool ?? createPool(env.db),
+    createMailer(env.auth.mailer),
+  );
+}

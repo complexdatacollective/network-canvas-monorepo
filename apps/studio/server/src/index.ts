@@ -7,6 +7,8 @@ import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
+import { createPool } from './db/pool.ts';
+import { applyAuthSchema } from './db/schema.ts';
 import { readEnv } from './env.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -18,7 +20,39 @@ import { STUDIO_VERSION } from './version.ts';
 // paths here so both topologies present a single origin.
 
 const env = readEnv();
-const app = createApp();
+const pool = env.db ? createPool(env.db) : undefined;
+
+// The auth schema is applied idempotently at every boot — there is no
+// migration system yet, deliberately (pre-release; see src/db/schema.ts).
+// A configured production database that cannot be reached is a deployment
+// mistake and fails the boot; in development the server comes up and auth
+// surfaces fail until the dev Postgres is available.
+if (pool) {
+  try {
+    await applyAuthSchema(pool);
+  } catch (error) {
+    if (env.production) throw error;
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.warn(
+      `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
+    );
+    // In dev the server may win the race against the dev-pg container
+    // (image pull + initdb on a fresh volume); keep trying so sign-in
+    // starts working without a manual restart.
+    const retry = setInterval(() => {
+      void applyAuthSchema(pool)
+        .then(() => {
+          clearInterval(retry);
+          // oxlint-disable-next-line no-console -- boot diagnostics
+          console.log('Database reachable; auth schema applied.');
+        })
+        .catch(() => undefined);
+    }, 3000);
+    retry.unref();
+  }
+}
+
+const app = createApp(env, { pool });
 
 // Default matches the Docker image layout: dist/index.js next to a client/
 // directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
@@ -88,7 +122,11 @@ function shutdown() {
       }),
   );
   void Promise.all(closing).then(() => {
-    server.close(() => process.exit(0));
+    server.close(() => {
+      void Promise.resolve(pool?.end())
+        .catch(() => undefined)
+        .then(() => process.exit(0));
+    });
   });
 }
 process.on('SIGTERM', shutdown);

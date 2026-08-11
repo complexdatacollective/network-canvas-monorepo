@@ -34,6 +34,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "better-auth": "1.6.27",
     "jsdom": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",

@@ -6,7 +6,7 @@ import { ZodToJsonSchemaConverter } from '@orpc/zod';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { getInstanceStatus } from './domain.ts';
+import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
 
 // The public data API (#1248): resource-shaped REST for researchers and
 // external tools, with the normative OpenAPI 3.1 document served from within
@@ -35,12 +35,10 @@ const apiContract = {
 
 const os = implement(apiContract);
 
-const apiRouter = {
-  status: os.status.handler(() => getInstanceStatus()),
-};
-
 const STATUS_TITLES: Record<number, string> = {
   400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
   404: 'Not Found',
   409: 'Conflict',
   422: 'Unprocessable Content',
@@ -50,24 +48,32 @@ const STATUS_TITLES: Record<number, string> = {
 
 const ERROR_STATUS_MAP: Record<string, number> = COMMON_ERROR_STATUS_MAP;
 
-const handler = new OpenAPIHandler(apiRouter, {
-  // Errors leave the public surface as RFC 9457 problem details, never as
-  // oRPC's native error shape. Omitted `type` defaults to "about:blank".
-  customErrorResponseBodyEncoder: (error) => {
-    const status = ERROR_STATUS_MAP[error.code] ?? 500;
-    return {
-      title: STATUS_TITLES[status] ?? 'Error',
-      status,
-      detail: error.message,
-    };
-  },
-});
-
 const generator = new OpenAPIGenerator({
   converters: [new ZodToJsonSchemaConverter()],
 });
 
-export function createApiV1() {
+export function createApiV1(auth: AuthCapabilities) {
+  // The domain's status includes auth capabilities for the SPA; this
+  // surface's Status schema deliberately does not name them, so they are
+  // stripped from the published API (output schemas are the serialization
+  // allowlist).
+  const apiRouter = {
+    status: os.status.handler(() => getInstanceStatus(auth)),
+  };
+
+  const handler = new OpenAPIHandler(apiRouter, {
+    // Errors leave the public surface as RFC 9457 problem details, never as
+    // oRPC's native error shape. Omitted `type` defaults to "about:blank".
+    customErrorResponseBodyEncoder: (error) => {
+      const status = ERROR_STATUS_MAP[error.code] ?? 500;
+      return {
+        title: STATUS_TITLES[status] ?? 'Error',
+        status,
+        detail: error.message,
+      };
+    },
+  });
+
   const api = new Hono();
 
   let doc: OpenAPIDocument | undefined;

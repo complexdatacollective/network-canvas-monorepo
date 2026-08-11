@@ -12,4 +12,15 @@ import { z } from 'zod';
 export const StatusSchema = z.object({
   name: z.string(),
   version: z.string(),
+  auth: z.object({
+    enabled: z.boolean(),
+    magicLink: z.boolean(),
+  }),
+});
+
+export const MeSchema = z.object({
+  userId: z.string(),
+  email: z.string(),
+  emailVerified: z.boolean(),
+  name: z.string(),
 });

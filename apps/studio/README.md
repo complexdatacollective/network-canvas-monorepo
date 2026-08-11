@@ -77,6 +77,47 @@ container and volume, port 9100, bucket auto-created — mirroring Fresco's
 service. Docker must be running. The server's asset integration tests run
 against this MinIO and skip when no object store is reachable.
 
+The dev script likewise provisions **Postgres in Docker** (`dev-pg` — port
+54318, `studio_dev` database auto-created). The port and credentials match
+what `packages/studio-sync`'s conformance suite expects, so the one container
+serves both; an externally managed Postgres already answering on the port is
+used as-is. The server's database integration tests skip when no Postgres is
+reachable. In production the connection comes from `DATABASE_URL`; when it is
+unset the server still boots and database-backed surfaces refuse, mirroring
+the S3 degradation contract.
+
+### Signing in during development
+
+Authentication (better-auth behind the `src/auth` seam, per #1245/#1255) is
+active by default in development: the auth schema is applied to the dev
+Postgres at boot, and magic-link email is delivered to the **server console**
+— submit the sign-in form, copy the printed link into the browser. To
+exercise real email instead, run [Mailpit](https://mailpit.axllent.org)
+(`docker run -d -p 8025:8025 -p 1025:1025 axllent/mailpit`) and start the
+server with `SMTP_URL=smtp://localhost:1025`; sent mail appears at
+`http://localhost:8025`.
+
+The server's `dev` and `start` scripts load a gitignored
+`apps/studio/server/.env` if one exists (Node's native `--env-file-if-exists`),
+so SMTP credentials and other local overrides can live there instead of the
+shell environment.
+
+Auth configuration follows the same all-or-nothing, fail-fast shape as S3:
+
+| Variable             | Development default     | Real deployment                                                                                                            |
+| -------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | the `dev-pg` Postgres   | unset in production ⇒ auth disabled, `/api/auth/*` refuses                                                                 |
+| `BETTER_AUTH_SECRET` | fixed dev constant      | required — the dev constant never activates                                                                                |
+| `PUBLIC_URL`         | `http://localhost:5173` | required (the browser-facing origin)                                                                                       |
+| `SMTP_URL`           | unset ⇒ console mailer  | unset ⇒ magic-link sends refuse, never console-logged                                                                      |
+| `EMAIL_FROM`         | `studio-dev@localhost`  | required alongside `SMTP_URL`                                                                                              |
+| `TRUSTED_PROXIES`    | unset                   | proxy IPs/CIDRs (comma-separated); required behind a proxy for per-client rate limiting, else all clients share one bucket |
+
+"Real deployment" means production `NODE_ENV` **or** an explicitly set
+`DATABASE_URL`: the dev conveniences (publicly-known secret, localhost
+origin, console mailer) are keyed to the dev-default database, so a deploy
+that forgot `NODE_ENV=production` still refuses to run insecurely.
+
 ## Production
 
 ```bash
