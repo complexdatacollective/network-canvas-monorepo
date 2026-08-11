@@ -864,3 +864,69 @@ reader users and is hidden from them.
     },
   },
 };
+
+/**
+ * The recognizer classifies every gesture as exactly one thing.
+ */
+export const GestureClassification: Story = {
+  render: function GestureClassificationRender() {
+    const [counts, setCounts] = useState({ clicks: 0, drags: 0, holds: 0 });
+    return (
+      <div className="flex flex-col items-center gap-4 p-16">
+        <Node
+          label="Gesture"
+          onClick={() => setCounts((c) => ({ ...c, clicks: c.clicks + 1 }))}
+          onLongPress={() => setCounts((c) => ({ ...c, holds: c.holds + 1 }))}
+          onDragStart={() => setCounts((c) => ({ ...c, drags: c.drags + 1 }))}
+          onDragEnd={() => undefined}
+        />
+        <output data-testid="gesture-log" className="text-sm">
+          {`clicks:${counts.clicks} drags:${counts.drags} holds:${counts.holds}`}
+        </output>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const node = canvas.getByRole('button', { name: 'Gesture' });
+    const log = () => canvas.getByTestId('gesture-log').textContent;
+
+    // A still tap is a click and nothing else.
+    await userEvent.pointer([
+      { keys: '[MouseLeft>]', target: node },
+      { keys: '[/MouseLeft]' },
+    ]);
+    await waitFor(() => expect(log()).toBe('clicks:1 drags:0 holds:0'));
+
+    // Movement past the threshold is a drag — and never also a click, even
+    // though pointer capture still delivers the release's click to the node.
+    await userEvent.pointer([
+      { keys: '[MouseLeft>]', target: node, coords: { x: 100, y: 100 } },
+      { coords: { x: 160, y: 100 } },
+      { keys: '[/MouseLeft]' },
+    ]);
+    await waitFor(() => expect(log()).toBe('clicks:1 drags:1 holds:0'));
+
+    // A press held still is a hold — and its release is not a click either.
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: node });
+    await waitFor(() => expect(log()).toContain('holds:1'), { timeout: 3000 });
+    await userEvent.pointer({ keys: '[/MouseLeft]' });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await expect(log()).toBe('clicks:1 drags:1 holds:1');
+  },
+  parameters: {
+    layout: 'padded',
+    chromatic: { disableSnapshot: true },
+    docs: {
+      description: {
+        story: `
+An instrumented node counting what actually fired. The play function drives all
+three gestures with real pointer sequences: a still tap clicks, movement past
+the drag threshold drags (and the click that pointer capture still delivers is
+swallowed), and a press held still holds (its release is swallowed too). Each
+gesture resolves as exactly one thing.
+        `,
+      },
+    },
+  },
+};

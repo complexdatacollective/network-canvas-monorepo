@@ -111,6 +111,10 @@ export function useNodeGestures({
   const detachRef = useRef<(() => void) | null>(null);
   const suppressClickRef = useRef(false);
   const activePointerRef = useRef<number | null>(null);
+  // Whether a drag is live, and the move that last advanced it — kept in refs
+  // so teardown from outside the gesture (unmount, disabling) can see them.
+  const draggingRef = useRef(false);
+  const lastDragEventRef = useRef<PointerEvent | null>(null);
   const [isHolding, setIsHolding] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -154,6 +158,18 @@ export function useNodeGestures({
 
   /** Drops everything, leaving no timer or listener behind. */
   const teardown = useCallback(() => {
+    // A drag still live here was interrupted from outside its own pointer
+    // sequence — the node unmounted or became disabled. The host's effects
+    // (a DnD item in flight, a pinned simulation node) outlive this hook, so
+    // it must hear the drag end as cancelled rather than never hear at all.
+    if (draggingRef.current) {
+      draggingRef.current = false;
+      const lastEvent = lastDragEventRef.current;
+      lastDragEventRef.current = null;
+      if (lastEvent) {
+        optionsRef.current.onDragEnd?.(lastEvent, { cancelled: true });
+      }
+    }
     abandonHold();
     activePointerRef.current = null;
     detachRef.current?.();
@@ -225,13 +241,13 @@ export function useNodeGestures({
         }
       }
 
-      let dragging = false;
       let moved = false;
 
       const handleMove = (moveEvent: PointerEvent) => {
         if (moveEvent.pointerId !== pointerId) return;
 
-        if (dragging) {
+        if (draggingRef.current) {
+          lastDragEventRef.current = moveEvent;
           optionsRef.current.onDragMove?.(moveEvent);
           return;
         }
@@ -246,7 +262,8 @@ export function useNodeGestures({
         optionsRef.current.onHoldInterrupted?.();
 
         if (optionsRef.current.dragEnabled) {
-          dragging = true;
+          draggingRef.current = true;
+          lastDragEventRef.current = moveEvent;
           // A drag resolves the gesture, so the click that pointer capture
           // will still deliver to this node must not read as a tap.
           suppressClickRef.current = true;
@@ -268,7 +285,11 @@ export function useNodeGestures({
           // Capture may already be gone, or the DOM may not implement it.
         }
 
-        if (dragging) {
+        if (draggingRef.current) {
+          // Settled here, before teardown, so teardown cannot mistake this
+          // orderly end for an interruption and end the drag twice.
+          draggingRef.current = false;
+          lastDragEventRef.current = null;
           optionsRef.current.onDragEnd?.(endEvent, {
             cancelled: endEvent.type === 'pointercancel',
           });
@@ -281,7 +302,7 @@ export function useNodeGestures({
         // Scrolling under a still press means the gesture became a scroll:
         // abandon the hold, but a drag in flight is unaffected (its own
         // touch-action already prevents scroll).
-        if (dragging) return;
+        if (draggingRef.current) return;
         abandonHold();
         optionsRef.current.onHoldInterrupted?.();
       };

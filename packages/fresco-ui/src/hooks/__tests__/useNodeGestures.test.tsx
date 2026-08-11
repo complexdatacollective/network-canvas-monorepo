@@ -469,6 +469,66 @@ describe('useNodeGestures: drags', () => {
     expect(onDragEnd).toHaveBeenCalledOnce();
   });
 
+  it('ends a live drag as cancelled when the node unmounts mid-drag', () => {
+    const onDragEnd = vi.fn();
+    const { unmount } = render(
+      <Probe dragEnabled onDragStart={vi.fn()} onDragEnd={onDragEnd} />,
+    );
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+    expect(onDragEnd).not.toHaveBeenCalled();
+
+    // The host's effects — a DnD item in flight, a pinned simulation node —
+    // outlive the hook, so they must hear the drag end.
+    unmount();
+    expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: true,
+    });
+  });
+
+  it('ends a live drag as cancelled when the node becomes disabled mid-drag', () => {
+    const onDragEnd = vi.fn();
+    const { rerender } = render(
+      <Probe dragEnabled onDragStart={vi.fn()} onDragEnd={onDragEnd} />,
+    );
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+
+    rerender(
+      <Probe
+        dragEnabled
+        disabled
+        onDragStart={vi.fn()}
+        onDragEnd={onDragEnd}
+      />,
+    );
+    expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: true,
+    });
+
+    // The interruption consumed the drag: releasing afterwards ends nothing.
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    expect(onDragEnd).toHaveBeenCalledOnce();
+  });
+
+  it('does not report an orderly release as a second, cancelled end', () => {
+    const onDragEnd = vi.fn();
+    const { unmount } = render(
+      <Probe dragEnabled onDragStart={vi.fn()} onDragEnd={onDragEnd} />,
+    );
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    unmount();
+
+    expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: false,
+    });
+  });
+
   it('does not classify a drag when drags are not enabled', () => {
     const onDragStart = vi.fn();
     const onClickResult = vi.fn();
