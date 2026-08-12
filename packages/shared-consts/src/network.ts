@@ -29,19 +29,29 @@ export type EntityAttributesProperty = typeof entityAttributesProperty;
 export const edgeSourceProperty = 'from';
 export const edgeTargetProperty = 'to';
 
-export const EntityAttributesSchema = z
-  .record(VariableNameSchema, VariableValueSchema.nullish())
-  .transform((attributes): Record<string, VariableValue> => {
-    const definedAttributes: Record<string, VariableValue> = {};
+const LegacyEntityAttributesSchema = z.record(
+  VariableNameSchema,
+  VariableValueSchema.nullish(),
+);
 
-    for (const [name, value] of Object.entries(attributes)) {
-      if (value !== null && value !== undefined) {
-        definedAttributes[name] = value;
-      }
-    }
+const removeNullishAttributeValues = (attributes: unknown): unknown => {
+  const result = LegacyEntityAttributesSchema.safeParse(attributes);
 
-    return definedAttributes;
-  });
+  if (!result.success) {
+    return attributes;
+  }
+
+  return Object.fromEntries(
+    Object.entries(result.data).filter(
+      ([, value]) => value !== null && value !== undefined,
+    ),
+  );
+};
+
+export const EntityAttributesSchema = z.preprocess(
+  removeNullishAttributeValues,
+  z.record(VariableNameSchema, VariableValueSchema),
+);
 
 const BaseNcEntitySchema = z.object({
   [entityPrimaryKeyProperty]: z.string().readonly(),
