@@ -569,6 +569,37 @@ describe('FormStore', () => {
       });
     });
 
+    it('does not assign an ambiguous opaque error alias to a structural field', () => {
+      store.getState().registerField({
+        name: ['favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+      store.getState().registerField({
+        name: 'favorite.color',
+        initialValue: 'green',
+      });
+
+      const normalized = store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { 'favorite.color': ['Choose another color'] },
+      });
+
+      expect(normalized).toEqual({
+        formErrors: ['Choose another color'],
+        fieldErrors: {},
+      });
+      expect(store.getState().getFieldErrors(['favorite.color'])).toBeNull();
+      expect(store.getState().getFieldErrors('favorite.color')).toBeNull();
+      expect(
+        store.getState().getFieldState(['favorite.color'])?.meta.isValid,
+      ).toBe(true);
+      expect(
+        store.getState().getFieldState('favorite.color')?.meta.isValid,
+      ).toBe(true);
+      expect(store.getState().isValid).toBe(false);
+    });
+
     it('restores an unvalidated field after server errors clear on successful validation', async () => {
       // This regression is intentionally scoped to a single field without a
       // client schema; the surrounding getter tests register other fields.

@@ -84,14 +84,24 @@ const normalizeSubmissionErrors = (
     }
   });
 
+  aliases.forEach((fieldName, alias) => {
+    if (fields.has(alias) && alias !== fieldName) {
+      aliases.delete(alias);
+      ambiguousAliases.add(alias);
+    }
+  });
+
   const normalizedFieldErrors: FlattenedErrors['fieldErrors'] = {};
+  const ambiguousFieldErrors: string[] = [];
 
   Object.entries(errors.fieldErrors).forEach(([errorKey, messages]) => {
+    if (ambiguousAliases.has(errorKey)) {
+      ambiguousFieldErrors.push(...(messages ?? []));
+      return;
+    }
+
     const alias = aliases.get(errorKey);
-    const fieldName =
-      fields.has(errorKey) || !alias || ambiguousAliases.has(errorKey)
-        ? errorKey
-        : alias;
+    const fieldName = fields.has(errorKey) || !alias ? errorKey : alias;
     const existing = Object.hasOwn(normalizedFieldErrors, fieldName)
       ? normalizedFieldErrors[fieldName]
       : undefined;
@@ -104,7 +114,7 @@ const normalizeSubmissionErrors = (
   });
 
   return {
-    formErrors: errors.formErrors,
+    formErrors: [...errors.formErrors, ...ambiguousFieldErrors],
     fieldErrors: normalizedFieldErrors,
   };
 };

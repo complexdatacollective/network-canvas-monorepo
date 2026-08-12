@@ -147,6 +147,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     [namespace, name, nameMode],
   );
   const resolvedName = formatObjectPath(resolvedPath);
+  const publicResolvedName = namespaceName ? `${namespaceName}.${name}` : name;
   const resolvedValidationContext = useMemo(
     () =>
       namespace.length > 0 && validationContext
@@ -331,7 +332,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const controller = useMemo<FieldSlotController>(
     () => ({
-      name: resolvedName,
+      name: publicResolvedName,
       value: currentValue,
       setValue: handleChange,
       validate: () => {
@@ -341,7 +342,14 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         document.getElementById(id)?.focus();
       },
     }),
-    [resolvedName, resolvedPath, currentValue, handleChange, validateField, id],
+    [
+      publicResolvedName,
+      resolvedPath,
+      currentValue,
+      handleChange,
+      validateField,
+      id,
+    ],
   );
 
   const result: UseFieldResult = {
