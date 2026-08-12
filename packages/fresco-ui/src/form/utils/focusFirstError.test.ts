@@ -119,4 +119,31 @@ describe('focusFirstError', () => {
 
     expect(document.activeElement).toBe(input);
   });
+
+  it('matches an unambiguous public field name when its path is canonicalized', () => {
+    const fieldName = 'weight[kg]';
+    const { input } = setup(fieldName, '["weight[kg]"]');
+
+    focusFirstError({
+      formErrors: [],
+      fieldErrors: { [fieldName]: ['Required'] },
+    });
+    vi.advanceTimersByTime(800);
+
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('does not guess between ambiguous public field names', () => {
+    const first = setup('favorite.color', '["favorite.color"]');
+    const second = setup('favorite.color', 'profile.favorite.color');
+
+    focusFirstError({
+      formErrors: [],
+      fieldErrors: { 'favorite.color': ['Required'] },
+    });
+    vi.advanceTimersByTime(800);
+
+    expect(document.activeElement).not.toBe(first.input);
+    expect(document.activeElement).not.toBe(second.input);
+  });
 });
