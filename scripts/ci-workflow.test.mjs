@@ -506,7 +506,7 @@ test('the informational Pages deploy has a bounded failure window', () => {
   assert.ok(reportJob, 'e2e-report job exists');
   assert.match(
     reportJob,
-    /- name: Deploy report to Pages\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+    /- name: Deploy report to Pages\n\s+id: deploy\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
   );
 });
 
@@ -563,13 +563,45 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     'the failure case removes the stale report before checking the artifact',
   );
 
-  // The merge step (and therefore the orphan sweep) is unconditional, so
-  // all-skipped runs still clean up deleted branches' reports. Only the
-  // artifact download stays failure-gated.
+  // The merge step (and therefore the orphan sweep) is not gated on any
+  // suite having run, so all-skipped runs still clean up deleted branches'
+  // reports. Its only gate is the stale-head guard; the artifact download
+  // stays failure-gated.
   assert.match(
     reportJob,
-    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+env:/,
-    'the merge step carries no if guard',
+    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+if: steps\.guard\.outputs\.current == 'true'\n\s+env:/,
+    'the merge step is gated only on the stale-head guard',
+  );
+
+  // A truncated slug component stays within filesystem limits; the digest
+  // suffix keeps truncated names unambiguous.
+  assert.match(
+    reportJob,
+    /s=\$\{s:0:100\}/,
+    'the readable slug portion is bounded',
+  );
+
+  // A transiently failed Pages deploy must be retried: gh-pages-deployed
+  // advances only on deploy success, and a mismatch versus gh-pages forces
+  // needs_deploy on the next run.
+  assert.match(reportJob, /pending_deploy/);
+  assert.match(
+    reportJob,
+    /gh-pages:refs\/heads\/gh-pages-deployed/,
+    'the deployed pointer is recorded from the state branch',
+  );
+  assert.match(
+    reportJob,
+    /- name: Record the deployed state\n(?:\s+#[^\n]*\n)*\s+if: >-\n\s+\$\{\{ steps\.merge\.outputs\.needs_deploy == 'true'\n\s+&& steps\.deploy\.outcome == 'success' \}\}/,
+    'the deployed pointer advances only when deploy-pages succeeded',
+  );
+
+  // A rerun of an outdated head must not rewrite the report site or the
+  // sticky comment with obsolete results.
+  assert.match(
+    reportJob,
+    /- name: Confirm this run still describes the PR head\n(?:\s+#[^\n]*\n)*\s+id: guard\n/,
+    'the stale-head guard step exists',
   );
 
   // Orphan sweep: reports for branches that no longer exist are deleted on
@@ -587,12 +619,12 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     'both the listing and the sweep document the fail-safe',
   );
 
-  // The status comment is a single sticky comment, updated in place, and only
-  // ever posted on pull requests.
+  // The status comment is a single sticky comment, updated in place, only
+  // ever posted on pull requests, and never rewritten by an obsolete rerun.
   assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
   assert.match(
     reportJob,
-    /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/,
+    /\$\{\{ always\(\) && github\.event_name == 'pull_request'\n\s+&& steps\.guard\.outputs\.current == 'true' \}\}/,
   );
   assert.match(reportJob, /updateComment/);
   assert.match(reportJob, /createComment/);

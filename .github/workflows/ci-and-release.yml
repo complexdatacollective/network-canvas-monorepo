@@ -1539,12 +1539,18 @@ jobs:
             # filesystem paths.
             s=$(printf '%s' "$s" | tr -c '[:alnum:]-_.' '-')
             s=${s:-unknown}
+            # Bound the readable portion so the full component stays far
+            # under the 255-byte filename limit (post-tr the string is pure
+            # ASCII, so chars == bytes). The digest keeps truncated names
+            # collision-free.
+            s=${s:0:100}
             printf '%s-%s\n' "$s" "$(printf '%s' "$1" | sha256sum | cut -c1-8)"
           }
           printf 'slug=%s\n' "$(slugify "$REF")" >> "$GITHUB_OUTPUT"
           # Slugs of every live branch, for the merge step's orphan sweep. A
           # failed listing leaves the file absent and the sweep skipped —
           # never delete on doubt.
+          pending_deploy=false
           if refs=$(git ls-remote --heads \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             2>/dev/null); then
@@ -1553,7 +1559,39 @@ jobs:
               | while IFS= read -r branch; do
                   [ -n "$branch" ] && slugify "$branch" >> "$RUNNER_TEMP/live-slugs.txt"
                 done
+            # gh-pages-deployed tracks the last tree deploy-pages actually
+            # accepted (see the record step below). If gh-pages has advanced
+            # past it, an earlier deploy failed after its state was
+            # persisted, and the live site is stale — force a redeploy even
+            # when this run changes nothing.
+            gh_pages=$(printf '%s\n' "$refs" | awk '$2 == "refs/heads/gh-pages" { print $1 }')
+            gh_pages_deployed=$(printf '%s\n' "$refs" | awk '$2 == "refs/heads/gh-pages-deployed" { print $1 }')
+            if [ -n "$gh_pages" ] && [ "$gh_pages" != "$gh_pages_deployed" ]; then
+              pending_deploy=true
+            fi
           fi
+          printf 'pending_deploy=%s\n' "$pending_deploy" >> "$GITHUB_OUTPUT"
+      - name: Confirm this run still describes the PR head
+        # A manual rerun of an outdated run must not rewrite the sticky
+        # comment or the Pages reports with obsolete results. An API hiccup
+        # proceeds (current=true): the common case is by far a live head,
+        # and a wrong skip would suppress a legitimate report.
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          current=true
+          if [ -n "$PR_NUMBER" ] && [ -n "$EVENT_HEAD_SHA" ]; then
+            live=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+              --jq .head.sha 2>/dev/null || true)
+            if [ -n "$live" ] && [ "$live" != "$EVENT_HEAD_SHA" ]; then
+              current=false
+              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live"
+            fi
+          fi
+          printf 'current=%s\n' "$current" >> "$GITHUB_OUTPUT"
       - name: Download reports
         # Only failed jobs' reports are published, but the artifacts carry no
         # failure marker of their own — download the set and let the merge
@@ -1565,20 +1603,23 @@ jobs:
           pattern: '*playwright-report*'
           path: reports
       - name: Fetch existing pages content
+        if: steps.guard.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: gh-pages
           path: existing-pages
         continue-on-error: true
       - name: Merge failure reports into per-job branch subdirectories
-        # Unconditional (unlike the failure-gated download above): the orphan
-        # sweep inside must run even when every suite was skipped — docs-only
-        # PRs, non-E2E release lanes, and full-reuse release PRs would
-        # otherwise leave deleted branches' reports published until some
-        # later run happened to select a suite.
+        # Not gated on any suite having run (unlike the failure-gated
+        # download above): the orphan sweep inside must run even when every
+        # suite was skipped — docs-only PRs, non-E2E release lanes, and
+        # full-reuse release PRs would otherwise leave deleted branches'
+        # reports published until some later run happened to select a suite.
         id: merge
+        if: steps.guard.outputs.current == 'true'
         env:
           SLUG: ${{ steps.meta.outputs.slug }}
+          PENDING_DEPLOY: ${{ steps.meta.outputs.pending_deploy }}
           R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
           R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
           R_INTERVIEWER_PIXEL: ${{ needs.interviewer-e2e.result }}
@@ -1658,12 +1699,21 @@ jobs:
           merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
           merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
           merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
+          # Deploy when this run changed the tree OR an earlier run's deploy
+          # failed after persisting its state (see pending_deploy above) —
+          # without the latter, changed=false would leave the live site
+          # stale forever.
+          needs_deploy=$changed
+          if [ "$PENDING_DEPLOY" = "true" ]; then
+            needs_deploy=true
+          fi
           {
             echo "changed=$changed"
+            echo "needs_deploy=$needs_deploy"
             echo "published=$published"
           } >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.needs_deploy == 'true'
         with:
           path: merged/
       - name: Persist merged site to gh-pages branch
@@ -1674,7 +1724,7 @@ jobs:
         # 404s a minute after it is posted). The branch is pure derived state,
         # so force-push a fresh single commit; the job concurrency group
         # serialises writers.
-        if: steps.merge.outputs.changed == 'true'
+        if: steps.merge.outputs.needs_deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1687,14 +1737,34 @@ jobs:
           git --git-dir="$RUNNER_TEMP/pages-state/.git" push -q --force \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
       - name: Deploy report to Pages
-        if: steps.merge.outputs.changed == 'true'
+        id: deploy
+        if: steps.merge.outputs.needs_deploy == 'true'
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
         timeout-minutes: 3
         continue-on-error: true
+      - name: Record the deployed state
+        # Advance gh-pages-deployed only after deploy-pages actually
+        # succeeded. A failed or timed-out deploy leaves it behind gh-pages,
+        # which the next report run detects (pending_deploy above) and
+        # retries — otherwise a transient deploy failure would leave the
+        # live site stale forever behind a changed=false optimisation.
+        if: >-
+          ${{ steps.merge.outputs.needs_deploy == 'true'
+          && steps.deploy.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git --git-dir="$RUNNER_TEMP/pages-state/.git" push -q --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            gh-pages:refs/heads/gh-pages-deployed
       - name: Upsert the E2E status comment
         # always(): still post the status even if the Pages publish above
         # failed — the decision matrix and pass/fail signals are the point.
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        # The guard keeps a rerun of an outdated head from rewriting the
+        # comment with obsolete results.
+        if: >-
+          ${{ always() && github.event_name == 'pull_request'
+          && steps.guard.outputs.current == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SLUG: ${{ steps.meta.outputs.slug }}
