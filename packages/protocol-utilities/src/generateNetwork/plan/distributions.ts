@@ -92,6 +92,14 @@ function sampleBeta(mean: number, sd: number, stream: RandomStream): number {
   const nu = (mean * (1 - mean)) / (sd * sd) - 1;
   const alpha = mean * nu;
   const beta = (1 - mean) * nu;
+  // The opposite limit to the one handled below, and it needs the opposite
+  // answer. A tiny deviation — `sd: 1e-200` is schema-valid — underflows
+  // `sd * sd` to zero, so `nu` and both shapes become Infinity. The gamma
+  // draws then overflow and the endpoint fallback would return 0 or 1: the
+  // extremes, for a descriptor asking for a distribution pinned AT its mean.
+  // As the shapes diverge a Beta concentrates on the mean, so that is what a
+  // near-degenerate one draws.
+  if (!Number.isFinite(alpha) || !Number.isFinite(beta)) return mean;
   const x = sampleGamma(alpha, stream);
   const y = sampleGamma(beta, stream);
   const total = x + y;
@@ -222,11 +230,23 @@ export function sampleWeightedIndex(
   weights: readonly number[],
   stream: RandomStream,
 ): number {
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  if (total <= 0) return 0;
+  // Scaled by the largest weight before summing. Weights are only ever
+  // compared with one another, so scaling changes nothing about the
+  // distribution — but two schema-valid weights of 1e308 sum to Infinity, and
+  // `remaining` then never falls below zero (or is NaN when the draw is
+  // exactly zero), so no iteration can select and every draw returns the last
+  // option. Equal weights would produce a deterministic value.
+  const largest = weights.reduce(
+    (most, weight) => (weight > most ? weight : most),
+    0,
+  );
+  if (!(largest > 0)) return 0;
+  const scaled = weights.map((weight) => weight / largest);
+  const total = scaled.reduce((sum, weight) => sum + weight, 0);
+  if (!(total > 0)) return 0;
   let remaining = stream.next() * total;
   for (let index = 0; index < weights.length; index++) {
-    remaining -= weights[index]!;
+    remaining -= scaled[index]!;
     if (remaining < 0) return index;
   }
   return weights.length - 1;

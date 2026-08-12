@@ -17,11 +17,9 @@ import type {
   SyntheticCount,
 } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import {
-  useSetStageValue,
-  useStageFormValue,
-} from '~/components/StageEditor/stageFormHooks';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
 /**
  * The optional "Synthetic data" section of a stage editor: how many people the
@@ -466,21 +464,64 @@ const pruned = (
   return (kept.count ?? kept.topology) ? kept : undefined;
 };
 
+/**
+ * The whole `synthetic` block as ONE registered field.
+ *
+ * It has to be registered rather than written through `useSetStageValue`:
+ * `getFormValues()` includes registered fields only, so a bare `setFieldValue`
+ * on an unregistered path parks the value in the store's dormant map. The
+ * controls would appear to update while finishing the edit dropped every
+ * change — and, because the stage update is overwrite-style, merely saving an
+ * imported stage would delete metadata it already carried.
+ *
+ * One opaque field rather than a field per parameter, for the reason the array
+ * editors take the same shape: the schema validates the block as a whole, and
+ * a half-written descriptor is not a state the protocol can hold.
+ */
+const SyntheticField = ({
+  value,
+  onChange,
+  showCount,
+  showTopology,
+}: {
+  value?: StageNodeAndEdgeSynthetic;
+  onChange?: (next: StageNodeAndEdgeSynthetic | null) => void;
+  showCount: boolean;
+  showTopology: boolean;
+}) => {
+  // `null` rather than `undefined` for a section switched off, so the form
+  // records a WRITE rather than an absence. `prune` drops the key on its way
+  // into the protocol, which is what keeps "on but empty" — a shape the schema
+  // rejects — from ever being stored.
+  const emit = (next: StageNodeAndEdgeSynthetic) =>
+    onChange?.(pruned(next) ?? null);
+
+  return (
+    <>
+      {showCount && (
+        <NodeSyntheticControl
+          value={value?.count ? { count: value.count } : undefined}
+          onChange={(node) => emit({ ...value, count: node?.count })}
+        />
+      )}
+      {showTopology && (
+        <EdgeSyntheticControl
+          value={value?.topology ? { topology: value.topology } : undefined}
+          onChange={(edge) => emit({ ...value, topology: edge?.topology })}
+        />
+      )}
+    </>
+  );
+};
+
 export default function SyntheticData({
   interfaceType,
 }: StageEditorSectionProps) {
   const showCount = COUNT_STAGES.has(interfaceType);
   const showTopology = TOPOLOGY_STAGES.has(interfaceType);
-
-  const value = useStageFormValue<StageNodeAndEdgeSynthetic>('synthetic');
-  const setStageValue = useSetStageValue();
-
-  // `null` rather than `undefined`, so a section switched off is a WRITE the
-  // form can see rather than an absence it ignores. `prune` drops the key on
-  // its way into the protocol, which is what keeps "on but empty" — a shape
-  // the schema rejects — from ever being stored.
-  const emit = (next: StageNodeAndEdgeSynthetic) =>
-    setStageValue('synthetic', pruned(next) ?? null);
+  const initialValue = useStageInitialValue('synthetic') as
+    | StageNodeAndEdgeSynthetic
+    | undefined;
 
   // A FamilyPedigree reaches neither set on purpose: a family is a structure
   // rather than a population, so it keeps its own generation logic and nothing
@@ -498,18 +539,15 @@ export default function SyntheticData({
         </Paragraph>
       }
     >
-      {showCount && (
-        <NodeSyntheticControl
-          value={value?.count ? { count: value.count } : undefined}
-          onChange={(node) => emit({ ...value, count: node?.count })}
-        />
-      )}
-      {showTopology && (
-        <EdgeSyntheticControl
-          value={value?.topology ? { topology: value.topology } : undefined}
-          onChange={(edge) => emit({ ...value, topology: edge?.topology })}
-        />
-      )}
+      <ArchitectField
+        name="synthetic"
+        label="Synthetic data"
+        labelHidden
+        component={SyntheticField}
+        initialValue={initialValue}
+        showCount={showCount}
+        showTopology={showTopology}
+      />
     </Section>
   );
 }

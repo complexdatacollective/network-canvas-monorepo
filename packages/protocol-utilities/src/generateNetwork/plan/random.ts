@@ -87,7 +87,14 @@ function createStream(streamSeed: number): RandomStream {
     },
     float(min, max) {
       if (min > max) return min;
-      return min + next() * (max - min);
+      // Interpolated between the endpoints rather than by adding a scaled
+      // width. `max - min` overflows to Infinity for a schema-valid range of
+      // opposite signs (-1e308 to 1e308), and `min + Infinity * t` is then
+      // non-finite — a value that survives rounding and clamping and
+      // serialises to null. Mixing the endpoints keeps every intermediate
+      // inside the range each endpoint already occupies.
+      const t = next();
+      return min * (1 - t) + max * t;
     },
     normal(mean, sd) {
       if (sd === 0) return mean;

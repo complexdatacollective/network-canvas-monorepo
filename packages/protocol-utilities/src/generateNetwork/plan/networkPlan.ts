@@ -1015,6 +1015,16 @@ export function planNetwork(
       const share = assigned[creationIndex]!;
       if (share === 0) return;
       const promptCount = Math.max(1, creation.promptFixedValues.length);
+      /**
+       * Rows each prompt has already turned away, so no (row, prompt) pair is
+       * judged twice.
+       *
+       * A row kept for a later prompt must not be re-judged by the prompt that
+       * rejected it: the verdict cannot change, and re-asking is how a pool of
+       * ninety undrawable rows became a judgement per row PER DRAW — the
+       * quadratic cost the whole-run ceiling exists to keep out.
+       */
+      const rejectedByPrompt = new Map<number, Set<NcNode>>();
       const rosterRows = rosterPools[creationIndex];
 
       for (let i = 0; i < share; i++) {
@@ -1024,26 +1034,55 @@ export function planNetwork(
         let rosterRow: NcNode | undefined;
         let fixed: Record<string, VariableValue> = { ...promptFixed };
         if (rosterRows !== undefined) {
+          // Rows this prompt cannot use, kept for the prompts that follow.
+          // A roster stage's prompts fix DIFFERENT values, so "not drawable"
+          // is a judgement about this prompt rather than about the roster:
+          // discarding the row outright meant a shuffle presenting the second
+          // prompt's only match first left the stage a person short, though a
+          // complete assignment existed.
+          const passedOver: NcNode[] = [];
           while (rosterRows.length > 0) {
             const candidate = rosterRows.shift()!;
             const rowValues = candidate[entityAttributesProperty];
-            // Consumed either way: a row passed over is never drawn, so its
-            // hold must not keep constraining the draws that follow.
-            unreserveFixedValues(ctx, ref, rowValues);
             // Each stage's pool is taken before any of them draws, so a row
-            // two stages share sits in both. One person is never added twice.
+            // two stages share sits in both. One person is never added twice —
+            // and this one is drawable by nobody, so its hold is released for
+            // good rather than kept for a later prompt.
             if (ctx.usedRosterUids.has(candidate[entityPrimaryKeyProperty])) {
+              unreserveFixedValues(ctx, ref, rowValues);
+              continue;
+            }
+            // Keyed on the ROW, not its uid: a caller's external data may
+            // give two rows one primary key while their values differ, and
+            // one being rejected says nothing about the other.
+            if (rejectedByPrompt.get(promptIndex)?.has(candidate)) {
+              passedOver.push(candidate);
               continue;
             }
             const merged = creation.rosterValuesWin
               ? { ...promptFixed, ...rowValues }
               : { ...rowValues, ...promptFixed };
             if (rowIsDrawable?.(merged) ?? true) {
+              // Released here because the draw itself claims what it settles.
+              unreserveFixedValues(ctx, ref, rowValues);
               rosterRow = candidate;
               fixed = merged;
               break;
             }
+            // Released like any other row this draw passes over: the hold
+            // exists to stop a free draw taking a value a row will bring, and
+            // a row that may or may not be drawn later must not go on
+            // constraining the draws in between. Retaining it changed which
+            // value an unrelated variable settled on.
+            unreserveFixedValues(ctx, ref, rowValues);
+            // Kept for a later prompt, which fixes different values. This
+            // prompt will not ask again.
+            const seen = rejectedByPrompt.get(promptIndex) ?? new Set<NcNode>();
+            seen.add(candidate);
+            rejectedByPrompt.set(promptIndex, seen);
+            passedOver.push(candidate);
           }
+          rosterRows.unshift(...passedOver);
           // A roster stage cannot fabricate. Its share ends when the pool has
           // nothing left to give — including a pool an earlier stage sharing
           // the same roster already emptied, which leaves nothing to loop over
@@ -1259,13 +1298,41 @@ export function planNetwork(
     // reduced by what is already committed, so the total after the last
     // creation is the target over the full union — what a single global
     // selection would have produced, arrived at without the blind spot.
-    const domain = new Map<string, EligiblePair>();
+    // Kept per SUBJECT node type, not per edge type. A pair is two nodes of
+    // one type, so stages over different types reach disjoint pairs — and an
+    // accumulated domain spanning both let a stage over `place` select a pair
+    // of people and be stamped as having created it, an edge between endpoints
+    // outside its own subject domain. Feasibility already sums its ceilings
+    // per subject type for the same reason.
+    const bySubject = new Map<
+      string,
+      {
+        domain: Map<string, EligiblePair>;
+        edges: PlannedEdge[];
+        taken: Set<string>;
+      }
+    >();
+    const subjectState = (subjectType: string) => {
+      const existing = bySubject.get(subjectType);
+      if (existing) return existing;
+      const created = {
+        domain: new Map<string, EligiblePair>(),
+        edges: [] as PlannedEdge[],
+        taken: new Set<string>(),
+      };
+      bySubject.set(subjectType, created);
+      return created;
+    };
     const typeEdges: PlannedEdge[] = [];
-    const taken = new Set<string>();
 
     for (const creation of [...topologyCreations].toSorted(
       (a, b) => a.stageIndex - b.stageIndex,
     )) {
+      const {
+        domain,
+        edges: subjectEdges,
+        taken,
+      } = subjectState(creation.subjectNodeType);
       for (const [key, pair] of eligiblePairsForCreation(
         ctx,
         creation,
@@ -1291,7 +1358,7 @@ export function planNetwork(
       // graph at 0.5, not 0.75.
       const outstanding =
         topologyTarget(target, domain.size, eligibleNodeCount) -
-        typeEdges.length;
+        subjectEdges.length;
       if (outstanding <= 0) continue;
 
       const available = [...domain.entries()].filter(
@@ -1310,7 +1377,9 @@ export function planNetwork(
         // intermediate filters, skip logic and census answers. Creations are
         // walked in ascending stage order, so this only ever moves an edge
         // later — never before a stage that could reach its endpoints.
-        typeEdges.push(buildEdge(pair.a, pair.b, creation.stageIndex, {}));
+        const edge = buildEdge(pair.a, pair.b, creation.stageIndex, {});
+        subjectEdges.push(edge);
+        typeEdges.push(edge);
       }
     }
 

@@ -274,14 +274,36 @@ export function materialiseSession(params: {
    * here. Without this a variable declared `missingProbability: 1` comes back
    * populated on exactly those entities, which is the declaration inverted.
    */
+  /**
+   * Whether the plan already answers some member of this equality group.
+   *
+   * A group holding an answered value is ANSWERED — the plan's own rule
+   * (`certainlyMissingVariables`) exempts it for exactly this reason, and both
+   * walk-time paths have to agree. Nulling such a group emits a session that
+   * contradicts the `sameAs` it was built to satisfy: one member holding the
+   * value its creating interaction fixed, the rest null beside it.
+   */
+  const groupHasPlannedAnswer = (
+    members: readonly string[],
+    planned: Planned | undefined,
+  ): boolean =>
+    planned !== undefined &&
+    members.some(
+      (id) =>
+        id in planned.fixedAtCreation ||
+        (id in planned.attributes && !planned.missing.has(id)),
+    );
+
   const applyUnplannedMissingness = (
     ref: EntityScopeRef,
     uid: string,
     attributes: Record<string, VariableValue>,
     variableId: string,
+    planned: Planned | undefined,
   ): void => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return;
+    if (groupHasPlannedAnswer(members, planned)) return;
     // Per scope: one variable key can name separate definitions under two
     // entity types, and each declares its own missingness.
     const scope = scopeKey(ref);
@@ -328,11 +350,7 @@ export function materialiseSession(params: {
     // walk skipped that check, so a variable written only behind a filter and
     // declared certainly-missing was nulled beside a fixed `sameAs` sibling,
     // emitting a finished session that contradicts its own rule.
-    const answered = (id: string): boolean =>
-      planned !== undefined &&
-      (id in planned.fixedAtCreation ||
-        (id in planned.attributes && !planned.missing.has(id)));
-    if (members.some(answered)) return false;
+    if (groupHasPlannedAnswer(members, planned)) return false;
     const scope = scopeKey(ref);
     return (
       groupMissingProbability(
@@ -362,7 +380,7 @@ export function materialiseSession(params: {
       return;
     }
     drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
-    applyUnplannedMissingness(ref, uid, attributes, variableId);
+    applyUnplannedMissingness(ref, uid, attributes, variableId, planned);
   };
 
   const totalStages = stages.length;
@@ -658,7 +676,15 @@ export function materialiseSession(params: {
           // is where the value comes into being, and leaving the declaration
           // to be honoured by a separate write is a coincidence of the two
           // models agreeing, not something this code establishes.
-          applyUnplannedMissingness(ref, uid, attributes, variableId);
+          // No planned entity: this edge is brought into being by the walk
+          // itself, so the plan holds no answer for its group to preserve.
+          applyUnplannedMissingness(
+            ref,
+            uid,
+            attributes,
+            variableId,
+            undefined,
+          );
         }
       }
     }
