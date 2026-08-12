@@ -8,6 +8,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../Field/Field';
+import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
 import FormStoreProvider from '../store/formStoreProvider';
 import { useForm } from './useForm';
@@ -110,6 +111,56 @@ describe('useForm submission errors', () => {
         formErrors: [],
         fieldErrors: {
           '["favorite.color"]': ['Choose another color'],
+        },
+      });
+    });
+  });
+
+  it('maps a namespaced public opaque field error to its internal path', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'person.favorite.color': ['Choose another color'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <FieldNamespace prefix="person">
+            <Field
+              name="favorite.color"
+              nameMode="opaque"
+              label="Favorite color"
+              component={InputField}
+              initialValue="blue"
+            />
+          </FieldNamespace>
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Choose another color')).toBeVisible();
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          'person["favorite.color"]': ['Choose another color'],
         },
       });
     });

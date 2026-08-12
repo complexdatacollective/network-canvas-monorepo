@@ -779,7 +779,12 @@ export const createFormStore = (): FormStoreApi => {
             );
 
             if (combinedErrors.length > 0) {
-              fieldErrors[fieldName] = combinedErrors;
+              Object.defineProperty(fieldErrors, fieldName, {
+                configurable: true,
+                enumerable: true,
+                value: combinedErrors,
+                writable: true,
+              });
             }
 
             // Mark for update: touched, blurred, dirty, and invalid

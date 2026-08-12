@@ -1250,6 +1250,42 @@ describe('FormStore', () => {
       ]);
     });
 
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'stores validation errors for the opaque field %s as own properties',
+      async (name) => {
+        const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+          Object.prototype,
+          name,
+        );
+        store.getState().reset();
+        store.getState().registerField({
+          name: [name],
+          initialValue: '',
+          validation: z.string(),
+        });
+        const error = new z.core.$ZodError([
+          { code: 'custom', message: 'Invalid value', path: [] },
+        ]);
+        mockValidateFieldValue.mockResolvedValueOnce({
+          success: false,
+          error,
+        });
+
+        const result = await store.getState().validateForm();
+
+        expect(result).toBe(false);
+        expect(store.getState().getFieldErrors([name])).toEqual([
+          'Invalid value',
+        ]);
+        expect(Object.keys(store.getState().errors.fieldErrors)).toContain(
+          name,
+        );
+        expect(Object.getOwnPropertyDescriptor(Object.prototype, name)).toEqual(
+          prototypeDescriptor,
+        );
+      },
+    );
+
     it('should preserve form-level errors when validating fields', async () => {
       // Set form-level errors first
       store.getState().setErrors({
