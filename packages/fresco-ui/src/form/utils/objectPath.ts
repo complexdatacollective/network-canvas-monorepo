@@ -25,6 +25,15 @@ const writeOwnProperty = (
   key: PropertyKey,
   value: unknown,
 ): void => {
+  const existingDescriptor = Object.getOwnPropertyDescriptor(container, key);
+  if (Array.isArray(container) && key === 'length' && existingDescriptor) {
+    Object.defineProperty(container, key, {
+      ...existingDescriptor,
+      value,
+    });
+    return;
+  }
+
   Object.defineProperty(container, key, {
     configurable: true,
     enumerable: true,

@@ -523,6 +523,22 @@ describe('FormStore', () => {
       });
     });
 
+    it('preserves an array length field while assembling values', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'items[0]',
+        initialValue: 'first',
+      });
+      store.getState().registerField({
+        name: 'items.length',
+        initialValue: 3,
+      });
+
+      expect(store.getState().getFormValues()).toEqual({
+        items: ['first', undefined, undefined],
+      });
+    });
+
     it('keeps overlapping container and leaf fields when the container is frozen', () => {
       store.getState().reset();
       store.getState().registerField({
@@ -1916,6 +1932,27 @@ describe('FormStore', () => {
         'favorite.color': 'green',
       });
     });
+
+    it.each(['favorite.color', 'weight[kg]'])(
+      'keeps the public dormant map keyed by %s',
+      (name) => {
+        const pathOperations = getPathOperations(persistentStore);
+        pathOperations.registerField({
+          name: [name],
+          submissionErrorKey: name,
+          initialValue: 'initial',
+        });
+        pathOperations.setFieldValue([name], 'updated');
+        pathOperations.unregisterField([name]);
+
+        expect(persistentStore.getState().dormantValues.get(name)?.value).toBe(
+          'updated',
+        );
+        expect(
+          persistentStore.getState().dormantValues.has(`["${name}"]`),
+        ).toBe(false);
+      },
+    );
 
     it('should remove entry from dormantValues after restoring', () => {
       persistentStore.getState().registerField({

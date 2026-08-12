@@ -458,5 +458,24 @@ describe('Object Path Utils', () => {
       expect(existing).toEqual({ first: 'one' });
       expect(obj).toEqual({ group: { first: 'one', second: 'two' } });
     });
+
+    it('preserves the native descriptor when writing an array length path', () => {
+      const obj: Record<string, unknown> = {};
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('items[0]', 'first');
+      writeValue('items.length', 3);
+
+      const items = obj.items;
+      expect(Array.isArray(items)).toBe(true);
+      if (!Array.isArray(items)) throw new Error('Expected an array');
+      expect(items).toEqual(['first', undefined, undefined]);
+      expect(Object.getOwnPropertyDescriptor(items, 'length')).toEqual({
+        configurable: false,
+        enumerable: false,
+        value: 3,
+        writable: true,
+      });
+    });
   });
 });
