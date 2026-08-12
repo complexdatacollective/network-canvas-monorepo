@@ -19,7 +19,7 @@ export function isVariableValue(value: unknown): value is VariableValue {
     );
   }
 
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== 'object') return false;
 
   const x = Object.getOwnPropertyDescriptor(value, 'x');
   const y = Object.getOwnPropertyDescriptor(value, 'y');
