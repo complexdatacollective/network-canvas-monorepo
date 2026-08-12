@@ -1,44 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { createPool } from '../db/pool.ts';
 import { readEnv } from '../env.ts';
 
-describe('database environment', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it('defaults to the dev Postgres outside production', () => {
-    vi.stubEnv('DATABASE_URL', '');
-    const env = readEnv();
-    expect(env.db).toEqual({
-      url: 'postgres://postgres:spike@127.0.0.1:54318/studio_dev',
-    });
-  });
-
-  it('uses DATABASE_URL when set', () => {
-    vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
-    // An explicit DATABASE_URL marks a real deployment: the auth dev
-    // defaults deactivate and this pair becomes mandatory.
-    vi.stubEnv('BETTER_AUTH_SECRET', 'a'.repeat(40));
-    vi.stubEnv('PUBLIC_URL', 'https://studio.example');
-    const env = readEnv();
-    expect(env.db).toEqual({ url: 'postgres://app@db.internal:5432/studio' });
-  });
-
-  it('refuses the dev auth secret once DATABASE_URL is explicit, regardless of NODE_ENV', () => {
-    vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
-    vi.stubEnv('BETTER_AUTH_SECRET', '');
-    expect(() => readEnv()).toThrow(/BETTER_AUTH_SECRET is required/);
-  });
-
-  it('is unconfigured in production without DATABASE_URL', () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    vi.stubEnv('DATABASE_URL', '');
-    const env = readEnv();
-    expect(env.db).toBeUndefined();
-  });
-});
+// Environment resolution is covered by src/env/__tests__/env.test.ts; what
+// remains here is the integration probe.
 
 // Integration probe against a real Postgres — the dev instance from
 // scripts/dev-pg.ts (or whatever DATABASE_URL points at). Skips when no

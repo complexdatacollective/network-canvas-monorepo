@@ -2,9 +2,7 @@
 // Branch-scoped MinIO for local development, mirroring Fresco's dev-s3
 // script (apps/fresco/scripts/dev-s3.ts): development never touches
 // third-party services (#1246, 2026-08-11). Runs under `concurrently` from
-// the package's dev script. Port 9100 so Fresco's dev MinIO (9000) and
-// Studio's can run simultaneously. Constants here must match the
-// non-production defaults in src/env.ts.
+// the package's dev script.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 
@@ -14,13 +12,15 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
+import { DEV } from '../src/env/catalogue.ts';
+
 const IMAGE = 'minio/minio:latest';
-const HOST_PORT = 9100;
+const HOST_PORT = DEV.s3Port;
 const CONTAINER_PORT = 9000;
-const BUCKET = 'studio-dev';
-const REGION = 'us-east-1';
-const ACCESS_KEY_ID = 'minioadmin';
-const SECRET_ACCESS_KEY = 'minioadmin';
+const BUCKET = DEV.s3Bucket;
+const REGION = DEV.s3Region;
+const ACCESS_KEY_ID = DEV.s3AccessKeyId;
+const SECRET_ACCESS_KEY = DEV.s3SecretAccessKey;
 const READY_MAX_ATTEMPTS = 30;
 const READY_INTERVAL_MS = 1000;
 

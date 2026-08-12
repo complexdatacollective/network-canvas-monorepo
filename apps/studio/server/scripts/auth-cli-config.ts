@@ -7,16 +7,16 @@ import pg from 'pg';
 
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';
 import { createConsoleMailer } from '../src/auth/email.ts';
+import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
 
 export const auth = createBetterAuthInstance(
   {
     secret: 'schema-generation-only',
-    baseUrl: 'http://localhost:5173',
+    baseUrl: DEV.baseUrl,
     mailer: { kind: 'console' },
+    trustedProxies: undefined,
   },
   // The dev Postgres from scripts/dev-pg.ts: generate diffs the live schema.
-  new pg.Pool({
-    connectionString: 'postgres://postgres:spike@127.0.0.1:54318/studio_dev',
-  }),
+  new pg.Pool({ connectionString: DEV_DATABASE_URL }),
   createConsoleMailer(),
 );

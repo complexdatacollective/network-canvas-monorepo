@@ -1,4 +1,15 @@
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
+
+// Tests run against the committed development defaults — the same values
+// `pnpm dev` gets. Vitest loads no env files of its own, and src/env/variables.ts
+// deliberately declares no defaults, so without this the suite would see an
+// entirely unconfigured server and every integration probe would skip.
+process.loadEnvFile(
+  fileURLToPath(new URL('.env.development', import.meta.url)),
+);
 
 export default defineConfig({
   test: {

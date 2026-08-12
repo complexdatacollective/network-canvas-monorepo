@@ -1,21 +1,22 @@
 /* oxlint-disable no-console -- dev tooling log output */
 // Branch-scoped Postgres for local development, the same shape as dev-s3.ts:
 // development never touches third-party services (#1246, 2026-08-11). Runs
-// under `concurrently` from the package's dev script. Port 54318 and the
+// under `concurrently` from the package's dev script. The port and
 // credentials deliberately match packages/studio-sync's conformance-suite
-// expectations, so one container serves the app and that suite. Constants
-// here must match the non-production defaults in src/env.ts.
+// expectations, so one container serves the app and that suite.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 
 import pg from 'pg';
 
+import { DEV } from '../src/env/catalogue.ts';
+
 const IMAGE = 'postgres:18';
-const HOST_PORT = 54318;
+const HOST_PORT = DEV.pgPort;
 const CONTAINER_PORT = 5432;
-const USER = 'postgres';
-const PASSWORD = 'spike';
-const DATABASE = 'studio_dev';
+const USER = DEV.pgUser;
+const PASSWORD = DEV.pgPassword;
+const DATABASE = DEV.pgDatabase;
 const READY_MAX_ATTEMPTS = 30;
 const READY_INTERVAL_MS = 1000;
 
