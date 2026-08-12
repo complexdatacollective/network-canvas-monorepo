@@ -8,7 +8,7 @@ import {
   formatObjectPath,
   isSafeObjectPath,
   type ObjectPath,
-  parseObjectPath,
+  parseLegacyObjectPath,
 } from '../utils/objectPath';
 import { validateFieldValue } from '../validation/helpers';
 import type {
@@ -24,7 +24,7 @@ import type {
 enableMapSet();
 
 const resolveFieldPath = (field: FieldReference): ObjectPath => {
-  const path = typeof field === 'string' ? parseObjectPath(field) : field;
+  const path = typeof field === 'string' ? parseLegacyObjectPath(field) : field;
 
   if (!path || !isSafeObjectPath(path)) {
     const fieldName =
@@ -140,11 +140,11 @@ const normalizeSubmissionErrors = (
 const collectSupersededFields = (
   fields: Map<string, FieldState>,
   exclude?: string,
-): string[] => {
-  const superseded: string[] = [];
+): ObjectPath[] => {
+  const superseded: ObjectPath[] = [];
   fields.forEach((field, name) => {
     if (name !== exclude && field.meta.isValidating) {
-      superseded.push(name);
+      superseded.push(resolveStoredFieldPath(name, field));
     }
   });
   return superseded;

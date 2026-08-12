@@ -439,6 +439,20 @@ describe('FormStore', () => {
       expect(store.getState().getFormValues()).toBeInstanceOf(Object);
     });
 
+    it.each(['settings["locale"]', 'matrix[0][1]'])(
+      'preserves the legacy string store reference %s as one output key',
+      (name) => {
+        store.getState().reset();
+        store.getState().registerField({ name, initialValue: 'preserved' });
+        store.getState().setFieldValue(name, 'updated');
+
+        expect(store.getState().getFieldState(name)?.value).toBe('updated');
+        expect(store.getState().getFormValues()).toEqual({
+          [name]: 'updated',
+        });
+      },
+    );
+
     it('combines nested namespace segments with an opaque dotted field name', () => {
       store.getState().reset();
       store.getState().registerField({
@@ -999,6 +1013,43 @@ describe('FormStore', () => {
         );
         expect(store.getState().getFieldErrors('fieldB')).toBeNull();
       });
+
+      it.each(['__proto__', 'constructor', 'prototype'])(
+        'reschedules the opaque dangerous field %s by its stored path',
+        async (name) => {
+          store.getState().reset();
+          store.getState().registerField({ name: 'fieldA', initialValue: '' });
+          store.getState().registerField({
+            name: [name],
+            initialValue: 'preserved',
+            validation: z.string(),
+          });
+          const supersededValidation = createDeferredValidation();
+          const rescheduledValidation = createDeferredValidation();
+          mockValidateFieldValue
+            .mockReturnValueOnce(supersededValidation.promise)
+            .mockReturnValueOnce(rescheduledValidation.promise);
+
+          const supersededRequest = store.getState().validateField([name]);
+          store.getState().setFieldValue('fieldA', 'typed');
+
+          expect(mockValidateFieldValue).toHaveBeenCalledTimes(2);
+          supersededValidation.resolve({
+            success: true,
+            data: 'preserved',
+          });
+          await supersededRequest;
+          rescheduledValidation.resolve({
+            success: true,
+            data: 'preserved',
+          });
+          await flushPendingValidations();
+
+          expect(store.getState().getFieldState([name])?.meta.isValid).toBe(
+            true,
+          );
+        },
+      );
     });
 
     it('should pass correct parameters to validateFieldValue', async () => {
