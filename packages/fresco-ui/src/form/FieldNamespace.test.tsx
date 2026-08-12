@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import FieldNamespace, {
+  resolveFieldName,
   resolveFieldPath,
   useFieldNamespace,
   useFieldNamespacePath,
@@ -134,6 +135,9 @@ describe('FieldNamespace', () => {
       expect(
         resolveFieldPath(result.current, 'favorite.color', 'opaque'),
       ).toEqual(['steps', 0, 'favorite.color']);
+      expect(resolveFieldName(result.current, 'favorite.color', 'opaque')).toBe(
+        'steps[0]["favorite.color"]',
+      );
     });
 
     it.each([

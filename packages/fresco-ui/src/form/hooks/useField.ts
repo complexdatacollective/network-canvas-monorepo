@@ -9,12 +9,12 @@ import type {
 } from '../Field/types';
 import {
   type FieldNameMode,
+  resolveFieldName,
   resolveFieldPath,
   useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
 import type { FieldState, ValidationContext } from '../store/types';
-import { formatObjectPath } from '../utils/objectPath';
 import { validationPropKeys } from '../validation/functions';
 import {
   makeValidationFunction,
@@ -146,7 +146,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     () => resolveFieldPath(namespace, name, nameMode),
     [namespace, name, nameMode],
   );
-  const resolvedName = formatObjectPath(resolvedPath);
+  const resolvedName = resolveFieldName(namespace, name, nameMode);
   const publicResolvedName = namespaceName ? `${namespaceName}.${name}` : name;
   const resolvedValidationContext = useMemo(
     () =>

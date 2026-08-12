@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { ObjectPath } from './utils/objectPath';
 import {
+  formatObjectPath,
   isSafeContainerPath,
   isSafeObjectPath,
   parseLegacyObjectPath,
@@ -50,6 +51,14 @@ export function resolveFieldPath(
   }
 
   return resolvedPath;
+}
+
+export function resolveFieldName(
+  namespace: ObjectPath,
+  name: string,
+  mode: FieldNameMode = 'legacy',
+): string {
+  return formatObjectPath(resolveFieldPath(namespace, name, mode));
 }
 
 type FieldNamespaceProps = {

@@ -196,7 +196,7 @@ export default function useWizardState({
         const firstErrorField = Object.keys(fieldErrors)[0];
         if (firstErrorField) {
           const el = document.querySelector(
-            `[data-field-name="${CSS.escape(firstErrorField)}"]`,
+            `[data-field-path="${CSS.escape(firstErrorField)}"]`,
           );
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }

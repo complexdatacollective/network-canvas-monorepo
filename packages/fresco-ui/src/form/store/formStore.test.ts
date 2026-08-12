@@ -456,6 +456,27 @@ describe('FormStore', () => {
       expect(store.getState().getFormValues()).toBeInstanceOf(Object);
     });
 
+    it.each(['favorite.color', 'weight[kg]'])(
+      'keeps the public field map keyed by %s',
+      (name) => {
+        store.getState().reset();
+        const pathOperations = getPathOperations(store);
+        pathOperations.registerField({
+          name: [name],
+          submissionErrorKey: name,
+          initialValue: 'initial',
+        });
+
+        expect(store.getState().fields.get(name)?.value).toBe('initial');
+        expect(store.getState().fields.has(`["${name}"]`)).toBe(false);
+
+        pathOperations.setFieldValue([name], 'updated');
+
+        expect(store.getState().fields.get(name)?.value).toBe('updated');
+        expect(store.getState().fields.size).toBe(1);
+      },
+    );
+
     it.each(['settings["locale"]', 'matrix[0][1]'])(
       'preserves the legacy string store reference %s as one output key',
       (name) => {
@@ -636,6 +657,7 @@ describe('FormStore', () => {
     });
 
     it('does not assign an ambiguous opaque error alias to a structural field', () => {
+      const initialFieldCount = store.getState().fields.size;
       getPathOperations(store).registerField({
         name: ['favorite.color'],
         submissionErrorKey: 'favorite.color',
@@ -666,6 +688,10 @@ describe('FormStore', () => {
       expect(
         store.getState().getFieldState('favorite.color')?.meta.isValid,
       ).toBe(true);
+      expect(store.getState().fields.size).toBe(initialFieldCount + 2);
+      expect(store.getState().fields.get('favorite.color')?.value).toBe(
+        'green',
+      );
       expect(store.getState().isValid).toBe(false);
     });
 

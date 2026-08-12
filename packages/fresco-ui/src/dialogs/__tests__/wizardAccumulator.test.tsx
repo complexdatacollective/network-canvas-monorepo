@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,18 @@ function ProtoStep() {
       nameMode="opaque"
       label="Prototype value"
       component={InputField}
+    />
+  );
+}
+
+function RequiredOpaqueStep() {
+  return (
+    <Field
+      name="favorite.color"
+      nameMode="opaque"
+      label="Favorite color"
+      component={InputField}
+      required
     />
   );
 }
@@ -156,6 +168,55 @@ describe('Wizard accumulator', () => {
     expect(
       Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
     ).toEqual(prototypeDescriptor);
+  });
+
+  it('scrolls to an invalid opaque field by its canonical path', async () => {
+    const scrollDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      'scrollIntoView',
+    );
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+      writable: true,
+    });
+
+    try {
+      render(
+        <DialogProvider>
+          <TestWizard
+            onResult={vi.fn()}
+            steps={[
+              { title: 'Required', content: RequiredOpaqueStep },
+              { title: 'Done', content: PlainFinishStep },
+            ]}
+          />
+        </DialogProvider>,
+      );
+
+      await openWizard(user);
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+      await waitFor(() => {
+        expect(scrollIntoView).toHaveBeenCalledWith({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+      expect(screen.getByText('Favorite color')).toBeVisible();
+      expect(screen.queryByText('Nothing to fill in here')).toBeNull();
+    } finally {
+      if (scrollDescriptor) {
+        Object.defineProperty(
+          Element.prototype,
+          'scrollIntoView',
+          scrollDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+      }
+    }
   });
 
   it('preserves a value typed on a step when navigating back before ever continuing past it', async () => {
