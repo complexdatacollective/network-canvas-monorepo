@@ -13,8 +13,8 @@ catalogs:
       specifier: ^8.4.0
       version: 8.4.0
     '@capacitor/app':
-      specifier: ^8.1.0
-      version: 8.1.0
+      specifier: ^8.1.1
+      version: 8.1.1
     '@capacitor/assets':
       specifier: ^3.0.5
       version: 3.0.5
@@ -1345,7 +1345,7 @@ importers:
         version: 8.4.0(@capacitor/core@8.4.0)
       '@capacitor/app':
         specifier: 'catalog:'
-        version: 8.1.0(@capacitor/core@8.4.0)
+        version: 8.1.1(@capacitor/core@8.4.0)
       '@capacitor/browser':
         specifier: 'catalog:'
         version: 8.0.3(@capacitor/core@8.4.0)
@@ -3503,8 +3503,8 @@ packages:
     peerDependencies:
       '@capacitor/core': ^8.4.0
 
-  '@capacitor/app@8.1.0':
-    resolution: {integrity: sha512-MlmttTOWHDedr/G4SrhNRxsXMqY+R75S4MM4eIgzsgCzOYhb/MpCkA5Q3nuOCfL1oHm26xjUzqZ5aupbOwdfYg==}
+  '@capacitor/app@8.1.1':
+    resolution: {integrity: sha512-xM2ZTX5jK60tFtmjsmJv+Cdj1Qsb6NcavkqmdEnCPQBeya9oKhamZJxYOnQNj1ZvcJM7sWfG6BEtSLx42pisbA==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -17632,7 +17632,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.4.0
 
-  '@capacitor/app@8.1.0(@capacitor/core@8.4.0)':
+  '@capacitor/app@8.1.1(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
 
