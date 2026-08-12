@@ -504,9 +504,8 @@ describe('FormStore', () => {
     it.each([
       '__proto__.frescoUiPolluted',
       'safe.__proto__.frescoUiPolluted',
-      'constructor',
       'constructor.prototype',
-      'prototype',
+      'prototype.frescoUiPolluted',
     ])('rejects unsafe registered field path %s', (name) => {
       store.getState().reset();
       expect(() =>
@@ -517,6 +516,26 @@ describe('FormStore', () => {
         Object.getOwnPropertyDescriptor(Object.prototype, 'frescoUiPolluted'),
       ).toBeUndefined();
     });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'keeps the terminal legacy field %s as an inert own output key',
+      (name) => {
+        const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+          Object.prototype,
+          name,
+        );
+        store.getState().reset();
+        store.getState().registerField({ name, initialValue: 'preserved' });
+
+        const values = store.getState().getFormValues();
+
+        expect(Object.hasOwn(values, name)).toBe(true);
+        expect(values[name]).toBe('preserved');
+        expect(Object.getOwnPropertyDescriptor(Object.prototype, name)).toEqual(
+          prototypeDescriptor,
+        );
+      },
+    );
 
     it('should get form errors with nested structure', async () => {
       const mockError1 = new z.core.$ZodError([

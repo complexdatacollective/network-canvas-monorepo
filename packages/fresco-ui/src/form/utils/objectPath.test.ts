@@ -39,12 +39,21 @@ describe('Object Path Utils', () => {
       ]);
     });
 
-    it.each(['__proto__', 'safe.__proto__.polluted', 'constructor.prototype'])(
-      'rejects the unsafe structural path %s',
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'preserves the terminal legacy key %s as an inert leaf',
       (path) => {
-        expect(parseObjectPath(path)).toBeNull();
+        expect(parseObjectPath(path)).toEqual([path]);
       },
     );
+
+    it.each([
+      '__proto__.polluted',
+      'safe.__proto__.polluted',
+      'constructor.prototype',
+      'prototype.polluted',
+    ])('rejects the unsafe structural path %s', (path) => {
+      expect(parseObjectPath(path)).toBeNull();
+    });
   });
 
   describe('getValue', () => {
@@ -154,6 +163,19 @@ describe('Object Path Utils', () => {
 
         expect(obj).toEqual({ [key]: 'preserved' });
         expect(getValue(obj, [key])).toBe('preserved');
+        expectObjectPrototypeUnchanged();
+      },
+    );
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'treats the terminal legacy string %s as an inert own key',
+      (key) => {
+        const obj: Record<string, unknown> = {};
+
+        setValue(obj, key, 'preserved');
+
+        expect(Object.hasOwn(obj, key)).toBe(true);
+        expect(getValue(obj, key)).toBe('preserved');
         expectObjectPrototypeUnchanged();
       },
     );
@@ -338,9 +360,8 @@ describe('Object Path Utils', () => {
     it.each([
       '__proto__.frescoUiPolluted',
       'safe.__proto__.frescoUiPolluted',
-      'constructor',
       'constructor.prototype',
-      'prototype',
+      'prototype.frescoUiPolluted',
     ])('does not write the unsafe structural path %s', (path) => {
       const obj: Record<string, unknown> = {};
 

@@ -116,6 +116,57 @@ describe('useForm submission errors', () => {
     });
   });
 
+  it('maps a noncanonical legacy field error to its internal path', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'weight[kg]': ['Enter a supported weight'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <Field
+            name="weight[kg]"
+            label="Weight"
+            component={InputField}
+            initialValue="10"
+          />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Enter a supported weight')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Weight' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          '["weight[kg]"]': ['Enter a supported weight'],
+        },
+      });
+    });
+  });
+
   it('maps a namespaced public opaque field error to its internal path', async () => {
     const onSubmitInvalid = vi.fn();
 

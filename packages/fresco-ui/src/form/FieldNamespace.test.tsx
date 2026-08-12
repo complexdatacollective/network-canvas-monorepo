@@ -136,14 +136,24 @@ describe('FieldNamespace', () => {
       ).toEqual(['steps', 0, 'favorite.color']);
     });
 
-    it.each(['__proto__', 'safe.__proto__.polluted', 'constructor'])(
-      'rejects an unsafe namespace prefix %s',
-      (prefix) => {
-        expect(() =>
-          renderHook(() => useFieldNamespacePath(), {
-            wrapper: wrapper(prefix),
-          }),
-        ).toThrow(`Unsafe form field path: ${prefix}`);
+    it.each([
+      '__proto__',
+      'safe.__proto__.polluted',
+      'constructor',
+      'prototype',
+    ])('rejects an unsafe namespace prefix %s', (prefix) => {
+      expect(() =>
+        renderHook(() => useFieldNamespacePath(), {
+          wrapper: wrapper(prefix),
+        }),
+      ).toThrow(`Unsafe form field path: ${prefix}`);
+    });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'keeps the dangerous legacy field name %s as an inert leaf',
+      (name) => {
+        expect(resolveFieldPath([], name)).toEqual([name]);
+        expect(resolveFieldPath(['safe'], name)).toEqual(['safe', name]);
       },
     );
 

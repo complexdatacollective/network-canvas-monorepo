@@ -76,7 +76,7 @@ export function parseLegacyObjectPath(path: string): ObjectPath | null {
     segments.push(key, Number(encodedIndex));
   }
 
-  return segments.every(isSafeSegment) ? segments : null;
+  return isSafeObjectPath(segments) ? segments : null;
 }
 
 const writableContainer = (
@@ -202,7 +202,7 @@ export function parseObjectPath(path: string): ObjectPath | null {
   }
 
   if (expectSegment) segments.push('');
-  return segments.every(isSafeSegment) ? segments : null;
+  return isSafeObjectPath(segments) ? segments : null;
 }
 
 export function isSafeObjectPath(path: ObjectPath): boolean {
@@ -213,6 +213,10 @@ export function isSafeObjectPath(path: ObjectPath): boolean {
         typeof segment === 'string' &&
         unsafePropertyNames.has(segment)),
   );
+}
+
+export function isSafeContainerPath(path: ObjectPath): boolean {
+  return path.every(isSafeSegment);
 }
 
 export function formatObjectPath(path: ObjectPath): string {

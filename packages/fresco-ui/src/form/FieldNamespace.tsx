@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { ObjectPath } from './utils/objectPath';
 import {
+  isSafeContainerPath,
   isSafeObjectPath,
   parseLegacyObjectPath,
   parseObjectPath,
@@ -40,11 +41,15 @@ export function resolveFieldPath(
         ? parseObjectPath(name)
         : parseLegacyObjectPath(name);
 
-  if (!relativePath || !isSafeObjectPath(relativePath)) {
+  const resolvedPath = relativePath
+    ? [...namespace, ...relativePath]
+    : undefined;
+
+  if (!resolvedPath || !isSafeObjectPath(resolvedPath)) {
     throw new Error(`Unsafe form field path: ${name}`);
   }
 
-  return [...namespace, ...relativePath];
+  return resolvedPath;
 }
 
 type FieldNamespaceProps = {
@@ -62,9 +67,14 @@ export default function FieldNamespace({
       return parentNamespace;
     }
 
+    const path = resolveFieldPath(parentNamespace.path, prefix);
+    if (!isSafeContainerPath(path)) {
+      throw new Error(`Unsafe form field path: ${prefix}`);
+    }
+
     return {
       name: parentNamespace.name ? `${parentNamespace.name}.${prefix}` : prefix,
-      path: resolveFieldPath(parentNamespace.path, prefix),
+      path,
     };
   }, [parentNamespace, prefix]);
 

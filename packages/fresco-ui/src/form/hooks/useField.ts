@@ -242,7 +242,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     registerField({
       name: resolvedPath,
       submissionErrorKey:
-        nameMode === 'opaque' ? publicResolvedName : undefined,
+        publicResolvedName !== resolvedName ? publicResolvedName : undefined,
       initialValue,
       validation,
     });
@@ -252,8 +252,8 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     };
   }, [
     resolvedPath,
-    nameMode,
     publicResolvedName,
+    resolvedName,
     initialValue,
     validation,
     unregisterField,
