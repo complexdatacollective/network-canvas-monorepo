@@ -203,6 +203,9 @@ jobs:
       architect: ${{ steps.policy.outputs.architect }}
       release_ref: ${{ steps.policy.outputs.release_ref }}
       snapshot_branch: ${{ steps.policy.outputs.snapshot_branch }}
+      # Per-suite selection explanations (JSON object), surfaced verbatim in
+      # the e2e-report status comment.
+      reasons: ${{ steps.policy.outputs.reasons }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -238,7 +241,8 @@ jobs:
               | .interviewer = false
               | .architect = false
               | .releaseRef = ""
-              | .snapshotBranch = ""' <<< "$policy")
+              | .snapshotBranch = ""
+              | .reasons = (.reasons | with_entries(.value = "benchmark dispatch"))' <<< "$policy")
           fi
           echo "E2E policy: $policy"
           {
@@ -247,6 +251,7 @@ jobs:
             echo "architect=$(jq -r '.architect' <<< "$policy")"
             echo "release_ref=$(jq -r '.releaseRef' <<< "$policy")"
             echo "snapshot_branch=$(jq -r '.snapshotBranch' <<< "$policy")"
+            echo "reasons=$(jq -c '.reasons // {}' <<< "$policy")"
           } >> "$GITHUB_OUTPUT"
 
   # Route the longest E2E suite. The single-slot private runner is reserved for
@@ -980,7 +985,6 @@ jobs:
       E2E_SHARD: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true && inputs.interview_e2e_shard || '' }}
       E2E_BENCHMARK: ${{ github.event_name == 'workflow_dispatch' && inputs.interview_e2e_benchmark == true }}
     outputs:
-      slug: ${{ steps.meta.outputs.slug }}
       snapshot_failure: ${{ steps.snapshot_failure.outputs.detected }}
     steps:
       - name: Ensure workspace is a healthy git repo
@@ -1015,15 +1019,6 @@ jobs:
           # The Dockerized test run mounts the workspace; don't leave the
           # checkout token in .git/config for test/build code to read.
           persist-credentials: false
-      - id: meta
-        env:
-          REF: ${{ github.head_ref || github.ref_name }}
-        run: |
-          SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
-          # Strip any chars that would break GitHub Pages URLs or filesystem paths.
-          SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
-          SLUG=${SLUG:-unknown}
-          printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Record benchmark runner hardware
         if: env.E2E_BENCHMARK == 'true'
         run: |
@@ -1477,18 +1472,29 @@ jobs:
       snapshot_branch: ${{ needs.e2e-policy.outputs.snapshot_branch }}
       source_run_url: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
 
-  # Publishes the Playwright report to GitHub Pages and comments the E2E result
-  # on the PR. Purely informational: whether the report PUBLISHED says nothing
-  # about whether the code is sound — the actual verdict is the interview-e2e job
-  # (and the comment below). continue-on-error keeps a reporting/Pages-deploy
-  # hiccup from failing the workflow run and gating a release; it is also
-  # excluded from the carry-forward job so its verdict is never republished onto
-  # an unrelated push (see carry-forward-statuses).
-  interview-e2e-report:
-    needs: [interview-e2e, interview-e2e-native]
+  # One consolidated E2E report per run: publishes the Playwright report of
+  # every FAILED suite job to GitHub Pages under <job-name>/<branch-slug>/
+  # (replacing that branch's previous report; a later green run removes it, so
+  # only the latest run's report is ever kept), then upserts a single sticky
+  # PR status comment showing the policy's decision matrix plus each job's
+  # outcome. Purely informational: whether the report PUBLISHED says nothing
+  # about whether the code is sound — the actual verdicts are the suite jobs.
+  # continue-on-error keeps a reporting/Pages-deploy hiccup from failing the
+  # workflow run and gating a release; it is also excluded from the
+  # carry-forward job so its verdict is never republished onto an unrelated
+  # push (see carry-forward-statuses).
+  e2e-report:
+    needs:
+      - e2e-policy
+      - interview-e2e
+      - interview-e2e-native
+      - interviewer-e2e
+      - interviewer-e2e-native
+      - architect-e2e
+      - architect-e2e-native
     if: >-
       ${{ !cancelled()
-      && needs.interview-e2e.result != 'skipped'
+      && needs.e2e-policy.result == 'success'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true) }}
     continue-on-error: true
@@ -1500,46 +1506,239 @@ jobs:
       id-token: write
       pull-requests: write
     concurrency:
-      group: interview-e2e-pages-deploy
+      group: e2e-pages-deploy
       cancel-in-progress: false
     environment:
       name: github-pages
-      url: https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${{ needs.interview-e2e.outputs.slug }}/
+      url: https://complexdatacollective.github.io/network-canvas-monorepo/
+    env:
+      # The six suite-job results in one string, for the step guards below.
+      # Order matches the merge step's job list.
+      SUITE_RESULTS: >-
+        ${{ format('{0} {1} {2} {3} {4} {5}',
+        needs.interview-e2e.result, needs.interview-e2e-native.result,
+        needs.interviewer-e2e.result, needs.interviewer-e2e-native.result,
+        needs.architect-e2e.result, needs.architect-e2e-native.result) }}
     steps:
-      - name: Download new report
+      - id: meta
+        env:
+          REF: ${{ github.head_ref || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Report directory scheme: the normalised ref for readability plus a
+          # short digest of the raw ref. Normalisation alone is lossy
+          # (feature/foo and feature-foo collide), and a collision would let
+          # one branch's run overwrite or delete another branch's
+          # still-current report. The orphan sweep in the merge step
+          # recomputes this for every live branch, which is why it must stay
+          # a single shared function.
+          slugify() {
+            local s
+            s=$(printf '%s' "$1" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+            # Strip any chars that would break GitHub Pages URLs or
+            # filesystem paths.
+            s=$(printf '%s' "$s" | tr -c '[:alnum:]-_.' '-')
+            s=${s:-unknown}
+            # Bound the readable portion so the full component stays far
+            # under the 255-byte filename limit (post-tr the string is pure
+            # ASCII, so chars == bytes). The digest keeps truncated names
+            # collision-free.
+            s=${s:0:100}
+            printf '%s-%s\n' "$s" "$(printf '%s' "$1" | sha256sum | cut -c1-8)"
+          }
+          printf 'slug=%s\n' "$(slugify "$REF")" >> "$GITHUB_OUTPUT"
+          # Slugs of every live branch, for the merge step's orphan sweep. A
+          # failed listing leaves the file absent and the sweep skipped —
+          # never delete on doubt.
+          pending_deploy=false
+          if refs=$(git ls-remote --heads \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            2>/dev/null); then
+            : > "$RUNNER_TEMP/live-slugs.txt"
+            printf '%s\n' "$refs" | awk '{print $2}' | sed 's#^refs/heads/##' \
+              | while IFS= read -r branch; do
+                  [ -n "$branch" ] && slugify "$branch" >> "$RUNNER_TEMP/live-slugs.txt"
+                done
+            # gh-pages-deployed tracks the last tree deploy-pages actually
+            # accepted (see the record step below). If gh-pages has advanced
+            # past it, an earlier deploy failed after its state was
+            # persisted, and the live site is stale — force a redeploy even
+            # when this run changes nothing.
+            gh_pages=$(printf '%s\n' "$refs" | awk '$2 == "refs/heads/gh-pages" { print $1 }')
+            gh_pages_deployed=$(printf '%s\n' "$refs" | awk '$2 == "refs/heads/gh-pages-deployed" { print $1 }')
+            if [ -n "$gh_pages" ] && [ "$gh_pages" != "$gh_pages_deployed" ]; then
+              pending_deploy=true
+            fi
+          fi
+          printf 'pending_deploy=%s\n' "$pending_deploy" >> "$GITHUB_OUTPUT"
+      - name: Confirm this run still describes the PR head
+        # A manual rerun of an outdated run must not rewrite the sticky
+        # comment or the Pages reports with obsolete results. An API hiccup
+        # proceeds (current=true): the common case is by far a live head,
+        # and a wrong skip would suppress a legitimate report.
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          current=true
+          if [ -n "$PR_NUMBER" ] && [ -n "$EVENT_HEAD_SHA" ]; then
+            live=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+              --jq .head.sha 2>/dev/null || true)
+            if [ -n "$live" ] && [ "$live" != "$EVENT_HEAD_SHA" ]; then
+              current=false
+              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live"
+            fi
+          fi
+          printf 'current=%s\n' "$current" >> "$GITHUB_OUTPUT"
+      - name: Download reports
+        # Only failed jobs' reports are published, but the artifacts carry no
+        # failure marker of their own — download the set and let the merge
+        # step pick by job result. Missing artifacts (a suite that died before
+        # reporting) simply do not match the pattern.
+        if: contains(env.SUITE_RESULTS, 'failure')
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: interview-playwright-report
-          path: new-report
+          pattern: '*playwright-report*'
+          path: reports
       - name: Fetch existing pages content
+        if: steps.guard.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: gh-pages
           path: existing-pages
         continue-on-error: true
-      - name: Merge report into branch subdirectory
+      - name: Merge failure reports into per-job branch subdirectories
+        # Not gated on any suite having run (unlike the failure-gated
+        # download above): the orphan sweep inside must run even when every
+        # suite was skipped — docs-only PRs, non-E2E release lanes, and
+        # full-reuse release PRs would otherwise leave deleted branches'
+        # reports published until some later run happened to select a suite.
+        id: merge
+        if: steps.guard.outputs.current == 'true'
         env:
-          SLUG: ${{ needs.interview-e2e.outputs.slug }}
+          SLUG: ${{ steps.meta.outputs.slug }}
+          PENDING_DEPLOY: ${{ steps.meta.outputs.pending_deploy }}
+          R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
+          R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
+          R_INTERVIEWER_PIXEL: ${{ needs.interviewer-e2e.result }}
+          R_INTERVIEWER_NATIVE: ${{ needs.interviewer-e2e-native.result }}
+          R_ARCHITECT_PIXEL: ${{ needs.architect-e2e.result }}
+          R_ARCHITECT_NATIVE: ${{ needs.architect-e2e-native.result }}
         run: |
           mkdir -p merged
           if [ -d existing-pages ] && [ "$(ls -A existing-pages 2>/dev/null)" ]; then
             cp -r existing-pages/. merged/
             rm -rf merged/.git
           fi
-          rm -rf "merged/interview-e2e/$SLUG"
-          mkdir -p "merged/interview-e2e/$SLUG"
-          cp -r new-report/. "merged/interview-e2e/$SLUG/"
+          # A root marker keeps the published tree non-empty even when a green
+          # run removes the last remaining failure report — an empty tree
+          # would make the state-branch commit below fail and leave the stale
+          # report live instead of deleted.
+          printf '%s\n' \
+            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;/</code>.</p>' \
+            > merged/index.html
+          changed=false
+          published='{}'
+          merge_report() {
+            local job=$1 result=$2 artifact=$3
+            local dir="merged/$job/$SLUG"
+            case "$result" in
+              failure)
+                local src="reports/$artifact"
+                # The previous run's report never describes this run — remove
+                # it unconditionally, so a failure that died before Playwright
+                # produced a report cannot keep serving stale results behind a
+                # bookmarked URL.
+                if [ -d "$dir" ]; then
+                  rm -rf "$dir"
+                  changed=true
+                fi
+                if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+                  mkdir -p "$dir"
+                  cp -r "$src/." "$dir/"
+                  published=$(jq -c --arg job "$job" '. + {($job): true}' <<< "$published")
+                  changed=true
+                fi
+                ;;
+              success | skipped)
+                # Only the latest run's report is kept: a job that is green
+                # again has no current failure, and a job that is no longer
+                # selected (its cumulative diff stopped touching the suite —
+                # e.g. the failing change was reverted) has no current
+                # failure either. Both drop the stale report.
+                if [ -d "$dir" ]; then
+                  rm -rf "$dir"
+                  changed=true
+                fi
+                ;;
+            esac
+          }
+          merge_report interview-e2e "$R_INTERVIEW_PIXEL" interview-playwright-report
+          merge_report interview-e2e-native "$R_INTERVIEW_NATIVE" interview-playwright-report-native
+          merge_report interviewer-e2e "$R_INTERVIEWER_PIXEL" interviewer-playwright-report
+          merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
+          merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
+          merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
+          # Sweep orphaned reports AFTER merging: a directory whose slug
+          # matches no live branch belongs to a deleted or merged branch (or
+          # the legacy always-publish scheme, whose slugs carry no digest),
+          # and no future run of its own branch can ever replace or remove
+          # it. Running after merge_report matters — a branch deleted while
+          # this run was still executing would otherwise re-publish its own
+          # orphan seconds after the sweep. Fork-PR refs never publish
+          # (their token cannot push gh-pages), so only same-repo branches
+          # matter here. Skipped entirely when the live-branch listing
+          # failed — never delete on doubt. `--` stops grep from parsing a
+          # dash-leading slug (branch `#foo` → `-foo-…`) as options, which
+          # would error and, negated, delete a live branch's report.
+          if [ -s "$RUNNER_TEMP/live-slugs.txt" ]; then
+            for job_dir in merged/interview-e2e merged/interview-e2e-native \
+              merged/interviewer-e2e merged/interviewer-e2e-native \
+              merged/architect-e2e merged/architect-e2e-native; do
+              [ -d "$job_dir" ] || continue
+              for report_dir in "$job_dir"/*/; do
+                [ -d "$report_dir" ] || continue
+                slug_name=$(basename "$report_dir")
+                if ! grep -qxF -- "$slug_name" "$RUNNER_TEMP/live-slugs.txt"; then
+                  rm -rf "$report_dir"
+                  changed=true
+                  # If this run's own branch died mid-run, its just-published
+                  # report was removed above — drop the comment's link too.
+                  if [ "$slug_name" = "$SLUG" ]; then
+                    published=$(jq -c --arg job "${job_dir#merged/}" 'del(.[$job])' <<< "$published")
+                  fi
+                fi
+              done
+            done
+          fi
+          # Deploy when this run changed the tree OR an earlier run's deploy
+          # failed after persisting its state (see pending_deploy above) —
+          # without the latter, changed=false would leave the live site
+          # stale forever.
+          needs_deploy=$changed
+          if [ "$PENDING_DEPLOY" = "true" ]; then
+            needs_deploy=true
+          fi
+          {
+            echo "changed=$changed"
+            echo "needs_deploy=$needs_deploy"
+            echo "published=$published"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: steps.merge.outputs.needs_deploy == 'true'
         with:
           path: merged/
       - name: Persist merged site to gh-pages branch
         # deploy-pages replaces the ENTIRE Pages site with this run's artifact
         # and maintains no branch, so the only prior content the merge step can
-        # fetch is what this step saves. Without it, the two release lanes
-        # erase each other's report subdirectory on every deploy (the report
-        # link 404s a minute after it is posted). The branch is pure derived
-        # state, so force-push a fresh single commit; the job concurrency
-        # group serialises writers.
+        # fetch is what this step saves. Without it, concurrent report writers
+        # erase each other's subdirectories on every deploy (the report link
+        # 404s a minute after it is posted). The branch is pure derived state,
+        # so force-push a fresh single commit; the job concurrency group
+        # serialises writers.
+        if: steps.merge.outputs.needs_deploy == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -1548,37 +1747,131 @@ jobs:
           git --git-dir="$RUNNER_TEMP/pages-state/.git" --work-tree=merged \
             -c user.name="github-actions[bot]" \
             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "interview-e2e report site (run ${{ github.run_id }})"
+            commit -q -m "e2e report site (run ${{ github.run_id }})"
           git --git-dir="$RUNNER_TEMP/pages-state/.git" push -q --force \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
       - name: Deploy report to Pages
+        id: deploy
+        if: steps.merge.outputs.needs_deploy == 'true'
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
         timeout-minutes: 3
         continue-on-error: true
-      - name: Comment on PR
-        # always(): still post the E2E result even if the Pages publish above
-        # failed — the report link may be stale but the pass/fail signal is the
-        # point.
-        if: ${{ always() && github.event_name == 'pull_request' }}
+      - name: Record the deployed state
+        # Advance gh-pages-deployed only after deploy-pages actually
+        # succeeded. A failed or timed-out deploy leaves it behind gh-pages,
+        # which the next report run detects (pending_deploy above) and
+        # retries — otherwise a transient deploy failure would leave the
+        # live site stale forever behind a changed=false optimisation.
+        if: >-
+          ${{ steps.merge.outputs.needs_deploy == 'true'
+          && steps.deploy.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git --git-dir="$RUNNER_TEMP/pages-state/.git" push -q --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            gh-pages:refs/heads/gh-pages-deployed
+      - name: Upsert the E2E status comment
+        # always(): still post the status even if the Pages publish above
+        # failed — the decision matrix and pass/fail signals are the point.
+        # The guard keeps a rerun of an outdated head from rewriting the
+        # comment with obsolete results.
+        if: >-
+          ${{ always() && github.event_name == 'pull_request'
+          && steps.guard.outputs.current == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          SLUG: ${{ needs.interview-e2e.outputs.slug }}
-          OUTCOME: ${{ needs.interview-e2e.result }}
-          NATIVE_OUTCOME: ${{ needs.interview-e2e-native.result }}
+          SLUG: ${{ steps.meta.outputs.slug }}
+          RELEASE_REF: ${{ needs.e2e-policy.outputs.release_ref }}
+          REASONS: ${{ needs.e2e-policy.outputs.reasons }}
+          PUBLISHED: ${{ steps.merge.outputs.published }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
+          R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
+          R_INTERVIEWER_PIXEL: ${{ needs.interviewer-e2e.result }}
+          R_INTERVIEWER_NATIVE: ${{ needs.interviewer-e2e-native.result }}
+          R_ARCHITECT_PIXEL: ${{ needs.architect-e2e.result }}
+          R_ARCHITECT_NATIVE: ${{ needs.architect-e2e-native.result }}
         with:
           script: |
-            const { SLUG, OUTCOME, NATIVE_OUTCOME } = process.env;
-            const url = `https://complexdatacollective.github.io/network-canvas-monorepo/interview-e2e/${SLUG}/`;
-            // The suite runs as two jobs; report both, so a green pixel half
-            // can never read as a green suite while the functional half is red.
-            const ok = OUTCOME === 'success' && NATIVE_OUTCOME === 'success';
-            const emoji = ok ? '✅' : '❌';
-            await github.rest.issues.createComment({
+            const marker = '<!-- network-canvas-e2e-status -->';
+            const { SLUG, RELEASE_REF, HEAD_SHA } = process.env;
+            const reasons = JSON.parse(process.env.REASONS || '{}') ?? {};
+            const published = JSON.parse(process.env.PUBLISHED || '{}') ?? {};
+            const pagesBase = `https://${context.repo.owner}.github.io/${context.repo.repo}`;
+
+            const jobs = [
+              { name: 'interview-e2e', half: 'pixel', suite: 'interview', result: process.env.R_INTERVIEW_PIXEL },
+              { name: 'interview-e2e-native', half: 'functional', suite: 'interview', result: process.env.R_INTERVIEW_NATIVE },
+              { name: 'interviewer-e2e', half: 'pixel', suite: 'interviewer', result: process.env.R_INTERVIEWER_PIXEL },
+              { name: 'interviewer-e2e-native', half: 'functional', suite: 'interviewer', result: process.env.R_INTERVIEWER_NATIVE },
+              { name: 'architect-e2e', half: 'pixel', suite: 'architect', result: process.env.R_ARCHITECT_PIXEL },
+              { name: 'architect-e2e-native', half: 'functional', suite: 'architect', result: process.env.R_ARCHITECT_NATIVE },
+            ];
+
+            const statusCell = (result) =>
+              ({
+                success: '✅ passed',
+                failure: '❌ failed',
+                skipped: '⏭️ skipped',
+              })[result] ?? `⚠️ ${result}`;
+            const reportCell = (job) => {
+              // Reports publish only on failure; a green run removes the
+              // branch's previous failure report, so never link one here.
+              if (published[job.name]) {
+                return `[Failure report](${pagesBase}/${job.name}/${SLUG}/)`;
+              }
+              if (job.result === 'failure') return '_no report produced_';
+              return '—';
+            };
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            // One table carries both the decision matrix and the outcomes:
+            // the per-suite selection reason annotates each of the suite's
+            // two job rows.
+            const body = [
+              marker,
+              '## E2E status',
+              '',
+              `Run [#${context.runNumber}](${runUrl}) on \`${(HEAD_SHA || context.sha).slice(0, 7)}\`` +
+                (RELEASE_REF ? ` · release lane \`${RELEASE_REF}\`` : ''),
+              '',
+              '| Status | Name | Report | Reason |',
+              '| --- | --- | --- | --- |',
+              ...jobs.map(
+                (job) =>
+                  `| ${statusCell(job.result)} | \`${job.name}\` (${job.half}) | ${reportCell(job)} | ${reasons[job.suite] ?? ''} |`,
+              ),
+              '',
+              "_Reports are published only for failed jobs; each branch keeps only its latest run's report._",
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `${emoji} Interview E2E — pixel **${OUTCOME}** · functional **${NATIVE_OUTCOME}**\n\n📊 [View report](${url})`,
+              per_page: 100,
             });
+            const existing = comments.find(
+              (comment) =>
+                comment.user?.login === 'github-actions[bot]' &&
+                comment.body?.startsWith(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -2533,13 +2826,13 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           # Map detect flag → list of conditional jobs gated on it.
-          # interview-e2e-report is deliberately NOT here: it is a dependent,
-          # reporting-only job (publishes the Playwright report to Pages +
-          # comments) whose own `if:` already skips it whenever interview-e2e is
-          # skipped. Its verdict describes whether the report PUBLISHED, not
-          # whether the code is sound, so carrying a stale (possibly failed)
-          # report verdict onto an unrelated push would wrongly gate it — let
-          # its natural skip stand instead.
+          # e2e-report is deliberately NOT here: it is a dependent,
+          # reporting-only job (publishes failure reports to Pages + upserts
+          # the status comment) whose own `if:` already skips it whenever the
+          # E2E policy is skipped. Its verdict describes whether the report
+          # PUBLISHED, not whether the code is sound, so carrying a stale
+          # (possibly failed) report verdict onto an unrelated push would
+          # wrongly gate it — let its natural skip stand instead.
           FLAG_DOCS: ${{ needs.detect.outputs.docs }}
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}

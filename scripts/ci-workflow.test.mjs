@@ -502,11 +502,155 @@ test('closed snapshot PRs cannot leave permanent pending state', () => {
 });
 
 test('the informational Pages deploy has a bounded failure window', () => {
-  const reportJob = job('interview-e2e-report');
-  assert.ok(reportJob, 'interview-e2e-report job exists');
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
   assert.match(
     reportJob,
-    /- name: Deploy report to Pages\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+    /- name: Deploy report to Pages\n\s+id: deploy\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+  );
+});
+
+test('the unified E2E report aggregates every suite job and publishes failures only', () => {
+  assert.equal(
+    job('interview-e2e-report'),
+    undefined,
+    'the per-suite interview report job was replaced by e2e-report',
+  );
+
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
+  for (const name of Object.values(E2E_JOB_NAMES).flat()) {
+    assert.match(
+      reportJob,
+      new RegExp(`^ {6}- ${name}$`, 'm'),
+      `e2e-report needs ${name}`,
+    );
+    assert.match(
+      reportJob,
+      new RegExp(`merge_report ${name} `),
+      `${name} is mapped in the merge step`,
+    );
+  }
+
+  // Reports go to Pages only for FAILED jobs, and a green job removes its
+  // branch's stale failure report — only the latest run's report is kept.
+  assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
+  assert.match(reportJob, /Only the latest run's report is kept/);
+
+  // Review hardening: distinct refs must never share a report directory
+  // (lossy tr normalisation collides feature/foo with feature-foo), and the
+  // published tree must never be empty (an empty state-branch commit fails
+  // and leaves a deleted report live).
+  assert.match(
+    reportJob,
+    /printf '%s-%s\\n' "\$s" "\$\(printf '%s' "\$1" \| sha256sum \| cut -c1-8\)"/,
+    'the slug carries a digest of the raw ref',
+  );
+  assert.match(
+    reportJob,
+    /> merged\/index\.html/,
+    'a root marker keeps the published tree non-empty',
+  );
+
+  // A failed job's previous report is removed even when this failure died
+  // before producing a replacement artifact — the old rm must precede the
+  // artifact-existence check.
+  const failureCase = reportJob.match(/failure\)([\s\S]*?);;/)?.[1] ?? '';
+  assert.ok(
+    failureCase.indexOf('rm -rf "$dir"') !== -1 &&
+      failureCase.indexOf('rm -rf "$dir"') <
+        failureCase.indexOf('[ -d "$src" ]'),
+    'the failure case removes the stale report before checking the artifact',
+  );
+
+  // The merge step (and therefore the orphan sweep) is not gated on any
+  // suite having run, so all-skipped runs still clean up deleted branches'
+  // reports. Its only gate is the stale-head guard; the artifact download
+  // stays failure-gated.
+  assert.match(
+    reportJob,
+    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+if: steps\.guard\.outputs\.current == 'true'\n\s+env:/,
+    'the merge step is gated only on the stale-head guard',
+  );
+
+  // A truncated slug component stays within filesystem limits; the digest
+  // suffix keeps truncated names unambiguous.
+  assert.match(
+    reportJob,
+    /s=\$\{s:0:100\}/,
+    'the readable slug portion is bounded',
+  );
+
+  // A transiently failed Pages deploy must be retried: gh-pages-deployed
+  // advances only on deploy success, and a mismatch versus gh-pages forces
+  // needs_deploy on the next run.
+  assert.match(reportJob, /pending_deploy/);
+  assert.match(
+    reportJob,
+    /gh-pages:refs\/heads\/gh-pages-deployed/,
+    'the deployed pointer is recorded from the state branch',
+  );
+  assert.match(
+    reportJob,
+    /- name: Record the deployed state\n(?:\s+#[^\n]*\n)*\s+if: >-\n\s+\$\{\{ steps\.merge\.outputs\.needs_deploy == 'true'\n\s+&& steps\.deploy\.outcome == 'success' \}\}/,
+    'the deployed pointer advances only when deploy-pages succeeded',
+  );
+
+  // A rerun of an outdated head must not rewrite the report site or the
+  // sticky comment with obsolete results.
+  assert.match(
+    reportJob,
+    /- name: Confirm this run still describes the PR head\n(?:\s+#[^\n]*\n)*\s+id: guard\n/,
+    'the stale-head guard step exists',
+  );
+
+  // Orphan sweep: reports for branches that no longer exist are deleted on
+  // every report run, and a failed live-branch listing skips the sweep
+  // rather than deleting on doubt.
+  assert.match(reportJob, /git ls-remote --heads/);
+  assert.match(
+    reportJob,
+    /if \[ -s "\$RUNNER_TEMP\/live-slugs\.txt" \]; then/,
+    'the sweep only runs with a non-empty live-branch listing',
+  );
+  assert.ok(
+    reportJob.indexOf('merge_report architect-e2e-native') <
+      reportJob.indexOf('if [ -s "$RUNNER_TEMP/live-slugs.txt" ]'),
+    'the sweep runs after merging, so a branch deleted mid-run cannot re-publish its orphan',
+  );
+  assert.match(
+    reportJob,
+    /grep -qxF -- /,
+    'the slug pattern is terminated so dash-leading slugs cannot parse as grep options',
+  );
+  assert.match(
+    reportJob,
+    /success \| skipped\)/,
+    'a skipped job also drops its stale report',
+  );
+  const doubtGuards = reportJob.match(/never delete on doubt/g) ?? [];
+  assert.ok(
+    doubtGuards.length >= 2,
+    'both the listing and the sweep document the fail-safe',
+  );
+
+  // The status comment is a single sticky comment, updated in place, only
+  // ever posted on pull requests, and never rewritten by an obsolete rerun.
+  assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
+  assert.match(
+    reportJob,
+    /\$\{\{ always\(\) && github\.event_name == 'pull_request'\n\s+&& steps\.guard\.outputs\.current == 'true' \}\}/,
+  );
+  assert.match(reportJob, /updateComment/);
+  assert.match(reportJob, /createComment/);
+
+  // The decision matrix comes from the policy job's reasons output.
+  assert.match(reportJob, /needs\.e2e-policy\.outputs\.reasons/);
+  const policyJob = job('e2e-policy');
+  assert.match(policyJob, /reasons=\$\(jq -c '\.reasons \/\/ \{\}'/);
+  assert.match(
+    policyJob,
+    /reasons: \$\{\{ steps\.policy\.outputs\.reasons \}\}/,
   );
 });
 
