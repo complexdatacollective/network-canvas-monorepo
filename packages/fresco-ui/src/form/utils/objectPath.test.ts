@@ -54,6 +54,16 @@ describe('Object Path Utils', () => {
     ])('rejects the unsafe structural path %s', (path) => {
       expect(parseObjectPath(path)).toBeNull();
     });
+
+    it.each([
+      '__proto__[0]',
+      'constructor[0]',
+      'prototype[0]',
+      'safe.constructor[0]',
+    ])('preserves the safe forced-array path %s', (path) => {
+      expect(parseObjectPath(path)).not.toBeNull();
+      expectObjectPrototypeUnchanged();
+    });
   });
 
   describe('getValue', () => {
@@ -369,6 +379,29 @@ describe('Object Path Utils', () => {
 
       expectObjectPrototypeUnchanged();
       expect(getValue(obj, path)).toBeUndefined();
+    });
+
+    it.each([
+      ['__proto__[0]', '__proto__'],
+      ['constructor[0]', 'constructor'],
+      ['prototype[0]', 'prototype'],
+    ])('writes %s through an inert own array', (path, key) => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, path, 'preserved');
+
+      expect(Object.hasOwn(obj, key)).toBe(true);
+      expect(getValue(obj, path)).toBe('preserved');
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('writes a nested constructor bracket path through an inert own array', () => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, 'safe.constructor[0]', 'preserved');
+
+      expect(obj).toEqual({ safe: { constructor: ['preserved'] } });
+      expectObjectPrototypeUnchanged();
     });
 
     it('does not mutate a prototype reached through an own property', () => {

@@ -218,6 +218,9 @@ export function isSafeObjectPath(path: ObjectPath): boolean {
   return path.every(
     (segment, index) =>
       isSafeSegment(segment) ||
+      (typeof segment === 'string' &&
+        unsafePropertyNames.has(segment) &&
+        typeof path[index + 1] === 'number') ||
       (index === path.length - 1 &&
         typeof segment === 'string' &&
         unsafePropertyNames.has(segment)),
@@ -225,7 +228,13 @@ export function isSafeObjectPath(path: ObjectPath): boolean {
 }
 
 export function isSafeContainerPath(path: ObjectPath): boolean {
-  return path.every(isSafeSegment);
+  return path.every(
+    (segment, index) =>
+      isSafeSegment(segment) ||
+      (typeof segment === 'string' &&
+        unsafePropertyNames.has(segment) &&
+        typeof path[index + 1] === 'number'),
+  );
 }
 
 export function formatObjectPath(path: ObjectPath): string {

@@ -539,6 +539,35 @@ describe('FormStore', () => {
       });
     });
 
+    it.each([
+      ['constructor[0]', 'constructor'],
+      ['prototype[0]', 'prototype'],
+    ])('preserves the legacy forced-array field %s', (name, key) => {
+      store.getState().reset();
+      store.getState().registerField({ name, initialValue: 'preserved' });
+
+      const values = store.getState().getFormValues();
+
+      expect(Object.hasOwn(values, key)).toBe(true);
+      expect(Object.getOwnPropertyDescriptor(values, key)?.value).toEqual([
+        'preserved',
+      ]);
+      expect(Object.hasOwn(Object.prototype, 'frescoUiPolluted')).toBe(false);
+    });
+
+    it('preserves a nested constructor forced-array field', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'safe.constructor[0]',
+        initialValue: 'preserved',
+      });
+
+      expect(store.getState().getFormValues()).toEqual({
+        safe: { constructor: ['preserved'] },
+      });
+      expect(Object.hasOwn(Object.prototype, 'frescoUiPolluted')).toBe(false);
+    });
+
     it('keeps overlapping container and leaf fields when the container is frozen', () => {
       store.getState().reset();
       store.getState().registerField({
