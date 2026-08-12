@@ -9,11 +9,11 @@ import {
   isSafeObjectPath,
   type ObjectPath,
   parseLegacyObjectPath,
+  parseObjectPath,
 } from '../utils/objectPath';
 import { validateFieldValue } from '../validation/helpers';
 import type {
   FieldConfig,
-  FieldReference,
   FieldState,
   FlattenedErrors,
   FormConfig,
@@ -23,25 +23,60 @@ import type {
 // Enable Map/Set support in Immer
 enableMapSet();
 
-const resolveFieldPath = (field: FieldReference): ObjectPath => {
-  const path = typeof field === 'string' ? parseLegacyObjectPath(field) : field;
+const internalPathPrefix = '\u0000fresco-path:';
+
+const encodeObjectPath = (path: ObjectPath): string =>
+  `${internalPathPrefix}${formatObjectPath(path)}`;
+
+const resolveFieldPath = (field: string): ObjectPath => {
+  const path = field.startsWith(internalPathPrefix)
+    ? parseObjectPath(field.slice(internalPathPrefix.length))
+    : parseLegacyObjectPath(field);
 
   if (!path || !isSafeObjectPath(path)) {
-    const fieldName =
-      typeof field === 'string' ? field : formatObjectPath(field);
-    throw new Error(`Unsafe form field path: ${fieldName}`);
+    throw new Error(`Unsafe form field path: ${field}`);
   }
 
   return [...path];
 };
 
-const resolveFieldName = (field: FieldReference): string =>
+const resolveFieldName = (field: string): string =>
   formatObjectPath(resolveFieldPath(field));
 
 const resolveStoredFieldPath = (
   fieldName: string,
   field: FieldState,
 ): ObjectPath => field.path ?? resolveFieldPath(fieldName);
+
+const resolveRegisteredFieldName = (
+  fields: Map<string, FieldState>,
+  dormantValues: Map<string, FieldState>,
+  field: string,
+): string => {
+  if (field.startsWith(internalPathPrefix)) return resolveFieldName(field);
+
+  const aliases = new Set<string>();
+  fields.forEach((state, name) => {
+    if (state.submissionErrorKey === field) aliases.add(name);
+  });
+  dormantValues.forEach((state, name) => {
+    if (state.submissionErrorKey === field) aliases.add(name);
+  });
+
+  const alias = [...aliases][0];
+  const parsedPath = parseLegacyObjectPath(field);
+  if (!parsedPath || !isSafeObjectPath(parsedPath)) {
+    if (aliases.size === 1 && alias) return alias;
+    throw new Error(`Unsafe form field path: ${field}`);
+  }
+
+  const canonicalName = formatObjectPath(parsedPath);
+  if (fields.has(canonicalName) || dormantValues.has(canonicalName)) {
+    return canonicalName;
+  }
+
+  return aliases.size === 1 && alias ? alias : canonicalName;
+};
 
 const hasRegisteredAncestor = (
   fields: Map<string, FieldState>,
@@ -150,7 +185,25 @@ const collectSupersededFields = (
   return superseded;
 };
 
-export type FormStore = {
+type InternalFieldConfig = Omit<FieldConfig, 'name'> & {
+  name: ObjectPath;
+};
+
+type FieldOperations<Reference, Config> = {
+  registerField: (config: Config) => void;
+  unregisterField: (fieldName: Reference) => void;
+  setFieldValue: (fieldName: Reference, value: FieldValue) => void;
+  setFieldTouched: (fieldName: Reference, touched: boolean) => void;
+  setFieldBlurred: (fieldName: Reference) => void;
+  getFieldState: (fieldName: Reference) => FieldState | undefined;
+  getFieldErrors: (fieldName: Reference) => string[] | null;
+  validateField: (fieldName: Reference) => Promise<void>;
+  resetField: (fieldName: Reference) => void;
+};
+
+type FieldPathOperations = FieldOperations<ObjectPath, InternalFieldConfig>;
+
+type FormStoreState = {
   fields: Map<string, FieldState>;
   dormantValues: Map<string, FieldState>;
   errors: FlattenedErrors;
@@ -165,25 +218,13 @@ export type FormStore = {
   registerForm: (config: FormConfig) => void;
   reset: () => void;
 
-  // Field management
-  registerField: (config: FieldConfig) => void;
-  unregisterField: (fieldName: FieldReference) => void;
-
-  // Field state updates
-  setFieldValue: (fieldName: FieldReference, value: FieldValue) => void;
-  setFieldTouched: (fieldName: FieldReference, touched: boolean) => void;
-  setFieldBlurred: (fieldName: FieldReference) => void;
-
   setErrors: (errors: FlattenedErrors | null) => void;
 
   // Getters with selective subscription
-  getFieldState: (fieldName: FieldReference) => FieldState | undefined;
   getFormValues: () => Record<string, FieldValue>;
   getFormErrors: () => string[] | null;
-  getFieldErrors: (fieldName: FieldReference) => string[] | null;
 
   // Validation
-  validateField: (fieldName: FieldReference) => Promise<void>;
   validateForm: () => Promise<boolean>;
 
   // Form submission
@@ -192,8 +233,13 @@ export type FormStore = {
 
   // Form reset
   resetForm: () => void;
-  resetField: (fieldName: FieldReference) => void;
 };
+
+export type FormStore = FormStoreState &
+  FieldOperations<string, FieldConfig> & {
+    pathOperations?: FieldPathOperations;
+  };
+
 export type FormStoreApi = Mutate<
   StoreApi<FormStore>,
   [['zustand/immer', never]]
@@ -246,6 +292,30 @@ export const createFormStore = (): FormStoreApi => {
 
       submitHandler: null,
       submitInvalidHandler: null,
+
+      pathOperations: {
+        registerField: (config) =>
+          get().registerField({
+            ...config,
+            name: encodeObjectPath(config.name),
+          }),
+        unregisterField: (fieldName) =>
+          get().unregisterField(encodeObjectPath(fieldName)),
+        setFieldValue: (fieldName, value) =>
+          get().setFieldValue(encodeObjectPath(fieldName), value),
+        setFieldTouched: (fieldName, touched) =>
+          get().setFieldTouched(encodeObjectPath(fieldName), touched),
+        setFieldBlurred: (fieldName) =>
+          get().setFieldBlurred(encodeObjectPath(fieldName)),
+        getFieldState: (fieldName) =>
+          get().getFieldState(encodeObjectPath(fieldName)),
+        getFieldErrors: (fieldName) =>
+          get().getFieldErrors(encodeObjectPath(fieldName)),
+        validateField: (fieldName) =>
+          get().validateField(encodeObjectPath(fieldName)),
+        resetField: (fieldName) =>
+          get().resetField(encodeObjectPath(fieldName)),
+      },
 
       registerForm: (config) => {
         set((state) => {
@@ -326,14 +396,18 @@ export const createFormStore = (): FormStoreApi => {
         });
 
         supersededFields.forEach((name) => {
-          void get().validateField(name);
+          void get().pathOperations?.validateField(name);
         });
       },
 
       unregisterField: (fieldReference) => {
-        const fieldName = resolveFieldName(fieldReference);
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
+        const fieldName = resolveRegisteredFieldName(
+          currentState.fields,
+          currentState.dormantValues,
+          fieldReference,
+        );
         if (currentState.fields.has(fieldName)) {
           // Unmounting removes a value from the snapshot, so it invalidates
           // every in-flight validation for the same reason `registerField`
@@ -388,7 +462,7 @@ export const createFormStore = (): FormStoreApi => {
           });
 
           supersededFields.forEach((name) => {
-            void get().validateField(name);
+            void get().pathOperations?.validateField(name);
           });
         }
       },
@@ -448,9 +522,19 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       setFieldValue: (fieldReference, value) => {
-        const fieldPath = resolveFieldPath(fieldReference);
-        const fieldName = formatObjectPath(fieldPath);
-        if (!get().fields.has(fieldName)) {
+        const currentState = get();
+        const fieldName = resolveRegisteredFieldName(
+          currentState.fields,
+          currentState.dormantValues,
+          fieldReference,
+        );
+        const existingField =
+          currentState.fields.get(fieldName) ??
+          currentState.dormantValues.get(fieldName);
+        const fieldPath = existingField
+          ? resolveStoredFieldPath(fieldName, existingField)
+          : resolveFieldPath(fieldReference);
+        if (!currentState.fields.has(fieldName)) {
           // A host may stage a value for a field that is not currently
           // mounted (Architect's undo/redo). The write is parked in dormant
           // storage for the field's next registration: it is not validated,
@@ -499,12 +583,17 @@ export const createFormStore = (): FormStoreApi => {
         });
 
         supersededFields.forEach((name) => {
-          void get().validateField(name);
+          void get().pathOperations?.validateField(name);
         });
       },
 
       setFieldTouched: (field, touched) => {
-        const fieldName = resolveFieldName(field);
+        const currentState = get();
+        const fieldName = resolveRegisteredFieldName(
+          currentState.fields,
+          currentState.dormantValues,
+          field,
+        );
         set((state) => {
           if (!state.fields.get(fieldName)) return;
 
@@ -513,7 +602,12 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       setFieldBlurred: (field) => {
-        const fieldName = resolveFieldName(field);
+        const currentState = get();
+        const fieldName = resolveRegisteredFieldName(
+          currentState.fields,
+          currentState.dormantValues,
+          field,
+        );
         set((state) => {
           if (!state.fields.get(fieldName)) return;
 
@@ -522,8 +616,12 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       getFieldState: (field) => {
-        const fieldName = resolveFieldName(field);
         const state = get();
+        const fieldName = resolveRegisteredFieldName(
+          state.fields,
+          state.dormantValues,
+          field,
+        );
         return (
           state.fields.get(fieldName) ??
           state.dormantValues.get(fieldName) ??
@@ -588,8 +686,12 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       getFieldErrors: (field) => {
-        const fieldName = resolveFieldName(field);
         const state = get();
+        const fieldName = resolveRegisteredFieldName(
+          state.fields,
+          state.dormantValues,
+          field,
+        );
         if (!state.errors) return null;
 
         // Return field errors from flattened structure
@@ -600,8 +702,12 @@ export const createFormStore = (): FormStoreApi => {
         return fieldErrors && fieldErrors.length > 0 ? fieldErrors : null;
       },
       validateField: async (fieldReference) => {
-        const fieldName = resolveFieldName(fieldReference);
         const state = get();
+        const fieldName = resolveRegisteredFieldName(
+          state.fields,
+          state.dormantValues,
+          fieldReference,
+        );
         const field = state.fields.get(fieldName);
         // Whole-form validation owns the current snapshot. A delayed
         // validate-on-change callback is redundant and must not cancel a
@@ -886,7 +992,12 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       resetField: (fieldReference) => {
-        const fieldName = resolveFieldName(fieldReference);
+        const currentState = get();
+        const fieldName = resolveRegisteredFieldName(
+          currentState.fields,
+          currentState.dormantValues,
+          fieldReference,
+        );
         if (!get().fields.has(fieldName)) return;
 
         invalidateAllValidations();

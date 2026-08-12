@@ -4,6 +4,7 @@ import type { FieldValue } from '../Field/types';
 import {
   type FieldNameMode,
   resolveFieldPath,
+  useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
 import useFormStore from './useFormStore';
@@ -22,13 +23,17 @@ export function useFormValue<
   nameMode: FieldNameMode = 'legacy',
 ): Record<K[number], T | undefined> {
   const namespace = useFieldNamespacePath();
+  const namespaceName = useFieldNamespace();
 
   return useFormStore(
     useShallow((state) => {
       const values: Record<string, T | undefined> = {};
       for (const name of fieldNames) {
         const resolvedPath = resolveFieldPath(namespace, name, nameMode);
-        const field = state.getFieldState(resolvedPath);
+        const publicName = namespaceName ? `${namespaceName}.${name}` : name;
+        const field = state.pathOperations
+          ? state.pathOperations.getFieldState(resolvedPath)
+          : state.getFieldState(publicName);
         values[name] = field?.value as T | undefined;
       }
       return values as Record<K[number], T | undefined>;

@@ -1,6 +1,10 @@
 import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
+import {
+  isVariableValue,
+  writeOwnAttribute,
+} from '../../../utils/writeOwnAttributes';
 import { buildChildParentage } from './buildChildParentage';
 import { readBiologicalSex } from './personAttributes';
 
@@ -20,8 +24,8 @@ function extractUnknownAttributes(
   const attrs: Record<string, VariableValue> = {};
   let hasAttrs = false;
   for (const [key, val] of Object.entries(obj)) {
-    if (!knownKeys.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
+    if (!knownKeys.has(key) && isVariableValue(val)) {
+      writeOwnAttribute(attrs, key, val);
       hasAttrs = true;
     }
   }
@@ -196,8 +200,8 @@ export function egoCellTransform(
   ]);
   const egoCustomAttrs: Record<string, VariableValue> = {};
   for (const [key, val] of Object.entries(values)) {
-    if (!egoKnownKeys.has(key) && val !== undefined) {
-      egoCustomAttrs[key] = val as VariableValue;
+    if (!egoKnownKeys.has(key) && isVariableValue(val)) {
+      writeOwnAttribute(egoCustomAttrs, key, val);
     }
   }
 

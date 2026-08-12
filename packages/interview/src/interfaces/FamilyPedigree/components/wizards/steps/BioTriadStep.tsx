@@ -12,8 +12,7 @@ import {
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace, {
-  resolveFieldPath,
-  useFieldNamespacePath,
+  useFieldNamespace,
 } from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -103,7 +102,7 @@ function ParentSection({
 }: ParentSectionProps) {
   const ownValue = useFormValue([roleKey])[roleKey];
   const otherValue = useFormValue([excludeSelectionFrom])[excludeSelectionFrom];
-  const namespace = useFieldNamespacePath();
+  const namespace = useFieldNamespace();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
 
   // When this role is set to the person already chosen for the other role,
@@ -119,7 +118,9 @@ function ParentSection({
       ownValue !== 'new' &&
       ownValue === otherValue
     ) {
-      const resolvedOther = resolveFieldPath(namespace, excludeSelectionFrom);
+      const resolvedOther = namespace
+        ? `${namespace}.${excludeSelectionFrom}`
+        : excludeSelectionFrom;
       setFieldValue(resolvedOther, undefined);
     }
   }, [ownValue, otherValue, namespace, excludeSelectionFrom, setFieldValue]);

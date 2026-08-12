@@ -1,7 +1,11 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { FieldValue, ValidationContext } from '../../store/types';
-import { getValue, isSafeObjectPath } from '../../utils/objectPath';
+import {
+  getValue,
+  isSafeObjectPath,
+  parseLegacyObjectPath,
+} from '../../utils/objectPath';
 
 const isFieldValueRecord = (
   value: unknown,
@@ -29,10 +33,13 @@ export function getComparisonValue(
   context?: ValidationContext,
 ): { present: boolean; value: FieldValue | null } {
   const namespace =
-    context?.formValueNamespacePath ?? context?.formValueNamespace;
+    context?.formValueNamespacePath ??
+    (context?.formValueNamespace
+      ? parseLegacyObjectPath(context.formValueNamespace)
+      : []);
   const namespacedValues = namespace
     ? getValue(formValues, namespace)
-    : formValues;
+    : undefined;
   const formAlias =
     context?.formValueAliases &&
     Object.hasOwn(context.formValueAliases, attribute)

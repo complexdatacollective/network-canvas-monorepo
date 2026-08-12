@@ -111,6 +111,7 @@ export default function QuickAddField({
   });
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
+  const pathOperations = useFormStore((state) => state.pathOperations);
   const resetFormField = useFormStore((state) => state.resetField);
   const wasSubmittingRef = useRef(false);
   const explicitSuccessPendingRef = useRef(false);
@@ -127,11 +128,15 @@ export default function QuickAddField({
     // A successful write starts a fresh entry rather than entering a new,
     // invalid blank value. Resetting restores the field's initial value and
     // clears its dirty/blurred/error state without running required validation.
-    resetFormField([targetVariable]);
+    if (pathOperations) {
+      pathOperations.resetField([targetVariable]);
+    } else {
+      resetFormField(targetVariable);
+    }
     setSubmissionCount((count) => count + 1);
     setShowErrors(false);
     celebrate();
-  }, [resetFormField, targetVariable, celebrate]);
+  }, [pathOperations, resetFormField, targetVariable, celebrate]);
 
   useEffect(() => {
     if (

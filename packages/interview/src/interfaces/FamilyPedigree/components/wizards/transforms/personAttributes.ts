@@ -1,5 +1,10 @@
 import type { BiologicalSex, VariableValue } from '@codaco/shared-consts';
 
+import {
+  isVariableValue,
+  writeOwnAttribute,
+} from '../../../utils/writeOwnAttributes';
+
 const KNOWN_PERSON_KEYS = new Set(['name', 'biologicalSex']);
 
 export function extractCustomAttributes(
@@ -8,8 +13,8 @@ export function extractCustomAttributes(
   const attrs: Record<string, VariableValue> = {};
   let hasAttrs = false;
   for (const [key, val] of Object.entries(obj)) {
-    if (!KNOWN_PERSON_KEYS.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
+    if (!KNOWN_PERSON_KEYS.has(key) && isVariableValue(val)) {
+      writeOwnAttribute(attrs, key, val);
       hasAttrs = true;
     }
   }

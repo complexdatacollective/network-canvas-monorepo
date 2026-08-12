@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
-import { createFormStore } from '../store/formStore';
+import type { FieldValue } from '../Field/types';
+import { createFormStore, type FormStore } from '../store/formStore';
 import type { FieldConfig, FieldState, FormConfig } from '../store/types';
 import { validateFieldValue } from '../validation/helpers';
 
@@ -12,6 +13,12 @@ vi.mock('../validation/helpers', () => ({
 
 const mockValidateFieldValue = vi.mocked(validateFieldValue);
 type ValidationResult = Awaited<ReturnType<typeof validateFieldValue>>;
+
+const getPathOperations = (store: ReturnType<typeof createFormStore>) => {
+  const operations = store.getState().pathOperations;
+  if (!operations) throw new Error('Expected built-in path operations');
+  return operations;
+};
 
 const createDeferredValidation = () => {
   let resolve!: (result: ValidationResult) => void;
@@ -31,6 +38,16 @@ describe('FormStore', () => {
   });
 
   describe('Initial state', () => {
+    it('keeps public field callbacks compatible with string-only stores', () => {
+      const registerStringField = (config: FieldConfig) => config.name;
+      const setStringField = (name: string, _value: FieldValue) => name;
+      const registerField: FormStore['registerField'] = registerStringField;
+      const setFieldValue: FormStore['setFieldValue'] = setStringField;
+
+      expect(registerField({ name: 'field' })).toBe('field');
+      expect(setFieldValue('field', 'value')).toBe('field');
+    });
+
     it('keeps the published FieldState shape compatible without an internal path', () => {
       const fieldState: FieldState = {
         value: 'legacy',
@@ -425,14 +442,14 @@ describe('FormStore', () => {
 
     it('round-trips an opaque dotted field name as one output key', () => {
       store.getState().reset();
-      store.getState().registerField({
+      getPathOperations(store).registerField({
         name: ['favorite.color'],
         initialValue: 'blue',
       });
 
-      expect(store.getState().getFieldState(['favorite.color'])?.value).toBe(
-        'blue',
-      );
+      expect(
+        getPathOperations(store).getFieldState(['favorite.color'])?.value,
+      ).toBe('blue');
       expect(store.getState().getFormValues()).toEqual({
         'favorite.color': 'blue',
       });
@@ -455,7 +472,7 @@ describe('FormStore', () => {
 
     it('combines nested namespace segments with an opaque dotted field name', () => {
       store.getState().reset();
-      store.getState().registerField({
+      getPathOperations(store).registerField({
         name: ['steps', 0, 'egg-parent', 'favorite.color'],
         initialValue: 'blue',
       });
@@ -586,7 +603,7 @@ describe('FormStore', () => {
     });
 
     it('maps an opaque dotted submission error to its registered field path', () => {
-      store.getState().registerField({
+      getPathOperations(store).registerField({
         name: ['steps', 0, 'favorite.color'],
         submissionErrorKey: 'favorite.color',
         initialValue: 'blue',
@@ -605,10 +622,11 @@ describe('FormStore', () => {
       });
       expect(store.getState().errors.fieldErrors).toBeInstanceOf(Object);
       expect(
-        store.getState().getFieldErrors(['steps', 0, 'favorite.color']),
+        getPathOperations(store).getFieldErrors(['steps', 0, 'favorite.color']),
       ).toEqual(['Choose another color']);
       expect(
-        store.getState().getFieldState(['steps', 0, 'favorite.color'])?.meta,
+        getPathOperations(store).getFieldState(['steps', 0, 'favorite.color'])
+          ?.meta,
       ).toMatchObject({
         isValid: false,
         isTouched: true,
@@ -618,7 +636,7 @@ describe('FormStore', () => {
     });
 
     it('does not assign an ambiguous opaque error alias to a structural field', () => {
-      store.getState().registerField({
+      getPathOperations(store).registerField({
         name: ['favorite.color'],
         submissionErrorKey: 'favorite.color',
         initialValue: 'blue',
@@ -637,15 +655,51 @@ describe('FormStore', () => {
         formErrors: ['Choose another color'],
         fieldErrors: {},
       });
-      expect(store.getState().getFieldErrors(['favorite.color'])).toBeNull();
+      expect(
+        getPathOperations(store).getFieldErrors(['favorite.color']),
+      ).toBeNull();
       expect(store.getState().getFieldErrors('favorite.color')).toBeNull();
       expect(
-        store.getState().getFieldState(['favorite.color'])?.meta.isValid,
+        getPathOperations(store).getFieldState(['favorite.color'])?.meta
+          .isValid,
       ).toBe(true);
       expect(
         store.getState().getFieldState('favorite.color')?.meta.isValid,
       ).toBe(true);
       expect(store.getState().isValid).toBe(false);
+    });
+
+    it('resolves a public field alias for every string store operation', () => {
+      const pathOperations = getPathOperations(store);
+      pathOperations.registerField({
+        name: ['settings', 'locale'],
+        submissionErrorKey: 'settings["locale"]',
+        initialValue: 'en',
+      });
+
+      expect(store.getState().getFieldState('settings["locale"]')?.value).toBe(
+        'en',
+      );
+
+      store.getState().setFieldValue('settings["locale"]', 'fr');
+
+      expect(pathOperations.getFieldState(['settings', 'locale'])?.value).toBe(
+        'fr',
+      );
+    });
+
+    it('resolves an unsafe-looking opaque public alias without parsing it', () => {
+      const pathOperations = getPathOperations(store);
+      pathOperations.registerField({
+        name: ['safe.__proto__.polluted'],
+        submissionErrorKey: 'safe.__proto__.polluted',
+        initialValue: 'preserved',
+      });
+
+      expect(
+        store.getState().getFieldState('safe.__proto__.polluted')?.value,
+      ).toBe('preserved');
+      expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
     });
 
     it('restores an unvalidated field after server errors clear on successful validation', async () => {
@@ -1038,7 +1092,7 @@ describe('FormStore', () => {
         async (name) => {
           store.getState().reset();
           store.getState().registerField({ name: 'fieldA', initialValue: '' });
-          store.getState().registerField({
+          getPathOperations(store).registerField({
             name: [name],
             initialValue: 'preserved',
             validation: z.string(),
@@ -1049,7 +1103,9 @@ describe('FormStore', () => {
             .mockReturnValueOnce(supersededValidation.promise)
             .mockReturnValueOnce(rescheduledValidation.promise);
 
-          const supersededRequest = store.getState().validateField([name]);
+          const supersededRequest = getPathOperations(store).validateField([
+            name,
+          ]);
           store.getState().setFieldValue('fieldA', 'typed');
 
           expect(mockValidateFieldValue).toHaveBeenCalledTimes(2);
@@ -1064,9 +1120,9 @@ describe('FormStore', () => {
           });
           await flushPendingValidations();
 
-          expect(store.getState().getFieldState([name])?.meta.isValid).toBe(
-            true,
-          );
+          expect(
+            getPathOperations(store).getFieldState([name])?.meta.isValid,
+          ).toBe(true);
         },
       );
     });
@@ -1277,7 +1333,7 @@ describe('FormStore', () => {
           name,
         );
         store.getState().reset();
-        store.getState().registerField({
+        getPathOperations(store).registerField({
           name: [name],
           initialValue: '',
           validation: z.string(),
@@ -1293,7 +1349,7 @@ describe('FormStore', () => {
         const result = await store.getState().validateForm();
 
         expect(result).toBe(false);
-        expect(store.getState().getFieldErrors([name])).toEqual([
+        expect(getPathOperations(store).getFieldErrors([name])).toEqual([
           'Invalid value',
         ]);
         expect(Object.keys(store.getState().errors.fieldErrors)).toContain(
@@ -1815,19 +1871,18 @@ describe('FormStore', () => {
 
     it('preserves an opaque dotted field path while dormant', () => {
       const path = ['favorite.color'];
-      persistentStore.getState().registerField({
+      const pathOperations = getPathOperations(persistentStore);
+      pathOperations.registerField({
         name: path,
         initialValue: 'blue',
       });
-      persistentStore.getState().setFieldValue(path, 'green');
-      persistentStore.getState().unregisterField(path);
+      pathOperations.setFieldValue(path, 'green');
+      pathOperations.unregisterField(path);
 
       expect(persistentStore.getState().getFormValues()).toEqual({});
-      expect(persistentStore.getState().getFieldState(path)?.value).toBe(
-        'green',
-      );
+      expect(pathOperations.getFieldState(path)?.value).toBe('green');
 
-      persistentStore.getState().registerField({
+      pathOperations.registerField({
         name: path,
         initialValue: 'red',
       });

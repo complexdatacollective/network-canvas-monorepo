@@ -98,13 +98,11 @@ export type FieldState = {
 };
 
 export type FieldConfig = {
-  name: FieldReference;
+  name: string;
   submissionErrorKey?: string;
   initialValue?: FieldValue;
   validation?: FieldValidationFunction;
 };
-
-export type FieldReference = string | ObjectPath;
 
 // ═══════════════════════════════════════════════════════════════
 // Submission handling

@@ -25,6 +25,29 @@ describe('getComparisonValue', () => {
     });
   });
 
+  it.each(['settings["locale"]', 'matrix[0][1]'])(
+    'uses legacy parsing for the public namespace %s',
+    (namespace) => {
+      const formValues = {
+        [namespace]: { compared: 'legacy' },
+        settings: { locale: { compared: 'structural' } },
+      };
+
+      expect(
+        getComparisonValue(formValues, 'compared', {
+          formValueNamespace: namespace,
+          stageSubject: { entity: 'ego' },
+          codebook: {},
+          network: {
+            ego: { _uid: 'ego', attributes: {} },
+            nodes: [],
+            edges: [],
+          },
+        }),
+      ).toEqual({ present: true, value: 'legacy' });
+    },
+  );
+
   it.each(['__proto__', 'prototype', 'constructor'])(
     'resolves the inert own comparison property %s',
     (attribute) => {
