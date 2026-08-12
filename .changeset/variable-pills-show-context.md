@@ -2,4 +2,4 @@
 '@codaco/architect': patch
 ---
 
-Show validation and synthetic-distribution details on variable pills, and expand editable pills into a focused editor.
+Redesign variable pills with a compact static presentation and add connected-variable controls for renaming and configuring synthetic data.

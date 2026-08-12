@@ -1,13 +1,11 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  VariableValidationIcon,
-  type VariableValidationIconName,
-} from './VariableValidationIcon';
+import type { ValidationName } from '@codaco/protocol-validation';
+
+import { VariableValidationIcon } from './VariableValidationIcon';
 
 const VALIDATION_ICONS = [
-  'hasValidations',
   'required',
   'requiredAcceptsNull',
   'minLength',
@@ -23,11 +21,11 @@ const VALIDATION_ICONS = [
   'lessThanVariable',
   'greaterThanOrEqualToVariable',
   'lessThanOrEqualToVariable',
-] as const satisfies readonly VariableValidationIconName[];
+] as const satisfies readonly ValidationName[];
 
 describe('VariableValidationIcon', () => {
   it.each(VALIDATION_ICONS)('renders the %s constraint glyph', (icon) => {
-    const { container } = render(<VariableValidationIcon icon={icon} />);
+    const { container } = render(<VariableValidationIcon validation={icon} />);
 
     expect(
       container.querySelector(`[data-variable-pill-validation="${icon}"]`),
@@ -37,13 +35,13 @@ describe('VariableValidationIcon', () => {
 
   it('draws paired directions differently', () => {
     const { container, rerender } = render(
-      <VariableValidationIcon icon="minValue" />,
+      <VariableValidationIcon validation="minValue" />,
     );
     const minimumPaths = Array.from(container.querySelectorAll('path')).map(
       (path) => path.getAttribute('d'),
     );
 
-    rerender(<VariableValidationIcon icon="maxValue" />);
+    rerender(<VariableValidationIcon validation="maxValue" />);
 
     expect(
       Array.from(container.querySelectorAll('path')).map((path) =>
@@ -58,12 +56,12 @@ describe('VariableValidationIcon', () => {
     ['required', 'requiredAcceptsNull'],
   ] as const)('reuses one simple shape for equivalent rules', (...icons) => {
     const { container, rerender } = render(
-      <VariableValidationIcon icon={icons[0]} />,
+      <VariableValidationIcon validation={icons[0]} />,
     );
     const shape = container.querySelector('svg')?.innerHTML;
 
     for (const icon of icons.slice(1)) {
-      rerender(<VariableValidationIcon icon={icon} />);
+      rerender(<VariableValidationIcon validation={icon} />);
       expect(container.querySelector('svg')?.innerHTML).toBe(shape);
     }
   });

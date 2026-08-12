@@ -1,26 +1,9 @@
 import React from 'react';
 
+import type { ValidationName } from '@codaco/protocol-validation';
 import { cx } from '~/utils/cva';
 
-export type VariableValidationIconName =
-  | 'hasValidations'
-  | 'required'
-  | 'requiredAcceptsNull'
-  | 'minLength'
-  | 'maxLength'
-  | 'minValue'
-  | 'maxValue'
-  | 'minSelected'
-  | 'maxSelected'
-  | 'unique'
-  | 'differentFrom'
-  | 'sameAs'
-  | 'greaterThanVariable'
-  | 'lessThanVariable'
-  | 'greaterThanOrEqualToVariable'
-  | 'lessThanOrEqualToVariable';
-
-const unreachable = (_icon: never): never => {
+const unreachable = (_validation: never): never => {
   throw new Error('Unhandled VariablePill validation icon');
 };
 
@@ -38,17 +21,6 @@ function RequiredIcon() {
       <path d="M 10 3.5 V 16.5" />
       <path d="M 5 6.5 L 15 13.5" />
       <path d="M 15 6.5 L 5 13.5" />
-    </g>
-  );
-}
-
-function HasValidationsIcon() {
-  return (
-    <g {...strokeProps}>
-      <path d="M 3.5 5 H 10.5" />
-      <path d="M 3.5 9.5 H 9" />
-      <path d="M 3.5 14 H 8" />
-      <path d="M 10.5 13.5 L 13 16 L 17 10" strokeWidth="2" />
     </g>
   );
 }
@@ -95,10 +67,8 @@ function EqualityIcon({ different = false }: { different?: boolean }) {
   );
 }
 
-function ValidationShape({ icon }: { icon: VariableValidationIconName }) {
-  switch (icon) {
-    case 'hasValidations':
-      return <HasValidationsIcon />;
+function ValidationShape({ validation }: { validation: ValidationName }) {
+  switch (validation) {
     case 'required':
     case 'requiredAcceptsNull':
       return <RequiredIcon />;
@@ -124,25 +94,25 @@ function ValidationShape({ icon }: { icon: VariableValidationIconName }) {
       return <Operator direction="less" x={10} />;
   }
 
-  return unreachable(icon);
+  return unreachable(validation);
 }
 
 /** Custom constraint glyphs that encode the rule rather than its category. */
 export function VariableValidationIcon({
   className,
-  icon,
+  validation,
 }: {
   className?: string;
-  icon: VariableValidationIconName;
+  validation: ValidationName;
 }) {
   return (
     <svg
       aria-hidden
       className={cx('size-5', className)}
-      data-variable-pill-validation={icon}
+      data-variable-pill-validation={validation}
       viewBox="0 0 20 20"
     >
-      <ValidationShape icon={icon} />
+      <ValidationShape validation={validation} />
     </svg>
   );
 }

@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { cx } from '~/utils/cva';
 
 export type VariableDistributionShape =
@@ -90,10 +88,22 @@ const bucketWeights = (weights: readonly number[]) => {
   });
 };
 
+function PlotAxes() {
+  return (
+    <path
+      d={`M ${AXIS_LEFT} ${TOP} V ${BASELINE} H ${WIDTH - AXIS_LEFT}`}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.25"
+    />
+  );
+}
+
 function FilledDistribution({ path }: { path: string }) {
   return (
     <path
-      data-distribution-shape
       d={path}
       fill="currentColor"
       fillOpacity="0.16"
@@ -105,40 +115,21 @@ function FilledDistribution({ path }: { path: string }) {
   );
 }
 
-function PlotAxes() {
-  return (
-    <path
-      d={`M ${AXIS_LEFT} ${TOP} V ${BASELINE} H ${WIDTH - AXIS_LEFT}`}
-      data-distribution-axes
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.25"
-    />
-  );
-}
-
-function ConstantValue() {
-  return (
-    <path
-      d={`M ${WIDTH / 2} ${TOP + 1} V ${BASELINE}`}
-      data-distribution-fixed-value
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth="2.25"
-    />
-  );
-}
-
 function ContinuousDistribution({
   distribution,
   mean,
   sd,
 }: Extract<VariableDistributionShape, { kind: 'continuous' }>) {
   if (distribution === 'constant' || sd === 0) {
-    return <ConstantValue />;
+    return (
+      <path
+        d={`M ${WIDTH / 2} ${TOP + 1} V ${BASELINE}`}
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2.25"
+      />
+    );
   }
 
   if (distribution === 'uniform') {
@@ -168,14 +159,10 @@ function ContinuousDistribution({
   return <FilledDistribution path={densityPath(normalDensities())} />;
 }
 
-function BooleanDistribution({
-  probabilityTrue,
-}: Extract<VariableDistributionShape, { kind: 'boolean' }>) {
-  const probabilities = [1 - probabilityTrue, probabilityTrue];
-
+function BooleanDistribution({ probabilityTrue }: { probabilityTrue: number }) {
   return (
     <>
-      {probabilities.map((probability, index) => {
+      {[1 - probabilityTrue, probabilityTrue].map((probability, index) => {
         const height = Math.max(1.5, probability * (BASELINE - TOP));
         return (
           <rect
@@ -196,9 +183,7 @@ function BooleanDistribution({
   );
 }
 
-function OptionsDistribution({
-  weights,
-}: Extract<VariableDistributionShape, { kind: 'options' }>) {
+function OptionsDistribution({ weights }: { weights: readonly number[] }) {
   const buckets = bucketWeights(weights);
   const maximum = Math.max(...buckets, 1);
   const gap = 1.5;
@@ -227,41 +212,9 @@ function OptionsDistribution({
   );
 }
 
-function TextGenerator() {
-  return (
-    <g
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth="1.75"
-    >
-      <path d="M 3 5 H 27" />
-      <path d="M 3 10 H 36" />
-      <path d="M 3 15 H 22" />
-      <path d="M 32 3 V 7 M 30 5 H 34" />
-    </g>
-  );
-}
-
-function StageOwnedDistribution() {
-  return (
-    <g fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M 8 14 L 20 5 L 32 14" />
-      <circle cx="8" cy="14" r="3" fill="currentColor" fillOpacity="0.16" />
-      <circle cx="20" cy="5" r="3" fill="currentColor" fillOpacity="0.16" />
-      <circle cx="32" cy="14" r="3" fill="currentColor" fillOpacity="0.16" />
-    </g>
-  );
-}
-
 const shapeName = (shape: VariableDistributionShape) =>
   shape.kind === 'continuous' ? shape.distribution : shape.kind;
 
-/**
- * A compact probability silhouette. Continuous curves and discrete bars use
- * the resolved generator parameters, so the glyph mirrors the distribution
- * Architect will use instead of serving as a generic category symbol.
- */
 export function VariableDistributionIcon({
   className,
   shape,
@@ -282,8 +235,33 @@ export function VariableDistributionIcon({
       {shape.kind === 'continuous' && <ContinuousDistribution {...shape} />}
       {shape.kind === 'boolean' && <BooleanDistribution {...shape} />}
       {shape.kind === 'options' && <OptionsDistribution {...shape} />}
-      {shape.kind === 'text' && <TextGenerator />}
-      {shape.kind === 'stageOwned' && <StageOwnedDistribution />}
+      {shape.kind === 'text' && (
+        <g
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.75"
+        >
+          <path d="M 3 5 H 27" />
+          <path d="M 3 10 H 36" />
+          <path d="M 3 15 H 22" />
+          <path d="M 32 3 V 7 M 30 5 H 34" />
+        </g>
+      )}
+      {shape.kind === 'stageOwned' && (
+        <g fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M 8 14 L 20 5 L 32 14" />
+          <circle cx="8" cy="14" r="3" fill="currentColor" fillOpacity="0.16" />
+          <circle cx="20" cy="5" r="3" fill="currentColor" fillOpacity="0.16" />
+          <circle
+            cx="32"
+            cy="14"
+            r="3"
+            fill="currentColor"
+            fillOpacity="0.16"
+          />
+        </g>
+      )}
     </svg>
   );
 }

@@ -4,7 +4,10 @@ import React, { useContext } from 'react';
 
 import type { Variable } from '@codaco/protocol-validation';
 import Markdown from '~/components/Markdown';
-import { VariablePill } from '~/components/VariablePill';
+import {
+  getActiveValidationNames,
+  VariablePill,
+} from '~/components/VariablePill';
 
 import DualLink from './DualLink';
 import { renderValue } from './helpers';
@@ -93,7 +96,12 @@ const Variables = ({ variables }: VariablesProps) => {
             return (
               <tr key={variableId} id={`variable-${variableId}`}>
                 <td>
-                  <VariablePill label={name} type={type} variable={config} />
+                  <VariablePill
+                    interactive={false}
+                    label={name}
+                    type={type}
+                    validations={getActiveValidationNames(config)}
+                  />
                 </td>
                 <td>
                   {type}
