@@ -82,7 +82,8 @@ export type ValidationContext = {
 // ═══════════════════════════════════════════════════════════════
 
 export type FieldState = {
-  path: ObjectPath;
+  /** Internal structural path retained by the built-in form store. */
+  path?: ObjectPath;
   submissionErrorKey?: string;
   value: FieldValue;
   initialValue?: FieldValue;

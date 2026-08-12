@@ -70,7 +70,8 @@ type UseFieldResult = {
     isValid: boolean;
   };
   containerProps: {
-    'data-field-name': string; // Used for scrolling to field errors
+    'data-field-name': string;
+    'data-field-path': string; // Canonical internal key used to focus errors
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
     // (a slot button, a sibling radio…) does not validate prematurely.
@@ -133,7 +134,7 @@ type UseFieldConfig = {
 export function useField(config: UseFieldConfig): UseFieldResult {
   const {
     name,
-    nameMode = 'path',
+    nameMode = 'legacy',
     initialValue,
     showValidationHints = false,
     validationContext,
@@ -364,7 +365,8 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       isValidating: fieldState?.meta.isValidating ?? false,
     },
     containerProps: {
-      'data-field-name': resolvedName, // Used for scrolling to field errors
+      'data-field-name': publicResolvedName,
+      'data-field-path': resolvedName,
       'onBlur': handleContainerBlur,
     },
     fieldProps: {

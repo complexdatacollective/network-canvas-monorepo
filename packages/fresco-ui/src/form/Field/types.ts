@@ -260,7 +260,8 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
   /**
    * Interpret `name` as a structural path or as one opaque output key.
    * Protocol-authored variable IDs must use `opaque`.
-   * @default path
+   * `legacy` preserves the historical dot and terminal numeric-bracket rules.
+   * @default legacy
    */
   nameMode?: FieldNameMode;
   /** Label text rendered above (or beside when inline) the control. */

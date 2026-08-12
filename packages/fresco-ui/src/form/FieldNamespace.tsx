@@ -3,7 +3,11 @@
 import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { ObjectPath } from './utils/objectPath';
-import { isSafeObjectPath, parseObjectPath } from './utils/objectPath';
+import {
+  isSafeObjectPath,
+  parseLegacyObjectPath,
+  parseObjectPath,
+} from './utils/objectPath';
 
 type FieldNamespaceState = {
   name: string;
@@ -14,7 +18,7 @@ const emptyNamespace: FieldNamespaceState = { name: '', path: [] };
 const FieldNamespaceContext =
   createContext<FieldNamespaceState>(emptyNamespace);
 
-export type FieldNameMode = 'opaque' | 'path';
+export type FieldNameMode = 'legacy' | 'opaque' | 'path';
 
 export function useFieldNamespacePath(): ObjectPath {
   return useContext(FieldNamespaceContext).path;
@@ -27,9 +31,14 @@ export function useFieldNamespace(): string {
 export function resolveFieldPath(
   namespace: ObjectPath,
   name: string,
-  mode: FieldNameMode = 'path',
+  mode: FieldNameMode = 'legacy',
 ): ObjectPath {
-  const relativePath = mode === 'opaque' ? [name] : parseObjectPath(name);
+  const relativePath =
+    mode === 'opaque'
+      ? [name]
+      : mode === 'path'
+        ? parseObjectPath(name)
+        : parseLegacyObjectPath(name);
 
   if (!relativePath || !isSafeObjectPath(relativePath)) {
     throw new Error(`Unsafe form field path: ${name}`);

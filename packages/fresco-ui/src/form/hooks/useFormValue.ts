@@ -19,7 +19,7 @@ export function useFormValue<
   T extends FieldValue = FieldValue,
 >(
   fieldNames: K,
-  nameMode: FieldNameMode = 'path',
+  nameMode: FieldNameMode = 'legacy',
 ): Record<K[number], T | undefined> {
   const namespace = useFieldNamespacePath();
 

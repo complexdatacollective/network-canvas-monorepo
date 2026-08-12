@@ -12,9 +12,14 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
 
   const firstFieldName = fieldNames[0];
   const container = Array.from(
-    document.querySelectorAll<HTMLElement>('[data-field-name]'),
+    document.querySelectorAll<HTMLElement>(
+      '[data-field-path], [data-field-name]',
+    ),
   ).find(
-    (candidate) => candidate.getAttribute('data-field-name') === firstFieldName,
+    (candidate) =>
+      candidate.getAttribute('data-field-path') === firstFieldName ||
+      (!candidate.hasAttribute('data-field-path') &&
+        candidate.getAttribute('data-field-name') === firstFieldName),
   );
 
   // If element is not found, prevent crash.

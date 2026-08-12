@@ -60,7 +60,7 @@ const cloneDictionary = (existing: object): Record<string, unknown> => {
   return clone;
 };
 
-const parseLegacyPath = (path: string): ObjectPath => {
+export function parseLegacyObjectPath(path: string): ObjectPath | null {
   const segments: ObjectPath = [];
 
   for (const part of path.split('.')) {
@@ -76,8 +76,8 @@ const parseLegacyPath = (path: string): ObjectPath => {
     segments.push(key, Number(encodedIndex));
   }
 
-  return segments;
-};
+  return segments.every(isSafeSegment) ? segments : null;
+}
 
 const writableContainer = (
   existing: unknown,
@@ -169,21 +169,18 @@ export function parseObjectPath(path: string): ObjectPath | null {
       if (path[index + 1] === '"') {
         const quoted = readQuotedSegment(path, index);
         if (!quoted) {
-          const legacyPath = parseLegacyPath(path);
-          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+          return parseLegacyObjectPath(path);
         }
         segments.push(quoted.segment);
         index = quoted.nextIndex;
       } else {
         const closeIndex = path.indexOf(']', index + 1);
         if (closeIndex === -1) {
-          const legacyPath = parseLegacyPath(path);
-          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+          return parseLegacyObjectPath(path);
         }
         const encodedIndex = path.slice(index + 1, closeIndex);
         if (!/^\d+$/.test(encodedIndex)) {
-          const legacyPath = parseLegacyPath(path);
-          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+          return parseLegacyObjectPath(path);
         }
         segments.push(Number(encodedIndex));
         index = closeIndex + 1;
@@ -193,8 +190,7 @@ export function parseObjectPath(path: string): ObjectPath | null {
     }
 
     if (!expectSegment) {
-      const legacyPath = parseLegacyPath(path);
-      return legacyPath.every(isSafeSegment) ? legacyPath : null;
+      return parseLegacyObjectPath(path);
     }
 
     const segmentStart = index;
@@ -210,7 +206,13 @@ export function parseObjectPath(path: string): ObjectPath | null {
 }
 
 export function isSafeObjectPath(path: ObjectPath): boolean {
-  return path.every(isSafeSegment);
+  return path.every(
+    (segment, index) =>
+      isSafeSegment(segment) ||
+      (index === path.length - 1 &&
+        typeof segment === 'string' &&
+        unsafePropertyNames.has(segment)),
+  );
 }
 
 export function formatObjectPath(path: ObjectPath): string {

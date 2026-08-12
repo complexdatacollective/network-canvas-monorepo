@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import { createFormStore } from '../store/formStore';
-import type { FieldConfig, FormConfig } from '../store/types';
+import type { FieldConfig, FieldState, FormConfig } from '../store/types';
 import { validateFieldValue } from '../validation/helpers';
 
 // Mock the validation utility
@@ -31,6 +31,21 @@ describe('FormStore', () => {
   });
 
   describe('Initial state', () => {
+    it('keeps the published FieldState shape compatible without an internal path', () => {
+      const fieldState: FieldState = {
+        value: 'legacy',
+        meta: {
+          isValidating: false,
+          isTouched: false,
+          isBlurred: false,
+          isDirty: false,
+          isValid: true,
+        },
+      };
+
+      expect(fieldState.path).toBeUndefined();
+    });
+
     it('should have correct initial state', () => {
       const state = store.getState();
 

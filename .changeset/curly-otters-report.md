@@ -1,6 +1,4 @@
 ---
-"@codaco/shared-consts": patch
-"@codaco/protocol-validation": patch
 "@codaco/fresco-ui": patch
 "@codaco/interview": patch
 "@codaco/architect": patch

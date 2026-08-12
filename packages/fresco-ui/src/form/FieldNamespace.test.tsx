@@ -103,6 +103,16 @@ describe('FieldNamespace', () => {
       expect(resolveFieldPath([], 'weight[kg]')).toEqual(['weight[kg]']);
     });
 
+    it('preserves legacy quoted brackets unless structural parsing is explicit', () => {
+      expect(resolveFieldPath([], 'settings["locale"]')).toEqual([
+        'settings["locale"]',
+      ]);
+      expect(resolveFieldPath([], 'settings["locale"]', 'path')).toEqual([
+        'settings',
+        'locale',
+      ]);
+    });
+
     it('keeps an opaque dotted field name in one segment', () => {
       const { result } = renderHook(() => useFieldNamespacePath(), {
         wrapper: wrapper('steps[0]'),
@@ -124,10 +134,15 @@ describe('FieldNamespace', () => {
       },
     );
 
-    it('rejects an unsafe opaque field name', () => {
-      expect(() => resolveFieldPath([], '__proto__', 'opaque')).toThrow(
-        'Unsafe form field path: __proto__',
-      );
-    });
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'keeps the dangerous opaque field name %s as an inert leaf',
+      (name) => {
+        expect(resolveFieldPath([], name, 'opaque')).toEqual([name]);
+        expect(resolveFieldPath(['safe'], name, 'opaque')).toEqual([
+          'safe',
+          name,
+        ]);
+      },
+    );
   });
 });

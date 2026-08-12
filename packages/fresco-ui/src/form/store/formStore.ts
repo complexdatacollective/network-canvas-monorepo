@@ -38,6 +38,11 @@ const resolveFieldPath = (field: FieldReference): ObjectPath => {
 const resolveFieldName = (field: FieldReference): string =>
   formatObjectPath(resolveFieldPath(field));
 
+const resolveStoredFieldPath = (
+  fieldName: string,
+  field: FieldState,
+): ObjectPath => field.path ?? resolveFieldPath(fieldName);
+
 const hasRegisteredAncestor = (
   fields: Map<string, FieldState>,
   path: ObjectPath,
@@ -347,7 +352,7 @@ export const createFormStore = (): FormStoreApi => {
             const field = state.fields.get(fieldName);
             if (field) {
               state.dormantValues.set(fieldName, {
-                path: field.path,
+                path: resolveStoredFieldPath(fieldName, field),
                 submissionErrorKey: field.submissionErrorKey,
                 initialValue: field.initialValue,
                 validation: field.validation,
@@ -538,8 +543,11 @@ export const createFormStore = (): FormStoreApi => {
         // getFieldState fallback for cross-step reads.
         //
         // Registration order, which is also the output's key order.
-        state.fields.forEach((fieldState) => {
-          writeValue(fieldState.path, fieldState.value);
+        state.fields.forEach((fieldState, fieldName) => {
+          writeValue(
+            resolveStoredFieldPath(fieldName, fieldState),
+            fieldState.value,
+          );
         });
 
         // A form may register a field at a CONTAINER path (`mapOptions`)
@@ -550,13 +558,23 @@ export const createFormStore = (): FormStoreApi => {
         // field always wins — and only they, so a form without overlapping
         // paths keeps byte-identical output.
         const nested = Array.from(state.fields.entries())
-          .filter(([, fieldState]) =>
-            hasRegisteredAncestor(state.fields, fieldState.path),
+          .filter(([fieldName, fieldState]) =>
+            hasRegisteredAncestor(
+              state.fields,
+              resolveStoredFieldPath(fieldName, fieldState),
+            ),
           )
-          .toSorted(([, a], [, b]) => a.path.length - b.path.length);
+          .toSorted(
+            ([aName, a], [bName, b]) =>
+              resolveStoredFieldPath(aName, a).length -
+              resolveStoredFieldPath(bName, b).length,
+          );
 
-        for (const [, fieldState] of nested) {
-          writeValue(fieldState.path, fieldState.value);
+        for (const [fieldName, fieldState] of nested) {
+          writeValue(
+            resolveStoredFieldPath(fieldName, fieldState),
+            fieldState.value,
+          );
         }
 
         return values;

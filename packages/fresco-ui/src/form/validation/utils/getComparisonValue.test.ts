@@ -26,19 +26,25 @@ describe('getComparisonValue', () => {
   });
 
   it.each(['__proto__', 'prototype', 'constructor'])(
-    'does not resolve dangerous own property %s',
+    'resolves the inert own comparison property %s',
     (attribute) => {
+      const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+        Object.prototype,
+        attribute,
+      );
       const formValues: Record<string, FieldValue> = {};
       Object.defineProperty(formValues, attribute, {
         enumerable: true,
-        value: 'unsafe',
+        value: 'preserved',
       });
 
       expect(getComparisonValue(formValues, attribute)).toEqual({
-        present: false,
-        value: undefined,
+        present: true,
+        value: 'preserved',
       });
-      expect(Object.hasOwn(Object.prototype, 'unsafe')).toBe(false);
+      expect(
+        Object.getOwnPropertyDescriptor(Object.prototype, attribute),
+      ).toEqual(prototypeDescriptor);
     },
   );
 });

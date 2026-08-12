@@ -145,6 +145,19 @@ describe('Object Path Utils', () => {
   });
 
   describe('setValue', () => {
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'treats the typed dangerous leaf %s as an inert own key',
+      (key) => {
+        const obj: Record<string, unknown> = {};
+
+        setValue(obj, [key], 'preserved');
+
+        expect(obj).toEqual({ [key]: 'preserved' });
+        expect(getValue(obj, [key])).toBe('preserved');
+        expectObjectPrototypeUnchanged();
+      },
+    );
+
     it('should set simple property', () => {
       const obj: Record<string, unknown> = {};
 

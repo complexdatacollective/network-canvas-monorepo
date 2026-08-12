@@ -29,6 +29,7 @@ const NAME_VAR = 'name';
 const DISPLAY_NAME_VAR = 'displayName';
 const ALIAS_VAR = 'alias';
 const DOTTED_VAR = 'favorite.color';
+const DANGEROUS_VARS = ['__proto__', 'constructor', 'prototype'];
 
 // A FamilyPedigree stage has no top-level subject, so getStageSubject — and
 // therefore the base validation context's stageSubject — is null.
@@ -73,6 +74,21 @@ function makeWrapper() {
                 },
                 [DOTTED_VAR]: {
                   name: DOTTED_VAR,
+                  type: 'text',
+                  component: 'Text',
+                },
+                ['__proto__']: {
+                  name: '__proto__',
+                  type: 'text',
+                  component: 'Text',
+                },
+                constructor: {
+                  name: 'constructor',
+                  type: 'text',
+                  component: 'Text',
+                },
+                prototype: {
+                  name: 'prototype',
                   type: 'text',
                   component: 'Text',
                 },
@@ -214,4 +230,56 @@ describe('useProtocolForm stageSubject', () => {
       expect(onSubmit).toHaveBeenCalledWith({ 'favorite.color': 'blue' });
     });
   });
+
+  it.each(DANGEROUS_VARS)(
+    'submits the protocol variable identifier %s as an inert own key',
+    async (variable) => {
+      const onSubmit = vi.fn();
+      const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+        Object.prototype,
+        variable,
+      );
+      const dangerousFields: FormField[] = [
+        {
+          variable: asEntityAttributeReference(variable),
+          prompt: 'Legacy variable',
+        },
+      ];
+
+      function Harness() {
+        const { fieldComponents } = useProtocolForm({
+          fields: dangerousFields,
+          subject: { entity: 'node', type: NODE_TYPE },
+        });
+
+        return (
+          <Form
+            onSubmit={(values) => {
+              onSubmit(values);
+              return { success: true };
+            }}
+          >
+            {fieldComponents}
+            <SubmitButton>Submit</SubmitButton>
+          </Form>
+        );
+      }
+
+      const { container } = render(<Harness />, { wrapper: makeWrapper() });
+      const input = container.querySelector(`input[name="${variable}"]`);
+      if (!(input instanceof HTMLInputElement)) {
+        throw new Error('Legacy protocol field was not rendered');
+      }
+
+      fireEvent.change(input, { target: { value: 'preserved' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith({ [variable]: 'preserved' });
+      });
+      expect(
+        Object.getOwnPropertyDescriptor(Object.prototype, variable),
+      ).toEqual(prototypeDescriptor);
+    },
+  );
 });

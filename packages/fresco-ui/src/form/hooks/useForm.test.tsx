@@ -95,6 +95,16 @@ describe('useForm submission errors', () => {
     expect(
       screen.getByRole('textbox', { name: 'Favorite color' }),
     ).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Favorite color' })
+        .closest('[data-field-name]'),
+    ).toHaveAttribute('data-field-name', 'favorite.color');
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Favorite color' })
+        .closest('[data-field-path]'),
+    ).toHaveAttribute('data-field-path', '["favorite.color"]');
     await waitFor(() => {
       expect(onSubmitInvalid).toHaveBeenCalledWith({
         formErrors: [],

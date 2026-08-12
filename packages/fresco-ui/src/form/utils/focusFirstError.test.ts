@@ -14,12 +14,13 @@ const errors: FlattenedErrors = {
  * input outside it. jsdom doesn't implement scrolling, so scrollTo is
  * stubbed and scrollend is dispatched manually where needed.
  */
-const setup = (fieldName = 'dob') => {
+const setup = (fieldName = 'dob', fieldPath?: string) => {
   const scroller = document.createElement('div');
   scroller.style.overflowY = 'auto';
 
   const field = document.createElement('div');
   field.setAttribute('data-field-name', fieldName);
+  if (fieldPath) field.setAttribute('data-field-path', fieldPath);
   const input = document.createElement('input');
   field.appendChild(input);
   scroller.appendChild(field);
@@ -106,12 +107,13 @@ describe('focusFirstError', () => {
   });
 
   it('matches an opaque dotted field name without interpolating a selector', () => {
-    const fieldName = '["favorite.color"]';
-    const { input } = setup(fieldName);
+    const fieldName = 'favorite.color';
+    const fieldPath = '["favorite.color"]';
+    const { input } = setup(fieldName, fieldPath);
 
     focusFirstError({
       formErrors: [],
-      fieldErrors: { [fieldName]: ['Required'] },
+      fieldErrors: { [fieldPath]: ['Required'] },
     });
     vi.advanceTimersByTime(800);
 
