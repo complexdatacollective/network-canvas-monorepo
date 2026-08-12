@@ -79,6 +79,19 @@ const legacyNetwork = {
   edges: [],
 };
 
+const networkWithPassThroughAttributes = {
+  ...legacyNetwork,
+  nodes: [
+    {
+      ...legacyNetwork.nodes[0],
+      attributes: {
+        ...legacyNetwork.nodes[0]?.attributes,
+        'profile page': 'https://example.com/people/ada',
+      },
+    },
+  ],
+};
+
 const legacyStageMetadata = {
   familyPedigree: {
     isNetworkCommitted: true,
@@ -209,6 +222,22 @@ describe('recordCrypto — encrypted mode', () => {
       emptySelection: [],
     });
     expect(back.network.nodes[0]?.attributes).toEqual({ name: 'Ada' });
+  });
+
+  it('preserves pass-through attribute keys in encrypted networks', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const row = await makeEncryptedSessionRow(
+      networkWithPassThroughAttributes,
+      dek,
+    );
+
+    const back = await decryptSession(row);
+
+    expect(back.network.nodes[0]?.attributes).toEqual({
+      'name': 'Ada',
+      'profile page': 'https://example.com/people/ada',
+    });
   });
 
   it('normalizes nullish encrypted Family Pedigree metadata attributes', async () => {
@@ -375,6 +404,17 @@ describe('recordCrypto — none mode (passthrough)', () => {
       emptySelection: [],
     });
     expect(back.network.nodes[0]?.attributes).toEqual({ name: 'Ada' });
+  });
+
+  it('preserves pass-through attribute keys in plaintext networks', async () => {
+    const back = await decryptSession(
+      makeSessionRow(networkWithPassThroughAttributes),
+    );
+
+    expect(back.network.nodes[0]?.attributes).toEqual({
+      'name': 'Ada',
+      'profile page': 'https://example.com/people/ada',
+    });
   });
 
   it('normalizes nullish plaintext Family Pedigree metadata attributes', async () => {

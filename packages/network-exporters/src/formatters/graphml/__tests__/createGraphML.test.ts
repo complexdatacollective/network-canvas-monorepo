@@ -315,6 +315,129 @@ describe('buildGraphML', () => {
     ).toBe(false);
   });
 
+  it('derives stable types for unanswered variables from the codebook', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+    const representedNodeType = codebook.node?.['mock-node-type'];
+    if (!representedNodeType) throw new Error('Missing represented node type');
+
+    const unansweredCodebook: Codebook = {
+      ...codebook,
+      node: {
+        ...codebook.node,
+        'mock-node-type': {
+          ...representedNodeType,
+          variables: {
+            ...representedNodeType.variables,
+            unansweredNumber: { name: 'unansweredNumber', type: 'number' },
+            unansweredNumericOrdinal: {
+              name: 'unansweredNumericOrdinal',
+              type: 'ordinal',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+          },
+        },
+        'unanswered': {
+          name: 'unanswered',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            unrepresentedNumber: {
+              name: 'unrepresentedNumber',
+              type: 'number',
+            },
+            unrepresentedNumericOrdinal: {
+              name: 'unrepresentedNumericOrdinal',
+              type: 'ordinal',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+            stringOrdinal: {
+              name: 'stringOrdinal',
+              type: 'ordinal',
+              options: [
+                { label: 'One', value: 'one' },
+                { label: 'Two', value: 'two' },
+              ],
+            },
+            emptyOrdinal: {
+              name: 'emptyOrdinal',
+              type: 'ordinal',
+              options: [],
+            },
+            text: { name: 'text', type: 'text' },
+            boolean: { name: 'boolean', type: 'boolean' },
+            categorical: {
+              name: 'categorical',
+              type: 'categorical',
+              options: [
+                { label: 'One', value: 1 },
+                { label: 'Two', value: 2 },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const unansweredXml = await buildXML(
+      protocolNetwork,
+      unansweredCodebook,
+      exportOptions,
+    );
+
+    expect(
+      unansweredXml
+        .getElementById('unansweredNumber')
+        ?.getAttribute('attr.type'),
+    ).toBe('double');
+    expect(
+      unansweredXml
+        .getElementById('unansweredNumericOrdinal')
+        ?.getAttribute('attr.type'),
+    ).toBe('int');
+    expect(
+      unansweredXml
+        .getElementById('unrepresentedNumber')
+        ?.getAttribute('attr.type'),
+    ).toBe('double');
+    expect(
+      unansweredXml
+        .getElementById('unrepresentedNumericOrdinal')
+        ?.getAttribute('attr.type'),
+    ).toBe('int');
+    expect(
+      unansweredXml.getElementById('stringOrdinal')?.getAttribute('attr.type'),
+    ).toBe('string');
+    expect(
+      unansweredXml.getElementById('emptyOrdinal')?.getAttribute('attr.type'),
+    ).toBe('string');
+    expect(
+      unansweredXml.getElementById('text')?.getAttribute('attr.type'),
+    ).toBe('string');
+    expect(
+      unansweredXml.getElementById('boolean')?.getAttribute('attr.type'),
+    ).toBe('boolean');
+
+    const categoricalKeys = Array.from(
+      unansweredXml.getElementsByTagName('key'),
+    ).filter((key) =>
+      key.getAttribute('attr.name')?.startsWith('categorical_'),
+    );
+    expect(categoricalKeys).toHaveLength(2);
+    expect(
+      categoricalKeys.every(
+        (key) => key.getAttribute('attr.type') === 'boolean',
+      ),
+    ).toBe(true);
+  });
+
   it('includes present external attributes with stable key references', async () => {
     const processedNetworks = processMockNetworks([mockNetwork]);
     const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];

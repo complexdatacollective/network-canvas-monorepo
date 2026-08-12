@@ -109,11 +109,15 @@ describe('NcNetworkSchema', () => {
 
   it('preserves unknown defined attribute keys', () => {
     const parsed = NcNetworkSchema.parse(
-      networkWithEgoAttributes({ externalAttribute: 'preserved' }),
+      networkWithEgoAttributes({
+        'externalAttribute': 'preserved',
+        'profile page': 'https://example.com/people/ada',
+      }),
     );
 
     expect(parsed.ego.attributes).toStrictEqual({
-      externalAttribute: 'preserved',
+      'externalAttribute': 'preserved',
+      'profile page': 'https://example.com/people/ada',
     });
   });
 

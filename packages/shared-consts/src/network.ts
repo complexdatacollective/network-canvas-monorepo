@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { VariableNameSchema } from './variables.ts';
-
 // When values are encrypted, this is the resulting type.
 const encryptedValueSchema = z.array(z.number());
 export type EncryptedValue = z.infer<typeof encryptedValueSchema>;
@@ -30,7 +28,7 @@ export const edgeSourceProperty = 'from';
 export const edgeTargetProperty = 'to';
 
 const LegacyEntityAttributesSchema = z.record(
-  VariableNameSchema,
+  z.string(),
   VariableValueSchema.nullish(),
 );
 
@@ -50,7 +48,7 @@ const removeNullishAttributeValues = (attributes: unknown): unknown => {
 
 export const EntityAttributesSchema = z.preprocess(
   removeNullishAttributeValues,
-  z.record(VariableNameSchema, VariableValueSchema),
+  z.record(z.string(), VariableValueSchema),
 );
 
 const BaseNcEntitySchema = z.object({

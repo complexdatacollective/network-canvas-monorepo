@@ -71,6 +71,17 @@ const mergeTargets = (
   incoming: GraphMLKeyTarget,
 ): GraphMLKeyTarget => (existing === incoming ? existing : 'all');
 
+const getGraphMLTypeForDeclaredVariable = (
+  entities: readonly GraphMLEntity[],
+  variableId: string,
+  fallbackType: 'double' | 'int' | 'string',
+) =>
+  entities.some(
+    (entity) => getEntityAttributes(entity)[variableId] !== undefined,
+  )
+    ? getGraphMLTypeForKey(entities, variableId)
+    : fallbackType;
+
 export default function getKeyElementGenerator(
   codebook: Codebook,
   exportOptions: ExportOptions,
@@ -137,11 +148,31 @@ export default function getKeyElementGenerator(
           });
           break;
         case 'ordinal':
+          addKey({
+            id: variableId,
+            name: keyName,
+            type: getGraphMLTypeForDeclaredVariable(
+              entities,
+              variableId,
+              variable.options.length > 0 &&
+                variable.options.every(
+                  (option) => typeof option.value === 'number',
+                )
+                ? 'int'
+                : 'string',
+            ),
+            target: keyTarget,
+          });
+          break;
         case 'number':
           addKey({
             id: variableId,
             name: keyName,
-            type: getGraphMLTypeForKey(entities, variableId),
+            type: getGraphMLTypeForDeclaredVariable(
+              entities,
+              variableId,
+              'double',
+            ),
             target: keyTarget,
           });
           break;
