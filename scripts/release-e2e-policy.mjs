@@ -115,40 +115,59 @@ export function relevanceDirsForSubject(subjectName, packages) {
   return dirs;
 }
 
-// True only when EVERY changed path provably cannot affect the suite: it is
-// inert, or it lives inside a workspace package outside the suite's relevance
-// closure. Any other path — root configs, .github/, scripts/, the lockfile,
-// anything unrecognised — is relevant, so the suite runs (fail closed).
-export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+// The first changed path that can affect the suite, or undefined when every
+// changed path provably cannot: it is inert, or it lives inside a workspace
+// package outside the suite's relevance closure. Any other path — root
+// configs, .github/, scripts/, the lockfile, anything unrecognised — is
+// relevant, so the suite runs (fail closed).
+function firstRelevantPath(changedPaths, relevanceDirs, packages) {
   const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
-  return changedPaths.every((changedPath) => {
-    if (isInertPath(changedPath)) return true;
+  return changedPaths.find((changedPath) => {
+    if (isInertPath(changedPath)) return false;
     const owner = packageDirs.find((dir) => changedPath.startsWith(`${dir}/`));
-    return owner !== undefined && !relevanceDirs.has(owner);
+    return owner === undefined || relevanceDirs.has(owner);
   });
 }
 
+// True only when EVERY changed path provably cannot affect the suite.
+export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+  return firstRelevantPath(changedPaths, relevanceDirs, packages) === undefined;
+}
+
 // Select each suite whose subject or workspace dependency closure contains a
-// changed path. Unknown paths fail closed for every suite via
-// diffIrrelevantToSuite; a missing subject fails closed for that suite because
-// its relevance closure cannot be trusted.
-export function affectedSuitesForPaths(changedPaths, cwd) {
+// changed path, and explain each decision with the witness path — the CI
+// status comment surfaces these reasons verbatim. Unknown paths fail closed
+// for every suite via firstRelevantPath; a missing subject fails closed for
+// that suite because its relevance closure cannot be trusted.
+export function suiteSelectionForPaths(changedPaths, cwd) {
   const packages = collectWorkspacePackages(cwd);
+  const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
   const required = suites();
+  const reasons = {};
   for (const key of SUITE_KEYS) {
     const subject = E2E_SUITE_SUBJECTS[key];
     if (!packages.has(subject)) {
       required[key] = true;
+      reasons[key] =
+        `fails closed: ${subject} is missing from the workspace graph`;
       continue;
     }
     const relevanceDirs = relevanceDirsForSubject(subject, packages);
-    required[key] = !diffIrrelevantToSuite(
-      changedPaths,
-      relevanceDirs,
-      packages,
-    );
+    const witness = firstRelevantPath(changedPaths, relevanceDirs, packages);
+    if (witness === undefined) {
+      reasons[key] = 'no changed file affects this suite';
+      continue;
+    }
+    required[key] = true;
+    reasons[key] = packageDirs.some((dir) => witness.startsWith(`${dir}/`))
+      ? `\`${witness}\` is in the ${subject} workspace dependency closure`
+      : `fails closed: \`${witness}\` is outside every workspace package`;
   }
-  return required;
+  return { required, reasons };
+}
+
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  return suiteSelectionForPaths(changedPaths, cwd).required;
 }
 
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
@@ -406,7 +425,7 @@ function tryGit(args, cwd) {
 // head is gated by the suites the PR can affect. This deliberately does not
 // use push-to-push carry-forward: an E2E verdict must describe the exact PR
 // head that the required quality check is evaluating.
-export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+export function pullRequestSuiteSelection(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
     throw new Error('feature PR E2E detection requires base and head SHAs');
   }
@@ -417,37 +436,67 @@ export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
     cwd,
   );
   if (diff === null) throw new Error('Unable to read feature PR diff');
-  return affectedSuitesForPaths(diff.split('\n').filter(Boolean), cwd);
+  return suiteSelectionForPaths(diff.split('\n').filter(Boolean), cwd);
+}
+
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+  return pullRequestSuiteSelection(baseSha, headSha, cwd).required;
+}
+
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
 }
 
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
-  pullRequestDetector = pullRequestRequiredSuites,
+  pullRequestDetector = pullRequestSuiteSelection,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
+    const laneSuites = SUITES_BY_RELEASE_REF[releaseRef];
     return {
-      ...SUITES_BY_RELEASE_REF[releaseRef],
+      ...laneSuites,
       releaseRef,
       snapshotBranch: 'e2e-snapshots/main',
+      reasons: Object.fromEntries(
+        SUITE_KEYS.map((key) => [
+          key,
+          laneSuites[key]
+            ? `gates the ${releaseRef} release lane`
+            : `does not gate the ${releaseRef} release lane`,
+        ]),
+      ),
     };
   }
 
   if (eventName === 'pull_request') {
-    let required;
+    let selection;
     try {
-      required = pullRequestDetector(baseSha, headSha, process.cwd());
+      selection = pullRequestDetector(baseSha, headSha, process.cwd());
     } catch {
-      required = suites('interview', 'interviewer', 'architect');
+      selection = {
+        required: suites('interview', 'interviewer', 'architect'),
+        reasons: reasonForEverySuite(
+          'fails closed: the PR diff could not be classified',
+        ),
+      };
     }
     return {
-      ...required,
+      ...selection.required,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: selection.reasons,
     };
   }
 
-  return { ...suites(), releaseRef: '', snapshotBranch: '' };
+  return {
+    ...suites(),
+    releaseRef: '',
+    snapshotBranch: '',
+    reasons: reasonForEverySuite(
+      `E2E does not run for ${eventName || 'this'} events`,
+    ),
+  };
 }
 
 async function main() {
@@ -485,6 +534,8 @@ async function main() {
       for (const key of SUITE_KEYS) {
         if (policy[key] && validated[key]) {
           policy[key] = false;
+          policy.reasons[key] =
+            'verdict reused: the newest equivalent release-branch run passed this suite and nothing relevant changed since';
           console.error(
             `${E2E_JOB_NAMES[key]}: skipping — the newest equivalent verdict across generated release branches is successful and nothing relevant to this suite has changed since.`,
           );

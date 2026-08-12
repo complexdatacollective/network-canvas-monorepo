@@ -24,7 +24,12 @@ import {
   relevanceDirsForSubject,
   SUITE_KEYS,
   SUITES_BY_RELEASE_REF,
+  suiteSelectionForPaths,
 } from './release-e2e-policy.mjs';
+
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
+}
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
@@ -201,6 +206,14 @@ test('all release policies share the central snapshot PR target', () => {
         ...SUITES_BY_RELEASE_REF[releaseRef],
         releaseRef,
         snapshotBranch: 'e2e-snapshots/main',
+        reasons: Object.fromEntries(
+          SUITE_KEYS.map((key) => [
+            key,
+            SUITES_BY_RELEASE_REF[releaseRef][key]
+              ? `gates the ${releaseRef} release lane`
+              : `does not gate the ${releaseRef} release lane`,
+          ]),
+        ),
       },
     );
   }
@@ -213,6 +226,7 @@ test('merge groups never require E2E', () => {
     architect: false,
     releaseRef: '',
     snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for merge_group events'),
   });
 });
 
@@ -222,6 +236,11 @@ test('feature PRs require the suites the affected-path detector reports', () => 
     interviewer: false,
     architect: true,
   };
+  const detectedReasons = {
+    interview: 'interview witness',
+    interviewer: 'no changed file affects this suite',
+    architect: 'architect witness',
+  };
   assert.deepEqual(
     releaseE2EPolicy(
       {
@@ -230,9 +249,14 @@ test('feature PRs require the suites the affected-path detector reports', () => 
         baseSha: 'base',
         headSha: 'head',
       },
-      () => detected,
+      () => ({ required: detected, reasons: detectedReasons }),
     ),
-    { ...detected, releaseRef: '', snapshotBranch: '' },
+    {
+      ...detected,
+      releaseRef: '',
+      snapshotBranch: '',
+      reasons: detectedReasons,
+    },
   );
   assert.deepEqual(
     releaseE2EPolicy(
@@ -252,6 +276,9 @@ test('feature PRs require the suites the affected-path detector reports', () => 
       architect: true,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: reasonForEverySuite(
+        'fails closed: the PR diff could not be classified',
+      ),
     },
   );
 });
@@ -362,6 +389,55 @@ test('affected path selection fails closed when a suite subject is missing', () 
     interviewer: false,
     architect: true,
   });
+  assert.equal(
+    suiteSelectionForPaths(['README.md'], cwd).reasons.architect,
+    'fails closed: @codaco/architect is missing from the workspace graph',
+  );
+});
+
+test('suite selection reasons name the witness path for the status comment', () => {
+  const cwd = writeWorkspaceFixture();
+
+  // A shared-runtime change selects every suite, each citing the path.
+  assert.deepEqual(
+    suiteSelectionForPaths(
+      ['README.md', 'packages/interview/src/index.ts'],
+      cwd,
+    ),
+    {
+      required: { interview: true, interviewer: true, architect: true },
+      reasons: {
+        interview:
+          '`packages/interview/src/index.ts` is in the @codaco/interview workspace dependency closure',
+        interviewer:
+          '`packages/interview/src/index.ts` is in the @codaco/interviewer workspace dependency closure',
+        architect:
+          '`packages/interview/src/index.ts` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A single-product change explains both the selected and skipped suites.
+  assert.deepEqual(
+    suiteSelectionForPaths(['apps/architect/src/main.tsx'], cwd),
+    {
+      required: { interview: false, interviewer: false, architect: true },
+      reasons: {
+        interview: 'no changed file affects this suite',
+        interviewer: 'no changed file affects this suite',
+        architect:
+          '`apps/architect/src/main.tsx` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A path outside every workspace package fails closed and says so.
+  assert.deepEqual(
+    suiteSelectionForPaths(['turbo.json'], cwd).reasons,
+    reasonForEverySuite(
+      'fails closed: `turbo.json` is outside every workspace package',
+    ),
+  );
 });
 
 test('non-PR ordinary events do not require E2E', () => {
@@ -371,6 +447,7 @@ test('non-PR ordinary events do not require E2E', () => {
     architect: false,
     releaseRef: '',
     snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for push events'),
   };
   assert.deepEqual(
     releaseE2EPolicy({ eventName: 'push', refName: 'main' }),

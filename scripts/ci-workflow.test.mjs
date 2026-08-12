@@ -502,11 +502,58 @@ test('closed snapshot PRs cannot leave permanent pending state', () => {
 });
 
 test('the informational Pages deploy has a bounded failure window', () => {
-  const reportJob = job('interview-e2e-report');
-  assert.ok(reportJob, 'interview-e2e-report job exists');
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
   assert.match(
     reportJob,
-    /- name: Deploy report to Pages\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+    /- name: Deploy report to Pages\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+  );
+});
+
+test('the unified E2E report aggregates every suite job and publishes failures only', () => {
+  assert.equal(
+    job('interview-e2e-report'),
+    undefined,
+    'the per-suite interview report job was replaced by e2e-report',
+  );
+
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
+  for (const name of Object.values(E2E_JOB_NAMES).flat()) {
+    assert.match(
+      reportJob,
+      new RegExp(`^ {6}- ${name}$`, 'm'),
+      `e2e-report needs ${name}`,
+    );
+    assert.match(
+      reportJob,
+      new RegExp(`merge_report ${name} `),
+      `${name} is mapped in the merge step`,
+    );
+  }
+
+  // Reports go to Pages only for FAILED jobs, and a green job removes its
+  // branch's stale failure report — only the latest run's report is kept.
+  assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
+  assert.match(reportJob, /Only the latest run's report is kept/);
+
+  // The status comment is a single sticky comment, updated in place, and only
+  // ever posted on pull requests.
+  assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
+  assert.match(
+    reportJob,
+    /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/,
+  );
+  assert.match(reportJob, /updateComment/);
+  assert.match(reportJob, /createComment/);
+
+  // The decision matrix comes from the policy job's reasons output.
+  assert.match(reportJob, /needs\.e2e-policy\.outputs\.reasons/);
+  const policyJob = job('e2e-policy');
+  assert.match(policyJob, /reasons=\$\(jq -c '\.reasons \/\/ \{\}'/);
+  assert.match(
+    policyJob,
+    /reasons: \$\{\{ steps\.policy\.outputs\.reasons \}\}/,
   );
 });
 
