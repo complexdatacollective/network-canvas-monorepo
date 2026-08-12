@@ -536,6 +536,37 @@ describe('FormStore', () => {
       expect(store.getState().isValid).toBe(false);
     });
 
+    it('maps an opaque dotted submission error to its registered field path', () => {
+      store.getState().registerField({
+        name: ['steps', 0, 'favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+
+      const normalized = store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { 'favorite.color': ['Choose another color'] },
+      });
+
+      expect(normalized).toEqual({
+        formErrors: [],
+        fieldErrors: {
+          'steps[0]["favorite.color"]': ['Choose another color'],
+        },
+      });
+      expect(
+        store.getState().getFieldErrors(['steps', 0, 'favorite.color']),
+      ).toEqual(['Choose another color']);
+      expect(
+        store.getState().getFieldState(['steps', 0, 'favorite.color'])?.meta,
+      ).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+    });
+
     it('restores an unvalidated field after server errors clear on successful validation', async () => {
       // This regression is intentionally scoped to a single field without a
       // client schema; the surrounding getter tests register other fields.

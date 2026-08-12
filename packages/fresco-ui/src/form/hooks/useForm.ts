@@ -86,9 +86,10 @@ export function useForm(config: FormConfig) {
           formErrors: result.formErrors ?? [],
           fieldErrors: result.fieldErrors ?? {},
         };
-        setErrors(submissionErrors);
+        const normalizedErrors =
+          setErrors(submissionErrors) ?? submissionErrors;
         setTimeout(() => {
-          configRef.current.onSubmitInvalid?.(submissionErrors);
+          configRef.current.onSubmitInvalid?.(normalizedErrors);
         }, 0);
       } catch {
         setErrors({

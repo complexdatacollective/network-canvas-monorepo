@@ -81,6 +81,7 @@ export type ValidationContext = {
 
 export type FieldState = {
   path: ObjectPath;
+  submissionErrorKey?: string;
   value: FieldValue;
   initialValue?: FieldValue;
   meta: {
@@ -95,6 +96,7 @@ export type FieldState = {
 
 export type FieldConfig = {
   name: FieldReference;
+  submissionErrorKey?: string;
   initialValue?: FieldValue;
   validation?: FieldValidationFunction;
 };

@@ -54,6 +54,57 @@ describe('useForm submission errors', () => {
     });
   });
 
+  it('surfaces a server error keyed by an opaque dotted field identifier', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'favorite.color': ['Choose another color'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <Field
+            name="favorite.color"
+            nameMode="opaque"
+            label="Favorite color"
+            component={InputField}
+            initialValue="blue"
+          />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Choose another color')).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'Favorite color' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          '["favorite.color"]': ['Choose another color'],
+        },
+      });
+    });
+  });
+
   it('restores validity after a server field error is followed by a successful submit', async () => {
     let resolveSuccessfulSubmit: (result: { success: true }) => void = () =>
       undefined;

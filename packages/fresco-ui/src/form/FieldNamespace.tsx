@@ -3,15 +3,23 @@
 import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { ObjectPath } from './utils/objectPath';
-import { isSafeObjectPath, parseObjectPath } from './utils/objectPath';
+import {
+  formatObjectPath,
+  isSafeObjectPath,
+  parseObjectPath,
+} from './utils/objectPath';
 
 const emptyNamespace: ObjectPath = [];
 const FieldNamespaceContext = createContext<ObjectPath>(emptyNamespace);
 
 export type FieldNameMode = 'opaque' | 'path';
 
-export function useFieldNamespace(): ObjectPath {
+export function useFieldNamespacePath(): ObjectPath {
   return useContext(FieldNamespaceContext);
+}
+
+export function useFieldNamespace(): string {
+  return formatObjectPath(useFieldNamespacePath());
 }
 
 export function resolveFieldPath(
@@ -37,7 +45,7 @@ export default function FieldNamespace({
   prefix,
   children,
 }: FieldNamespaceProps) {
-  const parentNamespace = useFieldNamespace();
+  const parentNamespace = useFieldNamespacePath();
   const fullNamespace = useMemo(
     () => resolveFieldPath(parentNamespace, prefix),
     [parentNamespace, prefix],

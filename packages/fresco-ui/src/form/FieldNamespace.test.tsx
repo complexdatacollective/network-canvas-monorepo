@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import FieldNamespace, {
   resolveFieldPath,
   useFieldNamespace,
+  useFieldNamespacePath,
 } from './FieldNamespace';
 
 function wrapper(prefix: string) {
@@ -27,23 +28,23 @@ function nestedWrapper(outer: string, inner: string) {
 
 describe('FieldNamespace', () => {
   describe('useFieldNamespace', () => {
-    it('should return an empty path when no namespace provider exists', () => {
+    it('preserves the empty string returned without a provider', () => {
       const { result } = renderHook(() => useFieldNamespace());
-      expect(result.current).toEqual([]);
+      expect(result.current).toBe('');
     });
 
-    it('should return the prefix from a single namespace', () => {
+    it('preserves the structural string returned by one namespace', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: wrapper('steps[0]'),
       });
-      expect(result.current).toEqual(['steps', 0]);
+      expect(result.current).toBe('steps[0]');
     });
 
-    it('should stack prefixes from nested namespaces with dot separator', () => {
+    it('preserves nested string namespaces with dot separators', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: nestedWrapper('steps[0]', 'egg-parent'),
       });
-      expect(result.current).toEqual(['steps', 0, 'egg-parent']);
+      expect(result.current).toBe('steps[0].egg-parent');
     });
 
     it('should handle deeply nested namespaces', () => {
@@ -58,13 +59,22 @@ describe('FieldNamespace', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: deepWrapper,
       });
-      expect(result.current).toEqual(['steps', 0, 'egg-parent', 'details']);
+      expect(result.current).toBe('steps[0].egg-parent.details');
+    });
+  });
+
+  describe('useFieldNamespacePath', () => {
+    it('returns typed path segments for internal field resolution', () => {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
+        wrapper: nestedWrapper('steps[0]', 'egg-parent'),
+      });
+      expect(result.current).toEqual(['steps', 0, 'egg-parent']);
     });
   });
 
   describe('resolveFieldName', () => {
     it('should prepend namespace to field name', () => {
-      const { result } = renderHook(() => useFieldNamespace(), {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
         wrapper: wrapper('steps[0]'),
       });
 
@@ -76,13 +86,13 @@ describe('FieldNamespace', () => {
     });
 
     it('should return bare field name when no namespace', () => {
-      const { result } = renderHook(() => useFieldNamespace());
+      const { result } = renderHook(() => useFieldNamespacePath());
 
       expect(resolveFieldPath(result.current, 'name')).toEqual(['name']);
     });
 
     it('keeps an opaque dotted field name in one segment', () => {
-      const { result } = renderHook(() => useFieldNamespace(), {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
         wrapper: wrapper('steps[0]'),
       });
 
@@ -95,7 +105,9 @@ describe('FieldNamespace', () => {
       'rejects an unsafe namespace prefix %s',
       (prefix) => {
         expect(() =>
-          renderHook(() => useFieldNamespace(), { wrapper: wrapper(prefix) }),
+          renderHook(() => useFieldNamespacePath(), {
+            wrapper: wrapper(prefix),
+          }),
         ).toThrow(`Unsafe form field path: ${prefix}`);
       },
     );

@@ -10,7 +10,7 @@ import type {
 import {
   type FieldNameMode,
   resolveFieldPath,
-  useFieldNamespace,
+  useFieldNamespacePath,
 } from '../FieldNamespace';
 import type { FieldState, ValidationContext } from '../store/types';
 import type { ObjectPath } from '../utils/objectPath';
@@ -139,7 +139,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     ...validationProps
   } = config;
 
-  const namespace = useFieldNamespace();
+  const namespace = useFieldNamespacePath();
   const resolvedPath = useMemo(
     () => resolveFieldPath(namespace, name, nameMode),
     [namespace, name, nameMode],
@@ -233,6 +233,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   useEffect(() => {
     registerField({
       name: resolvedPath,
+      submissionErrorKey: nameMode === 'opaque' ? name : undefined,
       initialValue,
       validation,
     });
@@ -240,7 +241,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     return () => {
       unregisterField(resolvedPath);
     };
-  }, [resolvedPath, initialValue, validation, unregisterField, registerField]);
+  }, [
+    resolvedPath,
+    name,
+    nameMode,
+    initialValue,
+    validation,
+    unregisterField,
+    registerField,
+  ]);
 
   const handleChange = useCallback(
     (value: FieldValue) => {

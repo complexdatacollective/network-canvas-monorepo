@@ -59,6 +59,48 @@ const calculateFormValidity = (
   return allFieldsValid && formErrors.length === 0;
 };
 
+const normalizeSubmissionErrors = (
+  errors: FlattenedErrors,
+  fields: Map<string, FieldState>,
+): FlattenedErrors => {
+  const aliases = new Map<string, string>();
+  const ambiguousAliases = new Set<string>();
+
+  fields.forEach((field, fieldName) => {
+    if (!field.submissionErrorKey) return;
+
+    if (aliases.has(field.submissionErrorKey)) {
+      aliases.delete(field.submissionErrorKey);
+      ambiguousAliases.add(field.submissionErrorKey);
+      return;
+    }
+
+    if (!ambiguousAliases.has(field.submissionErrorKey)) {
+      aliases.set(field.submissionErrorKey, fieldName);
+    }
+  });
+
+  const normalizedFieldErrors: FlattenedErrors['fieldErrors'] =
+    Object.create(null);
+
+  Object.entries(errors.fieldErrors).forEach(([errorKey, messages]) => {
+    const alias = aliases.get(errorKey);
+    const fieldName =
+      fields.has(errorKey) || !alias || ambiguousAliases.has(errorKey)
+        ? errorKey
+        : alias;
+    const existing = normalizedFieldErrors[fieldName];
+
+    normalizedFieldErrors[fieldName] =
+      existing && messages ? [...existing, ...messages] : messages;
+  });
+
+  return {
+    formErrors: errors.formErrors,
+    fieldErrors: normalizedFieldErrors,
+  };
+};
+
 /**
  * The fields with a validation in flight, other than `exclude`.
  *
@@ -109,7 +151,7 @@ export type FormStore = {
   setFieldTouched: (fieldName: FieldReference, touched: boolean) => void;
   setFieldBlurred: (fieldName: FieldReference) => void;
 
-  setErrors: (errors: FlattenedErrors | null) => void;
+  setErrors: (errors: FlattenedErrors | null) => FlattenedErrors | null;
 
   // Getters with selective subscription
   getFieldState: (fieldName: FieldReference) => FieldState | undefined;
@@ -238,6 +280,8 @@ export const createFormStore = (): FormStoreApi => {
 
           const fieldState: FieldState = {
             path: dormant?.path ?? fieldPath,
+            submissionErrorKey:
+              dormant?.submissionErrorKey ?? config.submissionErrorKey,
             initialValue: config.initialValue,
             validation: config.validation,
             value,
@@ -286,6 +330,7 @@ export const createFormStore = (): FormStoreApi => {
             if (field) {
               state.dormantValues.set(fieldName, {
                 path: field.path,
+                submissionErrorKey: field.submissionErrorKey,
                 initialValue: field.initialValue,
                 validation: field.validation,
                 value: field.value,
@@ -346,8 +391,13 @@ export const createFormStore = (): FormStoreApi => {
             state.errors = { formErrors: [], fieldErrors: {} };
             state.isValid = calculateFormValidity(state.fields, []);
           });
-          return;
+          return null;
         }
+
+        const normalizedErrors = normalizeSubmissionErrors(
+          errors,
+          get().fields,
+        );
 
         set((state) => {
           state.isValidating = false;
@@ -355,8 +405,8 @@ export const createFormStore = (): FormStoreApi => {
             field.meta.isValidating = false;
           });
 
-          state.errors = errors;
-          Object.entries(errors.fieldErrors).forEach(
+          state.errors = normalizedErrors;
+          Object.entries(normalizedErrors.fieldErrors).forEach(
             ([fieldName, fieldErrors]) => {
               if (!fieldErrors || fieldErrors.length === 0) return;
               const field = state.fields.get(fieldName);
@@ -369,9 +419,11 @@ export const createFormStore = (): FormStoreApi => {
           );
           state.isValid = calculateFormValidity(
             state.fields,
-            errors.formErrors,
+            normalizedErrors.formErrors,
           );
         });
+
+        return normalizedErrors;
       },
 
       setFieldValue: (fieldReference, value) => {
@@ -386,6 +438,7 @@ export const createFormStore = (): FormStoreApi => {
             const existing = state.dormantValues.get(fieldName);
             state.dormantValues.set(fieldName, {
               path: existing?.path ?? fieldPath,
+              submissionErrorKey: existing?.submissionErrorKey,
               initialValue: existing?.initialValue,
               validation: existing?.validation,
               value,
