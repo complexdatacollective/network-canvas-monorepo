@@ -10,6 +10,7 @@ import type {
 import {
   type FieldNameMode,
   resolveFieldPath,
+  useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
 import type { FieldState, ValidationContext } from '../store/types';
@@ -140,6 +141,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   } = config;
 
   const namespace = useFieldNamespacePath();
+  const namespaceName = useFieldNamespace();
   const resolvedPath = useMemo(
     () => resolveFieldPath(namespace, name, nameMode),
     [namespace, name, nameMode],
@@ -150,11 +152,11 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       namespace.length > 0 && validationContext
         ? {
             ...validationContext,
-            formValueNamespace: formatObjectPath(namespace),
+            formValueNamespace: namespaceName,
             formValueNamespacePath: namespace,
           }
         : validationContext,
-    [namespace, validationContext],
+    [namespace, namespaceName, validationContext],
   );
 
   const id = useId();

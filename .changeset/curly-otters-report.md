@@ -3,6 +3,7 @@
 "@codaco/protocol-validation": patch
 "@codaco/fresco-ui": patch
 "@codaco/interview": patch
+"@codaco/architect": patch
 "@codaco/interviewer": patch
 "fresco": patch
 ---

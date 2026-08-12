@@ -3,23 +3,25 @@
 import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import type { ObjectPath } from './utils/objectPath';
-import {
-  formatObjectPath,
-  isSafeObjectPath,
-  parseObjectPath,
-} from './utils/objectPath';
+import { isSafeObjectPath, parseObjectPath } from './utils/objectPath';
 
-const emptyNamespace: ObjectPath = [];
-const FieldNamespaceContext = createContext<ObjectPath>(emptyNamespace);
+type FieldNamespaceState = {
+  name: string;
+  path: ObjectPath;
+};
+
+const emptyNamespace: FieldNamespaceState = { name: '', path: [] };
+const FieldNamespaceContext =
+  createContext<FieldNamespaceState>(emptyNamespace);
 
 export type FieldNameMode = 'opaque' | 'path';
 
 export function useFieldNamespacePath(): ObjectPath {
-  return useContext(FieldNamespaceContext);
+  return useContext(FieldNamespaceContext).path;
 }
 
 export function useFieldNamespace(): string {
-  return formatObjectPath(useFieldNamespacePath());
+  return useContext(FieldNamespaceContext).name;
 }
 
 export function resolveFieldPath(
@@ -45,9 +47,12 @@ export default function FieldNamespace({
   prefix,
   children,
 }: FieldNamespaceProps) {
-  const parentNamespace = useFieldNamespacePath();
-  const fullNamespace = useMemo(
-    () => resolveFieldPath(parentNamespace, prefix),
+  const parentNamespace = useContext(FieldNamespaceContext);
+  const fullNamespace = useMemo<FieldNamespaceState>(
+    () => ({
+      name: parentNamespace.name ? `${parentNamespace.name}.${prefix}` : prefix,
+      path: resolveFieldPath(parentNamespace.path, prefix),
+    }),
     [parentNamespace, prefix],
   );
 

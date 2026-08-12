@@ -61,6 +61,14 @@ describe('FieldNamespace', () => {
       });
       expect(result.current).toBe('steps[0].egg-parent.details');
     });
+
+    it('preserves noncanonical prefixes verbatim', () => {
+      const { result } = renderHook(() => useFieldNamespace(), {
+        wrapper: nestedWrapper('person name', 'contact details'),
+      });
+
+      expect(result.current).toBe('person name.contact details');
+    });
   });
 
   describe('useFieldNamespacePath', () => {
