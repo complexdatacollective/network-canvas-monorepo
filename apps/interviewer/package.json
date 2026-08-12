@@ -1,6 +1,6 @@
 {
   "name": "@codaco/interviewer",
-  "version": "8.1.1",
+  "version": "8.1.2",
   "private": true,
   "description": "A tool for conducting Network Canvas Interviews.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
@@ -56,6 +56,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
     "@playwright/test": "catalog:",
+    "@posthog/rollup-plugin": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-mcp": "catalog:",

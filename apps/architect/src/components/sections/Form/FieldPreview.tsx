@@ -2,7 +2,6 @@ import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
-import withSubject from '~/components/enhancers/withSubject';
 import Markdown from '~/components/Markdown';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
@@ -11,6 +10,9 @@ import { getVariablesForSubject } from '~/selectors/codebook';
 type FieldPreviewProps = {
   variable: string;
   prompt: string;
+  // The subject the field belongs to, passed explicitly by the list rather
+  // than read from the stage form: the row renders inside the array editor,
+  // which already knows which codebook entry to look the variable up in.
   entity: string;
   type?: string | null;
 };
@@ -49,4 +51,4 @@ const FieldPreview = ({
   );
 };
 
-export default withSubject(FieldPreview);
+export default FieldPreview;

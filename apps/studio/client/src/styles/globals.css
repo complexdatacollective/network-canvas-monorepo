@@ -1,0 +1,14 @@
+/*
+ * Tailwind v4 entry, design tokens, fresco theme + components.
+ * Fonts are imported via JS (see src/main.tsx) so url() refs resolve
+ * through the Vite bundler.
+ */
+@import '@codaco/tailwind-config/fresco.css';
+
+@import '@codaco/fresco-ui/styles.css';
+
+html,
+body,
+#root {
+  height: 100%;
+}

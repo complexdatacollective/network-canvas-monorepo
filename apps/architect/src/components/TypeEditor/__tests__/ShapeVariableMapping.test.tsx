@@ -1,8 +1,9 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { reducer as formReducer, reduxForm } from 'redux-form';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('../ShapePicker', () => ({
   ShapePickerControl: ({
@@ -40,16 +41,13 @@ vi.mock('../ShapePicker', () => ({
 
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: ({
-    label,
     options = [],
     onChange,
   }: {
-    label?: string;
     options?: Array<{ label: string; value: string }>;
     onChange?: (value: string) => void;
   }) => (
     <div>
-      {label}
       {options.map((option) => (
         <button
           key={option.value}
@@ -63,11 +61,12 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   ),
 }));
 
-import ShapeVariableMapping from '../ShapeVariableMapping';
+import type { ShapeMappingDraft } from '../shapeMappingTypes';
+import ShapeVariableMapping, {
+  type ShapeMappingVariable,
+} from '../ShapeVariableMapping';
 
-const FORM = 'shape-variable-mapping-test';
-
-type FormValues = Record<string, unknown>;
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 type ShapeDynamic = {
   variable: string;
@@ -75,42 +74,51 @@ type ShapeDynamic = {
   map: Array<{ value: boolean; shape: string }>;
 };
 
-const Harness = () => <ShapeVariableMapping form={FORM} />;
-
-const ReduxHarness = reduxForm<FormValues>({ form: FORM })(Harness);
-
-const thresholdInitialValues = {
-  variables: { weight: { name: 'Weight', type: 'number' } },
-  shape: {
-    dynamic: {
-      variable: 'weight',
-      type: 'breakpoints',
-      thresholds: [{ value: 5, shape: 'square' }],
-    },
-  },
+const THRESHOLD_VARIABLES: Record<string, ShapeMappingVariable> = {
+  weight: { name: 'Weight', type: 'number' },
 };
 
-const setup = (initialValues: FormValues = thresholdInitialValues) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+const THRESHOLD_MAPPING = {
+  variable: 'weight',
+  type: 'breakpoints',
+  thresholds: [{ value: 5, shape: 'square' }],
+} as ShapeMappingDraft;
+
+const setup = ({
+  variables = THRESHOLD_VARIABLES,
+  initialMapping = THRESHOLD_MAPPING,
+}: {
+  variables?: Record<string, ShapeMappingVariable>;
+  initialMapping?: ShapeMappingDraft;
+} = {}) => {
+  let storeApi: StoreApi | null = null;
+  const CaptureStore = () => {
+    storeApi = useContext(FormStoreContext) ?? null;
+    return null;
+  };
 
   render(
-    <Provider store={store}>
-      <ReduxHarness initialValues={initialValues} />
-    </Provider>,
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      <ShapeVariableMapping
+        variables={variables}
+        initialMapping={initialMapping}
+      />
+    </Form>,
   );
 
   const getDynamic = () =>
-    store.getState().form[FORM]?.values?.shape?.dynamic as
-      | ShapeDynamic
-      | undefined;
+    (
+      (storeApi?.getState().getFormValues().shape ?? {}) as {
+        dynamic?: ShapeDynamic;
+      }
+    ).dynamic;
   const getThresholds = () =>
-    store.getState().form[FORM]?.values?.shape?.dynamic?.thresholds as
-      | Array<{ value: number; shape: string }>
-      | undefined;
+    (
+      (storeApi?.getState().getFormValues().shape ?? {}) as {
+        dynamic?: { thresholds?: Array<{ value: number; shape: string }> };
+      }
+    ).dynamic?.thresholds;
 
   return { getDynamic, getThresholds };
 };
@@ -119,18 +127,12 @@ describe('ShapeVariableMapping', () => {
   it('authors a discrete mapping with raw boolean values for a Toggle variable', () => {
     const { getDynamic } = setup({
       variables: {
-        is_person: {
-          name: 'Is Person',
-          type: 'boolean',
-          component: 'Toggle',
-        },
+        is_person: { name: 'Is Person', type: 'boolean' },
       },
-      shape: { default: 'square' },
+      // An empty mapping is what turning the feature on produces.
+      initialMapping: {},
     });
 
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Map variable to shape' }),
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Select Is Person' }));
 
     const trueLabel = screen.getByText('True');

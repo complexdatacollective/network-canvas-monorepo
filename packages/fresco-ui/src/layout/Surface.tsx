@@ -63,6 +63,7 @@ export const surfaceVariants = compose(
         1: 'text-surface-1-contrast bg-surface-1 [--surface-depth:1]',
         2: 'text-surface-2-contrast bg-surface-2 [--surface-depth:2]',
         3: 'text-surface-3-contrast bg-surface-3 [--surface-depth:3]',
+        4: 'text-surface-4-contrast bg-surface-4 [--surface-depth:4]',
       },
       floating: {
         true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
@@ -87,13 +88,14 @@ export const surfaceVariants = compose(
 // tsconfig deliberately excludes Node globals.
 declare const process: { env: { NODE_ENV?: string } };
 
-const MAX_SURFACE_DEPTH = 3;
+const MAX_SURFACE_DEPTH = 4;
 
-const clampDepth = (depth: number): 0 | 1 | 2 | 3 => {
+const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {
   if (depth <= 0) return 0;
   if (depth === 1) return 1;
   if (depth === 2) return 2;
-  return 3;
+  if (depth === 3) return 3;
+  return 4;
 };
 
 const SurfaceDepthContext = createContext(0);

@@ -17,6 +17,31 @@ import type {
 enableMapSet();
 
 /**
+ * How deeply a field name addresses the form's value tree — `a` is 1,
+ * `a.b` is 2, `a[0].b` is 3. Used to order `getFormValues`'s writes so a
+ * container path is always written before the leaves inside it.
+ */
+const pathSpecificity = (fieldName: string): number =>
+  fieldName
+    .split('.')
+    .reduce((total, part) => total + (/\[\d+\]$/.test(part) ? 2 : 1), 0);
+
+/**
+ * Every path a field name sits inside — `a[0].b` yields `a`, `a[0]`, `a[0].b`
+ * minus itself. Used to spot a field whose value another registered field
+ * would overwrite.
+ */
+const enclosingPaths = (fieldName: string): string[] => {
+  const paths: string[] = [];
+  for (let index = 1; index < fieldName.length; index += 1) {
+    if (fieldName[index] === '.' || fieldName[index] === '[') {
+      paths.push(fieldName.slice(0, index));
+    }
+  }
+  return paths;
+};
+
+/**
  * Helper to calculate form validity based on both field states and form-level errors.
  * A form is valid only if all fields are valid AND there are no form-level errors.
  */
@@ -28,6 +53,32 @@ const calculateFormValidity = (
     (field) => field.meta.isValid,
   );
   return allFieldsValid && formErrors.length === 0;
+};
+
+/**
+ * The fields with a validation in flight, other than `exclude`.
+ *
+ * Every authoritative state transition invalidates all in-flight validations,
+ * because a field's schema may depend on any value in the form. Invalidation
+ * silently DISCARDS those results, and nothing else reschedules them, so the
+ * field keeps whatever error it held before its validation started —
+ * indefinitely, until something else validates it. Callers must therefore
+ * revalidate the fields returned here against the new snapshot.
+ *
+ * `exclude` is the field the transition is about: its own component owns
+ * rescheduling its (possibly debounced) validation.
+ */
+const collectSupersededFields = (
+  fields: Map<string, FieldState>,
+  exclude?: string,
+): string[] => {
+  const superseded: string[] = [];
+  fields.forEach((field, name) => {
+    if (name !== exclude && field.meta.isValidating) {
+      superseded.push(name);
+    }
+  });
+  return superseded;
 };
 
 export type FormStore = {
@@ -150,6 +201,20 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       registerField: (config) => {
+        // Mounting a field is an authoritative transition — it adds a value to
+        // the snapshot every other field's schema can see — so it invalidates
+        // every in-flight validation. Reschedule the ones belonging to OTHER
+        // fields; without this, a field whose validation was in flight silently
+        // keeps its previous error.
+        //
+        // A section gated on another field's value is exactly this case: the
+        // gate field's post-change revalidation is dropped by the very mount
+        // that change caused, so its now-stale "required" error survives until
+        // the field is blurred again.
+        const supersededFields = collectSupersededFields(
+          get().fields,
+          config.name,
+        );
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -185,12 +250,23 @@ export const createFormStore = (): FormStoreApi => {
             state.errors.formErrors,
           );
         });
+
+        supersededFields.forEach((name) => {
+          void get().validateField(name);
+        });
       },
 
       unregisterField: (fieldName) => {
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
         if (currentState.fields.has(fieldName)) {
+          // Unmounting removes a value from the snapshot, so it invalidates
+          // every in-flight validation for the same reason `registerField`
+          // does — and the surviving fields' validations must be rescheduled.
+          const supersededFields = collectSupersededFields(
+            currentState.fields,
+            fieldName,
+          );
           invalidateAllValidations();
           set((state) => {
             state.isValidating = false;
@@ -232,6 +308,10 @@ export const createFormStore = (): FormStoreApi => {
               state.fields,
               state.errors.formErrors,
             );
+          });
+
+          supersededFields.forEach((name) => {
+            void get().validateField(name);
           });
         }
       },
@@ -310,18 +390,14 @@ export const createFormStore = (): FormStoreApi => {
           return;
         }
 
-        // Invalidation silently drops any sibling field's in-flight
-        // validation, and nothing else reschedules it — the field would stay
-        // invalid with no error until the next whole-form validation. Capture
-        // those fields so they can be revalidated against the new values
-        // below. The changed field itself is excluded: its component owns
+        // Capture the sibling fields whose in-flight validation the write
+        // below invalidates, so they can be revalidated against the new
+        // values. The changed field itself is excluded: its component owns
         // rescheduling its (debounced) validate-on-change.
-        const supersededFields: string[] = [];
-        get().fields.forEach((field, name) => {
-          if (name !== fieldName && field.meta.isValidating) {
-            supersededFields.push(name);
-          }
-        });
+        const supersededFields = collectSupersededFields(
+          get().fields,
+          fieldName,
+        );
 
         invalidateAllValidations();
         set((state) => {
@@ -369,13 +445,32 @@ export const createFormStore = (): FormStoreApi => {
       getFormValues: () => {
         const state = get();
         const values = {};
+        const hasField = (name: string) => state.fields.has(name);
         // Only registered fields contribute: an unmounted field's value is
         // not part of the form's output. Dormant storage exists solely to
         // restore a value when the field remounts and to back the
         // getFieldState fallback for cross-step reads.
+        //
+        // Registration order, which is also the output's key order.
         state.fields.forEach((fieldState, fieldName) => {
           setValue(values, fieldName, fieldState.value);
         });
+
+        // A form may register a field at a CONTAINER path (`mapOptions`)
+        // *and* fields at leaves inside it (`mapOptions.style`). `setValue`
+        // replaces whatever sits at a path, so the pass above lets whichever
+        // of the two happened to mount last silently erase the other. Replay
+        // just those nested fields, shallowest first, so the more specific
+        // field always wins — and only they, so a form without overlapping
+        // paths keeps byte-identical output.
+        const nested = Array.from(state.fields.keys())
+          .filter((name) => enclosingPaths(name).some(hasField))
+          .toSorted((a, b) => pathSpecificity(a) - pathSpecificity(b));
+
+        for (const name of nested) {
+          setValue(values, name, state.fields.get(name)!.value);
+        }
+
         return values as Record<string, FieldValue>;
       },
 

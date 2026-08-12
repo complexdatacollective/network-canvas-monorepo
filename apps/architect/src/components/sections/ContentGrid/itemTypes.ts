@@ -1,5 +1,4 @@
 import { get } from 'es-toolkit/compat';
-import { formValueSelector } from 'redux-form';
 
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetManifest } from '~/selectors/protocol';
@@ -53,20 +52,19 @@ export const normalizeType = (item: Item): Item => {
 
 export const denormalizeType = (
   state: RootState,
-  { form, editField }: { form: string; editField: string },
+  { item }: { item: Record<string, unknown>; index: number },
 ): Item | null => {
-  const item = formValueSelector(form)(state, editField) as Item | undefined;
-
   if (!item) {
     return null;
   }
+  const typedItem = item as Item;
 
-  if (item.type === 'text') {
-    return item;
+  if (typedItem.type === 'text') {
+    return typedItem;
   }
 
   const assetManifest = getAssetManifest(state);
-  const manifestType = get(assetManifest, [item.content ?? '', 'type']) as
+  const manifestType = get(assetManifest, [typedItem.content ?? '', 'type']) as
     | string
     | undefined;
 
@@ -74,7 +72,7 @@ export const denormalizeType = (
   // (no content selected yet, or a stale/deleted reference), so callers never
   // receive `type: undefined`.
   return {
-    ...item,
-    type: manifestType ?? item.type,
+    ...typedItem,
+    type: manifestType ?? typedItem.type,
   };
 };

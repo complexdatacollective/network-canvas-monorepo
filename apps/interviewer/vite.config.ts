@@ -1,10 +1,11 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import posthogSourceMaps from '@posthog/rollup-plugin';
 import { defineConfig, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-import { createRendererConfig } from './vite.renderer.config';
+import { appVersion, createRendererConfig } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The app background (theme-base scheme-dark --background, oklch(0.28 0.09 281)
@@ -18,6 +19,19 @@ const backgroundColor = '#232053';
 // precache (which would break the offline boot). assert-pwa-build.mjs
 // re-checks that nothing critical was excluded.
 const MAX_PRECACHE_BYTES = 12 * 1024 * 1024;
+
+// PostHog needs source maps to symbolicate the exceptions posthog-js reports
+// (see src/lib/analytics/client.ts). The credentials are set only on the
+// production release job (.github/workflows/ci-and-release.yml), so every other
+// build — local, PR, Netlify preview — emits no maps at all. When they are
+// emitted they are `hidden` (no sourceMappingURL comment, so a browser never
+// requests them), and the plugin deletes them from dist once uploaded, so the
+// deployed site never serves a map and the workbox precache globs (js/css/html)
+// never see one. Both variables are declared in turbo.json's build `env` so an
+// uploading build can never reuse a non-uploading cache entry.
+const posthogPersonalApiKey = process.env.POSTHOG_PERSONAL_API_KEY;
+const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
+const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
 export default defineConfig(() =>
   mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
@@ -230,6 +244,22 @@ export default defineConfig(() =>
           ],
         },
       }),
+      // Last: its writeBundle hook rewrites the emitted chunks (injecting the
+      // chunk ids PostHog matches maps by) and must see the final output.
+      ...(uploadSourceMaps
+        ? [
+            posthogSourceMaps({
+              personalApiKey: posthogPersonalApiKey,
+              projectId: posthogProjectId,
+              sourcemaps: {
+                enabled: true,
+                releaseName: 'Interviewer',
+                releaseVersion: appVersion,
+                deleteAfterUpload: true,
+              },
+            }),
+          ]
+        : []),
     ],
     // The interview engine is large; splitting it into its own named chunk
     // keeps the precached entry well under MAX_PRECACHE_BYTES. `@codaco/interview`

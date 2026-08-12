@@ -12,7 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 import { getAllVariablesByUUID, getType } from '~/selectors/codebook';
-import { makeGetIsUsed } from '~/selectors/codebook/isUsed';
+import { getIsUsed } from '~/selectors/codebook/isUsed';
 import { getVariableIndex, utils } from '~/selectors/indexes';
 import { getCodebook, getProtocol } from '~/selectors/protocol';
 
@@ -269,7 +269,7 @@ export const getEntityProperties = (
   const variableMeta = getVariableMetaByIndex(state);
   const typeMeta = getTypeMetaByIndex(state);
   const stageMetaByIndex = getStageMetaByIndex(state);
-  const isUsedIndex = makeGetIsUsed({ formNames: [] })(state);
+  const isUsedIndex = getIsUsed(state);
 
   const variablesWithUsage: Record<string, VariableWithUsage> = {};
 

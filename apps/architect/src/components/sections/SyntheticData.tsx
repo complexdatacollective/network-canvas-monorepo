@@ -1,5 +1,4 @@
 import type { ComponentType } from 'react';
-import { Field, type WrappedFieldProps } from 'redux-form';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -19,6 +18,10 @@ import type {
 } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useSetStageValue,
+  useStageFormValue,
+} from '~/components/StageEditor/stageFormHooks';
 
 /**
  * The optional "Synthetic data" section of a stage editor: how many people the
@@ -32,9 +35,8 @@ import type { StageEditorSectionProps } from '~/components/StageEditor/Interface
  * Off by default: no `synthetic` property is stored and runtime defaults
  * apply; enabling seeds the controls from the same defaults the generator
  * resolves. The interactive controls are plain controlled components with no
- * form-library dependency — the redux-form `Field` at the bottom of this file
- * is a thin, disposable adapter for the stage editor's remaining redux-form
- * lifetime.
+ * form-library dependency; the section below reads and writes the one
+ * `synthetic` path through the stage form hooks.
  */
 
 // Raw field components render only the control; UnconnectedField adds the
@@ -428,40 +430,21 @@ const pruned = (
   return (kept.count ?? kept.topology) ? kept : undefined;
 };
 
-function SyntheticReduxAdapter({
-  input,
-  showCount,
-  showTopology,
-}: WrappedFieldProps & { showCount: boolean; showTopology: boolean }) {
-  const value = (input.value || undefined) as
-    | StageNodeAndEdgeSynthetic
-    | undefined;
-  const emit = (next: StageNodeAndEdgeSynthetic) =>
-    input.onChange(pruned(next) ?? null);
-
-  return (
-    <>
-      {showCount && (
-        <NodeSyntheticControl
-          value={value?.count ? { count: value.count } : undefined}
-          onChange={(node) => emit({ ...value, count: node?.count })}
-        />
-      )}
-      {showTopology && (
-        <EdgeSyntheticControl
-          value={value?.topology ? { topology: value.topology } : undefined}
-          onChange={(edge) => emit({ ...value, topology: edge?.topology })}
-        />
-      )}
-    </>
-  );
-}
-
 export default function SyntheticData({
   interfaceType,
 }: StageEditorSectionProps) {
   const showCount = COUNT_STAGES.has(interfaceType);
   const showTopology = TOPOLOGY_STAGES.has(interfaceType);
+
+  const value = useStageFormValue<StageNodeAndEdgeSynthetic>('synthetic');
+  const setStageValue = useSetStageValue();
+
+  // `null` rather than `undefined`, so a section switched off is a WRITE the
+  // form can see rather than an absence it ignores. `prune` drops the key on
+  // its way into the protocol, which is what keeps "on but empty" — a shape
+  // the schema rejects — from ever being stored.
+  const emit = (next: StageNodeAndEdgeSynthetic) =>
+    setStageValue('synthetic', pruned(next) ?? null);
 
   // A FamilyPedigree reaches neither set on purpose: a family is a structure
   // rather than a population, so it keeps its own generation logic and nothing
@@ -479,11 +462,18 @@ export default function SyntheticData({
         </Paragraph>
       }
     >
-      <Field
-        name="synthetic"
-        component={SyntheticReduxAdapter}
-        props={{ showCount, showTopology }}
-      />
+      {showCount && (
+        <NodeSyntheticControl
+          value={value?.count ? { count: value.count } : undefined}
+          onChange={(node) => emit({ ...value, count: node?.count })}
+        />
+      )}
+      {showTopology && (
+        <EdgeSyntheticControl
+          value={value?.topology ? { topology: value.topology } : undefined}
+          onChange={(edge) => emit({ ...value, topology: edge?.topology })}
+        />
+      )}
     </Section>
   );
 }

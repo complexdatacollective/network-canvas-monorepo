@@ -135,6 +135,16 @@ type InputFieldProps = CreateFormFieldProps<
     // (it reads event.nativeEvent.inputType), while InputField's own
     // onChange only passes the string value.
     nativeOnChange?: React.ChangeEventHandler<HTMLInputElement>;
+    // Fires after a stepper button or arrow key settles on a new value, in
+    // addition to `onChange`. A stepped value is always complete, so callers
+    // that defer committing until blur can commit these immediately — clicking
+    // a stepper moves focus out of the input, so the blur that follows carries
+    // the pre-step value.
+    onStep?: (value: string) => void;
+    // Accessible names for the number steppers. Default to "Increase value" /
+    // "Decrease value", which are ambiguous once a screen has more than one
+    // numeric field.
+    stepperLabels?: { increase: string; decrease: string };
   }
 >;
 
@@ -148,6 +158,8 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       value,
       onChange,
       nativeOnChange,
+      onStep,
+      stepperLabels,
       onKeyDown,
       type = 'text',
       inputMode,
@@ -186,8 +198,9 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
 
         // stepUp/stepDown don't fire change events, so notify React directly
         onChange?.(input.value);
+        onStep?.(input.value);
       },
-      [onChange],
+      [onChange, onStep],
     );
 
     const wrapperClassName = cx(
@@ -256,7 +269,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           color="default"
           disabled={!canStep}
           onClick={() => handleStep('down')}
-          aria-label="Decrease value"
+          aria-label={stepperLabels?.decrease ?? 'Decrease value'}
           tabIndex={-1}
           icon={<Minus />}
           className={stepperButtonVariants}
@@ -279,7 +292,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           color="default"
           disabled={!canStep}
           onClick={() => handleStep('up')}
-          aria-label="Increase value"
+          aria-label={stepperLabels?.increase ?? 'Increase value'}
           tabIndex={-1}
           icon={<Plus />}
           className={stepperButtonVariants}

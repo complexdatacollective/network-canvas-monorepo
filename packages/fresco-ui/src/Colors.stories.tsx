@@ -139,6 +139,7 @@ export const SemanticColors: Story = {
           <ColorSwatch name="Surface 1" cssVar="--surface-1" />
           <ColorSwatch name="Surface 2" cssVar="--surface-2" />
           <ColorSwatch name="Surface 3" cssVar="--surface-3" />
+          <ColorSwatch name="Surface 4" cssVar="--surface-4" />
           <ColorSwatch
             name="Popover"
             cssVar="--surface-popover"

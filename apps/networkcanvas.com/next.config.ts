@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 
+import { withPostHogConfig } from '@posthog/nextjs-config';
 import type { NextConfig } from 'next';
 import createNextIntl from 'next-intl/plugin';
 
@@ -50,4 +51,25 @@ const nextConfig: NextConfig = {
     : {},
 };
 
-export default withNextIntl(nextConfig);
+// PostHog needs source maps to symbolicate the exceptions posthog-js reports
+// (see instrumentation-client.ts). The credentials are set only on the
+// production release job (.github/workflows/ci-and-release.yml), so every other
+// build — local, PR, Netlify preview — emits no maps at all. `deleteAfterUpload`
+// removes them from the compiler output once uploaded, which happens in the
+// post-compile hook before the static export writes `out/`, so the deployed site
+// never serves a map. Both variables are declared in turbo.json's website build
+// `env` so an uploading build can never reuse a non-uploading cache entry.
+const posthogPersonalApiKey = process.env.POSTHOG_PERSONAL_API_KEY;
+const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
+
+// withPostHogConfig must stay the OUTERMOST wrapper — withNextIntl returns a
+// plain object, which would drop the build hooks that upload source maps.
+export default withPostHogConfig(withNextIntl(nextConfig), {
+  personalApiKey: posthogPersonalApiKey ?? 'none',
+  projectId: posthogProjectId ?? 'none',
+  sourcemaps: {
+    enabled: !!posthogPersonalApiKey && !!posthogProjectId,
+    releaseName: 'Website',
+    deleteAfterUpload: true,
+  },
+});

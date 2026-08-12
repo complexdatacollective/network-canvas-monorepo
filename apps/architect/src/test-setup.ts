@@ -132,6 +132,12 @@ globalThis.ResizeObserver ??= ResizeObserverStub;
 globalThis.IntersectionObserver ??= IntersectionObserverStub;
 globalThis.Worker ??= WorkerStub;
 
+// jsdom implements neither scroll API. fresco-ui's default onSubmitInvalid
+// (focusFirstError) calls scrollIntoView/scrollTo from a deferred timer, so a
+// missing shim surfaces as an unhandled error in any invalid-submit test.
+Element.prototype.scrollTo ??= () => undefined;
+Element.prototype.scrollIntoView ??= () => undefined;
+
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => dialogMocks,
 }));

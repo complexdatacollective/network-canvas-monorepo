@@ -25,21 +25,14 @@ export default definePreview({
     },
   },
   decorators: [
-    (Story) => {
-      // Automated Storybook tests set webdriver; disabling motion keeps their
-      // interaction and accessibility results deterministic.
-      const disableAnimations =
-        typeof navigator !== 'undefined' && navigator.webdriver;
-
-      return (
-        <StrictMode>
-          <div className="root h-full">
-            <Providers disableAnimations={disableAnimations}>
-              <Story />
-            </Providers>
-          </div>
-        </StrictMode>
-      );
-    },
+    (Story) => (
+      <StrictMode>
+        <div className="root h-full">
+          <Providers>
+            <Story />
+          </Providers>
+        </div>
+      </StrictMode>
+    ),
   ],
 });

@@ -134,6 +134,14 @@
         "@utils/*": ["./src/utils/*"]
       }
     },
+    "apps/studio/client": {
+      "entry": ["index.html!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/studio/server": {
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
     "apps/interviewer": {
       "entry": [
         "index.html!",

@@ -1,14 +1,13 @@
 import type { ShapeMappingType, ShapeThreshold } from './shapeMappingTypes';
 
-export type EntityTypeFormErrors = {
-  // redux-form's isValid only inspects errors on *registered* fields, and the
-  // shape mapping is built from unconnected controls. The form-level _error is
-  // what actually makes the form invalid and blocks the save.
-  _error?: string;
-  shape?: {
-    dynamic?: Partial<Record<'variable' | 'thresholds', string>>;
-  };
-};
+/**
+ * The whole shape mapping is one opaque field value, so every message it can
+ * produce is keyed at that field: `DialogForm` hands the result to fresco-ui's
+ * invalid-submit path, which marks the named field errored and focuses it.
+ */
+export const SHAPE_MAPPING_FIELD = 'shape.dynamic';
+
+export type EntityTypeFormErrors = Record<string, string>;
 
 const SELECT_VARIABLE_MESSAGE =
   'Select a variable to map to a shape, or turn off shape mapping.';
@@ -16,8 +15,6 @@ const THRESHOLDS_MIN_MESSAGE =
   'Add at least one threshold, or turn off shape mapping.';
 const THRESHOLDS_ASCENDING_MESSAGE =
   'Thresholds must increase in value, with no duplicates.';
-const SHAPE_MAPPING_INCOMPLETE_MESSAGE =
-  'Finish the shape mapping, or turn off shape mapping, before saving.';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -28,6 +25,31 @@ const isThreshold = (value: unknown): value is Pick<ShapeThreshold, 'value'> =>
 const isShapeMappingType = (value: unknown): value is ShapeMappingType =>
   value === 'discrete' || value === 'breakpoints';
 
+const shapeMappingError = (dynamic: Record<string, unknown>) => {
+  if (
+    typeof dynamic.variable !== 'string' ||
+    dynamic.variable.length === 0 ||
+    !isShapeMappingType(dynamic.type)
+  ) {
+    return SELECT_VARIABLE_MESSAGE;
+  }
+
+  if (dynamic.type !== 'breakpoints') return undefined;
+
+  const thresholds = Array.isArray(dynamic.thresholds)
+    ? dynamic.thresholds.filter(isThreshold)
+    : [];
+
+  if (thresholds.length === 0) return THRESHOLDS_MIN_MESSAGE;
+
+  return thresholds.some(
+    (threshold, index) =>
+      index > 0 && threshold.value <= (thresholds[index - 1]?.value ?? 0),
+  )
+    ? THRESHOLDS_ASCENDING_MESSAGE
+    : undefined;
+};
+
 const validateEntityType = (
   values: Record<string, unknown>,
 ): EntityTypeFormErrors => {
@@ -36,41 +58,8 @@ const validateEntityType = (
     return {};
   }
 
-  const dynamic = shape.dynamic;
-  const dynamicErrors: NonNullable<
-    NonNullable<EntityTypeFormErrors['shape']>['dynamic']
-  > = {};
-
-  if (
-    typeof dynamic.variable !== 'string' ||
-    dynamic.variable.length === 0 ||
-    !isShapeMappingType(dynamic.type)
-  ) {
-    dynamicErrors.variable = SELECT_VARIABLE_MESSAGE;
-  } else if (dynamic.type === 'breakpoints') {
-    const thresholds = Array.isArray(dynamic.thresholds)
-      ? dynamic.thresholds.filter(isThreshold)
-      : [];
-    if (thresholds.length === 0) {
-      dynamicErrors.thresholds = THRESHOLDS_MIN_MESSAGE;
-    } else if (
-      thresholds.some(
-        (threshold, index) =>
-          index > 0 && threshold.value <= (thresholds[index - 1]?.value ?? 0),
-      )
-    ) {
-      dynamicErrors.thresholds = THRESHOLDS_ASCENDING_MESSAGE;
-    }
-  }
-
-  if (Object.keys(dynamicErrors).length === 0) {
-    return {};
-  }
-
-  return {
-    _error: SHAPE_MAPPING_INCOMPLETE_MESSAGE,
-    shape: { dynamic: dynamicErrors },
-  };
+  const message = shapeMappingError(shape.dynamic);
+  return message ? { [SHAPE_MAPPING_FIELD]: message } : {};
 };
 
 export default validateEntityType;

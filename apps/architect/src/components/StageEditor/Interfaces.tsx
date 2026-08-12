@@ -61,8 +61,6 @@ import { getInterfaceTemplate } from './interfaceTemplates';
  * Individual section components may use some or all of these props.
  */
 export type StageEditorSectionProps = {
-  /** Redux form name (always "edit-stage") */
-  form: string;
   /** Path to stage in Redux state (e.g., "stages[0]"), or null if creating a new stage */
   stagePath: string | null;
   /** Zero-based stage position, including the prospective insertion position */
@@ -270,6 +268,13 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       AnonymisationExplanation,
       AnonymisationValidation,
       EncryptedVariables,
+      // Skip logic is schema-valid and runtime-honored on every stage type;
+      // this was the one interface without the section, which made the
+      // overwrite save silently DELETE a committed `skipLogic` key. The
+      // section is the fix the maintainer chose over schema-tightening;
+      // `withStageIdentity`'s carry-through remains as the backstop for any
+      // future interface that omits it.
+      SkipLogic,
       InterviewScript,
     ],
     documentation: interfaceDocumentationUrl('anonymisation'),
@@ -330,4 +335,20 @@ export function getInterface(interfaceType: StageType): InterfaceConfig & {
     name: config.name ?? startCase(interfaceType),
     template: getInterfaceTemplate(interfaceType),
   };
+}
+
+/**
+ * Whether an interface's editor renders the SkipLogic section.
+ *
+ * The schema allows `skipLogic` on every stage (it lives on the base stage
+ * schema) and the interview runtime honors it generically, but an interface
+ * whose section list omits SkipLogic (currently only Anonymisation) has no
+ * field that could ever register the key — so the editor's overwrite-on-save
+ * must carry the committed value through instead of silently deleting it. See
+ * `withStageIdentity` in `StageEditor.tsx`.
+ */
+export function interfaceHasSkipLogicSection(
+  interfaceType: StageType,
+): boolean {
+  return getInterface(interfaceType).sections.includes(SkipLogic);
 }

@@ -1,102 +1,118 @@
-import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentProps, ComponentType } from 'react';
-import { useEffect, useState } from 'react';
-import { compose } from 'react-recompose';
-import { connect } from 'react-redux';
-import { change, formValues } from 'redux-form';
+import { useEffect, useRef } from 'react';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import ArchitectField from '~/components/Form/ArchitectField';
 import DatePicker, {
   DATE_FORMATS,
   DATE_TYPES,
 } from '~/components/Form/Fields/DatePicker';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
 
-const FrescoNativeSelectField = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
+import { parameterString, type ParameterValues } from './parameterValues';
 
 const dateTypes = DATE_TYPES.map((type) => ({
   ...type,
   label: `${type.label} (${DATE_FORMATS[type.value].toUpperCase()})`,
 }));
-type DateTimeParametersProps = {
-  name: string;
-  type?: string;
-  setSelectDefault: () => void;
-  resetRangeFields: () => void;
-};
-const DateTimeParameters = ({
-  name,
-  type = 'full',
-  setSelectDefault,
-  resetRangeFields,
-}: DateTimeParametersProps) => {
-  const dateFormat = type
+
+const DEFAULT_DATE_TYPE = 'full';
+
+const asDateFormat = (type: unknown) =>
+  typeof type === 'string' && type in DATE_FORMATS
     ? DATE_FORMATS[type as keyof typeof DATE_FORMATS]
     : DATE_FORMATS.full;
-  const [useDateFormat, setUseDateFormat] = useState(type);
+
+type DateTimeParametersProps = {
+  name: string;
+  initialParameters?: ParameterValues;
+};
+
+const DateTimeParameters = ({
+  name,
+  initialParameters,
+}: DateTimeParametersProps) => {
+  const typeField = `${name}.type`;
+  const minField = `${name}.min`;
+  const maxField = `${name}.max`;
+
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const dateType = useFormStore(
+    (state) => state.getFieldState(typeField)?.value,
+  );
+  const typeRegistered = useFormStore((state) => state.fields.has(typeField));
+
+  // Re-seeds the default resolution after something else has emptied it.
+  //
+  // The field's own `initialValue` only applies at registration, and the
+  // observer that reacts to an input-control change clears every
+  // `parameters.*` leaf — including the one this section has just registered,
+  // because React flushes a child's effects before its parent's. Choosing
+  // DatePicker from another control therefore lands on a REQUIRED resolution
+  // with no value and no visible default, and the field editor cannot be
+  // saved. Watching for the empty value (rather than seeding once on mount)
+  // also covers an undo/redo restore that drops the key.
   useEffect(() => {
-    if (!type) {
-      setSelectDefault();
+    if (!typeRegistered || dateType !== undefined) return;
+    setFieldValue(typeField, DEFAULT_DATE_TYPE);
+  }, [dateType, setFieldValue, typeField, typeRegistered]);
+
+  // The range fields are typed against the chosen resolution, so changing it
+  // invalidates whatever is already there. This replaces the field's old
+  // `onChange` side effect: a caller `onChange` would replace the store write
+  // and detach the field. The first value the field reports once registered is
+  // recorded rather than acted on, so opening the editor never clears a
+  // committed range.
+  const previousType = useRef<unknown>(undefined);
+  useEffect(() => {
+    if (dateType === undefined) return;
+    if (previousType.current === undefined) {
+      previousType.current = dateType;
+      return;
     }
-    setUseDateFormat(type);
-  }, [type, setSelectDefault]);
+    if (previousType.current === dateType) return;
+    previousType.current = dateType;
+    setFieldValue(minField, undefined);
+    setFieldValue(maxField, undefined);
+  }, [dateType, maxField, minField, setFieldValue]);
+
+  const dateFormat = asDateFormat(dateType);
+  const pickerParameters = {
+    type: dateType,
+    min: '1000-01-01',
+    max: '3000-12-31',
+  };
+
   return (
     <>
-      <Heading level="h4">Date Resolution</Heading>
-      <Paragraph>
-        Date resolution controls the precision of the measurement. By default,
-        this input will ask for a year, a month, and a day. You may optionally
-        choose to collect only a year and a month, or only a year.
-      </Paragraph>
-      <ValidatedField
-        component={FrescoReduxField}
-        name={`${name}.type`}
-        validation={{ required: true }}
+      <ArchitectField
+        component={NativeSelectField}
+        name={typeField}
         label="Date resolution"
-        componentProps={{
-          fieldComponent: FrescoNativeSelectField,
-          options: dateTypes,
-        }}
-        onChange={
-          ((_, value) => {
-            setUseDateFormat(value as string);
-            resetRangeFields();
-          }) as ComponentProps<typeof ValidatedField>['onChange']
+        hint="Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year."
+        // Seeds the resolution the interview runtime assumes, so a variable
+        // saved without touching this field still carries one.
+        initialValue={
+          parameterString(initialParameters?.type) ?? DEFAULT_DATE_TYPE
         }
+        validation={{ required: true }}
+        options={dateTypes}
       />
-      <Heading level="h4">Start Range</Heading>
-      <Paragraph>
-        The start range is the earliest date available for the participant to
-        select. If left empty, it will default to starting in the year 1920.
-      </Paragraph>
-      <ValidatedField
+      <ArchitectField
         component={DatePicker}
-        name={`${name}.min`}
+        name={minField}
+        label="Start range"
+        hint="The earliest date available for the participant to select. If left empty, it will default to starting in the year 1920."
+        initialValue={parameterString(initialParameters?.min)}
         validation={{ ISODate: dateFormat }}
-        componentProps={{
-          label: 'Start range',
-          placeholder: 'Select a start range date...',
-          parameters: {
-            type: useDateFormat,
-            min: '1000-01-01',
-            max: '3000-12-31',
-          },
-        }}
+        placeholder="Select a start range date..."
+        parameters={pickerParameters}
       />
-      <Heading level="h4">End Range</Heading>
-      <Paragraph>
-        The end range is the latest date available for the participant to
-        select. If it is not supplied, the input will default to ending at the
-        current date.
-      </Paragraph>
-      <ValidatedField
+      <ArchitectField
         component={DatePicker}
-        name={`${name}.max`}
+        name={maxField}
+        label="End range"
+        hint="The latest date available for the participant to select. If it is not supplied, the input will default to ending at the current date."
+        initialValue={parameterString(initialParameters?.max)}
         // Audit sweep: the schema only rejects `min > max`, so a collapsed
         // single-day window is legal — and it is the shape the contradiction
         // analyser reads as pinning the variable to one value. A strict
@@ -104,45 +120,15 @@ const DateTimeParameters = ({
         validation={{
           ISODate: dateFormat,
           greaterThanOrEqualTo: {
-            value: `${name}.min`,
+            value: minField,
             message: 'End date must not be before start date',
           },
         }}
-        componentProps={{
-          label: 'End range',
-          placeholder:
-            'Select an end range date, or leave empty to use interview date...',
-          parameters: {
-            type: useDateFormat,
-            min: '1000-01-01',
-            max: '3000-12-31',
-          },
-        }}
+        placeholder="Select an end range date, or leave empty to use interview date..."
+        parameters={pickerParameters}
       />
     </>
   );
 };
-const mapDispatchToProps = (
-  dispatch: Dispatch,
-  {
-    name,
-    form,
-  }: {
-    name: string;
-    form: string;
-  },
-) => ({
-  setSelectDefault: () =>
-    dispatch(change(form, `${name}.type`, 'full') as UnknownAction),
-  resetRangeFields: () => {
-    dispatch(change(form, `${name}.max`, null) as UnknownAction);
-    dispatch(change(form, `${name}.min`, null) as UnknownAction);
-  },
-});
-export default compose<
-  ComponentProps<typeof DateTimeParameters>,
-  typeof DateTimeParameters
->(
-  connect(null, mapDispatchToProps),
-  formValues({ type: 'parameters.type' }),
-)(DateTimeParameters);
+
+export default DateTimeParameters;

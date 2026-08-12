@@ -1,74 +1,75 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import { useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import type { ComponentProps } from 'react';
 
-import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import RichSelectGroupField, {
+  type RichSelectOption,
+} from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import { Row, Section } from '~/components/EditorLayout';
-import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
-import IssueAnchor from '../IssueAnchor';
-const FORM_PROPERTY = 'behaviours.automaticLayout';
-const AutomaticLayout = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const formValue = useSelector(
-    (state: RootState) => !!formSelector(state, FORM_PROPERTY),
-  );
-  const [useAutomaticLayout, setUseAutomaticLayout] = useState(formValue);
-  const handleChooseLayoutMode = (nextValue: boolean | undefined) => {
-    const useNextValue = !!nextValue;
-    dispatch(change(form, FORM_PROPERTY, useNextValue) as UnknownAction);
-    setUseAutomaticLayout(useNextValue);
-  };
+const FIELD_PATH = 'behaviours.automaticLayout';
+
+const MANUAL = 'manual';
+const AUTOMATIC = 'automatic';
+
+const LAYOUT_MODE_OPTIONS: RichSelectOption[] = [
+  {
+    value: MANUAL,
+    label: 'Manual mode',
+    description:
+      'Places all nodes in a "bucket" at the bottom of the screen, from which the participant drags each one to where they want it.',
+  },
+  {
+    value: AUTOMATIC,
+    label: 'Automatic mode',
+    description:
+      'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.',
+  },
+];
+
+type LayoutModeFieldProps = Omit<
+  ComponentProps<typeof RichSelectGroupField>,
+  'value' | 'onChange' | 'options'
+> & {
+  value?: boolean;
+  onChange?: (value: boolean) => void;
+};
+
+/**
+ * The stage stores this choice as a boolean, but the card group speaks option
+ * values, so this field bridges the two — the fresco-ui form store has no
+ * `format`/`parse` hook of its own.
+ */
+const LayoutModeField = ({
+  value,
+  onChange,
+  ...props
+}: LayoutModeFieldProps) => (
+  <RichSelectGroupField
+    {...props}
+    options={LAYOUT_MODE_OPTIONS}
+    value={value ? AUTOMATIC : MANUAL}
+    onChange={(nextValue) => onChange?.(nextValue === AUTOMATIC)}
+  />
+);
+
+const AutomaticLayout = () => {
+  // Redux Form omitted an untouched field's value entirely; the interface
+  // template seeds `true` for the interfaces that offer this choice, so an
+  // absent committed value only happens for a protocol saved before this
+  // field existed — fall back to Manual mode rather than silently opting in.
+  const initialValue = useStageInitialValue<boolean>(FIELD_PATH) ?? false;
+
   return (
-    <Section
-      title="Layout Mode"
-      summary={
-        <Paragraph>
-          Interviewer offers two modes for positioning nodes on the sociogram:
-          &quot;Manual&quot;, and &quot;Automatic&quot;.
-        </Paragraph>
-      }
-    >
+    <Section title="Layout Mode">
       <Row>
-        <IssueAnchor
-          fieldName="behaviours.automaticLayout"
-          description="Layout mode"
-        />
-        <Paragraph>
-          <strong>Automatic mode</strong> positions nodes when the stage is
-          first shown by simulating physical forces such as attraction and
-          repulsion. This simulation can be paused and resumed within the
-          interview. When paused, the position of nodes can be adjusted
-          manually.
-        </Paragraph>
-        <Paragraph>
-          <strong>Manual mode</strong> first places all nodes into a
-          &quot;bucket&quot; at the bottom of the screen, from which the
-          participant can drag nodes to their desired position.
-        </Paragraph>
-      </Row>
-      <Row>
-        <FrescoBooleanField
-          onChange={handleChooseLayoutMode}
-          value={useAutomaticLayout}
-          options={[
-            {
-              value: false,
-              label:
-                '**Manual mode**\n\nParticipants must position their alters manually.',
-            },
-            {
-              value: true,
-              label:
-                '**Automatic mode**\n\nA force-directed layout positions nodes automatically.',
-            },
-          ]}
-          noReset
+        <ArchitectField
+          name={FIELD_PATH}
+          label="Layout mode"
+          hint="How Interviewer positions nodes on the sociogram when the stage opens."
+          component={LayoutModeField}
+          initialValue={initialValue}
+          validation={{ required: true }}
         />
       </Row>
     </Section>

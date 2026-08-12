@@ -49,7 +49,7 @@ const optionCardVariants = compose(
     base: cx(
       'grid cursor-pointer grid-cols-[auto_1fr] content-start items-start gap-x-4! gap-y-2!',
       'overflow-hidden rounded border-2 border-current/20',
-      'bg-input text-left text-wrap',
+      'bg-input text-input-contrast text-left text-wrap',
       'transition-colors duration-200',
       'focusable',
     ),

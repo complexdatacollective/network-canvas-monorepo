@@ -128,6 +128,29 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
   });
 }
 
+// Select each suite whose subject or workspace dependency closure contains a
+// changed path. Unknown paths fail closed for every suite via
+// diffIrrelevantToSuite; a missing subject fails closed for that suite because
+// its relevance closure cannot be trusted.
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  const packages = collectWorkspacePackages(cwd);
+  const required = suites();
+  for (const key of SUITE_KEYS) {
+    const subject = E2E_SUITE_SUBJECTS[key];
+    if (!packages.has(subject)) {
+      required[key] = true;
+      continue;
+    }
+    const relevanceDirs = relevanceDirsForSubject(subject, packages);
+    required[key] = !diffIrrelevantToSuite(
+      changedPaths,
+      relevanceDirs,
+      packages,
+    );
+  }
+  return required;
+}
+
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
 // One bounded page per generated branch. A verdict older than this is stale
 // enough that re-running is the right call anyway (fail closed past the cap).
@@ -353,41 +376,6 @@ export const SUITES_BY_RELEASE_REF = {
   'changeset-release/website': suites(),
 };
 
-// Manifests whose version field moving means the resulting main push will ship
-// the mapped product. Keeping suites on the manifest (rather than only on the
-// combined lane) preserves app-specific E2E selection.
-const VERSIONED_MANIFEST_SUITE_RULES = [
-  {
-    pathspec: 'packages/*/package.json',
-    pattern: /^packages\/[^/]+\/package\.json$/,
-    suites: suites('interview', 'interviewer', 'architect'),
-  },
-  {
-    pathspec: 'apps/architect/package.json',
-    pattern: /^apps\/architect\/package\.json$/,
-    suites: suites('architect', 'interview'),
-  },
-  {
-    pathspec: 'apps/interviewer/package.json',
-    pattern: /^apps\/interviewer\/package\.json$/,
-    suites: suites('interviewer', 'interview'),
-  },
-  {
-    pathspec: 'apps/documentation/package.json',
-    pattern: /^apps\/documentation\/package\.json$/,
-    suites: suites(),
-  },
-  {
-    pathspec: 'apps/networkcanvas.com/package.json',
-    pattern: /^apps\/networkcanvas\.com\/package\.json$/,
-    suites: suites(),
-  },
-];
-
-const ALL_VERSIONED_MANIFESTS = VERSIONED_MANIFEST_SUITE_RULES.map(
-  ({ pathspec }) => pathspec,
-);
-
 export function releaseRefForEvent({ eventName, headRef, refName }) {
   const candidate =
     eventName === 'pull_request'
@@ -414,62 +402,27 @@ function tryGit(args, cwd) {
   }
 }
 
-function readVersionAt(revision, manifest, cwd) {
-  const contents = tryGit(['show', `${revision}:${manifest}`], cwd);
-  if (contents === null) return null;
-  try {
-    const parsed = JSON.parse(contents);
-    return typeof parsed.version === 'string' ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
-
-function versionChangeRequiredSuites(baseSha, headSha, cwd, manifests) {
+// Feature PRs use their cumulative merge-base-to-head diff so every current
+// head is gated by the suites the PR can affect. This deliberately does not
+// use push-to-push carry-forward: an E2E verdict must describe the exact PR
+// head that the required quality check is evaluating.
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
-    throw new Error('release E2E detection requires base and head SHAs');
+    throw new Error('feature PR E2E detection requires base and head SHAs');
   }
-
-  const changedManifests = execFileSync(
-    'git',
-    ['diff', '--name-only', baseSha, headSha, '--', ...manifests],
-    { cwd, encoding: 'utf8' },
-  )
-    .split('\n')
-    .filter(Boolean);
-
-  const required = suites();
-  for (const manifest of changedManifests) {
-    const baseVersion = readVersionAt(baseSha, manifest, cwd);
-    const headVersion = readVersionAt(headSha, manifest, cwd);
-    if (baseVersion === null || headVersion === null) {
-      throw new Error(`Unable to read release version from ${manifest}`);
-    }
-    if (baseVersion === headVersion) continue;
-    const rule = VERSIONED_MANIFEST_SUITE_RULES.find(({ pattern }) =>
-      pattern.test(manifest),
-    );
-    if (!rule) throw new Error(`No release E2E rule for ${manifest}`);
-    for (const key of SUITE_KEYS) {
-      required[key] ||= rule.suites[key];
-    }
-  }
-  return required;
-}
-
-// Union of suites required by every version manifest moving in a merge group.
-export function mergeGroupRequiredSuites(baseSha, headSha, cwd) {
-  return versionChangeRequiredSuites(
-    baseSha,
-    headSha,
+  const mergeBase = tryGit(['merge-base', baseSha, headSha], cwd);
+  if (!mergeBase) throw new Error('Unable to resolve feature PR merge base');
+  const diff = tryGit(
+    ['diff', '--no-renames', '--name-only', mergeBase, headSha, '--'],
     cwd,
-    ALL_VERSIONED_MANIFESTS,
   );
+  if (diff === null) throw new Error('Unable to read feature PR diff');
+  return affectedSuitesForPaths(diff.split('\n').filter(Boolean), cwd);
 }
 
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
-  mergeGroupDetector = mergeGroupRequiredSuites,
+  pullRequestDetector = pullRequestRequiredSuites,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
@@ -480,10 +433,10 @@ export function releaseE2EPolicy(
     };
   }
 
-  if (eventName === 'merge_group') {
+  if (eventName === 'pull_request') {
     let required;
     try {
-      required = mergeGroupDetector(baseSha, headSha, process.cwd());
+      required = pullRequestDetector(baseSha, headSha, process.cwd());
     } catch {
       required = suites('interview', 'interviewer', 'architect');
     }
@@ -495,19 +448,6 @@ export function releaseE2EPolicy(
   }
 
   return { ...suites(), releaseRef: '', snapshotBranch: '' };
-}
-
-// Trust guard for merge-queue reuse: the queued merge's second parent must be
-// the current tip of a generated release branch — never an arbitrary PR that
-// happens to bump a version.
-export function releaseBranchForMergeQueue(cwd) {
-  const prTip = tryGit(['rev-parse', 'HEAD^2'], cwd);
-  if (!prTip) return '';
-  return (
-    Object.keys(SUITES_BY_RELEASE_REF).find(
-      (ref) => tryGit(['rev-parse', `origin/${ref}`], cwd) === prTip,
-    ) ?? ''
-  );
 }
 
 async function main() {
@@ -533,10 +473,6 @@ async function main() {
       ) {
         reuse = { branch: policy.releaseRef, headSha: process.env.HEAD_SHA };
       }
-    } else if (eventName === 'merge_group') {
-      const branch = releaseBranchForMergeQueue(cwd);
-      const headSha = tryGit(['rev-parse', 'HEAD'], cwd);
-      if (branch && headSha) reuse = { branch, headSha };
     }
     if (reuse) {
       const validated = await equivalentValidatedSuites({

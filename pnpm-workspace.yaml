@@ -1,5 +1,8 @@
 packages:
   - apps/*
+  # Studio is two deployables plus a leaf boundary package (#1244); its
+  # halves nest under apps/studio/.
+  - apps/studio/*
   - packages/*
   - tooling/*
   - workers/*
@@ -48,7 +51,9 @@ catalog:
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
+  '@posthog/nextjs-config': ^1.9.68
   '@posthog/react': ^1.10.3
+  '@posthog/rollup-plugin': ^1.4.7
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
@@ -81,7 +86,7 @@ catalog:
   class-variance-authority: 0.7.1
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
-  effect: ^3.22.0
+  effect: ^3.22.1
   electron: ^43.0.0
   electron-builder: ^26.15.2
   electron-vite: ^6.0.0-beta.1
@@ -95,7 +100,7 @@ catalog:
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
-  posthog-js: ^1.409.5
+  posthog-js: ^1.413.2
   react: ^19.2.8
   react-dom: ^19.2.8
   react-dropzone: ^15.0.0
@@ -140,8 +145,10 @@ overrides:
   'slate-history>immer': '^5.3.0'
   # Keep security-sensitive transitives on patched versions when upstream
   # manifests still pin vulnerable releases (inherited from fresco).
+  'effect@3.17.7': 'catalog:'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
+  'immutable@4.3.8': '4.3.9'
   postcss: '^8.5.23'
   sharp: '^0.35.3'
   valibot: '^1.4.2'
@@ -164,3 +171,5 @@ minimumReleaseAgeExclude:
   - '@codaco/network-query@1.2.0'
   - '@codaco/protocol-validation@11.9.0'
   - '@codaco/shared-consts@5.5.0'
+  - '@tanstack/react-router@1.170.22'
+  - '@tanstack/router-core@1.171.19'

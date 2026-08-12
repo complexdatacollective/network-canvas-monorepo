@@ -1,13 +1,13 @@
 {
   "label": "About This Study",
+  "id": "id-1",
   "type": "Information",
   "title": "Welcome",
   "items": [
     {
-      "id": "id-1",
-      "content": "Thanks for taking part.",
-      "type": "text"
+      "id": "id-2",
+      "type": "text",
+      "content": "Thanks for taking part."
     }
-  ],
-  "id": "id-2"
+  ]
 }

@@ -1,24 +1,24 @@
 {
   "label": "Explore Your Network",
-  "behaviours": {
-    "allowRepositioning": true,
-    "automaticLayout": true,
-    "freeDraw": false
-  },
+  "id": "id-1",
   "type": "Narrative",
-  "background": {
-    "image": "narrative_background"
-  },
   "subject": {
-    "type": "id-1",
-    "entity": "node"
+    "entity": "node",
+    "type": "id-2"
+  },
+  "behaviours": {
+    "automaticLayout": true,
+    "freeDraw": false,
+    "allowRepositioning": true
   },
   "presets": [
     {
-      "layoutVariable": "id-2",
-      "id": "id-3",
+      "layoutVariable": "id-3",
+      "id": "id-4",
       "label": "Default view"
     }
   ],
-  "id": "id-4"
+  "background": {
+    "image": "narrative_background"
+  }
 }
