@@ -14,7 +14,10 @@ export default defineConfig({
     // job; a borderline jsdom test can be starved past the 5s default under
     // peak runner load, so give generous headroom.
     testTimeout: 20_000,
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [
+      '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
+      './vitest.setup.ts',
+    ],
     server: {
       deps: {
         inline: [/next-intl/],

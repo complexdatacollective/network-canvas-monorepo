@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { globSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { parse } from 'yaml';
 
 export const SUITE_KEYS = ['interview', 'interviewer', 'architect'];
 
@@ -27,74 +29,99 @@ export const E2E_JOB_NAMES = {
   architect: ['architect-e2e', 'architect-e2e-native'],
 };
 
-const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
+const FALLBACK_WORKSPACE_PATTERNS = [
+  'packages/*',
+  'apps/*',
+  'tooling/*',
+  'workers/*',
+];
 
 // Mirrors the `test` job's inert set: docs, changesets, and markdown cannot
 // change what an E2E suite executes or asserts.
 function isInertPath(path) {
+  const segments = path.split('/');
+  const filename = segments.at(-1) ?? '';
+  const isPlaywrightSpec = path.includes('/e2e/specs/');
+
   return (
     path.startsWith('docs/') ||
     path.startsWith('.changeset/') ||
-    path.endsWith('.md')
+    path.endsWith('.md') ||
+    (!isPlaywrightSpec && filename.includes('.test.')) ||
+    filename.startsWith('vitest.') ||
+    segments.includes('__tests__') ||
+    path.startsWith('config/vitest/') ||
+    path.includes('/config/vitest/')
   );
+}
+
+function workspacePatterns(cwd) {
+  let raw;
+  try {
+    raw = readFileSync(join(cwd, 'pnpm-workspace.yaml'), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return FALLBACK_WORKSPACE_PATTERNS;
+    throw error;
+  }
+
+  let workspace;
+  try {
+    workspace = parse(raw);
+  } catch (error) {
+    throw new Error('Unable to read pnpm-workspace.yaml', { cause: error });
+  }
+  if (
+    workspace === null ||
+    typeof workspace !== 'object' ||
+    !Array.isArray(workspace.packages) ||
+    workspace.packages.some((pattern) => typeof pattern !== 'string')
+  ) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+
+  return workspace.packages;
 }
 
 export function collectWorkspacePackages(cwd) {
   const packages = new Map();
-  for (const group of WORKSPACE_GROUPS) {
-    let entries;
+  const patterns = workspacePatterns(cwd);
+  const excluded = new Set(
+    patterns
+      .filter((pattern) => pattern.startsWith('!'))
+      .flatMap((pattern) =>
+        globSync(`${pattern.slice(1)}/package.json`, { cwd }),
+      ),
+  );
+  const manifestPaths = patterns
+    .filter((pattern) => !pattern.startsWith('!'))
+    .flatMap((pattern) => globSync(`${pattern}/package.json`, { cwd }))
+    .filter((manifestPath) => !excluded.has(manifestPath));
+
+  for (const manifestPath of new Set(manifestPaths)) {
+    let manifest;
     try {
-      entries = readdirSync(join(cwd, group), { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      // ENOENT (no package.json) means this directory is simply not a pnpm
-      // workspace member — continue silently, matching pnpm's own glob
-      // semantics. Any other read failure, or a parse failure on a manifest
-      // that IS present, means the workspace graph is broken and must not be
-      // silently treated as empty: that would misclassify every path inside
-      // it as "outside every workspace package", which fails OPEN for
-      // equivalence reuse. Propagate so the caller fails closed instead.
-      const manifestPath = join(cwd, group, entry.name, 'package.json');
-      let raw;
-      try {
-        raw = readFileSync(manifestPath, 'utf8');
-      } catch (error) {
-        if (error.code === 'ENOENT') continue;
-        throw error;
-      }
-      let manifest;
-      try {
-        manifest = JSON.parse(raw);
-      } catch (error) {
-        throw new Error(
-          `Unable to read workspace manifest ${group}/${entry.name}/package.json`,
-          { cause: error },
-        );
-      }
-      // pnpm tolerates nameless private workspace members. Such a package can
-      // never be depended on, and the fail-closed diff path already treats
-      // its directory as unrecognised (and therefore relevant), so skipping
-      // it here does not weaken equivalence reuse.
-      if (typeof manifest.name !== 'string') continue;
-      packages.set(manifest.name, {
-        dir: `${group}/${entry.name}`,
-        // devDependencies participate: they carry Playwright configs, e2e
-        // helpers, and build tooling that shape suite outcomes. peer and
-        // optional edges participate too: this repo declares some workspace
-        // edges (e.g. the styling/theme packages an e2e host renders with)
-        // as peerDependencies rather than dependencies or devDependencies.
-        // Non-workspace names harmlessly miss the package map below.
-        workspaceDeps: [
-          ...Object.keys(manifest.dependencies ?? {}),
-          ...Object.keys(manifest.devDependencies ?? {}),
-          ...Object.keys(manifest.peerDependencies ?? {}),
-          ...Object.keys(manifest.optionalDependencies ?? {}),
-        ],
+      manifest = JSON.parse(readFileSync(join(cwd, manifestPath), 'utf8'));
+    } catch (error) {
+      throw new Error(`Unable to read workspace manifest ${manifestPath}`, {
+        cause: error,
       });
     }
+    // pnpm tolerates nameless private workspace members. Such a package can
+    // never be depended on, and the fail-closed diff path treats its directory
+    // as unrecognised, so skipping it here does not weaken the policy.
+    if (typeof manifest.name !== 'string') continue;
+    packages.set(manifest.name, {
+      dir: dirname(manifestPath).replaceAll('\\', '/'),
+      // devDependencies participate: they carry Playwright configs, e2e
+      // helpers, and build tooling that shape suite outcomes. Peer and
+      // optional edges participate too.
+      workspaceDeps: [
+        ...Object.keys(manifest.dependencies ?? {}),
+        ...Object.keys(manifest.devDependencies ?? {}),
+        ...Object.keys(manifest.peerDependencies ?? {}),
+        ...Object.keys(manifest.optionalDependencies ?? {}),
+      ],
+    });
   }
   return packages;
 }

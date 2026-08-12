@@ -1,0 +1,13 @@
+{
+  "name": "@codaco/vitest-config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "legacy/**"
+  ],
+  "type": "module",
+  "exports": {
+    "./legacy/disable-animations": "./legacy/disable-animations.js",
+    "./legacy/setup-path": "./legacy/setup-path.js"
+  }
+}

@@ -41,7 +41,10 @@ export default defineConfig({
           // Parallelised with the rest of the workspace's tests in the CI
           // quality job; give jsdom tests headroom under peak runner load.
           testTimeout: 20_000,
-          setupFiles: ['./src/test-setup.ts'],
+          setupFiles: [
+            '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
+            './src/test-setup.ts',
+          ],
           include: ['src/**/*.{test,spec}.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',

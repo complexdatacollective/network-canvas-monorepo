@@ -32,7 +32,13 @@ export default defineConfig({
           // borderline test (e.g. a WebGL-backed interface interaction) can be
           // starved past the 5s default, so give generous headroom.
           testTimeout: 20_000,
-          setupFiles: [path.join(dirname, 'vitest.setup.ts')],
+          setupFiles: [
+            path.join(
+              dirname,
+              '../fresco-ui/vitest.setup.disable-animations.ts',
+            ),
+            path.join(dirname, 'vitest.setup.ts'),
+          ],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',

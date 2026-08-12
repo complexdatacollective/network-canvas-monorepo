@@ -45,7 +45,10 @@ export default defineConfig({
           // borderline test can be starved past the 5s default, so give
           // generous headroom.
           testTimeout: 20_000,
-          setupFiles: ['./src/test-setup.ts'],
+          setupFiles: [
+            '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
+            './src/test-setup.ts',
+          ],
           include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',

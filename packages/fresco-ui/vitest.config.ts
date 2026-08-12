@@ -30,7 +30,10 @@ export default defineConfig({
           // quality job; a borderline jsdom test can be starved past the 5s
           // default under peak runner load, so give generous headroom.
           testTimeout: 20_000,
-          setupFiles: [resolve(here, 'vitest.setup.ts')],
+          setupFiles: [
+            resolve(here, 'vitest.setup.disable-animations.ts'),
+            resolve(here, 'vitest.setup.ts'),
+          ],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',

@@ -67,6 +67,7 @@
     "@codaco/protocol-validation": "npm:@codaco/protocol-validation@^3.0.0",
     "@codaco/shared-consts": "npm:@codaco/shared-consts@~0.0.1-alpha.3",
     "@codaco/ui": "~5.8.6",
+    "@codaco/vitest-config": "workspace:^",
     "@faker-js/faker": "~6.0.0",
     "@material-ui/icons": "^4.11.3",
     "@vitejs/plugin-react": "catalog:",

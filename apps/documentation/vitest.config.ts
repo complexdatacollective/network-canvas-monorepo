@@ -10,7 +10,10 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [
+      '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
+      './vitest.setup.ts',
+    ],
     include: [
       'components/**/__tests__/**/*.{ts,tsx}',
       'lib/**/__tests__/**/*.{ts,tsx}',

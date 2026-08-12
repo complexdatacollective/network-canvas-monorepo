@@ -184,6 +184,19 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
   );
 });
 
+test('workspace discovery follows nested pnpm workspace patterns', () => {
+  const packages = collectWorkspacePackages(REPO_ROOT);
+
+  assert.equal(
+    packages.get('@codaco/studio-client')?.dir,
+    'apps/studio/client',
+  );
+  assert.equal(
+    packages.get('@codaco/studio-server')?.dir,
+    'apps/studio/server',
+  );
+});
+
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
@@ -453,12 +466,19 @@ test('diff classification is fail-closed', () => {
   const packages = collectWorkspacePackages(cwd);
   const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
 
-  // Sibling-product and inert paths cannot affect the interviewer suite.
+  // Sibling-product and unit-test-only paths cannot affect the interviewer
+  // Playwright suite.
   assert.equal(
     diffIrrelevantToSuite(
       [
         'apps/architect/package.json',
         'apps/architect/CHANGELOG.md',
+        'apps/architect/vitest.config.ts',
+        'apps/architect/config/vitest/setup.ts',
+        'packages/interview/src/Example.test.tsx',
+        'packages/interview/src/__tests__/fixture.ts',
+        'packages/fresco-ui/vitest.setup.disable-animations.ts',
+        'scripts/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
         'README.md',
@@ -472,6 +492,7 @@ test('diff classification is fail-closed', () => {
   // Anything in the closure is relevant — including non-markdown baselines.
   for (const relevantPath of [
     'apps/interviewer/src/main.tsx',
+    'apps/interviewer/e2e/session.spec.ts',
     'packages/interview/e2e/baseline.png',
     'packages/e2e-helpers/src/index.ts',
   ]) {
@@ -510,6 +531,42 @@ test('diff classification is fail-closed', () => {
 
   // An empty diff is trivially irrelevant (byte-identical case).
   assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
+});
+
+test('unit-only and unrelated nested-workspace changes select no E2E suites', () => {
+  const expected = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  };
+
+  for (const changedPath of [
+    'packages/fresco-ui/vitest.setup.disable-animations.ts',
+    'tooling/vitest/legacy/disable-animations.js',
+    'scripts/vitest-animation-setup.test.mjs',
+    'apps/studio/client/vitest.config.ts',
+    'apps/studio/client/src/main.tsx',
+    'apps/architect/vitest.config.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      expected,
+      `${changedPath} must not select an unrelated E2E suite`,
+    );
+  }
+});
+
+test('Playwright specs remain relevant after unit-test paths become inert', () => {
+  for (const changedPath of [
+    'apps/architect/e2e/specs/protocol-authoring.spec.ts',
+    'apps/architect/e2e/specs/future-convention.test.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      { interview: false, interviewer: false, architect: true },
+      `${changedPath} remains relevant to Architect E2E`,
+    );
+  }
 });
 
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs

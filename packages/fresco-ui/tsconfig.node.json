@@ -8,6 +8,7 @@
     "vitest.config.ts",
     ".storybook/**/*.ts",
     ".storybook/**/*.tsx",
+    "vitest.setup.disable-animations.ts",
     "vitest.setup.ts",
     "src/**/*.stories.tsx",
     "src/**/*.test.ts",

@@ -398,6 +398,11 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     /git cat-file -e "\$DIFF_BASE_SHA\^\{commit\}"/,
     'a missing diff base fails closed to the full suite',
   );
+  assert.match(
+    testJob,
+    /':\(exclude\)scripts\/\*\.test\.mjs'/,
+    'repository script tests do not invalidate workspace unit tests',
+  );
 });
 
 test('release job prunes ignored-lane changesets before changesets/action', () => {

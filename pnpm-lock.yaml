@@ -554,6 +554,9 @@ importers:
       '@codaco/ui':
         specifier: ^5.8.6
         version: 5.8.6(@types/react@19.2.18)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(supports-color@10.2.2)
+      '@codaco/vitest-config':
+        specifier: workspace:^
+        version: link:../../tooling/vitest
       '@material-ui/icons':
         specifier: ^4.11.3
         version: 4.11.3(@material-ui/core@4.12.4(@types/react@19.2.18)(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(@types/react@19.2.18)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -1434,6 +1437,9 @@ importers:
       '@codaco/ui':
         specifier: ~5.8.6
         version: 5.8.6(@types/react@19.2.18)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(supports-color@10.2.2)
+      '@codaco/vitest-config':
+        specifier: workspace:^
+        version: link:../../tooling/vitest
       '@faker-js/faker':
         specifier: ~6.0.0
         version: 6.0.0
@@ -2680,6 +2686,8 @@ importers:
         version: 7.0.2
 
   tooling/typescript: {}
+
+  tooling/vitest: {}
 
   workers/development-protocol:
     dependencies:

@@ -25,7 +25,13 @@ export default defineConfig({
             '**/*.stories.ts',
           ],
           name: 'units',
-          setupFiles: ['./vitest.setup.ts'],
+          setupFiles: [
+            path.resolve(
+              dirname,
+              '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
+            ),
+            './vitest.setup.ts',
+          ],
           server: {
             deps: { inline: ['@codaco/interview'] },
           },
