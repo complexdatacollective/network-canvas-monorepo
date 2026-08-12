@@ -3,14 +3,17 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 /**
- * Sub-pixel differences between an element's scroll and client boxes are
- * rounding noise from fractional layout, not real overflow.
+ * A one-pixel scroll-height excess is rounding noise from fractional line
+ * boxes, and line height carries enough slack that tolerating it never clips
+ * a glyph. Width has no such slack: a single hidden pixel is the upright
+ * stroke of a final letter ("Mohammad" clipped to "Mohammac"), so any
+ * measured width excess must step the ladder down.
  */
-const OVERFLOW_TOLERANCE = 1;
+const HEIGHT_TOLERANCE = 1;
 
 const overflows = (element: HTMLElement) =>
-  element.scrollHeight - element.clientHeight > OVERFLOW_TOLERANCE ||
-  element.scrollWidth - element.clientWidth > OVERFLOW_TOLERANCE;
+  element.scrollHeight - element.clientHeight > HEIGHT_TOLERANCE ||
+  element.scrollWidth > element.clientWidth;
 
 type Fitter = {
   element: HTMLElement;

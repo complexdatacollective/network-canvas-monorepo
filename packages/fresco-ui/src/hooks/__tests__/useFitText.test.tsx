@@ -86,6 +86,33 @@ describe('useFitText', () => {
     await waitFor(() => expect(state()).toBe('0:true'));
   });
 
+  it('steps down for any width excess but tolerates a pixel of height rounding', async () => {
+    // A pixel of hidden width is a clipped letter stroke; a pixel of scroll
+    // height is fractional line-box rounding inside the leading's slack.
+    uninstallLabelMetrics();
+    const defineMetric = (
+      metric: string,
+      get: (this: HTMLElement) => number,
+    ) => {
+      Object.defineProperty(HTMLSpanElement.prototype, metric, {
+        configurable: true,
+        get,
+      });
+    };
+    defineMetric('clientWidth', () => 100);
+    defineMetric('scrollWidth', function (this: HTMLElement) {
+      return this.className.includes('text-base') ? 101 : 100;
+    });
+    defineMetric('clientHeight', () => 20);
+    defineMetric('scrollHeight', () => 21);
+
+    render(<Probe text="x" />);
+
+    // Rung 1, not 0: the one-pixel width excess at the largest rung is real
+    // overflow. Not truncated at rung 2: the one-pixel height excess is noise.
+    await waitFor(() => expect(state()).toBe('1:false'));
+  });
+
   it('does nothing when disabled', async () => {
     render(<Probe text={'a'.repeat(200)} enabled={false} />);
     await waitFor(() => expect(state()).toBe('0:false'));
