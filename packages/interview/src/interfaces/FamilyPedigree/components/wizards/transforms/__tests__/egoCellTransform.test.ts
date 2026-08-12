@@ -63,6 +63,48 @@ describe('egoCellTransform', () => {
     ).toEqual(prototypeDescriptor);
   });
 
+  it('writes dangerous configured variable names as own attributes', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const dangerousConfig: VariableConfig = {
+      ...variableConfig,
+      biologicalSexVariable: '__proto__',
+      gameteRoleVariable: 'constructor',
+      isGestationalCarrierVariable: 'prototype',
+    };
+
+    const { batch } = egoCellTransform(
+      {
+        'biologicalSex': 'female',
+        'egg-parent': {
+          gestationalCarrier: true,
+          name: 'Linda',
+        },
+      },
+      dangerousConfig,
+    );
+
+    const egoAttributes = batch.nodes.find((node) => node.tempId === 'ego')
+      ?.data.attributes;
+    const parentEdgeAttributes = batch.edges.find(
+      (edge) => edge.source === 'egg-parent' && edge.target === 'ego',
+    )?.data.attributes;
+
+    expect(Object.hasOwn(egoAttributes ?? {}, '__proto__')).toBe(true);
+    expect(egoAttributes?.['__proto__']).toEqual(['female']);
+    expect(Object.hasOwn(parentEdgeAttributes ?? {}, 'prototype')).toBe(true);
+    expect(parentEdgeAttributes?.prototype).toBe(true);
+    expect(Object.hasOwn(parentEdgeAttributes ?? {}, 'constructor')).toBe(true);
+    expect(parentEdgeAttributes?.constructor).toEqual(['egg']);
+    expect(Object.getPrototypeOf(egoAttributes)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(parentEdgeAttributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it("records ego's own biological sex on the ego node", () => {
     const values = {
       'biologicalSex': 'female',

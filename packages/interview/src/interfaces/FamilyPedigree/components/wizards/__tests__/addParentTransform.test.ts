@@ -19,6 +19,27 @@ const variableConfig: VariableConfig = {
 };
 
 describe('AddParentWizard transformToCommitBatch', () => {
+  it('writes a dangerous gestational-carrier variable as an own attribute', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const batch = transformToCommitBatch(
+      { 'edgeType': 'surrogate', 'parent-selection': 'uncle-1' },
+      'child-1',
+      new Map<string, NcEdge>(),
+      { ...variableConfig, isGestationalCarrierVariable: '__proto__' },
+    );
+    const attributes = batch.edges[0]?.data.attributes;
+
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toBe(true);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it('uses an existing selection as the parent without creating a node', () => {
     const batch = transformToCommitBatch(
       { 'parent-selection': 'uncle-1', 'edgeType': 'social' },

@@ -32,6 +32,19 @@ type WizardDialogProps = {
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const writeOwnProperty = (
+  target: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void => {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+};
+
 // Merge one step's field values over the accumulator. Plain objects merge
 // recursively so nested paths registered by DIFFERENT steps under one
 // top-level key (e.g. `user.firstName` then `user.lastName`) keep their
@@ -53,11 +66,12 @@ const mergeStepValues = (
 ): Record<string, unknown> => {
   const result = { ...base };
   for (const [key, value] of Object.entries(incoming)) {
-    const existing = result[key];
-    result[key] =
+    const existing = Object.hasOwn(result, key) ? result[key] : undefined;
+    const mergedValue =
       isPlainObject(existing) && isPlainObject(value)
         ? mergeStepValues(existing, value)
         : value;
+    writeOwnProperty(result, key, mergedValue);
   }
   return result;
 };

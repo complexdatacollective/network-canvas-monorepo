@@ -31,6 +31,17 @@ function PlainFinishStep() {
   return <div>Nothing to fill in here</div>;
 }
 
+function ProtoStep() {
+  return (
+    <Field
+      name="__proto__"
+      nameMode="opaque"
+      label="Prototype value"
+      component={InputField}
+    />
+  );
+}
+
 function TestWizard({
   onResult,
   steps,
@@ -105,6 +116,46 @@ describe('Wizard accumulator', () => {
       firstName: 'Alice',
       lastName: 'Smith',
     });
+  });
+
+  it('preserves an opaque __proto__ field in the final payload', async () => {
+    const onResult = vi.fn();
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+
+    render(
+      <DialogProvider>
+        <TestWizard
+          onResult={onResult}
+          steps={[
+            { title: 'Prototype', content: ProtoStep },
+            { title: 'Done', content: PlainFinishStep },
+          ]}
+        />
+      </DialogProvider>,
+    );
+
+    await openWizard(user);
+    await user.type(screen.getByLabelText('Prototype value'), 'preserved');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Nothing to fill in here');
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    await waitForClose();
+
+    const payload = onResult.mock.calls[0]?.[0];
+    expect(typeof payload).toBe('object');
+    expect(payload).not.toBeNull();
+    if (typeof payload !== 'object' || payload === null) {
+      throw new Error('Expected the wizard to return an object payload');
+    }
+    expect(Object.hasOwn(payload, '__proto__')).toBe(true);
+    expect(Reflect.get(payload, '__proto__')).toBe('preserved');
+    expect(Object.getPrototypeOf(payload)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
   });
 
   it('preserves a value typed on a step when navigating back before ever continuing past it', async () => {
