@@ -1,307 +1,363 @@
-import React, { useId, useMemo, useRef, useState } from 'react';
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  type AnimationPlaybackControlsWithThen,
+  type MotionStyle,
+} from 'motion/react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@codaco/fresco-ui/Popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
-import type { VariableType } from '@codaco/protocol-validation';
+import type {
+  ValidationName,
+  Variable,
+  VariableType,
+} from '@codaco/protocol-validation';
 import { getColorForType, getIconForType } from '~/config/variables';
-import { useAppSelector } from '~/ducks/hooks';
-import { makeGetVariableWithEntity } from '~/selectors/codebook';
 import { cx } from '~/utils/cva';
 
-import VariableEditor from './VariableEditor/VariableEditor';
-
-type VariablePillSizingProps = {
-  width?: string;
-  minWidth?: string;
-  maxWidth?: string;
-};
-
-export type VariablePillProps = VariablePillSizingProps & {
+export type VariablePillProps = {
+  active?: boolean;
+  interactive: boolean;
   label: string;
   type: VariableType;
-  animated?: boolean;
-  /**
-   * Editing requires the codebook variable's uuid: the pill anchors a popover
-   * containing the full variable editor (name, type-specific configuration,
-   * synthetic data), all saved atomically. Pills without a uuid render
-   * statically.
-   */
-  editable?: boolean;
-  uuid?: string;
+  validations: ValidationName[];
 };
 
-export type ConnectedVariablePillProps = VariablePillSizingProps & {
-  uuid: string;
-  animated?: boolean;
-  editable?: boolean;
-};
-
-type VariablePillStyle = React.CSSProperties & {
+type VariablePillStyle = MotionStyle & {
   '--variable-pill-accent': string;
-  '--variable-pill-width': string;
-  '--variable-pill-min-width': string;
-  '--variable-pill-max-width': string;
+};
+
+type LabelWidths = {
+  collapsedHeight: number;
+  collapsedPillWidth: number;
+  collapsed: number;
+  expanded: number;
 };
 
 const DARK_COLOR_SUFFIX = '-dark';
-const DEFAULT_MIN_WIDTH = '12rem';
-const DEFAULT_MAX_WIDTH = '20rem';
+const INTERACTION_SCALE = 1.15;
+const WIDTH_SPRING = {
+  type: 'spring',
+  stiffness: 300,
+  damping: 28,
+  mass: 1,
+} as const;
+
+const VALIDATION_NAMES = [
+  'required',
+  'requiredAcceptsNull',
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+  'unique',
+  'differentFrom',
+  'sameAs',
+  'greaterThanVariable',
+  'lessThanVariable',
+  'greaterThanOrEqualToVariable',
+  'lessThanOrEqualToVariable',
+] as const satisfies readonly ValidationName[];
+
+const VALIDATION_LABELS = {
+  required: 'Required',
+  requiredAcceptsNull: 'Required, accepting null',
+  minLength: 'Minimum length',
+  maxLength: 'Maximum length',
+  minValue: 'Minimum value',
+  maxValue: 'Maximum value',
+  minSelected: 'Minimum selections',
+  maxSelected: 'Maximum selections',
+  unique: 'Unique value',
+  differentFrom: 'Different from another variable',
+  sameAs: 'Same as another variable',
+  greaterThanVariable: 'Greater than another variable',
+  lessThanVariable: 'Less than another variable',
+  greaterThanOrEqualToVariable: 'Greater than or equal to another variable',
+  lessThanOrEqualToVariable: 'Less than or equal to another variable',
+} as const satisfies Record<ValidationName, string>;
 
 const getRawColorToken = (color: string) =>
   color.endsWith(DARK_COLOR_SUFFIX)
     ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
     : color;
 
-const getVariablePillStyle = (
-  type: VariableType,
-  {
-    width,
-    minWidth,
-    maxWidth,
-  }: Pick<VariablePillProps, 'width' | 'minWidth' | 'maxWidth'>,
-): VariablePillStyle => {
-  const accentColor = getRawColorToken(getColorForType(type));
-  return {
-    '--variable-pill-accent': `oklch(var(--${accentColor}))`,
-    '--variable-pill-width': width ?? 'fit-content',
-    '--variable-pill-min-width': minWidth ?? DEFAULT_MIN_WIDTH,
-    '--variable-pill-max-width': maxWidth ?? width ?? DEFAULT_MAX_WIDTH,
-  };
+export const getActiveValidationNames = (
+  variable: Variable,
+): ValidationName[] => {
+  const validation = 'validation' in variable ? variable.validation : undefined;
+
+  if (!validation) return [];
+
+  const validationValues = validation as Partial<
+    Record<ValidationName, unknown>
+  >;
+
+  return VALIDATION_NAMES.filter((name) => {
+    const value = validationValues[name];
+    return typeof value === 'boolean' ? value : value !== undefined;
+  });
 };
 
-const getVariablePillClassName = ({
-  animated,
-  fluid,
-  interactive,
-}: {
-  animated?: boolean;
-  fluid?: boolean;
-  interactive?: boolean;
-}) =>
-  cx(
-    // `variable-pill` marker — hook for same-area cascades in VariablePicker
-    // (nested margin), PreviewRule (zoom), and the printable summary (scale).
-    'variable-pill font-monospace inline-flex h-12 w-(--variable-pill-width) max-w-(--variable-pill-max-width) min-w-(--variable-pill-min-width) flex-nowrap rounded-full p-0.5 text-base',
-    'effect-shadow-sm',
-    animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
-    !interactive && 'cursor-default',
-    fluid && 'flex-1',
-    interactive &&
-      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-left transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
-  );
-
-function VariablePillContents({
-  children,
-  type,
-}: {
-  children: React.ReactNode;
-  type: VariableType;
-}) {
-  const icon = useMemo(() => getIconForType(type), [type]);
-
-  return (
-    <span className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
-      <span className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-        <img className="icon opacity-80" src={icon} alt={`${type} variable`} />
-      </span>
-      <span className="flex w-[calc(100%-3rem)] min-w-0 flex-1 items-center justify-between">
-        {children}
-      </span>
-    </span>
-  );
-}
-
-/**
- * A variable reference whose interaction and visual treatment are independent.
- * Static pills use `<data>` semantics; editable pills are a button anchoring a
- * popover that contains the full variable editor, headed by the same pill
- * treatment around the name field.
- */
+/** A presentation-only variable reference. Interaction belongs to its parent. */
 export const VariablePill = ({
-  animated = false,
-  editable = false,
+  active = false,
+  interactive,
   label,
-  maxWidth,
-  minWidth,
   type,
-  uuid,
-  width,
+  validations,
 }: VariablePillProps) => {
-  const closeGuardRef = useRef<(() => Promise<boolean>) | null>(null);
-  const formId = useId();
+  const pillRef = useRef<HTMLDataElement>(null);
+  const labelSectionRef = useRef<HTMLSpanElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const interactionActiveRef = useRef(false);
+  const previousActiveRef = useRef(false);
+  const labelAnimationRef = useRef<AnimationPlaybackControlsWithThen | null>(
+    null,
+  );
+  const labelAnimationVersionRef = useRef(0);
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [labelWidths, setLabelWidths] = useState<LabelWidths>();
+  const labelWidth = useMotionValue(0);
+  const shouldReduceMotion = useReducedMotion();
 
-  const [editing, setEditing] = useState(false);
-  const [announcement, setAnnouncement] = useState('');
-
-  const style = getVariablePillStyle(type, { width, minWidth, maxWidth });
-  // The editor header pill fills the popover's width.
-  const headerPillStyle: VariablePillStyle = {
-    ...style,
-    '--variable-pill-width': '100%',
-    '--variable-pill-max-width': '100%',
+  const accentColor = getRawColorToken(getColorForType(type));
+  const accessibleLabel = `${label}, ${type} variable${validations.length > 0 ? `, ${validations.map((validation) => VALIDATION_LABELS[validation]).join(', ')}` : ''}`;
+  const expanded =
+    interactive &&
+    (focused || hovered || (active && labelWidths !== undefined));
+  const animatingLabel = expanded || labelWidths !== undefined;
+  const style: VariablePillStyle = {
+    '--variable-pill-accent': `oklch(var(--${accentColor}))`,
   };
 
-  if (!editable || uuid === undefined) {
-    return (
-      <data
-        value={label}
-        className={getVariablePillClassName({
-          animated,
-          fluid: width === '100%',
-        })}
-        style={style}
-      >
-        <VariablePillContents type={type}>
-          <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
-            {label}
-          </span>
-        </VariablePillContents>
-      </data>
+  const measureLabelWidths = (): LabelWidths | undefined => {
+    const pill = pillRef.current;
+    const labelSection = labelSectionRef.current;
+    const labelElement = labelRef.current;
+    if (!pill || !labelSection || !labelElement) return undefined;
+
+    const clippedLabelWidth = Math.max(
+      0,
+      labelElement.scrollWidth - labelElement.clientWidth,
     );
-  }
+    const collapsed = labelSection.offsetWidth;
 
-  const openEditor = () => {
-    closeGuardRef.current = null;
-    setAnnouncement(`Editing variable ${label}`);
-    setEditing(true);
+    return {
+      collapsedHeight: pill.offsetHeight,
+      collapsedPillWidth: pill.offsetWidth,
+      collapsed,
+      expanded:
+        clippedLabelWidth > 0
+          ? Math.ceil(collapsed + clippedLabelWidth) + 1
+          : collapsed,
+    };
   };
 
-  const closeEditor = (nextAnnouncement: string) => {
-    setEditing(false);
-    setAnnouncement(nextAnnouncement);
+  const animateLabelWidth = (target: number) => {
+    const animationVersion = ++labelAnimationVersionRef.current;
+    labelAnimationRef.current?.stop();
+
+    if (shouldReduceMotion) {
+      labelAnimationRef.current = null;
+      labelWidth.jump(target);
+      return animationVersion;
+    }
+
+    labelAnimationRef.current = animate(labelWidth, target, WIDTH_SPRING);
+    return animationVersion;
   };
 
-  // Escape and outside-click dismissal share the editor's own close guard,
-  // so a dirty draft always asks before being discarded, whichever way the
-  // popover closes.
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      openEditor();
+  const beginInteraction = () => {
+    if (interactionActiveRef.current) return;
+    interactionActiveRef.current = true;
+
+    const widths = labelWidths ?? measureLabelWidths();
+    if (!widths) {
+      interactionActiveRef.current = false;
       return;
     }
-    const guard = closeGuardRef.current;
-    if (!guard) {
-      closeEditor('Variable edit cancelled');
-      return;
+
+    if (!labelWidths) {
+      labelWidth.jump(widths.collapsed);
+      setLabelWidths(widths);
     }
-    void guard().then((allowed) => {
-      if (allowed) closeEditor('Variable edit cancelled');
+
+    requestAnimationFrame(() => {
+      if (interactionActiveRef.current) {
+        animateLabelWidth(widths.expanded);
+      }
     });
   };
 
+  const endInteraction = () => {
+    interactionActiveRef.current = false;
+    if (!labelWidths) return;
+
+    const target = labelWidths.collapsed;
+    const animationVersion = animateLabelWidth(target);
+
+    const finishCollapse = () => {
+      if (
+        interactionActiveRef.current ||
+        animationVersion !== labelAnimationVersionRef.current ||
+        !labelSectionRef.current
+      ) {
+        return;
+      }
+
+      if (Math.abs(labelWidth.get() - target) >= 0.5) {
+        requestAnimationFrame(finishCollapse);
+        return;
+      }
+
+      labelAnimationRef.current?.stop();
+      labelAnimationRef.current = null;
+      labelWidth.jump(target);
+      setLabelWidths(undefined);
+    };
+
+    if (shouldReduceMotion) {
+      finishCollapse();
+    } else {
+      requestAnimationFrame(finishCollapse);
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (active === previousActiveRef.current) return;
+    previousActiveRef.current = active;
+
+    if (interactive && active) {
+      beginInteraction();
+    } else if (!focused && !hovered) {
+      endInteraction();
+    }
+  });
+
   return (
-    <>
-      <Tooltip>
-        <Popover open={editing} onOpenChange={handleOpenChange}>
-          {/*
-           * The popover trigger renders the tooltip trigger, which renders the
-           * pill itself: one button carrying both behaviours, rather than a
-           * wrapper that would break the pill's layout or steal its focus.
-           */}
-          <PopoverTrigger
-            render={
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-label={`Edit variable: ${label}`}
-                    className={getVariablePillClassName({
-                      animated,
-                      fluid: width === '100%',
-                      interactive: true,
-                    })}
-                    style={style}
-                  >
-                    <VariablePillContents type={type}>
-                      <span className="m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap">
-                        {label}
-                      </span>
-                    </VariablePillContents>
-                  </button>
-                }
-              />
+    <span
+      className="relative flex min-h-12 w-fit max-w-full min-w-0"
+      style={
+        labelWidths
+          ? {
+              height: labelWidths.collapsedHeight,
+              width: labelWidths.collapsedPillWidth,
             }
-          />
-          <PopoverContent
-            aria-label="Edit variable"
-            side="bottom"
-            align="start"
-            showArrow
-            className="w-[min(90vw,42rem)]"
+          : undefined
+      }
+    >
+      <span
+        className={cx(
+          'flex min-h-12 min-w-0',
+          animatingLabel
+            ? 'absolute top-0 left-1/2 z-10 -translate-x-1/2'
+            : 'w-fit max-w-full',
+        )}
+      >
+        <motion.data
+          ref={pillRef}
+          animate={{ scale: expanded ? INTERACTION_SCALE : 1 }}
+          aria-label={interactive ? accessibleLabel : undefined}
+          className={cx(
+            'variable-pill font-monospace flex min-h-12 min-w-0 flex-nowrap rounded p-0.5 text-base',
+            'effect-shadow-sm cursor-default select-none',
+            !animatingLabel && 'w-fit max-w-full',
+            interactive
+              ? 'focusable variable-pill-effect-border hover:effect-shadow transition-shadow duration-200 ease-out focus-visible:transition-[outline-color,outline-offset,outline-width,box-shadow]'
+              : 'bg-(--variable-pill-accent)',
+          )}
+          initial={false}
+          onBlur={
+            interactive
+              ? () => {
+                  setFocused(false);
+                  if (!hovered && !active) {
+                    endInteraction();
+                  }
+                }
+              : undefined
+          }
+          onFocus={
+            interactive
+              ? () => {
+                  beginInteraction();
+                  setFocused(true);
+                }
+              : undefined
+          }
+          onMouseEnter={
+            interactive
+              ? () => {
+                  beginInteraction();
+                  setHovered(true);
+                }
+              : undefined
+          }
+          onMouseLeave={
+            interactive
+              ? () => {
+                  setHovered(false);
+                  if (!focused && !active) {
+                    endInteraction();
+                  }
+                }
+              : undefined
+          }
+          style={style}
+          tabIndex={interactive ? 0 : undefined}
+          transition={shouldReduceMotion ? { duration: 0 } : WIDTH_SPRING}
+          value={label}
+        >
+          <span
+            aria-hidden
+            className="text-text bg-surface flex min-h-12 min-w-0 flex-1 overflow-hidden rounded-[inherit]"
           >
-            {editing && (
-              <VariableEditor
-                uuid={uuid}
-                formId={formId}
-                onSaved={(name) => closeEditor(`Variable ${name} saved`)}
-                onCancelled={() => closeEditor('Variable edit cancelled')}
-                registerCloseGuard={(guard) => {
-                  closeGuardRef.current = guard;
-                }}
-                renderHeader={(nameField) => (
-                  <div
-                    className={getVariablePillClassName({ animated: false })}
-                    style={headerPillStyle}
-                  >
-                    <VariablePillContents type={type}>
-                      {nameField}
-                    </VariablePillContents>
-                  </div>
-                )}
+            <span className="flex w-12 shrink-0 grow-0 items-center justify-center self-stretch border-r border-white/25 bg-(--variable-pill-accent)">
+              <img
+                aria-hidden
+                alt=""
+                className="w-5 opacity-80"
+                src={getIconForType(type)}
               />
-            )}
-          </PopoverContent>
-        </Popover>
-        <TooltipContent side="top">Edit variable: {label}</TooltipContent>
-      </Tooltip>
+            </span>
 
-      <span className="sr-only" aria-live="polite">
-        {announcement}
+            <motion.span
+              ref={labelSectionRef}
+              animate={
+                labelWidths
+                  ? {
+                      width: expanded
+                        ? labelWidths.expanded
+                        : labelWidths.collapsed,
+                    }
+                  : undefined
+              }
+              className={cx(
+                'flex min-w-0 items-center overflow-hidden py-2 pr-6 pl-4',
+                animatingLabel ? 'shrink-0 grow-0' : 'w-fit max-w-full shrink',
+              )}
+              initial={false}
+              style={animatingLabel ? { width: labelWidth } : undefined}
+            >
+              <span
+                ref={labelRef}
+                className={cx(
+                  'w-full',
+                  animatingLabel ? 'whitespace-nowrap' : 'truncate',
+                )}
+              >
+                {label}
+              </span>
+            </motion.span>
+          </span>
+          {!interactive && <span className="sr-only">{accessibleLabel}</span>}
+        </motion.data>
       </span>
-    </>
+    </span>
   );
 };
-
-const ConnectedVariablePillComponent = ({
-  animated = false,
-  editable = false,
-  maxWidth,
-  minWidth,
-  uuid,
-  width,
-}: ConnectedVariablePillProps) => {
-  const variableSelector = useMemo(
-    () => makeGetVariableWithEntity(uuid),
-    [uuid],
-  );
-  const variable = useAppSelector(variableSelector);
-  const { name, type } = variable ?? {};
-
-  if (!type) {
-    return null;
-  }
-
-  return (
-    <VariablePill
-      animated={animated}
-      editable={editable}
-      label={name ?? ''}
-      maxWidth={maxWidth}
-      minWidth={minWidth}
-      type={type}
-      uuid={uuid}
-      width={width}
-    />
-  );
-};
-
-export const ConnectedVariablePill = React.memo(ConnectedVariablePillComponent);
