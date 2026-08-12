@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  createObjectPathWriter,
   formatObjectPath,
   getValue,
   parseObjectPath,
@@ -364,6 +365,30 @@ describe('Object Path Utils', () => {
       setValue(obj, 'settings.locale', 'en');
 
       expect(obj).toEqual({ settings: { theme: 'dark', locale: 'en' } });
+    });
+
+    it('reuses containers created by one scoped writer for sibling paths', () => {
+      const obj: Record<string, unknown> = {};
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('group.first', 'one');
+      const createdGroup = obj.group;
+      writeValue('group.second', 'two');
+
+      expect(obj.group).toBe(createdGroup);
+      expect(obj).toEqual({ group: { first: 'one', second: 'two' } });
+    });
+
+    it('copies a field-owned container before a scoped writer extends it', () => {
+      const existing = Object.freeze({ first: 'one' });
+      const obj: Record<string, unknown> = { group: existing };
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('group.second', 'two');
+
+      expect(obj.group).not.toBe(existing);
+      expect(existing).toEqual({ first: 'one' });
+      expect(obj).toEqual({ group: { first: 'one', second: 'two' } });
     });
   });
 });

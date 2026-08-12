@@ -35,6 +35,9 @@ const writeOwnProperty = (
 
 const createDictionary = (): Record<string, unknown> => ({});
 
+const isDictionary = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 const cloneArray = (existing: unknown[]): unknown[] => {
   const clone: unknown[] = [];
   clone.length = existing.length;
@@ -61,13 +64,30 @@ const cloneDictionary = (existing: object): Record<string, unknown> => {
 const writableContainer = (
   existing: unknown,
   createArray: boolean,
+  ownedContainers?: WeakSet<object>,
 ): Record<string, unknown> | unknown[] => {
-  if (Array.isArray(existing)) return cloneArray(existing);
-  if (createArray) return [];
+  if (Array.isArray(existing)) {
+    if (ownedContainers?.has(existing)) return existing;
+    const clone = cloneArray(existing);
+    ownedContainers?.add(clone);
+    return clone;
+  }
+  if (createArray) {
+    const created: unknown[] = [];
+    ownedContainers?.add(created);
+    return created;
+  }
 
-  return existing !== null && typeof existing === 'object'
-    ? cloneDictionary(existing)
-    : createDictionary();
+  if (isDictionary(existing)) {
+    if (ownedContainers?.has(existing)) return existing;
+    const clone = cloneDictionary(existing);
+    ownedContainers?.add(clone);
+    return clone;
+  }
+
+  const created = createDictionary();
+  ownedContainers?.add(created);
+  return created;
 };
 
 const readQuotedSegment = (
@@ -206,11 +226,12 @@ export function getValue(
  * Sets a value at a structural path. Unsafe paths are ignored, inherited
  * properties are never read, and traversed containers are copied before use.
  */
-export function setValue(
+const setValueWithOwnedContainers = (
   obj: Record<string, unknown>,
   path: string | ObjectPath,
   value: unknown,
-): void {
+  ownedContainers?: WeakSet<object>,
+): void => {
   if (isPrototypeObject(obj)) return;
 
   const segments = resolveObjectPath(path);
@@ -240,8 +261,28 @@ export function setValue(
     const nextContainer = writableContainer(
       existing,
       typeof nextSegment === 'number',
+      ownedContainers,
     );
     writeOwnProperty(current, segment, nextContainer);
     current = nextContainer;
   }
+};
+
+export function setValue(
+  obj: Record<string, unknown>,
+  path: string | ObjectPath,
+  value: unknown,
+): void {
+  setValueWithOwnedContainers(obj, path, value);
+}
+
+export function createObjectPathWriter(
+  obj: Record<string, unknown>,
+): (path: string | ObjectPath, value: unknown) => void {
+  const ownedContainers = new WeakSet<object>();
+  ownedContainers.add(obj);
+
+  return (path, value) => {
+    setValueWithOwnedContainers(obj, path, value, ownedContainers);
+  };
 }

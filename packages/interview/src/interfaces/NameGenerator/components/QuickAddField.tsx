@@ -101,6 +101,7 @@ export default function QuickAddField({
 
   const { id, meta, fieldProps } = useField({
     name: targetVariable,
+    nameMode: 'opaque',
     initialValue: '',
     disabled,
     validateOnChange: true,
@@ -126,7 +127,7 @@ export default function QuickAddField({
     // A successful write starts a fresh entry rather than entering a new,
     // invalid blank value. Resetting restores the field's initial value and
     // clears its dirty/blurred/error state without running required validation.
-    resetFormField(targetVariable);
+    resetFormField([targetVariable]);
     setSubmissionCount((count) => count + 1);
     setShowErrors(false);
     celebrate();

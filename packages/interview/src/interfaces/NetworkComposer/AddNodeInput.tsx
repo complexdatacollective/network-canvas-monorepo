@@ -45,7 +45,7 @@ function AddNodeField({
 }: AddNodeInputProps) {
   const validateForm = useFormStore((state) => state.validateForm);
   const resetField = useFormStore((state) => state.resetField);
-  const [fieldToReset, setFieldToReset] = useState<string>();
+  const [fieldToReset, setFieldToReset] = useState<(string | number)[]>();
   const submissionInProgress = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldRestoreFocus = useRef(false);
@@ -53,6 +53,7 @@ function AddNodeField({
 
   const { id, meta, fieldProps, containerProps } = useField({
     name: targetVariable,
+    nameMode: 'opaque',
     initialValue: '',
     disabled: isSubmitting,
     validateOnChange: true,
@@ -100,7 +101,7 @@ function AddNodeField({
           if (name === '') return;
 
           await onCreate(name);
-          setFieldToReset(targetVariable);
+          setFieldToReset([targetVariable]);
         } finally {
           submissionInProgress.current = false;
           setIsSubmitting(false);

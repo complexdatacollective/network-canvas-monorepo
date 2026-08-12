@@ -4,11 +4,11 @@ import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
 import type { FieldValue } from '../Field/types';
 import {
+  createObjectPathWriter,
   formatObjectPath,
   isSafeObjectPath,
   type ObjectPath,
   parseObjectPath,
-  setValue,
 } from '../utils/objectPath';
 import { validateFieldValue } from '../validation/helpers';
 import type {
@@ -84,8 +84,7 @@ const normalizeSubmissionErrors = (
     }
   });
 
-  const normalizedFieldErrors: FlattenedErrors['fieldErrors'] =
-    Object.create(null);
+  const normalizedFieldErrors: FlattenedErrors['fieldErrors'] = {};
 
   Object.entries(errors.fieldErrors).forEach(([errorKey, messages]) => {
     const alias = aliases.get(errorKey);
@@ -93,10 +92,15 @@ const normalizeSubmissionErrors = (
       fields.has(errorKey) || !alias || ambiguousAliases.has(errorKey)
         ? errorKey
         : alias;
-    const existing = normalizedFieldErrors[fieldName];
-
-    normalizedFieldErrors[fieldName] =
-      existing && messages ? [...existing, ...messages] : messages;
+    const existing = Object.hasOwn(normalizedFieldErrors, fieldName)
+      ? normalizedFieldErrors[fieldName]
+      : undefined;
+    Object.defineProperty(normalizedFieldErrors, fieldName, {
+      configurable: true,
+      enumerable: true,
+      value: existing && messages ? [...existing, ...messages] : messages,
+      writable: true,
+    });
   });
 
   return {
@@ -517,6 +521,7 @@ export const createFormStore = (): FormStoreApi => {
       getFormValues: () => {
         const state = get();
         const values: Record<string, FieldValue> = {};
+        const writeValue = createObjectPathWriter(values);
         // Only registered fields contribute: an unmounted field's value is
         // not part of the form's output. Dormant storage exists solely to
         // restore a value when the field remounts and to back the
@@ -524,7 +529,7 @@ export const createFormStore = (): FormStoreApi => {
         //
         // Registration order, which is also the output's key order.
         state.fields.forEach((fieldState) => {
-          setValue(values, fieldState.path, fieldState.value);
+          writeValue(fieldState.path, fieldState.value);
         });
 
         // A form may register a field at a CONTAINER path (`mapOptions`)
@@ -541,7 +546,7 @@ export const createFormStore = (): FormStoreApi => {
           .toSorted(([, a], [, b]) => a.path.length - b.path.length);
 
         for (const [, fieldState] of nested) {
-          setValue(values, fieldState.path, fieldState.value);
+          writeValue(fieldState.path, fieldState.value);
         }
 
         return values;

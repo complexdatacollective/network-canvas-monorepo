@@ -555,6 +555,7 @@ describe('FormStore', () => {
           'steps[0]["favorite.color"]': ['Choose another color'],
         },
       });
+      expect(normalized?.fieldErrors).toBeInstanceOf(Object);
       expect(
         store.getState().getFieldErrors(['steps', 0, 'favorite.color']),
       ).toEqual(['Choose another color']);
