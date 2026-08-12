@@ -116,6 +116,37 @@ describe('roster pools of different widths over the same people', () => {
   });
 });
 
+describe('overlapping pools that only one assignment satisfies', () => {
+  it('repairs an earlier choice rather than reporting a stage empty', () => {
+    // A=[1,2] B=[1,3] C=[3,4] D=[1,4], one person each. Claiming a prefix in
+    // size order takes 1, then 3, then 4, and leaves D with nothing — yet
+    // A=2, B=3, C=4, D=1 satisfies every stage. Every pool is the same size,
+    // so no ordering heuristic rescues it; only augmenting the assignment
+    // does.
+    for (let seed = 1; seed <= 10; seed++) {
+      const { network } = run(
+        [
+          rosterStage('A', 1),
+          rosterStage('B', 1),
+          rosterStage('C', 1),
+          rosterStage('D', 1),
+        ],
+        {
+          A: poolOf('p1', 'p2'),
+          B: poolOf('p1', 'p3'),
+          C: poolOf('p3', 'p4'),
+          D: poolOf('p1', 'p4'),
+        },
+        seed,
+      );
+
+      expect(network.nodes, `seed ${seed}`).toHaveLength(4);
+      const byStage = new Set(network.nodes.map((node) => node.stageId));
+      expect(byStage, `seed ${seed}`).toEqual(new Set(['A', 'B', 'C', 'D']));
+    }
+  });
+});
+
 describe('a roster that cannot cover the stages drawing from it', () => {
   it('refuses, rather than quietly building fewer people', () => {
     const attempt = () =>

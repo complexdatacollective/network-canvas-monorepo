@@ -318,9 +318,21 @@ export function materialiseSession(params: {
   const certainlyMissing = (
     ref: EntityScopeRef,
     variableId: string,
+    planned: Planned | undefined,
   ): boolean => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return false;
+    // A group holding a value fixed at creation is ANSWERED, whatever the
+    // declared missingness of its other members says — the plan's own rule
+    // (`certainlyMissingVariables`) exempts it for exactly this reason. The
+    // walk skipped that check, so a variable written only behind a filter and
+    // declared certainly-missing was nulled beside a fixed `sameAs` sibling,
+    // emitting a finished session that contradicts its own rule.
+    const answered = (id: string): boolean =>
+      planned !== undefined &&
+      (id in planned.fixedAtCreation ||
+        (id in planned.attributes && !planned.missing.has(id)));
+    if (members.some(answered)) return false;
     const scope = scopeKey(ref);
     return (
       groupMissingProbability(
@@ -345,7 +357,7 @@ export function materialiseSession(params: {
       attributes[variableId] = valueFor(planned, variableId);
       return;
     }
-    if (certainlyMissing(ref, variableId)) {
+    if (certainlyMissing(ref, variableId, planned)) {
       attributes[variableId] = null;
       return;
     }

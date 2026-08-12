@@ -1,4 +1,5 @@
 import { filter as getFilter } from '@codaco/network-query';
+import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
 import type {
   EdgeTopology,
   StructuralCodebook,
@@ -91,6 +92,40 @@ export type EdgeTopologyTarget = {
   metric: EdgeTopology['metric'];
   value: number;
 };
+
+/**
+ * Declared populations trimmed to what a synchronous preview can build.
+ *
+ * A stage minimum is a FLOOR the planner has to honour, and `behaviours
+ * .minNodes` is unbounded in the stage schema — so a schema-valid minimum of a
+ * billion would make `planNetwork` iterate a billion times on Architect's main
+ * thread. `syntheticCountCeiling` already bounds what a declared count can ask
+ * for at validation time; this is the floor's equivalent, and it bounds the
+ * SUM as well, since several stages each at the cap reach the same place by
+ * another route.
+ *
+ * Clamped rather than refused: `minNodes` is an interview constraint rather
+ * than a synthetic declaration, so a protocol carrying a large one is not
+ * wrong — its preview simply cannot render that many people. Trimmed from the
+ * last stage back, so the earliest stages keep the people they asked for.
+ */
+function withinPopulationCeiling(assigned: number[]): number[] {
+  const capped = assigned.map((count) =>
+    Math.min(count, MAX_SYNTHETIC_POPULATION),
+  );
+  let total = capped.reduce((sum, count) => sum + count, 0);
+  for (
+    let index = capped.length - 1;
+    index >= 0 && total > MAX_SYNTHETIC_POPULATION;
+    index--
+  ) {
+    const current = capped[index]!;
+    const drop = Math.min(current, total - MAX_SYNTHETIC_POPULATION);
+    capped[index] = current - drop;
+    total -= drop;
+  }
+  return capped;
+}
 
 /**
  * Key under which one creation's topology target is stored and looked up.
@@ -661,55 +696,94 @@ function assignRosterRows(
     if (list.length > 1) for (const index of list) contested.add(index);
   }
 
-  const taken = new Set<string>();
-  const preference = new Map<number, string[]>();
+  // Each person a stage must place is one SLOT, and each slot may take any
+  // unused row from that stage's pool. Assigning greedily — smallest pool
+  // first, claiming a prefix — still rejects assignments that exist: with
+  // pools A=[1,2], B=[1,3], C=[3,4], D=[1,4] each wanting one person, greedy
+  // takes 1, 3 and 4 and reports D empty, though A=2, B=3, C=4, D=1 satisfies
+  // every stage. That is bipartite matching, so it is solved as one: each slot
+  // walks an augmenting path, which REPAIRS an earlier choice rather than
+  // living with it.
+  const slots: number[] = [];
   const order = [...pools.keys()].toSorted(
     (left, right) => pools.get(left)!.length - pools.get(right)!.length,
   );
-
   for (const index of order) {
     const creation = creations[index]!;
-    const available = pools.get(index)!.filter((uid) => !taken.has(uid));
-    let wanted = assigned[index] ?? 0;
-
     // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
     // which says nothing about this roster: the real Development Protocol has
-    // six classmates and a stage the default would have asked eight of. Take
-    // what the pool offers instead, and reserve the refusal for a count the
-    // author actually wrote — where asking for more people than the roster
-    // holds is a protocol they need to hear about.
-    if (!creation.countDeclared && wanted > available.length) {
-      wanted = available.length;
-      assigned[index] = wanted;
-    }
-
-    if (available.length < wanted) {
-      const label =
-        effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
-      const offered = `${available.length} ${available.length === 1 ? 'person' : 'people'}`;
-      throw new SyntheticDataConstraintError(
-        [
-          {
-            entity: 'node',
-            entityType: nodeType,
-            ...(nodeTypeName === undefined
-              ? {}
-              : { entityTypeName: nodeTypeName }),
-            variableIds: [],
-            variableNames: [],
-            rules: ['roster size'],
-            reason:
-              `the roster for "${label}" offers ${offered} no earlier stage has already used, ` +
-              `but that stage is set to add ${wanted}`,
-          },
-        ],
-        'a roster does not hold enough people for the stages drawing from it',
+    // six classmates and a stage the default would have asked eight of. Cap it
+    // at what the pool could offer, and reserve the refusal for a count the
+    // author actually wrote.
+    if (!creation.countDeclared) {
+      assigned[index] = Math.min(
+        assigned[index] ?? 0,
+        pools.get(index)!.length,
       );
     }
+    for (let taken = 0; taken < (assigned[index] ?? 0); taken++) {
+      slots.push(index);
+    }
+  }
 
-    const mine = available.slice(0, wanted);
-    for (const uid of mine) taken.add(uid);
-    if (contested.has(index)) preference.set(index, mine);
+  /** Row currently held by each slot, and the slot holding each row. */
+  const rowOfSlot = new Map<number, string>();
+  const slotOfRow = new Map<string, number>();
+
+  const augment = (slot: number, visited: Set<string>): boolean => {
+    for (const uid of pools.get(slots[slot]!)!) {
+      if (visited.has(uid)) continue;
+      visited.add(uid);
+      const holder = slotOfRow.get(uid);
+      if (holder === undefined || augment(holder, visited)) {
+        const previous = rowOfSlot.get(slot);
+        if (previous !== undefined) slotOfRow.delete(previous);
+        rowOfSlot.set(slot, uid);
+        slotOfRow.set(uid, slot);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const unmatched = new Map<number, number>();
+  slots.forEach((creationIndex, slot) => {
+    if (!augment(slot, new Set())) {
+      unmatched.set(creationIndex, (unmatched.get(creationIndex) ?? 0) + 1);
+    }
+  });
+
+  for (const [index, short] of unmatched) {
+    const creation = creations[index]!;
+    const wanted = assigned[index] ?? 0;
+    const offered = wanted - short;
+    const label =
+      effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
+    throw new SyntheticDataConstraintError(
+      [
+        {
+          entity: 'node',
+          entityType: nodeType,
+          ...(nodeTypeName === undefined
+            ? {}
+            : { entityTypeName: nodeTypeName }),
+          variableIds: [],
+          variableNames: [],
+          rules: ['roster size'],
+          reason:
+            `the roster for "${label}" can supply ${offered} ${offered === 1 ? 'person' : 'people'} ` +
+            `no other stage needs more, but that stage is set to add ${wanted}`,
+        },
+      ],
+      'a roster does not hold enough people for the stages drawing from it',
+    );
+  }
+
+  const preference = new Map<number, string[]>();
+  for (const [slot, uid] of rowOfSlot) {
+    const index = slots[slot]!;
+    if (!contested.has(index)) continue;
+    preference.set(index, [...(preference.get(index) ?? []), uid]);
   }
 
   return preference;
@@ -768,14 +842,16 @@ export function planNetwork(
     // What the stage's own behaviours allow still binds — `minNodes` and
     // `maxNodes` are what the interface will actually hold, whatever the
     // author declared beside them.
-    const assigned = creations.map((creation) => {
-      const drawn = sampleCount(
-        creation.count ?? DEFAULT_NODE_COUNT,
-        source.stream('count', creation.stageId, type),
-      );
-      const { min, max } = creation.capacity;
-      return Math.max(min, max === null ? drawn : Math.min(max, drawn));
-    });
+    const assigned = withinPopulationCeiling(
+      creations.map((creation) => {
+        const drawn = sampleCount(
+          creation.count ?? DEFAULT_NODE_COUNT,
+          source.stream('count', creation.stageId, type),
+        );
+        const { min, max } = creation.capacity;
+        return Math.max(min, max === null ? drawn : Math.min(max, drawn));
+      }),
+    );
 
     // Roster rows are drawn without replacement across the whole run, so
     // stages over overlapping pools contest the same people. With counts fixed
@@ -1159,7 +1235,15 @@ export function planNetwork(
         outstanding,
       )) {
         taken.add(key);
-        typeEdges.push(buildEdge(pair.a, pair.b, pair.firstStageIndex, {}));
+        // The SELECTING creation, not the one that first admitted the pair to
+        // the domain. Topology is declared per stage now, so a density-0
+        // sociogram followed by a density-1 one selects at the later stage
+        // while the pair entered at the earlier: stamping where it entered
+        // materialised the edge before the stage that decided it, changing
+        // intermediate filters, skip logic and census answers. Creations are
+        // walked in ascending stage order, so this only ever moves an edge
+        // later — never before a stage that could reach its endpoints.
+        typeEdges.push(buildEdge(pair.a, pair.b, creation.stageIndex, {}));
       }
     }
 

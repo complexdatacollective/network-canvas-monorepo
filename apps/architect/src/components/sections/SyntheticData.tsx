@@ -232,6 +232,13 @@ const TOPOLOGY_FAMILY_OPTIONS = [
   { label: 'Constant', value: 'constant' },
 ];
 
+// Beta lives on 0-1 by construction, so it describes a density and nothing
+// else: mean degree is a count and has no upper bound to sit inside.
+const DENSITY_FAMILY_OPTIONS = [
+  ...TOPOLOGY_FAMILY_OPTIONS,
+  { label: 'Beta', value: 'beta' },
+];
+
 const seedTopology = (metric: string, family: string): EdgeTopology => {
   if (metric === 'meanDegree') {
     switch (family) {
@@ -262,6 +269,13 @@ const seedTopology = (metric: string, family: string): EdgeTopology => {
       return {
         metric: 'density',
         distribution: { distribution: 'normal', mean: 0.4, sd: 0.1 },
+      };
+    case 'beta':
+      // sd² < mean × (1 − mean) is what the schema requires of a beta, so the
+      // seed has to satisfy it: 0.15² = 0.0225 against 0.4 × 0.6 = 0.24.
+      return {
+        metric: 'density',
+        distribution: { distribution: 'beta', mean: 0.4, sd: 0.15 },
       };
     default:
       return DEFAULT_EDGE_TOPOLOGY;
@@ -318,7 +332,9 @@ function EdgeSyntheticControl({
           <LooseField
             component={FrescoSelect}
             label="Distribution"
-            options={TOPOLOGY_FAMILY_OPTIONS}
+            options={
+              isDensity ? DENSITY_FAMILY_OPTIONS : TOPOLOGY_FAMILY_OPTIONS
+            }
             value={distribution.distribution}
             onChange={(family: unknown) =>
               onChange({
@@ -350,6 +366,26 @@ function EdgeSyntheticControl({
                 onChange={(next) => patch({ max: next })}
                 min={0}
                 {...(isDensity ? { max: 1, step: '0.01' } : {})}
+              />
+            </>
+          )}
+          {distribution.distribution === 'beta' && (
+            <>
+              <NumberControl
+                label="Mean"
+                value={distribution.mean}
+                onChange={(next) => patch({ mean: next ?? 0 })}
+                min={0}
+                max={1}
+                step="0.01"
+              />
+              <NumberControl
+                label="Standard deviation"
+                value={distribution.sd}
+                onChange={(next) => patch({ sd: next ?? 0 })}
+                min={0}
+                max={1}
+                step="0.01"
               />
             </>
           )}

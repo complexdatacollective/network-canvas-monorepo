@@ -196,6 +196,40 @@ describe('planNetwork populations', () => {
   });
 });
 
+describe('planNetwork against the population ceiling', () => {
+  // `behaviours.minNodes` is a floor the planner must honour and the stage
+  // schema puts no ceiling on it, so a schema-valid minimum walks straight
+  // past the cap that keeps a synchronous preview from freezing the renderer.
+  it('trims a stage minimum that would exceed it', () => {
+    const result = plan(baseCodebook(), [
+      nameGenerator({ behaviours: { minNodes: 9_000_000 } }, 1),
+    ]);
+    expect(result.nodes).toHaveLength(10_000);
+  });
+
+  it('trims the SUM when several stages each sit inside it', () => {
+    // Each is legal alone; together they are not.
+    const result = plan(baseCodebook(), [
+      nameGenerator({ id: 'ng-a', behaviours: { minNodes: 9_000 } }, 1),
+      nameGenerator({ id: 'ng-b', behaviours: { minNodes: 9_000 } }, 1),
+    ]);
+    expect(result.nodes).toHaveLength(10_000);
+    // Trimmed from the last stage back, so the first keeps what it asked for.
+    const first = result.nodes.filter(
+      (node) => node.creationStageIndex === 0,
+    ).length;
+    expect(first).toBe(9_000);
+  });
+
+  it('leaves minimums inside the ceiling exactly as they were', () => {
+    const result = plan(baseCodebook(), [
+      nameGenerator({ id: 'ng-a', behaviours: { minNodes: 2 } }, 0),
+      nameGenerator({ id: 'ng-b', behaviours: { minNodes: 3 } }, 0),
+    ]);
+    expect(result.nodes).toHaveLength(5);
+  });
+});
+
 describe('planNetwork rosters', () => {
   const rosterStage = (count: number) =>
     stage({
@@ -326,6 +360,33 @@ describe('planNetwork edges', () => {
     for (const edge of result.edges) {
       expect(edge.from).not.toBe(edge.to);
       expect(edge.creationStageIndex).toBe(1);
+    }
+  });
+
+  it('stamps an edge with the stage that selected it', () => {
+    // Two censuses over one edge type: the first wants none, the second wants
+    // every pair. The pairs enter the domain at the FIRST census, so stamping
+    // where a pair entered would materialise these edges a stage early —
+    // changing what later filters, skip logic and census answers see.
+    const codebook = withEdgeType(baseCodebook(), 'knows');
+    const result = plan(codebook, [
+      nameGenerator({}, 3),
+      censusStage('knows', {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0 },
+      }),
+      stage({
+        ...censusStage('knows', {
+          metric: 'density',
+          distribution: { distribution: 'constant', value: 1 },
+        }),
+        id: 'census-late',
+      }),
+    ]);
+
+    expect(result.edges).toHaveLength(3); // C(3, 2)
+    for (const edge of result.edges) {
+      expect(edge.creationStageIndex).toBe(2);
     }
   });
 
