@@ -1,98 +1,44 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { startCase } from 'es-toolkit/compat';
 import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-
-let mockBooleanVariables: { value: string; label: string; type: string }[] = [];
-let mockColorValue: string | undefined = undefined;
-
-vi.mock('react-redux', async () => {
-  const actual =
-    await vi.importActual<typeof import('react-redux')>('react-redux');
-  return {
-    ...actual,
-    useSelector: (selector: (state: unknown) => unknown) => {
-      const result = selector({});
-      if (Array.isArray(result)) return mockBooleanVariables;
-      return mockColorValue;
-    },
-  };
-});
-
-vi.mock('redux-form', () => ({
-  formValueSelector: () => () => mockColorValue,
-  Field: ({ name }: { name: string; component: unknown }) => (
-    <div data-testid={`field-${name}`} />
-  ),
-}));
-
-vi.mock('~/selectors/codebook', () => ({
-  getVariableOptionsForSubject: () => [
-    { value: 'var-1', label: 'Affected', type: 'boolean' },
-    { value: 'var-2', label: 'Carrier', type: 'boolean' },
-    { value: 'var-3', label: 'Age', type: 'number' },
-  ],
-}));
-
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Section: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title: string;
-  }) => (
-    <div>
-      <h2>{title}</h2>
-      {children}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/Form/ValidatedField', () => ({
-  default: ({
-    name,
-    componentProps,
-  }: {
-    name: string;
-    componentProps?: {
-      label?: string;
-      options?: { value: string; label: string }[];
-    };
-  }) => (
-    <div data-testid={`field-${name}`}>
-      {componentProps?.label && <span>{componentProps.label}</span>}
-      {componentProps?.options?.map((o) => (
-        <span key={o.value} data-testid={`option-${o.value}`}>
-          {o.label}
-        </span>
-      ))}
-    </div>
-  ),
-}));
-
-vi.mock('~/components/IssueAnchor', () => ({
-  default: () => null,
-}));
-
-vi.mock('~/components/Form/Fields/ColorPicker', () => ({
-  default: () => <div data-testid="color-picker" />,
-}));
-
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => <div data-testid="variable-picker" />,
-}));
 
 import DiseaseFields from '../DiseaseFields';
 
+const CODEBOOK = {
+  node: {
+    'node-type-1': {
+      name: 'Person',
+      color: 'c',
+      variables: {
+        'var-1': { name: 'Affected', type: 'boolean' },
+        'var-2': { name: 'Carrier', type: 'boolean' },
+        'var-3': { name: 'Age', type: 'number' },
+      },
+    },
+  },
+};
+
 const renderFields = (nodeType = 'node-type-1') => {
-  const store = configureStore({ reducer: { noop: () => ({}) } });
+  const store = configureStore({
+    reducer: {
+      activeProtocol: (
+        state = {
+          present: { schemaVersion: 8, codebook: CODEBOOK, stages: [] },
+        },
+      ) => state,
+      stageEditorDraft: (state = { ui: { liveValues: null } }) => state,
+    },
+  });
   return render(
     <Provider store={store}>
-      <DiseaseFields nodeType={nodeType} />
+      <FormStoreProvider>
+        <DiseaseFields nodeType={nodeType} />
+      </FormStoreProvider>
     </Provider>,
   );
 };
@@ -105,7 +51,9 @@ describe('DiseaseFields', () => {
 
   it('renders the label field', () => {
     renderFields();
-    expect(screen.getByTestId('field-label')).toBeDefined();
+    expect(
+      screen.getByPlaceholderText('Enter a name for this disease...'),
+    ).toBeInTheDocument();
   });
 
   it('renders the Color section', () => {
@@ -115,7 +63,11 @@ describe('DiseaseFields', () => {
 
   it('renders the color field', () => {
     renderFields();
-    expect(screen.getByTestId('field-color')).toBeDefined();
+    expect(
+      screen.getByRole('radiogroup', {
+        name: /Select a color for this disease/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('renders the Node Variable section', () => {
@@ -123,9 +75,10 @@ describe('DiseaseFields', () => {
     expect(screen.getByText('Node Variable')).toBeDefined();
   });
 
-  it('renders the variable field', () => {
+  it('renders the variable field, offering only boolean variables', () => {
     renderFields();
-    expect(screen.getByTestId('field-variable')).toBeDefined();
+    expect(screen.getByText('No variable selected')).toBeInTheDocument();
+    expect(screen.getByText('Select variable')).toBeInTheDocument();
   });
 
   it('renders the Inheritance Pattern section', () => {
@@ -135,11 +88,17 @@ describe('DiseaseFields', () => {
 
   it('renders all INHERITANCE_PATTERNS as options', () => {
     renderFields();
-    const field = screen.getByTestId('field-inheritancePattern');
+    const select = screen.getByRole('combobox', {
+      name: 'Inheritance pattern',
+    });
+    expect(select).toHaveTextContent('Select an inheritance pattern...');
+
+    fireEvent.click(select);
+
     for (const pattern of INHERITANCE_PATTERNS) {
       expect(
-        field.querySelector(`[data-testid="option-${pattern}"]`),
-      ).toBeDefined();
+        screen.getByRole('option', { name: startCase(pattern) }),
+      ).toBeInTheDocument();
     }
   });
 });

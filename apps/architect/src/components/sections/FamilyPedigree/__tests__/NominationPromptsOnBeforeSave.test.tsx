@@ -1,28 +1,20 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import { createElement, type ComponentType } from 'react';
 import { Provider } from 'react-redux';
-import { SubmissionError } from 'redux-form';
 import { describe, expect, it, vi } from 'vitest';
 
-// Bypasses redux-form's real FieldArray (which needs a reduxForm()-wrapped
-// ancestor NominationPrompts does not provide on its own) and captures the
-// `onBeforeSave` componentProp for direct invocation — the same
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { Stage } from '@codaco/protocol-validation';
+import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+
+// Bypasses the real DialogArrayField (whose dialog machinery is irrelevant
+// here) and captures the `onBeforeSave` prop for direct invocation — the same
 // capture-a-handler-prop idiom
 // FamilyPedigree/__tests__/NodeConfigurationHandlers.test.tsx uses for this
 // app's other DialogArrayField-backed sections.
-vi.mock('~/components/Form/ValidatedFieldArray', () => ({
-  default: ({
-    component,
-    componentProps,
-  }: {
-    component: ComponentType<Record<string, unknown>>;
-    componentProps?: Record<string, unknown>;
-  }) => createElement(component, componentProps),
-}));
-
 let capturedOnBeforeSave: ((value: unknown) => unknown) | undefined;
-vi.mock('~/components/Form/DialogArrayField', () => ({
+vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
     onBeforeSave,
   }: {
@@ -73,42 +65,47 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
 
 const renderWithStore = (
   protocol: unknown,
-  editFormInitial?: Record<string, unknown>,
+  committedNominationPrompts: Record<string, unknown>[],
 ): ((value: unknown) => unknown) => {
   capturedOnBeforeSave = undefined;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
-      form: (
-        state = {
-          'edit-stage': {
-            values: {
-              nodeConfig: { type: 'person' },
-              // Non-empty so the toggleable Section's startExpanded is true
-              // and the FieldArray (and its onBeforeSave) actually mounts.
-              nominationPrompts: [{ id: 'p1', text: 'T', variable: 'flagged' }],
-            },
-          },
-          ...(editFormInitial
-            ? { 'editable-list-form': { initial: editFormInitial } }
-            : {}),
-        },
-      ) => state,
+      stageEditorDraft,
     },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false, immutableCheck: false }),
   });
+
   render(
     <Provider store={store}>
-      <NominationPrompts
-        form="edit-stage"
-        stagePath="stages[0]"
-        stagePosition={0}
-        interfaceType="FamilyPedigree"
-      />
+      <FormStoreProvider>
+        <StageFormBridge
+          committedStage={
+            {
+              id: 's2',
+              type: 'FamilyPedigree',
+              nodeConfig: { type: 'person' },
+              // Non-empty so the toggleable Section's startExpanded is true
+              // and the array field (and its onBeforeSave) actually mounts.
+              nominationPrompts: committedNominationPrompts,
+            } as unknown as Stage
+          }
+          stageId="s2"
+          formId="edit-stage"
+        >
+          <NominationPrompts
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="FamilyPedigree"
+          />
+        </StageFormBridge>
+      </FormStoreProvider>
     </Provider>,
   );
   expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
   // Read into a local const: `capturedOnBeforeSave` is reassigned by the
-  // mocked DialogArrayField closure above, so TS cannot narrow the outer
+  // mocked ArchitectArrayField closure above, so TS cannot narrow the outer
   // `let` itself past `undefined` here even after this guard.
   const onBeforeSave = capturedOnBeforeSave;
   if (!onBeforeSave) {
@@ -118,27 +115,27 @@ const renderWithStore = (
 };
 
 describe('NominationPrompts onBeforeSave cross-class gate', () => {
-  it('throws a SubmissionError keyed at variable with the mirror message', async () => {
-    const onBeforeSave = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT);
-    let thrown: unknown;
-    try {
-      await onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' });
-    } catch (error) {
-      thrown = error;
-    }
-    if (!(thrown instanceof SubmissionError)) {
-      throw new Error('onBeforeSave did not block the save');
-    }
-    expect(thrown.errors).toEqual({
-      variable:
-        '"Flagged" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+  it('blocks the save with a field error keyed at variable, with the mirror message', () => {
+    const onBeforeSave = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT, [
+      { id: 'p1', text: 'T', variable: 'other' },
+    ]);
+
+    const result = onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' });
+
+    expect(result).toEqual({
+      success: false,
+      fieldErrors: {
+        variable: [
+          '"Flagged" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+        ],
+      },
     });
   });
 
   it('escapes when the pick equals the prompt’s original committed variable (editing without changing)', () => {
-    const onBeforeSave = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT, {
-      variable: 'flagged',
-    });
+    const onBeforeSave = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT, [
+      { id: 'p1', text: 'T', variable: 'flagged' },
+    ]);
     const value = { id: 'p1', text: 'T', variable: 'flagged' };
     expect(onBeforeSave(value)).toBe(value);
   });
@@ -148,7 +145,9 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       ...PROTOCOL_WITH_FORM_CONFLICT,
       stages: [PROTOCOL_WITH_FORM_CONFLICT.stages[1]],
     };
-    const onBeforeSave = renderWithStore(nominationOnly);
+    const onBeforeSave = renderWithStore(nominationOnly, [
+      { id: 'p1', text: 'T', variable: 'flagged' },
+    ]);
     const value = { id: 'p1', text: 'T', variable: 'flagged' };
     expect(onBeforeSave(value)).toBe(value);
   });

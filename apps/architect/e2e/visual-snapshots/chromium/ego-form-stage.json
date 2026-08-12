@@ -1,5 +1,6 @@
 {
   "label": "About You",
+  "id": "id-1",
   "type": "EgoForm",
   "introductionPanel": {
     "title": "About You",
@@ -8,11 +9,10 @@
   "form": {
     "fields": [
       {
-        "variable": "id-1",
-        "id": "id-2",
+        "variable": "id-2",
+        "id": "id-3",
         "prompt": "What is your name?"
       }
     ]
-  },
-  "id": "id-3"
+  }
 }

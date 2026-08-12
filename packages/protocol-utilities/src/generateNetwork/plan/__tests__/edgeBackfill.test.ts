@@ -52,12 +52,6 @@ const codebook = {
       name: 'Knows',
       color: 'edge-color-seq-1',
       variables: {},
-      synthetic: {
-        topology: {
-          metric: 'density',
-          distribution: { distribution: 'constant', value: 0.3 },
-        },
-      },
     },
   },
 } as unknown as StructuralCodebook;
@@ -80,6 +74,12 @@ const sociogram = (id: string, localsOnly: boolean): Stage =>
   ({
     id,
     type: 'Sociogram',
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0.3 },
+      },
+    },
     label: id,
     subject: { entity: 'node', type: 'person' },
     prompts: [

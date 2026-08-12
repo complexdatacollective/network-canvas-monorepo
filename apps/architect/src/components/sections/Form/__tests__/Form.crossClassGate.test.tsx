@@ -1,8 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import { createElement, type ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
+
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { Stage } from '@codaco/protocol-validation';
 
 // Task 9 fix round 1: mount-level coverage of the REAL wiring behind
 // Form.tsx's `hasUnvalidatedUse` closure — the role-map subscription
@@ -14,28 +16,17 @@ import { describe, expect, it, vi } from 'vitest';
 // mechanism lives entirely in DialogArrayField/DialogEditor, shared
 // unchanged by every mount.
 //
-// Bypasses redux-form's real FieldArray (which needs a reduxForm()-wrapped
-// ancestor Form.tsx does not provide on its own) and captures the real
-// `editorValidate` componentProp for direct invocation — the same
-// capture-a-handler-prop idiom used throughout this project's Task 9 tests
-// (CategoricalBinPrompts, SociogramPrompts, etc.).
-vi.mock('~/components/Form/ValidatedFieldArray', () => ({
-  default: ({
-    component,
-    componentProps,
-  }: {
-    component: ComponentType<Record<string, unknown>>;
-    componentProps?: Record<string, unknown>;
-  }) => createElement(component, componentProps),
-}));
-
+// The array editor itself is stubbed so the real `editorValidate` prop can be
+// captured and invoked directly — the same capture-a-handler-prop idiom used
+// throughout this project's Task 9 tests (CategoricalBinPrompts,
+// SociogramPrompts, etc.).
 let capturedEditorValidate:
   | ((
       values: Record<string, unknown>,
       props?: { initialValues?: unknown },
     ) => Record<string, unknown>)
   | undefined;
-vi.mock('~/components/Form/DialogArrayField', () => ({
+vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   default: ({
     editorValidate,
   }: {
@@ -49,7 +40,14 @@ vi.mock('~/components/Form/DialogArrayField', () => ({
   },
 }));
 
+// Only `editorValidate` is under test; the row editor is a full
+// variable/control/validation form whose module graph is irrelevant here.
+vi.mock('../FieldFields', () => ({ default: () => null }));
+
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+
 import Form from '../Form';
 
 // `cat` is written both by an AlterForm field (validated, stage s1 — this
@@ -179,37 +177,45 @@ const renderForm = (
     reducer: {
       activeProtocol: (state = { present: PROTOCOL_WITH_FORM_CONFLICT }) =>
         state,
-      form: (
-        state = {
-          'edit-stage': {
-            values: {
-              subject,
-              form: {
-                fields: [{ variable: 'boolA' }, { variable: 'boolB' }],
-              },
-              prompts: [
-                {
-                  additionalAttributes: [
-                    { variable: 'draftOnly', value: true },
-                  ],
-                },
-              ],
-            },
-          },
-        },
-      ) => state,
+      stageEditorDraft,
     },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: false,
+        immutableCheck: false,
+      }),
   });
+
+  // `subject`, this stage's own form fields and its unsaved prompt drafts are
+  // stage-form reads now, seeded from the committed stage the editor opened on.
+  const committedStage = {
+    id: 's1',
+    type: 'AlterForm',
+    subject,
+    form: { fields: [{ variable: 'boolA' }, { variable: 'boolB' }] },
+    prompts: [
+      { additionalAttributes: [{ variable: 'draftOnly', value: true }] },
+    ],
+  } as unknown as Stage;
+
   render(
     <Provider store={store}>
-      <Form
-        form="edit-stage"
-        stagePath={`stages[${currentStageIndex}]`}
-        stagePosition={currentStageIndex}
-        interfaceType="AlterForm"
-      />
+      <FormStoreProvider>
+        <StageFormBridge
+          committedStage={committedStage}
+          stageId="s1"
+          formId="edit-stage"
+        >
+          <Form
+            stagePath={`stages[${currentStageIndex}]`}
+            stagePosition={currentStageIndex}
+            interfaceType="AlterForm"
+          />
+        </StageFormBridge>
+      </FormStoreProvider>
     </Provider>,
   );
+
   expect(screen.getByTestId('dialog-array-field')).toBeInTheDocument();
   if (!capturedEditorValidate) {
     throw new Error('editorValidate was not captured');

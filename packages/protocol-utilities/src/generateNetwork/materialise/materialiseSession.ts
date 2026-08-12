@@ -30,9 +30,12 @@ import {
   equalityGroups,
   groupMissingProbability,
   missingProbabilities,
+  missingProbabilitiesFor,
   requiredVariables,
+  requiredVariablesFor,
   type NetworkPlan,
   shuffled,
+  topologyKey,
   topologyTarget,
 } from '../plan/networkPlan';
 import { deterministicUuid } from '../plan/random';
@@ -56,8 +59,22 @@ export type MaterialisedSession = {
   droppedOut: boolean;
 };
 
+/**
+ * An unordered pair as one key.
+ *
+ * Length-prefixed rather than delimited. An `_uid` is an arbitrary string —
+ * roster rows keep whatever ids the caller's external data carried, and
+ * `BaseNcEntitySchema` permits every string — so no character is safe to join
+ * on: a space made `('a', 'b c')` and `('a b', 'c')` read alike, and a NUL
+ * only moves the problem to ids that contain one, which JSON can encode.
+ * Prefixing each endpoint with its own length is injective over every string,
+ * so the domain cannot silently lose a pair and a census answer cannot be
+ * attributed to the wrong one.
+ */
+const encodeUid = (uid: string): string => `${uid.length}:${uid}`;
+
 const pairKey = (a: string, b: string): string =>
-  a < b ? `${a} ${b}` : `${b} ${a}`;
+  a < b ? `${encodeUid(a)}${encodeUid(b)}` : `${encodeUid(b)}${encodeUid(a)}`;
 
 type Planned = {
   attributes: Record<string, VariableValue>;
@@ -257,18 +274,43 @@ export function materialiseSession(params: {
    * here. Without this a variable declared `missingProbability: 1` comes back
    * populated on exactly those entities, which is the declaration inverted.
    */
+  /**
+   * Whether the plan already answers some member of this equality group.
+   *
+   * A group holding an answered value is ANSWERED — the plan's own rule
+   * (`certainlyMissingVariables`) exempts it for exactly this reason, and both
+   * walk-time paths have to agree. Nulling such a group emits a session that
+   * contradicts the `sameAs` it was built to satisfy: one member holding the
+   * value its creating interaction fixed, the rest null beside it.
+   */
+  const groupHasPlannedAnswer = (
+    members: readonly string[],
+    planned: Planned | undefined,
+  ): boolean =>
+    planned !== undefined &&
+    members.some(
+      (id) =>
+        id in planned.fixedAtCreation ||
+        (id in planned.attributes && !planned.missing.has(id)),
+    );
+
   const applyUnplannedMissingness = (
     ref: EntityScopeRef,
     uid: string,
     attributes: Record<string, VariableValue>,
     variableId: string,
+    planned: Planned | undefined,
   ): void => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return;
+    if (groupHasPlannedAnswer(members, planned)) return;
+    // Per scope: one variable key can name separate definitions under two
+    // entity types, and each declares its own missingness.
+    const scope = scopeKey(ref);
     const probability = groupMissingProbability(
       members,
-      missingByVariable,
-      requiredByVariable,
+      missingProbabilitiesFor(missingByVariable, scope),
+      requiredVariablesFor(requiredByVariable, scope),
     );
     if (probability <= 0) return;
 
@@ -287,6 +329,38 @@ export function materialiseSession(params: {
     }
   };
 
+  /**
+   * Whether a group the walk is about to draw is certainly unanswered.
+   *
+   * The plan skips drawing these; the walk has to as well, and for the same
+   * reason: a `unique` draw claims its value from the registry, so drawing one
+   * only to null it can exhaust a small value space and fail a session whose
+   * final state holds nothing. Feasibility exempts these groups too.
+   */
+  const certainlyMissing = (
+    ref: EntityScopeRef,
+    variableId: string,
+    planned: Planned | undefined,
+  ): boolean => {
+    const members = groupsFor(ref).find((group) => group.includes(variableId));
+    if (members === undefined) return false;
+    // A group holding a value fixed at creation is ANSWERED, whatever the
+    // declared missingness of its other members says — the plan's own rule
+    // (`certainlyMissingVariables`) exempts it for exactly this reason. The
+    // walk skipped that check, so a variable written only behind a filter and
+    // declared certainly-missing was nulled beside a fixed `sameAs` sibling,
+    // emitting a finished session that contradicts its own rule.
+    if (groupHasPlannedAnswer(members, planned)) return false;
+    const scope = scopeKey(ref);
+    return (
+      groupMissingProbability(
+        members,
+        missingProbabilitiesFor(missingByVariable, scope),
+        requiredVariablesFor(requiredByVariable, scope),
+      ) === 1
+    );
+  };
+
   const landWrite = (
     ref: EntityScopeRef,
     uid: string,
@@ -301,8 +375,12 @@ export function materialiseSession(params: {
       attributes[variableId] = valueFor(planned, variableId);
       return;
     }
+    if (certainlyMissing(ref, variableId, planned)) {
+      attributes[variableId] = null;
+      return;
+    }
     drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
-    applyUnplannedMissingness(ref, uid, attributes, variableId);
+    applyUnplannedMissingness(ref, uid, attributes, variableId, planned);
   };
 
   const totalStages = stages.length;
@@ -349,6 +427,7 @@ export function materialiseSession(params: {
     // diseases actually follow). The specialist generator owns that, so the
     // plan leaves this stage's entities to it and this walk hands over.
     if (stage.type === 'FamilyPedigree') {
+      const beforePedigree = draft.edges.length;
       materializeFamilyPedigree(
         ctx,
         draft,
@@ -357,8 +436,22 @@ export function materialiseSession(params: {
         stages,
         reachableStages,
         familyPedigreeSeed(runSeed, stage.id),
+        // One ceiling for every pedigree in the protocol. Nothing in the
+        // protocol caps a family — the codebook describes what a family is,
+        // not how big one gets — so this is the engine's own bound on optional
+        // branches, already resolved against whatever the caller asked for.
         familyPedigree,
       );
+      // The links the pedigree just drew are part of the final network, so a
+      // census over that edge type has to see them as membership. Seeded only
+      // from the plan, this map knew nothing of them, and the census reported
+      // every existing family pair as unlinked — an explicit negative
+      // nomination beside an edge the session actually holds.
+      for (const edge of draft.edges.slice(beforePedigree)) {
+        const pairs = finalPairsByType.get(edge.type) ?? new Set<string>();
+        pairs.add(pairKey(edge.from, edge.to));
+        finalPairsByType.set(edge.type, pairs);
+      }
     }
 
     // --- Entity introduction -------------------------------------------
@@ -481,7 +574,7 @@ export function materialiseSession(params: {
     // held, so nothing the plan already decided is drawn twice.
     for (const creation of summary.edgeCreations) {
       if (creation.structured !== null) continue;
-      const target = plan.topologyByType.get(creation.edgeType);
+      const target = plan.topologyTargets.get(topologyKey(creation));
       if (target === undefined) continue;
 
       const subjects = filteredSubjects(
@@ -583,7 +676,15 @@ export function materialiseSession(params: {
           // is where the value comes into being, and leaving the declaration
           // to be honoured by a separate write is a coincidence of the two
           // models agreeing, not something this code establishes.
-          applyUnplannedMissingness(ref, uid, attributes, variableId);
+          // No planned entity: this edge is brought into being by the walk
+          // itself, so the plan holds no answer for its group to preserve.
+          applyUnplannedMissingness(
+            ref,
+            uid,
+            attributes,
+            variableId,
+            undefined,
+          );
         }
       }
     }

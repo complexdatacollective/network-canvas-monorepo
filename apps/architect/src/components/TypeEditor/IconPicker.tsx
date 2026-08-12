@@ -9,12 +9,11 @@ import {
 import {
   type ComponentPropsWithRef,
   type ComponentType,
-  type FocusEventHandler,
   useMemo,
   useState,
 } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
@@ -22,7 +21,6 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import { cx } from '~/utils/cva';
 
 const CUSTOM_ICONS = [
@@ -89,23 +87,22 @@ function findEntryByValue(value: string): IconEntry | null {
   return null;
 }
 
-type IconPickerControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'required'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-  'aria-required'?: boolean;
-};
+type IconPickerProps = CreateFormFieldProps<
+  string,
+  'div',
+  {
+    /** Only reaches the control through `UnconnectedField`; `Field` strips
+     * validation props and signals the same thing via `aria-required`. */
+    required?: boolean;
+  }
+>;
 
-const IconPickerControl = ({
+/**
+ * Searchable icon picker over the Lucide set plus Architect's own icons.
+ * Labelling belongs to the surrounding field — pass it through
+ * `ArchitectField`'s `label`/`hint`.
+ */
+const IconPicker = ({
   id,
   name,
   value = '',
@@ -119,7 +116,7 @@ const IconPickerControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: IconPickerControlProps) => {
+}: IconPickerProps) => {
   const [query, setQuery] = useState('');
   const portalContainer = usePortalContainer();
   const selectedEntry = useMemo(
@@ -277,30 +274,5 @@ const IconPickerControl = ({
     </Combobox.Root>
   );
 };
-
-type IconPickerProps = WrappedFieldProps & {
-  label?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoIconPickerControl = IconPickerControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const IconPickerBase = ({ label = 'Icon', ...props }: IconPickerProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoIconPickerControl}
-  />
-);
-
-const IconPicker = IconPickerBase as unknown as ComponentType<
-  Record<string, unknown>
->;
 
 export default IconPicker;

@@ -1,3 +1,4 @@
+import { syntheticCountCeiling } from '@codaco/protocol-validation';
 import type { SyntheticCount } from '@codaco/protocol-validation';
 
 import type { RandomStream } from './random';
@@ -91,6 +92,14 @@ function sampleBeta(mean: number, sd: number, stream: RandomStream): number {
   const nu = (mean * (1 - mean)) / (sd * sd) - 1;
   const alpha = mean * nu;
   const beta = (1 - mean) * nu;
+  // The opposite limit to the one handled below, and it needs the opposite
+  // answer. A tiny deviation — `sd: 1e-200` is schema-valid — underflows
+  // `sd * sd` to zero, so `nu` and both shapes become Infinity. The gamma
+  // draws then overflow and the endpoint fallback would return 0 or 1: the
+  // extremes, for a descriptor asking for a distribution pinned AT its mean.
+  // As the shapes diverge a Beta concentrates on the mean, so that is what a
+  // near-degenerate one draws.
+  if (!Number.isFinite(alpha) || !Number.isFinite(beta)) return mean;
   const x = sampleGamma(alpha, stream);
   const y = sampleGamma(beta, stream);
   const total = x + y;
@@ -123,25 +132,10 @@ function sampleBeta(mean: number, sd: number, stream: RandomStream): number {
  * then read `[5, 1]` and settle on 1, breaking the floor rather than holding it.
  */
 export function countCeiling(count: SyntheticCount): number {
-  switch (count.distribution) {
-    case 'constant':
-      return count.value;
-    case 'uniform':
-      return count.max;
-    case 'poisson':
-      return (
-        count.max ??
-        Math.max(
-          count.min ?? 0,
-          Math.ceil(count.mean + 6 * Math.sqrt(count.mean) + 1),
-        )
-      );
-    case 'normal':
-      return (
-        count.max ??
-        Math.max(count.min ?? 0, 0, Math.ceil(count.mean + 6 * count.sd))
-      );
-  }
+  // Delegated to the schema's own derivation, which is what the population cap
+  // is enforced against. Two copies of this arithmetic would let a count the
+  // schema accepts plan more entities than the cap allowed.
+  return syntheticCountCeiling(count);
 }
 
 /**
@@ -205,8 +199,22 @@ export function sampleContinuous(
       }
       return stream.float(lower, upper);
     }
-    case 'normal':
-      return clamp(stream.normal(descriptor.mean, descriptor.sd), lower, upper);
+    case 'normal': {
+      const drawn = clamp(
+        stream.normal(descriptor.mean, descriptor.sd),
+        lower,
+        upper,
+      );
+      // An unbounded normal has no finite bound for `clamp` to repair with, so
+      // schema-valid parameters near the top of the range — `mean: 1e308,
+      // sd: 1e308` — overflow the sum to ±Infinity and reach the network as a
+      // value that fails number validation and serialises to null. The mean is
+      // the draw's own centre and is finite by construction, so it is what a
+      // draw that overflowed away from it falls back to.
+      return Number.isFinite(drawn)
+        ? drawn
+        : clamp(descriptor.mean, lower, upper);
+    }
     case 'lognormal': {
       if (descriptor.sd === 0) {
         return clamp(descriptor.mean, lower, upper);
@@ -236,11 +244,23 @@ export function sampleWeightedIndex(
   weights: readonly number[],
   stream: RandomStream,
 ): number {
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  if (total <= 0) return 0;
+  // Scaled by the largest weight before summing. Weights are only ever
+  // compared with one another, so scaling changes nothing about the
+  // distribution — but two schema-valid weights of 1e308 sum to Infinity, and
+  // `remaining` then never falls below zero (or is NaN when the draw is
+  // exactly zero), so no iteration can select and every draw returns the last
+  // option. Equal weights would produce a deterministic value.
+  const largest = weights.reduce(
+    (most, weight) => (weight > most ? weight : most),
+    0,
+  );
+  if (!(largest > 0)) return 0;
+  const scaled = weights.map((weight) => weight / largest);
+  const total = scaled.reduce((sum, weight) => sum + weight, 0);
+  if (!(total > 0)) return 0;
   let remaining = stream.next() * total;
   for (let index = 0; index < weights.length; index++) {
-    remaining -= weights[index]!;
+    remaining -= scaled[index]!;
     if (remaining < 0) return index;
   }
   return weights.length - 1;

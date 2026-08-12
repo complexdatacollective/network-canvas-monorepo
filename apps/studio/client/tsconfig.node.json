@@ -1,0 +1,7 @@
+{
+  "extends": "@codaco/tsconfig/node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.node.json"
+  },
+  "include": ["vite.config.ts", "vitest.config.ts"]
+}

@@ -7,10 +7,7 @@ import {
   DEFAULT_NODE_COUNT,
   defaultNumberWindow,
   inferTextGenerator,
-  resolveEdgeTopology,
-  resolveNodeCount,
   resolveVariableSynthetic,
-  UNREACHABLE_NODE_COUNT,
 } from '../resolveSynthetic';
 
 const options = [
@@ -19,40 +16,25 @@ const options = [
   { label: 'Coworker', value: 'coworker' },
 ];
 
-describe('resolveNodeCount', () => {
-  it('prefers a declared count', () => {
-    const declared = { distribution: 'poisson', mean: 3 } as const;
-    expect(
-      resolveNodeCount({ synthetic: { count: declared } }, { creatable: true }),
-    ).toEqual(declared);
+describe('the documented defaults', () => {
+  // Counts and topology are declared by the stages that create entities, so
+  // there is no definition-keyed resolver left to test: `analyse` reads a
+  // stage's own `synthetic` block and falls back to these. What still matters
+  // is that the fallbacks themselves are what the docs promise, since
+  // Architect initialises its editors from exactly these values.
+  it('put an undeclared stage at a uniform 1-8 people', () => {
+    expect(DEFAULT_NODE_COUNT).toEqual({
+      distribution: 'uniform',
+      min: 1,
+      max: 8,
+    });
   });
 
-  it('defaults a creatable type to uniform 1-8', () => {
-    expect(resolveNodeCount(undefined, { creatable: true })).toEqual(
-      DEFAULT_NODE_COUNT,
-    );
-  });
-
-  it('defaults an unreachable type to zero', () => {
-    expect(resolveNodeCount({}, { creatable: false })).toEqual(
-      UNREACHABLE_NODE_COUNT,
-    );
-  });
-});
-
-describe('resolveEdgeTopology', () => {
-  it('prefers a declared topology', () => {
-    const declared = {
-      metric: 'meanDegree',
-      distribution: { distribution: 'constant', value: 2 },
-    } as const;
-    expect(resolveEdgeTopology({ synthetic: { topology: declared } })).toEqual(
-      declared,
-    );
-  });
-
-  it('defaults to a uniform density between 0.3 and 0.5', () => {
-    expect(resolveEdgeTopology(undefined)).toEqual(DEFAULT_EDGE_TOPOLOGY);
+  it('put an undeclared stage at a uniform density between 0.3 and 0.5', () => {
+    expect(DEFAULT_EDGE_TOPOLOGY).toEqual({
+      metric: 'density',
+      distribution: { distribution: 'uniform', min: 0.3, max: 0.5 },
+    });
   });
 });
 

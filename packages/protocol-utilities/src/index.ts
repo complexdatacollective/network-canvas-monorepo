@@ -31,8 +31,6 @@ export {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
   inferTextGenerator,
-  resolveEdgeTopology,
-  resolveNodeCount,
   type ResolvedVariableSynthetic,
   resolveVariableSynthetic,
 } from './generateNetwork/plan/resolveSynthetic';

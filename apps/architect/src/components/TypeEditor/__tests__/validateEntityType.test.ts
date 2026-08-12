@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import validateEntityType from '../validateEntityType';
+import validateEntityType, { SHAPE_MAPPING_FIELD } from '../validateEntityType';
 
 describe('validateEntityType()', () => {
   it('returns no errors when there is no dynamic shape mapping', () => {
@@ -37,12 +37,13 @@ describe('validateEntityType()', () => {
     ).toEqual({});
   });
 
+  // The mapping is one opaque field, so every message is reported at that
+  // field name — which is what makes fresco-ui mark it errored and focus it.
   it('flags a dynamic mapping with no variable selected', () => {
     const errors = validateEntityType({
       shape: { default: 'circle', dynamic: {} },
     });
-    expect(errors.shape?.dynamic?.variable).toBeTruthy();
-    expect(errors.shape?.dynamic?.thresholds).toBeUndefined();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/Select a variable/);
   });
 
   it('flags a breakpoints mapping with no thresholds', () => {
@@ -52,8 +53,7 @@ describe('validateEntityType()', () => {
         dynamic: { variable: 'var-1', type: 'breakpoints', thresholds: [] },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
-    expect(errors.shape?.dynamic?.variable).toBeUndefined();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/at least one threshold/);
   });
 
   it('flags duplicate threshold values', () => {
@@ -70,115 +70,7 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
-  });
-
-  describe('synthetic population and topology', () => {
-    it('accepts an absent or disabled section', () => {
-      expect(validateEntityType({ name: 'Person' })).toEqual({});
-      expect(validateEntityType({ synthetic: null })).toEqual({});
-    });
-
-    it.each([
-      [
-        'a uniform population',
-        { count: { distribution: 'uniform', min: 1, max: 8 } },
-      ],
-      [
-        'a constant population',
-        { count: { distribution: 'constant', value: 8 } },
-      ],
-      ['a poisson population', { count: { distribution: 'poisson', mean: 5 } }],
-      [
-        'a truncated normal population',
-        { count: { distribution: 'normal', mean: 8, sd: 3, min: 0, max: 20 } },
-      ],
-      [
-        'a density topology',
-        {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'uniform', min: 0.3, max: 0.5 },
-          },
-        },
-      ],
-      [
-        'a mean-degree topology',
-        {
-          topology: {
-            metric: 'meanDegree',
-            distribution: { distribution: 'constant', value: 2 },
-          },
-        },
-      ],
-    ])('accepts %s', (_label, synthetic) => {
-      expect(validateEntityType({ synthetic })).toEqual({});
-    });
-
-    it('flags a parameter cleared mid-edit as unfinished', () => {
-      const errors = validateEntityType({
-        synthetic: { count: { distribution: 'uniform', min: 1 } },
-      });
-      expect(errors._error).toContain('Finish the synthetic data settings');
-    });
-
-    it('rejects an inverted population range', () => {
-      const errors = validateEntityType({
-        synthetic: { count: { distribution: 'uniform', min: 10, max: 1 } },
-      });
-      expect(errors._error).toContain(
-        'the minimum must not be greater than the maximum',
-      );
-    });
-
-    it('rejects a fractional population count', () => {
-      const errors = validateEntityType({
-        synthetic: { count: { distribution: 'uniform', min: 1.5, max: 4 } },
-      });
-      expect(errors._error).toContain('counts must be whole numbers');
-    });
-
-    it('rejects a negative standard deviation', () => {
-      const errors = validateEntityType({
-        synthetic: { count: { distribution: 'normal', mean: 5, sd: -1 } },
-      });
-      expect(errors._error).toContain('values must be 0 or more');
-    });
-
-    it('rejects a density outside 0 to 1', () => {
-      const errors = validateEntityType({
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 4 },
-          },
-        },
-      });
-      expect(errors._error).toContain('values must be 1 or less');
-    });
-
-    it('rejects an inverted topology range', () => {
-      const errors = validateEntityType({
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'uniform', min: 0.9, max: 0.2 },
-          },
-        },
-      });
-      expect(errors._error).toContain(
-        'the minimum must not be greater than the maximum',
-      );
-    });
-
-    it('reports the synthetic error ahead of a shape mapping error', () => {
-      const errors = validateEntityType({
-        synthetic: { count: { distribution: 'uniform', min: 10, max: 1 } },
-        shape: { default: 'circle', dynamic: {} },
-      });
-      expect(errors.shape).toBeUndefined();
-      expect(errors._error).toContain('synthetic data settings');
-    });
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
   });
 
   it('flags descending threshold values', () => {
@@ -195,6 +87,6 @@ describe('validateEntityType()', () => {
         },
       },
     });
-    expect(errors.shape?.dynamic?.thresholds).toBeTruthy();
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/increase in value/);
   });
 });

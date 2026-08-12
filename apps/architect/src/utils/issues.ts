@@ -1,51 +1,33 @@
-import { compact, flatMap, isPlainObject } from 'es-toolkit/compat';
-
 type FlattenedIssue = {
+  /**
+   * Identity of this row, distinct from the field it points at: one field can
+   * fail several rules, so `field` alone does not tell two rows apart. Consumers
+   * key list items and per-row lookups by `id`, and keep `field` for anchoring.
+   * Qualified by the field (not a bare index) so identity survives a change in
+   * `Object.entries` order.
+   */
+  id: string;
   issue: string;
   field: string;
 };
 
+/**
+ * One entry per message in the form store's field errors.
+ *
+ * The store already keys errors by resolved field name (`prompts`,
+ * `introductionPanel.title`) with an array of messages, so this only has to
+ * pair each message with its field and give it a stable identity.
+ */
 const flattenIssues = (
-  issues: Record<string, unknown>,
-  path = '',
+  fieldErrors: Record<string, string[] | undefined>,
 ): FlattenedIssue[] =>
-  compact(
-    flatMap(issues, (issue: unknown, field: string) => {
-      // field array
-      if (Array.isArray(issue)) {
-        const itemIssues = flatMap(issue, (item: unknown, index: number) =>
-          flattenIssues(
-            item as Record<string, unknown>,
-            `${path}${field}[${index}].`,
-          ),
-        );
-        // array-level errors live on a non-index `_error` prop that the element
-        // iteration above skips
-        const arrayError = (issue as { _error?: unknown })._error;
-        if (arrayError !== undefined) {
-          return [
-            ...itemIssues,
-            { issue: arrayError as string, field: `${path}${field}._error` },
-          ];
-        }
-        return itemIssues;
-      }
-      // nested field
-      if (isPlainObject(issue)) {
-        return flattenIssues(
-          issue as Record<string, unknown>,
-          `${path}${field}.`,
-        );
-      }
-
-      if (issue === undefined) {
-        return null;
-      }
-
-      // we've found the issue node!
-      return { issue: issue as string, field: `${path}${field}` };
-    }),
-  ) as FlattenedIssue[];
+  Object.entries(fieldErrors).flatMap(([field, messages]) =>
+    (messages ?? []).map((issue, index) => ({
+      id: `${field}#${index}`,
+      issue,
+      field,
+    })),
+  );
 
 const getFieldId = (field: string) => {
   // Needs to be safe for urls and ids

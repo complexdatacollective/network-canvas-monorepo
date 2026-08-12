@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { StageNodeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
@@ -11,6 +12,7 @@ import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
+  synthetic: StageNodeSyntheticSchema.optional(),
   subject: NodeStageSubjectSchema,
   dataSource: z.string().min(1),
   cardOptions: z

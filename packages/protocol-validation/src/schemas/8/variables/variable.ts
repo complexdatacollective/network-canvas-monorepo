@@ -208,9 +208,13 @@ const rejectMissingOnRequired = (
   },
   ctx: z.RefinementCtx,
 ) => {
+  // Only a POSITIVE probability conflicts. An explicit zero says the variable
+  // is never unanswered, which is exactly what `required` says — and it is
+  // reachable in imported or programmatically authored metadata, where an
+  // otherwise populated descriptor may carry it.
   if (
     variable.validation?.required === true &&
-    variable.synthetic?.missingProbability !== undefined
+    (variable.synthetic?.missingProbability ?? 0) > 0
   ) {
     ctx.addIssue({
       code: 'custom' as const,
@@ -234,6 +238,19 @@ const rejectDisjointNumberSynthetic = (
   if (!synthetic || !('distribution' in synthetic)) return;
   const lower = variable.validation?.minValue ?? Number.NEGATIVE_INFINITY;
   const upper = variable.validation?.maxValue ?? Number.POSITIVE_INFINITY;
+  // A zero-deviation normal has the single-point support a constant has, so
+  // it is held to the same rule: its mean outside the window means every draw
+  // is clamped to a boundary and the authored distribution silently replaced.
+  if (synthetic.distribution === 'normal' && synthetic.sd === 0) {
+    if (synthetic.mean < lower || synthetic.mean > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+    }
+    return;
+  }
   if (synthetic.distribution === 'constant') {
     if (synthetic.value < lower || synthetic.value > upper) {
       ctx.addIssue({
@@ -243,6 +260,19 @@ const rejectDisjointNumberSynthetic = (
       });
     }
     return;
+  }
+  // A zero-deviation lognormal is a constant at its mean, so the same rule as
+  // a declared constant: a mean outside the window means every draw is clamped
+  // to a boundary and the authored value silently replaced.
+  if (synthetic.distribution === 'lognormal' && synthetic.sd === 0) {
+    if (synthetic.mean < lower || synthetic.mean > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+      return;
+    }
   }
   // A lognormal draws from a strictly positive support, so it is bounded below
   // whether or not the descriptor authors a minimum. Comparing only an
@@ -449,6 +479,39 @@ export const isValidDateAtResolution = (
   return isIsoDate(value);
 };
 
+/**
+ * Why a date bound falls outside what the picker at this resolution can offer,
+ * phrased as the tail of a sentence naming the bound — or `undefined` where the
+ * picker can offer it.
+ *
+ * Shared by the picker's own parameters and by a synthetic window, because the
+ * two describe the same control. A bound the field could never present is
+ * unusable whichever of them wrote it, and a synthetic window is now drawn from
+ * directly where the field declares no bounds of its own, so a floor only the
+ * parameters enforced left generation free to emit dates no participant could
+ * enter.
+ */
+const pickerYearFloorViolation = (
+  value: string,
+  resolution: keyof typeof DATE_RESOLUTION,
+): string | undefined => {
+  // The interview runtime builds a year/month picker's selectable year options
+  // via `y.toString()` (unpadded, e.g. `99`, not `'0099'`), so a stored value
+  // and a zero-padded coarse bound would never compare equal. A full-resolution
+  // YYYY-MM-DD string is always zero-padded and round-trips at any year.
+  if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+    return 'must use a four-digit year of 1000 or later at year/month resolution';
+  }
+  // '0000-12-31' is a real, round-tripping ISO date (JS Date supports year 0),
+  // but the native HTML date input's earliest selectable date is 0001-01-01, so
+  // a year-zero bound leaves no selectable value that can ever pass. Years
+  // 0001-0999 stay valid at full resolution; coarse ones are floored above.
+  if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
+    return 'must use a year of 0001 or later — the native date input starts at year 0001';
+  }
+  return undefined;
+};
+
 // A synthetic date window is expressed at the variable's own resolution (its
 // bounds compare against stored values), while a normal descriptor's mean is
 // always a full YYYY-MM-DD date because its sdDays operates in days.
@@ -477,6 +540,15 @@ const rejectInvalidDatetimeSynthetic = (
       ctx.addIssue({
         code: 'custom' as const,
         message: `Synthetic "${bound}" must be a valid ${label} date at this variable's resolution`,
+        path: ['synthetic', bound],
+      });
+      continue;
+    }
+    const offerable = pickerYearFloorViolation(value, resolution);
+    if (offerable !== undefined) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic "${bound}" ${offerable}`,
         path: ['synthetic', bound],
       });
     }
@@ -531,6 +603,32 @@ const rejectInvalidDatetimeSynthetic = (
       path: ['synthetic', 'mean'],
     });
   }
+  // A zero-deviation normal names one date and nothing else, so it is held to
+  // the window the same way a bound is: outside it the generator clamps to a
+  // boundary and the authored date never appears. Compared at the variable's
+  // own resolution, which is what its bounds are written at.
+  if (
+    synthetic.distribution === 'normal' &&
+    synthetic.sdDays === 0 &&
+    isIsoDate(synthetic.mean)
+  ) {
+    const mean = comparable(
+      synthetic.mean.slice(0, DATE_RESOLUTION[resolution].length),
+    );
+    const floor = syntheticMin ?? windowMin;
+    const ceiling = syntheticMax ?? windowMax;
+    if (
+      mean !== undefined &&
+      ((floor !== undefined && mean < floor) ||
+        (ceiling !== undefined && mean > ceiling))
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Synthetic "mean" ${synthetic.mean} lies outside the dates this field draws from, and a standard deviation of 0 days can reach nothing else`,
+        path: ['synthetic', 'mean'],
+      });
+    }
+  }
 };
 
 // Shared with NetworkComposer's per-stage-field parameters (see
@@ -558,31 +656,11 @@ export const datePickerParametersSchema = z
         });
         continue;
       }
-      // Eighth-wave Finding 2: the interview runtime builds a year/month
-      // resolution DatePicker's selectable year options via `y.toString()`
-      // (unpadded, e.g. `99`, not `'0099'`), so a stored value ('99') and a
-      // zero-padded coarse-resolution bound ('0099') would never compare
-      // equal even though a full-resolution YYYY-MM-DD string is always
-      // zero-padded and round-trips correctly at any year (the wave-3
-      // small-year fix). Reject small years at year/month resolution only.
-      if (resolution !== 'full' && Number(value.slice(0, 4)) < 1000) {
+      const offerable = pickerYearFloorViolation(value, resolution);
+      if (offerable !== undefined) {
         ctx.addIssue({
           code: 'custom' as const,
-          message: `DatePicker "${bound}" must use a four-digit year of 1000 or later at year/month resolution`,
-          path: [bound],
-        });
-      }
-      // Eleventh-wave Finding 1: '0000-12-31' is a real, round-tripping ISO
-      // date (JS Date supports year 0), but the native HTML date input's
-      // earliest selectable date is 0001-01-01, so a year-zero bound (e.g.
-      // max '0000-12-31' on a required field) leaves no selectable value
-      // that can ever pass. Years 0001-0999 stay valid at full resolution
-      // (the wave-3 small-year support); coarse resolutions are already
-      // floored at 1000 above.
-      if (resolution === 'full' && Number(value.slice(0, 4)) === 0) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `DatePicker "${bound}" must use a year of 0001 or later — the native date input starts at year 0001`,
+          message: `DatePicker "${bound}" ${offerable}`,
           path: [bound],
         });
       }
@@ -778,6 +856,35 @@ const booleanBooleanVariableSchema = baseVariableSchema
         message:
           'Boolean options must offer at least one choice when component is "Boolean"',
         path: ['options'],
+      });
+    }
+
+    // A one-sided option list has no second answer to draw, so the generator
+    // returns the sole offered value and the declared probability is ignored
+    // — silently producing the opposite of what was authored where the two
+    // disagree. Refused here for the same reason a number or date descriptor
+    // disjoint from its validation window is: metadata that can never take
+    // effect is better rejected than quietly dropped.
+    //
+    // Scoped to the choice control that actually READS the options. A
+    // componentless boolean can be rendered by a NetworkComposer field as a
+    // `Toggle`, which ignores them and leaves both values drawable — the same
+    // condition the generator applies before it consults the probability at
+    // all. Refusing there would reject a descriptor that takes effect
+    // perfectly well.
+    const probabilityTrue = variable.synthetic?.probabilityTrue;
+    const offered = new Set(variable.options?.map((option) => option.value));
+    if (
+      variable.component === ComponentTypes.Boolean &&
+      probabilityTrue !== undefined &&
+      offered.size === 1 &&
+      ((offered.has(false) && probabilityTrue > 0) ||
+        (offered.has(true) && probabilityTrue < 1))
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `probabilityTrue ${probabilityTrue} cannot be drawn when the only option offered is ${String(offered.has(true))}`,
+        path: ['synthetic', 'probabilityTrue'],
       });
     }
   });

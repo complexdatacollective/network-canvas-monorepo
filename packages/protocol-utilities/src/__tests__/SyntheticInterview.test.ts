@@ -1967,6 +1967,11 @@ describe('validation rules on generated nodes', () => {
     // rather than a side effect of a change to the draw machinery. Date
     // variables are left out: an open date window ends at today, which no
     // fixed expectation survives.
+    //
+    // Moved once, deliberately: a variable's stream is now addressed by its
+    // entity scope as well as its id, so that one key used under two entity
+    // types cannot make the two perturb each other. Every value below shifted
+    // with the stream paths.
     const si = new SyntheticInterview(42);
     const nt = si.addNodeType();
     nt.addVariable({ type: 'text', name: 'label' });
@@ -2014,48 +2019,60 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Lena',
-        label: 'seldom',
-        age: 69,
-        small: -0,
-        active: false,
-        rating: 4,
-        interests: ['neighborhood', 'school'],
-        closeness: 0.03,
-        position: { x: 0.1, y: 0.1 },
-      },
-      {
-        name: 'Nash',
-        label: 'who whose dandelion',
-        age: 88,
-        small: -17,
-        active: true,
-        rating: 3,
-        interests: ['school'],
-        closeness: 0.91,
-        position: { x: 0.27, y: 0.33 },
-      },
-      {
-        name: 'Immanuel',
-        label: 'geez',
-        age: 65,
-        small: -31,
-        active: true,
-        rating: 4,
-        interests: ['family'],
-        closeness: 0.89,
-        position: { x: 0.44000000000000006, y: 0.56 },
-      },
-      {
-        name: 'Wendell',
-        label: 'fine gleefully step-mother',
-        age: 40,
-        small: -12,
+        name: 'Ansel',
+        label: 'lucky',
+        age: 64,
+        small: 5,
         active: true,
         rating: 2,
-        interests: ['family', 'work'],
-        closeness: 0.35,
-        position: { x: 0.61, y: 0.79 },
+        interests: ['work'],
+        closeness: 0.53,
+        position: {
+          x: 0.1,
+          y: 0.1,
+        },
+      },
+      {
+        name: 'Rebecca',
+        label: 'with slump',
+        age: 79,
+        small: 3,
+        active: false,
+        rating: 3,
+        interests: ['family'],
+        closeness: 0.69,
+        position: {
+          x: 0.27,
+          y: 0.33,
+        },
+      },
+      {
+        name: 'Alvina',
+        label: 'denitrify',
+        age: 48,
+        small: -19,
+        active: true,
+        rating: 5,
+        interests: ['neighborhood'],
+        closeness: 0.87,
+        position: {
+          x: 0.44000000000000006,
+          y: 0.56,
+        },
+      },
+      {
+        name: 'Georgia',
+        label: 'round outlying',
+        age: 47,
+        small: -21,
+        active: false,
+        rating: 1,
+        interests: ['neighborhood'],
+        closeness: 0.83,
+        position: {
+          x: 0.61,
+          y: 0.79,
+        },
       },
     ]);
   });

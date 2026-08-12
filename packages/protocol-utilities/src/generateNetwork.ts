@@ -1,4 +1,8 @@
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type {
+  EdgeTopology,
+  Stage,
+  StructuralCodebook,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import {
@@ -24,16 +28,17 @@ import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
 import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation';
 import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations';
+import { DEFAULT_PEDIGREE_NODE_CEILING } from './generateNetwork/familyPedigree/stageCeiling';
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { countCeiling } from './generateNetwork/plan/distributions';
 import {
-  apportionCount,
   planNetwork,
+  withinPopulationCeiling,
 } from './generateNetwork/plan/networkPlan';
 import {
-  resolveEdgeTopology,
-  resolveNodeCount,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
 } from './generateNetwork/plan/resolveSynthetic';
 import { ValueGenerator } from './ValueGenerator';
 
@@ -81,45 +86,48 @@ export type GenerateNetworkResult = {
 };
 
 /**
- * How large an undeclared family may grow. A pedigree sizes itself from its
- * population profile rather than from a count, so this only caps its optional
- * branches.
+ * The people every pedigree holds before any optional branch: ego, two
+ * parents, and four grandparents. `generateFamilyPedigree` adds them
+ * unconditionally to satisfy the interface's hard minimum and its grandparent
+ * boundary, so no declared count can produce a smaller family.
  */
-const DEFAULT_PEDIGREE_NODE_CEILING = 32;
+const MINIMUM_PEDIGREE_CORE = 7;
 
 /**
- * The largest family a FamilyPedigree stage may build, taken from the declared
- * count of the node type it builds one from.
+ * The people a pedigree can put on the canvas, per node type it builds.
  *
- * Where several pedigree stages name different node types, the largest wins:
- * the value bounds what any of them could draw, and the generator's own
- * seven-person core keeps a small declared count from making a family
- * impossible.
+ * Kept per type and summed across stages rather than maximised, because a
+ * topology ceiling
+ * is about the pairs one subject type reaches and every pedigree over that
+ * type adds its own family to the ones before it. A pedigree's population is not in `effectivePopulation`
+ * at all — that map is built from the stage creations, and pedigree creations
+ * are deliberately skipped — so without this a type a pedigree builds is
+ * counted at nothing at all. That bounds a census over the family at zero
+ * pairs, which is not a loose ceiling but an under-count: it hides the real
+ * pair count from the value-space check, and a unique edge variable can pass
+ * preflight and run out mid-materialisation.
  */
-function familyPedigreeNodeCeiling(
+function familyPedigreePopulationByType(
   codebook: StructuralCodebook,
   stages: Stage[],
-): number {
-  let ceiling = 0;
+  /** The most people one family can reach, already resolved. */
+  attainable: number,
+): Map<string, number> {
+  const populations = new Map<string, number>();
   for (const stage of stages) {
     if (stage.type !== 'FamilyPedigree') continue;
     const type = stage.nodeConfig?.type;
-    const definition = type === undefined ? undefined : codebook.node?.[type];
-    if (definition === undefined) continue;
-    // Only a DECLARED count applies. The generic node default (1–8) describes
-    // how many people a name generator elicits, which says nothing about a
-    // family: a pedigree's core is seven people before any optional branch,
-    // so defaulting to it would cap every undeclared pedigree below its own
-    // minimum.
-    const declared = definition.synthetic?.count !== undefined;
-    ceiling = Math.max(
-      ceiling,
-      declared
-        ? countCeiling(resolveNodeCount(definition, { creatable: true }))
-        : DEFAULT_PEDIGREE_NODE_CEILING,
-    );
+    if (type === undefined || codebook.node?.[type] === undefined) continue;
+    // Accumulated, not maximised. A second pedigree over the same type does
+    // not replace the first family: materialisation keeps the earlier people
+    // and appends the new ones, reusing at most the ego between them. Two
+    // core-sized families are therefore thirteen or fourteen subjects, and
+    // keeping only the larger counted seven. The reused ego is deliberately
+    // not deducted — reuse is "at most", so subtracting it would put the
+    // ceiling below the population of a run that reuses nothing.
+    populations.set(type, (populations.get(type) ?? 0) + attainable);
   }
-  return ceiling;
+  return populations;
 }
 
 /** Unordered pairs among `count` entities. */
@@ -140,14 +148,18 @@ const pairsAmong = (count: number): number =>
  * Density is clamped into 0–1 by the sampler; an unbounded mean degree is not
  * clamped at all, so it stands as infinite and the pair count bounds it.
  */
-function topologyMax(topology: ReturnType<typeof resolveEdgeTopology>): number {
+function topologyMax(topology: EdgeTopology): number {
   const { distribution } = topology;
   const unbounded =
     topology.metric === 'density' ? 1 : Number.POSITIVE_INFINITY;
   const raw =
     distribution.distribution === 'constant'
       ? distribution.value
-      : (distribution.max ?? unbounded);
+      : distribution.distribution === 'beta'
+        ? // Beta lives on 0-1 by construction and is offered for density
+          // alone, so the domain is its ceiling and it carries no `max`.
+          1
+        : (distribution.max ?? unbounded);
   return topology.metric === 'density'
     ? Math.min(1, Math.max(0, raw))
     : Math.max(0, raw);
@@ -167,108 +179,118 @@ function topologyMax(topology: ReturnType<typeof resolveEdgeTopology>): number {
 function deriveFeasibilityConfig(
   codebook: StructuralCodebook,
   effects: StageEffects,
-  creatableNodeTypes: ReadonlySet<string>,
   today: string,
   pedigreeCeiling: number,
+  pedigreePopulation: Map<string, number>,
 ): FeasibilityConfig {
-  let nodeCap = 1;
-  const nodeCountByType: Record<string, { min: number; max: number }> = {};
-  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
-    const ceiling = countCeiling(
-      resolveNodeCount(definition, {
-        creatable: creatableNodeTypes.has(type),
-      }),
-    );
-    nodeCountByType[type] = { min: 0, max: ceiling };
-    nodeCap = Math.max(nodeCap, ceiling);
-  }
-
-  // --- Per-stage node shares ------------------------------------------------
+  // --- Per-stage node ceilings ----------------------------------------------
   //
-  // The planner draws one total per type and apportions it across the creating
-  // stages with `apportionCount`, so that same function decides the shares
-  // counted here. A pedigree's people are outside that apportionment — the
-  // specialist generator builds them and `familyPedigreeNodeCount` bounds them
-  // — so its creations are left out, exactly as the planner leaves them out.
+  // Each creating stage declares its own population, so there is nothing to
+  // apportion and nothing to reconcile: the most of a type the planner can
+  // build is the sum of what its creating stages can each ask for, and the
+  // most one stage can build is its own declared ceiling clamped by the
+  // capacity its interface actually offers.
+  //
+  // A pedigree's people are outside this — the specialist generator builds
+  // them and `familyPedigreeNodeCount` bounds them — so its creations are left
+  // out, exactly as the planner leaves them out.
   const nodeCapByStage: Record<string, Record<string, number>> = {};
-  const creationsByType = new Map<
+  const effectivePopulation = new Map<string, number>();
+  // Gathered per type first, then trimmed through the SAME reckoning the
+  // planner applies. Counting the untrimmed figure here refused protocols the
+  // preview can build quite happily: `behaviours.minNodes` is unbounded in the
+  // schema, so a stage declaring a billion made preflight demand a billion
+  // unique values while `planNetwork` went on to build ten thousand nodes.
+  const ceilingsByType = new Map<
     string,
-    { stageId: string; capacity: { min: number; max: number | null } }[]
+    { stageId: string; ceiling: number }[]
   >();
   for (const summary of effects.stages) {
     for (const creation of summary.nodeCreations) {
       if (creation.source === 'pedigree') continue;
-      const list = creationsByType.get(creation.nodeType) ?? [];
-      list.push({
-        stageId: summary.stage.id,
-        capacity: creation.capacity,
-      });
-      creationsByType.set(creation.nodeType, list);
+      const declared = countCeiling(creation.count ?? DEFAULT_NODE_COUNT);
+      const { min, max } = creation.capacity;
+      const ceiling = Math.max(
+        min,
+        max === null ? declared : Math.min(max, declared),
+      );
+      const list = ceilingsByType.get(creation.nodeType) ?? [];
+      list.push({ stageId: creation.stageId, ceiling });
+      ceilingsByType.set(creation.nodeType, list);
     }
   }
-  // The most of a type the planner can build. Usually its declared ceiling —
-  // but `apportionCount` honours every stage's declared minimum before it
-  // spreads the remainder, so a protocol whose generators demand more people
-  // between them than the codebook declares gets the people, and counting the
-  // declared ceiling would be counting fewer entities than the run creates.
-  // Under-counting is the direction that matters: it lets a protocol past
-  // preflight and then exhausts its values mid-plan.
-  const effectivePopulation = new Map<string, number>();
-  for (const [type, creations] of creationsByType) {
-    const declaredMinimums = creations.reduce(
-      (sum, creation) => sum + creation.capacity.min,
-      0,
+
+  for (const [nodeType, entries] of ceilingsByType) {
+    const trimmed = withinPopulationCeiling(
+      entries.map((entry) => entry.ceiling),
     );
-    effectivePopulation.set(
-      type,
-      Math.max(nodeCountByType[type]?.max ?? nodeCap, declaredMinimums),
-    );
+    entries.forEach((entry, index) => {
+      const ceiling = trimmed[index]!;
+      const forStage = nodeCapByStage[entry.stageId] ?? {};
+      // A stage creating one type through two interactions gets both.
+      forStage[nodeType] = (forStage[nodeType] ?? 0) + ceiling;
+      nodeCapByStage[entry.stageId] = forStage;
+
+      effectivePopulation.set(
+        nodeType,
+        (effectivePopulation.get(nodeType) ?? 0) + ceiling,
+      );
+    });
   }
 
-  for (const [type, creations] of creationsByType) {
-    const ceiling = nodeCountByType[type]?.max ?? nodeCap;
-    const shares = apportionCount(
-      ceiling,
-      creations.map((creation) => creation.capacity),
-    );
-    creations.forEach((creation, index) => {
-      const forStage = nodeCapByStage[creation.stageId] ?? {};
-      // A stage creating one type through two interactions gets both shares.
-      forStage[type] = (forStage[type] ?? 0) + (shares[index] ?? 0);
-      nodeCapByStage[creation.stageId] = forStage;
-    });
+  let nodeCap = 1;
+  const nodeCountByType: Record<string, { min: number; max: number }> = {};
+  for (const type of Object.keys(codebook.node ?? {})) {
+    // A type no stage creates has no creating stage to draw for it, so its
+    // population is zero by construction rather than by a rule.
+    const ceiling = effectivePopulation.get(type) ?? 0;
+    nodeCountByType[type] = { min: 0, max: ceiling };
+    nodeCap = Math.max(nodeCap, ceiling);
   }
 
   // --- Per-type edge ceilings -----------------------------------------------
   const edgeCountByType: Record<string, number> = {};
-  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+  for (const type of Object.keys(codebook.edge ?? {})) {
     const topologyCreations = (
       effects.edgeCreationsByType.get(type) ?? []
     ).filter((creation) => creation.structured === null);
     if (topologyCreations.length === 0) continue;
 
-    const topology = resolveEdgeTopology(definition);
-    const most = topologyMax(topology);
-    // Summed over the distinct subject types rather than maximised, because a
-    // pair is two nodes of one type: stages over different types reach
-    // disjoint sets of pairs and their edges add up.
-    let ceiling = 0;
-    for (const subjectType of new Set(
-      topologyCreations.map((creation) => creation.subjectNodeType),
-    )) {
+    // Bounded per creation, then MAXIMISED within a subject type and SUMMED
+    // across subject types. A pair is two nodes of one type: stages over
+    // different types reach disjoint sets of pairs and their edges add up,
+    // while stages over the same type reach the same pairs, so the loosest of
+    // their declared topologies bounds them all rather than their sum.
+    const ceilingBySubject = new Map<string, number>();
+    for (const creation of topologyCreations) {
+      const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
+      const most = topologyMax(topology);
+      // The two populations ADD. A pedigree's people are absent from
+      // `effectivePopulation` — its creations are skipped when that map is
+      // built — and `materializeFamilyPedigree` appends its family to what is
+      // already there rather than replacing it, so a type built both ways ends
+      // up carrying both. Taking the larger of the two under-counted the pairs
+      // of exactly that type: one ordinary person beside a seven-person core
+      // is eight subjects and 28 pairs, counted as 21.
+      const ordinary = effectivePopulation.get(creation.subjectNodeType) ?? 0;
       const count =
-        effectivePopulation.get(subjectType) ??
-        nodeCountByType[subjectType]?.max ??
-        nodeCap;
+        ordinary + (pedigreePopulation.get(creation.subjectNodeType) ?? 0);
       const pairs = pairsAmong(count);
-      ceiling += Math.min(
+      const bound = Math.min(
         pairs,
         Math.ceil(
           topology.metric === 'density' ? most * pairs : (most * count) / 2,
         ),
       );
+      ceilingBySubject.set(
+        creation.subjectNodeType,
+        Math.max(ceilingBySubject.get(creation.subjectNodeType) ?? 0, bound),
+      );
     }
-    edgeCountByType[type] = ceiling;
+    edgeCountByType[type] = [...ceilingBySubject.values()].reduce(
+      (total, bound) => total + bound,
+      0,
+    );
   }
 
   return {
@@ -308,13 +330,15 @@ export function generateNetwork(
   } = params;
 
   const resolvedConfig = resolveGenerationConfig(config);
-  // How large a family may get is a property of the pedigree's node type, so
-  // it comes from that type's declared count rather than from a tuning knob.
-  // The family-specific generator treats it as a ceiling on optional
-  // branches; its seven-person core stands whatever the codebook says.
+  // A pedigree sizes itself. No protocol-level constraint caps it: the
+  // codebook describes what a family IS, not how big one gets, and the
+  // stage-level `synthetic` counts belong to interfaces that size a population
+  // rather than build a structure. What remains is the engine's own bound on
+  // optional branches, which a caller may raise or lower through its own
+  // options; the generator's seven-person core stands under either.
   const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
     familyPedigree,
-    familyPedigreeNodeCeiling(codebook, stages),
+    DEFAULT_PEDIGREE_NODE_CEILING,
   );
 
   const feasibilityStages = reachableStagesForFeasibility(
@@ -364,9 +388,18 @@ export function generateNetwork(
     deriveFeasibilityConfig(
       renderedCodebook,
       effects,
-      effects.creatableNodeTypes,
       resolvedConfig.today,
       resolvedFamilyPedigree.maxNodes,
+      // The reachable subset, matching `effects` and `feasibilityStages`. A
+      // pedigree the run provably skips builds nobody, and counting its people
+      // raised the topology ceiling enough to refuse a feasible protocol.
+      familyPedigreePopulationByType(
+        codebook,
+        feasibilityStages,
+        // Resolved exactly as the materialiser resolves it, so what is counted
+        // and what is built cannot disagree.
+        Math.max(resolvedFamilyPedigree.maxNodes, MINIMUM_PEDIGREE_CORE),
+      ),
     ),
     externalData,
     respectSkipLogicAndFiltering,
@@ -427,7 +460,12 @@ export function generateNetwork(
   // twice once the family is built, which `unique` forbids and nothing
   // downstream repairs. Reservations are soft, so a draw with nothing else
   // left still takes one.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
+  // The reachable subset, matching `effects` and feasibility. A pedigree the
+  // run provably skips never materialises, so a value reserved for it is never
+  // consumed and never released — it just holds a value back from the draws
+  // that DO happen, and an unreachable pedigree could decide what an ordinary
+  // edge of the same type ends up with.
+  reserveFamilyPedigreeFixedValues(ctx, feasibilityStages);
 
   const plan = planNetwork(ctx, effects);
 

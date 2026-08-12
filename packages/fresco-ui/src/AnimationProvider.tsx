@@ -19,9 +19,26 @@ export type AnimationProviderProps = {
    * Storybook visual tests.
    */
   disableAnimations?: boolean;
+  /**
+   * Detect browser automation and visual-test hosts, then disable animations.
+   * Storybooks should prefer this over reimplementing WebDriver/Chromatic
+   * detection in each preview.
+   */
+  disableAnimationsForAutomation?: boolean;
   /** How Motion should respond to the user's reduced-motion preference. */
   reducedMotion?: ReducedMotion;
 };
+
+function isAutomatedVisualHost(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  return (
+    window.navigator.webdriver ||
+    /Chromatic/.test(window.navigator.userAgent) ||
+    /(?:[?&])chromatic=true(?:[&#]|$)/.test(window.location.href) ||
+    /(?:[?&])disableAnimations=1(?:[&#]|$)/.test(window.location.href)
+  );
+}
 
 /**
  * Coordinates the animation controls used by Fresco applications.
@@ -34,19 +51,24 @@ export type AnimationProviderProps = {
 export function AnimationProvider({
   children,
   disableAnimations = false,
+  disableAnimationsForAutomation = false,
   reducedMotion = 'user',
 }: AnimationProviderProps) {
+  const animationsDisabled =
+    disableAnimations ||
+    (disableAnimationsForAutomation && isAutomatedVisualHost());
+
   // This must happen synchronously, before descendants mount and register Base
   // UI transition callbacks. Automated hosts are long-lived and only move from
   // animations enabled to disabled, so intentionally keep the flag sticky.
-  if (disableAnimations) {
+  if (animationsDisabled) {
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
   }
 
   return (
     <MotionConfig
       reducedMotion={reducedMotion}
-      skipAnimations={disableAnimations}
+      skipAnimations={animationsDisabled}
     >
       {children}
     </MotionConfig>

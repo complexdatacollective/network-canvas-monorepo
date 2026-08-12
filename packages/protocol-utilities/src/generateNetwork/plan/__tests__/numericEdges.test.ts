@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest';
+
+import { sampleContinuous, sampleWeightedIndex } from '../distributions';
+import { createRandomSource } from '../random';
+
+/**
+ * Schema-valid parameters at the edges of double precision. Each of these
+ * produced a value the descriptor did not ask for — and, because the results
+ * survive rounding and clamping, a network holding nulls or a constant where
+ * a distribution was declared.
+ */
+
+const streamOf = (seed: number) => createRandomSource(seed).stream('t');
+
+describe('a uniform over a very wide range', () => {
+  it('stays finite where the width alone would overflow', () => {
+    // max - min is Infinity here, so scaling a width gives a non-finite value
+    // that serialises to null.
+    for (let seed = 1; seed <= 20; seed++) {
+      const drawn = streamOf(seed).float(-1e308, 1e308);
+      expect(Number.isFinite(drawn), `seed ${seed}`).toBe(true);
+      expect(drawn).toBeGreaterThanOrEqual(-1e308);
+      expect(drawn).toBeLessThanOrEqual(1e308);
+    }
+  });
+
+  it('still spans its range rather than collapsing to a midpoint', () => {
+    const drawn = Array.from({ length: 40 }, (_unused, index) =>
+      streamOf(index + 1).float(0, 10),
+    );
+    expect(Math.min(...drawn)).toBeLessThan(3);
+    expect(Math.max(...drawn)).toBeGreaterThan(7);
+  });
+});
+
+describe('a beta pinned arbitrarily close to its mean', () => {
+  it('draws the mean rather than an endpoint', () => {
+    // sd² underflows to zero, so both shapes become Infinity. The endpoint
+    // limit is the WRONG limit here: vanishing shapes go to the endpoints,
+    // diverging ones concentrate on the mean.
+    for (let seed = 1; seed <= 20; seed++) {
+      const drawn = sampleContinuous(
+        { distribution: 'beta', mean: 0.5, sd: 1e-200 },
+        { min: 0, max: 1 },
+        streamOf(seed),
+      );
+      expect(drawn, `seed ${seed}`).toBeCloseTo(0.5, 6);
+    }
+  });
+});
+
+describe('option weights at the top of the double range', () => {
+  it('keeps equal weights equally likely', () => {
+    // Two weights of 1e308 sum to Infinity, so no iteration can ever select
+    // and every draw returned the final option.
+    const counts = [0, 0];
+    for (let seed = 1; seed <= 200; seed++) {
+      counts[sampleWeightedIndex([1e308, 1e308], streamOf(seed))]! += 1;
+    }
+    expect(counts[0]).toBeGreaterThan(50);
+    expect(counts[1]).toBeGreaterThan(50);
+  });
+
+  it('still honours a declared imbalance', () => {
+    const counts = [0, 0];
+    for (let seed = 1; seed <= 200; seed++) {
+      counts[sampleWeightedIndex([1e308, 1e300], streamOf(seed))]! += 1;
+    }
+    expect(counts[1]).toBe(0);
+  });
+});

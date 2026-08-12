@@ -17,7 +17,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   // EgoForm's introductionPanel title/text are both `z.string().min(1)`
   // (protocol-validation's IntroductionPanelSchema), so the dialog-level
-  // redux-form validate fails `editor.save()` without them — mirrors
+  // submit validation fails `editor.save()` without them — mirrors
   // ego-form.spec.ts's create-from-scratch spec.
   await editor
     .field('introductionPanel.title')
@@ -56,36 +56,30 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   const validationSection = editor.section('Validation');
 
-  // Add minValue 10.
-  await validationSection
-    .getByRole('button', { name: 'Add new', exact: true })
-    .click();
-  await page
-    .locator('select[name="validation-key"]')
-    .selectOption({ label: 'Minimum value' });
-  await page.locator('input[name="validation-value"]').fill('10');
-  await page
-    .getByRole('button', { name: 'Add validation rule', exact: true })
-    .click();
+  const minValue = page.locator('input[name="validation-value-minValue"]');
+  const maxValue = page.locator('input[name="validation-value-maxValue"]');
 
-  // Attempt maxValue 2 — the tick must disable and the reason must show.
   await validationSection
-    .getByRole('button', { name: 'Add new', exact: true })
+    .getByRole('switch', { name: 'Minimum value', exact: true })
     .click();
-  await page
-    .locator('select[name="validation-key"]')
-    .selectOption({ label: 'Maximum value' });
-  await page.locator('input[name="validation-value"]').fill('2');
-  await expect(
-    page.getByRole('button', { name: 'Add validation rule', exact: true }),
-  ).toBeDisabled();
+  await minValue.fill('10');
+  await minValue.blur();
+
+  // Attempt maxValue 2 — the reason must show and the rule must not be
+  // written, so the section keeps only the legal rule.
+  await validationSection
+    .getByRole('switch', { name: 'Maximum value', exact: true })
+    .click();
+  await maxValue.fill('2');
   await expect(page.getByText('is greater than maxValue')).toBeVisible();
+  await expect(maxValue).toHaveAttribute('aria-invalid', 'true');
+  await maxValue.blur();
 
-  // Correct the value — the tick re-enables and the rule saves.
-  await page.locator('input[name="validation-value"]').fill('20');
-  await page
-    .getByRole('button', { name: 'Add validation rule', exact: true })
-    .click();
+  // Correcting the value clears the message. No explicit blur here: clicking
+  // the dialog's Add button is what takes focus off the field, which is the
+  // realistic path and the one blur-commit has to survive.
+  await maxValue.fill('20');
+  await expect(page.getByText('is greater than maxValue')).toBeHidden();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
   await editor.expectNoIssues();

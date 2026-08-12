@@ -29,7 +29,11 @@
         "next.config.*",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      // The PostHog credentials decide whether a build emits and uploads source
+      // maps (see apps/*/vite.config.ts). They must be part of the cache key, or
+      // a production build could replay a cached artefact whose maps were never
+      // uploaded.
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "outputs": ["dist/**", "out/**", ".next/**", "!.next/cache/**"]
     },
     "@codaco/documentation#build": {
@@ -67,7 +71,10 @@
         "NEXT_PUBLIC_NETWORK_CANVAS_URL",
         "CONTEXT",
         "REVIEW_ID",
-        "SITE_URL"
+        "SITE_URL",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
@@ -104,12 +111,30 @@
         "vite-env.d.ts",
         "package.json"
       ],
+      // A package-specific `env` replaces the generic build task's list rather
+      // than extending it, so the PostHog credentials have to be repeated here
+      // — otherwise strict mode hides them from the build and the source-map
+      // upload silently never runs. See the note on the generic build task.
       "env": [
         "VITE_FRESCO_PREVIEW_URL",
         "VITE_FRESCO_PREVIEW_API_TOKEN",
         "VITE_DISABLE_ANALYTICS",
-        "VITE_DISABLE_ANIMATIONS"
+        "VITE_DISABLE_ANIMATIONS",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
+      "outputs": ["dist/**"]
+    },
+    "@codaco/studio-client#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "index.html",
+        "src/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
       "outputs": ["dist/**"]
     },
     "@codaco/interviewer#build": {
@@ -126,7 +151,14 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV", "VITE_DISABLE_ANALYTICS"],
+      // See the note on @codaco/architect#build: a package-specific `env`
+      // replaces the generic list, it does not extend it.
+      "env": [
+        "NODE_ENV",
+        "VITE_DISABLE_ANALYTICS",
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
+      ],
       "outputs": ["dist/**"]
     },
     "networkcanvas.com#build": {
@@ -136,6 +168,7 @@
         "components/**",
         "content/**",
         "font-modules.d.ts",
+        "instrumentation-client.ts",
         "lib/**",
         "messages/**",
         "netlify/**",
@@ -151,7 +184,10 @@
         "NODE_ENV",
         "NEXT_PUBLIC_DOCUMENTATION_URL",
         "CONTEXT",
-        "REVIEW_ID"
+        "REVIEW_ID",
+        // See the note on the generic build task's `env`.
+        "POSTHOG_PERSONAL_API_KEY",
+        "POSTHOG_PROJECT_ID"
       ],
       "outputs": ["out/**", ".next/**", "!.next/cache/**"]
     },
@@ -162,6 +198,7 @@
         "components/**",
         "content/**",
         "font-modules.d.ts",
+        "instrumentation-client.ts",
         "lib/**",
         "messages/**",
         "netlify/**",
@@ -479,6 +516,7 @@
     },
     "fresco#build": {
       "dependsOn": ["^topo", "fresco#codegen"],
+      "passThroughEnv": ["SKIP_ENV_VALIDATION"],
       "inputs": [
         "app/**",
         "actions/**",

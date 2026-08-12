@@ -1,90 +1,97 @@
-import type { UnknownAction } from '@reduxjs/toolkit';
-import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import { useAppDispatch } from '~/ducks/hooks';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
 import Row from '../../EditorLayout/Row';
 import Section from '../../EditorLayout/Section';
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import withPresetProps from './withPresetProps';
-type SelectOption = {
-  label: string;
-  value: string;
-};
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
-  Record<string, unknown>
->;
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
+import { getEdgesForSubject, getNarrativeVariables } from './selectors';
 
 type PresetFieldsProps = {
-  form: string;
-  edgesForSubject?: SelectOption[];
-  entity: string;
-  groupVariable?: string;
-  groupVariablesForSubject?: SelectOption[];
-  handleCreateLayoutVariable: () => void;
-  highlightVariablesForSubject?: SelectOption[];
-  layoutVariable?: string;
-  layoutVariablesForSubject?: SelectOption[];
+  entity: 'node' | 'edge' | 'ego';
   type: string;
+  /** The row's own pre-edit values, supplied by DialogArrayField's `item` spread. */
+  label?: string;
+  layoutVariable?: string;
+  groupVariable?: string | null;
+  edges?: { display?: string[] } | null;
+  highlight?: string[] | null;
 };
+
 const PresetFields = ({
-  form,
-  edgesForSubject = [],
   entity,
-  groupVariable,
-  groupVariablesForSubject = [],
-  handleCreateLayoutVariable,
-  highlightVariablesForSubject = [],
-  layoutVariable,
-  layoutVariablesForSubject = [],
   type,
+  label,
+  layoutVariable,
+  groupVariable,
+  edges,
+  highlight,
 }: PresetFieldsProps) => {
-  const getFormValue = formValueSelector(form);
-  const dispatch = useAppDispatch();
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
+  const {
+    layoutVariablesForSubject,
+    highlightVariablesForSubject,
+    groupVariablesForSubject,
+  } = useSelector((state: RootState) => getNarrativeVariables(state, subject));
+  const edgesForSubject = useSelector(getEdgesForSubject);
+
+  // Writes into THIS dialog's own (local) form store — the row-editor form,
+  // not the stage. `useCreateVariable`'s own field write-back targets the
+  // stage form, so its `field` argument is unusable here.
+  const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
+  const { createVariable } = useCreateVariable();
+
+  // These three toggle sections gate their own fields' mounting, so a
+  // reactive read of the field (`useFormValue`) can never see a value until
+  // AFTER the section is already expanded — a chicken-and-egg problem for
+  // `startExpanded`. Use the row's own pre-edit prop values instead, which
+  // only need to answer "does a configured value already exist" once, on
+  // mount; the toggle switch owns everything after that.
   const hasGroupVariable = !!groupVariable;
-  const displayEdges = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'edges.display') as Record<string, unknown>[],
+  const hasDisplayEdges = !!edges?.display && edges.display.length > 0;
+  const hasHighlightVariables = !!highlight && highlight.length > 0;
+
+  const handleToggleGroupVariable = useCallback(
+    (open: boolean) => {
+      if (!open) setLocalFieldValue('groupVariable', undefined);
+      return true;
+    },
+    [setLocalFieldValue],
   );
-  const hasDisplayEdges = displayEdges && displayEdges.length > 0;
-  const highlightVariables = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'highlight') as Record<string, unknown>[],
+  const handleToggleDisplayEdges = useCallback(
+    (open: boolean) => {
+      // The registered leaf is `edges.display` — `edges` itself is never a
+      // field (the store is a flat, exact-string-keyed map with no
+      // hierarchy), so clearing `edges` would no-op and the real leaf's
+      // dormant value would resurrect on remount.
+      if (!open) setLocalFieldValue('edges.display', undefined);
+      return true;
+    },
+    [setLocalFieldValue],
   );
-  const hasHighlightVariables =
-    highlightVariables && highlightVariables.length > 0;
-  const handleToggleHighlightVariables = (open: boolean) => {
-    if (open) {
+  const handleToggleHighlightVariables = useCallback(
+    (open: boolean) => {
+      if (!open) setLocalFieldValue('highlight', undefined);
       return true;
-    }
-    dispatch(change(form, 'highlight', undefined) as UnknownAction);
-    return true;
-  };
-  const handleToggleDisplayEdges = (open: boolean) => {
-    if (open) {
-      return true;
-    }
-    dispatch(change(form, 'edges', undefined) as UnknownAction);
-    return true;
-  };
-  const handleToggleGroupVariable = (open: boolean) => {
-    if (open) {
-      return true;
-    }
-    dispatch(change(form, 'groupVariable', null) as UnknownAction);
-    return true;
-  };
+    },
+    [setLocalFieldValue],
+  );
+
+  const handleCreateLayoutVariable = useCallback(
+    async (name: string) => {
+      const variable = await createVariable(name, 'layout');
+      if (variable) setLocalFieldValue('layoutVariable', variable);
+    },
+    [createVariable, setLocalFieldValue],
+  );
+
   return (
     <>
       <Section
@@ -99,16 +106,14 @@ const PresetFields = ({
         layout="vertical"
       >
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="label"
             label="Preset label"
             labelHidden
-            component={FrescoReduxField}
+            component={InputField}
             validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoInputField,
-              placeholder: 'Enter a label for the preset...',
-            }}
+            initialValue={label ?? ''}
+            placeholder="Enter a label for the preset..."
           />
         </Row>
       </Section>
@@ -122,17 +127,17 @@ const PresetFields = ({
         }
       >
         <Row>
-          <ValidatedField
+          <ArchitectField
             name="layoutVariable"
+            label="Layout variable"
+            labelHidden
             component={VariablePicker}
             validation={{ required: true }}
-            componentProps={{
-              entity,
-              type,
-              options: layoutVariablesForSubject,
-              onCreateOption: handleCreateLayoutVariable,
-              variable: layoutVariable,
-            }}
+            initialValue={layoutVariable}
+            entity={entity}
+            type={type}
+            options={layoutVariablesForSubject}
+            onCreateOption={handleCreateLayoutVariable}
           />
         </Row>
       </Section>
@@ -158,13 +163,13 @@ const PresetFields = ({
             to include the node. If a node has multiple values for this
             categorical variable, it will appear in multiple overlapping hulls.
           </Paragraph>
-          <Field
+          <ArchitectField
             name="groupVariable"
             label="Select a categorical variable for grouping"
             component={VariablePicker}
+            initialValue={groupVariable ?? undefined}
             entity={entity}
             type={type}
-            variable={groupVariable}
             options={groupVariablesForSubject}
             disallowCreation
           />
@@ -184,11 +189,11 @@ const PresetFields = ({
         layout="vertical"
       >
         <Row>
-          <Field
+          <ArchitectField
             name="edges.display"
-            component={FrescoReduxField}
-            fieldComponent={FrescoCheckboxGroupField}
+            component={CheckboxGroupField}
             label="Edge types"
+            initialValue={edges?.display ?? []}
             options={edgesForSubject}
           />
         </Row>
@@ -211,11 +216,11 @@ const PresetFields = ({
         layout="vertical"
       >
         <Row>
-          <Field
+          <ArchitectField
             name="highlight"
-            component={FrescoReduxField}
-            fieldComponent={FrescoCheckboxGroupField}
+            component={CheckboxGroupField}
             label="Select one or more boolean variables"
+            initialValue={highlight ?? []}
             options={highlightVariablesForSubject}
           />
         </Row>
@@ -223,15 +228,5 @@ const PresetFields = ({
     </>
   );
 };
-export default compose<
-  PresetFieldsProps,
-  {
-    entity: string;
-    type: string;
-    form: string;
-  }
->(withPresetProps)(PresetFields) as unknown as React.ComponentType<{
-  entity: string;
-  type: string;
-  form: string;
-}>;
+
+export default PresetFields;

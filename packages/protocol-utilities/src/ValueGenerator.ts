@@ -132,7 +132,10 @@ function clamp(value: number, min?: number, max?: number): number {
 export class ValueGenerator {
   private readonly source: RandomSource;
   private readonly today: string;
-  private readonly resolved = new Map<string, ResolvedVariableSynthetic>();
+  private readonly resolved = new WeakMap<
+    VariableEntry,
+    ResolvedVariableSynthetic
+  >();
 
   constructor(seed: number, today: string = todayYmd()) {
     this.source = createRandomSource(seed);
@@ -152,23 +155,35 @@ export class ValueGenerator {
     return this.source.stream('general');
   }
 
-  private streamFor(entry: VariableEntry): RandomStream {
-    return this.source.stream('variable', entry.id);
+  /**
+   * A variable's own stream, addressed by the entity scope as well as the
+   * variable id. Two scopes may use one key for separate definitions, and a
+   * shared stream makes them perturb each other: adding people to one node
+   * type advanced the stream the other type drew from, so its values changed
+   * under the same seed. Keeping unrelated definitions independent is the
+   * whole promise of a semantic substream.
+   */
+  private streamFor(entry: VariableEntry, scope: string): RandomStream {
+    return this.source.stream('variable', scope, entry.id);
   }
 
   /**
-   * Resolution is memoised per variable id: one run resolves each variable
-   * once, and the Architect-facing resolver stays the single source of what
-   * defaults apply.
+   * Resolution is memoised per variable ENTRY, not per variable id: a codebook
+   * may use one key in two scopes — the same name under two node types, or on
+   * a node and on ego — and those are separate definitions that may declare
+   * different types, distributions or generators. Keyed by id, whichever
+   * resolved first answered for both, and the second variable's metadata was
+   * silently ignored. The entry object is the identity that distinguishes
+   * them, and it is built once per run, so the memo still holds.
    */
   private resolvedFor(entry: VariableEntry): ResolvedVariableSynthetic {
-    const cached = this.resolved.get(entry.id);
+    const cached = this.resolved.get(entry);
     if (cached) return cached;
     // A VariableEntry mirrors the codebook variable's synthetic-relevant
     // fields (type, name, options, validation, synthetic) structurally;
     // resolution reads nothing else.
     const resolved = resolveVariableSynthetic(entry as unknown as Variable);
-    this.resolved.set(entry.id, resolved);
+    this.resolved.set(entry, resolved);
     return resolved;
   }
 
@@ -324,6 +339,8 @@ export class ValueGenerator {
   generateConstrained(
     variable: ConstrainedVariable,
     index: number,
+    /** The entity scope this draw belongs to, as `scopeKey` writes it. */
+    scope: string,
     opts?: {
       distinctSeq?: number;
       preferRealisticName?: boolean;
@@ -332,7 +349,7 @@ export class ValueGenerator {
   ): VariableValue {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
-    const stream = this.streamFor(entry);
+    const stream = this.streamFor(entry, scope);
 
     switch (entry.type) {
       case 'text': {
@@ -392,6 +409,27 @@ export class ValueGenerator {
         const max = Math.floor(upperBound);
 
         const resolved = this.resolvedFor(entry);
+        // The window the rules actually state, open where they say nothing.
+        // `numberDrawBounds` fills an open end with a realistic age range,
+        // which is right for a draw with no declared distribution — that range
+        // IS the resolved default's own window — but wrong as a clamp on one
+        // the protocol declared: a uniform over 0–1 came back as 18 on every
+        // entity, the authored distribution replaced by the stand-in for its
+        // absence. Declared bounds (and anything a comparator narrowed) still
+        // bind, because validation stays authoritative over a target.
+        const declaredWindow = {
+          ...(constraints.minValue !== undefined
+            ? { min: constraints.minValue }
+            : {}),
+          ...(constraints.maxValue !== undefined
+            ? { max: constraints.maxValue }
+            : {}),
+        };
+        const descriptorDeclared =
+          resolved.kind === 'number' && resolved.declared;
+        const drawWindow = descriptorDeclared
+          ? declaredWindow
+          : { min: lowerBound, max: upperBound };
         const descriptor =
           resolved.kind === 'number'
             ? resolved.descriptor
@@ -425,20 +463,24 @@ export class ValueGenerator {
         }
 
         if (seq !== undefined) return min + (seq % (max - min + 1));
-        const drawn = sampleContinuous(
-          descriptor,
-          { min: lowerBound, max: upperBound },
-          stream,
-        );
+        const drawn = sampleContinuous(descriptor, drawWindow, stream);
         // A declared distribution is continuous whatever its parameters look
         // like, so it is returned as drawn: rounding a uniform over 0–1 would
         // collapse it to nothing but 0 and 1, and a declared constant of 0.5
         // would come back as 1. Only the resolved default rounds.
-        if (resolved.kind === 'number' && resolved.declared) {
+        if (descriptorDeclared) {
+          // A declared constant is returned as written. The two-decimal grid
+          // exists to keep a CONTINUOUS draw readable; applied to a constant
+          // it silently changes the authored value, and `1.234` came back as
+          // `1.23` — which neither the schema nor Architect's `step="any"`
+          // control gave any reason to expect.
+          if (descriptor.distribution === 'constant') {
+            return clamp(drawn, declaredWindow.min, declaredWindow.max);
+          }
           return clamp(
             Number(drawn.toFixed(SCALAR_DECIMAL_PLACES)),
-            lowerBound,
-            upperBound,
+            declaredWindow.min,
+            declaredWindow.max,
           );
         }
         // Whole values wherever the window admits them, matching how real
@@ -608,11 +650,43 @@ export class ValueGenerator {
         const fallbackMin =
           declaredMin ?? openDateFloor(fallbackMax, defaultSpan, resolution);
 
+        // A `unique` walk takes the FIELD's window rather than the
+        // descriptor's, which is what every other type does: the number
+        // branch walks its validation window and sets the distribution aside,
+        // because realism yields to satisfiability wherever the two disagree.
+        // Feasibility counts that same field window, so walking the narrower
+        // descriptor here exhausted a registry the pre-count had said held
+        // room — a descriptor pinned to a single day repeated it for every
+        // entity and failed the run after the first.
+        if (seq !== undefined) {
+          const walkSpan = Math.max(
+            0,
+            stepsBetween(fallbackMin, fallbackMax, resolution),
+          );
+          return addSteps(fallbackMin, seq % (walkSpan + 1), resolution);
+        }
+
         let max = declaredMax ?? descriptorMax ?? fallbackMax;
         let min =
           declaredMin ??
           descriptorMin ??
           openDateFloor(max, defaultSpan, resolution);
+
+        // A normal names no bounds of its own, only a centre — so where the
+        // field declares none either, the stand-in window has to reach the
+        // centre or the draw is clamped to an end of it. `{ mean:
+        // '2030-01-01', sdDays: 0 }` came back as today, and an old mean came
+        // back as the fallback floor, on a field with no real bound at all.
+        // A DECLARED bound is a rule and still wins.
+        if (descriptor.distribution === 'normal') {
+          const centre = truncateToResolution(descriptor.mean, resolution);
+          if (ceilingIsStandIn && declaredMax === undefined && centre > max) {
+            max = offsetWithinOfferedDates(centre, defaultSpan, resolution);
+          }
+          if (declaredMin === undefined && centre < min) {
+            min = openDateFloor(centre, defaultSpan, resolution);
+          }
+        }
 
         // Where the field DOES declare a bound it is a rule rather than a
         // stand-in, so the descriptor may only narrow it, and a descriptor
@@ -647,9 +721,6 @@ export class ValueGenerator {
         }
 
         const span = Math.max(0, stepsBetween(min, max, resolution));
-        if (seq !== undefined) {
-          return addSteps(min, seq % (span + 1), resolution);
-        }
 
         if (descriptor.distribution === 'normal') {
           const meanStep = clamp(

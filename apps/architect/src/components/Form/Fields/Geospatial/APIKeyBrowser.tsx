@@ -1,22 +1,19 @@
 import { ArrowRight } from 'lucide-react';
-import type { ComponentType } from 'react';
 import { useCallback } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { Layout, Section } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
+import AppForm from '~/components/Form/AppForm';
+import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch } from '~/ducks/hooks';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
-import BasicForm from '../../../BasicForm';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 
 type APIKeyBrowserProps = {
   show?: boolean;
@@ -32,7 +29,6 @@ const APIKeyBrowser = ({
   onSelect = () => {},
   selected = null,
 }: APIKeyBrowserProps) => {
-  const formName = 'create-api-key';
   const dispatch = useAppDispatch();
   const [preview, handleShowPreview] = useExternalDataPreview();
   const handleSelectAsset = useCallback(
@@ -43,11 +39,9 @@ const APIKeyBrowser = ({
     [onSelect, close],
   );
   const handleSubmit = useCallback(
-    (formValues: Record<string, unknown>) => {
-      const { keyName, keyValue } = formValues as {
-        keyName: string;
-        keyValue: string;
-      };
+    (formValues: Record<string, FieldValue>) => {
+      const { keyName, keyValue } = formValues;
+      if (typeof keyName !== 'string' || typeof keyValue !== 'string') return;
       dispatch(addApiKeyAsset(keyName, keyValue));
     },
     [dispatch],
@@ -64,7 +58,7 @@ const APIKeyBrowser = ({
         </Button>
       }
     >
-      <BasicForm form={formName} onSubmit={handleSubmit}>
+      <AppForm onSubmit={handleSubmit}>
         <Layout>
           <Section title="Create New API Key" layout="vertical">
             <Paragraph className="text-sm text-current/70">
@@ -73,29 +67,21 @@ const APIKeyBrowser = ({
               share the exported protocol with can read it, so only use a key
               you are comfortable distributing.
             </Paragraph>
-            <div data-name="API Key Name" />
-            <ValidatedField
-              label="API Key Name"
-              component={FrescoReduxField}
+            <ArchitectField
               name="keyName"
+              label="API Key Name"
+              component={InputField}
               validation={{ required: true }}
-              componentProps={{
-                fieldComponent: FrescoInputField,
-                type: 'text',
-                placeholder: 'Name this key',
-              }}
+              type="text"
+              placeholder="Name this key"
             />
-            <div data-name="API Key Value" />
-            <ValidatedField
-              label="API Key Value"
-              component={FrescoReduxField}
+            <ArchitectField
               name="keyValue"
+              label="API Key Value"
+              component={InputField}
               validation={{ required: true }}
-              componentProps={{
-                fieldComponent: FrescoInputField,
-                type: 'text',
-                placeholder: 'Enter an API Key...',
-              }}
+              type="text"
+              placeholder="Enter an API Key..."
             />
             <div className="pt-4">
               <Button
@@ -120,7 +106,7 @@ const APIKeyBrowser = ({
           </Section>
           {preview}
         </Layout>
-      </BasicForm>
+      </AppForm>
     </Dialog>
   );
 };

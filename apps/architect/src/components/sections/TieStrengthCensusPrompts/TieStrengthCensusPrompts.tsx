@@ -1,69 +1,93 @@
-import { compose } from 'react-recompose';
+import type { ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageInitialValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
+import { getOptionsForVariable } from '~/selectors/codebook';
 
-import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
-import withSubject from '../../enhancers/withSubject';
-import { itemSelector } from './helpers';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
-import withPromptChangeHandler from './withPromptChangeHandler';
+import { useOnBeforeSaveTieStrengthPrompt } from './useOnBeforeSavePrompt';
+
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-type TieStrengthCensusPromptsProps = StageEditorSectionProps & {
-  handleChangePrompt: (prompt: unknown) => unknown;
-  entity?: string;
-  type?: string;
-  disabled?: boolean;
-  disabledMessage?: string;
+
+type Prompt = Record<string, unknown>;
+
+/**
+ * Enriches the row being edited with its edge variable's live codebook
+ * options (mirroring the deleted `helpers.tsx` `itemSelector`), plus its
+ * PRE-EDIT `edgeVariable` under a distinct key —
+ * `useOnBeforeSaveTieStrengthPrompt`'s unchanged-pick escape reads it from
+ * there, since the new `DialogArrayField` no longer surfaces a dialog-form
+ * `initialValues` prop separately from the row itself.
+ */
+const itemSelector: DialogArrayItemSelector = (state, { item }) => {
+  const prompt = item as Prompt;
+  const edgeVariable =
+    typeof prompt.edgeVariable === 'string' ? prompt.edgeVariable : '';
+  const variableOptions = getOptionsForVariable(state, {
+    entity: 'edge',
+    type: typeof prompt.createEdge === 'string' ? prompt.createEdge : undefined,
+    variable: edgeVariable,
+  });
+
+  return {
+    ...prompt,
+    variableOptions,
+    _originalEdgeVariable: prompt.edgeVariable,
+  };
 };
-const TieStrengthCensusPrompts = ({
-  handleChangePrompt,
-  entity,
-  type,
-  disabled,
-  disabledMessage,
-}: TieStrengthCensusPromptsProps) => (
-  <Section
-    disabled={disabled}
-    disabledMessage={disabledMessage}
-    summary={
-      <Paragraph>
-        Add one or more prompts below to frame the task for the user. You can
-        reorder the prompts using the draggable handles on the left hand side.
-      </Paragraph>
-    }
-    title="Prompts"
-  >
-    <ValidatedFieldArray
-      name="prompts"
-      label="Prompts"
-      labelHidden
-      component={DialogArrayField}
-      validation={{ notEmpty }}
-      componentProps={{
-        addTitle: 'Edit Prompt',
-        previewComponent: PromptPreview,
-        editorFieldsComponent: PromptFields,
-        editorTitle: 'Edit Prompt',
-        itemLabel: 'prompt',
-        itemSelector: itemSelector(),
-        onBeforeSave: handleChangePrompt,
-        editorProps: { entity, type },
-        requestedEditFormName: 'editable-list-form',
-        sortable: true,
-      }}
-    />
-  </Section>
-);
-export default compose<TieStrengthCensusPromptsProps, StageEditorSectionProps>(
-  withSubject,
-  withDisabledSubjectRequired,
-  withPromptChangeHandler,
-)(TieStrengthCensusPrompts);
+
+const TieStrengthCensusPrompts = (_props: StageEditorSectionProps) => {
+  const { type } = useSubject();
+  const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
+  const onBeforeSave = useOnBeforeSaveTieStrengthPrompt();
+
+  return (
+    <Section
+      disabled={!type}
+      disabledMessage="Select a node type above to configure this section."
+      summary={
+        <Paragraph>
+          Add one or more prompts below to frame the task for the user. You can
+          reorder the prompts using the draggable handles on the left hand side.
+        </Paragraph>
+      }
+      title="Prompts"
+    >
+      <ArchitectArrayField
+        name="prompts"
+        label="Prompts"
+        labelHidden
+        component={DialogArrayField}
+        validation={{ notEmpty }}
+        initialValue={initialPrompts}
+        addTitle="Edit Prompt"
+        previewComponent={
+          PromptPreview as ComponentType<Record<string, unknown>>
+        }
+        editorFieldsComponent={
+          PromptFields as ComponentType<Record<string, unknown>>
+        }
+        editorTitle="Edit Prompt"
+        itemLabel="prompt"
+        onBeforeSave={onBeforeSave}
+        itemSelector={itemSelector}
+        requestedEditFormName="editable-list-form"
+        sortable
+      />
+    </Section>
+  );
+};
+
+export default TieStrengthCensusPrompts;

@@ -104,14 +104,26 @@ export function weightRows(ctx: SyntheticDraftContext): WeightRow[] {
   }));
 }
 
-/** The legal selection counts under the draft's options and validation. */
-function legalCounts(ctx: SyntheticDraftContext): number[] {
+/**
+ * The legal selection counts under the draft's options and validation.
+ *
+ * `positiveWeights` is the count of option values the author has given a
+ * positive weight RIGHT NOW, where the caller can see the live fields. Read
+ * from the saved weights instead, a zero-weight option the author has just
+ * raised never adds its count to the table, and they have to save and reopen
+ * before the distribution they are building can be configured.
+ */
+function legalCounts(
+  ctx: SyntheticDraftContext,
+  positiveWeights?: number,
+): number[] {
   // Selection is without replacement over the positively weighted values, so
   // a count above how many of those there are cannot be drawn. Offering one
   // put a row in the table that `rejectIllegalSelectionCounts` refuses even at
   // probability zero — which blocked saving any edit to a variable that was
   // perfectly valid when the editor opened.
-  const distinct = weightRows(ctx).filter((row) => row.initial > 0).length;
+  const distinct =
+    positiveWeights ?? weightRows(ctx).filter((row) => row.initial > 0).length;
   const validation =
     'validation' in ctx.variable ? (ctx.variable.validation ?? {}) : {};
   const minSelected =
@@ -140,8 +152,10 @@ export type SelectionCountRow = {
 
 export function selectionCountRows(
   ctx: SyntheticDraftContext,
+  /** See {@link legalCounts}; the editor passes its live weight fields. */
+  positiveWeights?: number,
 ): SelectionCountRow[] {
-  const counts = legalCounts(ctx);
+  const counts = legalCounts(ctx, positiveWeights);
   const declaredTable =
     ctx.variable.type === 'categorical'
       ? ctx.variable.synthetic?.selectionCount
@@ -358,12 +372,16 @@ export function assembleSynthetic(
 
     case 'ordinal':
     case 'categorical': {
-      const optionWeights = weightRows(ctx)
-        .map((row) => ({
-          value: row.value,
-          weight: toNumber(values[row.fieldName]) ?? DEFAULT_OPTION_WEIGHT,
-        }))
-        .filter((entry) => entry.weight >= 0);
+      // A negative weight is kept rather than dropped. The control carries a
+      // native `min`, but the form submits with `noValidate`, so nothing has
+      // refused it by the time it arrives here — and a dropped row saves as
+      // no entry at all, which reopens showing the default weight of 1 with
+      // nothing said about what was typed. Carried through, the schema's own
+      // bound rejects it under the row that owns it.
+      const optionWeights = weightRows(ctx).map((row) => ({
+        value: row.value,
+        weight: toNumber(values[row.fieldName]) ?? DEFAULT_OPTION_WEIGHT,
+      }));
       const base: Record<string, unknown> = {};
       if (optionWeights.length > 0) base.optionWeights = optionWeights;
 
@@ -374,23 +392,39 @@ export function assembleSynthetic(
         const selectable = optionWeights.filter(
           (entry) => entry.weight > 0,
         ).length;
-        const rows = selectionCountRows(ctx)
+        // The SAME live count, so the rows assembled are the rows the author
+        // saw. Reading the saved weights here meant a probability entered in a
+        // row the live table had just exposed was dropped, and the old rows
+        // normalised and saved in its place.
+        const rows = selectionCountRows(ctx, selectable)
           .filter((row) => row.count <= selectable)
           .map((row) => ({
             count: row.count,
-            probability: Math.max(0, toNumber(values[row.fieldName]) ?? 0),
+            probability: toNumber(values[row.fieldName]) ?? 0,
           }));
         const total = rows.reduce((sum, row) => sum + row.probability, 0);
         // Normalised so the stored table always satisfies the schema's
         // sum-to-one rule whatever mixture the researcher typed — except a
-        // table of nothing but zeros, which has no normalisation. That one is
-        // assembled as typed so the schema rejects it and the editor says so:
-        // dropping it instead saved a variable whose reopened editor showed
-        // the runtime's uniform default in place of what the author entered.
+        // table the schema has to see as typed to refuse. One of nothing but
+        // zeros has no normalisation; one carrying a negative would be
+        // normalised INTO range beside a positive row, saving a table the
+        // author never entered and reopening with different numbers. Both are
+        // assembled as typed so the schema rejects them and the editor says
+        // so: dropping them instead saved a variable whose reopened editor
+        // showed the runtime's uniform default in place of what was entered.
+        // A value outside 0–1 is as much an error as a negative one: scaling
+        // `2` and `1` down to roughly 0.66 and 0.33 saves a table the author
+        // never entered and validates only the altered result. Normalisation
+        // is for a mixture of legal weights, not a repair for illegal ones.
+        const normalisable =
+          total > 0 &&
+          rows.every((row) => row.probability >= 0 && row.probability <= 1);
         base.selectionCount = {
           probabilities: rows.map((row) => ({
             count: row.count,
-            probability: total > 0 ? row.probability / total : row.probability,
+            probability: normalisable
+              ? row.probability / total
+              : row.probability,
           })),
         };
       }

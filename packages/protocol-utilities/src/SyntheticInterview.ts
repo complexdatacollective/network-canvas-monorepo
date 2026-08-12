@@ -369,7 +369,6 @@ export class SyntheticInterview {
       icon: opts?.icon ?? 'add-a-person',
       shape: opts?.shape ?? { default: 'circle' },
       variables: new Map(),
-      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     // Seed a "name" text variable so generated initial nodes receive a
@@ -406,7 +405,6 @@ export class SyntheticInterview {
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
       variables: new Map(),
-      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
     this.edgeTypes.set(id, entry);
@@ -450,8 +448,14 @@ export class SyntheticInterview {
       // dropping it here would silently ignore the one option such a call
       // exists to pass.
       if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `node type "${nodeTypeId}"`,
+        );
         existing.synthetic = opts.synthetic;
-        assertSyntheticMatchesType(existing, `node type "${nodeTypeId}"`);
       }
       return { id: existing.id };
     }
@@ -496,8 +500,14 @@ export class SyntheticInterview {
         );
       }
       if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `edge type "${edgeTypeId}"`,
+        );
         existing.synthetic = opts.synthetic;
-        assertSyntheticMatchesType(existing, `edge type "${edgeTypeId}"`);
       }
       return { id: existing.id };
     }
@@ -546,6 +556,8 @@ export class SyntheticInterview {
       parameters: opts?.parameters,
       ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
+
+    assertSyntheticMatchesType(entry, 'ego');
 
     this.egoVariables.set(varId, entry);
     return { id: varId };
@@ -2376,7 +2388,6 @@ export class SyntheticInterview {
         icon: entry.icon,
         shape: entry.shape,
         variables,
-        ...(entry.synthetic ? { synthetic: entry.synthetic } : {}),
       };
     }
 
@@ -2386,7 +2397,6 @@ export class SyntheticInterview {
         name: entry.name,
         color: entry.color,
       };
-      if (entry.synthetic) edgeEntry.synthetic = entry.synthetic;
       // Serialize edge type variables if any exist
       if (entry.variables.size > 0) {
         const variables: Record<string, unknown> = {};

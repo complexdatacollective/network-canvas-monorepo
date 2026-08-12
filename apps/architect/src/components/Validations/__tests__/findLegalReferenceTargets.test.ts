@@ -50,7 +50,6 @@ const legalTargetsOneCallPerCandidate = ({
   variableType,
   validation,
   ruleKey,
-  replacingKey,
   candidateIds,
   component,
   options,
@@ -59,9 +58,6 @@ const legalTargetsOneCallPerCandidate = ({
   const legal = new Set<string>();
   for (const candidateId of candidateIds) {
     const prospective: Record<string, unknown> = { ...validation };
-    if (replacingKey && replacingKey !== ruleKey) {
-      delete prospective[replacingKey];
-    }
     prospective[ruleKey] = candidateId;
     const contradictions = findDraftContradictions({
       allVariables,
@@ -335,12 +331,11 @@ describe('findLegalReferenceTargets: equivalence with the one-call-per-candidate
     expect(actual).toEqual(expected);
   });
 
-  it('matches the un-batched result when replacing an existing rule of a different type', () => {
+  it('matches the un-batched result when another reference rule is already set', () => {
     // b currently has `sameAs: g` (a different rule than the one under
     // test). Editing b's NEW `differentFrom` rule must judge candidates
-    // against b's OTHER rules with `sameAs` still intact (replacingKey is
-    // undefined — a different rule key, not a retype of this one) plus the
-    // candidate under test, exactly like the un-batched approach.
+    // against b's OTHER rules with `sameAs` still intact, plus the candidate
+    // under test, exactly like the un-batched approach.
     const allVariables = {
       b: numberVariable('b', { sameAs: 'g' }),
       g: numberVariable('g'),

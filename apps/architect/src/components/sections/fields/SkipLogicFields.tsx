@@ -1,30 +1,17 @@
-import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import type { SkipLogicDestination } from '@codaco/protocol-validation';
 import { Row } from '~/components/EditorLayout';
-import ValidatedField from '~/components/Form/ValidatedField';
-import {
-  Query,
-  ruleValidator,
-  withFieldConnector,
-  withStoreConnector,
-} from '~/components/Query';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { ruleValidator } from '~/components/Query';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 import { getStageList } from '~/selectors/protocol';
 
 import IssueAnchor from '../../IssueAnchor';
+import { QueryField, type RuleSetValue } from './RuleSetFields';
 import SkipLogicDestinationField from './SkipLogicDestinationField';
-import { SkipLogicRadioGroupReduxField } from './SkipLogicReduxFields';
-
-const ConnectedQuery = (
-  withFieldConnector as unknown as (
-    c: ComponentType,
-  ) => ComponentType<Record<string, unknown>>
-)(
-  withStoreConnector(
-    Query as unknown as ComponentType,
-  ) as unknown as ComponentType,
-) as ComponentType<Record<string, unknown>>;
 
 type SkipLogicFieldsProps = Pick<
   StageEditorSectionProps,
@@ -36,6 +23,14 @@ const SkipLogicFields = ({
   stagePosition,
 }: SkipLogicFieldsProps) => {
   const stages = useSelector(getStageList);
+  // Without an initialValue a field registers empty, so an existing stage's
+  // committed skip logic would render blank — and save (which overwrites from
+  // the registered fields) would then discard it.
+  const initialAction = useStageInitialValue<string>('skipLogic.action');
+  const initialFilter = useStageInitialValue<RuleSetValue>('skipLogic.filter');
+  const initialDestination = useStageInitialValue<SkipLogicDestination>(
+    'skipLogic.destination',
+  );
 
   return (
     <>
@@ -44,17 +39,16 @@ const SkipLogicFields = ({
           fieldName="skipLogic.action"
           description="Skip Logic Action"
         />
-        <ValidatedField
+        <ArchitectField
           name="skipLogic.action"
-          component={SkipLogicRadioGroupReduxField}
+          label="When the rules match"
+          component={RadioGroupField}
+          initialValue={initialAction}
           validation={{ required: true }}
-          componentProps={{
-            label: 'When the rules match',
-            options: [
-              { value: 'SHOW', label: 'Show this stage' },
-              { value: 'SKIP', label: 'Skip this stage' },
-            ],
-          }}
+          options={[
+            { value: 'SHOW', label: 'Show this stage' },
+            { value: 'SKIP', label: 'Skip this stage' },
+          ]}
         />
       </Row>
       <Row>
@@ -62,9 +56,11 @@ const SkipLogicFields = ({
           fieldName="skipLogic.filter"
           description="Skip Logic Rules"
         />
-        <ValidatedField
-          component={ConnectedQuery}
+        <ArchitectField
           name="skipLogic.filter"
+          label="Rules"
+          component={QueryField}
+          initialValue={initialFilter}
           validation={{ required: true, validator: ruleValidator }}
         />
       </Row>
@@ -74,6 +70,7 @@ const SkipLogicFields = ({
           description="Skip Logic Destination"
         />
         <SkipLogicDestinationField
+          initialValue={initialDestination}
           stages={stages}
           stagePosition={stagePosition}
           isNewStage={stagePath === null}

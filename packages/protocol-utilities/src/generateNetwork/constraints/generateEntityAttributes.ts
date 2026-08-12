@@ -1253,7 +1253,7 @@ function drawGroup(
           ? attempt
           : undefined;
 
-      const value = ctx.valueGen.generateConstrained(bounded, index, {
+      const value = ctx.valueGen.generateConstrained(bounded, index, registry, {
         ...(seq !== undefined ? { distinctSeq: seq } : {}),
         ...(attempt === 0
           ? {

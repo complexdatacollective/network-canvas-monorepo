@@ -19,7 +19,6 @@ const codebook = (
     node: {
       person: {
         name: 'Person',
-        synthetic: { count: { distribution: 'constant', value: 4 } },
         variables: {
           name: { name: 'Name', type: 'text' },
           age: {
@@ -40,16 +39,7 @@ const codebook = (
       },
     },
     edge: {
-      knows: {
-        name: 'Knows',
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
-        variables: {},
-      },
+      knows: { name: 'Knows', variables: {} },
     },
     ego: { variables: { egoAge: { name: 'EgoAge', type: 'number' } } },
     ...overrides,
@@ -58,6 +48,7 @@ const codebook = (
 const nameGenerator = stage({
   id: 'ng',
   type: 'NameGeneratorQuickAdd',
+  synthetic: { count: { distribution: 'constant', value: 4 } },
   label: 'Names',
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
@@ -75,6 +66,12 @@ const alterForm = stage({
 const dyadCensus = stage({
   id: 'dc',
   type: 'DyadCensus',
+  synthetic: {
+    topology: {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 1 },
+    },
+  },
   label: 'Census',
   subject: { entity: 'node', type: 'person' },
   introductionPanel: { title: 't', text: 'x' },
@@ -137,21 +134,19 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
     }
 
     const unlinked = generateNetwork({
-      codebook: codebook({
-        edge: {
-          knows: {
-            name: 'Knows',
-            synthetic: {
-              topology: {
-                metric: 'density',
-                distribution: { distribution: 'constant', value: 0 },
-              },
+      codebook: codebook(),
+      stages: [
+        nameGenerator,
+        stage({
+          ...dyadCensus,
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 0 },
             },
-            variables: {},
           },
-        },
-      }),
-      stages: [nameGenerator, dyadCensus],
+        }),
+      ],
       seed: 1,
     });
     expect(unlinked.network.edges).toHaveLength(0);
@@ -192,7 +187,6 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
         node: {
           family_member: {
             name: 'Family member',
-            synthetic: { count: { distribution: 'constant', value: 3 } },
             variables: {
               label: { name: 'Label', type: 'text' },
               is_ego: { name: 'Is_Ego', type: 'boolean' },

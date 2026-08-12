@@ -18,7 +18,12 @@ module.exports = {
     'dist/**/*',
     '!dist/main/_dummy.js',
     'node_modules/**/*',
-    '!node_modules/**/node_modules/**',
+    // Nested node_modules MUST be included: electron-builder resolves version
+    // conflicts by nesting the losing version under its dependent (e.g.
+    // lazystream needs readable-stream@2 for its `readable-stream/passthrough`
+    // require, while archiver hoists readable-stream@4 to the root). Excluding
+    // `node_modules/**/node_modules/**` strips those copies and crashes the
+    // packaged app at launch with "Cannot find module".
     '!**/*.{map,ts,md}',
     '!**/test/**',
     '!**/tests/**',
@@ -136,6 +141,11 @@ module.exports = {
 
   // Linux configuration
   linux: {
+    // Without this, electron-builder derives the Linux executable name from
+    // package.json's name — since the monorepo rename that is the scoped
+    // "@codaco/architect-classic", which AppImage rejects as unsafe for file
+    // paths. Keep the pre-monorepo executable name that 6.6.0 shipped.
+    executableName: 'network-canvas-architect',
     icon: 'build-resources',
     category: 'Education',
     maintainer: 'Complex Data Collective <info@networkcanvas.com>',
@@ -157,6 +167,19 @@ module.exports = {
         arch: ['x64', 'arm64'],
       },
     ],
+  },
+
+  // Linux package identity. Without these, electron-builder derives the deb
+  // and rpm package name from package.json's name; since the monorepo rename
+  // that is scoped ("@codaco/architect-classic"), so it falls back to the
+  // sanitized productName — "Network Canvas Architect", which rpmbuild
+  // rejects because a Name may not contain spaces. Keep the pre-monorepo
+  // package name that 6.6.0 shipped, so existing installs upgrade in place.
+  deb: {
+    packageName: 'network-canvas-architect',
+  },
+  rpm: {
+    packageName: 'network-canvas-architect',
   },
 
   // AppImage configuration

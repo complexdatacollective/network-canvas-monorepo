@@ -387,3 +387,182 @@ describe('the text generator options', () => {
     expect(options.map((option) => option.label)).not.toContain('neutralWords');
   });
 });
+
+describe('values the controls reject but the form does not', () => {
+  // The editor submits with `noValidate`, so a native `min` stops nothing.
+  // Anything dropped or clamped on the way into the descriptor is a value the
+  // schema never sees — the save succeeds and the editor reopens showing a
+  // default in place of what was typed.
+
+  it('carries a negative option weight through to its own row', () => {
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: -1,
+    });
+
+    expect(assembled).toMatchObject({
+      optionWeights: [
+        { value: 'close', weight: 1 },
+        { value: 'distant', weight: -1 },
+      ],
+    });
+    expect(
+      validateAssembledVariable(context, assembled)?.fieldErrors[
+        rows[1]!.fieldName
+      ],
+    ).toEqual(['Enter 0 or more']);
+  });
+
+  it('carries a negative selection probability through unnormalised', () => {
+    // Normalising it beside a positive row would divide it INTO range and save
+    // a table the author never entered.
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const counts = selectionCountRows(context);
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: 1,
+      ...Object.fromEntries(counts.map((row) => [row.fieldName, 0])),
+      [counts[0]!.fieldName]: -1,
+      [counts[1]!.fieldName]: 2,
+    });
+
+    const table = (
+      assembled as { selectionCount?: { probabilities: unknown[] } }
+    ).selectionCount;
+    expect(table?.probabilities).toContainEqual({
+      count: counts[0]!.count,
+      probability: -1,
+    });
+    expect(
+      validateAssembledVariable(context, assembled)?.fieldErrors[
+        counts[0]!.fieldName
+      ],
+    ).toEqual(['Enter 0 or more']);
+  });
+});
+
+describe('a scalar uniform with declared bounds', () => {
+  const scalarVariable = {
+    name: 'Closeness',
+    type: 'scalar',
+    component: 'VisualAnalogScale',
+    synthetic: { distribution: 'uniform', min: 0.2, max: 0.6 },
+  } as const satisfies Variable;
+
+  it('offers the bounds as fields so a save keeps them', () => {
+    // Submission rebuilds `synthetic` from the registered fields, so a bound
+    // with no control is a bound that any edit silently drops — widening the
+    // distribution back to the whole scale.
+    const initial = initialSyntheticValues(contextFor(scalarVariable));
+
+    expect(initial[syntheticField('min')]).toBe(0.2);
+    expect(initial[syntheticField('max')]).toBe(0.6);
+  });
+
+  it('round-trips them through assembly', () => {
+    const context = contextFor(scalarVariable);
+    const assembled = assembleSynthetic(
+      context,
+      initialSyntheticValues(context),
+    );
+
+    expect(assembled).toMatchObject({
+      distribution: 'uniform',
+      min: 0.2,
+      max: 0.6,
+    });
+    expect(validateAssembledVariable(context, assembled)).toBeUndefined();
+  });
+});
+
+describe('selection counts against the weights as they stand', () => {
+  const oneWeighted = {
+    ...categoricalVariable,
+    synthetic: {
+      optionWeights: [
+        { value: 'close', weight: 1 },
+        { value: 'distant', weight: 0 },
+      ],
+    },
+  } as const satisfies Variable;
+
+  it('offers only the counts the saved weights reach', () => {
+    const counts = selectionCountRows(contextFor(oneWeighted)).map(
+      (row) => row.count,
+    );
+
+    // One positively weighted value, so a selection of two cannot be drawn.
+    expect(counts).toEqual([0, 1]);
+  });
+
+  it('offers the further count once a weight is raised', () => {
+    // The editor passes what the author has typed, not what was saved.
+    const counts = selectionCountRows(contextFor(oneWeighted), 2).map(
+      (row) => row.count,
+    );
+
+    expect(counts).toEqual([0, 1, 2]);
+  });
+});
+
+describe('assembling a probability from a newly reachable row', () => {
+  it('keeps the row the live table exposed', () => {
+    // The author raises a zero weight, the table offers "2 selected", and the
+    // probability typed into it has to survive submission. Assembled from the
+    // SAVED weights, that row was dropped and the old ones normalised in its
+    // place.
+    const context = contextFor({
+      ...categoricalVariable,
+      synthetic: {
+        optionWeights: [
+          { value: 'close', weight: 1 },
+          { value: 'distant', weight: 0 },
+        ],
+      },
+    } as Variable);
+    const rows = weightRows(context);
+
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      // Raised from zero, which makes a selection of two reachable.
+      [rows[1]!.fieldName]: 1,
+      [syntheticField('count', 1)]: 0.5,
+      [syntheticField('count', 2)]: 0.5,
+    });
+
+    const counts = (
+      assembled as { selectionCount?: { probabilities: { count: number }[] } }
+    ).selectionCount?.probabilities.map((entry) => entry.count);
+    expect(counts).toContain(2);
+  });
+});
+
+describe('a selection probability above one', () => {
+  it('reaches the schema as typed rather than being scaled into range', () => {
+    // Normalisation is for a mixture of legal weights. Scaling `2` and `1`
+    // down to roughly 0.66 and 0.33 saves a table the author never entered
+    // and validates only the altered result.
+    const context = contextFor(categoricalVariable);
+    const rows = weightRows(context);
+    const counts = selectionCountRows(context);
+
+    const assembled = assembleSynthetic(context, {
+      [rows[0]!.fieldName]: 1,
+      [rows[1]!.fieldName]: 1,
+      ...Object.fromEntries(counts.map((row) => [row.fieldName, 0])),
+      [counts[1]!.fieldName]: 2,
+      [counts[2]!.fieldName]: 1,
+    });
+
+    const table = (
+      assembled as {
+        selectionCount?: { probabilities: { probability: number }[] };
+      }
+    ).selectionCount;
+    expect(table?.probabilities.map((entry) => entry.probability)).toContain(2);
+    expect(validateAssembledVariable(context, assembled)).toBeDefined();
+  });
+});

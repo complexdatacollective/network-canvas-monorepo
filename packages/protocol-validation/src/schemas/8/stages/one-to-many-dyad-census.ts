@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { StageEdgeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   NodeStageSubjectSchema,
   oneToManyDyadCensusPromptSchema,
@@ -10,6 +11,7 @@ import { baseStageSchema } from './base.ts';
 
 export const oneToManyDyadCensusStage = baseStageSchema.extend({
   type: z.literal('OneToManyDyadCensus'),
+  synthetic: StageEdgeSyntheticSchema.optional(),
   filter: FilterSchema.optional(),
   subject: NodeStageSubjectSchema,
   behaviours: z.strictObject({

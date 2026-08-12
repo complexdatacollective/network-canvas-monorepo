@@ -137,7 +137,7 @@ describe('generateNetwork constraint conformance', () => {
 
     expect(
       JSON.stringify(network.ego?.[entityAttributesProperty] ?? {}),
-    ).toMatchInlineSnapshot(`"{"a":15,"b":"2020-04"}"`);
+    ).toMatchInlineSnapshot(`"{"a":10,"b":"2020-08"}"`);
   });
 
   it('holds two ego variables equal when one declares sameAs the other', () => {
@@ -2338,7 +2338,6 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       node: {
         person: {
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 6 } },
           variables: {
             name: { name: 'Name', type: 'text' },
             rel: { name: 'Relationship', type: 'text' },
@@ -2747,6 +2746,7 @@ describe('a variable a roster row and a prompt both settle', () => {
       type: 'NameGeneratorRoster',
       label: id,
       subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 6 } },
       prompts: [
         {
           id: `${id}-p1`,
@@ -2859,7 +2859,10 @@ describe('two roster rows a caller gave one primary key', () => {
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'p1', text: 'Pick people' }],
-    behaviours: { minNodes: 2, maxNodes: 2 },
+    // One person, because the two rows below share a key and so describe one.
+    // Asking for two is now a refusal — which sharedRosterPools covers, and
+    // which is itself evidence the pool is measured in DISTINCT keys.
+    behaviours: { minNodes: 1, maxNodes: 1 },
   } as unknown as Stage;
 
   /** Two rows sharing one key, in the order given. */
@@ -3153,7 +3156,8 @@ describe('lost guarantees the engine should restore', () => {
         const { network } = generateNetwork({
           seed,
           codebook,
-          stages: [rosterStage(2)],
+          // One person: the two rows share a key, so they describe one.
+          stages: [rosterStage(1)],
           externalData: {
             'stage-1': ages.map(
               (age) =>
@@ -3305,13 +3309,12 @@ describe('lost guarantees the engine should restore', () => {
 });
 
 describe('feasibility counting a plan-first run', () => {
-  const personWithUniqueName = (count: number) =>
+  const personWithUniqueName = () =>
     ({
       node: {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: count } },
           variables: {
             code: {
               name: 'Code',
@@ -3325,46 +3328,82 @@ describe('feasibility counting a plan-first run', () => {
       ego: { variables: {} },
     }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
-  const generator = (id: string) =>
+  const generator = (id: string, count: number) =>
     ({
       id,
       type: 'NameGeneratorQuickAdd',
       label: 'Names',
       subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: count } },
       quickAdd: 'code',
       prompts: [{ id: `${id}-p1`, text: 'Who?' }],
     }) as unknown as Stage;
 
-  it('apportions a population across its generators rather than summing', () => {
-    // Two generators of a two-person type build two people between them, not
-    // two each — so a boolean's two distinct values cover them. Counting each
-    // stage at the type's whole ceiling refused this for needing four.
+  it('counts each generator at the population it declares', () => {
+    // One person each, so a boolean's two distinct values cover them both.
+    // Counting either stage at the whole type's ceiling refused this.
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook: personWithUniqueName(2),
-        stages: [generator('ng-one'), generator('ng-two')],
+        codebook: personWithUniqueName(),
+        stages: [generator('ng-one', 1), generator('ng-two', 1)],
       }),
     ).not.toThrow();
   });
 
-  it('still counts a population its generators demand above the declaration', () => {
-    // Stage minimums are honoured before the drawn total is spread, so these
-    // two build four people whatever the codebook declares — and a boolean
-    // cannot tell four apart. Counting the declaration alone would have let
-    // this through and run out of values mid-plan.
+  it('still counts a population its stages demand above their declaration', () => {
+    // `behaviours` is what the interface will actually hold, so it clamps the
+    // declaration: these two build four people despite declaring one each, and
+    // a boolean cannot tell four apart. Counting the declaration alone would
+    // have let this through and run out of values mid-plan.
     const demanding = (id: string) =>
       ({
-        ...generator(id),
+        ...generator(id, 1),
         behaviours: { minNodes: 2, maxNodes: 2 },
       }) as unknown as Stage;
 
     expect(() =>
       generateNetwork({
         seed: 1,
-        codebook: personWithUniqueName(2),
+        codebook: personWithUniqueName(),
         stages: [demanding('ng-one'), demanding('ng-two')],
       }),
     ).toThrow(SyntheticDataConstraintError);
+  });
+
+  it('counts a demand past the population ceiling at the ceiling', () => {
+    // `behaviours.minNodes` is unbounded in the stage schema, and the planner
+    // trims a population to what a synchronous preview can build. Both readers
+    // have to agree on that trim: counting the raw minimum here demanded a
+    // billion distinct values of a `unique` variable — refusing a protocol
+    // whose plan then went on to build ten thousand nodes quite happily, from
+    // a domain of a million.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            code: {
+              name: 'Code',
+              type: 'number',
+              validation: { unique: true, minValue: 0, maxValue: 999_999 },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    const insatiable = {
+      ...generator('ng-one', 1),
+      quickAdd: 'code',
+      behaviours: { minNodes: 1_000_000_000 },
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({ seed: 1, codebook, stages: [insatiable] }),
+    ).not.toThrow();
   });
 });

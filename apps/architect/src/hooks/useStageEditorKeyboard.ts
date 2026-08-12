@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
-import { useAppDispatch } from '~/ducks/hooks';
-import { draftRedo, draftUndo } from '~/ducks/modules/stageEditorDraft';
+import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHistory';
 
 /**
  * Registers a document-level keydown listener that maps the standard
@@ -11,8 +10,8 @@ import { draftRedo, draftUndo } from '~/ducks/modules/stageEditorDraft';
  * - Cmd/Ctrl+Shift+Z   -> redo
  * - Cmd/Ctrl+Y         -> redo
  *
- * Intended to be mounted inside the StageEditor component, so it is only
- * active while the stage editor is on screen.
+ * Must be mounted inside `StageForm`: undo/redo now writes to the stage form
+ * store, which it reaches through the stage form context.
  */
 // A base-ui Dialog popup (item-edit dialog, confirm/warning) renders with
 // role="dialog"/"alertdialog". The stage editor page is not itself a dialog, so
@@ -21,7 +20,7 @@ const isDialogOpen = (): boolean =>
   document.querySelector('[role="dialog"],[role="alertdialog"]') !== null;
 
 export const useStageEditorKeyboard = (): void => {
-  const dispatch = useAppDispatch();
+  const { undo, redo } = useStageDraftHistory();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -43,19 +42,19 @@ export const useStageEditorKeyboard = (): void => {
 
       if (e.code === 'KeyZ' && !e.shiftKey) {
         e.preventDefault();
-        dispatch(draftUndo());
+        undo();
         return;
       }
 
       if (e.code === 'KeyZ' && e.shiftKey) {
         e.preventDefault();
-        dispatch(draftRedo());
+        redo();
         return;
       }
 
       if (e.code === 'KeyY') {
         e.preventDefault();
-        dispatch(draftRedo());
+        redo();
       }
     };
 
@@ -63,5 +62,5 @@ export const useStageEditorKeyboard = (): void => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dispatch]);
+  }, [redo, undo]);
 };

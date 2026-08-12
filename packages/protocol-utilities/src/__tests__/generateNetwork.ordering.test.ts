@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+/** Every eligible pair linked, which each edge type used to declare itself. */
+const FULL_DENSITY = {
+  topology: {
+    metric: 'density',
+    distribution: { distribution: 'constant', value: 1 },
+  },
+};
+
 import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -176,6 +184,7 @@ describe('edges over a population that is still growing', () => {
         stage({
           id: 'census',
           type: 'DyadCensus',
+          synthetic: FULL_DENSITY,
           label: 'Who knows whom',
           subject: { entity: 'node', type: 'person' },
           prompts: [
@@ -304,23 +313,11 @@ describe('a stage filtered on an edge an earlier stage created', () => {
         name: 'Close',
         color: 'edge-color-seq-2',
         variables: {},
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
       },
       friend: {
         name: 'Friend',
         color: 'edge-color-seq-1',
         variables: {},
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
       },
     },
     ego: { variables: {} },
@@ -332,6 +329,7 @@ describe('a stage filtered on an edge an earlier stage created', () => {
       type: 'DyadCensus',
       label: 'Pairs',
       subject: { entity: 'node', type: 'person' },
+      synthetic: FULL_DENSITY,
       prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: edgeType }],
       ...(filter ? { filter } : {}),
     });
@@ -536,12 +534,6 @@ describe('an edge whose earliest creating stage is skipped', () => {
           name: 'Friend',
           color: 'edge-color-seq-1',
           variables: {},
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: 1 },
-            },
-          },
         },
       },
       ego: { variables: { skip: { name: 'Skip', type: 'boolean' } } },
@@ -551,6 +543,7 @@ describe('an edge whose earliest creating stage is skipped', () => {
       stage({
         id,
         type: 'DyadCensus',
+        synthetic: FULL_DENSITY,
         label: 'Pairs',
         subject: { entity: 'node', type: 'person' },
         prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'friend' }],
@@ -664,12 +657,6 @@ describe('a stage filtered on the edge type it creates', () => {
           name: 'Friend',
           color: 'edge-color-seq-1',
           variables: {},
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: 1 },
-            },
-          },
         },
       },
       ego: { variables: {} },
@@ -692,6 +679,7 @@ describe('a stage filtered on the edge type it creates', () => {
       stage({
         id,
         type: 'DyadCensus',
+        synthetic: FULL_DENSITY,
         label: 'Pairs',
         subject: { entity: 'node', type: 'person' },
         prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'friend' }],
@@ -765,12 +753,6 @@ describe('a NetworkComposer’s tools over people and links already present', ()
         name: 'Friend',
         color: 'edge-color-seq-1',
         variables: { since: { name: 'Since', type: 'text' } },
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: 1 },
-          },
-        },
       },
     },
     ego: { variables: {} },
@@ -794,6 +776,7 @@ describe('a NetworkComposer’s tools over people and links already present', ()
   const sociogram = stage({
     id: 'sociogram',
     type: 'Sociogram',
+    synthetic: FULL_DENSITY,
     label: 'Draw links',
     subject: { entity: 'node', type: 'person' },
     prompts: [
@@ -860,12 +843,6 @@ describe('an edge retried at a stage that cannot reach its endpoints', () => {
           name: 'Friend',
           color: 'edge-color-seq-1',
           variables: {},
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: 1 },
-            },
-          },
         },
       },
       ego: { variables: {} },
@@ -901,6 +878,7 @@ describe('an edge retried at a stage that cannot reach its endpoints', () => {
         stage({
           id: 'skipped',
           type: 'DyadCensus',
+          synthetic: FULL_DENSITY,
           label: 'All pairs',
           subject: { entity: 'node', type: 'person' },
           prompts: [{ id: 'sk-p1', text: 'Which?', createEdge: 'friend' }],
@@ -922,6 +900,7 @@ describe('an edge retried at a stage that cannot reach its endpoints', () => {
         stage({
           id: 'wave-two-only',
           type: 'DyadCensus',
+          synthetic: FULL_DENSITY,
           label: 'Wave two',
           subject: { entity: 'node', type: 'person' },
           prompts: [{ id: 'w2-p1', text: 'Which?', createEdge: 'friend' }],
@@ -989,12 +968,6 @@ describe('a stage filtered on a value only a later stage collects', () => {
           name: 'Friend',
           color: 'edge-color-seq-1',
           variables: {},
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: 1 },
-            },
-          },
         },
       },
       ego: { variables: {} },
@@ -1008,6 +981,7 @@ describe('a stage filtered on a value only a later stage collects', () => {
         stage({
           id: 'early-census',
           type: 'DyadCensus',
+          synthetic: FULL_DENSITY,
           label: 'Pairs',
           subject: { entity: 'node', type: 'person' },
           prompts: [{ id: 'ec-p1', text: 'Which?', createEdge: 'friend' }],
@@ -1051,7 +1025,11 @@ describe('a node generator skip logic proves unreachable', () => {
       seed: 17,
       codebook: codebook({ name: { name: 'Name', type: 'text' } }),
       stages: [
-        nameGenerator({ id: 'reached', behaviours: {} }),
+        nameGenerator({
+          id: 'reached',
+          behaviours: {},
+          synthetic: { count: { distribution: 'constant', value: 3 } },
+        }),
         nameGenerator({
           id: 'never-reached',
           behaviours: {},
@@ -1128,7 +1106,6 @@ describe('a stage guarded on an ego field no reachable form collects', () => {
             name: 'Person',
             color: 'node-color-seq-1',
             variables: { name: { name: 'Name', type: 'text' } },
-            synthetic: { count: { distribution: 'constant', value: 3 } },
           },
         },
         edge: {},
@@ -1146,7 +1123,11 @@ describe('a stage guarded on an ego field no reachable form collects', () => {
           label: 'About you',
           form: { fields: [{ variable: 'asked', prompt: 'Your name?' }] },
         }),
-        nameGenerator({ id: 'reached', behaviours: {} }),
+        nameGenerator({
+          id: 'reached',
+          behaviours: {},
+          synthetic: { count: { distribution: 'constant', value: 3 } },
+        }),
         nameGenerator({
           id: 'guarded',
           behaviours: {},

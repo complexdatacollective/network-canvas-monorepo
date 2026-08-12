@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { StageNodeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
@@ -12,6 +13,7 @@ import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
 export const nameGeneratorQuickAddStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorQuickAdd'),
+  synthetic: StageNodeSyntheticSchema.optional(),
   quickAdd: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',

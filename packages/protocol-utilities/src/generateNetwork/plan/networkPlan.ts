@@ -1,5 +1,13 @@
-import { filter as getFilter } from '@codaco/network-query';
-import type { StructuralCodebook, Variable } from '@codaco/protocol-validation';
+import { filter as getFilter, isStageSkipped } from '@codaco/network-query';
+import {
+  MAX_SYNTHETIC_PAIRS,
+  MAX_SYNTHETIC_POPULATION,
+} from '@codaco/protocol-validation';
+import type {
+  EdgeTopology,
+  StructuralCodebook,
+  Variable,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -13,6 +21,7 @@ import {
   attributesAsOf,
   type EdgeCreation,
   isRewrittenAfter,
+  populationWrittenVariables,
   type NodeCreation,
   scopeKeyFor,
   type StageEffects,
@@ -27,6 +36,7 @@ import {
   unreserveFixedValues,
 } from '../attributes';
 import { resolveGenerationOrder } from '../constraints/dependencyOrder';
+import { SyntheticDataConstraintError } from '../constraints/error';
 import { completionCheckFor } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
 import type { GenerationContext } from '../context';
@@ -34,8 +44,8 @@ import { ruleBrokenByFixedValues } from '../nodes';
 import { sampleContinuous, sampleCount } from './distributions';
 import { deterministicUuid, type RandomSource } from './random';
 import {
-  resolveEdgeTopology,
-  resolveNodeCount,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
   resolveVariableSynthetic,
 } from './resolveSynthetic';
 
@@ -82,9 +92,62 @@ export type PlannedEdge = {
 };
 
 export type EdgeTopologyTarget = {
-  metric: ReturnType<typeof resolveEdgeTopology>['metric'];
+  metric: EdgeTopology['metric'];
   value: number;
 };
+
+/**
+ * Declared populations trimmed to what a synchronous preview can build.
+ *
+ * A stage minimum is a FLOOR the planner has to honour, and `behaviours
+ * .minNodes` is unbounded in the stage schema — so a schema-valid minimum of a
+ * billion would make `planNetwork` iterate a billion times on Architect's main
+ * thread. `syntheticCountCeiling` already bounds what a declared count can ask
+ * for at validation time; this is the floor's equivalent, and it bounds the
+ * SUM as well, since several stages each at the cap reach the same place by
+ * another route.
+ *
+ * Clamped rather than refused: `minNodes` is an interview constraint rather
+ * than a synthetic declaration, so a protocol carrying a large one is not
+ * wrong — its preview simply cannot render that many people. Trimmed from the
+ * last stage back, so the earliest stages keep the people they asked for.
+ */
+export function withinPopulationCeiling(assigned: number[]): number[] {
+  const capped = assigned.map((count) =>
+    Math.min(count, MAX_SYNTHETIC_POPULATION),
+  );
+  let total = capped.reduce((sum, count) => sum + count, 0);
+  for (
+    let index = capped.length - 1;
+    index >= 0 && total > MAX_SYNTHETIC_POPULATION;
+    index--
+  ) {
+    const current = capped[index]!;
+    const drop = Math.min(current, total - MAX_SYNTHETIC_POPULATION);
+    capped[index] = current - drop;
+    total -= drop;
+  }
+  return capped;
+}
+
+/**
+ * Key under which one creation's topology target is stored and looked up.
+ *
+ * Topology is declared by the stage, so a target belongs to a (stage, edge
+ * type) pair rather than to the type: two stages may create the same edge type
+ * at different densities, and a stage whose prompts create several types
+ * applies its declared topology to each of them separately.
+ */
+export function topologyKey(creation: {
+  stageId: string;
+  edgeType: string;
+}): string {
+  // Length-prefixed, like `pairKey`'s endpoints, rather than joined on a
+  // separator. Stage ids and edge types are arbitrary strings, so no character
+  // is safe to join on: a space made ('a', 'b c') and ('a b', 'c') read alike.
+  // Prefixing each part with its own length is injective over every string.
+  return `${creation.stageId.length}:${creation.stageId}${creation.edgeType}`;
+}
 
 export type NetworkPlan = {
   ego: {
@@ -96,15 +159,16 @@ export type NetworkPlan = {
   nodes: PlannedNode[];
   edges: PlannedEdge[];
   /**
-   * The topology each edge type was drawn to.
+   * The topology each edge-creating stage was drawn to, keyed by
+   * {@link topologyKey}.
    *
    * Kept because the plan's pair domain is not always the whole story: a
    * FamilyPedigree's people are built by the specialist generator during the
    * session walk, so a census or sociogram over them has no domain to plan
-   * against here. The walk applies this same target to those pairs, which is
-   * why the metric is drawn even where the planned domain is empty.
+   * against here. The walk applies that stage's own target to those pairs,
+   * which is why the metric is drawn even where the planned domain is empty.
    */
-  topologyByType: Map<string, EdgeTopologyTarget>;
+  topologyTargets: Map<string, EdgeTopologyTarget>;
 };
 
 /**
@@ -132,49 +196,83 @@ const variablesOf = (
   definition: { variables?: VariablesRecord } | undefined,
 ): VariablesRecord => (definition?.variables ?? {}) as VariablesRecord;
 
-/** Per-variable missing probabilities, resolved once per run. */
+/** An entity scope's variables, empty where the scope declares none. */
+const EMPTY_PROBABILITIES: ReadonlyMap<string, number> = new Map();
+const EMPTY_REQUIRED: ReadonlySet<string> = new Set();
+
+export const missingProbabilitiesFor = (
+  probabilities: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  scope: string,
+): ReadonlyMap<string, number> =>
+  probabilities.get(scope) ?? EMPTY_PROBABILITIES;
+
+export const requiredVariablesFor = (
+  required: ReadonlyMap<string, ReadonlySet<string>>,
+  scope: string,
+): ReadonlySet<string> => required.get(scope) ?? EMPTY_REQUIRED;
+
+/**
+ * Missing probabilities, per entity scope and then per variable.
+ *
+ * Scoped rather than flat because a codebook may use one variable key in two
+ * places — the same name under two node types, or on a node and on ego — and
+ * those are separate definitions. Flattened, a probability declared in one
+ * scope was applied to every variable sharing its key, so a variable declaring
+ * no missingness at all came back null on every entity.
+ */
 export function missingProbabilities(
   codebook: StructuralCodebook,
-): Map<string, number> {
-  const probabilities = new Map<string, number>();
-  const collect = (variables: VariablesRecord) => {
+): Map<string, Map<string, number>> {
+  const probabilities = new Map<string, Map<string, number>>();
+  const collect = (scope: string, variables: VariablesRecord) => {
     for (const [id, variable] of Object.entries(variables)) {
       const resolved = resolveVariableSynthetic(variable);
       if (resolved.kind === 'stageOwned') continue;
       if (resolved.missingProbability > 0) {
-        probabilities.set(id, resolved.missingProbability);
+        const forScope = probabilities.get(scope) ?? new Map<string, number>();
+        forScope.set(id, resolved.missingProbability);
+        probabilities.set(scope, forScope);
       }
     }
   };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    collect(scopeKeyFor('node', type), variablesOf(definition));
   }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    collect(scopeKeyFor('edge', type), variablesOf(definition));
   }
-  collect(variablesOf(codebook.ego));
+  collect(scopeKeyFor('ego'), variablesOf(codebook.ego));
   return probabilities;
 }
 
-/** Variable ids the codebook marks required, resolved once per run. */
-export function requiredVariables(codebook: StructuralCodebook): Set<string> {
-  const required = new Set<string>();
-  const collect = (variables: VariablesRecord) => {
+/**
+ * Variable ids the codebook marks required, per entity scope. Scoped for the
+ * same reason as {@link missingProbabilities}: flattened, a required
+ * definition in any scope suppressed missingness for every variable sharing
+ * its key.
+ */
+export function requiredVariables(
+  codebook: StructuralCodebook,
+): Map<string, Set<string>> {
+  const required = new Map<string, Set<string>>();
+  const collect = (scope: string, variables: VariablesRecord) => {
     for (const [id, variable] of Object.entries(variables)) {
       // Not every branch of the variable union carries `validation` — a layout
       // or location variable has none to declare.
       if ('validation' in variable && variable.validation?.required === true) {
-        required.add(id);
+        const forScope = required.get(scope) ?? new Set<string>();
+        forScope.add(id);
+        required.set(scope, forScope);
       }
     }
   };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.node ?? {})) {
+    collect(scopeKeyFor('node', type), variablesOf(definition));
   }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    collect(variablesOf(definition));
+  for (const [type, definition] of Object.entries(codebook.edge ?? {})) {
+    collect(scopeKeyFor('edge', type), variablesOf(definition));
   }
-  collect(variablesOf(codebook.ego));
+  collect(scopeKeyFor('ego'), variablesOf(codebook.ego));
   return required;
 }
 
@@ -222,10 +320,12 @@ export const equalityGroups = (constraints: EntityConstraints): string[][] => [
 function applyMissingness(
   attributes: Record<string, VariableValue>,
   fixedKeys: ReadonlySet<string>,
-  probabilities: Map<string, number>,
+  probabilities: ReadonlyMap<string, number>,
   required: ReadonlySet<string>,
   groups: readonly string[][],
   source: RandomSource,
+  /** The entity scope, so two scopes sharing a key do not share a stream. */
+  scope: string,
 ): Set<string> {
   const missing = new Set<string>();
   for (const members of groups) {
@@ -241,44 +341,18 @@ function applyMissingness(
     if (members.some((id) => fixedKeys.has(id))) continue;
     const present = members.filter((id) => id in attributes);
     if (present.length === 0) continue;
-    // Keyed by the sorted membership so a singleton keeps the stream its
-    // variable id alone addressed, and a group's decision does not depend on
-    // whichever member the codebook happens to list first.
+    // Keyed by the sorted membership so a group's decision does not depend on
+    // whichever member the codebook happens to list first, and by the scope so
+    // that one variable key used under two entity types addresses two streams
+    // rather than one shared one.
     const key = members.toSorted().join('\u0000');
-    if (!source.stream('missing', key).bool(probability)) continue;
+    if (!source.stream('missing', scope, key).bool(probability)) continue;
     for (const id of present) {
       attributes[id] = null;
       missing.add(id);
     }
   }
   return missing;
-}
-
-/**
- * Apportions a type's drawn population across its creating stages: every
- * stage's declared minimum is honoured first (stage requirements outrank the
- * drawn total), then the remainder spreads round-robin across stages with
- * headroom. Capacity that runs out truncates the plan — stage caps constrain
- * the population, never the other way around.
- */
-export function apportionCount(
-  total: number,
-  capacities: { min: number; max: number | null }[],
-): number[] {
-  const assigned = capacities.map((capacity) => capacity.min);
-  let remaining = Math.max(0, total - assigned.reduce((a, b) => a + b, 0));
-  let progressed = true;
-  while (remaining > 0 && progressed) {
-    progressed = false;
-    for (let i = 0; i < capacities.length && remaining > 0; i++) {
-      const cap = capacities[i]!.max;
-      if (cap !== null && assigned[i]! >= cap) continue;
-      assigned[i]! += 1;
-      remaining -= 1;
-      progressed = true;
-    }
-  }
-  return assigned;
 }
 
 /**
@@ -293,6 +367,7 @@ export function apportionCount(
  */
 function plannedNetwork(
   egoUid: string,
+  egoAttributes: Record<string, VariableValue>,
   nodes: PlannedNode[],
   edges: readonly PlannedEdge[],
   effects: StageEffects,
@@ -301,8 +376,20 @@ function plannedNetwork(
   return {
     ego: {
       [entityPrimaryKeyProperty]: egoUid,
-      [entityAttributesProperty]: {},
-    },
+      // Projected like every other entity. Left empty, a stage filtering on an
+      // ego variable an earlier EgoForm writes saw a participant who had
+      // answered nothing: a `consent === true` filter planned no pairs at all,
+      // and the walk-time fallback skips pairs whose endpoints are both
+      // planned, so the declared topology was never recovered and the census
+      // came back all negatives. The inverse predicate plans edges for a
+      // domain the real stage excludes.
+      [entityAttributesProperty]: attributesAsOf(
+        effects,
+        scopeKeyFor('ego'),
+        egoAttributes,
+        asOf,
+      ),
+    } as NcNetwork['ego'],
     nodes: nodes.map((node) => ({
       [entityPrimaryKeyProperty]: node.uid,
       type: node.type,
@@ -311,6 +398,7 @@ function plannedNetwork(
         scopeKeyFor('node', node.type),
         node.attributes,
         asOf,
+        node.fixedAtCreation,
       ),
     })) as NcNode[],
     edges: edges.map((edge) => ({
@@ -323,14 +411,29 @@ function plannedNetwork(
         scopeKeyFor('edge', edge.type),
         edge.attributes,
         asOf,
+        edge.fixedAtCreation,
       ),
     })) as NcEdge[],
   };
 }
 
 /** Unordered pair key; self-pairs are never eligible. */
+/**
+ * An unordered pair as one key.
+ *
+ * Length-prefixed rather than delimited. An `_uid` is an arbitrary string —
+ * roster rows keep whatever ids the caller's external data carried, and
+ * `BaseNcEntitySchema` permits every string — so no character is safe to join
+ * on: a space made `('a', 'b c')` and `('a b', 'c')` read alike, and a NUL
+ * only moves the problem to ids that contain one, which JSON can encode.
+ * Prefixing each endpoint with its own length is injective over every string,
+ * so the domain cannot silently lose a pair and a census answer cannot be
+ * attributed to the wrong one.
+ */
+const encodeUid = (uid: string): string => `${uid.length}:${uid}`;
+
 const pairKey = (a: string, b: string): string =>
-  a < b ? `${a} ${b}` : `${b} ${a}`;
+  a < b ? `${encodeUid(a)}${encodeUid(b)}` : `${encodeUid(b)}${encodeUid(a)}`;
 
 /**
  * Separates the values a creating interaction writes into those that survive
@@ -377,6 +480,38 @@ function splitFixedValues(
  * which exempts unwritten variables from its counting, would accept protocols
  * whose plan then ran out of values.
  */
+/**
+ * The variables of an entity whose value is certainly unanswered.
+ *
+ * Drawing one and then nulling it is not merely wasted work: a `unique` draw
+ * CLAIMS its value from the run's registry, so a variable declared missing on
+ * every entity could exhaust a small value space and fail a session whose
+ * final state holds no values at all. The runtime's own `unique` validator
+ * exempts empty values, so those nulls were never in tension with it.
+ *
+ * The conditions are `applyMissingness`'s own, so the two cannot disagree
+ * about which groups these are: no required member, no member whose value an
+ * interaction settles, and a group probability of exactly 1. Anything less
+ * than certain still has to be drawn — the value is needed whenever the
+ * decision comes back false.
+ */
+function certainlyMissingVariables(
+  groups: readonly string[][],
+  probabilities: ReadonlyMap<string, number>,
+  required: ReadonlySet<string>,
+  fixedKeys: ReadonlySet<string>,
+): Set<string> {
+  const certain = new Set<string>();
+  for (const members of groups) {
+    if (members.some((id) => fixedKeys.has(id))) continue;
+    if (groupMissingProbability(members, probabilities, required) !== 1) {
+      continue;
+    }
+    for (const id of members) certain.add(id);
+  }
+  return certain;
+}
+
 const drawableVariables = (
   written: ReadonlySet<string>,
   fixedFinal: Record<string, VariableValue>,
@@ -442,6 +577,7 @@ function eligiblePairsForCreation(
   creation: EdgeCreation,
   nodes: PlannedNode[],
   egoUid: string,
+  egoAttributes: Record<string, VariableValue>,
   visibleEdges: readonly PlannedEdge[],
   effects: StageEffects,
 ): Map<string, EligiblePair> {
@@ -453,6 +589,7 @@ function eligiblePairsForCreation(
     );
     const network = plannedNetwork(
       egoUid,
+      egoAttributes,
       existing,
       visibleEdges.filter(
         (edge) => edge.creationStageIndex <= creation.stageIndex,
@@ -475,6 +612,35 @@ function eligiblePairsForCreation(
       );
       candidates = candidates.filter((node) => kept.has(node.uid));
     }
+    // Counted BEFORE the pairs are built, because building them is the harm:
+    // pairs grow quadratically, so the population cap alone still admits a
+    // domain of tens of millions of map entries, assembled synchronously on
+    // Architect's main thread before any topology is selected from it.
+    const possiblePairs = (candidates.length * (candidates.length - 1)) / 2;
+    if (possiblePairs > MAX_SYNTHETIC_PAIRS) {
+      const definition = ctx.codebook.edge?.[creation.edgeType];
+      throw new SyntheticDataConstraintError(
+        [
+          {
+            entity: 'edge',
+            entityType: creation.edgeType,
+            ...(definition?.name === undefined
+              ? {}
+              : { entityTypeName: definition.name }),
+            variableIds: [],
+            variableNames: [],
+            rules: ['pair domain'],
+            reason:
+              `${candidates.length.toLocaleString('en')} people are eligible to be linked here, which is ` +
+              `${possiblePairs.toLocaleString('en')} possible pairs; a preview is ` +
+              `generated synchronously, so it is capped at ` +
+              MAX_SYNTHETIC_PAIRS.toLocaleString('en'),
+          },
+        ],
+        'a stage would have to consider more pairs than a preview can build',
+      );
+    }
+
     for (let i = 0; i < candidates.length; i++) {
       for (let j = i + 1; j < candidates.length; j++) {
         const a = candidates[i]!.uid;
@@ -502,6 +668,159 @@ export function shuffled<T>(
   return result;
 }
 
+/**
+ * Which rows each roster stage gets first refusal on, and the refusal when a
+ * pool cannot cover what its stage was told to add.
+ *
+ * Most-constrained-first. Served in stage order instead, a wide pool takes
+ * rows the only stage that could have used them still needed: pools [a,b,c,d]
+ * and [a,b], two people wanted from each, is satisfiable, and stage order
+ * fills the first from {a,b} and leaves the second with nothing.
+ *
+ * A preference is returned only for CONTESTED creations — those sharing at
+ * least one row with another. Where a pool is a stage's alone every ordering
+ * of it is equivalent, so imposing one would churn seeded output to no end.
+ * The shortfall check runs for every roster stage regardless, because a lone
+ * stage can outstrip its own pool just as easily.
+ */
+function assignRosterRows(
+  ctx: GenerationContext,
+  effects: StageEffects,
+  creations: NodeCreation[],
+  assigned: number[],
+  nodeType: string,
+  nodeTypeName: string | undefined,
+): Map<number, string[]> {
+  /** Distinct rows per roster creation, minus everyone the run already used. */
+  const pools = new Map<number, string[]>();
+  creations.forEach((creation, index) => {
+    // Only a roster interface's pool binds. A name generator's panel is a
+    // shortcut for naming someone already known, not a closed list — it can
+    // always add someone the panel does not mention — so it is neither
+    // assigned rows nor held to the pool's size.
+    if (creation.source !== 'roster' || creation.rosterStageId === undefined) {
+      return;
+    }
+    const pool = ctx.externalData?.[creation.rosterStageId];
+    if (pool === undefined) return;
+    const seen = new Set<string>(ctx.usedRosterUids);
+    const distinct: string[] = [];
+    for (const row of pool) {
+      const uid = row[entityPrimaryKeyProperty];
+      if (seen.has(uid)) continue;
+      seen.add(uid);
+      distinct.push(uid);
+    }
+    pools.set(index, distinct);
+  });
+  if (pools.size === 0) return new Map();
+
+  const owners = new Map<string, number[]>();
+  for (const [index, uids] of pools) {
+    for (const uid of uids) {
+      const list = owners.get(uid) ?? [];
+      list.push(index);
+      owners.set(uid, list);
+    }
+  }
+  const contested = new Set<number>();
+  for (const list of owners.values()) {
+    if (list.length > 1) for (const index of list) contested.add(index);
+  }
+
+  // Each person a stage must place is one SLOT, and each slot may take any
+  // unused row from that stage's pool. Assigning greedily — smallest pool
+  // first, claiming a prefix — still rejects assignments that exist: with
+  // pools A=[1,2], B=[1,3], C=[3,4], D=[1,4] each wanting one person, greedy
+  // takes 1, 3 and 4 and reports D empty, though A=2, B=3, C=4, D=1 satisfies
+  // every stage. That is bipartite matching, so it is solved as one: each slot
+  // walks an augmenting path, which REPAIRS an earlier choice rather than
+  // living with it.
+  const slots: number[] = [];
+  const order = [...pools.keys()].toSorted(
+    (left, right) => pools.get(left)!.length - pools.get(right)!.length,
+  );
+  for (const index of order) {
+    for (let taken = 0; taken < (assigned[index] ?? 0); taken++) {
+      slots.push(index);
+    }
+  }
+
+  /** Row currently held by each slot, and the slot holding each row. */
+  const rowOfSlot = new Map<number, string>();
+  const slotOfRow = new Map<string, number>();
+
+  const augment = (slot: number, visited: Set<string>): boolean => {
+    for (const uid of pools.get(slots[slot]!)!) {
+      if (visited.has(uid)) continue;
+      visited.add(uid);
+      const holder = slotOfRow.get(uid);
+      if (holder === undefined || augment(holder, visited)) {
+        const previous = rowOfSlot.get(slot);
+        if (previous !== undefined) slotOfRow.delete(previous);
+        rowOfSlot.set(slot, uid);
+        slotOfRow.set(uid, slot);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const unmatched = new Map<number, number>();
+  slots.forEach((creationIndex, slot) => {
+    if (!augment(slot, new Set())) {
+      unmatched.set(creationIndex, (unmatched.get(creationIndex) ?? 0) + 1);
+    }
+  });
+
+  for (const [index, short] of unmatched) {
+    const creation = creations[index]!;
+    const wanted = assigned[index] ?? 0;
+
+    // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
+    // which says nothing about this roster: the real Development Protocol has
+    // six classmates and a stage the default would have asked eight of. Take
+    // what the assignment could actually give it — decided HERE rather than
+    // against its own pool size, because a shared pool's rows may already have
+    // gone to another stage. The refusal is reserved for a count the author
+    // actually wrote.
+    if (!creation.countDeclared) {
+      assigned[index] = wanted - short;
+      continue;
+    }
+    const offered = wanted - short;
+    const label =
+      effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
+    throw new SyntheticDataConstraintError(
+      [
+        {
+          entity: 'node',
+          entityType: nodeType,
+          ...(nodeTypeName === undefined
+            ? {}
+            : { entityTypeName: nodeTypeName }),
+          variableIds: [],
+          variableNames: [],
+          rules: ['roster size'],
+          reason:
+            `the roster for "${label}" can supply ${offered} ${offered === 1 ? 'person' : 'people'} ` +
+            `no other stage needs more, but that stage is set to add ${wanted}`,
+        },
+      ],
+      'a roster does not hold enough people for the stages drawing from it',
+    );
+  }
+
+  const preference = new Map<number, string[]>();
+  for (const [slot, uid] of rowOfSlot) {
+    const index = slots[slot]!;
+    if (!contested.has(index)) continue;
+    preference.set(index, [...(preference.get(index) ?? []), uid]);
+  }
+
+  return preference;
+}
+
 export function planNetwork(
   ctx: GenerationContext,
   effects: StageEffects,
@@ -518,16 +837,52 @@ export function planNetwork(
   const egoMissing = applyMissingness(
     egoAttributes,
     new Set(),
-    missing,
-    required,
+    missingProbabilitiesFor(missing, scopeKeyFor('ego')),
+    requiredVariablesFor(required, scopeKeyFor('ego')),
     equalityGroups(constraintsFor(ctx, { entity: 'ego' })),
     source,
+    scopeKeyFor('ego'),
   );
+
+  /**
+   * Whether the ego this plan just drew settles a stage's skip logic.
+   *
+   * `reachableStagesForFeasibility` runs BEFORE anything is drawn, so a guard
+   * on an ego attribute an EgoForm collects is undecidable there and the stage
+   * stays in conservatively. By this point ego HAS been drawn, so a guard whose
+   * every rule is an ego rule can be settled — and a creator settled as skipped
+   * must not be planned for: its people never materialise, yet the values
+   * claimed for them are spent, and a `unique` space can be exhausted by
+   * entities the session never holds.
+   *
+   * Only all-ego guards. A rule about alters is still undecidable here, since
+   * the nodes it asks about are what this pass is about to plan.
+   */
+  const plannedEgoNetwork: NcNetwork = {
+    ego: {
+      [entityPrimaryKeyProperty]: egoUid,
+      [entityAttributesProperty]: egoAttributes,
+    },
+    nodes: [],
+    edges: [],
+  } as unknown as NcNetwork;
+
+  const settledAsSkipped = (
+    summary: StageEffects['stages'][number],
+  ): boolean => {
+    if (!ctx.respectSkipLogicAndFiltering) return false;
+    const { skipLogic } = summary.stage;
+    if (skipLogic === undefined) return false;
+    if (skipLogic.filter.rules.some((rule) => rule.type !== 'ego'))
+      return false;
+    return isStageSkipped(skipLogic, plannedEgoNetwork);
+  };
 
   // --- Node populations ----------------------------------------------------
   const nodes: PlannedNode[] = [];
   const creationsByType = new Map<string, NodeCreation[]>();
   for (const summary of effects.stages) {
+    if (settledAsSkipped(summary)) continue;
     for (const creation of summary.nodeCreations) {
       // A family pedigree builds its own people and links through the
       // specialist generator at materialisation, because a family has to hold
@@ -543,79 +898,96 @@ export function planNetwork(
 
   for (const [type, definition] of Object.entries(ctx.codebook.node ?? {})) {
     const creations = creationsByType.get(type) ?? [];
-    const creatable = effects.creatableNodeTypes.has(type);
-    const total = sampleCount(
-      resolveNodeCount(definition, { creatable }),
-      source.stream('count', type),
-    );
     if (creations.length === 0) continue;
 
-    // A roster pool caps its stage's share: an explicit empty pool means
-    // "roster known to be empty" and admits nobody, while an absent pool
-    // leaves the stage fabricating as usual. A name generator's panel is not
-    // a ceiling — it can always add someone the panel does not list — so only
-    // a roster interface's pool binds.
+    // Each creating stage declares its own population, so there is nothing to
+    // apportion. A count belongs to the asking rather than the asked-about:
+    // three name generators over one node type each nominate their own people,
+    // and nothing in the protocol ever said how one declared population would
+    // divide between them.
     //
-    // Rows are taken without replacement across the whole run, so a row an
-    // earlier roster will claim is not capacity a later one has. Counting each
-    // pool whole credited two rosters over one pool with twice its people; the
-    // share the second could then not fill was simply dropped, and the
-    // population came up short by exactly the overlap. Each pool is therefore
-    // counted in the rows still unspoken for when its turn arrives.
-    const claimedRosterUids = new Set<string>(ctx.usedRosterUids);
-    const capacities = creations.map((creation) => {
-      const capacity = { ...creation.capacity };
-      if (
-        creation.source === 'roster' &&
-        creation.rosterStageId !== undefined
-      ) {
-        const pool = ctx.externalData?.[creation.rosterStageId];
-        if (pool !== undefined) {
-          const unclaimed: string[] = [];
-          for (const row of pool) {
-            const uid = row[entityPrimaryKeyProperty];
-            if (claimedRosterUids.has(uid)) continue;
-            if (unclaimed.includes(uid)) continue;
-            unclaimed.push(uid);
-          }
-          capacity.max =
-            capacity.max === null
-              ? unclaimed.length
-              : Math.min(capacity.max, unclaimed.length);
-          capacity.min = Math.min(capacity.min, capacity.max);
-          // Only the rows this stage can actually take are spoken for. Claiming
-          // the whole pool would starve a later stage over the same roster of
-          // people the earlier one was never going to reach.
-          for (const uid of unclaimed.slice(0, capacity.max)) {
-            claimedRosterUids.add(uid);
-          }
-        }
-      }
-      return capacity;
-    });
-    const assigned = apportionCount(total, capacities);
+    // What the stage's own behaviours allow still binds — `minNodes` and
+    // `maxNodes` are what the interface will actually hold, whatever the
+    // author declared beside them.
+    const assigned = withinPopulationCeiling(
+      creations.map((creation) => {
+        const drawn = sampleCount(
+          creation.count ?? DEFAULT_NODE_COUNT,
+          source.stream('count', creation.stageId, type),
+        );
+        const { min, max } = creation.capacity;
+        return Math.max(min, max === null ? drawn : Math.min(max, drawn));
+      }),
+    );
+
+    // Roster rows are drawn without replacement across the whole run, so
+    // stages over overlapping pools contest the same people. With counts fixed
+    // by declaration that is no longer a negotiation over how many each stage
+    // gets, only an assignment of which rows go where — and a stage that still
+    // cannot be filled is a protocol the researcher needs to hear about.
+    const rosterPreference = assignRosterRows(
+      ctx,
+      effects,
+      creations,
+      assigned,
+      type,
+      definition.name,
+    );
 
     const ref = { entity: 'node' as const, type };
     const scope = scopeKeyFor('node', type);
-    const written = writtenVariables(
+    // What reaches EVERY person of this type. A creation-time write reaches
+    // only the people its own creator made, so it is added per creation
+    // below: drawing the type's whole union onto every node spends `unique`
+    // values on entities the session never writes them to, and can exhaust a
+    // space feasibility sized to the one creator that collects it.
+    const populationWritten = populationWrittenVariables(
       effects,
       'node',
       type,
       ctx.respectSkipLogicAndFiltering,
     );
+    const typeWritten = writtenVariables(
+      effects,
+      'node',
+      type,
+      ctx.respectSkipLogicAndFiltering,
+    );
+    const writtenFor = (creation: NodeCreation): Set<string> =>
+      new Set([
+        ...populationWritten,
+        ...creation.writesAtCreation.filter((id) => typeWritten.has(id)),
+      ]);
     const missingGroups = equalityGroups(constraintsFor(ctx, ref));
 
     // Roster stages draw real rows without replacement across the run. Built
     // before any draw so the values they carry can be held back from it.
-    const rosterPools = creations.map((creation) => {
+    const rosterPools = creations.map((creation, creationIndex) => {
       if (creation.rosterStageId === undefined) return undefined;
       const pool = ctx.externalData?.[creation.rosterStageId];
       if (pool === undefined) return undefined;
-      return shuffled(
+      const available = shuffled(
         pool.filter(
           (row) => !ctx.usedRosterUids.has(row[entityPrimaryKeyProperty]),
         ),
         source.stream('roster', creation.rosterStageId),
+      );
+
+      const preferred = rosterPreference.get(creationIndex);
+      if (preferred === undefined) return available;
+
+      // A preference, not a restriction. The assignment above is blind to
+      // whether a row can actually satisfy this type's rules, so holding a
+      // stage to its assigned rows alone would starve it of the ones it could
+      // have used — a pool of a hundred rows where only ten are completable
+      // would hand over ten arbitrary rows and build one person. Ordering
+      // leaves every row reachable and only decides who gets first refusal on
+      // the contested ones. Sort is stable, so the rest keep their shuffle.
+      const rank = new Map(preferred.map((uid, order) => [uid, order]));
+      const rankOf = (row: NcNode): number =>
+        rank.get(row[entityPrimaryKeyProperty]) ?? Number.MAX_SAFE_INTEGER;
+      return [...available].toSorted(
+        (left, right) => rankOf(left) - rankOf(right),
       );
     });
 
@@ -643,6 +1015,16 @@ export function planNetwork(
       const share = assigned[creationIndex]!;
       if (share === 0) return;
       const promptCount = Math.max(1, creation.promptFixedValues.length);
+      /**
+       * Rows each prompt has already turned away, so no (row, prompt) pair is
+       * judged twice.
+       *
+       * A row kept for a later prompt must not be re-judged by the prompt that
+       * rejected it: the verdict cannot change, and re-asking is how a pool of
+       * ninety undrawable rows became a judgement per row PER DRAW — the
+       * quadratic cost the whole-run ceiling exists to keep out.
+       */
+      const rejectedByPrompt = new Map<number, Set<NcNode>>();
       const rosterRows = rosterPools[creationIndex];
 
       for (let i = 0; i < share; i++) {
@@ -652,26 +1034,55 @@ export function planNetwork(
         let rosterRow: NcNode | undefined;
         let fixed: Record<string, VariableValue> = { ...promptFixed };
         if (rosterRows !== undefined) {
+          // Rows this prompt cannot use, kept for the prompts that follow.
+          // A roster stage's prompts fix DIFFERENT values, so "not drawable"
+          // is a judgement about this prompt rather than about the roster:
+          // discarding the row outright meant a shuffle presenting the second
+          // prompt's only match first left the stage a person short, though a
+          // complete assignment existed.
+          const passedOver: NcNode[] = [];
           while (rosterRows.length > 0) {
             const candidate = rosterRows.shift()!;
             const rowValues = candidate[entityAttributesProperty];
-            // Consumed either way: a row passed over is never drawn, so its
-            // hold must not keep constraining the draws that follow.
-            unreserveFixedValues(ctx, ref, rowValues);
             // Each stage's pool is taken before any of them draws, so a row
-            // two stages share sits in both. One person is never added twice.
+            // two stages share sits in both. One person is never added twice —
+            // and this one is drawable by nobody, so its hold is released for
+            // good rather than kept for a later prompt.
             if (ctx.usedRosterUids.has(candidate[entityPrimaryKeyProperty])) {
+              unreserveFixedValues(ctx, ref, rowValues);
+              continue;
+            }
+            // Keyed on the ROW, not its uid: a caller's external data may
+            // give two rows one primary key while their values differ, and
+            // one being rejected says nothing about the other.
+            if (rejectedByPrompt.get(promptIndex)?.has(candidate)) {
+              passedOver.push(candidate);
               continue;
             }
             const merged = creation.rosterValuesWin
               ? { ...promptFixed, ...rowValues }
               : { ...rowValues, ...promptFixed };
             if (rowIsDrawable?.(merged) ?? true) {
+              // Released here because the draw itself claims what it settles.
+              unreserveFixedValues(ctx, ref, rowValues);
               rosterRow = candidate;
               fixed = merged;
               break;
             }
+            // Released like any other row this draw passes over: the hold
+            // exists to stop a free draw taking a value a row will bring, and
+            // a row that may or may not be drawn later must not go on
+            // constraining the draws in between. Retaining it changed which
+            // value an unrelated variable settled on.
+            unreserveFixedValues(ctx, ref, rowValues);
+            // Kept for a later prompt, which fixes different values. This
+            // prompt will not ask again.
+            const seen = rejectedByPrompt.get(promptIndex) ?? new Set<NcNode>();
+            seen.add(candidate);
+            rejectedByPrompt.set(promptIndex, seen);
+            passedOver.push(candidate);
           }
+          rosterRows.unshift(...passedOver);
           // A roster stage cannot fabricate. Its share ends when the pool has
           // nothing left to give — including a pool an earlier stage sharing
           // the same roster already emptied, which leaves nothing to loop over
@@ -706,20 +1117,36 @@ export function planNetwork(
           creation.stageIndex,
           rowSettled.size > 0 ? rowSettled : undefined,
         );
+        const fixedKeys = new Set(Object.keys(fixedFinal));
+        const certain = certainlyMissingVariables(
+          missingGroups,
+          missingProbabilitiesFor(missing, scope),
+          requiredVariablesFor(required, scope),
+          fixedKeys,
+        );
+        const written = writtenFor(creation);
+        const drawable = drawableVariables(written, fixedFinal);
+        for (const id of certain) drawable.delete(id);
         const generated = generateAttributesForEntity(ctx, ref, typeIndex, {
           existing: fixedFinal,
-          only: drawableVariables(written, fixedFinal),
+          only: drawable,
         });
         claimFixedValues(ctx, ref, fixedFinal);
         unreserveFixedValues(ctx, ref, promptFixed);
         const attributes = { ...generated, ...fixedFinal };
+        // Present but unanswered, so `applyMissingness` still records them as
+        // this entity's missing values rather than leaving the key absent.
+        for (const id of certain) {
+          if (written.has(id)) attributes[id] = null;
+        }
         const missingSet = applyMissingness(
           attributes,
-          new Set(Object.keys(fixedFinal)),
-          missing,
-          required,
+          fixedKeys,
+          missingProbabilitiesFor(missing, scope),
+          requiredVariablesFor(required, scope),
           missingGroups,
           source,
+          scope,
         );
 
         nodes.push({
@@ -757,8 +1184,8 @@ export function planNetwork(
 
   const edgesByType = new Map<string, PlannedEdge[]>();
   const plannedEdges: PlannedEdge[] = [];
-  const topologyByType = new Map<string, EdgeTopologyTarget>();
-  for (const [type, definition] of edgeTypes.toSorted(
+  const topologyTargets = new Map<string, EdgeTopologyTarget>();
+  for (const [type] of edgeTypes.toSorted(
     ([a], [b]) => firstEdgeStage(a) - firstEdgeStage(b),
   )) {
     const creations = effects.edgeCreationsByType.get(type) ?? [];
@@ -787,19 +1214,32 @@ export function planNetwork(
         scope,
         creationStageIndex,
       );
+      const fixedKeys = new Set(Object.keys(fixedFinal));
+      const certain = certainlyMissingVariables(
+        missingGroups,
+        missingProbabilitiesFor(missing, scope),
+        requiredVariablesFor(required, scope),
+        fixedKeys,
+      );
+      const drawable = drawableVariables(written, fixedFinal);
+      for (const id of certain) drawable.delete(id);
       const generated = generateAttributesForEntity(ctx, ref, edgeIndex, {
         existing: fixedFinal,
-        only: drawableVariables(written, fixedFinal),
+        only: drawable,
       });
       claimFixedValues(ctx, ref, fixedFinal);
       const attributes = { ...generated, ...fixedFinal };
+      for (const id of certain) {
+        if (written.has(id)) attributes[id] = null;
+      }
       const missingSet = applyMissingness(
         attributes,
-        new Set(Object.keys(fixedFinal)),
-        missing,
-        required,
+        fixedKeys,
+        missingProbabilitiesFor(missing, scope),
+        requiredVariablesFor(required, scope),
         missingGroups,
         source,
+        scope,
       );
       edgeIndex += 1;
       return {
@@ -827,20 +1267,21 @@ export function planNetwork(
     );
     if (topologyCreations.length === 0) continue;
 
-    // Drawn before the domain is consulted, so an edge type whose endpoints
-    // all come from a pedigree still resolves its topology for the walk to
-    // apply. Each type draws from its own keyed stream, so sampling one the
-    // plan then makes no use of perturbs nothing else.
-    const topology = resolveEdgeTopology(definition);
-    const target: EdgeTopologyTarget = {
-      metric: topology.metric,
-      value: sampleContinuous(
-        topology.distribution,
-        topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
-        source.stream('topology', type),
-      ),
-    };
-    topologyByType.set(type, target);
+    // Drawn before any domain is consulted, so a stage whose endpoints all
+    // come from a pedigree still resolves its topology for the walk to apply.
+    // Each creation draws from its own keyed stream, so sampling one the plan
+    // then makes no use of perturbs nothing else.
+    for (const creation of topologyCreations) {
+      const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
+      topologyTargets.set(topologyKey(creation), {
+        metric: topology.metric,
+        value: sampleContinuous(
+          topology.distribution,
+          topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
+          source.stream('topology', creation.stageId, type),
+        ),
+      });
+    }
 
     // Creations are settled one at a time, in interview order, each committing
     // its edges before the next one's domain is built.
@@ -857,18 +1298,47 @@ export function planNetwork(
     // reduced by what is already committed, so the total after the last
     // creation is the target over the full union — what a single global
     // selection would have produced, arrived at without the blind spot.
-    const domain = new Map<string, EligiblePair>();
+    // Kept per SUBJECT node type, not per edge type. A pair is two nodes of
+    // one type, so stages over different types reach disjoint pairs — and an
+    // accumulated domain spanning both let a stage over `place` select a pair
+    // of people and be stamped as having created it, an edge between endpoints
+    // outside its own subject domain. Feasibility already sums its ceilings
+    // per subject type for the same reason.
+    const bySubject = new Map<
+      string,
+      {
+        domain: Map<string, EligiblePair>;
+        edges: PlannedEdge[];
+        taken: Set<string>;
+      }
+    >();
+    const subjectState = (subjectType: string) => {
+      const existing = bySubject.get(subjectType);
+      if (existing) return existing;
+      const created = {
+        domain: new Map<string, EligiblePair>(),
+        edges: [] as PlannedEdge[],
+        taken: new Set<string>(),
+      };
+      bySubject.set(subjectType, created);
+      return created;
+    };
     const typeEdges: PlannedEdge[] = [];
-    const taken = new Set<string>();
 
     for (const creation of [...topologyCreations].toSorted(
       (a, b) => a.stageIndex - b.stageIndex,
     )) {
+      const {
+        domain,
+        edges: subjectEdges,
+        taken,
+      } = subjectState(creation.subjectNodeType);
       for (const [key, pair] of eligiblePairsForCreation(
         ctx,
         creation,
         nodes,
         egoUid,
+        egoAttributes,
         [...plannedEdges, ...typeEdges],
         effects,
       )) {
@@ -876,12 +1346,19 @@ export function planNetwork(
       }
       if (domain.size === 0) continue;
 
+      const target = topologyTargets.get(topologyKey(creation));
+      if (target === undefined) continue;
+
       const eligibleNodeCount = new Set(
         [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
       ).size;
+      // Still measured over the domain accumulated so far and reduced by what
+      // this type already holds, not by this creation's own contribution
+      // alone: two stages declaring 0.5 over overlapping pairs describe one
+      // graph at 0.5, not 0.75.
       const outstanding =
         topologyTarget(target, domain.size, eligibleNodeCount) -
-        typeEdges.length;
+        subjectEdges.length;
       if (outstanding <= 0) continue;
 
       const available = [...domain.entries()].filter(
@@ -892,7 +1369,17 @@ export function planNetwork(
         outstanding,
       )) {
         taken.add(key);
-        typeEdges.push(buildEdge(pair.a, pair.b, pair.firstStageIndex, {}));
+        // The SELECTING creation, not the one that first admitted the pair to
+        // the domain. Topology is declared per stage now, so a density-0
+        // sociogram followed by a density-1 one selects at the later stage
+        // while the pair entered at the earlier: stamping where it entered
+        // materialised the edge before the stage that decided it, changing
+        // intermediate filters, skip logic and census answers. Creations are
+        // walked in ascending stage order, so this only ever moves an edge
+        // later — never before a stage that could reach its endpoints.
+        const edge = buildEdge(pair.a, pair.b, creation.stageIndex, {});
+        subjectEdges.push(edge);
+        typeEdges.push(edge);
       }
     }
 
@@ -912,6 +1399,6 @@ export function planNetwork(
     },
     nodes,
     edges,
-    topologyByType,
+    topologyTargets,
   };
 }

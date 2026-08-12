@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../schema.ts';
+import { networkComposerStage } from '../stages/network-composer.ts';
 
 type Loose = Record<string, unknown>;
 
@@ -16,15 +17,18 @@ const hasIssue = (
 ): boolean =>
   !result.success && JSON.stringify(result.error.issues).includes(fragment);
 
-const withNodeSynthetic = (synthetic: unknown) => {
+// Counts and topology are declared by the STAGE that creates the entities, not
+// by the codebook type. The base protocol opens with a NameGenerator and a
+// Sociogram, which are exactly the two hosts these tests need.
+const withNodeStageSynthetic = (synthetic: unknown) => {
   const protocol = createBaseProtocol();
-  (protocol.codebook.node.person as Loose).synthetic = synthetic;
+  (protocol.stages[0] as Loose).synthetic = synthetic;
   return protocol;
 };
 
-const withEdgeSynthetic = (synthetic: unknown) => {
+const withEdgeStageSynthetic = (synthetic: unknown) => {
   const protocol = createBaseProtocol();
-  (protocol.codebook.edge.knows as Loose).synthetic = synthetic;
+  (protocol.stages[1] as Loose).synthetic = synthetic;
   return protocol;
 };
 
@@ -54,7 +58,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         { distribution: 'normal', mean: 18, sd: 6, min: 5, max: 40 },
       ],
     ])('accepts a %s count', (_label, count) => {
-      expect(parse(withNodeSynthetic({ count })).success).toBe(true);
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(true);
     });
 
     it.each([
@@ -69,7 +73,70 @@ describe('synthetic metadata (additive to schema 8)', () => {
         { distribution: 'poisson', mean: 3, sd: 2 },
       ],
     ])('rejects a count with %s', (_label, count) => {
-      expect(parse(withNodeSynthetic({ count })).success).toBe(false);
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(false);
+    });
+
+    it('rejects a population no preview could render', () => {
+      // Generation is synchronous, and Architect's PreviewHost runs it on the
+      // main thread: a billion people is arithmetically fine, schema-valid
+      // before this, and locks the renderer.
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: { distribution: 'constant', value: 1_000_000_000 },
+          }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it.each([
+      ['uniform', { distribution: 'uniform', min: 1, max: 50_000 }],
+      ['poisson', { distribution: 'poisson', mean: 2_000_000 }],
+      ['normal', { distribution: 'normal', mean: 1_000_000, sd: 1 }],
+      // Every parameter here looks reasonable; the DERIVED ceiling is
+      // mean + 6·sd = 70,000 people and 2.45 billion pairs.
+      ['wide-normal', { distribution: 'normal', mean: 10_000, sd: 10_000 }],
+      ['wide-poisson', { distribution: 'poisson', mean: 9_900 }],
+    ])('rejects an oversized %s count', (_label, count) => {
+      expect(parse(withNodeStageSynthetic({ count })).success).toBe(false);
+    });
+
+    it('accepts a spread whose derived ceiling stays inside the cap', () => {
+      // mean + 6·sd = 1_000, well under the ceiling.
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: { distribution: 'normal', mean: 400, sd: 100 },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('accepts a wide spread that declares its own ceiling', () => {
+      // An explicit `max` is what the draw truncates to, so the spread below
+      // it is irrelevant to how many entities can be built.
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: {
+              distribution: 'normal',
+              mean: 10_000,
+              sd: 10_000,
+              max: 50,
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('accepts a population at the ceiling', () => {
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: { distribution: 'constant', value: 10_000 },
+          }),
+        ).success,
+      ).toBe(true);
     });
 
     it('rejects unknown keys beside count', () => {
@@ -77,7 +144,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         count: { distribution: 'poisson', mean: 3 },
         extra: true,
       };
-      expect(parse(withNodeSynthetic(synthetic)).success).toBe(false);
+      expect(parse(withNodeStageSynthetic(synthetic)).success).toBe(false);
     });
 
     it('rejects synthetic metadata on ego', () => {
@@ -124,7 +191,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
         },
       ],
     ])('accepts %s', (_label, topology) => {
-      expect(parse(withEdgeSynthetic({ topology })).success).toBe(true);
+      expect(parse(withEdgeStageSynthetic({ topology })).success).toBe(true);
     });
 
     it.each([
@@ -178,7 +245,188 @@ describe('synthetic metadata (additive to schema 8)', () => {
         },
       ],
     ])('rejects %s', (_label, synthetic) => {
-      expect(parse(withEdgeSynthetic(synthetic)).success).toBe(false);
+      expect(parse(withEdgeStageSynthetic(synthetic)).success).toBe(false);
+    });
+
+    it('accepts a beta density', () => {
+      // Density is a proportion, so beta is the family that lives on 0-1 by
+      // construction rather than by clamping a normal that wanted to leave.
+      expect(
+        parse(
+          withEdgeStageSynthetic({
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'beta', mean: 0.3, sd: 0.15 },
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('rejects a beta density with no alpha/beta solution', () => {
+      // sd² >= mean·(1−mean) cannot be realised by any beta distribution.
+      expect(
+        parse(
+          withEdgeStageSynthetic({
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'beta', mean: 0.5, sd: 0.5 },
+            },
+          }),
+        ).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('where count and topology may be declared', () => {
+    const aCount = { distribution: 'constant', value: 5 };
+    const aTopology = {
+      metric: 'density',
+      distribution: { distribution: 'constant', value: 0.4 },
+    };
+
+    it('rejects a count on the node type it used to be declared on', () => {
+      // A count is a property of the asking, not of the asked-about: three
+      // name generators over `person` each nominate their own people, and
+      // nothing in the protocol says how one declared population would split
+      // between them.
+      const protocol = createBaseProtocol();
+      (protocol.codebook.node.person as Loose).synthetic = { count: aCount };
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    it('rejects topology on the edge type it used to be declared on', () => {
+      const protocol = createBaseProtocol();
+      (protocol.codebook.edge.knows as Loose).synthetic = {
+        topology: aTopology,
+      };
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    it('rejects topology on a name generator, which creates no edges', () => {
+      expect(
+        parse(withNodeStageSynthetic({ topology: aTopology })).success,
+      ).toBe(false);
+    });
+
+    const informationStage = (synthetic?: unknown): Loose => ({
+      id: 'info1',
+      type: 'Information',
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [{ id: 'item-1', type: 'text', content: 'Hello' }],
+      ...(synthetic === undefined ? {} : { synthetic }),
+    });
+
+    it('accepts an Information stage carrying no synthetic metadata', () => {
+      // Guards the assertion below: that one must fail for the synthetic
+      // block, not because this fixture was malformed all along.
+      const protocol = createBaseProtocol();
+      (protocol.stages as Loose[]).push(informationStage());
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('rejects a count on a stage that creates nobody', () => {
+      const protocol = createBaseProtocol();
+      (protocol.stages as Loose[]).push(informationStage({ count: aCount }));
+      expect(parse(protocol).success).toBe(false);
+    });
+
+    describe('a stage that creates both people and links', () => {
+      const composer = (synthetic?: unknown) => ({
+        id: 'nc1',
+        label: 'Build the network',
+        type: 'NetworkComposer',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 4 },
+        edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
+        ...(synthetic === undefined ? {} : { synthetic }),
+      });
+
+      it.each([
+        ['a count alone', { count: aCount }],
+        ['a topology alone', { topology: aTopology }],
+        ['both halves together', { count: aCount, topology: aTopology }],
+      ])('accepts %s', (_label, synthetic) => {
+        expect(
+          networkComposerStage.safeParse(composer(synthetic)).success,
+        ).toBe(true);
+      });
+
+      it('accepts the stage with no synthetic block at all', () => {
+        expect(networkComposerStage.safeParse(composer()).success).toBe(true);
+      });
+
+      it('rejects an empty synthetic block', () => {
+        // "On but declaring nothing" says exactly what "no block" says, and
+        // storing it would leave the editor's toggle with two off states.
+        expect(networkComposerStage.safeParse(composer({})).success).toBe(
+          false,
+        );
+      });
+    });
+  });
+
+  describe('boolean variables with a one-sided option list', () => {
+    const booleanVariable = (synthetic: unknown, options?: Loose[]): Loose => ({
+      name: 'Is_Close',
+      type: 'boolean',
+      component: 'Boolean',
+      ...(options ? { options } : {}),
+      synthetic,
+    });
+
+    it('rejects a probability the offered values cannot produce', () => {
+      // Only `false` is offered, so the generator returns it and the declared
+      // probability never applies — the opposite of what was authored.
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 1 }, [
+          { label: 'No', value: false },
+        ]),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'cannot be drawn when the only option')).toBe(
+        true,
+      );
+    });
+
+    it('accepts a probability the sole option agrees with', () => {
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 0 }, [
+          { label: 'No', value: false },
+        ]),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('leaves a componentless boolean alone', () => {
+      // A NetworkComposer field can render this as a `Toggle`, which ignores
+      // the options — `booleanDomainValues` only reads them for the `Boolean`
+      // choice control — so both values stay drawable and the probability
+      // takes effect.
+      const protocol = withPersonVariable('isClose', {
+        name: 'Is_Close',
+        type: 'boolean',
+        options: [{ label: 'No', value: false }],
+        synthetic: { probabilityTrue: 1 },
+      });
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('leaves a two-sided list alone', () => {
+      const protocol = withPersonVariable(
+        'isClose',
+        booleanVariable({ probabilityTrue: 0.7 }, [
+          { label: 'No', value: false },
+          { label: 'Yes', value: true },
+        ]),
+      );
+      expect(parse(protocol).success).toBe(true);
     });
   });
 
@@ -245,6 +493,34 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(hasIssue(result, 'exceeds the validation maxValue')).toBe(true);
     });
 
+    it('rejects a zero-deviation normal outside the validation bounds', () => {
+      // Same single-point support a constant has, so the same rule: every draw
+      // is clamped to a boundary and the authored distribution is replaced.
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable(
+          { distribution: 'normal', mean: 200, sd: 0 },
+          { minValue: 18, maxValue: 99 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'standard deviation of 0 can reach nothing'),
+      ).toBe(true);
+    });
+
+    it('accepts a zero-deviation normal inside them', () => {
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable(
+          { distribution: 'normal', mean: 50, sd: 0 },
+          { minValue: 18, maxValue: 99 },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('rejects a lognormal under a nonpositive ceiling', () => {
       // The descriptor authors no `min`, so comparing only authored bounds
       // finds nothing to object to. A lognormal's support is positive
@@ -261,6 +537,34 @@ describe('synthetic metadata (additive to schema 8)', () => {
       const result = parse(protocol);
       expect(result.success).toBe(false);
       expect(hasIssue(result, 'draws only positive values')).toBe(true);
+    });
+
+    it('rejects a zero-deviation lognormal outside the validation bounds', () => {
+      // Positive support, so the lognormal ceiling rule says nothing; with a
+      // deviation of zero the mean is the only value it can produce.
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 1, sd: 0 },
+          { minValue: 10, maxValue: 500 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'standard deviation of 0 can reach nothing'),
+      ).toBe(true);
+    });
+
+    it('accepts a zero-deviation lognormal inside them', () => {
+      const protocol = withPersonVariable(
+        'debt',
+        numberVariable(
+          { distribution: 'lognormal', mean: 100, sd: 0 },
+          { minValue: 10, maxValue: 500 },
+        ),
+      );
+      expect(parse(protocol).success).toBe(true);
     });
 
     it('accepts a lognormal whose ceiling leaves positive room', () => {
@@ -640,6 +944,35 @@ describe('synthetic metadata (additive to schema 8)', () => {
       synthetic,
     });
 
+    it('rejects a synthetic bound the picker cannot offer', () => {
+      // The picker's own parameters are already held to these floors, and a
+      // synthetic window is drawn from directly where the field declares no
+      // bounds — so a bound below them would have generation emit dates no
+      // participant could enter.
+      const yearZero = withPersonVariable(
+        'dateMet',
+        datetimeVariable({ distribution: 'uniform', min: '0000-01-01' }),
+      );
+      const zeroResult = parse(yearZero);
+      expect(zeroResult.success).toBe(false);
+      expect(hasIssue(zeroResult, 'year of 0001 or later')).toBe(true);
+
+      const smallCoarseYear = withPersonVariable(
+        'dateMet',
+        datetimeVariable(
+          { distribution: 'uniform', min: '0099' },
+          {
+            type: 'year',
+          },
+        ),
+      );
+      const coarseResult = parse(smallCoarseYear);
+      expect(coarseResult.success).toBe(false);
+      expect(hasIssue(coarseResult, 'four-digit year of 1000 or later')).toBe(
+        true,
+      );
+    });
+
     it('accepts a uniform window at the variable resolution', () => {
       const protocol = withPersonVariable(
         'dateMet',
@@ -649,6 +982,38 @@ describe('synthetic metadata (additive to schema 8)', () => {
             type: 'month',
           },
         ),
+      );
+      expect(parse(protocol).success).toBe(true);
+    });
+
+    it('rejects a zero-deviation date mean outside its own window', () => {
+      // One date and nothing else, so a mean outside the synthetic window is
+      // clamped to a boundary and never appears.
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'normal',
+          mean: '1990-06-15',
+          sdDays: 0,
+          min: '2010-01-01',
+          max: '2020-01-01',
+        }),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'standard deviation of 0 days')).toBe(true);
+    });
+
+    it('accepts a zero-deviation date mean inside it', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'normal',
+          mean: '2015-06-15',
+          sdDays: 0,
+          min: '2010-01-01',
+          max: '2020-01-01',
+        }),
       );
       expect(parse(protocol).success).toBe(true);
     });

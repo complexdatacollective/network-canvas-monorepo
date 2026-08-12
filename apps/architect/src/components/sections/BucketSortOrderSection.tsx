@@ -1,19 +1,40 @@
-import { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector } from 'redux-form';
+import type { ReactNode } from 'react';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import MultiSelect, { type OptionGetter } from '~/components/Form/MultiSelect';
-import { useAppDispatch } from '~/ducks/hooks';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import MultiSelect, {
+  completeRows,
+  type ItemValue,
+  type OptionGetter,
+  type PropertyField,
+} from '~/components/Form/arrayFields/MultiSelect';
+
 type BucketSortOrderSectionProps = {
-  form: string;
+  /**
+   * The row's committed `bucketSortOrder` value, used only to decide whether
+   * the section starts expanded — see `BinSortOrderSection`'s `initialValue`
+   * doc for why this can't be read reactively from form state here.
+   */
+  initialValue?: ItemValue[];
   disabled?: boolean;
   maxItems?: number;
   optionGetter: OptionGetter;
-  summary?: React.ReactNode;
+  summary?: ReactNode;
 };
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+// A row's own cells cannot block the save (see RowField), and a rule missing
+// its direction fails `SortRuleSchema` after `prune`.
+const SORT_RULE_VALIDATION = {
+  completeRows: completeRows(SORT_RULE_PROPERTIES),
+};
+
 const getDefaultSummary = () => (
   <Paragraph>
     Nodes are stacked in the bucket before they are placed by the participant.
@@ -24,20 +45,16 @@ const getDefaultSummary = () => (
   </Paragraph>
 );
 const BucketSortOrderSection = ({
-  form,
+  initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
   summary = getDefaultSummary(),
 }: BucketSortOrderSectionProps) => {
-  const dispatch = useAppDispatch();
-  const formSelector = useMemo(() => formValueSelector(form), [form]);
-  const hasBucketSortOrder = useSelector((state: Record<string, unknown>) =>
-    formSelector(state, 'bucketSortOrder'),
-  );
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
-      dispatch(change(form, 'bucketSortOrder', null));
+      setFieldValue('bucketSortOrder', undefined);
     }
     return true;
   };
@@ -47,7 +64,7 @@ const BucketSortOrderSection = ({
       summary={summary}
       toggleable
       disabled={disabled}
-      startExpanded={!!hasBucketSortOrder}
+      startExpanded={!!initialValue}
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
@@ -57,9 +74,14 @@ const BucketSortOrderSection = ({
           created.
         </AlertDescription>
       </Alert>
-      <MultiSelect
+      <ArchitectArrayField
         name="bucketSortOrder"
-        properties={[{ fieldName: 'property' }, { fieldName: 'direction' }]}
+        label="Bucket sort order"
+        labelHidden
+        component={MultiSelect}
+        initialValue={initialValue}
+        properties={SORT_RULE_PROPERTIES}
+        validation={SORT_RULE_VALIDATION}
         maxItems={maxItems}
         options={optionGetter}
       />

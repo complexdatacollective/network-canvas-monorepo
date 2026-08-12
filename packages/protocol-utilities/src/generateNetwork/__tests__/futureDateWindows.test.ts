@@ -25,7 +25,6 @@ const datesFor = (synthetic: Synthetic, parameters?: Synthetic): string[] => {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 5 } },
           variables: {
             met: {
               name: 'Met',
@@ -45,6 +44,7 @@ const datesFor = (synthetic: Synthetic, parameters?: Synthetic): string[] => {
         type: 'NameGenerator',
         label: 'People',
         subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 5 } },
         form: {
           title: 'About this person',
           fields: [{ variable: 'met', prompt: 'When did you meet?' }],
@@ -89,6 +89,30 @@ describe('a synthetic date window above the stand-in ceiling', () => {
     for (const date of dates) {
       expect(date >= '1950-01-01' && date <= TODAY).toBe(true);
     }
+  });
+
+  it('centres an unbounded normal on its declared mean', () => {
+    // A normal names no bounds of its own, only a centre. Where the field
+    // declares none either, the stand-in window has to reach that centre —
+    // cut off at today, a mean of 2030 came back as today's date.
+    const dates = datesFor({
+      distribution: 'normal',
+      mean: '2030-01-01',
+      sdDays: 0,
+    });
+
+    expect(dates).toHaveLength(5);
+    for (const date of dates) expect(date).toBe('2030-01-01');
+  });
+
+  it('centres an unbounded normal on an old mean too', () => {
+    const dates = datesFor({
+      distribution: 'normal',
+      mean: '1950-06-15',
+      sdDays: 0,
+    });
+
+    for (const date of dates) expect(date).toBe('1950-06-15');
   });
 
   it('still yields to a ceiling the protocol declared', () => {

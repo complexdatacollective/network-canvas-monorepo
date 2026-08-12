@@ -753,9 +753,6 @@ function codebookFor(shape: CorpusShape): Codebook {
       link: {
         name: 'Link',
         color: 'edge-color-seq-1',
-        // Every eligible pair is linked, so the analysed worst case is the
-        // generated count; see FULL_DENSITY_TOPOLOGY.
-        synthetic: { topology: FULL_DENSITY_TOPOLOGY },
         variables: codebookVariables(shape.edgeVariables),
       },
     },
@@ -799,6 +796,9 @@ function stagesFor(shape: CorpusShape): Stage[] {
     {
       id: 'stage-2',
       type: 'DyadCensus',
+      // Every eligible pair is linked, so the analysed worst case is the
+      // generated count; see FULL_DENSITY_TOPOLOGY.
+      synthetic: { topology: FULL_DENSITY_TOPOLOGY },
       label: 'Census',
       subject: { entity: 'node', type: 'person' },
       prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
@@ -813,6 +813,9 @@ function stagesFor(shape: CorpusShape): Stage[] {
     stages.push({
       id: 'stage-3',
       type: 'TieStrengthCensus',
+      // Every eligible pair is linked, so the analysed worst case is the
+      // generated count; see FULL_DENSITY_TOPOLOGY.
+      synthetic: { topology: FULL_DENSITY_TOPOLOGY },
       label: 'How close?',
       subject: { entity: 'node', type: 'person' },
       prompts: [

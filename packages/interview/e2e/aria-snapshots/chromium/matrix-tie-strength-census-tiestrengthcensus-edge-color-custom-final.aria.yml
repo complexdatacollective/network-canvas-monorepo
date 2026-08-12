@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad and Charlie
-  - button "Mohammad"
-  - button "Charlie"
+  - text: Ansel and Rebecca
+  - button "Ansel"
+  - button "Rebecca"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad and Charlie How close are these two people?":
+  - listbox "Ansel and Rebecca How close are these two people?":
     - option "Weak"
     - option "Moderate" [selected]
     - option "Strong"

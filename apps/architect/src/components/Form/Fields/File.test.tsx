@@ -1,13 +1,9 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  Field,
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('../../AssetBrowser/AssetBrowserWindow', () => ({
   default: ({
@@ -31,43 +27,39 @@ vi.mock('../../AssetBrowser/AssetBrowserWindow', () => ({
     ) : null,
 }));
 
+import ArchitectField from '../ArchitectField';
 import FileInput from './File';
 
-type FormValues = { resource?: string };
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
-const Harness = (_props: InjectedFormProps<FormValues>) => (
-  <Field
-    name="resource"
-    label="Background image"
-    component={FileInput}
-    required
-  >
-    {(id: string) => <span>Selected {id}</span>}
-  </Field>
-);
-
-const ReduxHarness = reduxForm<FormValues>({ form: 'file-field-test' })(
-  Harness,
-);
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
 
 const setup = () => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+  storeApi = null;
 
   render(
-    <Provider store={store}>
-      <ReduxHarness />
-    </Provider>,
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      <ArchitectField
+        name="resource"
+        label="Background image"
+        component={FileInput}
+        validation={{ required: true }}
+      >
+        {(id: string) => <span>Selected {id}</span>}
+      </ArchitectField>
+    </Form>,
   );
 
   return {
-    getResource: () =>
-      store.getState().form['file-field-test']?.values?.resource as
-        | string
-        | undefined,
+    getResource: () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState().getFormValues().resource as string | undefined;
+    },
   };
 };
 
@@ -80,7 +72,7 @@ describe('File field', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('group', { name: 'Background image' }),
-    ).toHaveAccessibleDescription('Required');
+    ).toHaveAccessibleDescription(/Required/);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select resource' }));
     fireEvent.click(screen.getByRole('button', { name: 'Choose asset' }));

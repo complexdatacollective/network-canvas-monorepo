@@ -6,7 +6,6 @@ import {
   EgoVariablesSchema,
   VariablesSchema,
 } from '../variables/index.ts';
-import { EdgeSyntheticSchema, NodeSyntheticSchema } from './synthetic.ts';
 
 export const NodeColorSequence = [
   'node-color-seq-1',
@@ -85,7 +84,6 @@ const NodeDefinitionSchema = z.strictObject({
   variables: VariablesSchema.optional(),
   color: z.union(NodeColorSequence.map((color) => z.literal(color))),
   shape: ShapeSchema,
-  synthetic: NodeSyntheticSchema.optional(),
 });
 
 export { NodeDefinitionSchema };
@@ -108,7 +106,6 @@ const EdgeDefinitionSchema = z.strictObject({
   name: z.string(),
   color: z.union(EdgeColorSequence.map((color) => z.literal(color))).optional(),
   variables: EdgeVariablesSchema.optional(),
-  synthetic: EdgeSyntheticSchema.optional(),
 });
 
 export { EdgeDefinitionSchema };

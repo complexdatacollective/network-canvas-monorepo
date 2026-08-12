@@ -71,7 +71,22 @@ export function BaseField({
       {...containerProps}
       className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
     >
-      <div className="@container flex flex-col">
+      {/*
+        Only `inline` fields query this element (see the `@min-[28rem]:`
+        utilities below), so only they make it a query container. Every other
+        container-query consumer in the design system establishes its own
+        container, so nothing else is scoped to this one.
+
+        Making EVERY field a size container also has a cost beyond the
+        redundant containment: Chromium lays a size container's subtree out on
+        a separate, interleaved path, and can lose the invalidation for it
+        when a large sibling subtree mounts in the same commit — the subtree
+        keeps its computed styles but loses its layout boxes entirely, so the
+        control renders at zero height and never recovers. Architect's
+        quick-add variable picker hit exactly that when picking a variable
+        mounted the codebook validation section beside it.
+      */}
+      <div className={cx(inline && '@container', 'flex flex-col')}>
         <div
           className={cx(
             // `inline` fields lay out as two columns (label | control) once the

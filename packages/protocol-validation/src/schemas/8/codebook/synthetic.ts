@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
 /**
- * Optional synthetic-data generation metadata (`synthetic`) carried by
- * codebook entity and variable definitions. Purely descriptive: it shapes
- * what generated sample data looks like and never affects how an interview
- * collects real data. Everything here is additive — a protocol that omits it
- * is unchanged, and generation resolves documented defaults instead.
+ * Optional synthetic-data generation metadata (`synthetic`), carried by
+ * codebook variable definitions and by the stages that create entities.
+ * Purely descriptive: it shapes what generated sample data looks like and
+ * never affects how an interview collects real data. Everything here is
+ * additive — a protocol that omits it is unchanged, and generation resolves
+ * documented defaults instead.
+ *
+ * WHERE each half lives, and why they differ:
+ *
+ * - Variable shapes hang off the codebook variable, because a value
+ *   distribution is a property of the thing being measured. Wherever `age` is
+ *   collected, it is the same `age`.
+ * - Count and topology shapes hang off the STAGE, because how many people get
+ *   named — and how densely they get linked — is a property of the asking.
  *
  * Modelling rules the shapes below enforce:
  *
@@ -67,21 +76,115 @@ const requireSomeField = (
 };
 
 // ---------------------------------------------------------------------------
-// Entity level: node population counts
+// Stage level: node population counts
 // ---------------------------------------------------------------------------
 
+/**
+ * The most people one stage may be asked to produce.
+ *
+ * A synthetic population is generated SYNCHRONOUSLY — Architect's PreviewHost
+ * calls `generateNetwork` on the main thread, and the planner iterates once per
+ * node and once per pair. A count of a billion is arithmetically fine and
+ * schema-valid, and it locks the renderer. Ten thousand is far past any
+ * plausible interview and still returns.
+ */
+export const MAX_SYNTHETIC_POPULATION = 10_000;
+
+/**
+ * The most unordered PAIRS a preview may enumerate for one edge-creating
+ * stage.
+ *
+ * A population bound alone is not enough, because pairs grow quadratically:
+ * the schema-valid 10,000 people admitted here reach 49,995,000 pairs, and the
+ * planner materialises that domain as map entries before it selects any
+ * topology from it. Generation is synchronous on Architect's main thread, so
+ * that exhausts memory rather than merely taking a while.
+ *
+ * Bounded separately from the population because it constrains a different
+ * thing: a node type no stage links may hold ten thousand people quite
+ * happily. 250,000 pairs is roughly 707 people in one linkable set — far past
+ * any interview a participant could sit through.
+ */
+export const MAX_SYNTHETIC_PAIRS = 250_000;
+
 const nonNegativeInt = z.number().int().min(0);
+const populationInt = nonNegativeInt.max(MAX_SYNTHETIC_POPULATION);
+
+/**
+ * The most entities a count can ask for, which is what has to be bounded — not
+ * its parameters one at a time.
+ *
+ * The generator draws within six deviations of a mean and plans once per
+ * entity and once per PAIR, so `{ mean: 10_000, sd: 10_000 }` reaches 70,000
+ * people and 2.45 billion pairs while every individual parameter looks
+ * reasonable. Defined here, beside the schema that admits the count, and
+ * re-exported to the generator so the bound and the draw cannot drift apart.
+ */
+export function syntheticCountCeiling(count: {
+  distribution: string;
+  value?: number;
+  mean?: number;
+  sd?: number;
+  min?: number;
+  max?: number;
+}): number {
+  switch (count.distribution) {
+    case 'constant':
+      return count.value ?? 0;
+    case 'uniform':
+      return count.max ?? 0;
+    case 'poisson':
+      return (
+        count.max ??
+        Math.max(
+          count.min ?? 0,
+          Math.ceil((count.mean ?? 0) + 6 * Math.sqrt(count.mean ?? 0) + 1),
+        )
+      );
+    case 'normal':
+      return (
+        count.max ??
+        Math.max(
+          count.min ?? 0,
+          0,
+          Math.ceil((count.mean ?? 0) + 6 * (count.sd ?? 0)),
+        )
+      );
+    default:
+      return 0;
+  }
+}
+
+const rejectOversizedPopulation = (
+  count: {
+    distribution: string;
+    mean?: number;
+    sd?: number;
+    min?: number;
+    max?: number;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  const ceiling = syntheticCountCeiling(count);
+  if (ceiling > MAX_SYNTHETIC_POPULATION) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `This count can reach ${ceiling} entities; generation is synchronous, so it is capped at ${MAX_SYNTHETIC_POPULATION}`,
+      path: [],
+    });
+  }
+};
 
 const constantCountSchema = z.strictObject({
   distribution: z.literal('constant'),
-  value: nonNegativeInt,
+  value: populationInt,
 });
 
 const uniformCountSchema = z
   .strictObject({
     distribution: z.literal('uniform'),
-    min: nonNegativeInt,
-    max: nonNegativeInt,
+    min: populationInt,
+    max: populationInt,
   })
   .superRefine(requireOrderedBounds);
 
@@ -89,10 +192,11 @@ const poissonCountSchema = z
   .strictObject({
     distribution: z.literal('poisson'),
     mean: z.number().min(0),
-    min: nonNegativeInt.optional(),
-    max: nonNegativeInt.optional(),
+    min: populationInt.optional(),
+    max: populationInt.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(rejectOversizedPopulation);
 
 // A negative mean stays representable: truncation and rounding keep drawn
 // counts non-negative integers, so "usually zero, occasionally more" is a
@@ -102,10 +206,11 @@ const normalCountSchema = z
     distribution: z.literal('normal'),
     mean: z.number(),
     sd: z.number().min(0),
-    min: nonNegativeInt.optional(),
-    max: nonNegativeInt.optional(),
+    min: populationInt.optional(),
+    max: populationInt.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(rejectOversizedPopulation);
 
 export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
   constantCountSchema,
@@ -115,13 +220,31 @@ export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
 ]);
 export type SyntheticCount = z.infer<typeof SyntheticCountSchema>;
 
-export const NodeSyntheticSchema = z.strictObject({
-  count: SyntheticCountSchema,
-});
-export type NodeSynthetic = z.infer<typeof NodeSyntheticSchema>;
+/**
+ * What a node-creating stage declares: how many people it produces.
+ *
+ * This lives on the STAGE rather than the node type because a count is a
+ * property of the asking, not of the asked-about. Three name generators over
+ * `Person` each nominate their own people; a single population declared on the
+ * type would have to be apportioned between them, and nothing in the protocol
+ * says how. Declared per stage, each stage's demand is independent, a type no
+ * stage creates simply has no people, and a roster stage that asks for more
+ * rows than its pool holds is a local, reportable error.
+ */
+export type StageNodeSynthetic = { count: SyntheticCount };
+
+// Annotated rather than inferred. These shapes land in EIGHT stage schemas and
+// so in the `Stage` union every consumer resolves, and left to inference each
+// one expands its whole distribution union inline — enough for TypeScript to
+// refuse to serialize the declarations of anything mapping over stages
+// (TS7056). Naming the type keeps the union referring to an alias instead.
+export const StageNodeSyntheticSchema: z.ZodType<StageNodeSynthetic> =
+  z.strictObject({
+    count: SyntheticCountSchema,
+  });
 
 // ---------------------------------------------------------------------------
-// Entity level: edge topology
+// Stage level: edge topology
 // ---------------------------------------------------------------------------
 
 // Density is probability-like: every parameter lives in 0–1, and uniform
@@ -149,10 +272,32 @@ const densityNormalSchema = z
   })
   .superRefine(requireOrderedBounds);
 
+// Density is a proportion, so beta is its natural family: it lives on 0–1 by
+// construction rather than by clamping a normal that wanted to leave. Its
+// variance is bounded by mean·(1−mean) — parameters at or past that bound have
+// no alpha/beta solution, so they are rejected here rather than silently
+// clamped at generation time (the same rule scalar variables carry).
+const densityBetaSchema = z
+  .strictObject({
+    distribution: z.literal('beta'),
+    mean: z.number().gt(0).lt(1),
+    sd: z.number().min(0),
+  })
+  .superRefine((value, ctx) => {
+    if (value.sd * value.sd >= value.mean * (1 - value.mean)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'A beta distribution requires sd² < mean × (1 − mean)',
+        path: ['sd'],
+      });
+    }
+  });
+
 const densityDistributionSchema = z.discriminatedUnion('distribution', [
   densityConstantSchema,
   densityUniformSchema,
   densityNormalSchema,
+  densityBetaSchema,
 ]);
 
 const nonNegative = z.number().min(0);
@@ -198,10 +343,39 @@ export const EdgeTopologySchema = z.discriminatedUnion('metric', [
 ]);
 export type EdgeTopology = z.infer<typeof EdgeTopologySchema>;
 
-export const EdgeSyntheticSchema = z.strictObject({
-  topology: EdgeTopologySchema,
-});
-export type EdgeSynthetic = z.infer<typeof EdgeSyntheticSchema>;
+/**
+ * What an edge-creating stage declares: how densely it links the people it can
+ * see. Density is resolved against the pairs eligible AT THAT STAGE — its
+ * subject type, its filter, and the nodes that exist by the time it runs — so
+ * unlike a whole-network target it is well defined during the interview walk.
+ *
+ * A stage whose prompts create more than one edge type applies the same
+ * topology to each, independently, over that type's own eligible pairs.
+ */
+export type StageEdgeSynthetic = { topology: EdgeTopology };
+
+export const StageEdgeSyntheticSchema: z.ZodType<StageEdgeSynthetic> =
+  z.strictObject({
+    topology: EdgeTopologySchema,
+  });
+
+/**
+ * What a stage that creates BOTH people and links declares. Either half may
+ * stand alone, but an empty block says nothing that "no block at all" does not
+ * already say, so it is rejected rather than stored.
+ */
+export type StageNodeAndEdgeSynthetic = {
+  count?: SyntheticCount;
+  topology?: EdgeTopology;
+};
+
+export const StageNodeAndEdgeSyntheticSchema: z.ZodType<StageNodeAndEdgeSynthetic> =
+  z
+    .strictObject({
+      count: SyntheticCountSchema.optional(),
+      topology: EdgeTopologySchema.optional(),
+    })
+    .superRefine(requireSomeField);
 
 // ---------------------------------------------------------------------------
 // Variable level

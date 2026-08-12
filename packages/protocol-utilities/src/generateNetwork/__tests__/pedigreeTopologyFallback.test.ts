@@ -18,13 +18,12 @@ import { generateNetwork } from '../../generateNetwork';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
 
-const codebook = (density: number): Codebook =>
+const codebook = (): Codebook =>
   ({
     node: {
       person: {
         name: 'Person',
         color: 'node-color-seq-1',
-        synthetic: { count: { distribution: 'constant', value: 8 } },
         variables: {
           name: { name: 'Name', type: 'text' },
           isEgo: { name: 'Is ego', type: 'boolean' },
@@ -37,12 +36,6 @@ const codebook = (density: number): Codebook =>
       knows: {
         name: 'Knows',
         color: 'edge-color-seq-1',
-        synthetic: {
-          topology: {
-            metric: 'density',
-            distribution: { distribution: 'constant', value: density },
-          },
-        },
         variables: {},
       },
     },
@@ -74,12 +67,30 @@ const pedigree = {
   censusPrompt: 'Add your family.',
 } as unknown as Stage;
 
-const census = (promptCount: number): Stage =>
+const densityTopology = (value: number) => ({
+  topology: {
+    metric: 'density',
+    distribution: { distribution: 'constant', value },
+  },
+});
+
+const meanDegreeTopology = (value: number) => ({
+  topology: {
+    metric: 'meanDegree',
+    distribution: { distribution: 'constant', value },
+  },
+});
+
+const census = (
+  promptCount: number,
+  topology: Record<string, unknown> = densityTopology(0.5),
+): Stage =>
   ({
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Who knows whom',
     subject: { entity: 'node', type: 'person' },
+    synthetic: topology,
     prompts: Array.from({ length: promptCount }, (_, index) => ({
       id: `p${index + 1}`,
       text: 'Do they know each other?',
@@ -96,7 +107,7 @@ describe('a census over a family the plan could not size', () => {
     // twice — two passes at 0.5 leaving roughly 0.75 — so the count has to be
     // the same whether one interaction creates the type or several.
     for (let seed = 1; seed <= 12; seed++) {
-      const options = { seed, codebook: codebook(0.5) };
+      const options = { seed, codebook: codebook() };
       const { network: onePrompt } = generateNetwork({
         ...options,
         stages: [pedigree, census(1)],
@@ -121,7 +132,7 @@ describe('a census over a family the plan could not size', () => {
     for (let seed = 1; seed <= 12; seed++) {
       const { network, stageMetadata } = generateNetwork({
         seed,
-        codebook: codebook(0.5),
+        codebook: codebook(),
         stages: [pedigree, census(1)],
       });
 
@@ -147,13 +158,12 @@ describe('a census over a family the plan could not size', () => {
 });
 
 describe('a mean-degree topology split across planned and pedigree people', () => {
-  const meanDegreeCodebook = (meanDegree: number): Codebook =>
+  const meanDegreeCodebook = (): Codebook =>
     ({
       node: {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 10 } },
           variables: {
             name: { name: 'Name', type: 'text' },
             isEgo: { name: 'Is ego', type: 'boolean' },
@@ -166,12 +176,6 @@ describe('a mean-degree topology split across planned and pedigree people', () =
         knows: {
           name: 'Knows',
           color: 'edge-color-seq-1',
-          synthetic: {
-            topology: {
-              metric: 'meanDegree',
-              distribution: { distribution: 'constant', value: meanDegree },
-            },
-          },
           variables: {},
         },
       },
@@ -192,18 +196,22 @@ describe('a mean-degree topology split across planned and pedigree people', () =
     // its share over the people it owns; a fallback that then targets its own
     // partition independently adds a second share, and the finished network
     // is connected far past what was declared.
-    const meanDegree = 2;
+    const declaredDegree = 2;
 
     for (let seed = 1; seed <= 12; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: meanDegreeCodebook(meanDegree),
-        stages: [namePeople, pedigree, census(1)],
+        codebook: meanDegreeCodebook(),
+        stages: [
+          namePeople,
+          pedigree,
+          census(1, meanDegreeTopology(declaredDegree)),
+        ],
       });
 
       const people = network.nodes.filter((node) => node.type === 'person');
       const knows = network.edges.filter((edge) => edge.type === 'knows');
-      const allowed = Math.round((meanDegree * people.length) / 2);
+      const allowed = Math.round((declaredDegree * people.length) / 2);
 
       expect(knows.length).toBeLessThanOrEqual(allowed);
     }
@@ -220,7 +228,6 @@ describe('a composer edge form over a pedigree', () => {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 8 } },
           variables: {
             name: { name: 'Name', type: 'text' },
             isEgo: { name: 'Is ego', type: 'boolean' },
@@ -233,12 +240,6 @@ describe('a composer edge form over a pedigree', () => {
         knows: {
           name: 'Knows',
           color: 'edge-color-seq-1',
-          synthetic: {
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: 1 },
-            },
-          },
           variables: {
             since: {
               name: 'Since',
@@ -294,7 +295,6 @@ describe('two walk-time creators whose subject sets overlap', () => {
         person: {
           name: 'Person',
           color: 'node-color-seq-1',
-          synthetic: { count: { distribution: 'constant', value: 8 } },
           variables: {
             name: { name: 'Name', type: 'text' },
             isEgo: { name: 'Is ego', type: 'boolean' },
@@ -325,6 +325,7 @@ describe('two walk-time creators whose subject sets overlap', () => {
         type: 'DyadCensus',
         label: 'Who knows whom',
         subject: { entity: 'node', type: 'person' },
+        synthetic: densityTopology(0.5),
         prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'knows' }],
         filter: {
           join: 'AND',

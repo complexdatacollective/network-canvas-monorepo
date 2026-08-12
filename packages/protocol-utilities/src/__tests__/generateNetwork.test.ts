@@ -41,10 +41,6 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
     node: {
       'node-type-1': {
         color: 'node-color-seq-1',
-        // A declared population, so counts are decided by the codebook rather
-        // than a seed's draw from the default window. Stage behaviours still
-        // floor and cap each creating stage's share of it.
-        synthetic: { count: { distribution: 'constant', value: 6 } },
         variables: {
           'var-name': { name: 'Name', type: 'text' },
         },
@@ -80,6 +76,10 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
       fields: [{ variable: 'var-name', prompt: 'Name' }],
     },
     prompts: [{ id: 'prompt-ng', text: 'Add people' }],
+    // A declared population, so counts are decided by the stage rather than a
+    // seed's draw from the default window. `behaviours` still floors and caps
+    // what the interface will actually hold.
+    synthetic: { count: { distribution: 'constant', value: 6 } },
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
   } as Stage;
@@ -535,7 +535,6 @@ describe('generateNetwork', () => {
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-ego': { name: 'Is ego', type: 'boolean' },
@@ -712,7 +711,6 @@ describe('generateNetwork', () => {
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-ordinal': {
@@ -838,7 +836,6 @@ describe('generateNetwork', () => {
         node: {
           'node-type-1': {
             color: 'node-color-seq-1',
-            synthetic: { count: { distribution: 'constant', value: 6 } },
             variables: {
               'var-name': { name: 'Name', type: 'text' },
               'var-layout': { name: 'Layout', type: 'layout' },
@@ -976,19 +973,26 @@ describe('generateNetwork', () => {
       expect(uniquePrimaryKeys(network)).toBe(4);
     });
 
-    it('stops at the roster size on a roster stage, even below minNodes', () => {
+    it('refuses a roster smaller than the people its stage must place', () => {
+      // It used to stop at the pool and build two. Counts are declared by the
+      // stage now, so a pool that cannot meet one is a protocol the researcher
+      // needs to hear about rather than a population that quietly arrives
+      // short.
       const stage = makeRosterStage({
         behaviours: { minNodes: 5, maxNodes: 8 },
+        synthetic: { count: { distribution: 'constant', value: 5 } },
       });
 
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages: [stage],
-        seed: 42,
-        externalData: { 'stage-ngr': makeRosterPool(2) },
-      });
-
-      expect(network.nodes).toHaveLength(2);
+      expect(() =>
+        generateNetwork({
+          codebook: makeCodebook(),
+          stages: [stage],
+          seed: 42,
+          externalData: { 'stage-ngr': makeRosterPool(2) },
+        }),
+      ).toThrow(
+        /roster does not hold enough people for the stages drawing from it/,
+      );
     });
 
     it('fabricates people on a roster stage with no external-data entry', () => {
@@ -1012,9 +1016,28 @@ describe('generateNetwork', () => {
     // A resolvable but empty roster means "roster known to be empty", not "no
     // roster". A live interview would offer nobody to add, so a roster stage
     // with an empty entry adds nobody rather than inventing people.
-    it('adds nobody on a roster stage whose external-data entry is empty', () => {
+    it('refuses a roster stage whose external-data entry is empty', () => {
       const stage = makeRosterStage({
         behaviours: { minNodes: 3, maxNodes: 3 },
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+      });
+
+      expect(() =>
+        generateNetwork({
+          codebook: makeCodebook(),
+          stages: [stage],
+          seed: 42,
+          externalData: { 'stage-ngr': [] },
+        }),
+      ).toThrow(
+        /roster does not hold enough people for the stages drawing from it/,
+      );
+    });
+
+    it('adds nobody on an empty roster stage asked for nobody', () => {
+      const stage = makeRosterStage({
+        behaviours: { minNodes: 0, maxNodes: 1 },
+        synthetic: { count: { distribution: 'constant', value: 0 } },
       });
 
       const { network } = generateNetwork({
@@ -1055,31 +1078,32 @@ describe('generateNetwork', () => {
     // roster stage FABRICATES its share instead of adding nobody — against the
     // documented externalData contract ("a roster stage only from them") and
     // the plan's own comment. Marked `fails` so this flips when fixed.
-    it('adds nobody once an earlier stage exhausts a shared roster', () => {
+    it('refuses when two stages need more of a shared roster than it holds', () => {
       const pool = makeRosterPool(3);
       const stages = [
         makeRosterStage({
           id: 'stage-a',
           behaviours: { minNodes: 3, maxNodes: 3 },
+          synthetic: { count: { distribution: 'constant', value: 3 } },
         }),
         makeRosterStage({
           id: 'stage-b',
           behaviours: { minNodes: 2, maxNodes: 2 },
+          synthetic: { count: { distribution: 'constant', value: 2 } },
         }),
       ];
 
-      const { network } = generateNetwork({
-        codebook: makeCodebook(),
-        stages,
-        seed: 42,
-        externalData: { 'stage-a': pool, 'stage-b': pool },
-      });
-
-      expect(network.nodes.filter((n) => n.stageId === 'stage-a')).toHaveLength(
-        3,
-      );
-      expect(network.nodes.filter((n) => n.stageId === 'stage-b')).toHaveLength(
-        0,
+      // Three rows between two stages needing five: the shared pool cannot
+      // cover them, and saying so beats leaving the second stage empty.
+      expect(() =>
+        generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+          externalData: { 'stage-a': pool, 'stage-b': pool },
+        }),
+      ).toThrow(
+        /roster does not hold enough people for the stages drawing from it/,
       );
     });
 
@@ -1414,20 +1438,13 @@ describe('generateNetwork', () => {
 
   describe('codebook synthetic counts', () => {
     it('draws the population from the declared count when a stage omits behaviours', () => {
-      const stage = makeNameGeneratorStage({ behaviours: undefined });
+      const stage = makeNameGeneratorStage({
+        behaviours: undefined,
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+      });
 
       const { network } = generateNetwork({
-        codebook: makeCodebook({
-          node: {
-            'node-type-1': {
-              color: 'node-color-seq-1',
-              synthetic: { count: { distribution: 'constant', value: 3 } },
-              variables: {
-                'var-name': { name: 'Name', type: 'text' },
-              },
-            },
-          },
-        }),
+        codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
       });
@@ -1435,49 +1452,52 @@ describe('generateNetwork', () => {
       expect(network.nodes).toHaveLength(3);
     });
 
-    it('caps a FamilyPedigree family at the declared count, above its core', () => {
-      // A family is not sized like an elicited population. The generator emits
-      // a complete pedigree — ego, two genetic parents, four genetic
-      // grandparents — and the declared count bounds only what it may add on
-      // top of that. So the count is read as a ceiling on optional branches,
-      // and asserting it against a family means asserting the branches it
-      // permits, not the seven the core costs.
-      const familyOf = (declared: number): number => {
+    it('caps a FamilyPedigree family at the caller ceiling, above its core', () => {
+      // A family is not sized like an elicited population, and nothing in the
+      // protocol caps one: the codebook describes what a family IS, not how
+      // big one gets. The generator emits a complete pedigree — ego, two
+      // genetic parents, four genetic grandparents — and the CALLER's ceiling
+      // bounds only what it may add on top. So the ceiling is asserted against
+      // the branches it permits, not the seven the core costs.
+      const familyOf = (maxNodes: number): number => {
         const { network } = generateNetwork({
-          codebook: makeCodebook({
-            node: {
-              'node-type-1': {
-                color: 'node-color-seq-1',
-                synthetic: {
-                  count: { distribution: 'constant', value: declared },
-                },
-                variables: { 'var-name': { name: 'Name', type: 'text' } },
-              },
-            },
-          }),
+          codebook: makeCodebook(),
           stages: [makeFamilyPedigreeStage()],
           seed: 42,
+          familyPedigree: { maxNodes },
         });
         return network.nodes.length;
       };
 
-      // Room for branches, and the seed takes some of it: a count that only
+      // Room for branches, and the seed takes some of it: a ceiling that only
       // capped would leave this indistinguishable from the core.
       const roomy = familyOf(24);
       expect(roomy).toBeGreaterThan(7);
       expect(roomy).toBeLessThanOrEqual(24);
 
-      // Tightening the same seed's family to a lower ceiling drops branches
-      // the roomier run kept, while still growing past the core — which is
-      // what makes the count load-bearing rather than incidental.
+      // Tightening the same seed's family drops branches the roomier run
+      // kept, while still growing past the core — which is what makes the
+      // ceiling load-bearing rather than incidental.
       const tight = familyOf(12);
       expect(tight).toBeGreaterThan(7);
       expect(tight).toBeLessThan(roomy);
 
       // And below the core the ceiling stops applying: seven people are what
-      // a pedigree costs whatever the codebook declares, since a family the
+      // a pedigree costs whatever it is asked for, since a family the
       // interface could never draw is worse than one larger than asked for.
       expect(familyOf(6)).toBe(7);
+    });
+
+    it('leaves a pedigree unaffected by a stage-level population count', () => {
+      // The counts that size name generators say nothing about a family. A
+      // pedigree stage carries no `synthetic` block at all, and one placed on
+      // a neighbouring stage must not reach it.
+      const withGenerator = generateNetwork({
+        codebook: makeCodebook(),
+        stages: [makeFamilyPedigreeStage()],
+        seed: 42,
+      });
+      expect(withGenerator.network.nodes.length).toBeGreaterThan(7);
     });
   });
 

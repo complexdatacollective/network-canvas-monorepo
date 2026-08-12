@@ -10,10 +10,10 @@
     - button "Redo" [disabled]
   - application:
     - img
-    - button "Lurline"
-    - button "Raven"
-    - button "Joesph"
-    - button "Ernesto"
+    - button "Toni"
+    - button "Carl"
+    - button "Vernie"
+    - button "Janice"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

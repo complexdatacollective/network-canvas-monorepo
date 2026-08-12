@@ -117,6 +117,19 @@ function NumericParameters({
           step: 'any',
         } as const);
 
+  // A number's uniform is the one descriptor whose bounds the schema demands:
+  // `numberUniformSchema` takes `min` and `max` as required, while its normal
+  // and lognormal take them optionally and a scalar's uniform likewise. An
+  // author switching an existing number from normal to uniform meets two empty
+  // controls, so calling them optional there sends them to a save that cannot
+  // succeed.
+  const boundsRequired = kind === 'number' && distribution === 'uniform';
+  const boundsHint = boundsRequired
+    ? 'Required for a uniform distribution.'
+    : kind === 'scalar'
+      ? 'Optional. Scalar values always stay within 0 and 1.'
+      : 'Optional. Values are always kept inside the validation bounds.';
+
   return (
     <>
       {distribution !== 'uniform' && (
@@ -140,25 +153,33 @@ function NumericParameters({
           />
         </>
       )}
-      {kind === 'number' && (
+      {/*
+        Only where the descriptor accepts them. A number takes bounds on every
+        distribution it offers, but a scalar takes them on `uniform` alone —
+        its normal and beta schemas are strict objects without them, so a bound
+        entered against those makes the variable unsavable. Rendering has to
+        match the schema in both directions: an unrendered bound is an
+        unregistered one, and submission rebuilds `synthetic` from the
+        registered fields, so leaving a supported bound out silently widens the
+        distribution on the next save.
+      */}
+      {(kind === 'number' || distribution === 'uniform') && (
         <>
           <Field
             name={syntheticField('min')}
             label="Minimum"
-            hint="Optional. Values are always kept inside the validation bounds."
+            hint={boundsHint}
             initialValue={initialFor('min')}
-            component={InputField}
-            type="number"
-            step="any"
+            required={boundsRequired}
+            {...bounded}
           />
           <Field
             name={syntheticField('max')}
             label="Maximum"
-            hint="Optional."
+            hint={boundsHint}
             initialValue={initialFor('max')}
-            component={InputField}
-            type="number"
-            step="any"
+            required={boundsRequired}
+            {...bounded}
           />
         </>
       )}
@@ -236,7 +257,16 @@ function WeightTable({ context }: { context: SyntheticDraftContext }) {
 }
 
 function SelectionCountTable({ context }: { context: SyntheticDraftContext }) {
-  const rows = selectionCountRows(context);
+  // Against the weights as they stand, not as they were saved: raising a
+  // zero-weight option makes a further count reachable, and the table has to
+  // offer it without a save-and-reopen first.
+  const weightFields = weightRows(context).map((row) => row.fieldName);
+  const liveWeights = useFormValue(weightFields);
+  const positiveWeights = weightFields.filter((name) => {
+    const value = liveWeights[name];
+    return value !== undefined && value !== null && Number(value) > 0;
+  }).length;
+  const rows = selectionCountRows(context, positiveWeights);
   return (
     <>
       {rows.map((row) => (
@@ -257,7 +287,21 @@ export default function SyntheticSection({
 }: {
   context: SyntheticDraftContext;
 }) {
-  const initial = useMemo(() => initialSyntheticValues(context), [context]);
+  // Seeded from the name as it stands in the draft, not as it was saved.
+  // A text generator is inferred from the variable's name, so renaming
+  // `friend_name` to `occupation` and enabling this section in one edit
+  // seeded the generator from the OLD name — and the author had to save,
+  // reopen and correct it.
+  const { name: draftName } = useFormValue(['name'] as const);
+  const initial = useMemo(
+    () =>
+      initialSyntheticValues(
+        typeof draftName === 'string' && draftName.trim() !== ''
+          ? { ...context, variable: { ...context.variable, name: draftName } }
+          : context,
+      ),
+    [context, draftName],
+  );
   const { [SYNTHETIC_ENABLED_FIELD]: enabled } = useFormValue([
     SYNTHETIC_ENABLED_FIELD,
   ] as const);

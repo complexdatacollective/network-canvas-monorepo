@@ -1,6 +1,14 @@
-import type { Stage } from '@codaco/protocol-validation';
+import type {
+  EdgeTopology,
+  Stage,
+  SyntheticCount,
+} from '@codaco/protocol-validation';
 
 import { isContentStage } from '../contentStages';
+import {
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+} from '../plan/resolveSynthetic';
 import {
   type NodeVariablesFor,
   withRuleTiedVariables,
@@ -37,10 +45,32 @@ export type StageCapacity = {
 };
 
 export type NodeCreation = {
+  stageId: string;
   stageIndex: number;
   nodeType: string;
   source: 'fabricated' | 'roster' | 'pedigree' | 'composer';
   capacity: StageCapacity;
+  /**
+   * How many people this stage declares it produces, resolved from its own
+   * `synthetic.count` or the documented default.
+   *
+   * A count belongs to the asking, not the asked-about: three name generators
+   * over one node type each nominate their own people, and nothing in the
+   * protocol says how a single declared population would divide between them.
+   *
+   * Absent for a pedigree alone — a family is a structure rather than a
+   * population, so its size comes from the specialist generator.
+   */
+  count?: SyntheticCount;
+  /**
+   * Whether {@link count} is the author's or the resolved default.
+   *
+   * A roster stage is held to a DECLARED count — asking for more people than
+   * the roster holds is a protocol the researcher needs to hear about. An
+   * undeclared one is only using the generic 1-8 fallback, which says nothing
+   * about this roster, so it takes what the pool offers instead of refusing.
+   */
+  countDeclared: boolean;
   /** Variables the creating interaction itself writes on the new node. */
   writesAtCreation: string[];
   /**
@@ -61,10 +91,24 @@ export type NodeCreation = {
 };
 
 export type EdgeCreation = {
+  stageId: string;
   stageIndex: number;
   edgeType: string;
   /** Node type supplying both endpoints. */
   subjectNodeType: string;
+  /**
+   * How densely this stage declares it links what it can see, resolved from
+   * its own `synthetic.topology` or the documented default.
+   *
+   * Resolved against the pairs eligible AT THIS STAGE — its subject type, its
+   * filter, and the nodes that exist by the time it runs — so unlike a
+   * whole-network target it is well defined during the interview walk. A stage
+   * whose prompts create several edge types applies this to each of them
+   * independently.
+   *
+   * Absent for a pedigree alone, whose links are structural.
+   */
+  topology?: EdgeTopology;
   filter?: StageFilter;
   /** Endpoints restricted to nodes this same stage created. */
   ownNodesOnly: boolean;
@@ -213,13 +257,27 @@ export function attributesAsOf(
   scope: string,
   attributes: Record<string, unknown>,
   stageIndex: number,
+  /**
+   * What the creating interaction wrote, where that differs from the final
+   * value. Until a later stage overwrites it the session still shows this, so
+   * a filter evaluated in between has to see it: reading the final value made
+   * the planner select a different subject domain from the real stage and emit
+   * missing or extra edges.
+   */
+  fixedAtCreation?: Record<string, unknown>,
 ): Record<string, unknown> {
   const first = effects.firstWriteIndex.get(scope);
   if (first === undefined) return {};
   const projected: Record<string, unknown> = {};
   for (const [variableId, value] of Object.entries(attributes)) {
     const at = first.get(variableId);
-    if (at !== undefined && at <= stageIndex) projected[variableId] = value;
+    if (at === undefined || at > stageIndex) continue;
+    projected[variableId] =
+      fixedAtCreation !== undefined &&
+      variableId in fixedAtCreation &&
+      isRewrittenAfter(effects, scope, variableId, stageIndex)
+        ? fixedAtCreation[variableId]
+        : value;
   }
   return projected;
 }
@@ -241,6 +299,40 @@ export function writtenVariables(
 ): Set<string> {
   const scope = scopeKeyFor(entity, type);
   const written = new Set(effects.writeIndex.get(scope)?.keys() ?? []);
+  if (!respectFiltering) return written;
+  const unconditional = effects.unconditionalWrites.get(scope);
+  return new Set(
+    [...written].filter(
+      (variableId) => unconditional?.has(variableId) === true,
+    ),
+  );
+}
+
+/**
+ * The variables some stage writes onto entities of a scope that it did NOT
+ * itself create — forms, bins, censuses, layouts.
+ *
+ * These reach the whole population, so every entity of the type is a
+ * candidate. Creation-time writes are the other half and belong to the people
+ * one creator made: a value only one of two creators collects is not drawn for
+ * the type at large, or it spends `unique` values on entities the session
+ * never writes it to.
+ */
+export function populationWrittenVariables(
+  effects: StageEffects,
+  entity: string,
+  type?: string,
+  respectFiltering = false,
+): Set<string> {
+  const scope = scopeKeyFor(entity, type);
+  const written = new Set<string>();
+  for (const summary of effects.stages) {
+    for (const write of summary.writes) {
+      if (write.mode === 'creation') continue;
+      if (scopeKeyFor(write.entity, write.entityType) !== scope) continue;
+      written.add(write.variableId);
+    }
+  }
   if (!respectFiltering) return written;
   const unconditional = effects.unconditionalWrites.get(scope);
   return new Set(
@@ -408,6 +500,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'fabricated',
@@ -423,6 +517,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'fabricated',
@@ -438,6 +534,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'roster',
@@ -487,6 +585,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         }
         if (prompt.edges?.create) {
           summary.edgeCreations.push({
+            stageId: stage.id,
             stageIndex: index,
             edgeType: prompt.edges.create,
             subjectNodeType: nodeType,
@@ -512,6 +611,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       for (const prompt of promptsOf(stage.prompts)) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
@@ -531,6 +631,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       for (const prompt of promptsOf(stage.prompts)) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
@@ -628,6 +729,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       if (nodeType === undefined || edgeType === undefined) break;
       const formFields = pedigreeFormFields(nodeConfig);
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'pedigree',
@@ -645,6 +748,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         rosterValuesWin: false,
       });
       summary.edgeCreations.push({
+        stageId: stage.id,
         stageIndex: index,
         edgeType,
         subjectNodeType: nodeType,
@@ -703,6 +807,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
       summary.nodeCreations.push({
+        stageId: stage.id,
+        countDeclared: false,
         stageIndex: index,
         nodeType,
         source: 'composer',
@@ -751,6 +857,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         const edgeType = subjectTypeOf(edge.subject);
         if (edgeType === undefined) continue;
         summary.edgeCreations.push({
+          stageId: stage.id,
           stageIndex: index,
           edgeType,
           subjectNodeType: nodeType,
@@ -788,6 +895,35 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
         `Unsupported stage type "${(unsupported as Stage).type}". ` +
           'Synthetic data generation does not yet support this stage type.',
       );
+    }
+  }
+
+  // Stamped once here rather than at each push site, so a stage type added
+  // later cannot silently arrive without its declared population.
+  //
+  // A pedigree is the deliberate exception: it declares no `synthetic` block,
+  // and the planner skips its creations entirely, so leaving count and
+  // topology absent is what says "sized by the specialist generator" rather
+  // than "defaulted to something nothing reads".
+  const declared = 'synthetic' in stage ? stage.synthetic : undefined;
+  const declaredCount =
+    declared !== undefined && 'count' in declared ? declared.count : undefined;
+  const declaredTopology =
+    declared !== undefined && 'topology' in declared
+      ? declared.topology
+      : undefined;
+
+  for (const creation of summary.nodeCreations) {
+    creation.stageId = stage.id;
+    if (creation.source !== 'pedigree') {
+      creation.count = declaredCount ?? DEFAULT_NODE_COUNT;
+      creation.countDeclared = declaredCount !== undefined;
+    }
+  }
+  for (const creation of summary.edgeCreations) {
+    creation.stageId = stage.id;
+    if (creation.structured !== 'pedigree') {
+      creation.topology = declaredTopology ?? DEFAULT_EDGE_TOPOLOGY;
     }
   }
 
@@ -1057,6 +1193,49 @@ export function declaresNodeCollection(
 }
 
 /**
+ * Whether a stage filter can admit at most one node of a type, provably and
+ * without a network to evaluate against.
+ *
+ * The only shape that proves it is an equality test on a `unique` attribute:
+ * uniqueness says no two nodes of the type hold the same value, so a rule
+ * demanding one particular value matches one node at most. Under `AND` a
+ * single such rule settles the whole filter, since the others can only narrow
+ * further. Under `OR` each rule contributes its own matches, so nothing is
+ * proven. Everything else is left unproven on purpose: being wrong here in the
+ * permissive direction is what lets a run die half-built.
+ */
+function filterAdmitsAtMostOneNode(
+  filter: StageFilter | undefined,
+  nodeType: string,
+  variablesFor?: NodeVariablesFor,
+): boolean {
+  const rules = filter?.rules;
+  if (!Array.isArray(rules) || rules.length === 0) return false;
+  // `network-query` defaults an absent join to OR, which proves nothing.
+  if (rules.length > 1 && filter?.join !== 'AND') return false;
+
+  const variables = variablesFor?.(nodeType);
+  if (variables === undefined) return false;
+
+  return rules.some((rule) => {
+    const { type, options } = rule as {
+      type?: unknown;
+      options?: { type?: unknown; attribute?: unknown; operator?: unknown };
+    };
+    if (type !== 'node' || options?.type !== nodeType) return false;
+    if (options.operator !== 'EXACTLY') return false;
+    const attribute = options.attribute;
+    if (typeof attribute !== 'string') return false;
+    const definition = variables[attribute];
+    if (typeof definition !== 'object' || definition === null) return false;
+    return (
+      (definition as { validation?: { unique?: unknown } }).validation
+        ?.unique === true
+    );
+  });
+}
+
+/**
  * Variables a stage writes onto nodes that existed before it ran, by node type.
  *
  * Creation-time writes are excluded: they land on the stage's own new people,
@@ -1067,6 +1246,18 @@ function writesOnExistingNodes(
   stages: readonly Stage[],
   variablesFor?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
+  /**
+   * Count a filtered write against the whole type instead of passing it over.
+   *
+   * The two readers of this map want opposite things of a filtered write.
+   * `rewriteIndex` asks which stage CERTAINLY rewrites a variable, and a
+   * filtered write is not certain to reach any given entity, so it must be
+   * left out. Feasibility asks how many entities COULD hold a value, and there
+   * the same write must be counted — passing it over let a filtered form
+   * writing a `unique` variable clear preflight at zero holders and then
+   * exhaust the registry mid-walk.
+   */
+  countFilteredWrites = false,
 ): Map<string, Set<string>> {
   const byType = new Map<string, Set<string>>();
   const record = (nodeType: string, variableId: string): void => {
@@ -1105,7 +1296,16 @@ function writesOnExistingNodes(
     // creation tally remains authoritative for variables written when those
     // nodes were made; filtered population writes are settled by the actual
     // filtered set at generation time.
-    if (respectSkipLogicAndFiltering && write.filter !== undefined) continue;
+    if (respectSkipLogicAndFiltering && write.filter !== undefined) {
+      // A filter whose reach is provably one node can be passed over by either
+      // reader: a single holder exhausts no value space that holds anything.
+      if (
+        !countFilteredWrites ||
+        filterAdmitsAtMostOneNode(write.filter, write.entityType, variablesFor)
+      ) {
+        continue;
+      }
+    }
     record(write.entityType, write.variableId);
   }
   return byType;
@@ -1131,6 +1331,8 @@ export function lastExistingWriterByType(
   stages: readonly Stage[],
   variablesFor?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
+  /** See {@link writesOnExistingNodes}; feasibility sets this, the plan does not. */
+  countFilteredWrites = false,
 ): Map<string, Map<string, number>> {
   const byType = new Map<string, Map<string, number>>();
 
@@ -1140,6 +1342,7 @@ export function lastExistingWriterByType(
       stages,
       variablesFor,
       respectSkipLogicAndFiltering,
+      countFilteredWrites,
     );
     for (const [nodeType, variables] of written) {
       const forType = byType.get(nodeType) ?? new Map<string, number>();

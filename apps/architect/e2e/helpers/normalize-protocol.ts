@@ -96,7 +96,11 @@ const pathMatches =
 // 6. `behaviours.automaticLayout: false` ≡ absent — the Narrative template
 //    seeds `automaticLayout: true` (interfaceTemplates.ts) and toggling OFF
 //    can only write `false`, never remove the key; the canonical stage
-//    predates automatic layout.
+//    predates automatic layout. A stage whose ONLY behaviour was that key
+//    (every Sociogram: the Layout Mode section always registers the field
+//    and defaults it to Manual) is left holding `behaviours: {}` once the
+//    key goes, so an emptied `behaviours` is dropped too — same shape as
+//    rule 9. A `behaviours` with any surviving key still compares strictly.
 // 7. Filter/skip-logic presence rules' `options.value: ''` ≡ absent —
 //    withRuleChangeHandler unconditionally appends `value: ''` to every
 //    node/edge rule and prune keeps empty strings; the canonical
@@ -163,6 +167,17 @@ const DELETED_PATHS: DeletionRule[] = [
     when: (value: unknown) =>
       isRecord(value) && Object.keys(value).length === 0,
   })),
+];
+
+/**
+ * Containers that carry no meaning of their own, so an instance left empty by
+ * a DELETED_PATHS rule is equivalent to an absent one. Checked against the
+ * container AFTER its own children have been pruned, which `when` cannot do
+ * (it only ever sees the untouched subtree). A container that still holds a
+ * key is untouched and compares strictly.
+ */
+const EMPTY_EQUALS_ABSENT: PathMatcher[] = [
+  pathMatches('stages', '*', 'behaviours'),
 ];
 
 const RICH_TEXT_PATHS: PathMatcher[] = [
@@ -285,6 +300,13 @@ function applyTolerances(value: unknown, path: Path): unknown {
       continue;
     }
     const transformed = applyTolerances(child, childPath);
+    if (
+      isRecord(transformed) &&
+      Object.keys(transformed).length === 0 &&
+      EMPTY_EQUALS_ABSENT.some((matches) => matches(childPath))
+    ) {
+      continue;
+    }
     const isRichText =
       RICH_TEXT_PATHS.some((matches) => matches(childPath)) ||
       isTextItemContent(childPath, value);

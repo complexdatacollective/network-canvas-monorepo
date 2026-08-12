@@ -87,7 +87,14 @@ function createStream(streamSeed: number): RandomStream {
     },
     float(min, max) {
       if (min > max) return min;
-      return min + next() * (max - min);
+      // Interpolated between the endpoints rather than by adding a scaled
+      // width. `max - min` overflows to Infinity for a schema-valid range of
+      // opposite signs (-1e308 to 1e308), and `min + Infinity * t` is then
+      // non-finite — a value that survives rounding and clamping and
+      // serialises to null. Mixing the endpoints keeps every intermediate
+      // inside the range each endpoint already occupies.
+      const t = next();
+      return min * (1 - t) + max * t;
     },
     normal(mean, sd) {
       if (sd === 0) return mean;
@@ -124,13 +131,36 @@ export function deterministicUuid(stream: RandomStream): string {
   return out;
 }
 
+/**
+ * One path segment, made safe to join on NUL.
+ *
+ * The join alone is not injective: a segment may contain NUL — unplanned
+ * missingness passes a NUL-joined equality-group key beside an external roster
+ * uid, and a caller's uid is an arbitrary string — so `stream('a', 'b\0c')`
+ * and `stream('a\0b', 'c')` produced the same key. Two unrelated entities
+ * then shared a stream and consumed each other's sequence, losing exactly the
+ * isolation this source exists to give.
+ *
+ * Escaped rather than re-encoded (length-prefixing, say) so that a segment
+ * containing neither NUL nor SOH is left BYTE-IDENTICAL. Stream seeds derive
+ * from this key, so any other scheme would move every generated value in
+ * every protocol — churning seeded fixtures and committed snapshots to fix a
+ * case none of them contain.
+ */
+const escapeSegment = (segment: string): string =>
+  segment.includes('\u0000') || segment.includes('\u0001')
+    ? segment
+        .replaceAll('\u0001', '\u0001\u0002')
+        .replaceAll('\u0000', '\u0001\u0001')
+    : segment;
+
 export function createRandomSource(seed: number): RandomSource {
   const streams = new Map<string, RandomStream>();
 
   return {
     seed,
     stream(...path) {
-      const pathKey = path.map(String).join('\u0000');
+      const pathKey = path.map(String).map(escapeSegment).join('\u0000');
       let stream = streams.get(pathKey);
       if (!stream) {
         stream = createStream(deriveStreamSeed(seed, pathKey));
