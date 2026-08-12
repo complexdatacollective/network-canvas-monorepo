@@ -8,6 +8,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../Field/Field';
+import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
 import FormStoreProvider from '../store/formStoreProvider';
 import { useForm } from './useForm';
@@ -51,6 +52,168 @@ describe('useForm submission errors', () => {
     expect(await screen.findByText('Username is already taken')).toBeVisible();
     await waitFor(() => {
       expect(onSubmitInvalid).toHaveBeenCalledWith(serverErrors);
+    });
+  });
+
+  it('surfaces a server error keyed by an opaque dotted field identifier', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'favorite.color': ['Choose another color'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <Field
+            name="favorite.color"
+            nameMode="opaque"
+            label="Favorite color"
+            component={InputField}
+            initialValue="blue"
+          />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Choose another color')).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'Favorite color' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Favorite color' })
+        .closest('[data-field-name]'),
+    ).toHaveAttribute('data-field-name', 'favorite.color');
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Favorite color' })
+        .closest('[data-field-path]'),
+    ).toHaveAttribute('data-field-path', '["favorite.color"]');
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          'favorite.color': ['Choose another color'],
+        },
+      });
+    });
+  });
+
+  it('maps a noncanonical legacy field error to its internal path', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'weight[kg]': ['Enter a supported weight'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <Field
+            name="weight[kg]"
+            label="Weight"
+            component={InputField}
+            initialValue="10"
+          />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Enter a supported weight')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Weight' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          'weight[kg]': ['Enter a supported weight'],
+        },
+      });
+    });
+  });
+
+  it('maps a namespaced public opaque field error to its internal path', async () => {
+    const onSubmitInvalid = vi.fn();
+
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({
+          success: false as const,
+          formErrors: [],
+          fieldErrors: {
+            'person.favorite.color': ['Choose another color'],
+          },
+        }),
+        onSubmitInvalid,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <FieldNamespace prefix="person">
+            <Field
+              name="favorite.color"
+              nameMode="opaque"
+              label="Favorite color"
+              component={InputField}
+              initialValue="blue"
+            />
+          </FieldNamespace>
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    expect(await screen.findByText('Choose another color')).toBeVisible();
+    await waitFor(() => {
+      expect(onSubmitInvalid).toHaveBeenCalledWith({
+        formErrors: [],
+        fieldErrors: {
+          'person.favorite.color': ['Choose another color'],
+        },
+      });
     });
   });
 

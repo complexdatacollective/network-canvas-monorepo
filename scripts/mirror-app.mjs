@@ -32,7 +32,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { parseCatalog, resolveManifest } from './resolve-manifest.mjs';
 
@@ -239,6 +239,76 @@ function vendorSharedTsconfig(staging, manifest) {
   manifest.devDependencies['@total-typescript/ts-reset'] = tsResetVersion;
 }
 
+// Mirrored apps keep their Vitest configs, but resolveManifest drops the
+// private shared config package. Vendor that package as a local ESM dependency
+// so standalone mirrors retain the same setup without publishing internal
+// tooling to npm.
+export function vendorSharedVitestConfig(staging, manifest, dropped) {
+  if (!dropped.includes('@codaco/vitest-config')) return;
+
+  const sharedDir = join(repoRoot, 'tooling', 'vitest');
+  const vendorDir = join(staging, 'vendor', 'vitest-config');
+  copyTree(sharedDir, vendorDir, ['node_modules']);
+
+  const { manifest: vendoredManifest } = resolveManifest(sharedDir);
+  const dependencyFields = [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ];
+  const usesDependency = (name) =>
+    dependencyFields.some((field) => manifest[field]?.[name] !== undefined);
+
+  if (!usesDependency('motion')) {
+    vendoredManifest.files = vendoredManifest.files.filter(
+      (entry) => entry !== 'modern/**',
+    );
+    delete vendoredManifest.exports['./modern/disable-animations'];
+    delete vendoredManifest.exports['./modern/setup-path'];
+    delete vendoredManifest.dependencies.motion;
+    // Only the modern setup configures Testing Library; the legacy one does not
+    // import it.
+    delete vendoredManifest.dependencies['@testing-library/dom'];
+  }
+  if (!usesDependency('framer-motion')) {
+    vendoredManifest.files = vendoredManifest.files.filter(
+      (entry) => entry !== 'legacy/**',
+    );
+    delete vendoredManifest.exports['./legacy/disable-animations'];
+    delete vendoredManifest.exports['./legacy/setup-path'];
+  }
+
+  writeFileSync(
+    join(vendorDir, 'package.json'),
+    `${JSON.stringify(vendoredManifest, null, 2)}\n`,
+  );
+
+  manifest.devDependencies ??= {};
+  manifest.devDependencies['@codaco/vitest-config'] =
+    'file:vendor/vitest-config';
+
+  if (manifest.name === 'fresco') {
+    const dockerfilePath = join(staging, 'Dockerfile');
+    const dockerfile = readFileSync(dockerfilePath, 'utf8');
+    const dependencyFiles =
+      'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./';
+    const vendoredConfig = 'COPY vendor/vitest-config ./vendor/vitest-config';
+    if (!dockerfile.includes(dependencyFiles)) {
+      throw new Error(
+        `Expected ${dockerfilePath} to copy dependency files before installing; the vendored Vitest config would be unavailable.`,
+      );
+    }
+    writeFileSync(
+      dockerfilePath,
+      dockerfile.replace(
+        dependencyFiles,
+        `${dependencyFiles}\n${vendoredConfig}`,
+      ),
+    );
+  }
+}
+
 // Architect renders the Interviewer app in its preview window from a bundle that
 // electron-builder copies via extraResources. In the monorepo that bundle lives at
 // ../interviewer-classic/out; vendor it into the mirror and repoint the config.
@@ -324,6 +394,7 @@ function main() {
     // Before the manifest is written — this adds a devDependency to it.
     vendorSharedTsconfig(staging, resolved);
   }
+  vendorSharedVitestConfig(staging, resolved, dropped);
   writeFileSync(
     join(staging, 'package.json'),
     `${JSON.stringify(resolved, null, 2)}\n`,
@@ -434,4 +505,9 @@ function main() {
   }
 }
 
-main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main();
+}

@@ -6,6 +6,7 @@ import type {
 } from '@codaco/shared-consts';
 
 import type { CommitBatch, VariableConfig } from '../../../store';
+import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 import { gameteRoleForRole } from './buildChildParentage';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
@@ -24,7 +25,7 @@ function buildPersonAttributes(
 
   const sex = readBiologicalSex(person.biologicalSex);
   if (sex !== undefined) {
-    attrs[variableConfig.biologicalSexVariable] = [sex];
+    writeOwnAttribute(attrs, variableConfig.biologicalSexVariable, [sex]);
   }
 
   return attrs;
@@ -132,12 +133,18 @@ export function siblingCellTransform(
       [variableConfig.isActiveVariable]: true,
     };
     if (shouldMarkGC) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
 
     const gameteRole = gameteRoleForRole(parent.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        gameteRole,
+      ]);
     }
     batch.edges.push({
       source: parent.tempId,

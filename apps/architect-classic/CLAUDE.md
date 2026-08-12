@@ -68,7 +68,7 @@ Reselect-based selectors in `src/selectors/`:
 
 ### Import Aliases
 
-Configured in `electron.vite.config.js` and `vitest.config.js`:
+Configured in `electron.vite.config.js` and `vitest.config.mjs`:
 
 - `@app` → `src/`
 - `@components` → `src/components/`

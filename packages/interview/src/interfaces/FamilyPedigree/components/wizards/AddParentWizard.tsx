@@ -22,6 +22,7 @@ import type {
   VariableConfig,
 } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
+import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';
@@ -147,7 +148,11 @@ export function transformToCommitBatch(
     [variableConfig.isActiveVariable]: true,
   };
   if (edgeType === 'surrogate') {
-    edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+    writeOwnAttribute(
+      edgeAttributes,
+      variableConfig.isGestationalCarrierVariable,
+      true,
+    );
   }
 
   const batch: CommitBatch = { nodes: [], edges: [] };

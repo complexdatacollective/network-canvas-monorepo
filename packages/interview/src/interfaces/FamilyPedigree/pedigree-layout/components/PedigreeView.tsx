@@ -48,6 +48,7 @@ import {
   getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '../../utils/nodeUtils';
+import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';
@@ -194,7 +195,7 @@ export default function PedigreeView({
     };
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
-      formAttrs[biologicalSexVariable] = [biologicalSex];
+      writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
     }
 
     const newNodeId = addNode({
@@ -336,7 +337,7 @@ export default function PedigreeView({
     };
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
-      set[biologicalSexVariable] = [biologicalSex];
+      writeOwnAttribute(set, biologicalSexVariable, [biologicalSex]);
     }
 
     const unset = biologicalSex
@@ -345,7 +346,7 @@ export default function PedigreeView({
 
     updateNode(nodeId, {
       set,
-      unset: unset.filter((fieldName) => !(fieldName in set)),
+      unset: unset.filter((fieldName) => !Object.hasOwn(set, fieldName)),
     });
 
     const internalResult = result[INTERNAL_EDIT_NAMESPACE];

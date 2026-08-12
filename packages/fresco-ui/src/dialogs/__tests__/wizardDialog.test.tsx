@@ -920,6 +920,41 @@ describe('Wizard Dialog setBeforeNext', () => {
     expect(screen.queryByText('Skipped step')).not.toBeInTheDocument();
   });
 
+  it('resolves a noncanonical public field name in skip logic', async () => {
+    const onResult = vi.fn();
+
+    function WeightStep() {
+      return <Field name="weight[kg]" label="Weight" component={InputField} />;
+    }
+
+    render(
+      <DialogProvider>
+        <TestWizardComponent
+          onResult={onResult}
+          steps={[
+            { title: 'Weight', content: WeightStep },
+            {
+              title: 'Skipped for weight',
+              content: SimpleStep,
+              skip: ({ getFieldValue }) =>
+                getFieldValue('weight[kg]') === 'skip',
+            },
+            { title: 'Done', content: ThirdStep },
+          ]}
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByText('Open'));
+    await user.type(screen.getByRole('textbox', { name: 'Weight' }), 'skip');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Step 3 content')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Skipped for weight')).not.toBeInTheDocument();
+  });
+
   it('should dynamically skip steps based on data', async () => {
     const onResult = vi.fn();
 

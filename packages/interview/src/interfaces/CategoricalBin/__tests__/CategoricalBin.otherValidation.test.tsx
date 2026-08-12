@@ -130,6 +130,7 @@ function buildCodebook(
   // test below exercises.
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): Codebook {
   return {
     node: {
@@ -153,7 +154,7 @@ function buildCodebook(
           ...(omitOtherVariable
             ? {}
             : {
-                [OTHER_VARIABLE]: {
+                [otherVariable]: {
                   name: 'Other reason',
                   type: 'text' as const,
                   ...(omitOtherComponent ? {} : { component: 'Text' as const }),
@@ -180,7 +181,7 @@ function buildCodebook(
 
 type CategoricalBinStage = StageProps<'CategoricalBin'>['stage'];
 
-function buildStage(): CategoricalBinStage {
+function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
@@ -191,7 +192,7 @@ function buildStage(): CategoricalBinStage {
         id: PROMPT_ID,
         text: 'Which category?',
         variable: asEntityAttributeReference(CATEGORY_VARIABLE),
-        otherVariable: asEntityAttributeReference(OTHER_VARIABLE),
+        otherVariable: asEntityAttributeReference(otherVariable),
         otherVariablePrompt: OTHER_PROMPT_TEXT,
         otherOptionLabel: 'Other',
       },
@@ -222,6 +223,7 @@ function buildProtocol(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -234,8 +236,9 @@ function buildProtocol(
       otherValidation,
       omitOtherComponent,
       omitOtherVariable,
+      otherVariable,
     ),
-    stages: [buildStage()],
+    stages: [buildStage(otherVariable)],
   };
 }
 
@@ -255,6 +258,7 @@ function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -264,6 +268,7 @@ function renderCategoricalBin(
         otherValidation,
         omitOtherComponent,
         omitOtherVariable,
+        otherVariable,
       ),
     },
     middleware: (getDefaultMiddleware) =>
@@ -285,7 +290,7 @@ function renderCategoricalBin(
             {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
             <CategoricalBin
-              stage={buildStage()}
+              stage={buildStage(otherVariable)}
               getNavigationHelpers={() => ({
                 moveForward: () => {},
                 moveBackward: () => {},
@@ -340,13 +345,14 @@ async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
 
 function getOtherAttribute(
   store: ReturnType<typeof renderCategoricalBin>['store'],
+  otherVariable = OTHER_VARIABLE,
 ) {
   const updatedNode = store
     .getState()
     .session.network?.nodes.find(
       (candidate: NcNode) => candidate[entityPrimaryKeyProperty] === 'node-1',
     );
-  return updatedNode?.[entityAttributesProperty][OTHER_VARIABLE];
+  return updatedNode?.[entityAttributesProperty][otherVariable];
 }
 
 async function waitForDialogToClose() {
@@ -462,6 +468,27 @@ describe('CategoricalBin other-input honours codebook validation', () => {
       expect(attributes[CATEGORY_VARIABLE]).toEqual([1]);
       expect(Object.hasOwn(attributes, OTHER_VARIABLE)).toBe(false);
     });
+  });
+
+  it('treats a dotted otherVariable containing a dangerous segment as one opaque identifier', async () => {
+    const dottedOtherVariable = 'safe.__proto__.polluted';
+    const { store, getDndStore } = renderCategoricalBin(
+      undefined,
+      false,
+      false,
+      dottedOtherVariable,
+    );
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'opaque value' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store, dottedOtherVariable)).toBe('opaque value');
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
   });
 
   it('returns a cancelled drop to the drawer without success feedback or analytics', async () => {

@@ -266,6 +266,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               placeholder="Enter your response here..."
               component={InputField}
               name={otherVariable}
+              nameMode="opaque"
               {...otherValidationProps}
               validationContext={validationContext}
               autoFocus

@@ -45,6 +45,7 @@
     "@babel/preset-react": "^7.29.7",
     "@codaco/interviewer-classic": "workspace:*",
     "@codaco/ui": "^5.8.6",
+    "@codaco/vitest-config": "workspace:^",
     "@material-ui/icons": "^4.11.3",
     "@testing-library/jest-dom": "catalog:",
     "@tippyjs/react": "^4.2.6",

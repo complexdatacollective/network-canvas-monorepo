@@ -22,7 +22,9 @@ export function formValuesToAttributePatch(
   const invalidFieldNames: string[] = [];
 
   for (const fieldName of mountedFieldNames) {
-    const value = values[fieldName];
+    const value = Object.hasOwn(values, fieldName)
+      ? values[fieldName]
+      : undefined;
 
     if (value === undefined) {
       unset.push(fieldName);
@@ -35,7 +37,12 @@ export function formValuesToAttributePatch(
       continue;
     }
 
-    set[fieldName] = result.data;
+    Object.defineProperty(set, fieldName, {
+      configurable: true,
+      enumerable: true,
+      value: result.data,
+      writable: true,
+    });
   }
 
   if (invalidFieldNames.length > 0) {

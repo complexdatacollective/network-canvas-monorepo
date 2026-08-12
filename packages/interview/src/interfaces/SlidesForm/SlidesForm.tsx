@@ -32,6 +32,10 @@ import {
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
+import {
+  buildProtocolFieldErrors,
+  type ProtocolFieldErrorEntry,
+} from '../../forms/buildProtocolFieldErrors';
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useProtocolForm from '../../forms/useProtocolForm';
@@ -47,48 +51,6 @@ type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
 type SlidesFormAnalyticsProps = {
   form_kind?: FormKind;
 };
-
-type FieldErrorEntry = {
-  field_index: number;
-  component: string;
-  message: string;
-};
-
-/**
- * Build a structured field-error array from the form store's flattened
- * Zod errors. Looks up each failed field's component by matching the
- * field name against the form's `fields` array. Multiple messages per
- * field produce multiple entries.
- *
- * The error message is included verbatim — engine messages may include
- * codebook variable references in some validation kinds; we accept that
- * leak for the diagnostic value.
- */
-// Audit sweep: `componentByVariable` comes from `useProtocolForm`, which
-// resolves each field's control the way the rendered Field does. The shared
-// `FormFieldSchema` has no `component` key of its own, so reading one off the
-// stage field recorded 'unknown' for every field, always.
-function buildFieldErrors(
-  formErrors:
-    | { fieldErrors?: Record<string, string[] | undefined> }
-    | undefined,
-  fields: ReadonlyArray<{ variable: string }>,
-  componentByVariable: Record<string, string>,
-): FieldErrorEntry[] {
-  const result: FieldErrorEntry[] = [];
-  const fieldErrors = formErrors?.fieldErrors;
-  if (!fieldErrors) return result;
-  for (const [name, messages] of Object.entries(fieldErrors)) {
-    if (!Array.isArray(messages) || messages.length === 0) continue;
-    const idx = fields.findIndex((f) => f.variable === name);
-    if (idx === -1) continue;
-    const component = componentByVariable[name] ?? 'unknown';
-    for (const message of messages) {
-      result.push({ field_index: idx, component, message });
-    }
-  }
-  return result;
-}
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   form: TitlelessForm;
@@ -120,11 +82,7 @@ type SlideHandle = {
   submit: () => Promise<boolean>;
   isDirty: () => boolean;
   focusFirstError: () => void;
-  getFieldErrors: () => Array<{
-    field_index: number;
-    component: string;
-    message: string;
-  }>;
+  getFieldErrors: () => ProtocolFieldErrorEntry[];
 };
 
 type SlideContentProps = {
@@ -159,23 +117,25 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     const initialValues: Record<string, FieldValue> | undefined = rawAttributes
       ? Object.entries(rawAttributes).reduce<Record<string, FieldValue>>(
           (values, [name, value]) => {
-            if (value !== null) {
-              values[name] = value;
-            }
+            values[name] = value;
             return values;
           },
           {},
         )
       : undefined;
 
-    const { fieldComponents, coerceValues, componentByVariable } =
-      useProtocolForm({
-        fields: form.fields,
-        autoFocus: false,
-        initialValues,
-        subject,
-        currentEntityId: id,
-      });
+    const {
+      fieldComponents,
+      coerceValues,
+      componentByVariable,
+      variableByFieldPath,
+    } = useProtocolForm({
+      fields: form.fields,
+      autoFocus: false,
+      initialValues,
+      subject,
+      currentEntityId: id,
+    });
 
     const handleSubmit: FormSubmitHandler = (values) => {
       const patchResult = formValuesToAttributePatch(
@@ -242,10 +202,11 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       isDirty: () => storeApi?.getState().isDirty ?? false,
       focusFirstError: () => focusFirstError(formErrorsRef.current),
       getFieldErrors: () =>
-        buildFieldErrors(
+        buildProtocolFieldErrors(
           formErrorsRef.current,
           form.fields,
           componentByVariable,
+          variableByFieldPath,
         ),
     }));
 

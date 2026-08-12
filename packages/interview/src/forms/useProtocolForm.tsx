@@ -7,7 +7,10 @@ import type {
   ValidationPropsCatalogue,
   ValidFieldComponent,
 } from '@codaco/fresco-ui/form/Field/types';
-import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
+import FieldNamespace, {
+  resolveFieldName,
+  resolveFieldPath,
+} from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
@@ -186,11 +189,22 @@ export default function useProtocolForm({
     [fieldsMetadata],
   );
 
+  const variableByFieldPath = useMemo(() => {
+    const namespacePath = namespace ? resolveFieldPath([], namespace) : [];
+    return Object.fromEntries(
+      fieldsMetadata.map((field) => [
+        resolveFieldName(namespacePath, field.variable, 'opaque'),
+        field.variable,
+      ]),
+    );
+  }, [fieldsMetadata, namespace]);
+
   const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
     const fieldName = field.variable;
 
     const props: {
       name: string;
+      nameMode: 'opaque';
       label: string;
       hint?: string;
       showValidationHints?: boolean;
@@ -210,6 +224,7 @@ export default function useProtocolForm({
       validationContext?: ValidationContext;
     } & Partial<ValidationPropsCatalogue> = {
       name: fieldName,
+      nameMode: 'opaque',
       label: field.label,
       component: field.component,
       ...(field.hint !== undefined && { hint: field.hint }),
@@ -224,7 +239,11 @@ export default function useProtocolForm({
     }
 
     // Set initial value if provided
-    if (initialValues?.[field.variable] !== undefined) {
+    if (
+      initialValues &&
+      Object.hasOwn(initialValues, field.variable) &&
+      initialValues[field.variable] !== undefined
+    ) {
       props.initialValue = initialValues[field.variable];
     }
 
@@ -334,5 +353,10 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents, coerceValues, componentByVariable };
+  return {
+    fieldComponents,
+    coerceValues,
+    componentByVariable,
+    variableByFieldPath,
+  };
 }

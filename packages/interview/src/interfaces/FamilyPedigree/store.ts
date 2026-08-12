@@ -34,6 +34,7 @@ import {
   computeRelationshipsToEgo,
 } from './pedigree-layout/utils/getDisplayLabel';
 import { getEdgeRelationshipType } from './utils/edgeUtils';
+import { mergeOwnAttributes } from './utils/writeOwnAttributes';
 
 enableMapSet();
 
@@ -285,7 +286,10 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             const edge = state.network.edges.get(id);
             if (edge) {
-              Object.assign(edge[entityAttributesProperty], attributes);
+              edge[entityAttributesProperty] = mergeOwnAttributes(
+                edge[entityAttributesProperty],
+                attributes,
+              );
             }
           });
 

@@ -5,6 +5,8 @@ import {
   VariableValueSchema,
 } from '@codaco/shared-consts';
 
+import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
+
 const KNOWN_PERSON_KEYS = new Set(['name', 'biologicalSex']);
 type FormSubmissionFailure = Extract<FormSubmissionResult, { success: false }>;
 const invalidSubmissionResult: FormSubmissionFailure = {
@@ -41,7 +43,7 @@ export function extractCustomAttributes(
       );
     }
 
-    attrs[key] = result.data;
+    writeOwnAttribute(attrs, key, result.data);
     hasAttrs = true;
   }
   return hasAttrs ? attrs : undefined;

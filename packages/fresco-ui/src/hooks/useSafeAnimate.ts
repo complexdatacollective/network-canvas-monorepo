@@ -3,6 +3,7 @@
 import {
   type AnimationScope,
   MotionConfigContext,
+  MotionGlobalConfig,
   useAnimate,
   useReducedMotion,
 } from 'motion/react';
@@ -20,16 +21,20 @@ export function useShouldSkipAnimations(): boolean {
     reducedMotion === 'always' ||
     (reducedMotion !== 'never' && userPrefersReducedMotion);
 
-  return !!skipAnimations || !!shouldReduceMotion;
+  return (
+    !!MotionGlobalConfig.skipAnimations ||
+    !!skipAnimations ||
+    !!shouldReduceMotion
+  );
 }
 
 /**
  * Drop-in replacement for Motion's `useAnimate` that respects
- * `MotionConfig.skipAnimations`. The imperative `useAnimate` API only
- * checks `reducedMotion`, not `skipAnimations`, so WAAPI animations
- * still fire (with instant timing) even when `skipAnimations` is true.
- * WebKit reports these zero-duration WAAPI animations via
- * `getAnimations()`, which breaks Playwright's element stability check.
+ * Motion's global, provider, and reduced-motion controls. Motion 12.43 applies
+ * `skipAnimations` to animation timing, but the imperative API can still
+ * create animation bookkeeping before committing the final state. WebKit
+ * reports that work via `getAnimations()`, which breaks Playwright's element
+ * stability check.
  *
  * When skipping, the final keyframe values are applied directly to the
  * element's inline style so visual state (e.g. selected borders) still

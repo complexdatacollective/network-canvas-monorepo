@@ -20,6 +20,7 @@ import type { FieldProps, ValidFieldComponent } from './types';
  */
 export default function Field<C extends ValidFieldComponent>({
   name,
+  nameMode,
   label,
   labelHidden,
   hint,
@@ -44,6 +45,7 @@ export default function Field<C extends ValidFieldComponent>({
     validationSummary,
   } = useField({
     name,
+    nameMode,
     initialValue: initialValue as FieldValue,
     showValidationHints,
     validationContext,

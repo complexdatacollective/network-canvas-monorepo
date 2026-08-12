@@ -87,6 +87,33 @@ function makeEdges(extras?: [string, NcEdge][]): Map<string, NcEdge> {
 }
 
 describe('childCellTransform', () => {
+  it('writes a dangerous biological-sex variable as an own attribute', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const batch = childCellTransform(
+      {
+        'child': { biologicalSex: 'male', name: 'Baby' },
+        'egg-parent-carried': true,
+        'egg-source': egoId,
+        'sperm-source': partnerId,
+      },
+      egoId,
+      makeNodes(),
+      makeEdges(),
+      { ...variableConfig, biologicalSexVariable: '__proto__' },
+    );
+    const attributes = batch.nodes[0]?.data.attributes;
+
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toEqual(['male']);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it("records the child's own biological sex on the child node", () => {
     const values: Record<string, unknown> = {
       'child': { name: 'Baby', biologicalSex: 'male' },

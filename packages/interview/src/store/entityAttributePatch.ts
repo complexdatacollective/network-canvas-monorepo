@@ -26,6 +26,19 @@ type SecureAttributeMetadata = NonNullable<
 
 type LegacyAttributeValue = VariableValue | null | undefined;
 
+function writeOwnProperty<T>(
+  target: Record<string, T>,
+  key: string,
+  value: T,
+): void {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+}
+
 export function validateAttributePatch(
   patch: AttributePatch,
   allowedKeys: ReadonlySet<string>,
@@ -68,19 +81,27 @@ export function applyEntityAttributePatch(
 
   for (const [key, value] of Object.entries(attributes)) {
     if (value !== null && value !== undefined) {
-      nextAttributes[key] = value;
+      writeOwnProperty(nextAttributes, key, value);
     }
   }
 
-  const nextSecureAttributes = { ...secureAttributes };
+  const nextSecureAttributes: SecureAttributeMetadata = {};
+  for (const [key, value] of Object.entries(secureAttributes ?? {})) {
+    writeOwnProperty(nextSecureAttributes, key, value);
+  }
 
   for (const key of patch.unset) {
     delete nextAttributes[key];
     delete nextSecureAttributes[key];
   }
 
-  Object.assign(nextAttributes, patch.set);
-  Object.assign(nextSecureAttributes, secureSet);
+  for (const [key, value] of Object.entries(patch.set)) {
+    writeOwnProperty(nextAttributes, key, value);
+  }
+
+  for (const [key, value] of Object.entries(secureSet ?? {})) {
+    writeOwnProperty(nextSecureAttributes, key, value);
+  }
 
   return {
     attributes: nextAttributes,

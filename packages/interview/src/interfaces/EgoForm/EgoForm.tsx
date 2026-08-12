@@ -31,6 +31,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { useTrack } from '../../analytics/useTrack';
+import { buildProtocolFieldErrors } from '../../forms/buildProtocolFieldErrors';
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useProtocolForm from '../../forms/useProtocolForm';
@@ -83,18 +84,20 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
 
-  const { fieldComponents, coerceValues, componentByVariable } =
-    useProtocolForm({
-      fields: form.fields,
-      initialValues: Object.entries(egoAttributes).reduce<
-        Record<string, FieldValue>
-      >((values, [name, value]) => {
-        if (value !== null) {
-          values[name] = value;
-        }
-        return values;
-      }, {}),
-    });
+  const {
+    fieldComponents,
+    coerceValues,
+    componentByVariable,
+    variableByFieldPath,
+  } = useProtocolForm({
+    fields: form.fields,
+    initialValues: Object.entries(egoAttributes).reduce<
+      Record<string, FieldValue>
+    >((values, [name, value]) => {
+      values[name] = value;
+      return values;
+    }, {}),
+  });
 
   // Audit sweep: the input control comes from the codebook entry. The shared
   // `FormFieldSchema` has no `component` key of its own, so the previous
@@ -147,23 +150,12 @@ const EgoFormInner = (props: EgoFormProps) => {
       return formStoreApi ? submitRegisteredForm(formStoreApi) : false;
     }
 
-    const fieldErrorEntries: Array<{
-      field_index: number;
-      component: string;
-      message: string;
-    }> = [];
-    const fieldErrors = formErrorsRef.current?.fieldErrors;
-    if (fieldErrors) {
-      for (const [name, messages] of Object.entries(fieldErrors)) {
-        if (!Array.isArray(messages) || messages.length === 0) continue;
-        const idx = form.fields.findIndex((f) => f.variable === name);
-        if (idx === -1) continue;
-        const component = componentByVariable[name] ?? 'unknown';
-        for (const message of messages) {
-          fieldErrorEntries.push({ field_index: idx, component, message });
-        }
-      }
-    }
+    const fieldErrorEntries = buildProtocolFieldErrors(
+      formErrorsRef.current,
+      form.fields,
+      componentByVariable,
+      variableByFieldPath,
+    );
     track('form_validation_failed', {
       form_kind: 'ego',
       field_errors: fieldErrorEntries,

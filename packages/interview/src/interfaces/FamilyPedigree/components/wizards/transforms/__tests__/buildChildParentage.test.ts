@@ -17,6 +17,40 @@ const variableConfig: VariableConfig = {
 };
 
 describe('buildChildParentage', () => {
+  it('writes dangerous configured node and edge variables as own attributes', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const dangerousConfig: VariableConfig = {
+      ...variableConfig,
+      biologicalSexVariable: '__proto__',
+      gameteRoleVariable: 'constructor',
+      isGestationalCarrierVariable: 'prototype',
+    };
+    const { edges, nodes } = buildChildParentage(
+      'child',
+      {
+        'egg-parent-carried': true,
+        'egg-source': 'new',
+        'new-egg-source': { biologicalSex: 'female', name: 'Parent' },
+      },
+      dangerousConfig,
+    );
+    const nodeAttributes = nodes[0]?.data.attributes;
+    const edgeAttributes = edges[0]?.data.attributes;
+
+    expect(Object.hasOwn(nodeAttributes ?? {}, '__proto__')).toBe(true);
+    expect(nodeAttributes?.['__proto__']).toEqual(['female']);
+    expect(Object.hasOwn(edgeAttributes ?? {}, 'prototype')).toBe(true);
+    expect(edgeAttributes?.prototype).toBe(true);
+    expect(Object.hasOwn(edgeAttributes ?? {}, 'constructor')).toBe(true);
+    expect(edgeAttributes?.constructor).toEqual(['egg']);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it('emits one edge per existing parent, flagging the egg parent as carrier when they carried', () => {
     const { nodes, edges, parents } = buildChildParentage(
       'child',

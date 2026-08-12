@@ -50,7 +50,12 @@ function AutoPersist({
     useShallow((state) => {
       const snapshot: Record<string, FieldValue> = {};
       state.fields.forEach((field, name) => {
-        snapshot[name] = field.value;
+        Object.defineProperty(snapshot, name, {
+          configurable: true,
+          enumerable: true,
+          value: field.value,
+          writable: true,
+        });
       });
       return snapshot;
     }),

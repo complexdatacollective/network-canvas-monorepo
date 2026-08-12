@@ -109,4 +109,21 @@ describe('applyEntityAttributePatch', () => {
       secureAttributes: undefined,
     });
   });
+
+  it('writes dangerous keys as inert own attributes', () => {
+    const set: Record<string, string[]> = {};
+    Object.defineProperty(set, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
+
+    const result = applyEntityAttributePatch({}, undefined, {
+      set,
+      unset: [],
+    });
+
+    expect(Object.hasOwn(result.attributes, '__proto__')).toBe(true);
+    expect(result.attributes['__proto__']).toEqual(['preserved']);
+    expect(Object.getPrototypeOf(result.attributes)).toBe(Object.prototype);
+  });
 });
