@@ -42,7 +42,7 @@ catalog:
   '@capacitor/share': ^8.0.1
   '@capawesome/capacitor-file-picker': ^8.0.2
   '@chromatic-com/storybook': ^5.2.1
-  '@faker-js/faker': ^10.4.0
+  '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
   '@microsoft/api-extractor': ^7.58.12
