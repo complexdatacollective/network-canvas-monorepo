@@ -477,10 +477,37 @@ export class ValueGenerator {
           if (descriptor.distribution === 'constant') {
             return clamp(drawn, declaredWindow.min, declaredWindow.max);
           }
+          // The window the draw was actually taken from: the descriptor's own,
+          // narrowed by validation — the intersection `sampleContinuous` drew
+          // inside. Clamping to validation alone let the grid move a value out
+          // of the descriptor and leave it there: a uniform over 0.001–0.002 on
+          // an otherwise unbounded number rounded to 0 every time, so no
+          // generated value ever lay in the window the author declared.
+          const descriptorMin =
+            'min' in descriptor ? descriptor.min : undefined;
+          const descriptorMax =
+            'max' in descriptor ? descriptor.max : undefined;
+          const drawnMin = Math.max(
+            declaredWindow.min ?? Number.NEGATIVE_INFINITY,
+            descriptorMin ?? Number.NEGATIVE_INFINITY,
+          );
+          const drawnMax = Math.min(
+            declaredWindow.max ?? Number.POSITIVE_INFINITY,
+            descriptorMax ?? Number.POSITIVE_INFINITY,
+          );
+          // A window narrower than one step of the grid holds no grid point to
+          // round to, and clamping into it would pin every draw to a bound —
+          // the authored distribution replaced by a constant, which is what the
+          // grid is least entitled to do. The grid exists to keep a continuous
+          // draw readable, so where it cannot, the draw is returned as drawn.
+          const step = 10 ** -SCALAR_DECIMAL_PLACES;
+          if (drawnMax - drawnMin < step) {
+            return clamp(drawn, drawnMin, drawnMax);
+          }
           return clamp(
             Number(drawn.toFixed(SCALAR_DECIMAL_PLACES)),
-            declaredWindow.min,
-            declaredWindow.max,
+            drawnMin,
+            drawnMax,
           );
         }
         // Whole values wherever the window admits them, matching how real

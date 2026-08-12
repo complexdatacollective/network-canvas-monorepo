@@ -15,9 +15,11 @@ import { withRuleTiedVariables } from '../analyse/ruleTiedVariables';
 import {
   pedigreeDrawnNodeVariables,
   pedigreeEgoNodeVariables,
+  scopeKeyFor,
 } from '../analyse/stageEffects';
 import {
   claimFixedValues,
+  constraintsFor,
   generateAttributesForEntity,
   replaceFixedValues,
 } from '../attributes';
@@ -25,6 +27,14 @@ import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
+import {
+  applyMissingness,
+  equalityGroups,
+  missingProbabilities,
+  missingProbabilitiesFor,
+  requiredVariables,
+  requiredVariablesFor,
+} from '../plan/networkPlan';
 import { deterministicUuid } from '../plan/random';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
@@ -428,6 +438,12 @@ export function materializeFamilyPedigree(
     valueGen: new ValueGenerator(familySeed, ctx.config.today),
   };
   const nodeScope: EntityScopeRef = { entity: 'node', type: nodeType };
+  // Built once for the family rather than per relative: `equalityGroups`
+  // resolves the whole type's generation order.
+  const nodeScopeKey = scopeKeyFor('node', nodeType);
+  const pedigreeMissing = missingProbabilities(familyCtx.codebook);
+  const pedigreeRequired = requiredVariables(familyCtx.codebook);
+  const pedigreeGroups = equalityGroups(constraintsFor(familyCtx, nodeScope));
   // The live interface seeds every existing node of its configured type into
   // the pedigree, then serializes that complete membership when committing.
   // Preserve the same membership boundary in synthetic interviews so a
@@ -603,6 +619,21 @@ export function materializeFamilyPedigree(
       },
     );
     Object.assign(attributes, fixed);
+    // A family's people are drawn by this specialist generator rather than by
+    // the plan, so neither the plan's missingness pass nor the walk's reaches
+    // them: a label or family-member form field declaring
+    // `missingProbability: 1` stayed populated on every relative. The plan's
+    // own pass, so one descriptor cannot mean two things — group-aware, and a
+    // value the pedigree fixes is never made missing.
+    applyMissingness(
+      attributes,
+      new Set(Object.keys(fixed)),
+      missingProbabilitiesFor(pedigreeMissing, nodeScopeKey),
+      requiredVariablesFor(pedigreeRequired, nodeScopeKey),
+      pedigreeGroups,
+      familyCtx.valueGen.randomSource,
+      nodeScopeKey,
+    );
     claimFixedValues(familyCtx, nodeScope, fixed);
 
     // Seeded rather than random: a fixed seed has to reproduce a session

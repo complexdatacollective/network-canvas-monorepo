@@ -576,7 +576,7 @@ type EligiblePair = { a: string; b: string; firstStageIndex: number };
  * The refusal both pair-domain ceilings raise: one stage's own candidates, and
  * the domain accumulated across every stage over a subject type.
  */
-function refuseTooManyPairs(
+export function refuseTooManyPairs(
   ctx: GenerationContext,
   edgeType: string,
   reason: string,

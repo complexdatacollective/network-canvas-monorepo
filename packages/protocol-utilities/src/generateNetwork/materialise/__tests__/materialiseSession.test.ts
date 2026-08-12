@@ -331,3 +331,67 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
     expect(JSON.stringify(run())).toBe(JSON.stringify(run()));
   });
 });
+
+describe('a census answered before an interview that ends early', () => {
+  // The census reads membership; the plan's membership is the COMPLETED
+  // session's. Where drop-out stops the walk after the census but before a
+  // later creator of the same edge type, that creator's edges exist in the
+  // plan and not in the network the session returns — so the census called
+  // pairs linked that the returned network has no edge for.
+  const linkingSociogram = stage({
+    id: 'sg',
+    type: 'Sociogram',
+    label: 'Map',
+    subject: { entity: 'node', type: 'person' },
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 1 },
+      },
+    },
+    behaviours: { freeDraw: true },
+    background: { concentricCircles: 3, skewedTowardCenter: true },
+    prompts: [{ id: 'sg-p1', text: 'Link', edges: { create: 'knows' } }],
+  });
+
+  const quietCensus = stage({
+    id: 'dc',
+    type: 'DyadCensus',
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0 },
+      },
+    },
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 't', text: 'x' },
+    prompts: [{ id: 'dc-p1', text: 'Know?', createEdge: 'knows' }],
+  });
+
+  // Seeds whose drop-out lands between the two, with the factor below.
+  it.each([3, 13, 21, 28, 32])(
+    'answers it against the network the session returns (seed %i)',
+    (seed) => {
+      const result = generateNetwork({
+        codebook: codebook(),
+        stages: [nameGenerator, quietCensus, linkingSociogram],
+        seed,
+        simulateDropOut: true,
+        config: { dropOutFactor: 1.2 },
+      });
+
+      expect(result.droppedOut).toBe(true);
+      expect(result.currentStep).toBe(2);
+      expect(result.network.edges).toHaveLength(0);
+
+      const tuples = result.stageMetadata?.[1] as
+        | [number, string, string, boolean][]
+        | undefined;
+      expect(tuples?.length).toBeGreaterThan(0);
+      for (const [, , , linked] of tuples ?? []) {
+        expect(linked).toBe(false);
+      }
+    },
+  );
+});

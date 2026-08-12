@@ -13,6 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { analyseStageEffects, writtenVariables } from '../analyse/stageEffects';
 import type { FeasibilityConfig } from '../config';
 import { isContentStage } from '../contentStages';
 import {
@@ -584,6 +585,45 @@ function collectReferencedScopes(stages: Stage[]): {
  */
 function stagesWriteEgo(stages: Stage[]): boolean {
   return stages.some((stage) => stage.type === 'EgoForm');
+}
+
+/**
+ * Ego variables nothing in the run reaches, gathered per equality group.
+ *
+ * The plan restricts its ego draw to `writtenVariables(effects, 'ego')`, so a
+ * variable no form field names is never drawn, never emitted, and its rules
+ * never applied — analysing it refused a preview over a variable the run does
+ * not reach. That is the exemption; these are the two readers that decide it.
+ *
+ * BOTH have to agree the variable is unreached, exactly as both have to agree
+ * before the whole ego scope is dropped. The schema's tags resolve a form
+ * field's `variable` against its stage's subject, while the stage-effect
+ * analysis sees the writes `generateNetwork` will actually perform, and
+ * neither on its own can delete a rule: a stage type the schema gives an ego
+ * subject is reached by the first reader though the second models no write for
+ * it. Exempting wrongly is the expensive direction — it does not make the draw
+ * fail, it makes it emit a value the rule rejects.
+ *
+ * Per group rather than per variable: a form filling one member of a `sameAs`
+ * group settles the value its siblings share, so a group with any reached
+ * member is analysed in full.
+ */
+function unreachedEgoVariables(
+  stages: Stage[],
+  groups: readonly (readonly string[])[],
+): ReadonlySet<string> {
+  const written = writtenVariables(analyseStageEffects(stages), 'ego');
+  const referenced = new Set(
+    collectEntityAttributeReferences({ stages })
+      .filter((hit) => hit.subject?.entity === 'ego')
+      .map((hit) => hit.variableId),
+  );
+  const unreached = new Set<string>();
+  for (const members of groups) {
+    if (members.some((id) => written.has(id) || referenced.has(id))) continue;
+    for (const id of members) unreached.add(id);
+  }
+  return unreached;
 }
 
 /**
@@ -1540,7 +1580,22 @@ export function analyseFeasibility(
     scopes.push({
       entity: 'ego',
       variables: codebook.ego?.variables,
-      unvalidated: NO_UNVALIDATED_VARIABLES,
+      // An ego variable no stage writes carries the same exemption a node or
+      // edge variable does. `handleEgoForm` once drew the codebook's whole ego
+      // attribute set whatever its form declared, which is why this was empty;
+      // the plan draws `writtenVariables(effects, 'ego')` and nothing else, so
+      // a variable no form collects is never drawn, never emitted, and its
+      // rules never applied. Validating it refused a preview over a variable
+      // the run does not reach.
+      //
+      // Per group rather than per variable, as the node and edge exemptions
+      // are: a form filling one member of a `sameAs` group settles the value
+      // its siblings share, so a group with any written member is analysed in
+      // full.
+      unvalidated: unreachedEgoVariables(
+        stages,
+        equalityGroupsOf(codebook.ego?.variables, config.today),
+      ),
       worstCaseCountFor: () => 1,
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
       // name-generator prompt, and a pedigree's ego flag to its own nodes, both

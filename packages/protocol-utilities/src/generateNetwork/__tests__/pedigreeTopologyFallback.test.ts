@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
+  entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
@@ -388,5 +389,178 @@ describe('two walk-time creators whose subject sets overlap', () => {
       expect(union.size).toBeGreaterThan(0);
       expect(knows).toHaveLength(Math.round(density * union.size));
     }
+  });
+});
+
+describe('one edge type created over two subject types', () => {
+  // A pair is two nodes of ONE type, so creators over different types reach
+  // disjoint pairs and must be measured apart. Keyed on the edge type alone,
+  // the place creator's pairs entered the domain the person creator's target
+  // was measured over — and its planned edge was subtracted from that target —
+  // so the person census made fewer edges than its own declared density asks.
+  const twoSubjects = (): Codebook =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: { name: 'Name', type: 'text' },
+            isEgo: { name: 'Is ego', type: 'boolean' },
+            relationship: { name: 'Relationship', type: 'text' },
+            sex: { name: 'Sex', type: 'text' },
+          },
+        },
+        place: {
+          name: 'Place',
+          color: 'node-color-seq-2',
+          variables: { label: { name: 'Label', type: 'text' } },
+        },
+      },
+      edge: {
+        knows: { name: 'Knows', color: 'edge-color-seq-1', variables: {} },
+      },
+    }) as unknown as Codebook;
+
+  const places = {
+    id: 'stage-places',
+    type: 'NameGeneratorQuickAdd',
+    label: 'Places',
+    subject: { entity: 'node', type: 'place' },
+    quickAdd: 'label',
+    synthetic: { count: { distribution: 'constant', value: 3 } },
+    prompts: [{ id: 'p1', text: 'Where?' }],
+  } as unknown as Stage;
+
+  const placeCensus = {
+    id: 'stage-place-census',
+    type: 'DyadCensus',
+    label: 'Which places go together',
+    subject: { entity: 'node', type: 'place' },
+    synthetic: densityTopology(1),
+    prompts: [{ id: 'p1', text: 'Together?', createEdge: 'knows' }],
+  } as unknown as Stage;
+
+  const personEdgesOf = (stages: Stage[]): number => {
+    const { network } = generateNetwork({
+      seed: 5,
+      codebook: twoSubjects(),
+      stages,
+    });
+    const people = new Set(
+      network.nodes
+        .filter((node) => node.type === 'person')
+        .map((node) => node[entityPrimaryKeyProperty]),
+    );
+    return network.edges.filter(
+      (edge) =>
+        edge.type === 'knows' && people.has(edge.from) && people.has(edge.to),
+    ).length;
+  };
+
+  it('leaves the person topology alone whatever the place creator does', () => {
+    const withoutPlaces = personEdgesOf([pedigree, census(1)]);
+    const withPlaces = personEdgesOf([
+      pedigree,
+      places,
+      placeCensus,
+      census(1),
+    ]);
+
+    expect(withoutPlaces).toBeGreaterThan(0);
+    expect(withPlaces).toBe(withoutPlaces);
+  });
+});
+
+describe('a walk-time domain larger than a preview can pair', () => {
+  it('refuses it rather than assembling the keys', () => {
+    // The plan's ceiling never sees these people: a FamilyPedigree builds them
+    // during the walk, so this domain is assembled separately and was bounded
+    // by nothing. `maxNodes` is a caller option, and a raised one reaches a
+    // domain of millions of keys on Architect's main thread.
+    // Each pedigree builds a family of its own natural size — a raised
+    // `maxNodes` is a ceiling rather than a target — so it is the accumulation
+    // that reaches the cap, which is the other route the protocol schema
+    // leaves open.
+    const manyPedigrees = Array.from(
+      { length: 30 },
+      (_unused, index) =>
+        ({ ...pedigree, id: `stage-pedigree-${index}` }) as unknown as Stage,
+    );
+
+    expect(() =>
+      generateNetwork({
+        seed: 3,
+        codebook: codebook(),
+        stages: [...manyPedigrees, census(1)],
+      }),
+    ).toThrow(/more pairs than a preview can build/);
+  });
+
+  it('builds a walk-time domain that fits', () => {
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: codebook(),
+      stages: [pedigree, census(1)],
+    });
+    expect(network.nodes.length).toBeGreaterThan(0);
+  });
+});
+
+describe('a pedigree field declaring missingness', () => {
+  it('leaves it unanswered on every relative', () => {
+    // A family's people are drawn by the specialist generator rather than by
+    // the plan, so neither the plan's missingness pass nor the walk's reached
+    // them: a label declaring `missingProbability: 1` stayed populated on
+    // every relative while the protocol said it never would be.
+    const withMissingLabel = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            name: {
+              name: 'Name',
+              type: 'text',
+              synthetic: { generator: 'personName', missingProbability: 1 },
+            },
+            isEgo: { name: 'Is ego', type: 'boolean' },
+            relationship: { name: 'Relationship', type: 'text' },
+            sex: { name: 'Sex', type: 'text' },
+          },
+        },
+      },
+      edge: {
+        knows: { name: 'Knows', color: 'edge-color-seq-1', variables: {} },
+      },
+    } as unknown as Codebook;
+
+    const { network } = generateNetwork({
+      seed: 4,
+      codebook: withMissingLabel,
+      stages: [pedigree],
+    });
+
+    expect(network.nodes.length).toBeGreaterThan(1);
+    // Unanswered, whether that shows as a null the draw wrote or as an
+    // attribute the pedigree never asks ego for at all.
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty].name ?? null).toBeNull();
+    }
+  });
+
+  it('still answers a field that declares none', () => {
+    const { network } = generateNetwork({
+      seed: 4,
+      codebook: codebook(),
+      stages: [pedigree],
+    });
+
+    expect(network.nodes.length).toBeGreaterThan(1);
+    expect(
+      network.nodes.some(
+        (node) => node[entityAttributesProperty].name !== null,
+      ),
+    ).toBe(true);
   });
 });

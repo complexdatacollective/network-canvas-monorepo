@@ -3352,6 +3352,59 @@ describe('lost guarantees the engine should restore', () => {
   });
 });
 
+describe('an ego variable no form collects', () => {
+  // The exemption feasibility now grants rests on this: the plan draws
+  // `writtenVariables(effects, 'ego')`, so a variable no field names is never
+  // drawn and never reaches the network. If that stopped being true the
+  // exemption would start hiding a rule the run really does apply.
+  it('is neither drawn nor emitted', () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: { name: { name: 'Name', type: 'text' } },
+        },
+      },
+      edge: {},
+      ego: {
+        variables: {
+          collected: { name: 'Collected', type: 'text' },
+          // A rule no value could satisfy: proof the draw never reaches it.
+          ignored: {
+            name: 'Ignored',
+            type: 'text',
+            validation: { minLength: 10, maxLength: 2 },
+          },
+        },
+      },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    const stages = [
+      {
+        id: 'stage-ng',
+        type: 'NameGeneratorQuickAdd',
+        label: 'Names',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        prompts: [{ id: 'p1', text: 'Who?' }],
+      },
+      {
+        id: 'stage-ego',
+        type: 'EgoForm',
+        label: 'About you',
+        introductionPanel: { title: 't', text: 'x' },
+        form: { fields: [{ variable: 'collected', prompt: 'Collected?' }] },
+      },
+    ] as unknown as Stage[];
+
+    const { network } = generateNetwork({ seed: 1, codebook, stages });
+    const attributes = network.ego[entityAttributesProperty];
+    expect(Object.keys(attributes)).toEqual(['collected']);
+    expect(attributes).not.toHaveProperty('ignored');
+  });
+});
+
 describe('feasibility counting a plan-first run', () => {
   const personWithUniqueName = () =>
     ({

@@ -3,7 +3,7 @@ import {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
-import type { Stage } from '@codaco/protocol-validation';
+import { MAX_SYNTHETIC_PAIRS, type Stage } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -31,6 +31,7 @@ import {
   groupMissingProbability,
   missingProbabilities,
   missingProbabilitiesFor,
+  refuseTooManyPairs,
   requiredVariables,
   requiredVariablesFor,
   type NetworkPlan,
@@ -75,6 +76,34 @@ const encodeUid = (uid: string): string => `${uid.length}:${uid}`;
 
 const pairKey = (a: string, b: string): string =>
   a < b ? `${encodeUid(a)}${encodeUid(b)}` : `${encodeUid(b)}${encodeUid(a)}`;
+
+/**
+ * The walk's own pair domain belongs to an (edge type, subject node type)
+ * pair, for the reason the plan's does: a pair is two nodes of one type, so
+ * creators over different types reach disjoint pairs and must not be measured
+ * against one another. Length-prefixed for the same reason as `pairKey` —
+ * both parts are arbitrary strings, so no separator is safe.
+ */
+const walkDomainKey = (edgeType: string, subjectNodeType: string): string =>
+  `${encodeUid(edgeType)}${encodeUid(subjectNodeType)}`;
+
+/**
+ * An equality group as one key, and one entity's decision about that group as
+ * another.
+ *
+ * Length-prefixed for `pairKey`'s reason: variable ids and roster uids are
+ * arbitrary strings, so no separator is safe. Joined on NUL, the groups
+ * ['a', 'b<NUL>c'] and ['a<NUL>b', 'c'] produced one key and shared a single
+ * missingness decision, and a uid ending in a group key's opening characters
+ * aliased another (uid, group) pair the same way — one entity's unanswered
+ * question answered for another's. Escaping the random-source path fixed the
+ * stream those keys address, not the keys themselves.
+ */
+export const missingGroupKey = (members: readonly string[]): string =>
+  [...members].toSorted().map(encodeUid).join('');
+
+export const missingDecisionKey = (uid: string, groupKey: string): string =>
+  `${encodeUid(uid)}${encodeUid(groupKey)}`;
 
 type Planned = {
   attributes: Record<string, VariableValue>;
@@ -144,8 +173,9 @@ export function materialiseSession(params: {
   const materialisedEdges = new Set<string>();
 
   /**
-   * The domain each edge type's walk-time topology is measured over, grown as
-   * the walk meets creators of that type.
+   * The domain each walk-time topology is measured over, keyed by edge type
+   * AND subject node type (see `walkDomainKey`), grown as the walk meets
+   * creators of that type.
    *
    * Accumulated across creations and stages, not recomputed per creator, for
    * the reason the planner accumulates its own: two creators of one type can
@@ -158,13 +188,33 @@ export function materialiseSession(params: {
   const walkPairsByType = new Map<string, Set<string>>();
   const walkNodesByType = new Map<string, Set<string>>();
 
-  // Final pair membership per edge type, for census answers and negatives.
+  // Final pair membership per edge type, for the walk-time topology fallback.
   const finalPairsByType = new Map<string, Set<string>>();
   for (const edge of plan.edges) {
     const set = finalPairsByType.get(edge.type) ?? new Set<string>();
     set.add(pairKey(edge.from, edge.to));
     finalPairsByType.set(edge.type, set);
   }
+
+  /**
+   * What each census asked about, answered after the walk rather than during
+   * it.
+   *
+   * A census answer is a claim about the network the session RETURNS. Read
+   * from the plan mid-walk it was a claim about the completed session instead:
+   * where `simulateDropOut` stops the walk after a census but before a later
+   * creator of the same edge type, the census called a pair linked on the
+   * strength of an edge that creator would have made, while the returned
+   * network — which never reached it — holds no such edge. The subject set is
+   * still a fact about the moment the census ran, so that is captured here;
+   * only the answers wait.
+   */
+  const pendingCensus: {
+    index: number;
+    negativesOnly: boolean;
+    prompts: string[];
+    subjectUids: string[];
+  }[] = [];
 
   /** Materialised subject nodes, narrowed by the stage filter when enabled. */
   const filteredSubjects = (
@@ -314,8 +364,8 @@ export function materialiseSession(params: {
     );
     if (probability <= 0) return;
 
-    const groupKey = members.toSorted().join('\u0000');
-    const decisionKey = `${uid}\u0000${groupKey}`;
+    const groupKey = missingGroupKey(members);
+    const decisionKey = missingDecisionKey(uid, groupKey);
     let decided = unplannedMissing.get(decisionKey);
     if (decided === undefined) {
       decided = source
@@ -603,12 +653,38 @@ export function materialiseSession(params: {
       // The domain is also carried between creators rather than rebuilt for
       // each, so two whose filtered subject sets overlap without matching are
       // measured over their union.
-      const domainPairs =
-        walkPairsByType.get(creation.edgeType) ?? new Set<string>();
-      walkPairsByType.set(creation.edgeType, domainPairs);
-      const domainNodes =
-        walkNodesByType.get(creation.edgeType) ?? new Set<string>();
-      walkNodesByType.set(creation.edgeType, domainNodes);
+      //
+      // Kept per (edge type, SUBJECT node type), as the plan keeps its own
+      // domains. A pair is two nodes of one type, so creators over different
+      // types reach disjoint pairs — and a domain spanning both let a
+      // density-1 creator over `place` put its pairs into the target measured
+      // for a later density-0.5 creator over `person`, which then subtracted
+      // the place edge and made fewer person edges than `person`'s own
+      // declared topology asks for.
+      const domainKey = walkDomainKey(
+        creation.edgeType,
+        creation.subjectNodeType,
+      );
+      const domainPairs = walkPairsByType.get(domainKey) ?? new Set<string>();
+      walkPairsByType.set(domainKey, domainPairs);
+      const domainNodes = walkNodesByType.get(domainKey) ?? new Set<string>();
+      walkNodesByType.set(domainKey, domainNodes);
+
+      // Counted BEFORE the pairs are built, for the reason the plan counts its
+      // own: pairs grow quadratically, and this is the walk's separate domain
+      // — nodes a FamilyPedigree builds during materialisation are not in the
+      // plan's, so the ceiling the planner applies never sees them. A raised
+      // pedigree ceiling, or enough pedigree stages, would assemble millions
+      // of keys synchronously on Architect's main thread.
+      const possiblePairs = (subjects.length * (subjects.length - 1)) / 2;
+      if (domainPairs.size + possiblePairs > MAX_SYNTHETIC_PAIRS) {
+        refuseTooManyPairs(
+          ctx,
+          creation.edgeType,
+          `${subjects.length.toLocaleString('en')} people are eligible to be linked here, reaching ` +
+            `${(domainPairs.size + possiblePairs).toLocaleString('en')} pairs with those the stages before it reached`,
+        );
+      }
 
       const reachable: { a: string; b: string; linked: boolean }[] = [];
       for (let a = 0; a < subjects.length; a++) {
@@ -734,32 +810,23 @@ export function materialiseSession(params: {
 
     // --- Stage metadata -------------------------------------------------
     if (stage.type === 'DyadCensus' || stage.type === 'TieStrengthCensus') {
-      // Answers derive from final membership: a pair the plan linked is a
-      // "yes" (even when the edge was created earlier and reused); a pair it
-      // left unlinked is an explicit negative nomination. TieStrengthCensus
-      // records negatives only — a positive lives as the ordinal value on
-      // the edge itself.
+      // The pairs this census asked about, recorded now because the subject
+      // set is a fact about this moment in the walk. What it ANSWERS is
+      // settled once the walk is over — see `censusAnswers`.
+      //
       // Read as a draft throughout: Architect previews a stage while it is
       // still being authored, and a missing subject or prompt must leave the
       // preview without metadata rather than throw.
-      const tuples: DyadCensusMetadataItem[] = [];
       const subjects = filteredSubjects(
         stage.subject?.type ?? '',
         'filter' in stage ? stage.filter : undefined,
       );
-      (stage.prompts ?? []).forEach((prompt, promptIndex) => {
-        const members = finalPairsByType.get(prompt.createEdge) ?? new Set();
-        for (let a = 0; a < subjects.length; a++) {
-          for (let b = a + 1; b < subjects.length; b++) {
-            const uidA = subjects[a]![entityPrimaryKeyProperty];
-            const uidB = subjects[b]![entityPrimaryKeyProperty];
-            const linked = members.has(pairKey(uidA, uidB));
-            if (stage.type === 'TieStrengthCensus' && linked) continue;
-            tuples.push([promptIndex, uidA, uidB, linked]);
-          }
-        }
+      pendingCensus.push({
+        index: i,
+        negativesOnly: stage.type === 'TieStrengthCensus',
+        prompts: (stage.prompts ?? []).map((prompt) => prompt.createEdge),
+        subjectUids: subjects.map((node) => node[entityPrimaryKeyProperty]),
       });
-      if (tuples.length > 0) draft.stageMetadata[i] = tuples;
       // A FamilyPedigree's metadata — its committed membership snapshot and
       // chosen framing — is written by the generator that built the family,
       // which is the only thing that knows which entities are in it.
@@ -772,6 +839,35 @@ export function materialiseSession(params: {
 
   if (!droppedOut) {
     currentStep = totalStages;
+  }
+
+  // Census answers, settled against the network the session actually returns.
+  // A pair the walk joined is a "yes" — including one an earlier stage created
+  // and this census reused, exactly as the interview's own `edgeExists` reads
+  // it — and a pair left unjoined is an explicit negative nomination.
+  // TieStrengthCensus records negatives only: a positive lives as the ordinal
+  // value on the edge itself.
+  const walkedPairsByType = new Map<string, Set<string>>();
+  for (const edge of draft.edges) {
+    const set = walkedPairsByType.get(edge.type) ?? new Set<string>();
+    set.add(pairKey(edge.from, edge.to));
+    walkedPairsByType.set(edge.type, set);
+  }
+  for (const census of pendingCensus) {
+    const tuples: DyadCensusMetadataItem[] = [];
+    census.prompts.forEach((createEdge, promptIndex) => {
+      const members = walkedPairsByType.get(createEdge) ?? new Set<string>();
+      for (let a = 0; a < census.subjectUids.length; a++) {
+        for (let b = a + 1; b < census.subjectUids.length; b++) {
+          const uidA = census.subjectUids[a]!;
+          const uidB = census.subjectUids[b]!;
+          const linked = members.has(pairKey(uidA, uidB));
+          if (census.negativesOnly && linked) continue;
+          tuples.push([promptIndex, uidA, uidB, linked]);
+        }
+      }
+    });
+    if (tuples.length > 0) draft.stageMetadata[census.index] = tuples;
   }
 
   // Applied as a post-pass: later stages may rewrite the same variable, so

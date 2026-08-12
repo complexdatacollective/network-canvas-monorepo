@@ -82,13 +82,29 @@ const nameGenerator = {
 
 // Ego's attributes stay empty until an ego-subject stage writes them, so a
 // codebook's ego variables are only analysed when the stage list has one.
-const egoForm = {
-  id: 'stage-ef',
-  type: 'EgoForm',
-  label: 'About you',
-  form: { fields: [{ variable: 'name', prompt: 'Your name' }] },
-  introductionPanel: { title: 'About you', text: 'Tell us about yourself.' },
-} as unknown as Stage;
+/**
+ * An EgoForm collecting the variables named, defaulting to `name`.
+ *
+ * The fields matter: the plan draws `writtenVariables(effects, 'ego')`, so an
+ * ego variable no field names is never drawn and feasibility exempts it. A
+ * test about a RULE therefore has to give the rule's variable a collector,
+ * which is what a researcher writing that protocol would do.
+ */
+const egoFormCollecting = (...variables: string[]): Stage =>
+  ({
+    id: 'stage-ef',
+    type: 'EgoForm',
+    label: 'About you',
+    form: {
+      fields: (variables.length > 0 ? variables : ['name']).map((variable) => ({
+        variable,
+        prompt: `Your ${variable}`,
+      })),
+    },
+    introductionPanel: { title: 'About you', text: 'Tell us about yourself.' },
+  }) as unknown as Stage;
+
+const egoForm = egoFormCollecting('name');
 
 function codebookWith(variables: Record<string, unknown>): StructuralCodebook {
   return {
@@ -1038,7 +1054,11 @@ describe('analyseFeasibility', () => {
       },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [egoForm], config);
+    const conflicts = analyseFeasibility(
+      codebook,
+      [egoFormCollecting('a')],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
@@ -2691,7 +2711,7 @@ describe('a codebook scope no stage names', () => {
   it('still refuses the same contradiction once an EgoForm writes ego', () => {
     const conflicts = analyseFeasibility(
       egoCodebook,
-      [nameGenerator, egoForm],
+      [nameGenerator, egoFormCollecting('code')],
       config,
     );
 
@@ -2700,23 +2720,20 @@ describe('a codebook scope no stage names', () => {
     expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
   });
 
-  it('keeps ego for an EgoForm whose fields name no ego variable', () => {
-    // `handleEgoForm` draws the codebook's whole ego attribute set rather than
-    // the fields its form declares, so a form still empty mid-edit — or one
-    // naming other variables — draws `code` all the same. Read from the stage
-    // rather than from the references its fields carry for exactly this case:
-    // with the scope wrongly dropped the draw does not fail, it emits a value
-    // the rule rejects.
+  it('exempts an ego variable an EgoForm collects no field for', () => {
+    // The old engine's `handleEgoForm` drew the codebook's whole ego attribute
+    // set whatever its form declared, so a form still empty mid-edit drew
+    // `code` all the same and its contradiction had to be refused. The plan
+    // draws `writtenVariables(effects, 'ego')` and nothing else, so `code` is
+    // now never drawn, never emitted, and its rule never applied — refusing
+    // over it would refuse a preview the run has no trouble producing. The
+    // counterpart, that the run really does emit nothing for it, is asserted
+    // in `generateNetwork.constraints`.
     const emptyForm = { ...egoForm, form: { fields: [] } } as unknown as Stage;
 
-    const conflicts = analyseFeasibility(
-      egoCodebook,
-      [nameGenerator, emptyForm],
-      config,
-    );
-
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.entity).toBe('ego');
+    expect(
+      analyseFeasibility(egoCodebook, [nameGenerator, emptyForm], config),
+    ).toEqual([]);
   });
 
   it('keeps ego for a stage the schema gives an ego subject', () => {
@@ -3355,7 +3372,11 @@ describe('a text length beyond what a generated value can hold', () => {
       ego: { variables: { bio: overCap } },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [egoForm], config);
+    const conflicts = analyseFeasibility(
+      codebook,
+      [egoFormCollecting('bio')],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');

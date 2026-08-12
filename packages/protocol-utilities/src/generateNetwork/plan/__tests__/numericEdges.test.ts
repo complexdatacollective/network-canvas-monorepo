@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import type { VariableEntry } from '../../../types';
+import { ValueGenerator } from '../../../ValueGenerator';
+import { buildVariableConstraints } from '../../constraints/buildConstraints';
 import { sampleContinuous, sampleWeightedIndex } from '../distributions';
 import { createRandomSource } from '../random';
 
@@ -78,6 +81,59 @@ describe('a lognormal spanning the whole double range', () => {
     const mean = drawn.reduce((sum, value) => sum + value, 0) / drawn.length;
     expect(mean).toBeGreaterThan(5);
     expect(mean).toBeLessThan(12);
+  });
+});
+
+describe('a declared window narrower than the readable grid', () => {
+  const TODAY = '2026-08-12';
+  /** Twenty draws of one declared number variable. */
+  const drawsOf = (entry: Record<string, unknown>): number[] => {
+    const generator = new ValueGenerator(7, TODAY);
+    const variable = {
+      entry: entry as unknown as VariableEntry,
+      constraints: buildVariableConstraints(
+        entry as unknown as VariableEntry,
+        TODAY,
+      ),
+    };
+    return Array.from(
+      { length: 20 },
+      (_unused, index) =>
+        generator.generateConstrained(variable, index, 'node:person') as number,
+    );
+  };
+
+  it('keeps drawn values inside the window the author declared', () => {
+    // The two-decimal grid is there to keep a continuous draw readable. Over a
+    // window narrower than one of its steps it has no point to offer, and
+    // rounding into it sent every draw to 0 — outside the declared window
+    // entirely, because the clamp that followed knew only the validation
+    // bounds, which this variable does not have.
+    const drawn = drawsOf({
+      id: 'ratio',
+      name: 'Ratio',
+      type: 'number',
+      synthetic: { distribution: 'uniform', min: 0.001, max: 0.002 },
+    });
+
+    for (const [index, value] of drawn.entries()) {
+      expect(value, `draw ${index}`).toBeGreaterThanOrEqual(0.001);
+      expect(value, `draw ${index}`).toBeLessThanOrEqual(0.002);
+    }
+  });
+
+  it('still rounds a window the grid can express', () => {
+    // The ordinary case has to keep its readable values.
+    const drawn = drawsOf({
+      id: 'score',
+      name: 'Score',
+      type: 'number',
+      synthetic: { distribution: 'uniform', min: 0, max: 10 },
+    });
+
+    for (const [index, value] of drawn.entries()) {
+      expect(Number(value.toFixed(2)), `draw ${index}`).toBe(value);
+    }
   });
 });
 
