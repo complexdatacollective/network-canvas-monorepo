@@ -2104,13 +2104,14 @@ export class SyntheticInterview {
     variables: Map<string, VariableEntry> | undefined,
     written: Record<string, unknown>,
   ): Record<string, VariableValue> {
-    const explicit: Record<string, VariableValue> = {};
-    const definedWritten = definedAttributesOf(written);
+    const declaredWritten: Record<string, unknown> = {};
     for (const varId of variables?.keys() ?? []) {
-      const value = definedWritten[varId];
-      if (value !== undefined) explicit[varId] = value;
+      if (Object.hasOwn(written, varId)) {
+        declaredWritten[varId] = written[varId];
+      }
     }
-    return explicit;
+
+    return definedAttributesOf(declaredWritten, omittedAttributeValue);
   }
 
   /**

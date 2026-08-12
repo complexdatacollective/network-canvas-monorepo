@@ -6,10 +6,10 @@ import type {
   StageSubject,
 } from '@codaco/protocol-validation';
 import {
-  EntityAttributesSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  VariableValueSchema,
 } from '@codaco/shared-consts';
 
 import { getVariableTypeReplacements } from '../utils/externalData';
@@ -18,6 +18,20 @@ import loadExternalData, {
 } from '../utils/loadExternalData';
 
 type NodeSubject = Extract<StageSubject, { entity: 'node' }>;
+
+const parseExternalAttributeValues = (
+  attributes: NcNode['attributes'],
+): NcNode['attributes'] => {
+  const result: NcNode['attributes'] = {};
+
+  for (const [name, value] of Object.entries(attributes)) {
+    // Pass-through CSV headers are not codebook variable names and may contain
+    // spaces, so validate only their values at this external-data boundary.
+    result[name] = VariableValueSchema.parse(value);
+  }
+
+  return result;
+};
 
 /**
  * A roster/panel asset resolved by the host: a fetchable URL, the filename
@@ -72,7 +86,7 @@ export async function parseExternalNetworkAsset({
 
   return typedData.map((node) => ({
     ...node,
-    [entityAttributesProperty]: EntityAttributesSchema.parse(
+    [entityAttributesProperty]: parseExternalAttributeValues(
       node[entityAttributesProperty],
     ),
   }));

@@ -190,6 +190,25 @@ describe('parseExternalNetworkAsset', () => {
     });
   });
 
+  it('preserves pass-through CSV attributes whose headers are not variable names', async () => {
+    stubFetch({
+      'stub://roster':
+        'Name,profile page\nAda,https://example.com/people/ada\n',
+    });
+
+    const [node] = await parseExternalNetworkAsset({
+      sourceFileName: 'roster.csv',
+      url: 'stub://roster',
+      codebook,
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      'var-name': 'Ada',
+      'profile page': 'https://example.com/people/ada',
+    });
+  });
+
   it('rejects a malformed number created by CSV type replacement', async () => {
     stubFetch({ 'stub://roster': 'Name,Age\nAda,not-a-number\n' });
 

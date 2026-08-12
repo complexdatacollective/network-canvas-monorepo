@@ -478,6 +478,7 @@ describe('SyntheticInterview', () => {
         ],
       });
       const score = nt.addVariable({ type: 'number', name: 'score' });
+      const nickname = nt.addVariable({ type: 'text', name: 'nickname' });
 
       const stage = si.addStage('Narrative', {
         subject: { entity: 'node', type: nt.id },
@@ -485,6 +486,7 @@ describe('SyntheticInterview', () => {
       si.addManualNode(stage.id, nt.id, 'person-1', {
         [isEgo.id]: true,
         [score.id]: null,
+        [nickname.id]: undefined,
       });
 
       const network = si.getNetwork();
@@ -500,6 +502,22 @@ describe('SyntheticInterview', () => {
       expect(attrs[relationship.id]).toBe('');
       expect(attrs[tags.id]).toEqual([]);
       expect(attrs).not.toHaveProperty(score.id);
+      expect(attrs).not.toHaveProperty(nickname.id);
+    });
+
+    it('rejects malformed defined attributes on manual nodes', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const flag = nt.addVariable({ type: 'boolean', name: 'flag' });
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', type: nt.id },
+      });
+
+      si.addManualNode(stage.id, nt.id, 'person-1', {
+        [flag.id]: Symbol('not the omission sentinel'),
+      });
+
+      expect(() => si.getNetwork()).toThrow();
     });
 
     it('still randomises unset attributes on procedurally-generated nodes', () => {
@@ -1031,6 +1049,18 @@ describe('SyntheticInterview', () => {
       expect(network.edges[0]![entityAttributesProperty]).not.toHaveProperty(
         edgeVariable.id,
       );
+    });
+
+    it('rejects malformed defined attributes on manual edges', () => {
+      const si = new SyntheticInterview();
+      const et = si.addEdgeType({ name: 'Friendship' });
+      const flag = et.addVariable({ type: 'boolean', name: 'Flag' });
+
+      si.addManualEdge(et.id, 'edge-1', 'person-1', 'person-2', {
+        [flag.id]: { invalid: true },
+      });
+
+      expect(() => si.getNetwork()).toThrow();
     });
   });
 

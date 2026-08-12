@@ -42,12 +42,16 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
 
 export function definedAttributesOf(
   attributes: Readonly<Record<string, unknown>>,
+  omissionSentinel?: symbol,
 ): Record<string, VariableValue> {
   const defined: Record<string, VariableValue> = {};
 
   for (const [id, value] of Object.entries(attributes)) {
-    const result = VariableValueSchema.safeParse(value);
-    if (result.success) defined[id] = result.data;
+    if (value === null || value === undefined || value === omissionSentinel) {
+      continue;
+    }
+
+    defined[id] = VariableValueSchema.parse(value);
   }
 
   return defined;
