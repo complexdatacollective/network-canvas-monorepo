@@ -814,7 +814,7 @@ describe('Validation Functions', () => {
     it('resolves comparison fields relative to the active namespace', () => {
       const validator = validations.sameAs(
         'testAttribute',
-        createMockContext({ formValueNamespace: ['parent'] }),
+        createMockContext({ formValueNamespace: 'parent' }),
       )({
         testAttribute: 'wrong top-level person',
         parent: { testAttribute: 'sameValue' },

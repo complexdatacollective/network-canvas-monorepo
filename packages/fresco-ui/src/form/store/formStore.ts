@@ -38,12 +38,16 @@ const resolveFieldPath = (field: FieldReference): ObjectPath => {
 const resolveFieldName = (field: FieldReference): string =>
   formatObjectPath(resolveFieldPath(field));
 
-const isEnclosingPath = (
-  possibleParent: ObjectPath,
+const hasRegisteredAncestor = (
+  fields: Map<string, FieldState>,
   path: ObjectPath,
-): boolean =>
-  possibleParent.length < path.length &&
-  possibleParent.every((segment, index) => segment === path[index]);
+): boolean => {
+  for (let length = 1; length < path.length; length += 1) {
+    if (fields.has(formatObjectPath(path.slice(0, length)))) return true;
+  }
+
+  return false;
+};
 
 /**
  * Helper to calculate form validity based on both field states and form-level errors.
@@ -532,9 +536,7 @@ export const createFormStore = (): FormStoreApi => {
         // paths keeps byte-identical output.
         const nested = Array.from(state.fields.entries())
           .filter(([, fieldState]) =>
-            Array.from(state.fields.values()).some((possibleParent) =>
-              isEnclosingPath(possibleParent.path, fieldState.path),
-            ),
+            hasRegisteredAncestor(state.fields, fieldState.path),
           )
           .toSorted(([, a], [, b]) => a.path.length - b.path.length);
 

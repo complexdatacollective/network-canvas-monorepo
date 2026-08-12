@@ -67,7 +67,9 @@ export type ValidationContext = {
   currentEntityId?: string;
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
   /** Resolve form-to-form comparison rules within this FieldNamespace. */
-  formValueNamespace?: ObjectPath;
+  formValueNamespace?: string;
+  /** Typed namespace used by the built-in comparison validators. */
+  formValueNamespacePath?: ObjectPath;
   /**
    * Map a codebook variable ID to the form key that currently represents it.
    * The original ID remains authoritative for codebook and entity lookups.

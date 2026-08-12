@@ -194,6 +194,7 @@ describe('Object Path Utils', () => {
       setValue(obj, 'users.2.name', 'Bob');
 
       const users = obj.users as Record<string, unknown>[];
+      expect(Array.isArray(users)).toBe(true);
       expect(users[0]?.name).toBe('Johnny');
       expect(users[1]?.age).toBe(25);
       expect(users[2]?.name).toBe('Bob');

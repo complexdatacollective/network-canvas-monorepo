@@ -28,8 +28,10 @@ export function getComparisonValue(
   attribute: string,
   context?: ValidationContext,
 ): { present: boolean; value: FieldValue | null } {
-  const namespacedValues = context?.formValueNamespace
-    ? getValue(formValues, context.formValueNamespace)
+  const namespace =
+    context?.formValueNamespacePath ?? context?.formValueNamespace;
+  const namespacedValues = namespace
+    ? getValue(formValues, namespace)
     : formValues;
   const formAlias =
     context?.formValueAliases &&

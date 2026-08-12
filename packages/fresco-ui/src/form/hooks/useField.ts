@@ -148,7 +148,11 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const resolvedValidationContext = useMemo(
     () =>
       namespace.length > 0 && validationContext
-        ? { ...validationContext, formValueNamespace: namespace }
+        ? {
+            ...validationContext,
+            formValueNamespace: formatObjectPath(namespace),
+            formValueNamespacePath: namespace,
+          }
         : validationContext,
     [namespace, validationContext],
   );

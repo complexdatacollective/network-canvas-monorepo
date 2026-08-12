@@ -62,9 +62,8 @@ const writableContainer = (
   existing: unknown,
   createArray: boolean,
 ): Record<string, unknown> | unknown[] => {
-  if (createArray) {
-    return Array.isArray(existing) ? cloneArray(existing) : [];
-  }
+  if (Array.isArray(existing)) return cloneArray(existing);
+  if (createArray) return [];
 
   return existing !== null && typeof existing === 'object'
     ? cloneDictionary(existing)
