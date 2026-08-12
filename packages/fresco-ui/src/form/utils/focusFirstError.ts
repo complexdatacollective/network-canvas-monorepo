@@ -11,9 +11,20 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
   if (fieldNames.length === 0) return;
 
   const firstFieldName = fieldNames[0];
-  const container: HTMLElement | null = document.querySelector(
-    `[data-field-name="${firstFieldName}"]`,
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[data-field-path], [data-field-name]',
+    ),
   );
+  const pathMatch = candidates.find(
+    (candidate) => candidate.getAttribute('data-field-path') === firstFieldName,
+  );
+  const publicNameMatches = candidates.filter(
+    (candidate) => candidate.getAttribute('data-field-name') === firstFieldName,
+  );
+  const container =
+    pathMatch ??
+    (publicNameMatches.length === 1 ? publicNameMatches[0] : undefined);
 
   // If element is not found, prevent crash.
   if (!container) {

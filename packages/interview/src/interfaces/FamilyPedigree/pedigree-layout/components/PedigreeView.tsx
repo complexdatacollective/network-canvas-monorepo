@@ -46,6 +46,10 @@ import {
   getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '../../utils/nodeUtils';
+import {
+  isVariableValue,
+  writeOwnAttribute,
+} from '../../utils/writeOwnAttributes';
 import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';
@@ -176,13 +180,14 @@ export default function PedigreeView({
 
     const formAttrs: Record<string, VariableValue> = {};
     for (const field of resolvedFormFields) {
-      if (result[field.variableId] !== undefined) {
-        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
+      const value = result[field.variableId];
+      if (isVariableValue(value)) {
+        writeOwnAttribute(formAttrs, field.variableId, value);
       }
     }
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
-      formAttrs[biologicalSexVariable] = [biologicalSex];
+      writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
     }
 
     const newNodeId = addNode({
@@ -305,13 +310,14 @@ export default function PedigreeView({
 
     const formAttrs: Record<string, VariableValue> = {};
     for (const field of resolvedFormFields) {
-      if (result[field.variableId] !== undefined) {
-        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
+      const value = result[field.variableId];
+      if (isVariableValue(value)) {
+        writeOwnAttribute(formAttrs, field.variableId, value);
       }
     }
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
-      formAttrs[biologicalSexVariable] = [biologicalSex];
+      writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
     }
 
     updateNode(nodeId, {

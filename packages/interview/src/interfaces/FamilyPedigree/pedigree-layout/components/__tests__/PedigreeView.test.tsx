@@ -89,7 +89,10 @@ vi.mock('../../../utils/nodeUtils', () => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
-  getResolvedNodeFormFields: () => [{ variableId: 'partnerships' }],
+  getResolvedNodeFormFields: () => [
+    { variableId: 'partnerships' },
+    { variableId: '__proto__' },
+  ],
   getNodeShapeDefinition: () => null,
   getNodeForm: () => null,
   getNodeColorSelector: () => 'node-color-seq-1',
@@ -379,6 +382,47 @@ describe('PedigreeView — handleAddPerson routing', () => {
     expect(addNodeSpy).toHaveBeenCalledTimes(1);
     expect(addEdgeSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('preserves a __proto__ custom value when adding a partner', async () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const nodes = new Map([['ego', makeNode('ego', true)]]);
+    const store = makeStore(nodes);
+    const result: Record<string, unknown> = {
+      partnerType: 'new',
+      name: 'New Partner',
+      current: 'current',
+    };
+    Object.defineProperty(result, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
+    mockOpenDialog.mockResolvedValueOnce(result);
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={new Map()} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('ego'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Add partner'));
+    });
+
+    const added = [...store.getState().network.nodes.values()].find(
+      (node) => node._uid !== 'ego',
+    );
+    const attributes = added?.[entityAttributesProperty];
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toEqual(['preserved']);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
 });
 
 describe('PedigreeView — person menu actions', () => {
@@ -476,6 +520,45 @@ describe('PedigreeView — person menu actions', () => {
         entityAttributesProperty
       ].isActive,
     ).toBe(false);
+  });
+
+  it('preserves a __proto__ custom value when editing a person', async () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', makeNode('person')],
+    ]);
+    const store = makeStore(nodes);
+    const result: Record<string, unknown> = { name: 'Edited Person' };
+    Object.defineProperty(result, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
+    mockOpenDialog.mockResolvedValueOnce(result);
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={new Map()} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Edit'));
+    });
+
+    const attributes = store.getState().network.nodes.get('person')?.[
+      entityAttributesProperty
+    ];
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toEqual(['preserved']);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
   });
 
   it('shows each partnership with its current status in the edit dialog', async () => {
