@@ -384,10 +384,10 @@ selection uses the cumulative merge-base-to-current-head diff, so every
 required verdict describes the exact head under review.
 
 Each PR run upserts one sticky **E2E status** comment (the informational
-`e2e-report` job): the policy's suite-selection matrix with per-suite reasons
-(the witness changed path, lane membership, or reuse), plus a Status/Name/
-Report table over all six suite jobs. Only FAILED jobs publish their
-Playwright report, to GitHub Pages at
+`e2e-report` job): a single Status/Name/Report/Reason table over all six
+suite jobs, where Reason is the policy's per-suite selection explanation
+(the witness changed path, lane membership, or reuse). Only FAILED jobs
+publish their Playwright report, to GitHub Pages at
 `https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
 each branch keeps only its latest run's report, and a later green run removes
 the stale one.

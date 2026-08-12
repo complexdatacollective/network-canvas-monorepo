@@ -1643,9 +1643,6 @@ jobs:
           REASONS: ${{ needs.e2e-policy.outputs.reasons }}
           PUBLISHED: ${{ steps.merge.outputs.published }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          REQ_INTERVIEW: ${{ needs.e2e-policy.outputs.interview }}
-          REQ_INTERVIEWER: ${{ needs.e2e-policy.outputs.interviewer }}
-          REQ_ARCHITECT: ${{ needs.e2e-policy.outputs.architect }}
           R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
           R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
           R_INTERVIEWER_PIXEL: ${{ needs.interviewer-e2e.result }}
@@ -1660,18 +1657,13 @@ jobs:
             const published = JSON.parse(process.env.PUBLISHED || '{}') ?? {};
             const pagesBase = `https://${context.repo.owner}.github.io/${context.repo.repo}`;
 
-            const suites = [
-              { title: 'Interview', key: 'interview', selected: process.env.REQ_INTERVIEW === 'true' },
-              { title: 'Interviewer', key: 'interviewer', selected: process.env.REQ_INTERVIEWER === 'true' },
-              { title: 'Architect', key: 'architect', selected: process.env.REQ_ARCHITECT === 'true' },
-            ];
             const jobs = [
-              { name: 'interview-e2e', half: 'pixel', result: process.env.R_INTERVIEW_PIXEL },
-              { name: 'interview-e2e-native', half: 'functional', result: process.env.R_INTERVIEW_NATIVE },
-              { name: 'interviewer-e2e', half: 'pixel', result: process.env.R_INTERVIEWER_PIXEL },
-              { name: 'interviewer-e2e-native', half: 'functional', result: process.env.R_INTERVIEWER_NATIVE },
-              { name: 'architect-e2e', half: 'pixel', result: process.env.R_ARCHITECT_PIXEL },
-              { name: 'architect-e2e-native', half: 'functional', result: process.env.R_ARCHITECT_NATIVE },
+              { name: 'interview-e2e', half: 'pixel', suite: 'interview', result: process.env.R_INTERVIEW_PIXEL },
+              { name: 'interview-e2e-native', half: 'functional', suite: 'interview', result: process.env.R_INTERVIEW_NATIVE },
+              { name: 'interviewer-e2e', half: 'pixel', suite: 'interviewer', result: process.env.R_INTERVIEWER_PIXEL },
+              { name: 'interviewer-e2e-native', half: 'functional', suite: 'interviewer', result: process.env.R_INTERVIEWER_NATIVE },
+              { name: 'architect-e2e', half: 'pixel', suite: 'architect', result: process.env.R_ARCHITECT_PIXEL },
+              { name: 'architect-e2e-native', half: 'functional', suite: 'architect', result: process.env.R_ARCHITECT_NATIVE },
             ];
 
             const statusCell = (result) =>
@@ -1691,6 +1683,9 @@ jobs:
             };
 
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            // One table carries both the decision matrix and the outcomes:
+            // the per-suite selection reason annotates each of the suite's
+            // two job rows.
             const body = [
               marker,
               '## E2E status',
@@ -1698,22 +1693,11 @@ jobs:
               `Run [#${context.runNumber}](${runUrl}) on \`${(HEAD_SHA || context.sha).slice(0, 7)}\`` +
                 (RELEASE_REF ? ` · release lane \`${RELEASE_REF}\`` : ''),
               '',
-              '### Suite selection',
-              '',
-              '| Suite | Selected | Reason |',
-              '| --- | --- | --- |',
-              ...suites.map(
-                (suite) =>
-                  `| ${suite.title} | ${suite.selected ? '✅ runs' : '⏭️ skipped'} | ${reasons[suite.key] ?? ''} |`,
-              ),
-              '',
-              '### Results',
-              '',
-              '| Status | Name | Report |',
-              '| --- | --- | --- |',
+              '| Status | Name | Report | Reason |',
+              '| --- | --- | --- | --- |',
               ...jobs.map(
                 (job) =>
-                  `| ${statusCell(job.result)} | \`${job.name}\` (${job.half}) | ${reportCell(job)} |`,
+                  `| ${statusCell(job.result)} | \`${job.name}\` (${job.half}) | ${reportCell(job)} | ${reasons[job.suite] ?? ''} |`,
               ),
               '',
               "_Reports are published only for failed jobs; each branch keeps only its latest run's report._",
