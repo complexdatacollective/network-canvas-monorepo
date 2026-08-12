@@ -2748,3 +2748,65 @@ describe('synthetic metadata that does not match the variable type', () => {
     ).not.toThrow();
   });
 });
+
+describe('declared missingness in a builder network', () => {
+  // `getProtocol()` emits the descriptor, so a network that ignores it makes
+  // `getInterviewPayload()` self-contradictory: a protocol saying the value is
+  // always missing beside a network holding it.
+  it('leaves an always-missing node variable unanswered', () => {
+    const si = new SyntheticInterview(7);
+    const nt = si.addNodeType();
+    const hobby = nt.addVariable({
+      type: 'text',
+      name: 'hobby',
+      synthetic: { generator: 'occupation', missingProbability: 1 },
+    });
+    const kept = nt.addVariable({ type: 'text', name: 'nickname' });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 6 },
+    });
+
+    const network = si.getNetwork();
+    expect(network.nodes).toHaveLength(6);
+    for (const node of network.nodes) {
+      const attrs = node[entityAttributesProperty];
+      expect(attrs[hobby.id]).toBeNull();
+      // Only the variable that declared it: the pass is per group, not global.
+      expect(attrs[kept.id]).not.toBeNull();
+    }
+  });
+
+  it('leaves an always-missing ego variable unanswered', () => {
+    const si = new SyntheticInterview(7);
+    si.addEgoVariable({
+      type: 'text',
+      name: 'note',
+      synthetic: { generator: 'sentence', missingProbability: 1 },
+    });
+
+    const ego = si.getNetwork().ego;
+    expect(Object.values(ego[entityAttributesProperty])).toEqual([null]);
+  });
+
+  it('keeps a required variable answered whatever it declares', () => {
+    // The group rule the planner applies: a required member suppresses
+    // missingness for the whole group rather than emitting a null the
+    // protocol's own validation rejects.
+    const si = new SyntheticInterview(7);
+    const nt = si.addNodeType();
+    const needed = nt.addVariable({
+      type: 'text',
+      name: 'needed',
+      validation: { required: true },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 4 },
+    });
+
+    for (const node of si.getNetwork().nodes) {
+      expect(node[entityAttributesProperty][needed.id]).not.toBeNull();
+    }
+  });
+});

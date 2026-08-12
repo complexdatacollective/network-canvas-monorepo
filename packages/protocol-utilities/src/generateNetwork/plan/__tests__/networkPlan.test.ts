@@ -397,6 +397,48 @@ describe('planNetwork rosters', () => {
     expect(result.nodes).toHaveLength(0);
   });
 
+  it('refuses a roster that cannot reach an undeclared stage minimum', () => {
+    // No `synthetic.count`, so the generic 1-8 fallback is what was trimmed —
+    // but `behaviours.minNodes` is something the author wrote and the
+    // interface holds the participant to. Trimming past it generated two
+    // people for a stage set to a minimum of five and said nothing.
+    const rosterWithMinimum = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      behaviours: { minNodes: 5 },
+      dataSource: 'people.csv',
+      prompts: [{ id: 'p1', text: 'Pick' }],
+    });
+    expect(() =>
+      plan(baseCodebook(), [rosterWithMinimum], {
+        externalData: { 'roster-1': [row('r1', 'Ada'), row('r2', 'Grace')] },
+      }),
+    ).toThrow(
+      /roster does not hold enough people for the stages drawing from it/,
+    );
+  });
+
+  it('still trims the fallback down to the minimum it can reach', () => {
+    // Above the stage's own minimum the fallback gives way as before: the
+    // roster is short of what the default asked for, not of what the author
+    // wrote.
+    const rosterWithMinimum = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      behaviours: { minNodes: 2 },
+      dataSource: 'people.csv',
+      prompts: [{ id: 'p1', text: 'Pick' }],
+    });
+    const result = plan(baseCodebook(), [rosterWithMinimum], {
+      externalData: { 'roster-1': [row('r1', 'Ada'), row('r2', 'Grace')] },
+    });
+    expect(result.nodes).toHaveLength(2);
+  });
+
   it('fabricates when no roster is known', () => {
     const result = plan(baseCodebook(), [rosterStage(3)]);
     expect(result.nodes).toHaveLength(3);
@@ -448,6 +490,80 @@ describe('planNetwork rosters', () => {
       expect(new Set(result.nodes.map((node) => node.uid)).size).toBe(5_000);
     },
   );
+});
+
+describe('planNetwork settling a creator against ego', () => {
+  // The guard reads an attribute a LATER form collects, so at the creator's
+  // own point in the interview ego has not answered it. Settling the guard
+  // against the ego this plan finally drew removed a creator the session then
+  // reaches with nothing planned to introduce.
+  const codebookWithConsent = (): StructuralCodebook =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          variables: { name: { name: 'N', type: 'text' } },
+        },
+      },
+      edge: {},
+      ego: {
+        variables: {
+          consent: {
+            name: 'Consent',
+            type: 'boolean',
+            synthetic: { probabilityTrue: 1 },
+          },
+        },
+      },
+    }) as unknown as StructuralCodebook;
+
+  const guardedGenerator = nameGenerator(
+    {
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              id: 'consented',
+              type: 'ego',
+              options: {
+                attribute: 'consent',
+                operator: 'EXACTLY',
+                value: true,
+              },
+            },
+          ],
+        },
+      },
+    },
+    4,
+  );
+
+  const egoForm = stage({
+    id: 'ego-form',
+    type: 'EgoForm',
+    label: 'About you',
+    introductionPanel: { title: 't', text: 'x' },
+    form: { fields: [{ variable: 'consent', prompt: 'Consent?' }] },
+  });
+
+  it('leaves a creator standing before the form that answers its guard', () => {
+    const result = plan(codebookWithConsent(), [guardedGenerator, egoForm], {
+      respectSkipLogicAndFiltering: true,
+    });
+    expect(result.ego.attributes.consent).toBe(true);
+    expect(result.nodes).toHaveLength(4);
+  });
+
+  it('still settles a creator that follows it', () => {
+    // Same guard, same draw — only the order changes. Here the form HAS run,
+    // so the guard is decidable and the creator really is skipped.
+    const result = plan(codebookWithConsent(), [egoForm, guardedGenerator], {
+      respectSkipLogicAndFiltering: true,
+    });
+    expect(result.ego.attributes.consent).toBe(true);
+    expect(result.nodes).toHaveLength(0);
+  });
 });
 
 describe('planNetwork topology targets', () => {

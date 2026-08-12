@@ -24,6 +24,7 @@ import {
   NODE_COLORS,
   ORDINAL_COLORS,
 } from './constants';
+import { scopeKeyFor } from './generateNetwork/analyse/stageEffects';
 import {
   claimFixedValues,
   constraintsFor,
@@ -61,6 +62,14 @@ import {
   crossRuleBrokenByFixedValues,
   ownRuleBrokenByFixedValues,
 } from './generateNetwork/nodes';
+import {
+  applyMissingness,
+  equalityGroups,
+  missingProbabilities,
+  missingProbabilitiesFor,
+  requiredVariables,
+  requiredVariablesFor,
+} from './generateNetwork/plan/networkPlan';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -1722,6 +1731,43 @@ export class SyntheticInterview {
     const ctx = this.generationContext(today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
 
+    // A declared `missingProbability` describes a question the participant left
+    // unanswered. `getProtocol()` emits it, so a network assembled here has to
+    // honour it or `getInterviewPayload()` contradicts itself: a protocol
+    // saying a value is always missing beside a network holding that value.
+    //
+    // The planner's own pass, called with the planner's own inputs, so the two
+    // cannot come to different answers about one descriptor. Group-aware for
+    // the reason it is there: variables held equal share one decision, and a
+    // required member or a settled value suppresses it for the whole group.
+    //
+    // Read from `buildCodebook()` rather than from `ctx.codebook`: the
+    // generation context carries a structural shell of type names only, and
+    // the descriptors live on the emitted codebook — the same one
+    // `getProtocol()` returns, which is the artefact this has to agree with.
+    const declared = this.buildCodebook() as unknown as StructuralCodebook;
+    const missingByScope = missingProbabilities(declared);
+    const requiredByScope = requiredVariables(declared);
+    const applyMissing = (
+      ref: Parameters<typeof constraintsFor>[1],
+      attributes: Record<string, VariableValue>,
+      fixed: Record<string, VariableValue>,
+    ): void => {
+      const scope =
+        ref.entity === 'ego'
+          ? scopeKeyFor('ego')
+          : scopeKeyFor(ref.entity, ref.type);
+      applyMissingness(
+        attributes,
+        new Set(Object.keys(fixed)),
+        missingProbabilitiesFor(missingByScope, scope),
+        requiredVariablesFor(requiredByScope, scope),
+        equalityGroups(constraintsFor(ctx, ref)),
+        ctx.valueGen.randomSource,
+        scope,
+      );
+    };
+
     const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
       this.explicitValuesOf(
         this.nodeTypes.get(nodeEntry.type)?.variables,
@@ -1821,6 +1867,19 @@ export class SyntheticInterview {
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
         }
+
+        // Drawn entities only. A manually-seeded node deliberately keeps its
+        // unset attributes neutral rather than distributed — the caller's
+        // scenario is not corrupted by random data — and nulling them would be
+        // that same corruption by another name. What the caller wrote is
+        // protected either way: a settled value is never made missing.
+        if (drawn) {
+          applyMissing(
+            { entity: 'node', type: nodeEntry.type },
+            attributes,
+            explicit,
+          );
+        }
       }
 
       const stage = stagesById.get(nodeEntry.stageId);
@@ -1887,6 +1946,15 @@ export class SyntheticInterview {
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
         }
+
+        // The node treatment, for the node's reasons.
+        if (drawn) {
+          applyMissing(
+            { entity: 'edge', type: edgeEntry.type },
+            attributes,
+            explicit,
+          );
+        }
       }
 
       return {
@@ -1925,6 +1993,9 @@ export class SyntheticInterview {
       egoAttributes[varId] =
         value === undefined ? ctx.valueGen.neutralForVariable(variable) : value;
     }
+    // Ego is always drawn — there is one of it and the builder offers no way
+    // to write an attribute onto it — so there is no manual case to exempt.
+    applyMissing({ entity: 'ego' }, egoAttributes, egoExplicit);
 
     return {
       ego: {

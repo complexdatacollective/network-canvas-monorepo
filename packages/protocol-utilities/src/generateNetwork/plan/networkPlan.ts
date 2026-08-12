@@ -317,7 +317,7 @@ export const equalityGroups = (constraints: EntityConstraints): string[][] => [
  * probabilities the largest wins — a variable cannot be answered while the
  * value it is declared equal to is not.
  */
-function applyMissingness(
+export function applyMissingness(
   attributes: Record<string, VariableValue>,
   fixedKeys: ReadonlySet<string>,
   probabilities: ReadonlyMap<string, number>,
@@ -913,11 +913,17 @@ function assignRosterRows(
     // against its own pool size, because a shared pool's rows may already have
     // gone to another stage. The refusal is reserved for a count the author
     // actually wrote.
-    if (!creation.countDeclared) {
-      assigned[index] = wanted - short;
+    const offered = wanted - short;
+    if (!creation.countDeclared && offered >= creation.capacity.min) {
+      assigned[index] = offered;
       continue;
     }
-    const offered = wanted - short;
+    // Below the stage's own minimum it is no longer the fallback giving way.
+    // `behaviours.minNodes` is something the author wrote, and the interface
+    // holds the participant to it, so a roster that cannot reach it is the
+    // same under-provisioning a declared count reports — a stage set to a
+    // minimum of five over a roster of two would otherwise generate two people
+    // and say nothing.
     const label =
       effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
     throw new SyntheticDataConstraintError(
@@ -980,14 +986,26 @@ export function planNetwork(
    * Only all-ego guards. A rule about alters is still undecidable here, since
    * the nodes it asks about are what this pass is about to plan.
    */
-  const plannedEgoNetwork: NcNetwork = {
-    ego: {
-      [entityPrimaryKeyProperty]: egoUid,
-      [entityAttributesProperty]: egoAttributes,
-    },
-    nodes: [],
-    edges: [],
-  } as unknown as NcNetwork;
+  const plannedEgoNetwork = (asOf: number): NcNetwork =>
+    ({
+      ego: {
+        [entityPrimaryKeyProperty]: egoUid,
+        // As of the guarded stage, not as of the end. A creator standing
+        // BEFORE the EgoForm that writes the attribute its guard reads sees an
+        // ego who has not answered yet, so a `SKIP` on `consent === true` does
+        // not skip it — and settling it against the final draw removed a
+        // creator the session then reaches with nothing planned to introduce.
+        // The stage-time filter shadow above is projected for the same reason.
+        [entityAttributesProperty]: attributesAsOf(
+          effects,
+          scopeKeyFor('ego'),
+          egoAttributes,
+          asOf,
+        ),
+      },
+      nodes: [],
+      edges: [],
+    }) as unknown as NcNetwork;
 
   const settledAsSkipped = (
     summary: StageEffects['stages'][number],
@@ -997,7 +1015,7 @@ export function planNetwork(
     if (skipLogic === undefined) return false;
     if (skipLogic.filter.rules.some((rule) => rule.type !== 'ego'))
       return false;
-    return isStageSkipped(skipLogic, plannedEgoNetwork);
+    return isStageSkipped(skipLogic, plannedEgoNetwork(summary.index));
   };
 
   // --- Node populations ----------------------------------------------------
