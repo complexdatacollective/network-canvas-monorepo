@@ -29,6 +29,7 @@ import { markStageInProgress } from '../inProgress';
 import {
   equalityGroups,
   groupMissingProbability,
+  missingGroupKey,
   missingProbabilities,
   missingProbabilitiesFor,
   refuseTooManyPairs,
@@ -99,8 +100,9 @@ const walkDomainKey = (edgeType: string, subjectNodeType: string): string =>
  * question answered for another's. Escaping the random-source path fixed the
  * stream those keys address, not the keys themselves.
  */
-export const missingGroupKey = (members: readonly string[]): string =>
-  [...members].toSorted().map(encodeUid).join('');
+// The plan's, re-exported because both passes have to key one group the same
+// way.
+export { missingGroupKey };
 
 export const missingDecisionKey = (uid: string, groupKey: string): string =>
   `${encodeUid(uid)}${encodeUid(groupKey)}`;

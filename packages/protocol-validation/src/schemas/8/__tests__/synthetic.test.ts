@@ -968,6 +968,123 @@ describe('synthetic metadata (additive to schema 8)', () => {
     });
   });
 
+  describe('a zero-deviation topology mean', () => {
+    // Single-point support, so the mean must be a value the draw can return —
+    // the rule the variable-level number and datetime descriptors carry.
+    const composerWith = (topology: unknown) => {
+      const protocol = createBaseProtocol();
+      (protocol.stages[1] as Loose).synthetic = { topology };
+      return protocol;
+    };
+
+    it('rejects a density mean its own window excludes', () => {
+      const result = parse(
+        composerWith({
+          metric: 'density',
+          distribution: {
+            distribution: 'normal',
+            mean: 0.2,
+            sd: 0,
+            min: 0.8,
+            max: 0.9,
+          },
+        }),
+      );
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'a standard deviation of 0 can reach nothing else'),
+      ).toBe(true);
+    });
+
+    it('rejects a mean-degree mean below the domain', () => {
+      const result = parse(
+        composerWith({
+          metric: 'meanDegree',
+          distribution: { distribution: 'normal', mean: -2, sd: 0 },
+        }),
+      );
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'a standard deviation of 0 can reach nothing else'),
+      ).toBe(true);
+    });
+
+    it('accepts a mean the draw can return', () => {
+      expect(
+        parse(
+          composerWith({
+            metric: 'density',
+            distribution: {
+              distribution: 'normal',
+              mean: 0.85,
+              sd: 0,
+              min: 0.8,
+              max: 0.9,
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('leaves a spread distribution alone', () => {
+      // Only the degenerate case is decidable: with any spread the draw can
+      // land inside the window whatever its centre.
+      expect(
+        parse(
+          composerWith({
+            metric: 'density',
+            distribution: {
+              distribution: 'normal',
+              mean: 0.2,
+              sd: 0.3,
+              min: 0.8,
+              max: 0.9,
+            },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+  });
+
+  describe('a boolean a Composer field renders as a choice', () => {
+    // The variable-level rule scopes itself to a variable declaring the
+    // `Boolean` control, because a componentless boolean may be rendered as a
+    // Toggle, which ignores options. A composer field supplies the rendering
+    // the variable lacked.
+    const withComposerBoolean = (probabilityTrue: number) => {
+      const protocol = withPersonVariable('agreed', {
+        name: 'Agreed',
+        type: 'boolean',
+        // No component of its own, and only one answer offered.
+        options: [{ label: 'No', value: false }],
+        synthetic: { probabilityTrue },
+      });
+      (protocol.stages as Loose[]).push({
+        id: 'nc-boolean',
+        label: 'Build the network',
+        type: 'NetworkComposer',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 4 },
+        nodeForm: {
+          fields: [{ variable: 'agreed', component: 'Boolean' }],
+        },
+      } as unknown as Loose);
+      return protocol;
+    };
+
+    it('rejects a probability the offered option cannot express', () => {
+      const result = parse(withComposerBoolean(1));
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'can never be drawn')).toBe(true);
+    });
+
+    it('accepts one the offered option can', () => {
+      expect(parse(withComposerBoolean(0)).success).toBe(true);
+    });
+  });
+
   describe('datetime variables', () => {
     const datetimeVariable = (
       synthetic: unknown,

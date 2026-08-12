@@ -4,6 +4,7 @@ import {
   missingDecisionKey,
   missingGroupKey,
 } from '../materialise/materialiseSession';
+import { missingGroupKey as plannedGroupKey } from '../plan/networkPlan';
 
 /**
  * Unplanned missingness is decided once per (entity, equality group) and
@@ -31,6 +32,18 @@ describe('the keys an unplanned missingness decision is remembered under', () =>
     const left = missingDecisionKey('a', missingGroupKey([`b${NUL}c`]));
     const right = missingDecisionKey(`a${NUL}b`, missingGroupKey(['c']));
     expect(left).not.toBe(right);
+  });
+
+  it('is the same key the plan decides its own missingness under', () => {
+    // The plan settles missingness for the values it draws and the walk for
+    // the ones it does not; keying one group two ways would let the two make
+    // different decisions about it under one seed.
+    expect(plannedGroupKey(['a', `b${NUL}c`])).toBe(
+      missingGroupKey(['a', `b${NUL}c`]),
+    );
+    expect(plannedGroupKey(['a', `b${NUL}c`])).not.toBe(
+      plannedGroupKey([`a${NUL}b`, 'c']),
+    );
   });
 
   it('still separates two ordinary entities', () => {

@@ -353,7 +353,14 @@ export function applyMissingness(
     // whichever member the codebook happens to list first, and by the scope so
     // that one variable key used under two entity types addresses two streams
     // rather than one shared one.
-    const key = members.toSorted().join('\u0000');
+    //
+    // Length-prefixed rather than joined on a separator, as the walk's own
+    // missingness keys are and for the same reason: a variable id is an
+    // arbitrary string, so joined on NUL the groups ['a', 'b<NUL>c'] and
+    // ['a<NUL>b', 'c'] addressed one stream between them, and adding or
+    // reordering one decided whether the other came back missing. Escaping the
+    // stream path fixed the path, not the key handed to it.
+    const key = missingGroupKey(members);
     if (!source.stream('missing', scope, key).bool(probability)) continue;
     for (const id of present) {
       attributes[id] = null;
@@ -444,6 +451,16 @@ function plannedNetwork(
  * attributed to the wrong one.
  */
 const encodeUid = (uid: string): string => `${uid.length}:${uid}`;
+
+/**
+ * An equality group as one key.
+ *
+ * Length-prefixed for `pairKey`'s reason: a variable id is an arbitrary
+ * string, so no separator is safe. Shared with the walk's own missingness
+ * decisions so the plan and the walk cannot key one group two ways.
+ */
+export const missingGroupKey = (members: readonly string[]): string =>
+  [...members].toSorted().map(encodeUid).join('');
 
 const pairKey = (a: string, b: string): string =>
   a < b ? `${encodeUid(a)}${encodeUid(b)}` : `${encodeUid(b)}${encodeUid(a)}`;

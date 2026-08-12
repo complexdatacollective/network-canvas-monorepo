@@ -315,6 +315,57 @@ const validateComposerFieldSyntheticWindows = (
   });
 };
 
+/**
+ * NetworkComposer stage-effective Boolean-probability check.
+ *
+ * A one-sided option list has no second answer to draw, so the generator
+ * returns the sole offered value and `probabilityTrue` is ignored. The
+ * variable-level rule scopes itself to a variable whose OWN component is
+ * `Boolean`, deliberately: a componentless boolean can be rendered as a
+ * `Toggle`, which ignores options and leaves both values drawable, and
+ * refusing there would reject a descriptor that takes effect perfectly well.
+ *
+ * A composer field supplies exactly the rendering the variable lacked. Where
+ * it renders such a boolean through `Boolean`, the options become
+ * authoritative for the values this stage generates, and a probability the
+ * list cannot express is metadata that can never take effect — the same thing
+ * the variable-level rule rejects, one level up.
+ */
+const validateComposerFieldBooleanProbabilities = (
+  codebookVariables: Record<string, Variable>,
+  fields: ComposerFormField[] | undefined,
+  fieldsPath: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  if (!fields) return;
+  fields.forEach((field, fieldIndex) => {
+    const variable = codebookVariables[field.variable];
+    if (!variable || variable.type !== 'boolean') return;
+    if (field.component !== ComponentTypes.Boolean) return;
+    // A variable that declares the control already carries the rule itself.
+    if ('component' in variable && variable.component !== undefined) return;
+    if (!('synthetic' in variable) || variable.synthetic === undefined) return;
+    const probabilityTrue = (variable.synthetic as { probabilityTrue?: number })
+      .probabilityTrue;
+    if (probabilityTrue === undefined) return;
+    if (!('options' in variable) || !Array.isArray(variable.options)) return;
+
+    const offered = new Set(
+      (variable.options as { value: unknown }[]).map((option) => option.value),
+    );
+    if (offered.size !== 1) return;
+    if (
+      (offered.has(false) && probabilityTrue > 0) ||
+      (offered.has(true) && probabilityTrue < 1)
+    ) {
+      addIssue({
+        message: `NetworkComposer field for "${variable.name}" renders it with the "Boolean" control, where the only option offered is ${String(offered.has(true))} — probabilityTrue ${probabilityTrue} can never be drawn.`,
+        path: [...fieldsPath, fieldIndex],
+      });
+    }
+  });
+};
+
 const validateComposerFieldComponents = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
@@ -890,6 +941,12 @@ const ProtocolSchema = z
           nodeFormPath,
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
+        validateComposerFieldBooleanProbabilities(
+          nodeVariables,
+          stage.nodeForm?.fields,
+          nodeFormPath,
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
         validateComposerFieldContradictions(
           nodeVariables,
           stage.nodeForm?.fields,
@@ -921,6 +978,12 @@ const ProtocolSchema = z
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
           validateComposerFieldSyntheticWindows(
+            edgeVariables,
+            edge.form?.fields,
+            edgeFormPath,
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
+          validateComposerFieldBooleanProbabilities(
             edgeVariables,
             edge.form?.fields,
             edgeFormPath,

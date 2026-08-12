@@ -43,6 +43,37 @@ export const DEFAULT_OPTION_WEIGHT = 1;
 /** Allowed |sum − 1| drift for a selection-count probability table. */
 export const SELECTION_COUNT_PROBABILITY_TOLERANCE = 1e-6;
 
+/**
+ * A zero-deviation normal has the single-point support a constant has, so its
+ * mean must be a value the draw can actually return: inside its own truncation
+ * window, and inside the domain the metric itself lives on.
+ *
+ * Clamped otherwise, exactly as the variable-level number and datetime rules
+ * describe — a density of `{ mean: 0.2, sd: 0, min: 0.8, max: 0.9 }` returns
+ * 0.8 every time, and a negative mean-degree mean returns 0, in both cases
+ * replacing the authored distribution in silence.
+ */
+const requireReachableDegenerateMean =
+  (domain: { min: number; max?: number }) =>
+  (
+    value: { mean: number; sd: number; min?: number; max?: number },
+    ctx: z.RefinementCtx,
+  ) => {
+    if (value.sd !== 0) return;
+    const lower = Math.max(value.min ?? Number.NEGATIVE_INFINITY, domain.min);
+    const upper = Math.min(
+      value.max ?? Number.POSITIVE_INFINITY,
+      domain.max ?? Number.POSITIVE_INFINITY,
+    );
+    if (value.mean < lower || value.mean > upper) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `A mean of ${value.mean} lies outside the values this distribution can return, and a standard deviation of 0 can reach nothing else`,
+        path: ['mean'],
+      });
+    }
+  };
+
 const requireOrderedBounds = (
   bounds: { min?: number; max?: number },
   ctx: z.RefinementCtx,
@@ -270,7 +301,8 @@ const densityNormalSchema = z
     min: probabilitySchema.optional(),
     max: probabilitySchema.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(requireReachableDegenerateMean({ min: 0, max: 1 }));
 
 // Density is a proportion, so beta is its natural family: it lives on 0–1 by
 // construction rather than by clamping a normal that wanted to leave. Its
@@ -323,7 +355,8 @@ const meanDegreeNormalSchema = z
     min: nonNegative.optional(),
     max: nonNegative.optional(),
   })
-  .superRefine(requireOrderedBounds);
+  .superRefine(requireOrderedBounds)
+  .superRefine(requireReachableDegenerateMean({ min: 0 }));
 
 const meanDegreeDistributionSchema = z.discriminatedUnion('distribution', [
   meanDegreeConstantSchema,
