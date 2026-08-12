@@ -50,6 +50,12 @@ export const serverSchemas = {
   SMTP_URL: z.string().min(1).optional(),
   EMAIL_FROM: z.string().min(1).optional(),
 
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+  MICROSOFT_TENANT_ID: z.string().min(1).optional(),
+
   TRUSTED_PROXIES: z
     .string()
     .transform((value) =>

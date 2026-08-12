@@ -10,11 +10,13 @@ import { STUDIO_VERSION } from './version.ts';
  * What sign-in the instance currently offers — how the SPA knows which
  * affordances to render, and an honest report when auth is unconfigured.
  * `magicLink` is false when no mail can leave the server even though auth
- * is otherwise enabled.
+ * is otherwise enabled; `socialProviders` lists the OAuth providers whose
+ * credentials are configured (#1255), empty when none are.
  */
 export type AuthCapabilities = {
   enabled: boolean;
   magicLink: boolean;
+  socialProviders: ('google' | 'microsoft')[];
 };
 
 export type InstanceStatus = {

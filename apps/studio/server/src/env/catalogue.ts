@@ -174,6 +174,41 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     devDefault: DEV.emailFrom,
     example: 'signin@studio.example.org',
   },
+  GOOGLE_CLIENT_ID: {
+    group: 'Authentication',
+    summary: 'OAuth client ID for "Continue with Google" sign-in (#1255).',
+    deployment:
+      'Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.',
+    example: 'xxxxxxxx.apps.googleusercontent.com',
+  },
+  GOOGLE_CLIENT_SECRET: {
+    group: 'Authentication',
+    summary: 'OAuth client secret paired with `GOOGLE_CLIENT_ID`.',
+    deployment: 'Required with `GOOGLE_CLIENT_ID`, and refused without it.',
+    example: 'GOCSPX-xxxxxxxxxxxxxxxx',
+  },
+  MICROSOFT_CLIENT_ID: {
+    group: 'Authentication',
+    summary:
+      'Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).',
+    deployment:
+      'Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.',
+    example: '00000000-0000-0000-0000-000000000000',
+  },
+  MICROSOFT_CLIENT_SECRET: {
+    group: 'Authentication',
+    summary: 'Client secret paired with `MICROSOFT_CLIENT_ID`.',
+    deployment: 'Required with `MICROSOFT_CLIENT_ID`, and refused without it.',
+    example: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  MICROSOFT_TENANT_ID: {
+    group: 'Authentication',
+    summary:
+      'Entra tenant to accept sign-ins from, for single-tenant registrations.',
+    deployment:
+      'Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.',
+    example: 'contoso.onmicrosoft.com',
+  },
   TRUSTED_PROXIES: {
     group: 'Authentication',
     summary:

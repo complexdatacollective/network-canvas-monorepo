@@ -103,6 +103,54 @@ describe('database and auth', () => {
   });
 });
 
+describe('OAuth sign-in providers', () => {
+  it('is empty when no provider variables are set', () => {
+    expect(readEnv().auth?.socialProviders).toEqual({});
+  });
+
+  it('resolves a complete Google pair', () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'google-id');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-secret');
+    expect(readEnv().auth?.socialProviders.google).toEqual({
+      clientId: 'google-id',
+      clientSecret: 'google-secret',
+    });
+  });
+
+  it('refuses half a Google pair rather than dropping the provider', () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'google-id');
+    expect(() => readEnv()).toThrow(
+      /Incomplete Google OAuth configuration; missing: GOOGLE_CLIENT_SECRET/,
+    );
+  });
+
+  it('resolves Microsoft with its optional tenant', () => {
+    vi.stubEnv('MICROSOFT_CLIENT_ID', 'ms-id');
+    vi.stubEnv('MICROSOFT_CLIENT_SECRET', 'ms-secret');
+    vi.stubEnv('MICROSOFT_TENANT_ID', 'contoso.onmicrosoft.com');
+    expect(readEnv().auth?.socialProviders.microsoft).toEqual({
+      clientId: 'ms-id',
+      clientSecret: 'ms-secret',
+      tenantId: 'contoso.onmicrosoft.com',
+    });
+  });
+
+  it('refuses a tenant without the Microsoft credential pair', () => {
+    vi.stubEnv('MICROSOFT_TENANT_ID', 'contoso.onmicrosoft.com');
+    expect(() => readEnv()).toThrow(
+      /Incomplete Microsoft OAuth configuration; missing: MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET/,
+    );
+  });
+
+  it('refuses half a pair even when auth is otherwise off', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-secret');
+    expect(() => readEnv()).toThrow(
+      /Incomplete Google OAuth configuration; missing: GOOGLE_CLIENT_ID/,
+    );
+  });
+});
+
 describe('object storage', () => {
   it('is undefined when no S3 variable is set', () => {
     for (const name of [

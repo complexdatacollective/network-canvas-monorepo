@@ -42,9 +42,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   });
   const auth = deps.auth ?? createAuthService(env, deps.pool);
+  const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
-    enabled: Boolean(env.db && env.auth),
+    enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
+    socialProviders: enabled
+      ? (['google', 'microsoft'] as const).filter(
+          (provider) => env.auth?.socialProviders[provider],
+        )
+      : [],
   };
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));

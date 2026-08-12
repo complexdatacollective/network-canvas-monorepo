@@ -15,6 +15,7 @@ export const StatusSchema = z.object({
   auth: z.object({
     enabled: z.boolean(),
     magicLink: z.boolean(),
+    socialProviders: z.array(z.enum(['google', 'microsoft'])),
   }),
 });
 

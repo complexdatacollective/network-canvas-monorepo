@@ -15,6 +15,7 @@ export const auth = createBetterAuthInstance(
     baseUrl: DEV.baseUrl,
     mailer: { kind: 'console' },
     trustedProxies: undefined,
+    socialProviders: {},
   },
   // The dev Postgres from scripts/dev-pg.ts: generate diffs the live schema.
   new pg.Pool({ connectionString: DEV_DATABASE_URL }),

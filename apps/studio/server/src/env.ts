@@ -17,6 +17,7 @@ export type {
   DbEnv,
   MailerEnv,
   S3Env,
+  SocialProvidersEnv,
   StudioEnv,
 } from './env/resolve.ts';
 

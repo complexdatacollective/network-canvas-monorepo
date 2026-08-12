@@ -30,6 +30,17 @@ export type MailerEnv =
   | { kind: 'console' }
   | { kind: 'refuse' };
 
+/**
+ * OAuth sign-in providers (#1255: the launch set is magic link, Google, and
+ * Microsoft). Each provider is configured independently and offered only when
+ * its credential pair is complete; an absent provider simply isn't rendered
+ * by the SPA.
+ */
+export type SocialProvidersEnv = {
+  google?: { clientId: string; clientSecret: string };
+  microsoft?: { clientId: string; clientSecret: string; tenantId?: string };
+};
+
 export type AuthEnv = {
   secret: string;
   /**
@@ -46,6 +57,7 @@ export type AuthEnv = {
    * bucket across all clients until this is configured.
    */
   trustedProxies: string[] | undefined;
+  socialProviders: SocialProvidersEnv;
 };
 
 export type StudioEnv = {
@@ -128,11 +140,58 @@ function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
   return devDefaults ? { kind: 'console' } : { kind: 'refuse' };
 }
 
+function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
+  const providers: SocialProvidersEnv = {};
+
+  // Same fail-fast contract as resolveS3: half a credential pair is a
+  // deployment mistake, not a request to silently drop the provider.
+  if (raw.GOOGLE_CLIENT_ID || raw.GOOGLE_CLIENT_SECRET) {
+    if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) {
+      throw new Error(
+        `Incomplete Google OAuth configuration; missing: ${
+          raw.GOOGLE_CLIENT_ID ? 'GOOGLE_CLIENT_SECRET' : 'GOOGLE_CLIENT_ID'
+        }`,
+      );
+    }
+    providers.google = {
+      clientId: raw.GOOGLE_CLIENT_ID,
+      clientSecret: raw.GOOGLE_CLIENT_SECRET,
+    };
+  }
+
+  if (
+    raw.MICROSOFT_CLIENT_ID ||
+    raw.MICROSOFT_CLIENT_SECRET ||
+    raw.MICROSOFT_TENANT_ID
+  ) {
+    if (!raw.MICROSOFT_CLIENT_ID || !raw.MICROSOFT_CLIENT_SECRET) {
+      const missing = [
+        !raw.MICROSOFT_CLIENT_ID && 'MICROSOFT_CLIENT_ID',
+        !raw.MICROSOFT_CLIENT_SECRET && 'MICROSOFT_CLIENT_SECRET',
+      ].filter(Boolean);
+      throw new Error(
+        `Incomplete Microsoft OAuth configuration; missing: ${missing.join(', ')}`,
+      );
+    }
+    providers.microsoft = {
+      clientId: raw.MICROSOFT_CLIENT_ID,
+      clientSecret: raw.MICROSOFT_CLIENT_SECRET,
+      tenantId: raw.MICROSOFT_TENANT_ID,
+    };
+  }
+
+  return providers;
+}
+
 function resolveAuth(
   raw: RawEnv,
   db: DbEnv | undefined,
   devDefaults: boolean,
 ): AuthEnv | undefined {
+  // Validated before the database check so a half-configured provider fails
+  // fast even on a deployment where auth is otherwise off.
+  const socialProviders = resolveSocialProviders(raw);
+
   // Sessions, users, and rate-limit counters all live in Postgres (#1246);
   // without a database there is nothing for auth to run on.
   if (!db) return undefined;
@@ -151,6 +210,7 @@ function resolveAuth(
     trustedProxies: raw.TRUSTED_PROXIES?.length
       ? raw.TRUSTED_PROXIES
       : undefined,
+    socialProviders,
   };
 }
 

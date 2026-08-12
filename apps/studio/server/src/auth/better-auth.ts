@@ -31,6 +31,34 @@ export function createBetterAuthInstance(
     // rate-limit key — otherwise a forged X-Forwarded-For mints a fresh
     // bucket per request and the magic-link send cap is a no-op.
     advanced: { ipAddress: { trustedProxies: env.trustedProxies } },
+    // OAuth sign-in (#1255). Only the providers whose credentials resolved
+    // are registered; the SPA learns the same set via AuthCapabilities.
+    socialProviders: {
+      ...(env.socialProviders.google && {
+        google: {
+          clientId: env.socialProviders.google.clientId,
+          clientSecret: env.socialProviders.google.clientSecret,
+        },
+      }),
+      ...(env.socialProviders.microsoft && {
+        microsoft: {
+          clientId: env.socialProviders.microsoft.clientId,
+          clientSecret: env.socialProviders.microsoft.clientSecret,
+          tenantId: env.socialProviders.microsoft.tenantId,
+        },
+      }),
+    },
+    account: {
+      // A Google or Microsoft sign-in whose verified email matches an
+      // existing (verified, e.g. magic-link) user joins that user rather
+      // than erroring: both IdPs verify addresses, so the claim is trusted
+      // as ownership proof even where the id token omits `email_verified`
+      // (some Entra tenants).
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ['google', 'microsoft'],
+      },
+    },
     plugins: [
       // Sign-up is deliberately open for now (recorded on #1255): access
       // control arrives with workspace invitations (#1256).

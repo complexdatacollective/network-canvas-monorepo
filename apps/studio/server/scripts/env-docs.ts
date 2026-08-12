@@ -9,8 +9,8 @@ import { CATALOGUE, GROUPS, type VariableDoc } from '../src/env/catalogue.ts';
 
 const COMMAND = 'pnpm --filter @codaco/studio-server generate:env-docs';
 
-export const README_MARKER_START = '<!-- generated:env start -->';
-export const README_MARKER_END = '<!-- generated:env end -->';
+const README_MARKER_START = '<!-- generated:env start -->';
+const README_MARKER_END = '<!-- generated:env end -->';
 
 const serverRoot = new URL('..', import.meta.url);
 

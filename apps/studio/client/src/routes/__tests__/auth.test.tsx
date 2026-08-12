@@ -13,25 +13,27 @@ vi.mock('../../lib/auth.ts', () => ({
   authClient: {
     getSession: vi.fn(),
     useSession: vi.fn(),
-    signIn: { magicLink: vi.fn() },
+    signIn: { magicLink: vi.fn(), social: vi.fn() },
     signOut: vi.fn(),
   },
 }));
 
-// The mock payload is derived from the real contract, so a schema change
+// The mock payload is typed against the real contract, so a schema change
 // here fails the tests instead of silently drifting.
-const STATUS = {
+type Status = InferContractRouterOutputs<typeof contract>['status'];
+const STATUS: Status = {
   name: 'Network Canvas Studio',
   version: '0.1.0',
-  auth: { enabled: true, magicLink: true },
-} satisfies InferContractRouterOutputs<typeof contract>['status'];
+  auth: { enabled: true, magicLink: true, socialProviders: [] },
+};
+let currentStatus: Status = STATUS;
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
     status: {
       queryOptions: () => ({
         queryKey: ['status'],
-        queryFn: () => STATUS,
+        queryFn: () => currentStatus,
       }),
     },
   },
@@ -42,6 +44,7 @@ const mocked = vi.mocked(authClient, true);
 type GetSessionResult = Awaited<ReturnType<typeof authClient.getSession>>;
 type UseSessionResult = ReturnType<typeof authClient.useSession>;
 type MagicLinkResult = Awaited<ReturnType<typeof authClient.signIn.magicLink>>;
+type SocialResult = Awaited<ReturnType<typeof authClient.signIn.social>>;
 
 const SESSION = {
   user: {
@@ -80,6 +83,7 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  currentStatus = STATUS;
   mocked.getSession.mockResolvedValue(signedOut);
   mocked.useSession.mockReturnValue(sessionNone);
 });
@@ -212,6 +216,86 @@ describe('sign-in page', () => {
       expect(
         screen.getByText(/That sign-in link is no longer valid/),
       ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe('OAuth sign-in', () => {
+  const withProviders: Status = {
+    ...STATUS,
+    auth: { ...STATUS.auth, socialProviders: ['google', 'microsoft'] },
+  };
+
+  it('offers exactly the configured providers', async () => {
+    currentStatus = withProviders;
+    renderAt('/sign-in');
+    expect(
+      await screen.findByRole('button', { name: 'Continue with Google' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers no provider buttons when none are configured', async () => {
+    renderAt('/sign-in');
+    await screen.findByLabelText(/Email address/);
+    expect(
+      screen.queryByRole('button', { name: /Continue with/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('starts the provider round trip', async () => {
+    currentStatus = withProviders;
+    // On success better-auth navigates away; the promise resolves with the
+    // authorization URL and the page unloads.
+    mocked.signIn.social.mockResolvedValue({
+      data: {
+        url: 'https://accounts.google.com/o/oauth2/auth',
+        redirect: true,
+      },
+      error: null,
+    } as unknown as SocialResult);
+    renderAt('/sign-in');
+    // Held across the click: re-querying by role while the pending spinner
+    // is mounted trips a jsdom bug resolving its calc() font-size.
+    const button = await screen.findByRole('button', {
+      name: 'Continue with Google',
+    });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mocked.signIn.social).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'google', callbackURL: '/' }),
+      ),
+    );
+    // The button stays busy until the navigation happens.
+    expect(button).toBeDisabled();
+  });
+
+  it('reports a failed start and re-enables the buttons', async () => {
+    currentStatus = withProviders;
+    mocked.signIn.social.mockResolvedValue({
+      data: null,
+      error: { status: 500 },
+    } as unknown as SocialResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue with Microsoft' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in could not be started/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeEnabled();
+  });
+
+  it('explains an OAuth error carried on the redirect back', async () => {
+    renderAt('/sign-in?error=access_denied');
+    await waitFor(() =>
+      expect(screen.getByText(/Sign-in did not complete/)).toBeInTheDocument(),
     );
   });
 });

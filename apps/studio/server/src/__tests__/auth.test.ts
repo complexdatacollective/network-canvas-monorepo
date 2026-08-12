@@ -87,7 +87,29 @@ describe('principal resolution', () => {
   it('reports auth capabilities in the RPC status', async () => {
     const client = createRpcClient(createApp());
     const status = await client.status();
-    expect(status.auth).toEqual({ enabled: true, magicLink: true });
+    expect(status.auth).toEqual({
+      enabled: true,
+      magicLink: true,
+      socialProviders: [],
+    });
+  });
+
+  it('lists configured OAuth providers in the RPC status', async () => {
+    const base = readEnv();
+    if (!base.auth) throw new Error('dev env must configure auth');
+    const withProviders: StudioEnv = {
+      ...base,
+      auth: {
+        ...base.auth,
+        socialProviders: {
+          google: { clientId: 'google-id', clientSecret: 'google-secret' },
+          microsoft: { clientId: 'ms-id', clientSecret: 'ms-secret' },
+        },
+      },
+    };
+    const client = createRpcClient(createApp(withProviders));
+    const status = await client.status();
+    expect(status.auth.socialProviders).toEqual(['google', 'microsoft']);
   });
 });
 
@@ -117,7 +139,11 @@ describe('unconfigured auth', () => {
   it('reports auth as disabled in status', async () => {
     const client = createRpcClient(createApp(env));
     const status = await client.status();
-    expect(status.auth).toEqual({ enabled: false, magicLink: false });
+    expect(status.auth).toEqual({
+      enabled: false,
+      magicLink: false,
+      socialProviders: [],
+    });
   });
 
   it('refuses protected procedures', async () => {
