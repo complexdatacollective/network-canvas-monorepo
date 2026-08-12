@@ -281,6 +281,68 @@ describe('planNetwork against the pair-domain ceiling', () => {
     ]);
     expect(result.nodes).toHaveLength(60);
   });
+
+  // Each stage's own domain is bounded, but they are UNIONED per subject type,
+  // and the union is what gets held in memory. Two filtered halves of 1,400
+  // people are 244,650 pairs each — comfortably inside the cap — and 489,300
+  // between them.
+  it('refuses an accumulated domain no single stage exceeds', () => {
+    const codebook = withPairEdgeType(
+      baseCodebook({ close: { name: 'Close', type: 'boolean' } }),
+      'knows',
+    );
+    const half = (id: string, value: boolean): Stage =>
+      stage({
+        id,
+        type: 'DyadCensus',
+        label: 'Census',
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: { title: 't', text: 'x' },
+        prompts: [{ id: `${id}-p1`, text: 'Know?', createEdge: 'knows' }],
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: `${id}-rule`,
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'close',
+                operator: 'EXACTLY',
+                value,
+              },
+            },
+          ],
+        },
+      });
+    // Two prompts split the declared population evenly and fix `close` on
+    // each half, so the two censuses see exactly 700 people apiece.
+    const generator = nameGenerator({
+      synthetic: { count: { distribution: 'constant', value: 1_400 } },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Close?',
+          additionalAttributes: [{ variable: 'close', value: true }],
+        },
+        {
+          id: 'p2',
+          text: 'Others?',
+          additionalAttributes: [{ variable: 'close', value: false }],
+        },
+      ],
+    });
+
+    expect(() =>
+      plan(
+        codebook,
+        [generator, half('census-a', true), half('census-b', false)],
+        {
+          respectSkipLogicAndFiltering: true,
+        },
+      ),
+    ).toThrow(/reach 489,300 pairs between them.*250,000/s);
+  });
 });
 
 describe('planNetwork rosters', () => {
@@ -338,6 +400,92 @@ describe('planNetwork rosters', () => {
   it('fabricates when no roster is known', () => {
     const result = plan(baseCodebook(), [rosterStage(3)]);
     expect(result.nodes).toHaveLength(3);
+  });
+
+  // A roster is allowed to be as large as the population cap, and Architect
+  // opens a preview on the main thread. Reasoning about the assignment a row
+  // at a time is cubic in the roster: these two cases took 11.7s at two
+  // thousand rows and are minutes at five, against single-figure milliseconds
+  // for the stage-at-a-time assignment they now get. The timeout is the
+  // assertion — it is an order of magnitude clear of the honest figure and
+  // two orders inside the pathological one.
+  const manyRows = (count: number) =>
+    Array.from({ length: count }, (_unused, index) =>
+      row(`r${index}`, `Person ${index}`),
+    );
+
+  it(
+    'places a large uncontested roster without searching it',
+    { timeout: 10_000 },
+    () => {
+      const result = plan(baseCodebook(), [rosterStage(5_000)], {
+        externalData: { 'roster-1': manyRows(5_000) },
+      });
+      expect(result.nodes).toHaveLength(5_000);
+      expect(new Set(result.nodes.map((node) => node.uid)).size).toBe(5_000);
+    },
+  );
+
+  it(
+    'shares a large contested roster between its stages',
+    { timeout: 10_000 },
+    () => {
+      const shared = manyRows(5_000);
+      const second = stage({
+        id: 'roster-2',
+        type: 'NameGeneratorRoster',
+        label: 'Roster two',
+        subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 2_500 } },
+        dataSource: 'people.csv',
+        prompts: [{ id: 'p1', text: 'Pick' }],
+      });
+      const result = plan(baseCodebook(), [rosterStage(2_500), second], {
+        externalData: { 'roster-1': shared, 'roster-2': shared },
+      });
+      expect(result.nodes).toHaveLength(5_000);
+      // Every row is spent once: the two stages never draw the same person.
+      expect(new Set(result.nodes.map((node) => node.uid)).size).toBe(5_000);
+    },
+  );
+});
+
+describe('planNetwork topology targets', () => {
+  // A stage declares one topology, so a census whose prompts all create the
+  // same edge type has one target between them however many prompts it has.
+  const census = (promptCount: number): Stage =>
+    stage({
+      id: 'census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 't', text: 'x' },
+      synthetic: {
+        topology: {
+          metric: 'density',
+          // Wide enough that a second draw from the same stream is a visibly
+          // different density.
+          distribution: { distribution: 'uniform', min: 0, max: 1 },
+        },
+      },
+      prompts: Array.from({ length: promptCount }, (_unused, index) => ({
+        id: `p${index + 1}`,
+        text: 'Know?',
+        createEdge: 'knows',
+      })),
+    });
+
+  const targetOf = (promptCount: number) => {
+    const codebook = withPairEdgeType(baseCodebook(), 'knows');
+    const result = plan(codebook, [nameGenerator({}, 6), census(promptCount)]);
+    expect(result.topologyTargets.size).toBe(1);
+    return [...result.topologyTargets.values()][0]!.value;
+  };
+
+  it('draws one target per stage and edge type, not per prompt', () => {
+    // Duplicating a prompt moves neither the declared topology nor the
+    // eligible domain, so it must not move the density either.
+    expect(targetOf(3)).toBe(targetOf(1));
   });
 });
 

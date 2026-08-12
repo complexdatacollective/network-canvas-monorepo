@@ -219,12 +219,34 @@ export function sampleContinuous(
       if (descriptor.sd === 0) {
         return clamp(descriptor.mean, lower, upper);
       }
-      // Natural-units mean/sd to log-space parameters.
-      const ratio = descriptor.sd / descriptor.mean;
-      const sigmaSquared = Math.log(1 + ratio * ratio);
+      // Natural-units mean/sd to log-space parameters, taken through logs
+      // rather than through the ratio itself. `sd / mean` is the whole
+      // dynamic range of a double squared: schema-valid parameters at its two
+      // ends — `mean: 1e-308, sd: 1e308` — overflow the ratio to Infinity, and
+      // both log-space parameters are then NaN, which clamping and rounding
+      // preserve all the way to a serialised null.
+      //
+      // log(1 + r²) is log1p(exp(2·(log sd − log mean))) which stays finite
+      // wherever the exponent does, and saturates cleanly where it does not:
+      // a ratio past the point of representation is one whose log-space
+      // variance IS 2·log(r) to every digit a double carries.
+      const logRatio = Math.log(descriptor.sd) - Math.log(descriptor.mean);
+      const sigmaSquared =
+        logRatio > 350 ? 2 * logRatio : Math.log1p(Math.exp(2 * logRatio));
       const mu = Math.log(descriptor.mean) - sigmaSquared / 2;
-      const value = Math.exp(stream.normal(mu, Math.sqrt(sigmaSquared)));
-      return clamp(value, lower, upper);
+      // The draw is an exponential of a normal, so a wide enough sigma sends
+      // it to Infinity however finite its parameters are. Clamped first, so a
+      // window the caller gave still catches it at its ceiling; the mean is
+      // the fallback only where there is no bound to be caught by, exactly as
+      // the normal branch above.
+      const drawn = clamp(
+        Math.exp(stream.normal(mu, Math.sqrt(sigmaSquared))),
+        lower,
+        upper,
+      );
+      return Number.isFinite(drawn)
+        ? drawn
+        : clamp(descriptor.mean, lower, upper);
     }
     case 'beta':
       return clamp(

@@ -510,6 +510,43 @@ describe('synthetic metadata (additive to schema 8)', () => {
       ).toBe(true);
     });
 
+    it('rejects a zero-deviation normal outside its own window', () => {
+      // Generation clamps into the intersection of both windows, so the
+      // descriptor's own bounds exclude a mean just as the validation ones do.
+      // Read against validation alone this passed, and every draw came back as
+      // 10 rather than the declared mean of 5.
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable({
+          distribution: 'normal',
+          mean: 5,
+          sd: 0,
+          min: 10,
+          max: 20,
+        }),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'standard deviation of 0 can reach nothing'),
+      ).toBe(true);
+    });
+
+    it('still reports a descriptor window disjoint from the validation one', () => {
+      // The zero-deviation check used to return past these, so a window that
+      // generation ignores entirely went unreported.
+      const protocol = withPersonVariable(
+        'height',
+        numberVariable(
+          { distribution: 'normal', mean: 150, sd: 0, min: 150, max: 200 },
+          { minValue: 18, maxValue: 99 },
+        ),
+      );
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(hasIssue(result, 'exceeds the validation maxValue')).toBe(true);
+    });
+
     it('accepts a zero-deviation normal inside them', () => {
       const protocol = withPersonVariable(
         'height',

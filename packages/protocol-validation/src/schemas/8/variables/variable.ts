@@ -238,18 +238,37 @@ const rejectDisjointNumberSynthetic = (
   if (!synthetic || !('distribution' in synthetic)) return;
   const lower = variable.validation?.minValue ?? Number.NEGATIVE_INFINITY;
   const upper = variable.validation?.maxValue ?? Number.POSITIVE_INFINITY;
+  // Generation clamps into the INTERSECTION of the validation window and the
+  // descriptor's own — `sampleContinuous` takes the tighter of each side — so
+  // that intersection, not the validation window alone, is what a single-point
+  // distribution has to land inside. Read this way, as the datetime refinement
+  // already reads it: `{ mean: 5, sd: 0, min: 10, max: 20 }` declares a mean
+  // no draw can ever be, and every draw comes back as 10.
+  // Read through `in` because a constant declares no window of its own.
+  const innerLower = Math.max(
+    lower,
+    'min' in synthetic ? (synthetic.min ?? Number.NEGATIVE_INFINITY) : lower,
+  );
+  const innerUpper = Math.min(
+    upper,
+    'max' in synthetic ? (synthetic.max ?? Number.POSITIVE_INFINITY) : upper,
+  );
   // A zero-deviation normal has the single-point support a constant has, so
   // it is held to the same rule: its mean outside the window means every draw
   // is clamped to a boundary and the authored distribution silently replaced.
   if (synthetic.distribution === 'normal' && synthetic.sd === 0) {
-    if (synthetic.mean < lower || synthetic.mean > upper) {
+    if (synthetic.mean < innerLower || synthetic.mean > innerUpper) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        message: `Synthetic mean ${synthetic.mean} lies outside the bounds every draw is clamped into, and a standard deviation of 0 can reach nothing else`,
         path: ['synthetic', 'mean'],
       });
     }
-    return;
+    // Deliberately falls through to the descriptor-window checks below rather
+    // than returning past them, as it used to. A window disjoint from the
+    // validation one is a second, separate fault — generation ignores it
+    // outright — and the author is owed both complaints, not whichever came
+    // first.
   }
   if (synthetic.distribution === 'constant') {
     if (synthetic.value < lower || synthetic.value > upper) {
@@ -265,13 +284,12 @@ const rejectDisjointNumberSynthetic = (
   // a declared constant: a mean outside the window means every draw is clamped
   // to a boundary and the authored value silently replaced.
   if (synthetic.distribution === 'lognormal' && synthetic.sd === 0) {
-    if (synthetic.mean < lower || synthetic.mean > upper) {
+    if (synthetic.mean < innerLower || synthetic.mean > innerUpper) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Synthetic mean ${synthetic.mean} lies outside the validation bounds, and a standard deviation of 0 can reach nothing else`,
+        message: `Synthetic mean ${synthetic.mean} lies outside the bounds every draw is clamped into, and a standard deviation of 0 can reach nothing else`,
         path: ['synthetic', 'mean'],
       });
-      return;
     }
   }
   // A lognormal draws from a strictly positive support, so it is bounded below

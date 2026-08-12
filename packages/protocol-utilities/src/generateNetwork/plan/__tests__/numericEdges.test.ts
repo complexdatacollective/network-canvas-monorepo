@@ -49,6 +49,38 @@ describe('a beta pinned arbitrarily close to its mean', () => {
   });
 });
 
+describe('a lognormal spanning the whole double range', () => {
+  it('keeps its log-space parameters finite', () => {
+    // sd / mean is the range squared, so it overflows to Infinity and takes
+    // both log-space parameters to NaN with it — which clamping and rounding
+    // preserve all the way to a serialised null.
+    for (let seed = 1; seed <= 20; seed++) {
+      const drawn = sampleContinuous(
+        { distribution: 'lognormal', mean: 1e-308, sd: 1e308 },
+        {},
+        streamOf(seed),
+      );
+      expect(Number.isNaN(drawn), `seed ${seed}`).toBe(false);
+      expect(Number.isFinite(drawn), `seed ${seed}`).toBe(true);
+    }
+  });
+
+  it('still draws around the mean at ordinary parameters', () => {
+    // The overflow-safe route has to agree with the direct one everywhere it
+    // was already correct.
+    const drawn = Array.from({ length: 200 }, (_unused, index) =>
+      sampleContinuous(
+        { distribution: 'lognormal', mean: 8, sd: 7 },
+        {},
+        streamOf(index + 1),
+      ),
+    );
+    const mean = drawn.reduce((sum, value) => sum + value, 0) / drawn.length;
+    expect(mean).toBeGreaterThan(5);
+    expect(mean).toBeLessThan(12);
+  });
+});
+
 describe('option weights at the top of the double range', () => {
   it('keeps equal weights equally likely', () => {
     // Two weights of 1e308 sum to Infinity, so no iteration can ever select

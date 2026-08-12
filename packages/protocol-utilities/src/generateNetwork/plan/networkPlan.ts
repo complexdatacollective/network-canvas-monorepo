@@ -572,6 +572,36 @@ type EligiblePair = { a: string; b: string; firstStageIndex: number };
  * A pedigree's structural links remain invisible: they are built by the
  * specialist generator during the walk, so nothing here can know them.
  */
+/**
+ * The refusal both pair-domain ceilings raise: one stage's own candidates, and
+ * the domain accumulated across every stage over a subject type.
+ */
+function refuseTooManyPairs(
+  ctx: GenerationContext,
+  edgeType: string,
+  reason: string,
+): never {
+  const definition = ctx.codebook.edge?.[edgeType];
+  throw new SyntheticDataConstraintError(
+    [
+      {
+        entity: 'edge',
+        entityType: edgeType,
+        ...(definition?.name === undefined
+          ? {}
+          : { entityTypeName: definition.name }),
+        variableIds: [],
+        variableNames: [],
+        rules: ['pair domain'],
+        reason:
+          `${reason}; a preview is generated synchronously, so it is capped at ` +
+          MAX_SYNTHETIC_PAIRS.toLocaleString('en'),
+      },
+    ],
+    'a stage would have to consider more pairs than a preview can build',
+  );
+}
+
 function eligiblePairsForCreation(
   ctx: GenerationContext,
   creation: EdgeCreation,
@@ -618,26 +648,11 @@ function eligiblePairsForCreation(
     // Architect's main thread before any topology is selected from it.
     const possiblePairs = (candidates.length * (candidates.length - 1)) / 2;
     if (possiblePairs > MAX_SYNTHETIC_PAIRS) {
-      const definition = ctx.codebook.edge?.[creation.edgeType];
-      throw new SyntheticDataConstraintError(
-        [
-          {
-            entity: 'edge',
-            entityType: creation.edgeType,
-            ...(definition?.name === undefined
-              ? {}
-              : { entityTypeName: definition.name }),
-            variableIds: [],
-            variableNames: [],
-            rules: ['pair domain'],
-            reason:
-              `${candidates.length.toLocaleString('en')} people are eligible to be linked here, which is ` +
-              `${possiblePairs.toLocaleString('en')} possible pairs; a preview is ` +
-              `generated synchronously, so it is capped at ` +
-              MAX_SYNTHETIC_PAIRS.toLocaleString('en'),
-          },
-        ],
-        'a stage would have to consider more pairs than a preview can build',
+      refuseTooManyPairs(
+        ctx,
+        creation.edgeType,
+        `${candidates.length.toLocaleString('en')} people are eligible to be linked here, which is ` +
+          `${possiblePairs.toLocaleString('en')} possible pairs`,
       );
     }
 
@@ -728,50 +743,164 @@ function assignRosterRows(
     if (list.length > 1) for (const index of list) contested.add(index);
   }
 
-  // Each person a stage must place is one SLOT, and each slot may take any
-  // unused row from that stage's pool. Assigning greedily — smallest pool
-  // first, claiming a prefix — still rejects assignments that exist: with
-  // pools A=[1,2], B=[1,3], C=[3,4], D=[1,4] each wanting one person, greedy
-  // takes 1, 3 and 4 and reports D empty, though A=2, B=3, C=4, D=1 satisfies
-  // every stage. That is bipartite matching, so it is solved as one: each slot
-  // walks an augmenting path, which REPAIRS an earlier choice rather than
-  // living with it.
-  const slots: number[] = [];
   const order = [...pools.keys()].toSorted(
     (left, right) => pools.get(left)!.length - pools.get(right)!.length,
   );
-  for (const index of order) {
-    for (let taken = 0; taken < (assigned[index] ?? 0); taken++) {
-      slots.push(index);
-    }
+  const unmatched = new Map<number, number>();
+  const preference = new Map<number, string[]>();
+
+  // An UNCONTESTED pool is nobody else's: no other creation can reach one of
+  // its rows, so nothing has to be chosen. Its shortfall is arithmetic, and a
+  // preference is not returned for it in any case. Settled first because it is
+  // also the common shape — one roster stage over one roster — and running a
+  // matching over it is pure waste.
+  for (const [index, uids] of pools) {
+    if (contested.has(index)) continue;
+    const short = (assigned[index] ?? 0) - uids.length;
+    if (short > 0) unmatched.set(index, short);
   }
 
-  /** Row currently held by each slot, and the slot holding each row. */
-  const rowOfSlot = new Map<number, string>();
-  const slotOfRow = new Map<string, number>();
+  // What is left is genuinely contested. Assigning greedily — smallest pool
+  // first, claiming a prefix — rejects assignments that exist: with pools
+  // A=[1,2], B=[1,3], C=[3,4], D=[1,4] each wanting one person, greedy takes
+  // 1, 3 and 4 and reports D empty, though A=2, B=3, C=4, D=1 satisfies every
+  // stage. That is bipartite matching, so it is solved as one.
+  //
+  // Solved over row GROUPS rather than over rows one at a time. Every person a
+  // stage places is interchangeable with the next, and so is every row the same
+  // set of stages can reach, so what decides this is a graph with one node per
+  // membership pattern rather than one per row: a ten-thousand-row roster two
+  // stages share is three nodes, not ten thousand. Matching row by row is what
+  // made the search quadratic in the roster — a thousand rows already cost
+  // upwards of a hundred million row checks, and the schema-supported ten
+  // thousand drove the recursion toward the stack limit, so opening an
+  // Architect preview froze before a single node was drawn.
+  const contestedOrder = order.filter((index) => contested.has(index));
+  if (contestedOrder.length > 0) {
+    /** Rows keyed by the contested creations that can reach them. */
+    const groups = new Map<string, { uids: string[]; members: number[] }>();
+    for (const [uid, list] of owners) {
+      // A row only an uncontested creation holds is that creation's alone and
+      // was settled above. `list` is built in creation order, so the key of a
+      // membership pattern is the same however its rows are reached.
+      const members = list.filter((index) => contested.has(index));
+      if (members.length === 0) continue;
+      const key = members.join(',');
+      const group = groups.get(key) ?? { uids: [], members };
+      group.uids.push(uid);
+      groups.set(key, group);
+    }
 
-  const augment = (slot: number, visited: Set<string>): boolean => {
-    for (const uid of pools.get(slots[slot]!)!) {
-      if (visited.has(uid)) continue;
-      visited.add(uid);
-      const holder = slotOfRow.get(uid);
-      if (holder === undefined || augment(holder, visited)) {
-        const previous = rowOfSlot.get(slot);
-        if (previous !== undefined) slotOfRow.delete(previous);
-        rowOfSlot.set(slot, uid);
-        slotOfRow.set(uid, slot);
-        return true;
+    // source → creation → group → sink, so an augmenting path is three arcs
+    // long and the level graph is four deep however large the roster is.
+    type Arc = { to: number; cap: number; rev: number };
+    const groupList = [...groups.values()];
+    const nodeOfCreation = new Map<number, number>();
+    contestedOrder.forEach((index, position) =>
+      nodeOfCreation.set(index, position + 1),
+    );
+    const SOURCE = 0;
+    const firstGroupNode = contestedOrder.length + 1;
+    const SINK = firstGroupNode + groupList.length;
+    const graph: Arc[][] = Array.from({ length: SINK + 1 }, () => []);
+    const link = (from: number, to: number, cap: number): Arc => {
+      const forward: Arc = { to, cap, rev: graph[to]!.length };
+      graph[from]!.push(forward);
+      graph[to]!.push({ to: from, cap: 0, rev: graph[from]!.length - 1 });
+      return forward;
+    };
+
+    const demand = new Map<number, Arc>();
+    for (const index of contestedOrder) {
+      demand.set(index, link(SOURCE, nodeOfCreation.get(index)!, 0));
+    }
+    const supply: { group: number; arcs: Map<number, Arc> }[] = [];
+    groupList.forEach((group, position) => {
+      const node = firstGroupNode + position;
+      const arcs = new Map<number, Arc>();
+      for (const member of group.members) {
+        arcs.set(
+          member,
+          link(nodeOfCreation.get(member)!, node, group.uids.length),
+        );
+      }
+      link(node, SINK, group.uids.length);
+      supply.push({ group: position, arcs });
+    });
+
+    const saturate = (): void => {
+      for (;;) {
+        const level = Array.from<number>({ length: graph.length }).fill(-1);
+        level[SOURCE] = 0;
+        const queue = [SOURCE];
+        for (let head = 0; head < queue.length; head++) {
+          const node = queue[head]!;
+          for (const arc of graph[node]!) {
+            if (arc.cap > 0 && level[arc.to] === -1) {
+              level[arc.to] = level[node]! + 1;
+              queue.push(arc.to);
+            }
+          }
+        }
+        if (level[SINK] === -1) return;
+
+        const next = Array.from<number>({ length: graph.length }).fill(0);
+        const push = (node: number, limit: number): number => {
+          if (node === SINK) return limit;
+          for (; next[node]! < graph[node]!.length; next[node]!++) {
+            const arc = graph[node]![next[node]!]!;
+            if (arc.cap <= 0 || level[arc.to] !== level[node]! + 1) continue;
+            const pushed = push(arc.to, Math.min(limit, arc.cap));
+            if (pushed > 0) {
+              arc.cap -= pushed;
+              graph[arc.to]![arc.rev]!.cap += pushed;
+              return pushed;
+            }
+            level[arc.to] = -1;
+          }
+          return 0;
+        };
+        for (;;) {
+          const pushed = push(SOURCE, Number.POSITIVE_INFINITY);
+          if (pushed === 0) break;
+        }
+      }
+    };
+
+    // Most-constrained-first, kept from the row-by-row matcher it replaces.
+    // Served all at once instead, a wide pool takes rows the only stage that
+    // could have used them still needed: pools [a,b,c,d] and [a,b], two people
+    // wanted from each, is satisfiable, and serving the wide one first leaves
+    // the narrow one with nothing. Admitting one stage's whole demand before
+    // the next is offered any only ever REROUTES an earlier stage between
+    // groups — an augmenting path always leaves the source — so no stage
+    // already served can lose a person to a later one.
+    for (const index of contestedOrder) {
+      const wanted = assigned[index] ?? 0;
+      demand.get(index)!.cap = wanted;
+      saturate();
+      const short = demand.get(index)!.cap;
+      if (short > 0) unmatched.set(index, short);
+    }
+
+    // The flow on each creation → group arc is how many of that group's rows
+    // the creation was given; which of them is immaterial, so they are handed
+    // out in pool order.
+    const taken = new Map<number, number>();
+    for (const { group, arcs } of supply) {
+      const uids = groupList[group]!.uids;
+      for (const [index, arc] of arcs) {
+        const count = uids.length - arc.cap;
+        if (count <= 0) continue;
+        const from = taken.get(group) ?? 0;
+        preference.set(index, [
+          ...(preference.get(index) ?? []),
+          ...uids.slice(from, from + count),
+        ]);
+        taken.set(group, from + count);
       }
     }
-    return false;
-  };
-
-  const unmatched = new Map<number, number>();
-  slots.forEach((creationIndex, slot) => {
-    if (!augment(slot, new Set())) {
-      unmatched.set(creationIndex, (unmatched.get(creationIndex) ?? 0) + 1);
-    }
-  });
+  }
 
   for (const [index, short] of unmatched) {
     const creation = creations[index]!;
@@ -809,13 +938,6 @@ function assignRosterRows(
       ],
       'a roster does not hold enough people for the stages drawing from it',
     );
-  }
-
-  const preference = new Map<number, string[]>();
-  for (const [slot, uid] of rowOfSlot) {
-    const index = slots[slot]!;
-    if (!contested.has(index)) continue;
-    preference.set(index, [...(preference.get(index) ?? []), uid]);
   }
 
   return preference;
@@ -1272,8 +1394,17 @@ export function planNetwork(
     // Each creation draws from its own keyed stream, so sampling one the plan
     // then makes no use of perturbs nothing else.
     for (const creation of topologyCreations) {
+      const key = topologyKey(creation);
+      // ONE draw per (stage, edge type), not per creation. A census whose
+      // prompts all create the same edge type has one creation per prompt and
+      // one topology between them — the stage declared it — and they share a
+      // key, so drawing per creation took a second value from the same stream
+      // and overwrote the first. Adding or removing a duplicate prompt then
+      // changed the density of the stage's whole graph, though neither its
+      // declared topology nor its eligible domain had moved.
+      if (topologyTargets.has(key)) continue;
       const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
-      topologyTargets.set(topologyKey(creation), {
+      topologyTargets.set(key, {
         metric: topology.metric,
         value: sampleContinuous(
           topology.distribution,
@@ -1343,6 +1474,22 @@ export function planNetwork(
         effects,
       )) {
         if (!domain.has(key)) domain.set(key, pair);
+      }
+      // The ACCUMULATED domain, which the per-creation ceiling does not bound.
+      // Where filters are respected, each stage can expose a different subset
+      // of the same node type and stay well inside its own ceiling while the
+      // union outgrows it: twenty disjoint five-hundred-person subsets are
+      // 124,750 pairs each and roughly 2.5 million between them, which is the
+      // memory the per-creation check exists to refuse, reached by another
+      // route. Checked after the merge rather than on the sum, because
+      // overlapping subsets are the ordinary case and their union is smaller
+      // than their total.
+      if (domain.size > MAX_SYNTHETIC_PAIRS) {
+        refuseTooManyPairs(
+          ctx,
+          creation.edgeType,
+          `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
+        );
       }
       if (domain.size === 0) continue;
 
