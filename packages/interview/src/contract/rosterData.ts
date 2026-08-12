@@ -6,6 +6,7 @@ import type {
   StageSubject,
 } from '@codaco/protocol-validation';
 import {
+  EntityAttributesSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
@@ -62,12 +63,19 @@ export async function parseExternalNetworkAsset({
 }): Promise<NcNode[]> {
   const { nodes } = await loadExternalData(sourceFileName, url);
   const uuidData = nodes.map(makeVariableUUIDReplacer(codebook, subject.type));
-  return getVariableTypeReplacements(
+  const typedData = getVariableTypeReplacements(
     sourceFileName,
     uuidData,
     codebook,
     subject,
   );
+
+  return typedData.map((node) => ({
+    ...node,
+    [entityAttributesProperty]: EntityAttributesSchema.parse(
+      node[entityAttributesProperty],
+    ),
+  }));
 }
 
 /**

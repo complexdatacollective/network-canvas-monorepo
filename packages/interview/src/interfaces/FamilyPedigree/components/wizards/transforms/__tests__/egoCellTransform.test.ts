@@ -20,12 +20,24 @@ const variableConfig: VariableConfig = {
 
 const relTypeOf = (e: {
   data: { attributes: Record<string, VariableValue> };
-}): VariableValue => {
+}): VariableValue | undefined => {
   const value = e.data.attributes[variableConfig.relationshipTypeVariable];
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  return Array.isArray(value) ? value[0] : value;
 };
 
 describe('egoCellTransform', () => {
+  it('fails atomically when a custom attribute has an invalid defined value', () => {
+    const values: Record<string, unknown> = {
+      biologicalSex: 'female',
+      validCustomAnswer: 'answer',
+      invalidCustomAnswer: { nested: true },
+    };
+
+    expect(() => egoCellTransform(values, variableConfig)).toThrow(
+      'Invalid custom attribute value for "invalidCustomAnswer".',
+    );
+  });
+
   it("records ego's own biological sex on the ego node", () => {
     const values = {
       'biologicalSex': 'female',

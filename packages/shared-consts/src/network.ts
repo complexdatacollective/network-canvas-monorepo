@@ -6,21 +6,19 @@ import { VariableNameSchema } from './variables.ts';
 const encryptedValueSchema = z.array(z.number());
 export type EncryptedValue = z.infer<typeof encryptedValueSchema>;
 
-const variableValueSchema = z
-  .union([
-    z.string(), // text, ordinal option value, location
-    z.boolean(),
-    z.number(), // number, ordinal option value, visual analog scale
-    encryptedValueSchema,
-    z.array(z.union([z.string(), z.number(), z.boolean()])), // categorical (selected option values)
-    z.object({
-      x: z.number(),
-      y: z.number(),
-    }), // layout
-  ])
-  .nullable();
+export const VariableValueSchema = z.union([
+  z.string(), // text, ordinal option value, location
+  z.boolean(),
+  z.number(), // number, ordinal option value, visual analog scale
+  encryptedValueSchema,
+  z.array(z.union([z.string(), z.number(), z.boolean()])), // categorical (selected option values)
+  z.object({
+    x: z.number(),
+    y: z.number(),
+  }), // layout
+]);
 
-export type VariableValue = z.infer<typeof variableValueSchema>;
+export type VariableValue = z.output<typeof VariableValueSchema>;
 
 export const entityPrimaryKeyProperty = '_uid';
 export type EntityPrimaryKey = typeof entityPrimaryKeyProperty;
@@ -31,9 +29,23 @@ export type EntityAttributesProperty = typeof entityAttributesProperty;
 export const edgeSourceProperty = 'from';
 export const edgeTargetProperty = 'to';
 
+export const EntityAttributesSchema = z
+  .record(VariableNameSchema, VariableValueSchema.nullish())
+  .transform((attributes): Record<string, VariableValue> => {
+    const definedAttributes: Record<string, VariableValue> = {};
+
+    for (const [name, value] of Object.entries(attributes)) {
+      if (value !== null && value !== undefined) {
+        definedAttributes[name] = value;
+      }
+    }
+
+    return definedAttributes;
+  });
+
 const BaseNcEntitySchema = z.object({
   [entityPrimaryKeyProperty]: z.string().readonly(),
-  [entityAttributesProperty]: z.record(VariableNameSchema, variableValueSchema),
+  [entityAttributesProperty]: EntityAttributesSchema,
   [entitySecureAttributesMeta]: z
     .record(
       z.string(),
@@ -76,4 +88,4 @@ export const NcNetworkSchema = z.object({
   ego: BaseNcEntitySchema,
 });
 
-export type NcNetwork = z.infer<typeof NcNetworkSchema>;
+export type NcNetwork = z.output<typeof NcNetworkSchema>;

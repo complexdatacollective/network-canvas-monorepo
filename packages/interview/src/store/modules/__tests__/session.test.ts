@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
+  entitySecureAttributesMeta,
   type NcEdge,
   type NcNode,
   type StageMetadata,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
@@ -17,8 +19,10 @@ import sessionReducer, {
   addNodeToPrompt,
   deleteNode,
   removeNodeFromPrompt,
+  toggleNodeAttributes,
   updateEdge,
   updateEgo,
+  updateNode,
 } from '../session';
 
 /**
@@ -272,8 +276,8 @@ describe('addNode', () => {
     });
   });
 
-  describe('default attributes', () => {
-    it('includes all codebook variables even when only some are provided', async () => {
+  describe('sparse attributes', () => {
+    it('includes only supplied defined values', async () => {
       // Setup: codebook has 3 node variables
       const store = createTestStore({
         codebookVariables: {
@@ -294,16 +298,45 @@ describe('addNode', () => {
         }),
       );
 
-      // Verify: all variables should be in the payload, missing ones as null
       expect(result.type).toBe('NETWORK/ADD_NODE/fulfilled');
       const payload = result.payload as {
         attributeData: Record<string, unknown>;
       };
       expect(payload.attributeData).toEqual({
         'var-uuid-1': 'John',
-        'var-uuid-2': null,
-        'var-uuid-3': null,
       });
+    });
+
+    it('omits legacy null and own undefined values', async () => {
+      const store = createTestStore({
+        codebookVariables: {
+          defined: { name: 'defined' },
+          legacyNull: { name: 'legacyNull' },
+          legacyUndefined: { name: 'legacyUndefined' },
+        },
+      });
+      const attributeData: Record<string, VariableValue | undefined> = {
+        defined: false,
+        legacyUndefined: undefined,
+      };
+      Reflect.set(attributeData, 'legacyNull', null);
+
+      const result = await store.dispatch(
+        addNode({
+          type: 'test-node-type-uuid',
+          attributeData,
+          currentStep: 0,
+        }),
+      );
+
+      expect(result.type).toBe('NETWORK/ADD_NODE/fulfilled');
+      if (!addNode.fulfilled.match(result)) {
+        throw new Error('expected addNode to be fulfilled');
+      }
+      expect(result.payload.attributeData).toStrictEqual({ defined: false });
+      expect(
+        Object.hasOwn(result.payload.attributeData, 'legacyUndefined'),
+      ).toBe(false);
     });
   });
 });
@@ -440,9 +473,336 @@ function createTestStoreWithEdge(options: {
   }
 }
 
+function createMutationStore(encryptedVariables = false) {
+  const network = createInitialNetwork();
+  network.nodes = [
+    {
+      _uid: 'node-1',
+      type: 'person',
+      [entityAttributesProperty]: {
+        nodeKeep: 'kept',
+        nodeRemove: [1, 2, 3],
+      },
+      [entitySecureAttributesMeta]: {
+        nodeRemove: { iv: [1], salt: [2] },
+      },
+    },
+  ];
+  network.edges = [
+    {
+      _uid: 'edge-1',
+      type: 'friendship',
+      from: 'node-1',
+      to: 'node-2',
+      [entityAttributesProperty]: {
+        edgeKeep: 1,
+        edgeRemove: false,
+      },
+    },
+  ];
+  network.ego[entityAttributesProperty] = {
+    egoKeep: 'kept',
+    egoRemove: true,
+  };
+
+  const sessionState = {
+    id: 'test-session',
+    startTime: new Date().toISOString(),
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: new Date().toISOString(),
+    network,
+    promptIndex: 0,
+  };
+  const protocolState = {
+    experiments: { encryptedVariables },
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            nodeKeep: { name: 'nodeKeep', type: 'text' },
+            nodeRemove: {
+              name: 'nodeRemove',
+              type: 'text',
+              encrypted: true,
+            },
+            nodeAdded: { name: 'nodeAdded', type: 'boolean' },
+          },
+        },
+      },
+      edge: {
+        friendship: {
+          name: 'Friendship',
+          variables: {
+            edgeKeep: { name: 'edgeKeep', type: 'number' },
+            edgeRemove: { name: 'edgeRemove', type: 'boolean' },
+            edgeAdded: { name: 'edgeAdded', type: 'text' },
+          },
+        },
+      },
+      ego: {
+        variables: {
+          egoKeep: { name: 'egoKeep', type: 'text' },
+          egoRemove: { name: 'egoRemove', type: 'boolean' },
+          egoAdded: { name: 'egoAdded', type: 'number' },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'stage-1',
+        type: 'NameGenerator',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'prompt-1' }],
+      },
+    ],
+  };
+  const uiState = { passphrase: encryptedVariables ? 'passphrase' : null };
+
+  const store = configureStore({
+    reducer: {
+      session: sessionReducer,
+      protocol: (
+        state: typeof protocolState = protocolState,
+      ): typeof protocolState => state,
+      ui: (state: typeof uiState = uiState): typeof uiState => state,
+    },
+    preloadedState: {
+      session: sessionState,
+      protocol: protocolState,
+      ui: uiState,
+    },
+  });
+
+  return store as unknown as typeof store & { dispatch: AppDispatch };
+}
+
+describe('attribute patch reducers', () => {
+  it('toggles node attributes and clears secure metadata for unset keys', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      toggleNodeAttributes({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { nodeAdded: false },
+          unset: ['nodeRemove'],
+        },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/TOGGLE_NODE_ATTRIBUTES/fulfilled');
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.[entityAttributesProperty]).toStrictEqual({
+      nodeKeep: 'kept',
+      nodeAdded: false,
+    });
+    expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+
+  it('rejects unknown toggle keys without mutation', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(store.getState().session);
+
+    const result = await store.dispatch(
+      toggleNodeAttributes({
+        nodeId: 'node-1',
+        attributePatch: { set: { edgeKeep: true }, unset: [] },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/TOGGLE_NODE_ATTRIBUTES/rejected');
+    if (!toggleNodeAttributes.rejected.match(result)) {
+      throw new Error('expected toggleNodeAttributes to be rejected');
+    }
+    expect(result.error.message).toContain(
+      'edgeKeep do not exist in protocol codebook',
+    );
+    expect(store.getState().session).toStrictEqual(before);
+  });
+
+  it('rejects overlapping toggle keys without mutation', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(store.getState().session);
+
+    const result = await store.dispatch(
+      toggleNodeAttributes({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { nodeKeep: 'changed' },
+          unset: ['nodeKeep'],
+        },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/TOGGLE_NODE_ATTRIBUTES/rejected');
+    if (!toggleNodeAttributes.rejected.match(result)) {
+      throw new Error('expected toggleNodeAttributes to be rejected');
+    }
+    expect(result.error.message).toContain(
+      'nodeKeep cannot be both set and unset',
+    );
+    expect(store.getState().session).toStrictEqual(before);
+  });
+
+  it('sets and unsets node attributes while removing secure metadata', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { nodeAdded: false },
+          unset: ['nodeRemove'],
+        },
+        currentStep: 0,
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.[entityAttributesProperty]).toStrictEqual({
+      nodeKeep: 'kept',
+      nodeAdded: false,
+    });
+    expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
+  });
+
+  it('encrypts node values without mutating the patch', async () => {
+    const store = createMutationStore(true);
+    const patch = { set: { nodeRemove: 'secret' }, unset: [] };
+
+    const result = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: patch,
+        currentStep: 0,
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
+    const node = store.getState().session.network.nodes[0];
+    expect(node?.[entityAttributesProperty].nodeRemove).toEqual(
+      expect.arrayContaining([expect.any(Number)]),
+    );
+    expect(node?.[entitySecureAttributesMeta]?.nodeRemove).toEqual({
+      iv: expect.any(Array),
+      salt: expect.any(Array),
+    });
+    expect(patch).toStrictEqual({
+      set: { nodeRemove: 'secret' },
+      unset: [],
+    });
+  });
+
+  it('rejects unknown and overlapping node patch keys without mutation', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(store.getState().session.network.nodes);
+
+    const unknown = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: { set: { unknown: true }, unset: [] },
+        currentStep: 0,
+      }),
+    );
+    const overlap = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { nodeKeep: 'changed' },
+          unset: ['nodeKeep'],
+        },
+        currentStep: 0,
+      }),
+    );
+
+    expect(unknown.type).toBe('NETWORK/UPDATE_NODE/rejected');
+    expect(overlap.type).toBe('NETWORK/UPDATE_NODE/rejected');
+    expect(store.getState().session.network.nodes).toStrictEqual(before);
+  });
+
+  it('sets and unsets edge attributes', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      updateEdge({
+        edgeId: 'edge-1',
+        attributePatch: {
+          set: { edgeAdded: '' },
+          unset: ['edgeRemove'],
+        },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_EDGE/fulfilled');
+    expect(
+      store.getState().session.network.edges[0]?.[entityAttributesProperty],
+    ).toStrictEqual({ edgeKeep: 1, edgeAdded: '' });
+  });
+
+  it('rejects overlapping edge patch keys without mutation', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(store.getState().session.network.edges);
+
+    const result = await store.dispatch(
+      updateEdge({
+        edgeId: 'edge-1',
+        attributePatch: {
+          set: { edgeKeep: 2 },
+          unset: ['edgeKeep'],
+        },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_EDGE/rejected');
+    expect(store.getState().session.network.edges).toStrictEqual(before);
+  });
+
+  it('sets and unsets ego attributes', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      updateEgo({
+        set: { egoAdded: 0 },
+        unset: ['egoRemove'],
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_EGO/fulfilled');
+    expect(
+      store.getState().session.network.ego[entityAttributesProperty],
+    ).toStrictEqual({ egoKeep: 'kept', egoAdded: 0 });
+  });
+
+  it('rejects unknown and overlapping ego patch keys without mutation', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(
+      store.getState().session.network.ego[entityAttributesProperty],
+    );
+
+    const unknown = await store.dispatch(
+      updateEgo({ set: { unknown: true }, unset: [] }),
+    );
+    const overlap = await store.dispatch(
+      updateEgo({
+        set: { egoKeep: 'changed' },
+        unset: ['egoKeep'],
+      }),
+    );
+
+    expect(unknown.type).toBe('NETWORK/UPDATE_EGO/rejected');
+    expect(overlap.type).toBe('NETWORK/UPDATE_EGO/rejected');
+    expect(
+      store.getState().session.network.ego[entityAttributesProperty],
+    ).toStrictEqual(before);
+  });
+});
+
 describe('addEdge', () => {
-  describe('default attributes', () => {
-    it('includes all codebook variables even when only some are provided', async () => {
+  describe('sparse attributes', () => {
+    it('includes only supplied defined values', async () => {
       // Setup: codebook has 3 edge variables
       const store = createTestStoreWithEdge({
         edgeVariables: {
@@ -465,15 +825,12 @@ describe('addEdge', () => {
         }),
       );
 
-      // Verify: all variables should be in the payload, missing ones as null
       expect(result.type).toBe('NETWORK/ADD_EDGE/fulfilled');
       const payload = result.payload as {
         attributeData: Record<string, unknown>;
       };
       expect(payload.attributeData).toEqual({
         'edge-var-1': 5,
-        'edge-var-2': null,
-        'edge-var-3': null,
       });
     });
   });
@@ -503,8 +860,9 @@ describe('updateEdge', () => {
       const result = await store.dispatch(
         updateEdge({
           edgeId: 'edge-1',
-          newAttributeData: {
-            'edge-var-closeness': 2,
+          attributePatch: {
+            set: { 'edge-var-closeness': 2 },
+            unset: [],
           },
         }),
       );
@@ -513,10 +871,10 @@ describe('updateEdge', () => {
       // validated against the NODE codebook, so every edge variable was
       // considered invalid and the thunk was rejected.
       expect(result.type).toBe('NETWORK/UPDATE_EDGE/fulfilled');
-      const payload = result.payload as {
-        newAttributeData: Record<string, unknown>;
-      };
-      expect(payload.newAttributeData).toEqual({
+      if (!updateEdge.fulfilled.match(result)) {
+        throw new Error('expected updateEdge to be fulfilled');
+      }
+      expect(result.payload.attributePatch.set).toEqual({
         'edge-var-closeness': 2,
       });
     });
@@ -540,8 +898,9 @@ describe('updateEdge', () => {
       const result = await store.dispatch(
         updateEdge({
           edgeId: 'edge-1',
-          newAttributeData: {
-            unknownEdgeVar: 5,
+          attributePatch: {
+            set: { unknownEdgeVar: 5 },
+            unset: [],
           },
         }),
       );
@@ -661,6 +1020,13 @@ describe('addNodeToPrompt', () => {
   });
 
   it('applies a prompt additionalAttribute the node does not yet carry', async () => {
+    const legacyNode: NcNode = {
+      _uid: 'node-1',
+      type: 'person',
+      [entityAttributesProperty]: {},
+      promptIDs: [],
+    };
+    Reflect.set(legacyNode[entityAttributesProperty], 'isCloseTie', null);
     const store = createTestStoreWithPrompts({
       prompts: [
         {
@@ -669,14 +1035,7 @@ describe('addNodeToPrompt', () => {
         },
       ],
       promptIndex: 0,
-      nodes: [
-        {
-          _uid: 'node-1',
-          type: 'person',
-          [entityAttributesProperty]: { isCloseTie: null },
-          promptIDs: [],
-        },
-      ],
+      nodes: [legacyNode],
     });
 
     await store.dispatch(
@@ -700,8 +1059,7 @@ describe('removeNodeFromPrompt', () => {
     // displayed the value. Even if the node now carries a value that differs
     // from what the removed prompt asserted, there is no form "ownership" to
     // preserve — the network is the single source of truth, and removing the
-    // node from the prompt undoes the prompt's contribution. The attribute is
-    // cleared to null because no remaining prompt asserts it.
+    // node from the prompt undoes the prompt's contribution.
     const store = createTestStoreWithPrompts({
       prompts: [
         {
@@ -725,7 +1083,9 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.[entityAttributesProperty].isCloseTie).toBeNull();
+    expect(
+      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, 'isCloseTie'),
+    ).toBe(false);
     expect(node?.promptIDs).toEqual([]);
   });
 
@@ -756,9 +1116,9 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    // The node no longer belongs to any prompt asserting isCloseTie, so the
-    // attribute must be cleared to null rather than left as a stale value.
-    expect(node?.[entityAttributesProperty].isCloseTie).toBeNull();
+    expect(
+      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, 'isCloseTie'),
+    ).toBe(false);
     expect(node?.promptIDs).toEqual([]);
   });
 
@@ -872,17 +1232,17 @@ describe('updateEgo', () => {
       // Execute: only provide value for one variable
       const result = await store.dispatch(
         updateEgo({
-          'ego-var-1': 25,
+          set: { 'ego-var-1': 25 },
+          unset: [],
         }),
       );
 
-      // Verify: only submitted attributes are returned.
-      // EgoForm is responsible for ensuring all stage fields are included
-      // (with null if unanswered). The thunk doesn't add defaults for ALL
-      // ego variables, as that would overwrite values from previous EgoForm stages.
+      // EgoForm sends defined responses in set and mounted unanswered fields
+      // in unset, so variables owned by other stages remain untouched.
       expect(result.type).toBe('NETWORK/UPDATE_EGO/fulfilled');
       expect(result.payload).toEqual({
-        'ego-var-1': 25,
+        set: { 'ego-var-1': 25 },
+        unset: [],
       });
     });
   });

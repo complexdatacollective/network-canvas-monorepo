@@ -2,7 +2,7 @@ import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
 import { buildChildParentage } from './buildChildParentage';
-import { readBiologicalSex } from './personAttributes';
+import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 const KNOWN_BIO_PARENT_KEYS = new Set([
   'is-donor',
@@ -12,21 +12,22 @@ const KNOWN_BIO_PARENT_KEYS = new Set([
 ]);
 
 const KNOWN_ADDITIONAL_PARENT_KEYS = new Set(['role', 'name', 'biologicalSex']);
-
-function extractUnknownAttributes(
-  obj: Record<string, unknown>,
-  knownKeys: Set<string>,
-): Record<string, VariableValue> | undefined {
-  const attrs: Record<string, VariableValue> = {};
-  let hasAttrs = false;
-  for (const [key, val] of Object.entries(obj)) {
-    if (!knownKeys.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
-      hasAttrs = true;
-    }
-  }
-  return hasAttrs ? attrs : undefined;
-}
+const KNOWN_CHILD_KEYS = new Set(['name', 'parentage', 'biologicalSex']);
+const KNOWN_EGO_KEYS = new Set([
+  'name',
+  'biologicalSex',
+  'egg-parent',
+  'sperm-parent',
+  'gestational-carrier',
+  'hasOtherParents',
+  'otherParentCount',
+  'additional-parent',
+  'hasPartner',
+  'partner',
+  'childrenWithPartnerCount',
+  'childWithPartner',
+  'partnerships',
+]);
 
 type ParentEntry = {
   tempId: string;
@@ -47,8 +48,8 @@ function buildBioParent(
   includeBiologicalSex: boolean,
 ): ParentEntry {
   const isDonor = parent['is-donor'] === true;
-  const name = (parent.name as string | undefined) ?? '';
-  const extraAttrs = extractUnknownAttributes(parent, KNOWN_BIO_PARENT_KEYS);
+  const name = typeof parent.name === 'string' ? parent.name : '';
+  const extraAttrs = extractCustomAttributes(parent, KNOWN_BIO_PARENT_KEYS);
 
   const attributes: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]: name,
@@ -76,14 +77,14 @@ function buildAdditionalParent(
   parent: Record<string, unknown>,
   variableConfig: VariableConfig,
 ): ParentEntry {
-  const extraAttrs = extractUnknownAttributes(
+  const extraAttrs = extractCustomAttributes(
     parent,
     KNOWN_ADDITIONAL_PARENT_KEYS,
   );
 
   const attributes: Record<string, VariableValue> = {
     [variableConfig.nodeLabelVariable]:
-      (parent.name as string | undefined) ?? '',
+      typeof parent.name === 'string' ? parent.name : '',
     [variableConfig.egoVariable]: false,
     ...extraAttrs,
   };
@@ -179,27 +180,7 @@ export function egoCellTransform(
   const egoRef = existingEgoId ?? 'ego';
   const batch: CommitBatch = { nodes: [], edges: [] };
 
-  const egoKnownKeys = new Set([
-    'name',
-    'biologicalSex',
-    'egg-parent',
-    'sperm-parent',
-    'gestational-carrier',
-    'hasOtherParents',
-    'otherParentCount',
-    'additional-parent',
-    'hasPartner',
-    'partner',
-    'childrenWithPartnerCount',
-    'childWithPartner',
-    'partnerships',
-  ]);
-  const egoCustomAttrs: Record<string, VariableValue> = {};
-  for (const [key, val] of Object.entries(values)) {
-    if (!egoKnownKeys.has(key) && val !== undefined) {
-      egoCustomAttrs[key] = val as VariableValue;
-    }
-  }
+  const egoCustomAttrs = extractCustomAttributes(values, KNOWN_EGO_KEYS);
 
   const egoAttributes: Record<string, VariableValue> = {
     [variableConfig.egoVariable]: true,
@@ -285,8 +266,9 @@ export function egoCellTransform(
   const partnerObj = values.partner as Record<string, unknown> | undefined;
 
   if (hasPartner && partnerObj) {
-    const partnerName = (partnerObj.name as string | undefined) ?? '';
-    const partnerExtraAttrs = extractUnknownAttributes(
+    const partnerName =
+      typeof partnerObj.name === 'string' ? partnerObj.name : '';
+    const partnerExtraAttrs = extractCustomAttributes(
       partnerObj,
       KNOWN_BIO_PARENT_KEYS,
     );
@@ -333,11 +315,8 @@ export function egoCellTransform(
     const child = childrenArray?.[i];
     if (!child) continue;
 
-    const childName = (child.name as string | undefined) ?? '';
-    const childExtraAttrs = extractUnknownAttributes(
-      child,
-      new Set(['name', 'parentage', 'biologicalSex']),
-    );
+    const childName = typeof child.name === 'string' ? child.name : '';
+    const childExtraAttrs = extractCustomAttributes(child, KNOWN_CHILD_KEYS);
     const tempId = `child-${String(i)}`;
 
     const childAttrs: Record<string, VariableValue> = {

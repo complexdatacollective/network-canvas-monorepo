@@ -16,6 +16,7 @@ import {
 import {
   collectRosterExternalData,
   filterExternalPanelNodes,
+  parseExternalNetworkAsset,
   type ResolvedRosterAsset,
   type ResolveRosterAsset,
 } from '../rosterData';
@@ -34,6 +35,7 @@ const codebook: Codebook = {
       variables: {
         'var-name': { name: 'Name', type: 'text' },
         'var-age': { name: 'Age', type: 'number' },
+        'var-position': { name: 'Position', type: 'layout' },
       },
     },
     place: {
@@ -143,6 +145,77 @@ function resolved(
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('parseExternalNetworkAsset', () => {
+  it('accepts a spaced CSV header and remaps it through the codebook name', async () => {
+    stubFetch({ 'stub://roster': 'Full Name,Age\nAda Lovelace,36\n' });
+    const spacedNameCodebook: Codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'var-name': { name: 'Full Name', type: 'text' },
+            'var-age': { name: 'Age', type: 'number' },
+          },
+        },
+      },
+    };
+
+    const [node] = await parseExternalNetworkAsset({
+      sourceFileName: 'roster.csv',
+      url: 'stub://roster',
+      codebook: spacedNameCodebook,
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    expect(node?.[entityAttributesProperty]['var-name']).toBe('Ada Lovelace');
+  });
+
+  it('preserves valid unknown CSV attributes through type replacement', async () => {
+    stubFetch({ 'stub://roster': 'Name,Nickname\nAda,Countess\n' });
+
+    const [node] = await parseExternalNetworkAsset({
+      sourceFileName: 'roster.csv',
+      url: 'stub://roster',
+      codebook,
+      subject: { entity: 'node', type: 'person' },
+    });
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      'var-name': 'Ada',
+      'Nickname': 'Countess',
+    });
+  });
+
+  it('rejects a malformed number created by CSV type replacement', async () => {
+    stubFetch({ 'stub://roster': 'Name,Age\nAda,not-a-number\n' });
+
+    await expect(
+      parseExternalNetworkAsset({
+        sourceFileName: 'roster.csv',
+        url: 'stub://roster',
+        codebook,
+        subject: { entity: 'node', type: 'person' },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects an arbitrary object created by CSV JSON conversion', async () => {
+    const body = 'Name,Position\nAda,"{""unexpected"":true}"\n';
+    stubFetch({ 'stub://roster': body });
+
+    await expect(
+      parseExternalNetworkAsset({
+        sourceFileName: 'roster.csv',
+        url: 'stub://roster',
+        codebook,
+        subject: { entity: 'node', type: 'person' },
+      }),
+    ).rejects.toThrow();
+  });
 });
 
 describe('collectRosterExternalData', () => {
@@ -293,6 +366,26 @@ describe('collectRosterExternalData', () => {
       expect.any(Error),
     );
     expect(brokenCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not expose a partial pool when a later row has an invalid value', async () => {
+    stubFetch({
+      'stub://roster': 'Name,Age\nAda,36\nGrace,not-a-number\n',
+    });
+    const cleanup = vi.fn();
+    const resolveAsset: ResolveRosterAsset = vi
+      .fn()
+      .mockResolvedValue(resolved('roster', { cleanup }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await collectRosterExternalData({
+      stages: [rosterStage('stage-ngr', 'roster')],
+      codebook,
+      resolveAsset,
+    });
+
+    expect(result).toEqual({});
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it('isolates a failing resolveAsset the same way, without calling cleanup', async () => {

@@ -5,7 +5,10 @@ import {
   ncTargetUUID,
 } from '@codaco/shared-consts';
 
-import type { SessionWithResequencedIDs } from '../../input';
+import type {
+  EdgeWithResequencedID,
+  SessionWithResequencedIDs,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 
@@ -16,9 +19,7 @@ class AdjacencyMatrix {
   private indexMap: Record<string, number> = {};
 
   constructor(network: SessionWithResequencedIDs) {
-    const ids = (network.nodes ?? []).map(
-      (n) => (n as Record<string, unknown>)[entityPrimaryKeyProperty] as string,
-    );
+    const ids = network.nodes.map((node) => node[entityPrimaryKeyProperty]);
     this.uniqueNodeIds = [...new Set(ids)];
     this.dimension = this.uniqueNodeIds.length;
     const bitLength = Math.ceil((this.dimension * this.dimension) / 8);
@@ -36,14 +37,14 @@ class AdjacencyMatrix {
     this.arrayView[byteIndex] = current | (1 << (7 - bitIndex));
   }
 
-  calculateEdges(edges: readonly Record<string, unknown>[]) {
+  calculateEdges(edges: readonly EdgeWithResequencedID[]) {
     this.indexMap = {};
     this.uniqueNodeIds.forEach((id, i) => {
       this.indexMap[id] = i;
     });
     edges.forEach((edge) => {
-      const source = edge[ncSourceUUID] as string;
-      const target = edge[ncTargetUUID] as string;
+      const source = edge[ncSourceUUID];
+      const target = edge[ncTargetUUID];
       this.setAdjacent(source, target);
       this.setAdjacent(target, source);
     });
@@ -78,9 +79,7 @@ export function* adjacencyMatrixRows(
   _options: ExportOptions,
 ): Generator<string, void, void> {
   const matrix = new AdjacencyMatrix(network);
-  matrix.calculateEdges(
-    (network.edges ?? []) as readonly Record<string, unknown>[],
-  );
+  matrix.calculateEdges(network.edges);
   yield* matrix.rows();
 }
 

@@ -8,7 +8,13 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import { ncUUIDProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+  ncTypeProperty,
+  ncUUIDProperty,
+} from '@codaco/shared-consts';
 
 import type { ExportOptions } from '../../../options';
 import {
@@ -195,7 +201,7 @@ describe('buildGraphML', () => {
     }
   });
 
-  it('excludes null values', () => {
+  it('does not emit data elements for absent values', () => {
     const nodes = Array.from(xml.getElementsByTagName('node'));
     const dee = getNodeById(nodes, '1');
     if (!dee) throw new Error('Missing dee node');
@@ -231,26 +237,242 @@ describe('buildGraphML', () => {
   });
 
   it('includes keys for all used variables', () => {
-    const graphData = Array.from(xml.getElementsByTagName('key'))
-      .filter((node) => node.getAttribute('for') === 'node')
-      .reduce<Record<string, string | null>>((acc, node) => {
-        const id = node.getAttribute('id');
-        if (id) {
-          acc[id] = node.getAttribute('for');
-        }
-        return acc;
-      }, {});
+    const graphKeys = Array.from(xml.getElementsByTagName('key'))
+      .filter((key) => ['node', 'all'].includes(key.getAttribute('for') ?? ''))
+      .map((key) => key.getAttribute('id'));
 
-    expect(graphData).toMatchObject({
-      'mock-uuid-1': 'node',
-      'mock-uuid-2': 'node',
-      'mock-uuid-3_X': 'node',
-      'mock-uuid-3_screenSpaceY': 'node',
-      'mock-uuid-3_screenSpaceX': 'node',
-      'mock-uuid-3_Y': 'node',
-      'mock-uuid-4': 'node',
-      'mock-uuid-5': 'node',
-    });
+    expect(graphKeys).toEqual(
+      expect.arrayContaining([
+        'mock-uuid-1',
+        'mock-uuid-2',
+        'mock-uuid-3_X',
+        'mock-uuid-3_screenSpaceY',
+        'mock-uuid-3_screenSpaceX',
+        'mock-uuid-3_Y',
+        'mock-uuid-4',
+        'mock-uuid-5',
+      ]),
+    );
+  });
+
+  it('includes node base keys when there are zero nodes', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const emptyNodeXml = await buildXML(
+      { ...protocolNetwork, nodes: [] },
+      codebook,
+      exportOptions,
+    );
+
+    expect(emptyNodeXml.getElementById(ncUUIDProperty)).not.toBeNull();
+    expect(emptyNodeXml.getElementById(ncTypeProperty)).not.toBeNull();
+    expect(emptyNodeXml.getElementById('mock-uuid-1')).not.toBeNull();
+    expect(
+      emptyNodeXml.getElementById('unrepresented-node-variable'),
+    ).not.toBeNull();
+  });
+
+  it('includes edge base keys when there are zero edges', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const emptyEdgeXml = await buildXML(
+      { ...protocolNetwork, edges: [] },
+      codebook,
+      exportOptions,
+    );
+
+    expect(emptyEdgeXml.getElementById(ncSourceUUID)).not.toBeNull();
+    expect(emptyEdgeXml.getElementById(ncTargetUUID)).not.toBeNull();
+    expect(
+      emptyEdgeXml.getElementById('unrepresented-edge-variable'),
+    ).not.toBeNull();
+  });
+
+  it('includes declarations from unrepresented node types', () => {
+    const key = xml.getElementById('unrepresented-node-variable');
+
+    expect(key?.getAttribute('for')).toBe('node');
+    expect(key?.getAttribute('attr.name')).toBe('unrepresentedNodeVariable');
+  });
+
+  it('includes declarations from unrepresented edge types', () => {
+    const key = xml.getElementById('unrepresented-edge-variable');
+
+    expect(key?.getAttribute('for')).toBe('edge');
+    expect(key?.getAttribute('attr.name')).toBe('unrepresentedEdgeVariable');
+  });
+
+  it('includes fully unanswered declared keys without emitting data', () => {
+    expect(xml.getElementById('mock-uuid-6')).not.toBeNull();
+    expect(
+      Array.from(xml.getElementsByTagName('data')).some(
+        (element) => element.getAttribute('key') === 'mock-uuid-6',
+      ),
+    ).toBe(false);
+  });
+
+  it('includes present external attributes with stable key references', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const externalXml = await buildXML(
+      {
+        ...protocolNetwork,
+        nodes: protocolNetwork.nodes.map((node, index) =>
+          index === 0
+            ? {
+                ...node,
+                [entityAttributesProperty]: {
+                  ...node[entityAttributesProperty],
+                  externalAttribute: 'external value',
+                },
+              }
+            : node,
+        ),
+      },
+      codebook,
+      exportOptions,
+    );
+
+    const externalKey = Array.from(
+      externalXml.getElementsByTagName('key'),
+    ).find(
+      (element) => element.getAttribute('attr.name') === 'externalAttribute',
+    );
+    const externalKeyId = externalKey?.getAttribute('id');
+    if (!externalKeyId) throw new Error('Missing external attribute key');
+
+    expect(externalKeyId).not.toBe('externalAttribute');
+    expect(
+      Array.from(externalXml.getElementsByTagName('data')).some(
+        (element) =>
+          element.getAttribute('key') === externalKeyId &&
+          element.textContent === 'external value',
+      ),
+    ).toBe(true);
+  });
+
+  it('declares an external node attribute when another node type declares the same ID', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const collisionCodebook: Codebook = {
+      ...codebook,
+      node: {
+        ...codebook.node,
+        'declared-shared-node': {
+          name: 'declared shared node',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            shared: { name: 'declaredShared', type: 'text' },
+          },
+        },
+      },
+    };
+    const collisionXml = await buildXML(
+      {
+        ...protocolNetwork,
+        nodes: protocolNetwork.nodes.map((node, index) =>
+          index === 0
+            ? {
+                ...node,
+                [entityAttributesProperty]: {
+                  ...node[entityAttributesProperty],
+                  shared: 'external shared value',
+                },
+              }
+            : node,
+        ),
+      },
+      collisionCodebook,
+      exportOptions,
+    );
+
+    const keys = Array.from(collisionXml.getElementsByTagName('key'));
+    const declaredKeys = keys.filter(
+      (element) => element.getAttribute('id') === 'shared',
+    );
+    const externalKeys = keys.filter(
+      (element) => element.getAttribute('attr.name') === 'shared',
+    );
+    const externalKeyId = externalKeys[0]?.getAttribute('id');
+    if (!externalKeyId) throw new Error('Missing external shared key');
+
+    expect(declaredKeys).toHaveLength(1);
+    expect(externalKeys).toHaveLength(1);
+    expect(externalKeyId).not.toBe('shared');
+    expect(
+      keys.filter((element) => element.getAttribute('id') === externalKeyId),
+    ).toHaveLength(1);
+    expect(
+      Array.from(collisionXml.getElementsByTagName('data')).filter(
+        (element) => element.getAttribute('key') === externalKeyId,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('uses one all-target key for the same external node and edge attribute', async () => {
+    const processedNetworks = processMockNetworks([mockNetwork]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const sharedExternalXml = await buildXML(
+      {
+        ...protocolNetwork,
+        nodes: protocolNetwork.nodes.map((node, index) =>
+          index === 0
+            ? {
+                ...node,
+                [entityAttributesProperty]: {
+                  ...node[entityAttributesProperty],
+                  sharedExternal: 'node value',
+                },
+              }
+            : node,
+        ),
+        edges: protocolNetwork.edges.map((edge, index) =>
+          index === 0
+            ? {
+                ...edge,
+                [entityAttributesProperty]: {
+                  ...edge[entityAttributesProperty],
+                  sharedExternal: 'edge value',
+                },
+              }
+            : edge,
+        ),
+      },
+      codebook,
+      exportOptions,
+    );
+
+    const sharedKeys = Array.from(
+      sharedExternalXml.getElementsByTagName('key'),
+    ).filter(
+      (element) => element.getAttribute('attr.name') === 'sharedExternal',
+    );
+    const sharedKeyId = sharedKeys[0]?.getAttribute('id');
+    if (!sharedKeyId) throw new Error('Missing shared external key');
+
+    expect(sharedKeys).toHaveLength(1);
+    expect(sharedKeys[0]?.getAttribute('for')).toBe('all');
+    expect(
+      Array.from(sharedExternalXml.getElementsByTagName('key')).filter(
+        (element) => element.getAttribute('id') === sharedKeyId,
+      ),
+    ).toHaveLength(1);
+    expect(
+      Array.from(sharedExternalXml.getElementsByTagName('data')).filter(
+        (element) => element.getAttribute('key') === sharedKeyId,
+      ),
+    ).toHaveLength(2);
   });
 
   it('places <key> elements before any <graph> element', () => {
@@ -269,6 +491,18 @@ describe('buildGraphML', () => {
     for (const keyElement of keyElements) {
       const keyIndex = childElements.indexOf(keyElement);
       expect(keyIndex).toBeLessThan(graphIndex);
+    }
+  });
+
+  it('defines exactly one key for every data reference', () => {
+    const keyIds = Array.from(xml.getElementsByTagName('key')).map((key) =>
+      key.getAttribute('id'),
+    );
+
+    expect(new Set(keyIds).size).toBe(keyIds.length);
+    for (const dataElement of Array.from(xml.getElementsByTagName('data'))) {
+      const keyId = dataElement.getAttribute('key');
+      expect(keyIds.filter((id) => id === keyId)).toHaveLength(1);
     }
   });
 

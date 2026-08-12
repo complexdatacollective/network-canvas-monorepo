@@ -111,14 +111,16 @@ const RESERVED_NOTE_VALUE = 'reserved-value';
 // [category option, other bin] — the other bin is always index 1 here.
 const OTHER_BIN_INDEX = 1;
 
-const node: NcNode = {
-  [entityPrimaryKeyProperty]: 'node-1',
-  type: NODE_TYPE,
-  [entityAttributesProperty]: {
-    [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
-    [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
-  },
-};
+function buildNode(): NcNode {
+  return {
+    [entityPrimaryKeyProperty]: 'node-1',
+    type: NODE_TYPE,
+    [entityAttributesProperty]: {
+      [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
+      [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+    },
+  };
+}
 
 function buildCodebook(
   otherValidation?: Validation,
@@ -198,6 +200,7 @@ function buildStage(): CategoricalBinStage {
 }
 
 function buildSession(): SessionState {
+  const node = buildNode();
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
@@ -305,6 +308,7 @@ async function dropNodeIntoBin(
   binIndex: number,
 ) {
   const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, binIndex);
+  const node = buildNode();
 
   act(() => {
     getDndStore().getState().startDrag(
@@ -340,8 +344,7 @@ function getOtherAttribute(
   const updatedNode = store
     .getState()
     .session.network?.nodes.find(
-      (candidate: NcNode) =>
-        candidate[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
+      (candidate: NcNode) => candidate[entityPrimaryKeyProperty] === 'node-1',
     );
   return updatedNode?.[entityAttributesProperty][OTHER_VARIABLE];
 }
@@ -402,9 +405,62 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     ).toBeInTheDocument();
     expect(celebrate).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith('node_binned', {
-      node_id: node[entityPrimaryKeyProperty],
-      node_type: node.type,
+      node_id: 'node-1',
+      node_type: NODE_TYPE,
       bin_index: OTHER_BIN_INDEX,
+    });
+  });
+
+  it('removes the mutually exclusive category value when placing a node in Other', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [CATEGORY_VARIABLE]: [1] },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+    await waitForDialogToClose();
+
+    const attributes =
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+      {};
+    expect(Object.hasOwn(attributes, CATEGORY_VARIABLE)).toBe(false);
+    expect(attributes[OTHER_VARIABLE]).toBe('');
+  });
+
+  it('removes the Other value when placing a node in a regular bin', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [OTHER_VARIABLE]: 'Previous response' },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoBin(getDndStore, 0);
+
+    await waitFor(() => {
+      const attributes =
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+        {};
+      expect(attributes[CATEGORY_VARIABLE]).toEqual([1]);
+      expect(Object.hasOwn(attributes, OTHER_VARIABLE)).toBe(false);
     });
   });
 

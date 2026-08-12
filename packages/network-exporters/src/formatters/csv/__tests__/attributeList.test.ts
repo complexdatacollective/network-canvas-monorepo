@@ -75,4 +75,41 @@ describe('attributeListRows', () => {
     );
     expect(rows).toHaveLength(1);
   });
+
+  it('includes declared columns that are unanswered by every node', () => {
+    const network = makeNetwork([
+      {
+        [nodeExportIDProperty]: 1,
+        [egoProperty]: 'ego-1',
+        [entityPrimaryKeyProperty]: 'uid-1',
+        type: 'mock-node-type',
+        [entityAttributesProperty]: {},
+      } as SessionWithResequencedIDs['nodes'][number],
+    ]);
+
+    const rows = Array.from(
+      attributeListRows(network, mockCodebook, mockExportOptions),
+    );
+
+    expect(rows[0]).toContain('unusedBool');
+  });
+
+  it('includes present external attributes', () => {
+    const network = makeNetwork([
+      {
+        [nodeExportIDProperty]: 1,
+        [egoProperty]: 'ego-1',
+        [entityPrimaryKeyProperty]: 'uid-1',
+        type: 'mock-node-type',
+        [entityAttributesProperty]: { externalAttribute: 'external value' },
+      } as SessionWithResequencedIDs['nodes'][number],
+    ]);
+
+    const rows = Array.from(
+      attributeListRows(network, mockCodebook, mockExportOptions),
+    );
+
+    expect(rows[0]).toContain('externalAttribute');
+    expect(rows[1]).toContain('external value');
+  });
 });

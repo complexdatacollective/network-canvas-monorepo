@@ -22,7 +22,7 @@ describe('egoListRows', () => {
   it('yields exactly one header and one data row', () => {
     const rows = Array.from(
       egoListRows(
-        mockNetwork as unknown as SessionWithResequencedIDs,
+        mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
       ),
@@ -47,15 +47,13 @@ describe('egoListRows', () => {
   it('data row contains session variable values', () => {
     const rows = Array.from(
       egoListRows(
-        mockNetwork as unknown as SessionWithResequencedIDs,
+        mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
       ),
     );
     // caseProperty value from mockNetwork.sessionVariables
-    expect(rows[1]).toContain(
-      String(mockNetwork.sessionVariables[caseProperty]),
-    );
+    expect(rows[1]).toContain(mockNetwork.sessionVariables[caseProperty]);
     // protocolName value
     expect(rows[1]).toContain(mockNetwork.sessionVariables[protocolName]);
     // sessionProperty value
@@ -65,7 +63,7 @@ describe('egoListRows', () => {
   it('data row contains ego attribute values', () => {
     const rows = Array.from(
       egoListRows(
-        mockNetwork as unknown as SessionWithResequencedIDs,
+        mockNetwork as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
       ),
@@ -101,5 +99,8 @@ describe('egoListRows', () => {
     );
     // Always yields header + one data row (ego is a single entity, not a list)
     expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain('egoName');
+    expect(rows[0]).toContain('egoAge');
+    expect(rows[0]).toContain('boolVar');
   });
 });

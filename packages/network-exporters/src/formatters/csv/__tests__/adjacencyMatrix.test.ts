@@ -95,7 +95,10 @@ describe('adjacencyMatrixRows', () => {
   it('renders an empty network as an empty header row', () => {
     const rows = Array.from(
       adjacencyMatrixRows(
-        { nodes: [], edges: [] } as unknown as SessionWithResequencedIDs,
+        {
+          nodes: [],
+          edges: [],
+        } as unknown as SessionWithResequencedIDs,
         mockCodebook,
         mockExportOptions,
       ),

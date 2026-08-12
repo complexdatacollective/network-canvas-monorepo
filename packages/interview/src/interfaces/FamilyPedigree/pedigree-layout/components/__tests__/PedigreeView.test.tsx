@@ -89,7 +89,11 @@ vi.mock('../../../utils/nodeUtils', () => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
-  getResolvedNodeFormFields: () => [{ variableId: 'partnerships' }],
+  getResolvedNodeFormFields: () => [
+    { variableId: 'partnerships' },
+    { variableId: 'emptyText' },
+    { variableId: 'emptySelection' },
+  ],
   getNodeShapeDefinition: () => null,
   getNodeForm: () => null,
   getNodeColorSelector: () => 'node-color-seq-1',
@@ -476,6 +480,105 @@ describe('PedigreeView — person menu actions', () => {
         entityAttributesProperty
       ].isActive,
     ).toBe(false);
+  });
+
+  it('clears mounted custom fields while preserving unrelated and defined empty attributes', async () => {
+    const person = makeNode('person');
+    person[entityAttributesProperty] = {
+      ...person[entityAttributesProperty],
+      biologicalSex: ['female'],
+      partnerships: ['old-answer'],
+      outsideForm: 'keep me',
+    };
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', person],
+    ]);
+    const store = makeStore(nodes);
+    mockOpenDialog.mockResolvedValueOnce({
+      name: 'Edited Person',
+      biologicalSex: undefined,
+      partnerships: undefined,
+      emptyText: '',
+      emptySelection: [],
+    });
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={new Map()} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Edit'));
+    });
+
+    const attributes = store.getState().network.nodes.get('person')?.[
+      entityAttributesProperty
+    ];
+    expect(attributes).not.toHaveProperty('partnerships');
+    expect(attributes).not.toHaveProperty('biologicalSex');
+    expect(attributes?.outsideForm).toBe('keep me');
+    expect(attributes?.emptyText).toBe('');
+    expect(attributes?.emptySelection).toEqual([]);
+  });
+
+  it('rejects invalid defined custom values without partially mutating the person or partnerships', async () => {
+    const person = makeNode('person');
+    person[entityAttributesProperty] = {
+      ...person[entityAttributesProperty],
+      biologicalSex: ['female'],
+      partnerships: ['old-answer'],
+      outsideForm: 'keep me',
+    };
+    const nodes = new Map([
+      ['ego', makeNode('ego', true)],
+      ['person', person],
+    ]);
+    const edges = new Map([
+      ['partnership', makeEdge('partnership', 'ego', 'person', true)],
+    ]);
+    const store = makeStore(nodes, edges);
+    const updateNodeSpy = vi.spyOn(store.getState(), 'updateNode');
+    const updateEdgeSpy = vi.spyOn(store.getState(), 'updateEdge');
+    mockOpenDialog.mockResolvedValueOnce({
+      name: 'Edited Person',
+      biologicalSex: 'male',
+      partnerships: { invalid: true },
+      emptyText: 'new value',
+      __familyPedigreeEdit: {
+        partnerships: [{ id: 'partnership', value: 'ex' }],
+      },
+    });
+
+    render(
+      <Wrapper store={store}>
+        <PedigreeView overrideNodes={nodes} overrideEdges={edges} />
+      </Wrapper>,
+    );
+
+    await userEvent.click(await screen.findByText('person'));
+    await act(async () => {
+      await userEvent.click(await screen.findByText('Edit'));
+    });
+
+    expect(updateNodeSpy).not.toHaveBeenCalled();
+    expect(updateEdgeSpy).not.toHaveBeenCalled();
+    expect(
+      store.getState().network.nodes.get('person')?.[entityAttributesProperty],
+    ).toEqual({
+      label: 'person',
+      isEgo: false,
+      biologicalSex: ['female'],
+      partnerships: ['old-answer'],
+      outsideForm: 'keep me',
+    });
+    expect(
+      store.getState().network.edges.get('partnership')?.[
+        entityAttributesProperty
+      ].isActive,
+    ).toBe(true);
   });
 
   it('shows each partnership with its current status in the edit dialog', async () => {

@@ -109,7 +109,7 @@ function clearNodeLocations(
 ): void {
   for (const index of nodeIndices) {
     for (const varId of locationVarIds) {
-      synth.setNodeAttribute(index, varId, undefined);
+      synth.unsetNodeAttribute(index, varId);
     }
   }
 }
@@ -338,7 +338,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
           const state = await protocol.getNetworkState(interview.interviewId);
           return state!.nodes[0]![entityAttributesProperty][variableId];
         })
-        .toBeNull();
+        .toBeUndefined();
     },
   };
 }
@@ -963,7 +963,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       );
       expect(
         stateAfterSearch!.nodes[0]![entityAttributesProperty][variableId],
-      ).toBeNull();
+      ).toBeUndefined();
 
       // Clear button empties the query.
       await stage.geospatial.search('Sidetrack');

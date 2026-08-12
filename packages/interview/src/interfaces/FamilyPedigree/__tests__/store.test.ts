@@ -182,7 +182,8 @@ describe('updateNode', () => {
     });
 
     store.getState().updateNode(id, {
-      [testConfig.nodeLabelVariable]: 'updated',
+      set: { [testConfig.nodeLabelVariable]: 'updated' },
+      unset: [],
     });
 
     const node = store.getState().network.nodes.get(id);
@@ -192,6 +193,35 @@ describe('updateNode', () => {
     expect(node?.[entityAttributesProperty][testConfig.egoVariable]).toBe(
       false,
     );
+  });
+
+  it('removes explicitly unset attributes and preserves defined empty values', () => {
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+    );
+    const id = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'test',
+        removed: 'old answer',
+      },
+    });
+
+    store.getState().updateNode(id, {
+      set: { emptyText: '', emptySelection: [] },
+      unset: ['removed'],
+    });
+
+    const attributes = store.getState().network.nodes.get(id)?.[
+      entityAttributesProperty
+    ];
+    expect(attributes).not.toHaveProperty('removed');
+    expect(attributes?.emptyText).toBe('');
+    expect(attributes?.emptySelection).toEqual([]);
+    expect(attributes?.[testConfig.nodeLabelVariable]).toBe('test');
   });
 });
 

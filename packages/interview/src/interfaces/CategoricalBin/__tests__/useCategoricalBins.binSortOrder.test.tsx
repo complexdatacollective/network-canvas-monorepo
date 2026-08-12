@@ -23,7 +23,7 @@ const AGE_VAR = 'age';
 
 const makeNode = (
   id: string,
-  attributes: Record<string, string | number | null | string[]>,
+  attributes: Record<string, string | number | string[]>,
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
@@ -36,8 +36,8 @@ const makeNode = (
 const nodes: NcNode[] = [
   makeNode('alice', { [CAT_VAR]: ['a'], [NAME_VAR]: 'alice', [AGE_VAR]: 30 }),
   makeNode('bob', { [CAT_VAR]: ['a'], [NAME_VAR]: 'bob', [AGE_VAR]: 50 }),
-  makeNode('carol', { [CAT_VAR]: null, [NAME_VAR]: 'carol', [AGE_VAR]: 40 }),
-  makeNode('dave', { [CAT_VAR]: null, [NAME_VAR]: 'dave', [AGE_VAR]: 20 }),
+  makeNode('carol', { [NAME_VAR]: 'carol', [AGE_VAR]: 40 }),
+  makeNode('dave', { [NAME_VAR]: 'dave', [AGE_VAR]: 20 }),
 ];
 
 function makeWrapper() {

@@ -119,7 +119,7 @@ export class ValueGenerator {
    * filled with random data that would corrupt a deliberately-constructed
    * scenario (e.g. a random ego or random disease flags in a pedigree).
    */
-  neutralForVariable(variable: VariableEntry): VariableValue {
+  neutralForVariable(variable: VariableEntry): VariableValue | undefined {
     switch (variable.type) {
       case 'boolean':
         return false;
@@ -128,7 +128,7 @@ export class ValueGenerator {
       case 'categorical':
         return [];
       default:
-        return null;
+        return undefined;
     }
   }
 
@@ -234,7 +234,7 @@ export class ValueGenerator {
       preferRealisticName?: boolean;
       forceRealisticName?: boolean;
     },
-  ): VariableValue {
+  ): VariableValue | undefined {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
 
@@ -360,7 +360,7 @@ export class ValueGenerator {
 
       case 'boolean': {
         const values = booleanDomainValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
         const hasDefaultPair = values.includes(false) && values.includes(true);
         if (seq !== undefined && hasDefaultPair) return seq % 2 === 0;
 
@@ -369,7 +369,7 @@ export class ValueGenerator {
         if (randomBoolean !== undefined && hasDefaultPair) return randomBoolean;
 
         const value = values[(seq ?? 0) % values.length];
-        return value ?? null;
+        return value;
       }
 
       case 'ordinal': {
@@ -387,9 +387,9 @@ export class ValueGenerator {
         // A list whose values are already distinct is unaffected, first
         // occurrences being kept in order.
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
         const pick = seq ?? index;
-        return values[pick % values.length] ?? null;
+        return values[pick % values.length];
       }
 
       case 'categorical': {
@@ -399,7 +399,7 @@ export class ValueGenerator {
         // back a shorter answer than the size it selected, which `minSelected`
         // then rejects.
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
 
         // A distinct value has to be reachable for every selection the value
         // space counts, so a sequence number indexes the combination space
@@ -450,7 +450,7 @@ export class ValueGenerator {
         };
 
       default:
-        return null;
+        return undefined;
     }
   }
 

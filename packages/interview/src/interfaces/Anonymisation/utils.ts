@@ -1,8 +1,8 @@
 import type { Variable } from '@codaco/protocol-validation';
 import type {
+  NcNode,
   EntityAttributesProperty,
   EntitySecureAttributesMeta,
-  NcNode,
 } from '@codaco/shared-consts';
 
 export class UnauthorizedError extends Error {
@@ -89,7 +89,9 @@ export async function generateSecureAttributes(
   encryptedAttributes: NcNode[EntityAttributesProperty];
 }> {
   const secureAttributes: NcNode[EntitySecureAttributesMeta] = {};
-  const encryptedAttributes: NcNode[EntityAttributesProperty] = attributes;
+  const encryptedAttributes: NcNode[EntityAttributesProperty] = {
+    ...attributes,
+  };
 
   for (const [key, value] of Object.entries(attributes)) {
     // If this attribute is not encrypted, we can skip it

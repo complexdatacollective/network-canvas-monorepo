@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionPayload } from '@codaco/interview';
+import type { InterviewPayload, SessionPayload } from '@codaco/interview';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -57,6 +57,7 @@ type CapturedShellProps = {
   disableAnalytics: boolean;
   finishConfirmationDescription: string;
   initialStageOverrideIndex?: number;
+  payload: InterviewPayload;
   onExit: () => void;
   onFinish: (id: string) => Promise<void>;
   onSync: (id: string, session: SessionPayload) => Promise<void>;
@@ -94,7 +95,11 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     finishedAt: null,
     exportedAt: null,
     currentStep: 0,
-    network: { nodes: [], edges: [] },
+    network: {
+      nodes: [],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    },
     ...overrides,
   };
 }
@@ -207,6 +212,33 @@ describe('InterviewRoute enter gate', () => {
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
+  });
+
+  it('hydrates the Shell payload with the canonical persisted network', async () => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+    const canonicalNetwork = {
+      nodes: [
+        {
+          _uid: 'n1',
+          type: 'person',
+          attributes: { falseValue: false, zeroValue: 0, emptyValue: '' },
+        },
+      ],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+    getSessionMock.mockResolvedValue(
+      makeSession({ network: canonicalNetwork }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().payload.session.network).toEqual(canonicalNetwork);
   });
 
   it('skips the enter gate when entry is already authorized (lock/unlock remount)', async () => {

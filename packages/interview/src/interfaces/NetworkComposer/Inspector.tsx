@@ -15,8 +15,10 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
 import type { Subject } from '../../selectors/forms';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
 
@@ -25,7 +27,7 @@ export type InspectorProps = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: Attributes;
-  onSave: (id: string, data: Attributes) => void;
+  onSave: (id: string, attributePatch: AttributePatch) => void;
   onDelete: (id: string) => void;
 };
 
@@ -87,12 +89,15 @@ function AttributeFormInner({
 }: Omit<InspectorProps, 'form' | 'onDelete'> & { form: ComposerForm }) {
   const initialValues = useMemo(
     () =>
-      Object.fromEntries(
-        Object.entries(attributes).map(([key, value]) => [
-          key,
-          value ?? undefined,
-        ]),
-      ) as Record<string, FieldValue>,
+      Object.entries(attributes).reduce<Record<string, FieldValue>>(
+        (values, [name, value]) => {
+          if (value !== null) {
+            values[name] = value;
+          }
+          return values;
+        },
+        {},
+      ),
     [attributes],
   );
 
@@ -102,14 +107,26 @@ function AttributeFormInner({
     subject,
     currentEntityId: entityId,
   });
+  const storeApi = useContext(FormStoreContext);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {
-      // Coerce to declared codebook types (e.g. number fields emit strings)
-      // before persisting — the same boundary cast SlidesForm uses.
-      onSave(entityId, coerceValues(values) as Attributes);
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        (form.fields ?? []).map((field) => field.variable),
+      );
+
+      if (!patchResult.success) {
+        storeApi?.getState().setErrors({
+          formErrors: ['An error occurred while submitting the form.'],
+          fieldErrors: {},
+        });
+        return;
+      }
+
+      onSave(entityId, patchResult.patch);
     },
-    [onSave, entityId, coerceValues],
+    [onSave, entityId, coerceValues, form.fields, storeApi],
   );
 
   return (

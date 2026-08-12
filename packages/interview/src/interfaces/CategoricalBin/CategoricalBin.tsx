@@ -280,12 +280,14 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       const updateResult = await dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [variable]: null,
-            [otherVariable]:
-              typeof result[otherVariable] === 'string'
-                ? result[otherVariable]
-                : '',
+          attributePatch: {
+            set: {
+              [otherVariable]:
+                typeof result[otherVariable] === 'string'
+                  ? result[otherVariable]
+                  : '',
+            },
+            unset: [variable],
           },
           currentStep,
         }),
@@ -303,13 +305,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     const updateResult = await dispatch(
       updateNode({
         nodeId,
-        newAttributeData: {
-          ...(prompt.otherVariable !== undefined
-            ? { [prompt.otherVariable]: null }
-            : {}),
-          // Categorical attributes are stored as arrays of selected option
-          // values; a single bin membership is a one-element array.
-          [variable]: [bin.value],
+        attributePatch: {
+          set: { [variable]: [bin.value] },
+          unset:
+            prompt.otherVariable !== undefined ? [prompt.otherVariable] : [],
         },
         currentStep,
       }),

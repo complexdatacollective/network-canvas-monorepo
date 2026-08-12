@@ -1,7 +1,6 @@
 import { DOMImplementation, type DocumentFragment } from '@xmldom/xmldom';
-import { get } from 'es-toolkit/compat';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   type NcEgo,
   ncSourceUUID,
@@ -13,254 +12,285 @@ import {
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import { getEntityAttributes } from '../../utils/general';
-import {
-  createDocumentFragment,
-  deriveEntityType,
-  getCodebookVariablesForEntity,
-  getGraphMLTypeForKey,
-  sha1,
-} from './helpers';
+import { createDocumentFragment, getGraphMLTypeForKey, sha1 } from './helpers';
 
-// <key> elements provide the type definitions for GraphML data elements
+type GraphMLEntityKind = 'ego' | 'node' | 'edge';
+type GraphMLKeyTarget = 'graph' | 'node' | 'edge' | 'all';
+
+type GraphMLEntitiesByKind = {
+  ego: readonly NcEgo[];
+  node: readonly NodeWithResequencedID[];
+  edge: readonly EdgeWithResequencedID[];
+};
+
+type GraphMLEntity = GraphMLEntitiesByKind[GraphMLEntityKind][number];
+
+type GraphMLKey = {
+  id: string;
+  name: string;
+  type: string;
+  target: GraphMLKeyTarget;
+};
+
+type GeneratedGraphMLKeys = {
+  fragment: DocumentFragment;
+  externalKeyIds: ReadonlyMap<string, string>;
+};
+
+const getDeclaredVariables = (
+  entityKind: GraphMLEntityKind,
+  codebook: Codebook,
+): [string, Variable][] => {
+  if (entityKind === 'ego') {
+    return Object.entries(codebook.ego?.variables ?? {});
+  }
+
+  return Object.values(codebook[entityKind] ?? {}).flatMap((definition) =>
+    Object.entries(definition.variables ?? {}),
+  );
+};
+
+const getCodebookVariables = (
+  entityKind: GraphMLEntityKind,
+  entity: GraphMLEntity,
+  codebook: Codebook,
+): Record<string, Variable> => {
+  if (entityKind === 'ego') {
+    return codebook.ego?.variables ?? {};
+  }
+
+  if (!('type' in entity) || typeof entity.type !== 'string') {
+    return {};
+  }
+
+  return codebook[entityKind]?.[entity.type]?.variables ?? {};
+};
+
+const mergeTargets = (
+  existing: GraphMLKeyTarget,
+  incoming: GraphMLKeyTarget,
+): GraphMLKeyTarget => (existing === incoming ? existing : 'all');
+
 export default function getKeyElementGenerator(
   codebook: Codebook,
   exportOptions: ExportOptions,
 ) {
   return async (
-    incomingEntities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
-  ): Promise<DocumentFragment> => {
-    // Important to create the fragment on each invocation
-    const fragment = createDocumentFragment();
-    const dom = new DOMImplementation().createDocument(null, 'root', null);
+    entitiesByKind: GraphMLEntitiesByKind,
+  ): Promise<GeneratedGraphMLKeys> => {
+    const keys = new Map<string, GraphMLKey>();
+    const reservedKeyIds = new Set<string>();
 
-    // track variables we have already created <key>s for, so we don't duplicate
-    const done = new Set<string>();
+    const addKey = (key: GraphMLKey) => {
+      const existing = keys.get(key.id);
+      if (existing) {
+        existing.target = mergeTargets(existing.target, key.target);
+        return;
+      }
 
-    if (!incomingEntities) {
-      return fragment;
-    }
+      keys.set(key.id, key);
+      reservedKeyIds.add(key.id);
+    };
 
-    const entityType = deriveEntityType(incomingEntities);
+    addKey({ id: 'label', name: 'label', type: 'string', target: 'all' });
+    addKey({
+      id: ncTypeProperty,
+      name: ncTypeProperty,
+      type: 'string',
+      target: 'all',
+    });
+    addKey({
+      id: ncUUIDProperty,
+      name: ncUUIDProperty,
+      type: 'string',
+      target: 'all',
+    });
+    addKey({
+      id: ncTargetUUID,
+      name: ncTargetUUID,
+      type: 'string',
+      target: 'edge',
+    });
+    addKey({
+      id: ncSourceUUID,
+      name: ncSourceUUID,
+      type: 'string',
+      target: 'edge',
+    });
 
-    const entities =
-      entityType === 'ego'
-        ? ([incomingEntities] as NcEgo[])
-        : (incomingEntities as NodeWithResequencedID[]);
+    const addVariableKeys = async (
+      entityKind: GraphMLEntityKind,
+      variableId: string,
+      variable: Variable,
+    ) => {
+      const keyName = variable.name;
+      const keyTarget = entityKind === 'ego' ? 'graph' : entityKind;
+      const entities = entitiesByKind[entityKind];
 
-    if (entityType === 'node' && !done.has('type')) {
-      const typeDataElement = dom.createElement('key');
-      typeDataElement.setAttribute('id', ncTypeProperty);
-      typeDataElement.setAttribute('attr.name', ncTypeProperty);
-      typeDataElement.setAttribute('attr.type', 'string');
-      typeDataElement.setAttribute('for', 'all');
-      fragment.appendChild(typeDataElement);
-      done.add('type');
-    }
-
-    // Create a <key> for network canvas UUID.
-    if (entityType === 'node' && !done.has('uuid')) {
-      const typeDataElement = dom.createElement('key');
-      typeDataElement.setAttribute('id', ncUUIDProperty);
-      typeDataElement.setAttribute('attr.name', ncUUIDProperty);
-      typeDataElement.setAttribute('attr.type', 'string');
-      typeDataElement.setAttribute('for', 'all');
-      fragment.appendChild(typeDataElement);
-      done.add('uuid');
-    }
-
-    // Create a <key> for `from` and `to` properties that reference network canvas UUIDs.
-    if (entityType === 'edge' && !done.has('originalEdgeSource')) {
-      // Create <key> for type
-      const targetDataElement = dom.createElement('key');
-      targetDataElement.setAttribute('id', ncTargetUUID);
-      targetDataElement.setAttribute('attr.name', ncTargetUUID);
-      targetDataElement.setAttribute('attr.type', 'string');
-      targetDataElement.setAttribute('for', 'edge');
-      fragment.appendChild(targetDataElement);
-
-      const sourceDataElement = dom.createElement('key');
-      sourceDataElement.setAttribute('id', ncSourceUUID);
-      sourceDataElement.setAttribute('attr.name', ncSourceUUID);
-      sourceDataElement.setAttribute('attr.type', 'string');
-      sourceDataElement.setAttribute('for', 'edge');
-      fragment.appendChild(sourceDataElement);
-
-      done.add('originalEdgeSource');
-    }
-
-    const entityKeys = await generateKeysForEntities(
-      entities as NodeWithResequencedID[] | NcEgo[],
-      entityType,
-      codebook,
-      exportOptions,
-      done,
-    );
-
-    fragment.appendChild(entityKeys);
-    return fragment;
-  };
-}
-
-async function generateKeysForEntities(
-  entities: NodeWithResequencedID[] | NcEgo[],
-  entityType: 'node' | 'edge' | 'ego',
-  codebook: Codebook,
-  exportOptions: ExportOptions,
-  done: Set<string>,
-): Promise<DocumentFragment> {
-  const fragment = createDocumentFragment();
-  const dom = new DOMImplementation().createDocument(null, 'root', null);
-
-  // nodes and edges have for="node|edge" but ego has for="graph"
-  const keyTarget = entityType === 'ego' ? 'graph' : entityType;
-
-  // Loop over entities
-  for (const entity of entities) {
-    const elementAttributes = getEntityAttributes(entity);
-    const codebookVariables = getCodebookVariablesForEntity(entity, codebook);
-
-    // Loop over attributes for this entity
-    for (const variableId of Object.keys(elementAttributes)) {
-      const codebookVariable = codebookVariables[variableId];
-
-      // Test if we have already created a key for this variable, and that it
-      // isn't on our exclude list.
-      if (!done.has(variableId)) {
-        const keyElement = dom.createElement('key');
-
-        // Determine variable type to decide how to encode it
-        const variableType = get(codebookVariable, 'type');
-
-        if (variableType) {
-          // <key> id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
-          // do not be tempted to change this to use the variable's name for this reason, as name
-          // is not validated against xs:NMTOKEN.
-          keyElement.setAttribute('id', variableId);
-        } else {
-          // If variableType is undefined, variable wasn't in the codebook (could be external data).
-          // This means that key might not be a UUID, so update the key ID to be SHA1 of variable
-          // name to ensure it is xs:NMTOKEN compliant
-          const hashedKeyName = await sha1(variableId);
-          keyElement.setAttribute('id', hashedKeyName);
-        }
-
-        // transpose ids to names based on codebook; fall back to the raw key
-        const keyName = get(codebookVariable, 'name', variableId);
-        // Use human readable variable name for the attr.name attribute
-        keyElement.setAttribute('attr.name', keyName);
-
-        switch (variableType) {
-          case 'boolean':
-            keyElement.setAttribute('attr.type', variableType);
-            break;
-          case 'ordinal':
-          case 'number': {
-            const keyType = getGraphMLTypeForKey(entities, variableId);
-            keyElement.setAttribute('attr.type', keyType);
-            break;
-          }
-          case 'layout': {
-            // special handling for layout variables: split the variable into
-            // two <key> elements - one for X and one for Y.
-            keyElement.setAttribute('attr.name', `${keyName}_Y`);
-            keyElement.setAttribute('id', `${variableId}_Y`);
-            keyElement.setAttribute('attr.type', 'double');
-
-            // Create a second element to model the <key> for
-            // the X value
-            const keyElement2 = dom.createElement('key');
-            keyElement2.setAttribute('id', `${variableId}_X`);
-            keyElement2.setAttribute('attr.name', `${keyName}_X`);
-            keyElement2.setAttribute('attr.type', 'double');
-            keyElement2.setAttribute('for', keyTarget);
-            fragment.appendChild(keyElement2);
-
-            if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-              // Create a third element to model the <key> for
-              // the screen space Y value
-              const keyElement3 = dom.createElement('key');
-              keyElement3.setAttribute('id', `${variableId}_screenSpaceY`);
-              keyElement3.setAttribute('attr.name', `${keyName}_screenSpaceY`);
-              keyElement3.setAttribute('attr.type', 'double');
-              keyElement3.setAttribute('for', keyTarget);
-              fragment.appendChild(keyElement3);
-
-              // Create a fourth element to model the <key> for
-              // the screen space X value
-              const keyElement4 = dom.createElement('key');
-              keyElement4.setAttribute('id', `${variableId}_screenSpaceX`);
-              keyElement4.setAttribute('attr.name', `${keyName}_screenSpaceX`);
-              keyElement4.setAttribute('attr.type', 'double');
-              keyElement4.setAttribute('for', keyTarget);
-              fragment.appendChild(keyElement4);
-            }
-
-            break;
-          }
-          case 'categorical': {
-            /*
-             * Special handling for categorical variables:
-             * Because categorical variables can have multiple membership, we
-             * split them out into several boolean variables
-             *
-             * Because key id must be an xs:NMTOKEN, we hash the option value.
-             */
-
-            // fetch options property for this variable
-            const options = get(codebookVariable, 'options');
-
-            // If there are no options, we can't create keys for this variable
-            if (!options) {
-              break;
-            }
-
-            const hashedOptionValues = await Promise.all(
-              options.map((option) => sha1(String(option.value))),
-            );
-
-            options.forEach((option, index) => {
-              const hashedOptionValue = hashedOptionValues[index];
-
-              if (index === options.length - 1) {
-                keyElement.setAttribute(
-                  'id',
-                  `${variableId}_${hashedOptionValue}`,
-                );
-                keyElement.setAttribute(
-                  'attr.name',
-                  `${keyName}_${option.value}`,
-                );
-                keyElement.setAttribute('attr.type', 'boolean');
-              } else {
-                const keyElement2 = dom.createElement('key');
-                keyElement2.setAttribute(
-                  'id',
-                  `${variableId}_${hashedOptionValue}`,
-                );
-                keyElement2.setAttribute(
-                  'attr.name',
-                  `${keyName}_${option.value}`,
-                );
-                keyElement2.setAttribute('attr.type', 'boolean');
-                keyElement2.setAttribute('for', keyTarget);
-                fragment.appendChild(keyElement2);
-              }
+      switch (variable.type) {
+        case 'boolean':
+          addKey({
+            id: variableId,
+            name: keyName,
+            type: 'boolean',
+            target: keyTarget,
+          });
+          break;
+        case 'ordinal':
+        case 'number':
+          addKey({
+            id: variableId,
+            name: keyName,
+            type: getGraphMLTypeForKey(entities, variableId),
+            target: keyTarget,
+          });
+          break;
+        case 'layout':
+          addKey({
+            id: `${variableId}_X`,
+            name: `${keyName}_X`,
+            type: 'double',
+            target: keyTarget,
+          });
+          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+            addKey({
+              id: `${variableId}_screenSpaceY`,
+              name: `${keyName}_screenSpaceY`,
+              type: 'double',
+              target: keyTarget,
             });
-            break;
+            addKey({
+              id: `${variableId}_screenSpaceX`,
+              name: `${keyName}_screenSpaceX`,
+              type: 'double',
+              target: keyTarget,
+            });
           }
-          case 'scalar':
-            keyElement.setAttribute('attr.type', 'float');
-            break;
-          default:
-            keyElement.setAttribute('attr.type', 'string');
+          addKey({
+            id: `${variableId}_Y`,
+            name: `${keyName}_Y`,
+            type: 'double',
+            target: keyTarget,
+          });
+          break;
+        case 'categorical': {
+          const hashedOptionValues = await Promise.all(
+            variable.options.map((option) => sha1(String(option.value))),
+          );
+          variable.options.forEach((option, index) => {
+            const hashedOptionValue = hashedOptionValues[index];
+            if (hashedOptionValue) {
+              addKey({
+                id: `${variableId}_${hashedOptionValue}`,
+                name: `${keyName}_${option.value}`,
+                type: 'boolean',
+                target: keyTarget,
+              });
+            }
+          });
+          break;
         }
+        case 'scalar':
+          addKey({
+            id: variableId,
+            name: keyName,
+            type: 'float',
+            target: keyTarget,
+          });
+          break;
+        default:
+          addKey({
+            id: variableId,
+            name: keyName,
+            type: 'string',
+            target: keyTarget,
+          });
+      }
+    };
 
-        keyElement.setAttribute('for', keyTarget);
-        fragment.appendChild(keyElement);
-        done.add(variableId);
+    const entityKinds: GraphMLEntityKind[] = ['ego', 'node', 'edge'];
+    for (const entityKind of entityKinds) {
+      for (const [variableId, variable] of getDeclaredVariables(
+        entityKind,
+        codebook,
+      )) {
+        await addVariableKeys(entityKind, variableId, variable);
       }
     }
-  }
 
-  return fragment;
+    const externalTargets = new Map<string, Set<GraphMLKeyTarget>>();
+    for (const entityKind of entityKinds) {
+      const keyTarget = entityKind === 'ego' ? 'graph' : entityKind;
+      for (const entity of entitiesByKind[entityKind]) {
+        const codebookVariables = getCodebookVariables(
+          entityKind,
+          entity,
+          codebook,
+        );
+
+        for (const variableId of Object.keys(getEntityAttributes(entity))) {
+          if (codebookVariables[variableId]) {
+            continue;
+          }
+
+          const targets = externalTargets.get(variableId);
+          if (targets) {
+            targets.add(keyTarget);
+          } else {
+            externalTargets.set(variableId, new Set([keyTarget]));
+          }
+        }
+      }
+    }
+
+    const externalKeyIds = new Map<string, string>();
+    for (const variableId of [...externalTargets.keys()].toSorted()) {
+      let keyId: string | undefined;
+      const maximumAttempts = reservedKeyIds.size + 1;
+      for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+        const candidate = await sha1(
+          attempt === 0 ? variableId : `external:${attempt}:${variableId}`,
+        );
+        if (!reservedKeyIds.has(candidate)) {
+          keyId = candidate;
+          break;
+        }
+      }
+      if (!keyId) {
+        throw new Error(
+          `Could not generate a unique GraphML key for external attribute: ${variableId}`,
+        );
+      }
+
+      const targets = externalTargets.get(variableId);
+      if (!targets || targets.size === 0) {
+        continue;
+      }
+
+      const [onlyTarget] = targets;
+      const target: GraphMLKeyTarget =
+        targets.size === 1 && onlyTarget ? onlyTarget : 'all';
+
+      addKey({
+        id: keyId,
+        name: variableId,
+        type: 'string',
+        target,
+      });
+      externalKeyIds.set(variableId, keyId);
+    }
+
+    const fragment = createDocumentFragment();
+    const dom = new DOMImplementation().createDocument(null, 'root', null);
+    for (const key of keys.values()) {
+      const keyElement = dom.createElement('key');
+      keyElement.setAttribute('id', key.id);
+      keyElement.setAttribute('attr.name', key.name);
+      keyElement.setAttribute('attr.type', key.type);
+      keyElement.setAttribute('for', key.target);
+      fragment.appendChild(keyElement);
+    }
+
+    return { fragment, externalKeyIds };
+  };
 }

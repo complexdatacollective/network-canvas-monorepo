@@ -352,8 +352,11 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       void dispatch(
         updateEdge({
           edgeId: existingEdgeId,
-          newAttributeData: {
-            [edgeVariable!]: value,
+          attributePatch: {
+            set: {
+              [edgeVariable!]: value,
+            },
+            unset: [],
           },
         }),
       );

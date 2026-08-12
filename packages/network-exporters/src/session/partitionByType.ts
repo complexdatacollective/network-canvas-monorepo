@@ -34,22 +34,21 @@ export const partitionByType = (
       return [session];
     }
     case 'attributeList': {
-      if (!session?.nodes?.length) {
+      if (!session.nodes.length) {
         return [session];
       }
 
-      const partitionedNodeMap = session.nodes.reduce(
-        (nodeMap, node) => {
-          const existing = nodeMap[node.type];
-          if (existing) {
-            existing.push(node);
-          } else {
-            nodeMap[node.type] = [node];
-          }
-          return nodeMap;
-        },
-        {} as Record<string, NodeWithResequencedID[]>,
-      );
+      const partitionedNodeMap = session.nodes.reduce<
+        Record<string, NodeWithResequencedID[]>
+      >((nodeMap, node) => {
+        const existing = nodeMap[node.type];
+        if (existing) {
+          existing.push(node);
+        } else {
+          nodeMap[node.type] = [node];
+        }
+        return nodeMap;
+      }, {});
 
       return Object.entries(partitionedNodeMap).map(([nodeType, nodes]) => ({
         ...session,
@@ -60,22 +59,21 @@ export const partitionByType = (
 
     case 'edgeList':
     case 'adjacencyMatrix': {
-      if (!session?.edges?.length) {
+      if (!session.edges.length) {
         return [session];
       }
 
-      const partitionedEdgeMap = session?.edges?.reduce(
-        (edgeMap, edge) => {
-          const existing = edgeMap[edge.type];
-          if (existing) {
-            existing.push(edge);
-          } else {
-            edgeMap[edge.type] = [edge];
-          }
-          return edgeMap;
-        },
-        {} as Record<string, EdgeWithResequencedID[]>,
-      );
+      const partitionedEdgeMap = session.edges.reduce<
+        Record<string, EdgeWithResequencedID[]>
+      >((edgeMap, edge) => {
+        const existing = edgeMap[edge.type];
+        if (existing) {
+          existing.push(edge);
+        } else {
+          edgeMap[edge.type] = [edge];
+        }
+        return edgeMap;
+      }, {});
 
       return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
         ...session,

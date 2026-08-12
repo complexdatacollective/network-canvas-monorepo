@@ -21,9 +21,9 @@ const variableConfig: VariableConfig = {
 
 const relTypeOf = (e: {
   data: { attributes: Record<string, VariableValue> };
-}): VariableValue => {
+}): VariableValue | undefined => {
   const value = e.data.attributes[variableConfig.relationshipTypeVariable];
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  return Array.isArray(value) ? value[0] : value;
 };
 
 const egoId = 'ego-1';

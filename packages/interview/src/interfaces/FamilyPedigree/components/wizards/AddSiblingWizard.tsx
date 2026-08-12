@@ -20,6 +20,7 @@ import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
 import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
+import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 import { siblingCellTransform } from './transforms/siblingCellTransform';
 
 function PersonDetailsStep() {
@@ -129,12 +130,14 @@ export async function openAddSiblingWizard(
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return siblingCellTransform(
-        formValues,
-        anchorNodeId,
-        nodes,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        siblingCellTransform(
+          formValues,
+          anchorNodeId,
+          nodes,
+          edges,
+          variableConfig,
+        ),
       );
     },
   });

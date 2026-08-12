@@ -97,7 +97,7 @@ function buildInterview(args: StoryArgs) {
   );
   for (let i = 0; i < clampedUnassigned; i++) {
     for (const varId of variables) {
-      interview.setNodeAttribute(i, varId, null);
+      interview.unsetNodeAttribute(i, varId);
     }
   }
 

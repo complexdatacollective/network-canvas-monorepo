@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
-  type EntityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -16,6 +15,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { getNetworkNodesForType } from '../../selectors/session';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
@@ -33,11 +33,11 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
   const [isFormReady, setIsFormReady] = useState(false);
 
   const handleUpdateItem = useCallback(
-    (id: string, newAttributeData: NcNode[EntityAttributesProperty]) => {
+    (id: string, attributePatch: AttributePatch) => {
       void dispatch(
         updateNode({
           nodeId: id,
-          newAttributeData,
+          attributePatch,
           currentStep,
         }),
       );

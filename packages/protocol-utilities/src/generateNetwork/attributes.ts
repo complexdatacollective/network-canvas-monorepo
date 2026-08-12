@@ -1,5 +1,6 @@
 import type { Variable } from '@codaco/protocol-validation';
 import {
+  VariableValueSchema,
   entityAttributesProperty,
   type NcNode,
   type VariableValue,
@@ -37,6 +38,19 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     validation: 'validation' in variable ? variable.validation : undefined,
     parameters: 'parameters' in variable ? variable.parameters : undefined,
   };
+}
+
+export function definedAttributesOf(
+  attributes: Readonly<Record<string, unknown>>,
+): Record<string, VariableValue> {
+  const defined: Record<string, VariableValue> = {};
+
+  for (const [id, value] of Object.entries(attributes)) {
+    const result = VariableValueSchema.safeParse(value);
+    if (result.success) defined[id] = result.data;
+  }
+
+  return defined;
 }
 
 /** The rules one entity scope draws against, whichever scope it is. */
@@ -90,7 +104,7 @@ function applyRosterReservations(
     for (const row of rows) {
       for (const id of memberIds) {
         const value = row[entityAttributesProperty][id];
-        if (value === undefined) continue;
+        if (value === undefined || value === null) continue;
         if (hold) ctx.uniqueRegistry.reserve(registry, slot, value);
         else ctx.uniqueRegistry.unreserve(registry, slot, value);
       }
@@ -159,7 +173,7 @@ export function rosterRowIsDrawable(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value === undefined) continue;
+      if (value === undefined || value === null) continue;
       if (ctx.uniqueRegistry.isTaken(registry, slot, value)) return false;
     }
   }
@@ -230,7 +244,9 @@ export function claimFixedValues(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }
@@ -254,12 +270,14 @@ export function replaceFixedValues(
 
     for (const id of memberIds) {
       const value = previous[id];
-      if (value !== undefined)
+      if (value !== undefined && value !== null)
         ctx.uniqueRegistry.release(registry, slot, value);
     }
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }

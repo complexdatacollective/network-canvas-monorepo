@@ -1,5 +1,9 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import {
+  NcNetworkSchema,
+  StageMetadataSchema,
+  type StageMetadata,
+} from '@codaco/shared-consts';
 
 import {
   decryptAssetData,
@@ -29,8 +33,8 @@ export type StoredSessionRow = Omit<
   StoredSession,
   'network' | 'stageMetadata'
 > & {
-  network?: NcNetwork;
-  stageMetadata?: Record<string, unknown>;
+  network?: unknown;
+  stageMetadata?: unknown;
   _enc?: { network: EncryptedField; stageMetadata?: EncryptedField };
 };
 
@@ -54,6 +58,10 @@ function sessionAad(id: string): string {
 
 function protocolAad(hash: string): string {
   return `protocols:${hash}`;
+}
+
+function parseStageMetadata(value: unknown): StageMetadata | undefined {
+  return value === undefined ? undefined : StageMetadataSchema.parse(value);
 }
 
 // The asset row id is already `${protocolHash}::${assetId}`; bind the AAD to it
@@ -96,16 +104,24 @@ export async function decryptSession(
         `Session ${row.id} has neither plaintext network nor _enc`,
       );
     }
-    return { ...rest, network, stageMetadata };
+    return {
+      ...rest,
+      network: NcNetworkSchema.parse(network),
+      stageMetadata: parseStageMetadata(stageMetadata),
+    };
   }
   const dek = getSessionDek();
   if (!dek) throw new Error('Cannot decrypt session: vault is locked (no key)');
   const aad = sessionAad(row.id);
-  const decNetwork = await decryptJson<NcNetwork>(_enc.network, dek, aad);
+  const decNetwork = await decryptJson<unknown>(_enc.network, dek, aad);
   const decStageMetadata = _enc.stageMetadata
-    ? await decryptJson<Record<string, unknown>>(_enc.stageMetadata, dek, aad)
+    ? await decryptJson<unknown>(_enc.stageMetadata, dek, aad)
     : undefined;
-  return { ...rest, network: decNetwork, stageMetadata: decStageMetadata };
+  return {
+    ...rest,
+    network: NcNetworkSchema.parse(decNetwork),
+    stageMetadata: parseStageMetadata(decStageMetadata),
+  };
 }
 
 export async function encryptProtocol(

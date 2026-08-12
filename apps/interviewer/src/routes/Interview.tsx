@@ -246,9 +246,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       await updateSession(id, {
         network: session.network,
         currentStep: currentStepRef.current,
-        stageMetadata: session.stageMetadata as
-          | Record<string, unknown>
-          | undefined,
+        stageMetadata: session.stageMetadata,
       });
     },
     [],
@@ -370,6 +368,6 @@ function hydrateSession(stored: StoredSession): SessionPayload {
     lastUpdated: stored.lastUpdatedAt,
     network: stored.network,
     promptIndex: 0,
-    stageMetadata: stored.stageMetadata as SessionPayload['stageMetadata'],
+    stageMetadata: stored.stageMetadata,
   };
 }
