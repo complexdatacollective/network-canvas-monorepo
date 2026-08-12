@@ -148,6 +148,208 @@ test('the shared Vitest setup disables Motion and Base UI animations', () => {
   assert.match(setup, /globalThis\.BASE_UI_ANIMATIONS_DISABLED\s*=\s*true/);
 });
 
+test('the shared Vitest setup widens the Testing Library wait budget', () => {
+  const setup = readFileSync(path.join(repoRoot, sharedSetupPath), 'utf8');
+
+  // Testing Library's own default is one second, which a loaded CI runner
+  // exceeds on renders that take tens of milliseconds locally.
+  const configured = setup.match(/asyncUtilTimeout:\s*([\d_]+)/);
+  assert.ok(configured, `${sharedSetupPath} must configure asyncUtilTimeout`);
+  assert.ok(
+    Number(configured[1].replaceAll('_', '')) >= 5000,
+    `${sharedSetupPath} must give waitFor/findBy at least 5s, got ${configured[1]}`,
+  );
+});
+
+/**
+ * The chain of `{ … }` blocks enclosing `offset`, innermost first, as
+ * `[start, end]` pairs. Strings and comments are skipped, so neither a brace
+ * inside a glob nor an apostrophe inside prose can shift the nesting.
+ *
+ * A whole-file scan is not good enough here: a config's projects each carry
+ * their own `testTimeout`, and a Storybook project's generous one must not be
+ * read as cover for a unit project that declares none.
+ */
+function enclosingBlocks(source, offset) {
+  const open = [];
+  const blocks = [];
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    const pair = source.slice(index, index + 2);
+
+    if (pair === '//') {
+      const newline = source.indexOf('\n', index);
+      index = newline === -1 ? source.length : newline;
+      continue;
+    }
+
+    if (pair === '/*') {
+      const close = source.indexOf('*/', index + 2);
+      index = close === -1 ? source.length : close + 1;
+      continue;
+    }
+
+    if (character === "'" || character === '"' || character === '`') {
+      index += 1;
+      while (index < source.length && source[index] !== character) {
+        if (source[index] === '\\') index += 1;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === '{') {
+      open.push(index);
+    } else if (character === '}') {
+      const start = open.pop();
+      if (start !== undefined && start < offset && index > offset) {
+        blocks.push([start, index]);
+      }
+    }
+  }
+
+  // Blocks are recorded as they close, and an enclosing block cannot close
+  // before the block it encloses — so this is already innermost-first.
+  return blocks;
+}
+
+/**
+ * A block's own properties, with every nested `{ … }` blanked out. Without
+ * this, the root `test` block of a config whose `projects` array holds a
+ * 60-second Storybook project would appear to declare that timeout itself.
+ */
+function ownProperties(source, [start, end]) {
+  let own = '';
+  let depth = 0;
+
+  for (let index = start + 1; index < end; index += 1) {
+    const character = source[index];
+    const pair = source.slice(index, index + 2);
+
+    if (pair === '//') {
+      const newline = source.indexOf('\n', index);
+      index = newline === -1 ? end : newline;
+      continue;
+    }
+
+    if (pair === '/*') {
+      const close = source.indexOf('*/', index + 2);
+      index = close === -1 ? end : close + 1;
+      continue;
+    }
+
+    if (character === "'" || character === '"' || character === '`') {
+      // Consumed whole so a brace inside cannot shift the depth, but kept
+      // verbatim so string-valued properties such as `name` survive.
+      const opened = index;
+      index += 1;
+      while (index < end && source[index] !== character) {
+        if (source[index] === '\\') index += 1;
+        index += 1;
+      }
+      if (depth === 0) own += source.slice(opened, index + 1);
+      continue;
+    }
+
+    if (character === '{') depth += 1;
+    else if (character === '}') depth -= 1;
+    else if (depth === 0) own += character;
+  }
+
+  return own;
+}
+
+test('every jsdom project loading the shared setup outlasts its wait budget', () => {
+  // A `testTimeout` at or below the wait budget cuts `waitFor` short, so the
+  // failure arrives as a bare timeout instead of the DOM the wait gave up on.
+  const tooTight = [];
+
+  for (const manifestPath of workspaceManifests) {
+    const workspaceDirectory = path.dirname(manifestPath);
+
+    for (const configPath of findVitestConfigs(workspaceDirectory)) {
+      const config = readFileSync(configPath, 'utf8');
+
+      // Every use in `setupFiles` is one project loading the shared setup; the
+      // bare import specifier at the top of the file is not.
+      const uses = [...config.matchAll(/disableModernAnimationsSetup/g)]
+        .map((match) => match.index)
+        .filter((index) => !/^\s*import\b/.test(lineAt(config, index)));
+
+      for (const use of uses) {
+        // Projects here all use `extends: true`, so a `testTimeout` on an
+        // enclosing block still governs; take the nearest one declared.
+        const nearest = enclosingBlocks(config, use)
+          .map((block) =>
+            /testTimeout:\s*([\d_]+)/.exec(ownProperties(config, block)),
+          )
+          .find(Boolean);
+
+        const timeout = nearest
+          ? Number(nearest[1].replaceAll('_', ''))
+          : undefined;
+        if (timeout === undefined || timeout < 20_000) {
+          tooTight.push(
+            `${path.relative(repoRoot, configPath)} (${projectNameAt(config, use) ?? 'root'}: ${timeout ?? 'unset'})`,
+          );
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(
+    tooTight,
+    [],
+    `Every Vitest project loading ${sharedSetupPath} must set testTimeout to at least 20s: ${tooTight.join(', ')}`,
+  );
+});
+
+function lineAt(source, offset) {
+  const start = source.lastIndexOf('\n', offset) + 1;
+  const end = source.indexOf('\n', offset);
+  return source.slice(start, end === -1 ? undefined : end);
+}
+
+/** The `name:` of the project block that loads the setup, for the failure text. */
+function projectNameAt(source, offset) {
+  for (const block of enclosingBlocks(source, offset)) {
+    const named = /name:\s*'([^']+)'/.exec(ownProperties(source, block));
+    if (named) return named[1];
+  }
+  return undefined;
+}
+
+test('every Testing Library Vitest workspace loads the shared setup', () => {
+  // Motion is the usual reason to need the shared setup, but the wait budget it
+  // configures matters to any workspace that queries the DOM asynchronously.
+  const uncoveredWorkspaces = findUnconfiguredWorkspaces({
+    dependencyName: '@testing-library/react',
+    setupFilename: sharedSetupFilename,
+    workspaceManifests,
+  });
+
+  assert.deepEqual(
+    uncoveredWorkspaces,
+    [],
+    `Testing Library Vitest workspaces must load ${sharedSetupPath} in their unit or browser setupFiles: ${uncoveredWorkspaces.join(', ')}`,
+  );
+});
+
+test('Testing Library Vitest consumers inherit setup changes through Vitest tooling', () => {
+  const missingDependency = findConsumersMissingWorkspaceDependency({
+    consumerDependency: '@testing-library/react',
+    requiredDependency: '@codaco/vitest-config',
+    workspaceManifests,
+  });
+
+  assert.deepEqual(
+    missingDependency,
+    [],
+    `Testing Library Vitest consumers must declare @codaco/vitest-config as a workspace dependency so Turbo selects them when ${sharedSetupPath} changes: ${missingDependency.join(', ')}`,
+  );
+});
+
 test('every modern Motion Vitest workspace loads the shared animation setup', () => {
   const uncoveredWorkspaces = findUnconfiguredWorkspaces({
     dependencyName: 'motion',

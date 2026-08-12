@@ -267,6 +267,9 @@ export function vendorSharedVitestConfig(staging, manifest, dropped) {
     delete vendoredManifest.exports['./modern/disable-animations'];
     delete vendoredManifest.exports['./modern/setup-path'];
     delete vendoredManifest.dependencies.motion;
+    // Only the modern setup configures Testing Library; the legacy one does not
+    // import it.
+    delete vendoredManifest.dependencies['@testing-library/dom'];
   }
   if (!usesDependency('framer-motion')) {
     vendoredManifest.files = vendoredManifest.files.filter(
