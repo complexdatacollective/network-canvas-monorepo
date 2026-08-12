@@ -543,7 +543,7 @@ const pickerYearFloorViolation = (
 // here rather than silently ignore it at generation time, mirroring
 // `rejectDisjointNumberSynthetic`. Both ends are strings at the same
 // resolution, so a lexicographic comparison is date order.
-const rejectInvalidDatetimeSynthetic = (
+export const rejectInvalidDatetimeSynthetic = (
   synthetic: DatetimeSynthetic | undefined,
   resolution: keyof typeof DATE_RESOLUTION,
   fieldWindow: { min?: string; max?: string } | undefined,

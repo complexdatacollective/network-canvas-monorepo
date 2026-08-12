@@ -121,6 +121,17 @@ export type EdgeCreation = {
   writesAtCreation: string[];
   /** Parent→child edges inside a pedigree's own family structure. */
   structured: 'pedigree' | null;
+  /**
+   * Where this creation sits in its stage's own sequence.
+   *
+   * A stage whose prompts create different edge types presents them in prompt
+   * order, and the interview re-reads its filter against the network as it
+   * changes — so a prompt creating type A can remove the endpoints the next
+   * prompt would have paired. Planning the types in codebook order instead
+   * planned the later prompt's type over subjects the earlier one had already
+   * taken away. Zero where a creation has no prompt of its own.
+   */
+  promptIndex: number;
 };
 
 export type WriteMode =
@@ -554,7 +565,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     case 'Sociogram': {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
-      for (const prompt of promptsOf(stage.prompts)) {
+      for (const [promptIndex, prompt] of promptsOf(stage.prompts).entries()) {
         const layoutVariable = prompt.layout?.layoutVariable;
         if (layoutVariable !== undefined) {
           summary.writes.push({
@@ -587,6 +598,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           summary.edgeCreations.push({
             stageId: stage.id,
             stageIndex: index,
+            promptIndex,
             edgeType: prompt.edges.create,
             subjectNodeType: nodeType,
             ...(stage.filter ? { filter: stage.filter } : {}),
@@ -608,11 +620,12 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       if (stage.type === 'DyadCensus') summary.metadataKind = 'dyadCensus';
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
-      for (const prompt of promptsOf(stage.prompts)) {
+      for (const [promptIndex, prompt] of promptsOf(stage.prompts).entries()) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
           stageId: stage.id,
           stageIndex: index,
+          promptIndex,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
           ...(stage.filter ? { filter: stage.filter } : {}),
@@ -628,11 +641,12 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     case 'TieStrengthCensus': {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
-      for (const prompt of promptsOf(stage.prompts)) {
+      for (const [promptIndex, prompt] of promptsOf(stage.prompts).entries()) {
         if (prompt.createEdge === undefined) continue;
         summary.edgeCreations.push({
           stageId: stage.id,
           stageIndex: index,
+          promptIndex,
           edgeType: prompt.createEdge,
           subjectNodeType: nodeType,
           ...(stage.filter ? { filter: stage.filter } : {}),
@@ -750,6 +764,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
       summary.edgeCreations.push({
         stageId: stage.id,
         stageIndex: index,
+        promptIndex: 0,
         edgeType,
         subjectNodeType: nodeType,
         ownNodesOnly: true,
@@ -853,12 +868,13 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
             variableId === stage.convexHullVariable ? 'composerHull' : 'form',
         });
       }
-      for (const edge of stage.edges ?? []) {
+      for (const [promptIndex, edge] of (stage.edges ?? []).entries()) {
         const edgeType = subjectTypeOf(edge.subject);
         if (edgeType === undefined) continue;
         summary.edgeCreations.push({
           stageId: stage.id,
           stageIndex: index,
+          promptIndex,
           edgeType,
           subjectNodeType: nodeType,
           // The canvas is loaded from `getNetworkNodesForType`, which is every

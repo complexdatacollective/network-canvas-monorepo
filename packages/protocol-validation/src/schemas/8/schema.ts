@@ -45,6 +45,7 @@ import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
   NON_RENDERABLE_VARIABLE_TYPES,
+  rejectInvalidDatetimeSynthetic,
   type Variable,
   VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_COMPONENTS,
@@ -251,6 +252,69 @@ const validateFormFieldVariable = (
  * EFFECTIVE rendering is known independently of the codebook default, so the
  * check belongs here rather than at the record level.
  */
+/**
+ * NetworkComposer stage-effective synthetic-window check.
+ *
+ * A datetime variable's `synthetic` window is validated on the variable
+ * against the variable's OWN picker parameters, which is all the record-level
+ * check can see. A composer field carries its own `component` and
+ * `parameters`, and `applyComposerRenderings` makes those authoritative for
+ * the values this stage generates — so an otherwise unbounded date variable
+ * with a synthetic range of 1950-1960, rendered here by a picker pinned to
+ * 2000-2010, declares a range generation can never produce and validation had
+ * nothing to say about it.
+ *
+ * Run in the same overlay the contradiction check uses: the field's own
+ * component always wins (it is required on the field), while `parameters`
+ * FALL BACK to the codebook's, mirroring the runtime's
+ * `fieldParameters ?? codebookParameters`. A field that re-declares a control
+ * without repeating the window therefore keeps the window it inherits rather
+ * than being read as unbounded.
+ */
+const validateComposerFieldSyntheticWindows = (
+  codebookVariables: Record<string, Variable>,
+  fields: ComposerFormField[] | undefined,
+  fieldsPath: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  if (!fields) return;
+  fields.forEach((field, fieldIndex) => {
+    const variable = codebookVariables[field.variable];
+    if (!variable || variable.type !== 'datetime') return;
+    if (!('synthetic' in variable) || variable.synthetic === undefined) return;
+    // Only a fixed-window picker pins the dates a field accepts; a
+    // RelativeDatePicker's window moves with its anchor and is judged where
+    // the anchor is known.
+    if (field.component !== ComponentTypes.DatePicker) return;
+
+    const parameters =
+      'parameters' in field && field.parameters !== undefined
+        ? field.parameters
+        : 'parameters' in variable
+          ? variable.parameters
+          : undefined;
+    const window = parameters as
+      | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
+      | undefined;
+
+    rejectInvalidDatetimeSynthetic(
+      variable.synthetic,
+      window?.type ?? 'full',
+      window,
+      {
+        addIssue: (issue: { message?: string; path?: (string | number)[] }) => {
+          addIssue({
+            message: issue.message ?? 'Synthetic window is not valid here',
+            // Anchored at the FIELD, since it is the field's own rendering
+            // that makes the descriptor unreachable.
+            path: [...fieldsPath, fieldIndex, ...(issue.path ?? [])],
+          });
+        },
+      } as unknown as z.RefinementCtx,
+    );
+  });
+};
+
 const validateComposerFieldComponents = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
@@ -820,6 +884,12 @@ const ProtocolSchema = z
           nodeFormPath,
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
+        validateComposerFieldSyntheticWindows(
+          nodeVariables,
+          stage.nodeForm?.fields,
+          nodeFormPath,
+          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+        );
         validateComposerFieldContradictions(
           nodeVariables,
           stage.nodeForm?.fields,
@@ -845,6 +915,12 @@ const ProtocolSchema = z
             'fields',
           ];
           validateComposerFieldComponents(
+            edgeVariables,
+            edge.form?.fields,
+            edgeFormPath,
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+          );
+          validateComposerFieldSyntheticWindows(
             edgeVariables,
             edge.form?.fields,
             edgeFormPath,

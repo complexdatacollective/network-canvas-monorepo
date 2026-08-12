@@ -157,6 +157,9 @@ describe('analyseStageEffects', () => {
       {
         stageId: 's1',
         stageIndex: 0,
+        // The second prompt is the one creating edges; its place in the
+        // stage's own sequence is what breaks ties between edge types.
+        promptIndex: 1,
         edgeType: 'friendship',
         subjectNodeType: 'person',
         topology: DEFAULT_EDGE_TOPOLOGY,

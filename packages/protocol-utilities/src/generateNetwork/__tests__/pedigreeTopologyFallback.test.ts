@@ -497,6 +497,28 @@ describe('a walk-time domain larger than a preview can pair', () => {
     ).toThrow(/more pairs than a preview can build/);
   });
 
+  it('measures the union rather than the sum of overlapping creators', () => {
+    // Two prompts over the same people see the same pairs. Summing their sizes
+    // before merging counts every shared pair twice, so a domain comfortably
+    // inside the cap was refused on the second pass — which would add no
+    // entries at all.
+    // Enough people that the domain sits between half the cap and the cap:
+    // one pass fits, two summed do not, and the union is one pass.
+    const manyPedigrees = Array.from(
+      { length: 22 },
+      (_unused, index) =>
+        ({ ...pedigree, id: `stage-pedigree-${index}` }) as unknown as Stage,
+    );
+
+    const { network } = generateNetwork({
+      seed: 3,
+      codebook: codebook(),
+      // Three prompts, one subject set: 3x the pairs if summed, 1x if merged.
+      stages: [...manyPedigrees, census(3)],
+    });
+    expect(network.nodes.length).toBeGreaterThan(400);
+  });
+
   it('builds a walk-time domain that fits', () => {
     const { network } = generateNetwork({
       seed: 3,

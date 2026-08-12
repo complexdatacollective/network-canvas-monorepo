@@ -1502,12 +1502,27 @@ export function planNetwork(
       const summary = effects.stages[creation.stageIndex];
       return summary === undefined || !settledAsSkipped(summary);
     });
-  const firstEdgeStage = (type: string): number => {
-    const stageIndices = reachableCreations(type)
+  /**
+   * Where a type's first edge can appear, as (stage, prompt).
+   *
+   * The prompt half decides ties WITHIN a stage, which the codebook's own key
+   * order was deciding before. One stage's prompts run in their own order and
+   * the interview re-reads its filter against the network as it changes, so a
+   * prompt creating type A can take away the endpoints the next prompt would
+   * have paired: with a `NOT_EXISTS` filter on A and prompts creating A then
+   * B, planning B first — because the codebook happened to list it first —
+   * planned it over subjects the interview would already have excluded.
+   */
+  const firstEdgeAt = (type: string): number => {
+    const positions = reachableCreations(type)
       .filter((creation) => creation.structured === null)
-      .map((creation) => creation.stageIndex);
-    return stageIndices.length > 0
-      ? Math.min(...stageIndices)
+      // Stage dominates: no protocol has enough prompts on one stage for a
+      // prompt index to reach the next stage's place.
+      .map(
+        (creation) => creation.stageIndex * 1_000_000 + creation.promptIndex,
+      );
+    return positions.length > 0
+      ? Math.min(...positions)
       : Number.MAX_SAFE_INTEGER;
   };
 
@@ -1515,7 +1530,7 @@ export function planNetwork(
   const plannedEdges: PlannedEdge[] = [];
   const topologyTargets = new Map<string, EdgeTopologyTarget>();
   for (const [type] of edgeTypes.toSorted(
-    ([a], [b]) => firstEdgeStage(a) - firstEdgeStage(b),
+    ([a], [b]) => firstEdgeAt(a) - firstEdgeAt(b),
   )) {
     const creations = reachableCreations(type);
     if (creations.length === 0) continue;

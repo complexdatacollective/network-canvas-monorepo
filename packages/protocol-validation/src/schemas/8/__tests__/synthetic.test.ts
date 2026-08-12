@@ -981,6 +981,77 @@ describe('synthetic metadata (additive to schema 8)', () => {
       synthetic,
     });
 
+    it('rejects a window a Composer field puts out of reach', () => {
+      // A composer field carries its own picker parameters, and
+      // `applyComposerRenderings` makes them authoritative for the values this
+      // stage generates. Judged against the codebook variable's own window
+      // alone — here, none at all — a synthetic range the field can never
+      // accept passed validation and was silently discarded at generation.
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'uniform',
+          min: '1950-01-01',
+          max: '1960-01-01',
+        }),
+      );
+      (protocol.stages as Loose[]).push({
+        id: 'nc-window',
+        label: 'Build the network',
+        type: 'NetworkComposer',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 4 },
+        nodeForm: {
+          fields: [
+            {
+              variable: 'dateMet',
+              component: 'DatePicker',
+              parameters: { min: '2000-01-01', max: '2010-01-01' },
+            },
+          ],
+        },
+      } as unknown as Loose);
+
+      const result = parse(protocol);
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'is before the earliest date this field accepts'),
+      ).toBe(true);
+    });
+
+    it('accepts a window the Composer field can reach', () => {
+      const protocol = withPersonVariable(
+        'dateMet',
+        datetimeVariable({
+          distribution: 'uniform',
+          min: '2001-01-01',
+          max: '2002-01-01',
+        }),
+      );
+      (protocol.stages as Loose[]).push({
+        id: 'nc-window',
+        label: 'Build the network',
+        type: 'NetworkComposer',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 4 },
+        nodeForm: {
+          fields: [
+            {
+              variable: 'dateMet',
+              component: 'DatePicker',
+              parameters: { min: '2000-01-01', max: '2010-01-01' },
+            },
+          ],
+        },
+      } as unknown as Loose);
+
+      expect(parse(protocol).success).toBe(true);
+    });
+
     it('rejects a synthetic bound the picker cannot offer', () => {
       // The picker's own parameters are already held to these floors, and a
       // synthetic window is drawn from directly where the field declares no

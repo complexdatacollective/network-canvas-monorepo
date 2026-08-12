@@ -670,19 +670,19 @@ export function materialiseSession(params: {
       const domainNodes = walkNodesByType.get(domainKey) ?? new Set<string>();
       walkNodesByType.set(domainKey, domainNodes);
 
-      // Counted BEFORE the pairs are built, for the reason the plan counts its
-      // own: pairs grow quadratically, and this is the walk's separate domain
-      // — nodes a FamilyPedigree builds during materialisation are not in the
-      // plan's, so the ceiling the planner applies never sees them. A raised
-      // pedigree ceiling, or enough pedigree stages, would assemble millions
-      // of keys synchronously on Architect's main thread.
+      // Counted BEFORE this creation's pairs are built, for the reason the
+      // plan counts its own: pairs grow quadratically, and this is the walk's
+      // separate domain — nodes a FamilyPedigree builds during materialisation
+      // are not in the plan's, so the ceiling the planner applies never sees
+      // them. A raised pedigree ceiling, or enough pedigree stages, would
+      // assemble millions of keys synchronously on Architect's main thread.
       const possiblePairs = (subjects.length * (subjects.length - 1)) / 2;
-      if (domainPairs.size + possiblePairs > MAX_SYNTHETIC_PAIRS) {
+      if (possiblePairs > MAX_SYNTHETIC_PAIRS) {
         refuseTooManyPairs(
           ctx,
           creation.edgeType,
-          `${subjects.length.toLocaleString('en')} people are eligible to be linked here, reaching ` +
-            `${(domainPairs.size + possiblePairs).toLocaleString('en')} pairs with those the stages before it reached`,
+          `${subjects.length.toLocaleString('en')} people are eligible to be linked here, which is ` +
+            `${possiblePairs.toLocaleString('en')} possible pairs`,
         );
       }
 
@@ -703,6 +703,20 @@ export function materialiseSession(params: {
             linked: linked.has(pairKey(uidA, uidB)),
           });
         }
+      }
+      // And the ACCUMULATED domain, checked on the merged set rather than on
+      // the sum of the two sizes. Creators over one subject type overlap by
+      // construction — two duplicate prompts see the very same people — so
+      // adding their sizes double-counts every shared pair and refused a
+      // preview whose union sat comfortably inside the cap. Checked after the
+      // merge for the reason the plan checks after its own: the transient cost
+      // is one creation's pairs, which the check above already bounds.
+      if (domainPairs.size > MAX_SYNTHETIC_PAIRS) {
+        refuseTooManyPairs(
+          ctx,
+          creation.edgeType,
+          `the stages linking this type reach ${domainPairs.size.toLocaleString('en')} pairs between them`,
+        );
       }
       if (reachable.length === 0) continue;
 
