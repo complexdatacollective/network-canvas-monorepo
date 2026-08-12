@@ -754,6 +754,7 @@ export const DisabledNodes: Story = {
 
 const fittingLabelCases = [
   { caption: 'Short', label: 'Ash', lang: 'en' },
+  { caption: 'Eight-letter word', label: 'Mohammad Crist', lang: 'en' },
   { caption: 'Typical', label: 'María Hernández', lang: 'es' },
   { caption: 'Long', label: 'Alexandra Müller-Lüdenscheidt', lang: 'de' },
   {
@@ -768,6 +769,9 @@ const fittingLabelCases = [
     lang: 'en',
   },
 ] as const;
+
+// The one case no rung can fit, used by the reveal stories.
+const beyondAnyFit = fittingLabelCases[5];
 
 /**
  * Labels are fitted to the node instead of being clipped at one fixed size.
@@ -814,6 +818,11 @@ real layout after render rather than guessed from a character count. Only names
 that overflow even at the smallest legible size are clipped, so most are
 readable in full without any interaction.
 
+Words are never broken while a smaller size could fit them whole. A word no
+size can hold is hyphenated at a point the reader expects (using the
+hyphenation dictionary for the node's language), and only a word hyphenation
+cannot segment is broken arbitrarily as a last resort.
+
 The smallest rung is deliberately a floor: below it a name stops being legible
 at arm's length on a tablet, which is worse than clipping it.
         `,
@@ -828,22 +837,18 @@ at arm's length on a tablet, which is worse than clipping it.
 export const LabelReveal: Story = {
   render: () => (
     <div className="flex flex-wrap gap-12 p-16">
-      {[fittingLabelCases[4], fittingLabelCases[0]].map(
-        ({ caption, label, lang }) => (
-          <div key={caption} className="flex w-40 flex-col items-center gap-2">
-            <Node label={label} lang={lang} onClick={fn()} />
-            <span className="text-center text-xs text-current/70">
-              {caption}
-            </span>
-          </div>
-        ),
-      )}
+      {[beyondAnyFit, fittingLabelCases[0]].map(({ caption, label, lang }) => (
+        <div key={caption} className="flex w-40 flex-col items-center gap-2">
+          <Node label={label} lang={lang} onClick={fn()} />
+          <span className="text-center text-xs text-current/70">{caption}</span>
+        </div>
+      ))}
     </div>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const clipped = canvas.getByRole('button', {
-      name: fittingLabelCases[4].label,
+      name: beyondAnyFit.label,
     });
     const short = canvas.getByRole('button', {
       name: fittingLabelCases[0].label,
@@ -861,7 +866,7 @@ export const LabelReveal: Story = {
       { timeout: 3000 },
     );
     await waitFor(
-      () => expect(openTooltip()).toHaveTextContent(fittingLabelCases[4].label),
+      () => expect(openTooltip()).toHaveTextContent(beyondAnyFit.label),
       { timeout: 3000 },
     );
     await userEvent.pointer({ keys: '[/MouseLeft]', target: clipped });
@@ -1054,7 +1059,7 @@ export const HoldToDragHandoff: Story = {
   render: () => (
     <div className="p-24">
       <Node
-        label={fittingLabelCases[4].label}
+        label={beyondAnyFit.label}
         onClick={fn()}
         onDragStart={fn()}
         onDragEnd={fn()}
@@ -1107,7 +1112,7 @@ export const HoldToDragHandoff: Story = {
 export const TwoFingerHold: Story = {
   render: () => (
     <div className="p-24">
-      <Node label={fittingLabelCases[4].label} onClick={fn()} />
+      <Node label={beyondAnyFit.label} onClick={fn()} />
     </div>
   ),
   play: async ({ canvasElement }) => {

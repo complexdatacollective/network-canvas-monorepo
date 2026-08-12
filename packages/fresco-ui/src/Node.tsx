@@ -129,10 +129,10 @@ const shapeLayerVariants = cva({
 });
 
 export const labelVariants = cva({
-  base: [
-    'w-[80%] min-w-0 overflow-hidden text-center',
-    'wrap-anywhere hyphens-auto whitespace-pre-line',
-  ],
+  // No word-breaking here: a word that cannot fit its line must overflow, or
+  // the fit ladder cannot see it. Breaking is conceded only by the dedicated
+  // rungs below the ladder floor, in `buildFitSteps`.
+  base: ['w-[80%] min-w-0 overflow-hidden text-center', 'whitespace-pre-line'],
   variants: {
     size: {
       xxs: 'line-clamp-1 text-xs leading-none!',
@@ -172,14 +172,35 @@ const LABEL_FIT_OVERRIDES: Record<NodeSize, readonly string[]> = {
   lg: ['text-base leading-5! line-clamp-3', 'text-sm leading-4! line-clamp-4'],
 };
 
-const buildFitSteps = (size: NodeSize): readonly [string, ...string[]] => [
-  // The first rung is the size's untouched default, so a label that already
-  // fits renders exactly as it did before fitting existed.
-  labelVariants({ size }),
-  ...LABEL_FIT_OVERRIDES[size].map((className) =>
-    labelVariants({ size, className }),
-  ),
-];
+/**
+ * Wrapping rungs appended below each size's floor. A broken word is always
+ * harder to read than a whole one at a smaller size, so the rungs above never
+ * break inside words — a name whose longest word cannot fit a line overflows,
+ * which the fitter reads as "step down". Only when no size can hold the word
+ * whole does the ladder concede to breaking it: first at a hyphenation point
+ * the reader expects (dictionary-driven, marked with a visible hyphen, never
+ * splitting off fewer than two characters — requires a `lang` in scope), and
+ * as a true last resort anywhere at all, which keeps a pathological name
+ * inside the shape and leaves the long-press reveal to carry the rest.
+ */
+const HYPHENATED_BREAKS = 'hyphens-auto [hyphenate-limit-chars:6_3_2]';
+const EMERGENCY_BREAKS = 'wrap-anywhere';
+
+const buildFitSteps = (size: NodeSize): readonly [string, ...string[]] => {
+  const floor = LABEL_FIT_OVERRIDES[size].at(-1) ?? '';
+  const atFloor = (breaks: string) =>
+    labelVariants({ size, className: `${floor} ${breaks}`.trim() });
+  return [
+    // The first rung is the size's untouched default, so a label that already
+    // fits renders exactly as it did before fitting existed.
+    labelVariants({ size }),
+    ...LABEL_FIT_OVERRIDES[size].map((className) =>
+      labelVariants({ size, className }),
+    ),
+    atFloor(HYPHENATED_BREAKS),
+    atFloor(EMERGENCY_BREAKS),
+  ];
+};
 
 const LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> = {
   xxs: buildFitSteps('xxs'),

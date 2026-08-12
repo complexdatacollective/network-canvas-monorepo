@@ -8,14 +8,16 @@ import {
 } from '../../__tests__/labelMetrics';
 import { useFitText } from '../useFitText';
 
-// Capacities under the simulated metrics: 33, 39 and 60 characters.
+// Capacities under the simulated metrics: 33, 39 and 60 characters. These
+// tests exercise the ladder mechanics, not wrapping policy, so every rung
+// breaks anywhere to keep the simulated fit a pure character budget.
 const STEPS = [
-  'text-base line-clamp-3',
-  'text-sm line-clamp-3',
-  'text-xs line-clamp-4',
+  'text-base line-clamp-3 wrap-anywhere',
+  'text-sm line-clamp-3 wrap-anywhere',
+  'text-xs line-clamp-4 wrap-anywhere',
 ] as const;
 
-const SINGLE_STEP = ['text-base line-clamp-3'] as const;
+const SINGLE_STEP = ['text-base line-clamp-3 wrap-anywhere'] as const;
 
 function Probe({
   text,

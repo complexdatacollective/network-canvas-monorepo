@@ -352,7 +352,14 @@ export default function QuickAddField({
                     )}
                   >
                     {fieldProps.value ? (
-                      <span className={labelVariants()}>
+                      // This live preview has no fit ladder, so it opts into
+                      // emergency breaking to keep the input inside the shape
+                      // while it is being typed.
+                      <span
+                        className={labelVariants({
+                          className: 'wrap-anywhere',
+                        })}
+                      >
                         {truncateNodeLabel(fieldProps.value as string)}
                       </span>
                     ) : (
