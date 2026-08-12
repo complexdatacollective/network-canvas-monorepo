@@ -3118,7 +3118,12 @@ describe('lost guarantees the engine should restore', () => {
     }
   });
 
-  it('leaves a roster stage empty when no row can be used', () => {
+  it('refuses a roster whose every row the rules turn away', () => {
+    // Rows the draw passes over are rows the roster cannot furnish people
+    // from, so a stage set to add three of them is as under-provisioned as one
+    // handed an empty roster — which has always been refused. This used to
+    // build an empty network and say nothing, because the assignment counted
+    // rows the draw would never take.
     const codebook = personCodebook({
       age: {
         name: 'Age',
@@ -3129,13 +3134,52 @@ describe('lost guarantees the engine should restore', () => {
     const rows = rowsOf([{ age: 5 }, { age: 6 }, { age: 7 }, { age: 8 }]);
 
     for (const seed of REGRESSION_SEEDS) {
+      expect(() =>
+        generateNetwork({
+          seed,
+          codebook,
+          stages: [rosterStage(3)],
+          externalData: { 'stage-1': rows.map((row) => ({ ...row })) },
+        }),
+      ).toThrow(
+        /roster does not hold enough people for the stages drawing from it/,
+      );
+    }
+  });
+
+  it('still draws the usable rows of a roster holding both', () => {
+    // The refusal is about a roster that cannot cover its stage, not about the
+    // presence of unusable rows: two of these six are drawable and the stage
+    // asks for two.
+    const codebook = personCodebook({
+      age: {
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 18, maxValue: 100 },
+      },
+    });
+    const rows = rowsOf([
+      { age: 5 },
+      { age: 42 },
+      { age: 7 },
+      { age: 55 },
+      { age: 900 },
+      { age: 6 },
+    ]);
+
+    for (const seed of REGRESSION_SEEDS) {
       const { network } = generateNetwork({
         seed,
         codebook,
-        stages: [rosterStage(3)],
+        stages: [rosterStage(2)],
         externalData: { 'stage-1': rows.map((row) => ({ ...row })) },
       });
-      expect(network.nodes).toEqual([]);
+      expect(network.nodes).toHaveLength(2);
+      for (const node of network.nodes) {
+        expect(
+          Number(node[entityAttributesProperty].age),
+        ).toBeGreaterThanOrEqual(18);
+      }
     }
   });
 

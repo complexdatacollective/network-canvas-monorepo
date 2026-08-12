@@ -702,13 +702,6 @@ export function shuffled<T>(
  * thousand drove the recursion toward the stack limit, so opening an Architect
  * preview froze before a single node was drawn.
  */
-function unmatchedInto(
-  into: Map<number, number>,
-  from: ReadonlyMap<number, number>,
-): void {
-  for (const [index, count] of from) into.set(index, count);
-}
-
 function matchRows(
   pools: ReadonlyMap<number, string[]>,
   assigned: number[],
@@ -905,30 +898,31 @@ function assignRosterRows(
   };
 
   /**
-   * Distinct rows per roster creation, minus everyone the run already used —
-   * and, separately, the subset each creation could actually build a person
-   * from.
+   * The rows each roster creation could actually build a person from, minus
+   * everyone the run already used.
    *
-   * The two are kept apart because they answer different questions, and only
-   * one of them may change what the run refuses:
+   * A row a stage cannot draw is not that stage's row, and this pool is what
+   * BOTH questions are answered over:
    *
-   * - WHICH rows a stage should get first refusal on is decided over the rows
-   *   it can draw. Deciding it over raw membership let a stage take the single
-   *   row another stage's prompts could have used: a shared two-row pool where
-   *   one stage fixes a value only one row satisfies handed that row to the
-   *   stage with no preference, left the other to reject what remained, and
-   *   quietly built one person where both stages asked for one — though the
-   *   other assignment satisfies both.
+   * - WHICH rows a stage gets first refusal on. Decided over raw membership, a
+   *   stage took the single row another stage's prompts could have used: a
+   *   shared two-row pool where one stage fixes a value only one row satisfies
+   *   handed that row to the stage with no preference, left the other to
+   *   reject what remained, and quietly built one person where both stages
+   *   asked for one — though the other assignment satisfies both.
    *
-   * - HOW MANY a stage can be given is still counted over raw membership. A
-   *   row the rules reject is passed over at draw time by design, and a stage
-   *   left with nobody is left empty rather than refused (see the roster
-   *   guarantees in `generateNetwork.constraints`). Counting the drawable
-   *   subset here would turn every one of those into a refusal, which is a
-   *   different decision from the one this fix is making.
+   * - HOW MANY it can be given. A pool of rows this stage's rules turn away is
+   *   a pool that cannot furnish the people the protocol says it will, and
+   *   counting them made the plan promise a population the draw then failed to
+   *   build. So a roster whose usable rows fall short is now reported like any
+   *   other under-provisioned roster rather than quietly building fewer.
+   *
+   * The judgement here is the more permissive of the two: the registry it
+   * consults is emptier than at draw time, so a row this pass admits may still
+   * be passed over later, but a row it turns away could never have been drawn.
+   * A shortfall reported here is therefore one the draw would have reached.
    */
   const pools = new Map<number, string[]>();
-  const drawablePools = new Map<number, string[]>();
   creations.forEach((creation, index) => {
     // Only a roster interface's pool binds. A name generator's panel is a
     // shortcut for naming someone already known, not a closed list — it can
@@ -940,17 +934,20 @@ function assignRosterRows(
     const pool = ctx.externalData?.[creation.rosterStageId];
     if (pool === undefined) return;
     const seen = new Set<string>(ctx.usedRosterUids);
-    const distinct: string[] = [];
     const usable: string[] = [];
     for (const row of pool) {
       const uid = row[entityPrimaryKeyProperty];
+      // A key is claimed by the first DRAWABLE row carrying it, not by the
+      // first row. A caller's external data may give two rows one primary key
+      // while their values differ, and the draw takes the first of them it can
+      // use — so letting an undrawable row claim the key here would hide a
+      // usable sibling and report a shortfall over a person the run can build.
       if (seen.has(uid)) continue;
+      if (!drawableBy(creation, row)) continue;
       seen.add(uid);
-      distinct.push(uid);
-      if (drawableBy(creation, row)) usable.push(uid);
+      usable.push(uid);
     }
-    pools.set(index, distinct);
-    drawablePools.set(index, usable);
+    pools.set(index, usable);
   });
   if (pools.size === 0) return new Map();
 
@@ -1000,15 +997,9 @@ function assignRosterRows(
   // thousand drove the recursion toward the stack limit, so opening an
   // Architect preview froze before a single node was drawn.
   const contestedOrder = order.filter((index) => contested.has(index));
-  // Two questions, two pools. How MANY a contested stage can be given is
-  // counted over raw membership, so a row the rules reject still counts toward
-  // a stage's fill and is passed over at draw time as before. WHICH rows it
-  // gets first refusal on is decided over the rows it can actually draw.
-  unmatchedInto(unmatched, matchRows(pools, assigned, contestedOrder).short);
-  for (const [index, uids] of matchRows(drawablePools, assigned, contestedOrder)
-    .chosen) {
-    preference.set(index, uids);
-  }
+  const matched = matchRows(pools, assigned, contestedOrder);
+  for (const [index, count] of matched.short) unmatched.set(index, count);
+  for (const [index, uids] of matched.chosen) preference.set(index, uids);
 
   for (const [index, short] of unmatched) {
     const creation = creations[index]!;

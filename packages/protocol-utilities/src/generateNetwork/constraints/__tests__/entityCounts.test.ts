@@ -2062,18 +2062,49 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
       },
     } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
 
+    // Declared nothing, so the generic fallback is what gives way: the stage
+    // takes what the roster can actually offer, which is nobody.
     const drawn = new Set<string>();
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
         seed,
         codebook: codebook,
-        stages: withNodeCount([rosterStage(), census], 4, 'person'),
+        stages: [rosterStage(), census],
         externalData: underage,
       });
       drawn.add(`${network.nodes.length}/${network.edges.length}`);
     }
 
     expect([...drawn]).toEqual(['0/0']);
+  });
+
+  it('refuses instead where the stage declared the people it wants', () => {
+    // Same roster, same rows, but the count is the author's rather than the
+    // fallback's. A roster that can furnish nobody cannot furnish four, and
+    // saying so is the point of the count being declared.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+          },
+        },
+      },
+      edge: {},
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    expect(() =>
+      generateNetwork({
+        seed: 1,
+        codebook,
+        stages: withNodeCount([rosterStage()], 4, 'person'),
+        externalData: underage,
+      }),
+    ).toThrow(
+      /roster does not hold enough people for the stages drawing from it/,
+    );
   });
 
   it('leaves a fabricating stage’s panel rows alone', () => {
