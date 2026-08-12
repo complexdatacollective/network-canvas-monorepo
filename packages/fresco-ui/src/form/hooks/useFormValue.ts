@@ -34,7 +34,12 @@ export function useFormValue<
         const field = state.pathOperations
           ? state.pathOperations.getFieldState(resolvedPath)
           : state.getFieldState(publicName);
-        values[name] = field?.value as T | undefined;
+        Object.defineProperty(values, name, {
+          configurable: true,
+          enumerable: true,
+          value: field?.value,
+          writable: true,
+        });
       }
       return values as Record<K[number], T | undefined>;
     }),
