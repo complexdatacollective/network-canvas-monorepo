@@ -552,6 +552,26 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     'a root marker keeps the published tree non-empty',
   );
 
+  // A failed job's previous report is removed even when this failure died
+  // before producing a replacement artifact — the old rm must precede the
+  // artifact-existence check.
+  const failureCase = reportJob.match(/failure\)([\s\S]*?);;/)?.[1] ?? '';
+  assert.ok(
+    failureCase.indexOf('rm -rf "$dir"') !== -1 &&
+      failureCase.indexOf('rm -rf "$dir"') <
+        failureCase.indexOf('[ -d "$src" ]'),
+    'the failure case removes the stale report before checking the artifact',
+  );
+
+  // The merge step (and therefore the orphan sweep) is unconditional, so
+  // all-skipped runs still clean up deleted branches' reports. Only the
+  // artifact download stays failure-gated.
+  assert.match(
+    reportJob,
+    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+env:/,
+    'the merge step carries no if guard',
+  );
+
   // Orphan sweep: reports for branches that no longer exist are deleted on
   // every report run, and a failed live-branch listing skips the sweep
   // rather than deleting on doubt.

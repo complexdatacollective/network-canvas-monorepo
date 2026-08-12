@@ -1565,19 +1565,18 @@ jobs:
           pattern: '*playwright-report*'
           path: reports
       - name: Fetch existing pages content
-        if: >-
-          ${{ contains(env.SUITE_RESULTS, 'failure')
-          || contains(env.SUITE_RESULTS, 'success') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: gh-pages
           path: existing-pages
         continue-on-error: true
       - name: Merge failure reports into per-job branch subdirectories
+        # Unconditional (unlike the failure-gated download above): the orphan
+        # sweep inside must run even when every suite was skipped — docs-only
+        # PRs, non-E2E release lanes, and full-reuse release PRs would
+        # otherwise leave deleted branches' reports published until some
+        # later run happened to select a suite.
         id: merge
-        if: >-
-          ${{ contains(env.SUITE_RESULTS, 'failure')
-          || contains(env.SUITE_RESULTS, 'success') }}
         env:
           SLUG: ${{ steps.meta.outputs.slug }}
           R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
@@ -1628,8 +1627,15 @@ jobs:
             case "$result" in
               failure)
                 local src="reports/$artifact"
-                if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+                # The previous run's report never describes this run — remove
+                # it unconditionally, so a failure that died before Playwright
+                # produced a report cannot keep serving stale results behind a
+                # bookmarked URL.
+                if [ -d "$dir" ]; then
                   rm -rf "$dir"
+                  changed=true
+                fi
+                if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
                   mkdir -p "$dir"
                   cp -r "$src/." "$dir/"
                   published=$(jq -c --arg job "$job" '. + {($job): true}' <<< "$published")
