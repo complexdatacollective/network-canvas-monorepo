@@ -10,8 +10,8 @@ catalogs:
       specifier: ~1.7.0
       version: 1.7.0
     '@capacitor/android':
-      specifier: ^8.4.0
-      version: 8.4.0
+      specifier: ^8.5.0
+      version: 8.5.0
     '@capacitor/app':
       specifier: ^8.1.0
       version: 8.1.0
@@ -1342,7 +1342,7 @@ importers:
     dependencies:
       '@capacitor/android':
         specifier: 'catalog:'
-        version: 8.4.0(@capacitor/core@8.4.0)
+        version: 8.5.0(@capacitor/core@8.4.0)
       '@capacitor/app':
         specifier: 'catalog:'
         version: 8.1.0(@capacitor/core@8.4.0)
@@ -3498,10 +3498,10 @@ packages:
   '@canvas/image-data@1.1.0':
     resolution: {integrity: sha512-QdObRRjRbcXGmM1tmJ+MrHcaz1MftF2+W7YI+MsphnsCrmtyfS0d5qJbk0MeSbUeyM/jCb0hmnkXPsy026L7dA==}
 
-  '@capacitor/android@8.4.0':
-    resolution: {integrity: sha512-K1ZPkQzvRzPEALz9nBdLx5p5nAPzp5fsTYWk7LRiKZeH/NXqjDvqfTv7lrLgrziQNoDeaL6ijg64oBREzXiV+g==}
+  '@capacitor/android@8.5.0':
+    resolution: {integrity: sha512-Rb3prJeQiTp0pQhSSOReJuG9VgibOGMG4ECs+UhMwr6TCCHZ3NCZO811bDA0HxD0xrT/gCrJAsY5yfEATu84JQ==}
     peerDependencies:
-      '@capacitor/core': ^8.4.0
+      '@capacitor/core': ^8.5.0
 
   '@capacitor/app@8.1.0':
     resolution: {integrity: sha512-MlmttTOWHDedr/G4SrhNRxsXMqY+R75S4MM4eIgzsgCzOYhb/MpCkA5Q3nuOCfL1oHm26xjUzqZ5aupbOwdfYg==}
@@ -17628,7 +17628,7 @@ snapshots:
 
   '@canvas/image-data@1.1.0': {}
 
-  '@capacitor/android@8.4.0(@capacitor/core@8.4.0)':
+  '@capacitor/android@8.5.0(@capacitor/core@8.4.0)':
     dependencies:
       '@capacitor/core': 8.4.0
 
