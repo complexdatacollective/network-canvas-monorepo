@@ -1,0 +1,23 @@
+# Netlify deployment for Studio: the client SPA on the CDN and the server as a
+# Netlify Function, on ONE site. Two sites would not work — the client calls
+# /rpc and /api as relative paths, and src/auth/csrf.ts refuses cross-origin
+# mutations, so the single-origin invariant (#1245) is a hard requirement.
+#
+# This is NOT the deployment topology decided in #1245/#1247. It exists to get
+# branch previews and a public URL; /ws is unserved here (Netlify cannot hold
+# persistent connections), and scheduled work has nowhere to run.
+
+[build]
+command = "pnpm exec turbo run build --filter=@codaco/studio-client && pnpm --filter @codaco/studio-server build:netlify"
+publish = "apps/studio/client/dist"
+functions = "apps/studio/netlify/functions"
+
+[build.environment]
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+# SPA fallback so client-side routes deep-link. Function paths are claimed
+# declaratively by src/netlify.ts's `config.path` and are matched first.
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200

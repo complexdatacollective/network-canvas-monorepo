@@ -13,6 +13,8 @@
   "scripts": {
     "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts\"",
     "build": "vite build",
+    "build:netlify": "vite build --config vite.netlify.config.ts",
+    "apply-schema": "node --env-file-if-exists=.env scripts/apply-schema.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "start": "CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
