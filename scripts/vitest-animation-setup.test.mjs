@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  copyFileSync,
   existsSync,
   mkdtempSync,
   readdirSync,
@@ -264,6 +265,12 @@ test('mirrored apps vendor the private shared Vitest package', () => {
     const staging = mkdtempSync(path.join(tmpdir(), 'vitest-config-mirror-'));
 
     try {
+      if (app === 'apps/fresco') {
+        copyFileSync(
+          path.join(appDirectory, 'Dockerfile'),
+          path.join(staging, 'Dockerfile'),
+        );
+      }
       vendorSharedVitestConfig(staging, manifest, dropped);
 
       assert.equal(
@@ -300,6 +307,21 @@ test('mirrored apps vendor the private shared Vitest package', () => {
         !isClassic,
         `${app} does not introduce Motion's React 18+ peer requirement into a React 16 Classic mirror`,
       );
+      if (app === 'apps/fresco') {
+        const dockerfile = readFileSync(
+          path.join(staging, 'Dockerfile'),
+          'utf8',
+        );
+        const vendorCopy = dockerfile.indexOf(
+          'COPY vendor/vitest-config ./vendor/vitest-config',
+        );
+        const frozenInstall = dockerfile.indexOf('pnpm i --frozen-lockfile');
+        assert.notEqual(vendorCopy, -1, 'Fresco copies the vendored package');
+        assert.ok(
+          vendorCopy < frozenInstall,
+          'Fresco copies the vendored package before its frozen install',
+        );
+      }
     } finally {
       rmSync(staging, { recursive: true, force: true });
     }
