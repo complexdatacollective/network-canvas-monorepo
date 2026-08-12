@@ -24,7 +24,7 @@
     "knip": "SKIP_ENV_VALIDATION=true knip --exclude catalog"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.0",
     "@total-typescript/ts-reset": "catalog:",
     "@types/node": "catalog:",
     "@typescript/typescript6": "catalog:",

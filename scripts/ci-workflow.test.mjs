@@ -419,14 +419,51 @@ test('release job prunes ignored-lane changesets before changesets/action', () =
     pruneIndex < actionIndex,
     'prune step must run before changesets/action reads changeset state',
   );
+
+  // The prune is working-tree-only. It survives as a deletion-free no-op solely
+  // because the action's Git CLI push path opens with `git reset --hard`. The
+  // v2 default (GitHub API push) commits the whole diff against the pushed SHA,
+  // which would delete the gated-product changesets for real.
+  assert.match(
+    releaseJob,
+    /push-with-git-cli: true/,
+    "the working-tree prune depends on the Git CLI push path's reset",
+  );
+});
+
+test('release job uses the changesets/action v2 input names', () => {
+  const releaseJob = job('release');
+  assert.ok(releaseJob, 'release job exists');
+
+  assert.match(releaseJob, /version-script: pnpm run version-packages/);
+  assert.match(releaseJob, /publish-script: pnpm run publish-packages/);
+  assert.match(releaseJob, /create-github-releases: true/);
+  // v1 spellings are silently ignored by v2, so a stale name would quietly
+  // fall back to `changeset version` and skip publishing altogether.
+  for (const legacyInput of [
+    'version:',
+    'publish:',
+    'createGithubReleases:',
+    'commit:',
+    'title:',
+    'branch:',
+    'cwd:',
+  ]) {
+    assert.ok(
+      !releaseJob.includes(`\n          ${legacyInput}`),
+      `release job must not use the v1 input \`${legacyInput}\``,
+    );
+  }
 });
 
 test('generated release PRs use the dedicated PAT and rely on native PR CI', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');
+  // changesets/action v2 ignores the GITHUB_TOKEN environment variable; the
+  // PAT only takes effect through the `github-token` input.
   assert.match(
     releaseJob,
-    /GITHUB_TOKEN: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+    /github-token: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
   );
   assert.doesNotMatch(releaseJob, /gh workflow run ci-and-release\.yml/);
   assert.doesNotMatch(releaseJob, /actions: write/);

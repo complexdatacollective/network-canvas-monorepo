@@ -1911,16 +1911,26 @@ jobs:
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
-        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v1
+        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v2.0.0
         with:
-          version: pnpm run version-packages
-          publish: pnpm run publish-packages
-          createGithubReleases: true
-        env:
+          version-script: pnpm run version-packages
+          publish-script: pnpm run publish-packages
+          create-github-releases: true
+          # v2 pushes the release commit through the GitHub API by default,
+          # which commits the entire working-tree diff against the pushed SHA.
+          # That would turn the prune step above into *committed* deletions of
+          # the Documentation and Website changesets. The Git CLI path still
+          # begins with the `git reset --hard` that restores them, so the prune
+          # stays working-tree-only — keep it until
+          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
           # workflow approval, which previously forced a duplicate dispatch.
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          # v2 ignores the GITHUB_TOKEN environment variable; the token has to
+          # arrive through this input.
+          github-token: ${{ secrets.RELEASE_PR_TOKEN }}
+        env:
           NPM_CONFIG_PROVENANCE: true
 
   # Maintains generated PRs for the products that remain outside the normal
