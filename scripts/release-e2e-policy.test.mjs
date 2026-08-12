@@ -29,6 +29,25 @@ import {
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
 
+test('the pre-install policy has no runtime package imports', () => {
+  const source = readFileSync(
+    join(REPO_ROOT, 'scripts/release-e2e-policy.mjs'),
+    'utf8',
+  );
+  const runtimePackages = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
+    .map((match) => match[1])
+    .filter(
+      (specifier) =>
+        !specifier.startsWith('node:') && !specifier.startsWith('.'),
+    );
+
+  assert.deepEqual(
+    runtimePackages,
+    [],
+    'e2e-policy runs before pnpm install and may only import built-ins or local modules',
+  );
+});
+
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
@@ -195,6 +214,38 @@ test('workspace discovery follows nested pnpm workspace patterns', () => {
     packages.get('@codaco/studio-server')?.dir,
     'apps/studio/server',
   );
+});
+
+test('workspace discovery parses quoted patterns without installed packages', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-workspace-'));
+  writeFileSync(
+    join(cwd, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      "  - 'apps/*'",
+      '  - "apps/studio/*" # nested workspaces',
+      "  - '!apps/excluded'",
+      '',
+      'catalog:',
+      '  react: ^19.0.0',
+    ].join('\n'),
+  );
+  for (const [directory, name] of [
+    ['apps/root', '@example/root'],
+    ['apps/studio/client', '@example/client'],
+    ['apps/excluded', '@example/excluded'],
+  ]) {
+    mkdirSync(join(cwd, directory), { recursive: true });
+    writeFileSync(
+      join(cwd, directory, 'package.json'),
+      JSON.stringify({ name }),
+    );
+  }
+
+  const packages = collectWorkspacePackages(cwd);
+  assert.equal(packages.get('@example/root')?.dir, 'apps/root');
+  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/client');
+  assert.equal(packages.has('@example/excluded'), false);
 });
 
 test('all release policies share the central snapshot PR target', () => {

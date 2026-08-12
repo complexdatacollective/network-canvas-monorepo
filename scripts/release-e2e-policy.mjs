@@ -3,8 +3,6 @@ import { globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { parse } from 'yaml';
-
 export const SUITE_KEYS = ['interview', 'interviewer', 'architect'];
 
 // Workspace package each E2E suite exercises. A suite gates a release lane
@@ -64,22 +62,53 @@ function workspacePatterns(cwd) {
     throw error;
   }
 
-  let workspace;
-  try {
-    workspace = parse(raw);
-  } catch (error) {
-    throw new Error('Unable to read pnpm-workspace.yaml', { cause: error });
-  }
-  if (
-    workspace === null ||
-    typeof workspace !== 'object' ||
-    !Array.isArray(workspace.packages) ||
-    workspace.packages.some((pattern) => typeof pattern !== 'string')
-  ) {
+  const lines = raw.split(/\r?\n/);
+  const packagesLine = lines.findIndex((line) =>
+    /^packages:\s*(?:#.*)?$/.test(line),
+  );
+  if (packagesLine === -1) {
     throw new Error('pnpm-workspace.yaml must define a packages string array');
   }
 
-  return workspace.packages;
+  const patterns = [];
+  for (const line of lines.slice(packagesLine + 1)) {
+    if (/^\S/.test(line)) break;
+    if (/^\s*(?:#.*)?$/.test(line)) continue;
+
+    const item = line.match(/^\s+-\s+(.+?)\s*$/)?.[1];
+    if (item === undefined) {
+      throw new Error(
+        'pnpm-workspace.yaml packages must be a simple string list',
+      );
+    }
+
+    const doubleQuoted = item.match(/^("(?:[^"\\]|\\.)*")(?:\s+#.*)?$/);
+    const singleQuoted = item.match(/^('(?:[^']|'')*')(?:\s+#.*)?$/);
+    let pattern;
+    if (doubleQuoted) {
+      try {
+        pattern = JSON.parse(doubleQuoted[1]);
+      } catch (error) {
+        throw new Error('Invalid quoted pnpm workspace pattern', {
+          cause: error,
+        });
+      }
+    } else if (singleQuoted) {
+      pattern = singleQuoted[1].slice(1, -1).replaceAll("''", "'");
+    } else {
+      pattern = item.replace(/\s+#.*$/, '').trim();
+    }
+
+    if (pattern === '') {
+      throw new Error('pnpm workspace patterns cannot be empty');
+    }
+    patterns.push(pattern);
+  }
+
+  if (patterns.length === 0) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+  return patterns;
 }
 
 export function collectWorkspacePackages(cwd) {
