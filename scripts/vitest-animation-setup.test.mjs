@@ -148,6 +148,77 @@ test('the shared Vitest setup disables Motion and Base UI animations', () => {
   assert.match(setup, /globalThis\.BASE_UI_ANIMATIONS_DISABLED\s*=\s*true/);
 });
 
+test('the shared Vitest setup widens the Testing Library wait budget', () => {
+  const setup = readFileSync(path.join(repoRoot, sharedSetupPath), 'utf8');
+
+  // Testing Library's own default is one second, which a loaded CI runner
+  // exceeds on renders that take tens of milliseconds locally.
+  const configured = setup.match(/asyncUtilTimeout:\s*([\d_]+)/);
+  assert.ok(configured, `${sharedSetupPath} must configure asyncUtilTimeout`);
+  assert.ok(
+    Number(configured[1].replaceAll('_', '')) >= 5000,
+    `${sharedSetupPath} must give waitFor/findBy at least 5s, got ${configured[1]}`,
+  );
+});
+
+test('every jsdom project loading the shared setup outlasts its wait budget', () => {
+  // A `testTimeout` at or below the wait budget cuts `waitFor` short, so the
+  // failure arrives as a bare timeout instead of the DOM the wait gave up on.
+  const tooTight = [];
+
+  for (const manifestPath of workspaceManifests) {
+    const workspaceDirectory = path.dirname(manifestPath);
+
+    for (const configPath of findVitestConfigs(workspaceDirectory)) {
+      const config = readFileSync(configPath, 'utf8');
+      if (!config.includes(sharedSetupFilename)) continue;
+
+      const timeouts = [...config.matchAll(/testTimeout:\s*([\d_]+)/g)].map(
+        (match) => Number(match[1].replaceAll('_', '')),
+      );
+      if (timeouts.length === 0 || timeouts.some((value) => value < 20_000)) {
+        tooTight.push(path.relative(repoRoot, configPath));
+      }
+    }
+  }
+
+  assert.deepEqual(
+    tooTight,
+    [],
+    `Vitest projects loading ${sharedSetupPath} must set testTimeout to at least 20s on every project: ${tooTight.join(', ')}`,
+  );
+});
+
+test('every Testing Library Vitest workspace loads the shared setup', () => {
+  // Motion is the usual reason to need the shared setup, but the wait budget it
+  // configures matters to any workspace that queries the DOM asynchronously.
+  const uncoveredWorkspaces = findUnconfiguredWorkspaces({
+    dependencyName: '@testing-library/react',
+    setupFilename: sharedSetupFilename,
+    workspaceManifests,
+  });
+
+  assert.deepEqual(
+    uncoveredWorkspaces,
+    [],
+    `Testing Library Vitest workspaces must load ${sharedSetupPath} in their unit or browser setupFiles: ${uncoveredWorkspaces.join(', ')}`,
+  );
+});
+
+test('Testing Library Vitest consumers inherit setup changes through Vitest tooling', () => {
+  const missingDependency = findConsumersMissingWorkspaceDependency({
+    consumerDependency: '@testing-library/react',
+    requiredDependency: '@codaco/vitest-config',
+    workspaceManifests,
+  });
+
+  assert.deepEqual(
+    missingDependency,
+    [],
+    `Testing Library Vitest consumers must declare @codaco/vitest-config as a workspace dependency so Turbo selects them when ${sharedSetupPath} changes: ${missingDependency.join(', ')}`,
+  );
+});
+
 test('every modern Motion Vitest workspace loads the shared animation setup', () => {
   const uncoveredWorkspaces = findUnconfiguredWorkspaces({
     dependencyName: 'motion',
