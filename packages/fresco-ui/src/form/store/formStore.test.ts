@@ -573,18 +573,18 @@ describe('FormStore', () => {
         initialValue: 'blue',
       });
 
-      const normalized = store.getState().setErrors({
+      store.getState().setErrors({
         formErrors: [],
         fieldErrors: { 'favorite.color': ['Choose another color'] },
       });
 
-      expect(normalized).toEqual({
+      expect(store.getState().errors).toEqual({
         formErrors: [],
         fieldErrors: {
           'steps[0]["favorite.color"]': ['Choose another color'],
         },
       });
-      expect(normalized?.fieldErrors).toBeInstanceOf(Object);
+      expect(store.getState().errors.fieldErrors).toBeInstanceOf(Object);
       expect(
         store.getState().getFieldErrors(['steps', 0, 'favorite.color']),
       ).toEqual(['Choose another color']);
@@ -609,12 +609,12 @@ describe('FormStore', () => {
         initialValue: 'green',
       });
 
-      const normalized = store.getState().setErrors({
+      store.getState().setErrors({
         formErrors: [],
         fieldErrors: { 'favorite.color': ['Choose another color'] },
       });
 
-      expect(normalized).toEqual({
+      expect(store.getState().errors).toEqual({
         formErrors: ['Choose another color'],
         fieldErrors: {},
       });

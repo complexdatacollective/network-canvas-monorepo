@@ -33,6 +33,19 @@ describe('FieldNamespace', () => {
       expect(result.current).toBe('');
     });
 
+    it('treats an empty root prefix as no namespace', () => {
+      const { result } = renderHook(
+        () => ({
+          name: useFieldNamespace(),
+          path: useFieldNamespacePath(),
+        }),
+        { wrapper: wrapper('') },
+      );
+
+      expect(result.current).toEqual({ name: '', path: [] });
+      expect(resolveFieldPath(result.current.path, 'name')).toEqual(['name']);
+    });
+
     it('preserves the structural string returned by one namespace', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: wrapper('steps[0]'),

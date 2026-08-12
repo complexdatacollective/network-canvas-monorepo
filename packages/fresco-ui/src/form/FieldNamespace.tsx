@@ -57,13 +57,16 @@ export default function FieldNamespace({
   children,
 }: FieldNamespaceProps) {
   const parentNamespace = useContext(FieldNamespaceContext);
-  const fullNamespace = useMemo<FieldNamespaceState>(
-    () => ({
+  const fullNamespace = useMemo<FieldNamespaceState>(() => {
+    if (parentNamespace.path.length === 0 && prefix === '') {
+      return parentNamespace;
+    }
+
+    return {
       name: parentNamespace.name ? `${parentNamespace.name}.${prefix}` : prefix,
       path: resolveFieldPath(parentNamespace.path, prefix),
-    }),
-    [parentNamespace, prefix],
-  );
+    };
+  }, [parentNamespace, prefix]);
 
   return (
     <FieldNamespaceContext.Provider value={fullNamespace}>

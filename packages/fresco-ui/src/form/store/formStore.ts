@@ -174,7 +174,7 @@ export type FormStore = {
   setFieldTouched: (fieldName: FieldReference, touched: boolean) => void;
   setFieldBlurred: (fieldName: FieldReference) => void;
 
-  setErrors: (errors: FlattenedErrors | null) => FlattenedErrors | null;
+  setErrors: (errors: FlattenedErrors | null) => void;
 
   // Getters with selective subscription
   getFieldState: (fieldName: FieldReference) => FieldState | undefined;
@@ -414,7 +414,7 @@ export const createFormStore = (): FormStoreApi => {
             state.errors = { formErrors: [], fieldErrors: {} };
             state.isValid = calculateFormValidity(state.fields, []);
           });
-          return null;
+          return;
         }
 
         const normalizedErrors = normalizeSubmissionErrors(
@@ -445,8 +445,6 @@ export const createFormStore = (): FormStoreApi => {
             normalizedErrors.formErrors,
           );
         });
-
-        return normalizedErrors;
       },
 
       setFieldValue: (fieldReference, value) => {
