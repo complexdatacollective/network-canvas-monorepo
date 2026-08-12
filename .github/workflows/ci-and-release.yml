@@ -1641,27 +1641,6 @@ jobs:
             > merged/index.html
           changed=false
           published='{}'
-          # Sweep orphaned reports: a directory whose slug matches no live
-          # branch belongs to a deleted or merged branch (or the legacy
-          # always-publish scheme, whose slugs carry no digest), and no
-          # future run of its own branch can ever replace or remove it.
-          # Fork-PR refs never publish (their token cannot push gh-pages), so
-          # only same-repo branches matter here. Skipped entirely when the
-          # live-branch listing failed — never delete on doubt.
-          if [ -s "$RUNNER_TEMP/live-slugs.txt" ]; then
-            for job_dir in merged/interview-e2e merged/interview-e2e-native \
-              merged/interviewer-e2e merged/interviewer-e2e-native \
-              merged/architect-e2e merged/architect-e2e-native; do
-              [ -d "$job_dir" ] || continue
-              for report_dir in "$job_dir"/*/; do
-                [ -d "$report_dir" ] || continue
-                if ! grep -qxF "$(basename "$report_dir")" "$RUNNER_TEMP/live-slugs.txt"; then
-                  rm -rf "$report_dir"
-                  changed=true
-                fi
-              done
-            done
-          fi
           merge_report() {
             local job=$1 result=$2 artifact=$3
             local dir="merged/$job/$SLUG"
@@ -1683,9 +1662,12 @@ jobs:
                   changed=true
                 fi
                 ;;
-              success)
+              success | skipped)
                 # Only the latest run's report is kept: a job that is green
-                # again has no current failure, so drop the stale report.
+                # again has no current failure, and a job that is no longer
+                # selected (its cumulative diff stopped touching the suite —
+                # e.g. the failing change was reverted) has no current
+                # failure either. Both drop the stale report.
                 if [ -d "$dir" ]; then
                   rm -rf "$dir"
                   changed=true
@@ -1699,6 +1681,38 @@ jobs:
           merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
           merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
           merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
+          # Sweep orphaned reports AFTER merging: a directory whose slug
+          # matches no live branch belongs to a deleted or merged branch (or
+          # the legacy always-publish scheme, whose slugs carry no digest),
+          # and no future run of its own branch can ever replace or remove
+          # it. Running after merge_report matters — a branch deleted while
+          # this run was still executing would otherwise re-publish its own
+          # orphan seconds after the sweep. Fork-PR refs never publish
+          # (their token cannot push gh-pages), so only same-repo branches
+          # matter here. Skipped entirely when the live-branch listing
+          # failed — never delete on doubt. `--` stops grep from parsing a
+          # dash-leading slug (branch `#foo` → `-foo-…`) as options, which
+          # would error and, negated, delete a live branch's report.
+          if [ -s "$RUNNER_TEMP/live-slugs.txt" ]; then
+            for job_dir in merged/interview-e2e merged/interview-e2e-native \
+              merged/interviewer-e2e merged/interviewer-e2e-native \
+              merged/architect-e2e merged/architect-e2e-native; do
+              [ -d "$job_dir" ] || continue
+              for report_dir in "$job_dir"/*/; do
+                [ -d "$report_dir" ] || continue
+                slug_name=$(basename "$report_dir")
+                if ! grep -qxF -- "$slug_name" "$RUNNER_TEMP/live-slugs.txt"; then
+                  rm -rf "$report_dir"
+                  changed=true
+                  # If this run's own branch died mid-run, its just-published
+                  # report was removed above — drop the comment's link too.
+                  if [ "$slug_name" = "$SLUG" ]; then
+                    published=$(jq -c --arg job "${job_dir#merged/}" 'del(.[$job])' <<< "$published")
+                  fi
+                fi
+              done
+            done
+          fi
           # Deploy when this run changed the tree OR an earlier run's deploy
           # failed after persisting its state (see pending_deploy above) —
           # without the latter, changed=false would leave the live site

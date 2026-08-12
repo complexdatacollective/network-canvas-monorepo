@@ -613,6 +613,21 @@ test('the unified E2E report aggregates every suite job and publishes failures o
     /if \[ -s "\$RUNNER_TEMP\/live-slugs\.txt" \]; then/,
     'the sweep only runs with a non-empty live-branch listing',
   );
+  assert.ok(
+    reportJob.indexOf('merge_report architect-e2e-native') <
+      reportJob.indexOf('if [ -s "$RUNNER_TEMP/live-slugs.txt" ]'),
+    'the sweep runs after merging, so a branch deleted mid-run cannot re-publish its orphan',
+  );
+  assert.match(
+    reportJob,
+    /grep -qxF -- /,
+    'the slug pattern is terminated so dash-leading slugs cannot parse as grep options',
+  );
+  assert.match(
+    reportJob,
+    /success \| skipped\)/,
+    'a skipped job also drops its stale report',
+  );
   const doubtGuards = reportJob.match(/never delete on doubt/g) ?? [];
   assert.ok(
     doubtGuards.length >= 2,
