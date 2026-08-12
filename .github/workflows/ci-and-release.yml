@@ -769,7 +769,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -1911,16 +1911,26 @@ jobs:
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v2.0.0
         with:
-          version: pnpm run version-packages
-          publish: pnpm run publish-packages
-          createGithubReleases: true
-        env:
+          version-script: pnpm run version-packages
+          publish-script: pnpm run publish-packages
+          create-github-releases: true
+          # v2 pushes the release commit through the GitHub API by default,
+          # which commits the entire working-tree diff against the pushed SHA.
+          # That would turn the prune step above into *committed* deletions of
+          # the Documentation and Website changesets. The Git CLI path still
+          # begins with the `git reset --hard` that restores them, so the prune
+          # stays working-tree-only — keep it until
+          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
           # workflow approval, which previously forced a duplicate dispatch.
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          # v2 ignores the GITHUB_TOKEN environment variable; the token has to
+          # arrive through this input.
+          github-token: ${{ secrets.RELEASE_PR_TOKEN }}
+        env:
           NPM_CONFIG_PROVENANCE: true
 
   # Maintains generated PRs for the products that remain outside the normal
@@ -1951,7 +1961,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -2076,7 +2086,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2157,7 +2167,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2243,7 +2253,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
@@ -2681,7 +2691,7 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6

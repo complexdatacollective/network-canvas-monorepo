@@ -173,3 +173,20 @@ minimumReleaseAgeExclude:
   - '@codaco/shared-consts@5.5.0'
   - '@tanstack/react-router@1.170.22'
   - '@tanstack/router-core@1.171.19'
+  # The Changesets v3 majors, published 2026-08-11 — pinned only so this PR's
+  # own CI could install before they aged out at 2026-08-12T12:11Z. Inert since,
+  # and safe to delete in any passing sweep.
+  - '@changesets/apply-release-plan@8.0.0'
+  - '@changesets/assemble-release-plan@7.0.0'
+  - '@changesets/changelog-git@1.0.0'
+  - '@changesets/cli@3.0.0'
+  - '@changesets/config@4.0.0'
+  - '@changesets/errors@1.0.0'
+  - '@changesets/get-dependents-graph@3.0.0'
+  - '@changesets/git@4.0.0'
+  - '@changesets/parse@1.0.0'
+  - '@changesets/pre@3.0.0'
+  - '@changesets/read@1.0.0'
+  - '@changesets/should-skip-package@1.0.0'
+  - '@changesets/types@7.0.0'
+  - '@changesets/write@1.0.0'
