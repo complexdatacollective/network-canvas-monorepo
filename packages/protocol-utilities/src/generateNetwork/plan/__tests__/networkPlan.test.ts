@@ -397,6 +397,77 @@ describe('planNetwork rosters', () => {
     expect(result.nodes).toHaveLength(0);
   });
 
+  it('leaves a contested row to the stage that alone can draw it', () => {
+    // Both stages share a two-row pool and each asks for one person. Only one
+    // row satisfies the second stage's prompt, so an assignment blind to that
+    // hands the row to the first stage, leaves the second to reject what
+    // remains, and quietly builds one person — though the other assignment
+    // satisfies both.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            kind: { name: 'Kind', type: 'number' },
+            target: {
+              name: 'Target',
+              type: 'number',
+              validation: { sameAs: 'kind' },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const rosterRow = (uid: string, kind: number): NcNode =>
+      ({
+        [entityPrimaryKeyProperty]: uid,
+        type: 'person',
+        [entityAttributesProperty]: { kind },
+      }) as unknown as NcNode;
+
+    const unfussy = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Anyone',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 1 } },
+      dataSource: 'people.csv',
+      prompts: [{ id: 'p1', text: 'Pick' }],
+    });
+    const particular = stage({
+      id: 'roster-2',
+      type: 'NameGeneratorRoster',
+      label: 'Only kind zero',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 1 } },
+      dataSource: 'people.csv',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Pick',
+          additionalAttributes: [{ variable: 'target', value: 0 }],
+        },
+      ],
+    });
+
+    const rows = [rosterRow('r-zero', 0), rosterRow('r-one', 1)];
+    const result = plan(codebook, [unfussy, particular], {
+      externalData: { 'roster-1': rows, 'roster-2': rows },
+    });
+
+    expect(result.nodes).toHaveLength(2);
+    const byStage = new Map(
+      result.nodes.map((node) => [node.creationStageIndex, node.uid]),
+    );
+    // The fussy stage gets the only row it can use; the other takes what is
+    // left, which it was always able to.
+    expect(byStage.get(1)).toBe('r-zero');
+    expect(byStage.get(0)).toBe('r-one');
+  });
+
   it('refuses a roster that cannot reach an undeclared stage minimum', () => {
     // No `synthetic.count`, so the generic 1-8 fallback is what was trimmed —
     // but `behaviours.minNodes` is something the author wrote and the

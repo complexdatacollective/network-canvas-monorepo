@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { type ComponentType, useMemo } from 'react';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -9,6 +9,11 @@ import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
 } from '@codaco/protocol-utilities';
+import {
+  StageEdgeSyntheticSchema,
+  StageNodeAndEdgeSyntheticSchema,
+  StageNodeSyntheticSchema,
+} from '@codaco/protocol-validation';
 import type {
   EdgeTopology,
   StageEdgeSynthetic,
@@ -450,6 +455,43 @@ const TOPOLOGY_STAGES = new Set([
 ]);
 
 /**
+ * The stage's own synthetic schema, run over the assembled block.
+ *
+ * The nested controls carry `min`, `max` and `step`, but `StageForm` submits
+ * with `noValidate`, so nothing about a fractional count or a density above 1
+ * would stop the author pressing Finished Editing — and `StageEditor` consults
+ * full protocol validation only to disable Preview, saving regardless. So the
+ * one field the block is registered under is where it has to be caught: the
+ * value the form holds is exactly what the schema will judge on load, and
+ * refusing it here is what keeps a stage from being written into a protocol
+ * the schema rejects.
+ *
+ * Nothing to say about an absent block: the section is off, which the schema
+ * allows, and `pruned` is what guarantees an emptied one is absent rather than
+ * a shell.
+ */
+const validateSynthetic =
+  (showCount: boolean, showTopology: boolean) =>
+  (value: unknown): string | undefined => {
+    if (value === undefined || value === null) return undefined;
+    const schema =
+      showCount && showTopology
+        ? StageNodeAndEdgeSyntheticSchema
+        : showCount
+          ? StageNodeSyntheticSchema
+          : StageEdgeSyntheticSchema;
+    const result = schema.safeParse(value);
+    if (result.success) return undefined;
+    // The first issue, with the path it belongs to, since one field stands for
+    // the whole block and the author cannot otherwise tell which control the
+    // complaint is about.
+    const issue = result.error.issues[0];
+    if (issue === undefined) return 'This synthetic data block is not valid';
+    const where = issue.path.join(' ');
+    return where.length > 0 ? `${where}: ${issue.message}` : issue.message;
+  };
+
+/**
  * A block declaring nothing says exactly what no block says, and the schema
  * rejects it — so an emptied section removes the property outright rather than
  * storing a shell the author cannot see.
@@ -519,6 +561,11 @@ export default function SyntheticData({
 }: StageEditorSectionProps) {
   const showCount = COUNT_STAGES.has(interfaceType);
   const showTopology = TOPOLOGY_STAGES.has(interfaceType);
+  // Memoised so the field is not handed a new validator identity every render.
+  const validation = useMemo(
+    () => ({ synthetic: validateSynthetic(showCount, showTopology) }),
+    [showCount, showTopology],
+  );
   const initialValue = useStageInitialValue('synthetic') as
     | StageNodeAndEdgeSynthetic
     | undefined;
@@ -547,6 +594,7 @@ export default function SyntheticData({
         initialValue={initialValue}
         showCount={showCount}
         showTopology={showTopology}
+        validation={validation}
       />
     </Section>
   );

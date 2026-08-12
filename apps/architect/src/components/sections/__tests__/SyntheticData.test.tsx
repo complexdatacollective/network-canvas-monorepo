@@ -41,6 +41,59 @@ describe('the stage synthetic-data section', () => {
     });
   });
 
+  /**
+   * `StageForm` submits with `noValidate`, so the nested controls' `min`, `max`
+   * and `step` do not gate Finished Editing, and `StageEditor` consults full
+   * protocol validation only to disable Preview. The registered field's own
+   * rule is therefore the only thing between an author and a stage the schema
+   * rejects.
+   */
+  it('refuses a block the stage schema rejects', async () => {
+    const { getStoreApi } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'NameGenerator',
+        // A fractional population: schema-invalid, and every control that
+        // would have objected is bypassed by `noValidate`.
+        synthetic: { count: { distribution: 'constant', value: 2.5 } },
+      }),
+      children: <SyntheticData {...sectionProps} />,
+    });
+
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(false);
+  });
+
+  it('accepts a block the stage schema allows', async () => {
+    const { getStoreApi } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'NameGenerator',
+        synthetic: declared,
+      }),
+      children: <SyntheticData {...sectionProps} />,
+    });
+
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(true);
+  });
+
+  it('refuses a density outside its domain on a topology stage', async () => {
+    const { getStoreApi } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'Sociogram',
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 1.5 },
+          },
+        },
+      }),
+      children: <SyntheticData {...sectionProps} interfaceType="Sociogram" />,
+    });
+
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(false);
+  });
+
   it('carries an imported stage metadata through an untouched save', () => {
     const { getFormValues } = renderStageForm({
       committedStage: asStage({

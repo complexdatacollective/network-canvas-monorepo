@@ -108,12 +108,14 @@ beforeEach(() => {
 });
 
 describe('the verdict a roster row is judged by', () => {
-  // The readers judging a row are feasibility's: the drawable count, which
+  // The readers judging a row are feasibility's — the drawable count, which
   // decides how many people the pool can become, and the collision counters,
-  // which decide whose values can meet a prompt's. Each is a separate pass
-  // over a separate memoisation, so the whole-run ceiling is a few verdicts
-  // per row — never one per row per node the stage is asked for.
-  const READERS = 3;
+  // which decide whose values can meet a prompt's — and the planner's roster
+  // assignment, which decides which of a contested pool's rows each stage gets
+  // first refusal on. Each is a separate pass over a separate memoisation, so
+  // the whole-run ceiling is a few verdicts per row — never one per row per
+  // node the stage is asked for, which is the guarantee this bounds.
+  const READERS = 4;
 
   it('is reached once per row and reader however many nodes are drawn', () => {
     // Ninety rows the draw cannot complete and ten it can. Without a per-row

@@ -684,6 +684,175 @@ export function shuffled<T>(
 }
 
 /**
+ * The rows each contested creation is given, and how many it was left short.
+ *
+ * Assigning greedily — smallest pool first, claiming a prefix — rejects
+ * assignments that exist: with pools A=[1,2], B=[1,3], C=[3,4], D=[1,4] each
+ * wanting one person, greedy takes 1, 3 and 4 and reports D empty, though
+ * A=2, B=3, C=4, D=1 satisfies every stage. That is bipartite matching, so it
+ * is solved as one.
+ *
+ * Solved over row GROUPS rather than over rows one at a time. Every person a
+ * stage places is interchangeable with the next, and so is every row the same
+ * set of stages can reach, so what decides this is a graph with one node per
+ * membership pattern rather than one per row: a ten-thousand-row roster two
+ * stages share is three nodes, not ten thousand. Matching row by row is what
+ * made the search quadratic in the roster — a thousand rows already cost
+ * upwards of a hundred million row checks, and the schema-supported ten
+ * thousand drove the recursion toward the stack limit, so opening an Architect
+ * preview froze before a single node was drawn.
+ */
+function unmatchedInto(
+  into: Map<number, number>,
+  from: ReadonlyMap<number, number>,
+): void {
+  for (const [index, count] of from) into.set(index, count);
+}
+
+function matchRows(
+  pools: ReadonlyMap<number, string[]>,
+  assigned: number[],
+  contestedOrder: readonly number[],
+): { short: Map<number, number>; chosen: Map<number, string[]> } {
+  const short = new Map<number, number>();
+  const chosen = new Map<number, string[]>();
+  if (contestedOrder.length === 0) return { short, chosen };
+
+  const inPlay = new Set(contestedOrder);
+  const owners = new Map<string, number[]>();
+  for (const index of contestedOrder) {
+    for (const uid of pools.get(index) ?? []) {
+      const list = owners.get(uid) ?? [];
+      list.push(index);
+      owners.set(uid, list);
+    }
+  }
+
+  /** Rows keyed by the contested creations that can reach them. */
+  const groups = new Map<string, { uids: string[]; members: number[] }>();
+  for (const [uid, list] of owners) {
+    const members = list.filter((index) => inPlay.has(index));
+    if (members.length === 0) continue;
+    const key = members.join(',');
+    const group = groups.get(key) ?? { uids: [], members };
+    group.uids.push(uid);
+    groups.set(key, group);
+  }
+
+  // source → creation → group → sink, so an augmenting path is three arcs
+  // long and the level graph is four deep however large the roster is.
+  type Arc = { to: number; cap: number; rev: number };
+  const groupList = [...groups.values()];
+  const nodeOfCreation = new Map<number, number>();
+  contestedOrder.forEach((index, position) =>
+    nodeOfCreation.set(index, position + 1),
+  );
+  const SOURCE = 0;
+  const firstGroupNode = contestedOrder.length + 1;
+  const SINK = firstGroupNode + groupList.length;
+  const graph: Arc[][] = Array.from({ length: SINK + 1 }, () => []);
+  const link = (from: number, to: number, cap: number): Arc => {
+    const forward: Arc = { to, cap, rev: graph[to]!.length };
+    graph[from]!.push(forward);
+    graph[to]!.push({ to: from, cap: 0, rev: graph[from]!.length - 1 });
+    return forward;
+  };
+
+  const demand = new Map<number, Arc>();
+  for (const index of contestedOrder) {
+    demand.set(index, link(SOURCE, nodeOfCreation.get(index)!, 0));
+  }
+  const supply: { group: number; arcs: Map<number, Arc> }[] = [];
+  groupList.forEach((group, position) => {
+    const node = firstGroupNode + position;
+    const arcs = new Map<number, Arc>();
+    for (const member of group.members) {
+      arcs.set(
+        member,
+        link(nodeOfCreation.get(member)!, node, group.uids.length),
+      );
+    }
+    link(node, SINK, group.uids.length);
+    supply.push({ group: position, arcs });
+  });
+
+  const saturate = (): void => {
+    for (;;) {
+      const level = Array.from<number>({ length: graph.length }).fill(-1);
+      level[SOURCE] = 0;
+      const queue = [SOURCE];
+      for (let head = 0; head < queue.length; head++) {
+        const node = queue[head]!;
+        for (const arc of graph[node]!) {
+          if (arc.cap > 0 && level[arc.to] === -1) {
+            level[arc.to] = level[node]! + 1;
+            queue.push(arc.to);
+          }
+        }
+      }
+      if (level[SINK] === -1) return;
+
+      const next = Array.from<number>({ length: graph.length }).fill(0);
+      const push = (node: number, limit: number): number => {
+        if (node === SINK) return limit;
+        for (; next[node]! < graph[node]!.length; next[node]!++) {
+          const arc = graph[node]![next[node]!]!;
+          if (arc.cap <= 0 || level[arc.to] !== level[node]! + 1) continue;
+          const pushed = push(arc.to, Math.min(limit, arc.cap));
+          if (pushed > 0) {
+            arc.cap -= pushed;
+            graph[arc.to]![arc.rev]!.cap += pushed;
+            return pushed;
+          }
+          level[arc.to] = -1;
+        }
+        return 0;
+      };
+      for (;;) {
+        const pushed = push(SOURCE, Number.POSITIVE_INFINITY);
+        if (pushed === 0) break;
+      }
+    }
+  };
+
+  // Most-constrained-first, kept from the row-by-row matcher it replaces.
+  // Served all at once instead, a wide pool takes rows the only stage that
+  // could have used them still needed: pools [a,b,c,d] and [a,b], two people
+  // wanted from each, is satisfiable, and serving the wide one first leaves
+  // the narrow one with nothing. Admitting one stage's whole demand before
+  // the next is offered any only ever REROUTES an earlier stage between
+  // groups — an augmenting path always leaves the source — so no stage
+  // already served can lose a person to a later one.
+  for (const index of contestedOrder) {
+    const wanted = assigned[index] ?? 0;
+    demand.get(index)!.cap = wanted;
+    saturate();
+    const left = demand.get(index)!.cap;
+    if (left > 0) short.set(index, left);
+  }
+
+  // The flow on each creation → group arc is how many of that group's rows
+  // the creation was given; which of them is immaterial, so they are handed
+  // out in pool order.
+  const taken = new Map<number, number>();
+  for (const { group, arcs } of supply) {
+    const uids = groupList[group]!.uids;
+    for (const [index, arc] of arcs) {
+      const count = uids.length - arc.cap;
+      if (count <= 0) continue;
+      const from = taken.get(group) ?? 0;
+      chosen.set(index, [
+        ...(chosen.get(index) ?? []),
+        ...uids.slice(from, from + count),
+      ]);
+      taken.set(group, from + count);
+    }
+  }
+
+  return { short, chosen };
+}
+
+/**
  * Which rows each roster stage gets first refusal on, and the refusal when a
  * pool cannot cover what its stage was told to add.
  *
@@ -706,8 +875,60 @@ function assignRosterRows(
   nodeType: string,
   nodeTypeName: string | undefined,
 ): Map<number, string[]> {
-  /** Distinct rows per roster creation, minus everyone the run already used. */
+  /**
+   * Whether a stage could build a person from a row, judged the way the draw
+   * judges it: the row's own values merged with what one of the stage's
+   * prompts asserts, under this type's rules.
+   *
+   * Any prompt will do. The stage writes ONE prompt's assignment onto the
+   * person it builds, and is free to use whichever of them the row suits.
+   *
+   * Built lazily and once: `rowJudgeFor` resolves a whole type's generation
+   * order and solves its tractable components, so it must not be built for a
+   * type no roster reaches.
+   */
+  let judge: ((fixed: Record<string, VariableValue>) => boolean) | undefined;
+  const drawableBy = (creation: NodeCreation, row: NcNode): boolean => {
+    judge ??= rowJudgeFor(ctx, { entity: 'node', type: nodeType });
+    const rowValues = row[entityAttributesProperty];
+    const prompts =
+      creation.promptFixedValues.length > 0
+        ? creation.promptFixedValues
+        : [{} as Record<string, VariableValue>];
+    return prompts.some((promptFixed) =>
+      judge!(
+        creation.rosterValuesWin
+          ? { ...promptFixed, ...rowValues }
+          : { ...rowValues, ...promptFixed },
+      ),
+    );
+  };
+
+  /**
+   * Distinct rows per roster creation, minus everyone the run already used —
+   * and, separately, the subset each creation could actually build a person
+   * from.
+   *
+   * The two are kept apart because they answer different questions, and only
+   * one of them may change what the run refuses:
+   *
+   * - WHICH rows a stage should get first refusal on is decided over the rows
+   *   it can draw. Deciding it over raw membership let a stage take the single
+   *   row another stage's prompts could have used: a shared two-row pool where
+   *   one stage fixes a value only one row satisfies handed that row to the
+   *   stage with no preference, left the other to reject what remained, and
+   *   quietly built one person where both stages asked for one — though the
+   *   other assignment satisfies both.
+   *
+   * - HOW MANY a stage can be given is still counted over raw membership. A
+   *   row the rules reject is passed over at draw time by design, and a stage
+   *   left with nobody is left empty rather than refused (see the roster
+   *   guarantees in `generateNetwork.constraints`). Counting the drawable
+   *   subset here would turn every one of those into a refusal, which is a
+   *   different decision from the one this fix is making.
+   */
   const pools = new Map<number, string[]>();
+  const drawablePools = new Map<number, string[]>();
   creations.forEach((creation, index) => {
     // Only a roster interface's pool binds. A name generator's panel is a
     // shortcut for naming someone already known, not a closed list — it can
@@ -720,13 +941,16 @@ function assignRosterRows(
     if (pool === undefined) return;
     const seen = new Set<string>(ctx.usedRosterUids);
     const distinct: string[] = [];
+    const usable: string[] = [];
     for (const row of pool) {
       const uid = row[entityPrimaryKeyProperty];
       if (seen.has(uid)) continue;
       seen.add(uid);
       distinct.push(uid);
+      if (drawableBy(creation, row)) usable.push(uid);
     }
     pools.set(index, distinct);
+    drawablePools.set(index, usable);
   });
   if (pools.size === 0) return new Map();
 
@@ -776,130 +1000,14 @@ function assignRosterRows(
   // thousand drove the recursion toward the stack limit, so opening an
   // Architect preview froze before a single node was drawn.
   const contestedOrder = order.filter((index) => contested.has(index));
-  if (contestedOrder.length > 0) {
-    /** Rows keyed by the contested creations that can reach them. */
-    const groups = new Map<string, { uids: string[]; members: number[] }>();
-    for (const [uid, list] of owners) {
-      // A row only an uncontested creation holds is that creation's alone and
-      // was settled above. `list` is built in creation order, so the key of a
-      // membership pattern is the same however its rows are reached.
-      const members = list.filter((index) => contested.has(index));
-      if (members.length === 0) continue;
-      const key = members.join(',');
-      const group = groups.get(key) ?? { uids: [], members };
-      group.uids.push(uid);
-      groups.set(key, group);
-    }
-
-    // source → creation → group → sink, so an augmenting path is three arcs
-    // long and the level graph is four deep however large the roster is.
-    type Arc = { to: number; cap: number; rev: number };
-    const groupList = [...groups.values()];
-    const nodeOfCreation = new Map<number, number>();
-    contestedOrder.forEach((index, position) =>
-      nodeOfCreation.set(index, position + 1),
-    );
-    const SOURCE = 0;
-    const firstGroupNode = contestedOrder.length + 1;
-    const SINK = firstGroupNode + groupList.length;
-    const graph: Arc[][] = Array.from({ length: SINK + 1 }, () => []);
-    const link = (from: number, to: number, cap: number): Arc => {
-      const forward: Arc = { to, cap, rev: graph[to]!.length };
-      graph[from]!.push(forward);
-      graph[to]!.push({ to: from, cap: 0, rev: graph[from]!.length - 1 });
-      return forward;
-    };
-
-    const demand = new Map<number, Arc>();
-    for (const index of contestedOrder) {
-      demand.set(index, link(SOURCE, nodeOfCreation.get(index)!, 0));
-    }
-    const supply: { group: number; arcs: Map<number, Arc> }[] = [];
-    groupList.forEach((group, position) => {
-      const node = firstGroupNode + position;
-      const arcs = new Map<number, Arc>();
-      for (const member of group.members) {
-        arcs.set(
-          member,
-          link(nodeOfCreation.get(member)!, node, group.uids.length),
-        );
-      }
-      link(node, SINK, group.uids.length);
-      supply.push({ group: position, arcs });
-    });
-
-    const saturate = (): void => {
-      for (;;) {
-        const level = Array.from<number>({ length: graph.length }).fill(-1);
-        level[SOURCE] = 0;
-        const queue = [SOURCE];
-        for (let head = 0; head < queue.length; head++) {
-          const node = queue[head]!;
-          for (const arc of graph[node]!) {
-            if (arc.cap > 0 && level[arc.to] === -1) {
-              level[arc.to] = level[node]! + 1;
-              queue.push(arc.to);
-            }
-          }
-        }
-        if (level[SINK] === -1) return;
-
-        const next = Array.from<number>({ length: graph.length }).fill(0);
-        const push = (node: number, limit: number): number => {
-          if (node === SINK) return limit;
-          for (; next[node]! < graph[node]!.length; next[node]!++) {
-            const arc = graph[node]![next[node]!]!;
-            if (arc.cap <= 0 || level[arc.to] !== level[node]! + 1) continue;
-            const pushed = push(arc.to, Math.min(limit, arc.cap));
-            if (pushed > 0) {
-              arc.cap -= pushed;
-              graph[arc.to]![arc.rev]!.cap += pushed;
-              return pushed;
-            }
-            level[arc.to] = -1;
-          }
-          return 0;
-        };
-        for (;;) {
-          const pushed = push(SOURCE, Number.POSITIVE_INFINITY);
-          if (pushed === 0) break;
-        }
-      }
-    };
-
-    // Most-constrained-first, kept from the row-by-row matcher it replaces.
-    // Served all at once instead, a wide pool takes rows the only stage that
-    // could have used them still needed: pools [a,b,c,d] and [a,b], two people
-    // wanted from each, is satisfiable, and serving the wide one first leaves
-    // the narrow one with nothing. Admitting one stage's whole demand before
-    // the next is offered any only ever REROUTES an earlier stage between
-    // groups — an augmenting path always leaves the source — so no stage
-    // already served can lose a person to a later one.
-    for (const index of contestedOrder) {
-      const wanted = assigned[index] ?? 0;
-      demand.get(index)!.cap = wanted;
-      saturate();
-      const short = demand.get(index)!.cap;
-      if (short > 0) unmatched.set(index, short);
-    }
-
-    // The flow on each creation → group arc is how many of that group's rows
-    // the creation was given; which of them is immaterial, so they are handed
-    // out in pool order.
-    const taken = new Map<number, number>();
-    for (const { group, arcs } of supply) {
-      const uids = groupList[group]!.uids;
-      for (const [index, arc] of arcs) {
-        const count = uids.length - arc.cap;
-        if (count <= 0) continue;
-        const from = taken.get(group) ?? 0;
-        preference.set(index, [
-          ...(preference.get(index) ?? []),
-          ...uids.slice(from, from + count),
-        ]);
-        taken.set(group, from + count);
-      }
-    }
+  // Two questions, two pools. How MANY a contested stage can be given is
+  // counted over raw membership, so a row the rules reject still counts toward
+  // a stage's fill and is passed over at draw time as before. WHICH rows it
+  // gets first refusal on is decided over the rows it can actually draw.
+  unmatchedInto(unmatched, matchRows(pools, assigned, contestedOrder).short);
+  for (const [index, uids] of matchRows(drawablePools, assigned, contestedOrder)
+    .chosen) {
+    preference.set(index, uids);
   }
 
   for (const [index, short] of unmatched) {
