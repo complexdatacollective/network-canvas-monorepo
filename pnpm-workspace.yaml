@@ -54,7 +54,6 @@ catalog:
   '@posthog/nextjs-config': ^1.9.68
   '@posthog/react': ^1.10.3
   '@posthog/rollup-plugin': ^1.4.7
-  '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
   '@storybook/addon-a11y': ^10.5.7
@@ -64,7 +63,6 @@ catalog:
   '@storybook/nextjs-vite': ^10.5.7
   '@storybook/react-vite': ^10.5.7
   '@tailwindcss/cli': ^4.3.3
-  '@tailwindcss/container-queries': ^0.1.1
   '@tailwindcss/postcss': ^4.3.3
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
@@ -87,7 +85,6 @@ catalog:
   '@vitest/browser-playwright': ^4.1.10
   '@vitest/coverage-v8': ^4.1.10
   chromatic: ^18.1.0
-  class-variance-authority: 0.7.1
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
   effect: ^3.22.1
