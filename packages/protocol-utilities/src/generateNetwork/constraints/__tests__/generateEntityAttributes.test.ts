@@ -1965,9 +1965,11 @@ describe('generateEntityAttributes', () => {
   });
 
   it('consumes exactly one seeded draw for a solved component', () => {
-    // The solve seeds a local shuffle from a single draw, so the shared
-    // stream advances by the same amount whatever the search does — a capped
-    // or failed solve cannot shift every draw that follows it.
+    // The solve seeds a local shuffle from a single draw, so its stream
+    // advances by the same amount whatever the search does — a capped or
+    // failed solve cannot shift every draw that follows it. That draw is
+    // addressed by scope, component and entity, so it is `scopedInt` the
+    // solve reaches for and never the run's shared stream.
     const entity = buildEntityConstraints(
       {
         a: {
@@ -1989,7 +1991,7 @@ describe('generateEntityAttributes', () => {
     );
 
     const ctx = makeContext(5);
-    const spy = vi.spyOn(ctx.valueGen, 'randomInt');
+    const spy = vi.spyOn(ctx.valueGen, 'scopedInt');
     generateEntityAttributes(
       entity,
       ctx,
@@ -2106,5 +2108,64 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
     );
 
     expect(completionCheckFor(entity)({ age: 1 })).toBe(true);
+  });
+});
+
+describe('the stream a solved component seeds its shuffle from', () => {
+  /**
+   * The seed is addressed by scope, component and entity, so solving an
+   * unrelated component first cannot move this one's assignment. Taken from
+   * the run's shared stream it did: one extra step there, and every later
+   * component came out differently under the same root seed — the coupling
+   * between unrelated variables the semantic substreams exist to remove.
+   */
+  const ordered = (low: string, high: string) =>
+    buildEntityConstraints(
+      {
+        [low]: {
+          name: 'Low',
+          type: 'number',
+          validation: { minValue: 0, maxValue: 99 },
+        },
+        [high]: {
+          name: 'High',
+          type: 'number',
+          validation: {
+            minValue: 0,
+            maxValue: 99,
+            greaterThanVariable: asEntityAttributeReference(low),
+          },
+        },
+      },
+      TODAY,
+    );
+
+  const solvePerson = (ctx: GenerationContext) =>
+    generateEntityAttributes(
+      ordered('low', 'high'),
+      ctx,
+      {
+        entity: 'node',
+        type: 'person',
+      },
+      0,
+    );
+
+  it('is untouched by an unrelated component solved first', () => {
+    const alone = solvePerson(makeContext(23));
+
+    const after = makeContext(23);
+    // A different scope entirely, solved first.
+    generateEntityAttributes(
+      ordered('small', 'large'),
+      after,
+      {
+        entity: 'node',
+        type: 'org',
+      },
+      0,
+    );
+
+    expect(solvePerson(after)).toEqual(alone);
   });
 });

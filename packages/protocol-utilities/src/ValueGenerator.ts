@@ -258,6 +258,19 @@ export class ValueGenerator {
     return this.general().int(min, max);
   }
 
+  /**
+   * A draw addressed by what it is FOR rather than taken from the run's shared
+   * stream.
+   *
+   * The solver seeds each component's local shuffle from one such draw. Taken
+   * from `general`, adding an unrelated solvable component earlier in a run
+   * consumed a step and moved every later component's assignment under the
+   * same root seed — the isolation the semantic substreams exist to give.
+   */
+  scopedInt(path: readonly string[], min: number, max: number): number {
+    return this.source.stream(...path).int(min, max);
+  }
+
   randomFloat(min: number, max: number): number {
     return this.general().float(min, max);
   }

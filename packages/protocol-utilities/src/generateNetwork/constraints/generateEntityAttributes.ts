@@ -932,8 +932,9 @@ function solveTractableComponent(
   tractable: TractableComponent,
   plan: Plan,
   ctx: GenerationContext,
-  { scope, resolved, only, existing }: DrawState,
+  state: DrawState,
 ): Map<string, VariableValue> | undefined {
+  const { scope, resolved, only, existing } = state;
   const registry = scopeKey(scope);
   const pins = new Map<string, VariableValue>();
   const exclude = new Set<string>();
@@ -994,11 +995,28 @@ function solveTractableComponent(
     }
   }
 
-  // One draw from the run's stream seeds a local shuffle, so the stream
-  // advances by exactly one step per solve whatever the search does — a
-  // capped or unsatisfiable solve cannot shift the draws that follow it, and
-  // a domain's size never shows through as extra consumption.
-  const shuffleSeed = ctx.valueGen.randomInt(0, 2 ** 31 - 1);
+  // One draw seeds a local shuffle, so the stream advances by exactly one step
+  // per solve whatever the search does — a capped or unsatisfiable solve
+  // cannot shift the draws that follow it, and a domain's size never shows
+  // through as extra consumption.
+  //
+  // Addressed by scope, component and entity rather than taken from the run's
+  // shared stream. Taken from that stream, adding an unrelated solvable
+  // component earlier consumed a step and moved this one's assignment under
+  // the same root seed — exactly the coupling between unrelated variables the
+  // semantic substreams exist to remove. The component is named by its own
+  // groups, sorted, so the address does not depend on the order the planner
+  // happens to visit them in.
+  const shuffleSeed = ctx.valueGen.scopedInt(
+    [
+      'solve',
+      registry,
+      [...tractable.groups].toSorted().join(','),
+      String(state.index),
+    ],
+    0,
+    2 ** 31 - 1,
+  );
 
   const solveWith = (
     allowReserved: boolean,

@@ -468,6 +468,211 @@ describe('planNetwork rosters', () => {
     expect(byStage.get(0)).toBe('r-one');
   });
 
+  it('counts a roster against the prompt slots that must be filled', () => {
+    // Slots go round the prompts in turn — slot `i` belongs to prompt
+    // `i % promptCount` — so a row only the first prompt can use is no supply
+    // at all for the second's slot. Counted stage-wide, two such rows reported
+    // enough for a declared count of two and the stage built one person in
+    // silence.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            kind: { name: 'Kind', type: 'number' },
+            target: {
+              name: 'Target',
+              type: 'number',
+              validation: { sameAs: 'kind' },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const rosterRow = (uid: string, kind: number): NcNode =>
+      ({
+        [entityPrimaryKeyProperty]: uid,
+        type: 'person',
+        [entityAttributesProperty]: { kind },
+      }) as unknown as NcNode;
+
+    const twoPrompts = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 2 } },
+      dataSource: 'people.csv',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Kind zero',
+          additionalAttributes: [{ variable: 'target', value: 0 }],
+        },
+        {
+          id: 'p2',
+          text: 'Kind one',
+          additionalAttributes: [{ variable: 'target', value: 1 }],
+        },
+      ],
+    });
+
+    // Both rows suit the first prompt and neither suits the second.
+    expect(() =>
+      plan(codebook, [twoPrompts], {
+        externalData: {
+          'roster-1': [rosterRow('a', 0), rosterRow('b', 0)],
+        },
+      }),
+    ).toThrow(
+      /roster does not hold enough people for the stages drawing from it/,
+    );
+  });
+
+  it('accepts a roster holding a row for each prompt slot', () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            kind: { name: 'Kind', type: 'number' },
+            target: {
+              name: 'Target',
+              type: 'number',
+              validation: { sameAs: 'kind' },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const rosterRow = (uid: string, kind: number): NcNode =>
+      ({
+        [entityPrimaryKeyProperty]: uid,
+        type: 'person',
+        [entityAttributesProperty]: { kind },
+      }) as unknown as NcNode;
+
+    const twoPrompts = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 2 } },
+      dataSource: 'people.csv',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Kind zero',
+          additionalAttributes: [{ variable: 'target', value: 0 }],
+        },
+        {
+          id: 'p2',
+          text: 'Kind one',
+          additionalAttributes: [{ variable: 'target', value: 1 }],
+        },
+      ],
+    });
+
+    const result = plan(codebook, [twoPrompts], {
+      externalData: { 'roster-1': [rosterRow('a', 0), rosterRow('b', 1)] },
+    });
+    expect(result.nodes).toHaveLength(2);
+  });
+
+  it('holds a row kept for a later prompt against the draws between', () => {
+    // The stage saves a row its first prompt cannot use for the prompt that
+    // can. Releasing the row's `unique` hold when it was passed over let the
+    // node drawn in the meantime take the very value the saved row carries —
+    // and the prompt that had saved it then rejected it as a collision, so the
+    // stage came up short though a complete assignment existed.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            kind: { name: 'Kind', type: 'number' },
+            target: {
+              name: 'Target',
+              type: 'number',
+              validation: { sameAs: 'kind' },
+            },
+            code: {
+              name: 'Code',
+              type: 'number',
+              validation: { unique: true, minValue: 0, maxValue: 3 },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const twoPrompts = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 4 } },
+      dataSource: 'people.csv',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Kind zero',
+          additionalAttributes: [{ variable: 'target', value: 0 }],
+        },
+        {
+          id: 'p2',
+          text: 'Kind one',
+          additionalAttributes: [{ variable: 'target', value: 1 }],
+        },
+      ],
+    });
+
+    // The first prompt's row leaves `code` to the draw; the second's brings
+    // one of the two values that draw can take.
+    const rows = [
+      {
+        [entityPrimaryKeyProperty]: 'free-a',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 0 },
+      },
+      {
+        [entityPrimaryKeyProperty]: 'free-b',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 0 },
+      },
+      // The two values a free draw hands out first, carried by the rows only
+      // the second prompt can use.
+      {
+        [entityPrimaryKeyProperty]: 'coded-a',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 1, code: 0 },
+      },
+      {
+        [entityPrimaryKeyProperty]: 'coded-b',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 1, code: 1 },
+      },
+    ] as unknown as NcNode[];
+
+    // Several seeds, because the row order decides whether a saved row is
+    // ever passed over at all.
+    for (let seed = 1; seed <= 12; seed++) {
+      const result = plan(codebook, [twoPrompts, alterForm('code')], {
+        seed,
+        externalData: { 'roster-1': rows },
+      });
+      expect(result.nodes, `seed ${seed}`).toHaveLength(4);
+    }
+  });
+
   it('refuses a roster that cannot reach an undeclared stage minimum', () => {
     // No `synthetic.count`, so the generic 1-8 fallback is what was trimmed —
     // but `behaviours.minNodes` is something the author wrote and the
@@ -634,6 +839,109 @@ describe('planNetwork settling a creator against ego', () => {
     });
     expect(result.ego.attributes.consent).toBe(true);
     expect(result.nodes).toHaveLength(0);
+  });
+});
+
+describe('planNetwork settling an edge creator against ego', () => {
+  // The node pass drops a creator an all-ego guard settles as skipped. The
+  // edge pass read every creation regardless, so a skipped stage's topology
+  // edges stayed planned — and where a later reachable stage creates the same
+  // type, the walk retried them and emitted them.
+  const codebookWithConsent = (): StructuralCodebook =>
+    ({
+      node: {
+        person: {
+          name: 'Person',
+          variables: { name: { name: 'N', type: 'text' } },
+        },
+      },
+      edge: { knows: { name: 'Knows', variables: {} } },
+      ego: {
+        variables: {
+          consent: {
+            name: 'Consent',
+            type: 'boolean',
+            synthetic: { probabilityTrue: 1 },
+          },
+        },
+      },
+    }) as unknown as StructuralCodebook;
+
+  const guardedSociogram = stage({
+    id: 'sociogram',
+    type: 'Sociogram',
+    label: 'Map',
+    subject: { entity: 'node', type: 'person' },
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 1 },
+      },
+    },
+    behaviours: { freeDraw: true },
+    background: { concentricCircles: 3, skewedTowardCenter: true },
+    prompts: [{ id: 'sg-p1', text: 'Link', edges: { create: 'knows' } }],
+    skipLogic: {
+      action: 'SKIP',
+      filter: {
+        rules: [
+          {
+            id: 'consented',
+            type: 'ego',
+            options: { attribute: 'consent', operator: 'EXACTLY', value: true },
+          },
+        ],
+      },
+    },
+  });
+
+  const quietCensus = stage({
+    id: 'census',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 't', text: 'x' },
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0 },
+      },
+    },
+    prompts: [{ id: 'c-p1', text: 'Know?', createEdge: 'knows' }],
+  });
+
+  const egoForm = stage({
+    id: 'ego-form',
+    type: 'EgoForm',
+    label: 'About you',
+    introductionPanel: { title: 't', text: 'x' },
+    form: { fields: [{ variable: 'consent', prompt: 'Consent?' }] },
+  });
+
+  it('plans no edges for a creator its guard settles as skipped', () => {
+    const result = plan(
+      codebookWithConsent(),
+      [egoForm, nameGenerator({}, 4), guardedSociogram, quietCensus],
+      { respectSkipLogicAndFiltering: true },
+    );
+    expect(result.ego.attributes.consent).toBe(true);
+    expect(result.nodes).toHaveLength(4);
+    // The census asked for none, and the skipped sociogram is not there to
+    // ask for any.
+    expect(result.edges).toHaveLength(0);
+  });
+
+  it('still plans them for a creator the guard leaves standing', () => {
+    const standing = stage({
+      ...(guardedSociogram as unknown as Record<string, unknown>),
+      skipLogic: undefined,
+    });
+    const result = plan(
+      codebookWithConsent(),
+      [egoForm, nameGenerator({}, 4), standing, quietCensus],
+      { respectSkipLogicAndFiltering: true },
+    );
+    expect(result.edges.length).toBeGreaterThan(0);
   });
 });
 

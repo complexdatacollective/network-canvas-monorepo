@@ -109,7 +109,7 @@ describe('solver search budget exhaustion', () => {
       entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
     };
 
-    const spy = vi.spyOn(ctx.valueGen, 'randomInt');
+    const spy = vi.spyOn(ctx.valueGen, 'scopedInt');
     const attrs = generateEntityAttributes(
       entity,
       ctx,
@@ -124,10 +124,10 @@ describe('solver search budget exhaustion', () => {
       expect(value).toBeLessThanOrEqual(4);
     }
 
-    // Only the abandoned solve's shuffle seed reads the shared stream; the
-    // six greedy value draws each consume their own variable's semantic
-    // substream, so however the search ends — success, failure, or budget
-    // exhaustion — no other consumer's sequence moves at all.
+    // The abandoned solve's shuffle seed is one draw from its OWN addressed
+    // stream, and the six greedy value draws each consume their own
+    // variable's semantic substream, so however the search ends — success,
+    // failure, or budget exhaustion — no other consumer's sequence moves.
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });

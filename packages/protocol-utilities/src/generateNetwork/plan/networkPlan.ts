@@ -881,19 +881,25 @@ function assignRosterRows(
    * type no roster reaches.
    */
   let judge: ((fixed: Record<string, VariableValue>) => boolean) | undefined;
-  const drawableBy = (creation: NodeCreation, row: NcNode): boolean => {
+  const promptsOf = (
+    creation: NodeCreation,
+  ): readonly Record<string, VariableValue>[] =>
+    creation.promptFixedValues.length > 0
+      ? creation.promptFixedValues
+      : [{} as Record<string, VariableValue>];
+
+  const drawableUnder = (
+    creation: NodeCreation,
+    promptIndex: number,
+    row: NcNode,
+  ): boolean => {
     judge ??= rowJudgeFor(ctx, { entity: 'node', type: nodeType });
     const rowValues = row[entityAttributesProperty];
-    const prompts =
-      creation.promptFixedValues.length > 0
-        ? creation.promptFixedValues
-        : [{} as Record<string, VariableValue>];
-    return prompts.some((promptFixed) =>
-      judge!(
-        creation.rosterValuesWin
-          ? { ...promptFixed, ...rowValues }
-          : { ...rowValues, ...promptFixed },
-      ),
+    const promptFixed = promptsOf(creation)[promptIndex] ?? {};
+    return judge(
+      creation.rosterValuesWin
+        ? { ...promptFixed, ...rowValues }
+        : { ...rowValues, ...promptFixed },
     );
   };
 
@@ -922,7 +928,18 @@ function assignRosterRows(
    * be passed over later, but a row it turns away could never have been drawn.
    * A shortfall reported here is therefore one the draw would have reached.
    */
-  const pools = new Map<number, string[]>();
+  //
+  // One pool per (creation, PROMPT), because that is the unit the draw fills:
+  // `createNodesForStage` gives slot `i` to prompt `i % promptCount`, so a row
+  // only the first prompt can use is no supply at all for the second's slots.
+  // Asked stage-wide, two rows both compatible with the first of two prompts
+  // reported enough supply for a declared count of two, and the second slot
+  // then found nothing and ended the stage one person short in silence.
+  const demands: {
+    creationIndex: number;
+    wanted: number;
+    pool: string[];
+  }[] = [];
   creations.forEach((creation, index) => {
     // Only a roster interface's pool binds. A name generator's panel is a
     // shortcut for naming someone already known, not a closed list — it can
@@ -933,35 +950,63 @@ function assignRosterRows(
     }
     const pool = ctx.externalData?.[creation.rosterStageId];
     if (pool === undefined) return;
-    const seen = new Set<string>(ctx.usedRosterUids);
-    const usable: string[] = [];
-    for (const row of pool) {
-      const uid = row[entityPrimaryKeyProperty];
-      // A key is claimed by the first DRAWABLE row carrying it, not by the
-      // first row. A caller's external data may give two rows one primary key
-      // while their values differ, and the draw takes the first of them it can
-      // use — so letting an undrawable row claim the key here would hide a
-      // usable sibling and report a shortfall over a person the run can build.
-      if (seen.has(uid)) continue;
-      if (!drawableBy(creation, row)) continue;
-      seen.add(uid);
-      usable.push(uid);
+    const promptCount = promptsOf(creation).length;
+    const wanted = assigned[index] ?? 0;
+    for (let promptIndex = 0; promptIndex < promptCount; promptIndex++) {
+      const seen = new Set<string>(ctx.usedRosterUids);
+      const usable: string[] = [];
+      for (const row of pool) {
+        const uid = row[entityPrimaryKeyProperty];
+        // A key is claimed by the first DRAWABLE row carrying it, not by the
+        // first row. A caller's external data may give two rows one primary
+        // key while their values differ, and the draw takes the first of them
+        // it can use — so letting an undrawable row claim the key here would
+        // hide a usable sibling and report a shortfall over a person the run
+        // can build.
+        if (seen.has(uid)) continue;
+        if (!drawableUnder(creation, promptIndex, row)) continue;
+        seen.add(uid);
+        usable.push(uid);
+      }
+      // Slots go round the prompts in turn, so this prompt fills every `i`
+      // congruent to it.
+      const slots = Math.max(
+        0,
+        Math.ceil((wanted - promptIndex) / promptCount),
+      );
+      demands.push({ creationIndex: index, wanted: slots, pool: usable });
     }
-    pools.set(index, usable);
   });
-  if (pools.size === 0) return new Map();
+  if (demands.length === 0) return new Map();
 
-  const owners = new Map<string, number[]>();
-  for (const [index, uids] of pools) {
-    for (const uid of uids) {
-      const list = owners.get(uid) ?? [];
-      list.push(index);
-      owners.set(uid, list);
-    }
+  const pools = new Map<number, string[]>(
+    demands.map((demand, index) => [index, demand.pool]),
+  );
+  const demandCounts = demands.map((demand) => demand.wanted);
+
+  /** Rows a creation can reach under ANY of its prompts, for contested-ness. */
+  const reachByCreation = new Map<number, Set<string>>();
+  for (const demand of demands) {
+    const reach =
+      reachByCreation.get(demand.creationIndex) ?? new Set<string>();
+    for (const uid of demand.pool) reach.add(uid);
+    reachByCreation.set(demand.creationIndex, reach);
   }
-  const contested = new Set<number>();
-  for (const list of owners.values()) {
-    if (list.length > 1) for (const index of list) contested.add(index);
+  // Contested at CREATION level, not demand level. Two prompts of one stage
+  // contend for its own rows by construction, and returning a preference for
+  // that would impose an order on a pool no other stage can reach — churning
+  // seeded output to no end, which is what this gate exists to prevent.
+  const contestedCreations = new Set<number>();
+  for (const [left, leftReach] of reachByCreation) {
+    for (const [right, rightReach] of reachByCreation) {
+      if (left === right) continue;
+      for (const uid of leftReach) {
+        if (rightReach.has(uid)) {
+          contestedCreations.add(left);
+          break;
+        }
+      }
+    }
   }
 
   const order = [...pools.keys()].toSorted(
@@ -969,17 +1014,6 @@ function assignRosterRows(
   );
   const unmatched = new Map<number, number>();
   const preference = new Map<number, string[]>();
-
-  // An UNCONTESTED pool is nobody else's: no other creation can reach one of
-  // its rows, so nothing has to be chosen. Its shortfall is arithmetic, and a
-  // preference is not returned for it in any case. Settled first because it is
-  // also the common shape — one roster stage over one roster — and running a
-  // matching over it is pure waste.
-  for (const [index, uids] of pools) {
-    if (contested.has(index)) continue;
-    const short = (assigned[index] ?? 0) - uids.length;
-    if (short > 0) unmatched.set(index, short);
-  }
 
   // What is left is genuinely contested. Assigning greedily — smallest pool
   // first, claiming a prefix — rejects assignments that exist: with pools
@@ -996,10 +1030,24 @@ function assignRosterRows(
   // upwards of a hundred million row checks, and the schema-supported ten
   // thousand drove the recursion toward the stack limit, so opening an
   // Architect preview froze before a single node was drawn.
-  const contestedOrder = order.filter((index) => contested.has(index));
-  const matched = matchRows(pools, assigned, contestedOrder);
-  for (const [index, count] of matched.short) unmatched.set(index, count);
-  for (const [index, uids] of matched.chosen) preference.set(index, uids);
+  //
+  // Every demand goes through the matching, contested or not: two prompts of
+  // one stage contend for its rows just as two stages do, and the graph is one
+  // node per membership pattern either way — a one-prompt roster of ten
+  // thousand rows is still a single node.
+  const matched = matchRows(pools, demandCounts, order);
+  // Shortfalls are the CREATION's: a stage is short by what its prompts could
+  // not fill between them.
+  for (const [demandIndex, count] of matched.short) {
+    const creationIndex = demands[demandIndex]!.creationIndex;
+    unmatched.set(creationIndex, (unmatched.get(creationIndex) ?? 0) + count);
+  }
+  for (const [demandIndex, uids] of matched.chosen) {
+    const creationIndex = demands[demandIndex]!.creationIndex;
+    if (!contestedCreations.has(creationIndex)) continue;
+    const already = preference.get(creationIndex) ?? [];
+    preference.set(creationIndex, [...already, ...uids]);
+  }
 
   for (const [index, short] of unmatched) {
     const creation = creations[index]!;
@@ -1266,6 +1314,24 @@ export function planNetwork(
       const rejectedByPrompt = new Map<number, Set<NcNode>>();
       const rosterRows = rosterPools[creationIndex];
 
+      /**
+       * Rows whose values this stage is still holding back from free draws.
+       *
+       * The hold exists so a draw between now and this row being reached
+       * cannot take a `unique` value the row will bring. Released the moment
+       * the row's fate is settled — drawn, taken by another stage, or turned
+       * away by every prompt — and not before: a row kept for a later prompt
+       * is still a row that may be drawn, and releasing it there let an
+       * intervening draw claim its value, so the prompt that had saved it then
+       * rejected it as a collision and the stage came up short with a complete
+       * assignment available.
+       */
+      const heldRows = new Set<NcNode>(rosterRows ?? []);
+      const releaseHold = (row: NcNode): void => {
+        if (!heldRows.delete(row)) return;
+        unreserveFixedValues(ctx, ref, row[entityAttributesProperty]);
+      };
+
       for (let i = 0; i < share; i++) {
         const promptIndex = i % promptCount;
         const promptFixed = creation.promptFixedValues[promptIndex] ?? {};
@@ -1288,7 +1354,7 @@ export function planNetwork(
             // and this one is drawable by nobody, so its hold is released for
             // good rather than kept for a later prompt.
             if (ctx.usedRosterUids.has(candidate[entityPrimaryKeyProperty])) {
-              unreserveFixedValues(ctx, ref, rowValues);
+              releaseHold(candidate);
               continue;
             }
             // Keyed on the ROW, not its uid: a caller's external data may
@@ -1303,22 +1369,24 @@ export function planNetwork(
               : { ...rowValues, ...promptFixed };
             if (rowIsDrawable?.(merged) ?? true) {
               // Released here because the draw itself claims what it settles.
-              unreserveFixedValues(ctx, ref, rowValues);
+              releaseHold(candidate);
               rosterRow = candidate;
               fixed = merged;
               break;
             }
-            // Released like any other row this draw passes over: the hold
-            // exists to stop a free draw taking a value a row will bring, and
-            // a row that may or may not be drawn later must not go on
-            // constraining the draws in between. Retaining it changed which
-            // value an unrelated variable settled on.
-            unreserveFixedValues(ctx, ref, rowValues);
             // Kept for a later prompt, which fixes different values. This
             // prompt will not ask again.
             const seen = rejectedByPrompt.get(promptIndex) ?? new Set<NcNode>();
             seen.add(candidate);
             rejectedByPrompt.set(promptIndex, seen);
+            // The hold stays while any prompt could still take the row. Turned
+            // away by all of them it can never be drawn here, so it stops
+            // constraining the draws that follow.
+            const rejectedEverywhere = Array.from(
+              { length: promptCount },
+              (_unused, at) => at,
+            ).every((at) => rejectedByPrompt.get(at)?.has(candidate) === true);
+            if (rejectedEverywhere) releaseHold(candidate);
             passedOver.push(candidate);
           }
           rosterRows.unshift(...passedOver);
@@ -1401,6 +1469,14 @@ export function planNetwork(
         });
         typeIndex += 1;
       }
+
+      // This stage is done drawing, so whatever it was still holding back is
+      // no longer owed to anyone. Released directly rather than through
+      // `releaseHold`, which would mutate the set being walked.
+      for (const row of heldRows) {
+        unreserveFixedValues(ctx, ref, row[entityAttributesProperty]);
+      }
+      heldRows.clear();
     });
   }
 
@@ -1412,8 +1488,22 @@ export function planNetwork(
   // from its own keyed streams, and the plan's edges are emitted in codebook
   // order once the walk is done, so no output depends on it.
   const edgeTypes = Object.entries(ctx.codebook.edge ?? {});
+  /**
+   * Creations of one edge type whose owning stage the run really reaches.
+   *
+   * The node pass drops a creator an all-ego guard settles as skipped, and so
+   * must this one: its edges were planned all the same, and where a later
+   * reachable stage creates the same type the walk retried them and emitted
+   * them — a skipped density-1 Sociogram's links appearing under a density-0
+   * census that had asked for none.
+   */
+  const reachableCreations = (type: string): EdgeCreation[] =>
+    (effects.edgeCreationsByType.get(type) ?? []).filter((creation) => {
+      const summary = effects.stages[creation.stageIndex];
+      return summary === undefined || !settledAsSkipped(summary);
+    });
   const firstEdgeStage = (type: string): number => {
-    const stageIndices = (effects.edgeCreationsByType.get(type) ?? [])
+    const stageIndices = reachableCreations(type)
       .filter((creation) => creation.structured === null)
       .map((creation) => creation.stageIndex);
     return stageIndices.length > 0
@@ -1427,7 +1517,7 @@ export function planNetwork(
   for (const [type] of edgeTypes.toSorted(
     ([a], [b]) => firstEdgeStage(a) - firstEdgeStage(b),
   )) {
-    const creations = effects.edgeCreationsByType.get(type) ?? [];
+    const creations = reachableCreations(type);
     if (creations.length === 0) continue;
     const ref = { entity: 'edge' as const, type };
     const scope = scopeKeyFor('edge', type);
