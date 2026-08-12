@@ -86,10 +86,18 @@ reachable. In production the connection comes from `DATABASE_URL`; when it is
 unset the server still boots and database-backed surfaces refuse, mirroring
 the S3 degradation contract.
 
+Schema changes ship as Drizzle migrations (`server/drizzle/`, generated from
+`server/src/db/schema.ts` with `pnpm db:generate`) and are applied at boot. A
+dev database that predates the migration system — or carries a stale
+pre-release schema — fails that first migration; wipe the branch volume and
+restart (`docker rm -f studio-dev-pg-<branch> && docker volume rm
+studio-dev-pg-<branch>`): pre-release, no dev data is worth keeping.
+
 ### Signing in during development
 
 Authentication (better-auth behind the `src/auth` seam, per #1245/#1255) is
-active by default in development: the auth schema is applied to the dev
+active by default in development: database migrations (Drizzle, generated from
+`server/src/db/schema.ts` into `server/drizzle/`) are applied to the dev
 Postgres at boot, and magic-link email is delivered to the **server console**
 — submit the sign-in form, copy the printed link into the browser. To
 exercise real email instead, run [Mailpit](https://mailpit.axllent.org)

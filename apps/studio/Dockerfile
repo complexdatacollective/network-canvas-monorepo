@@ -34,6 +34,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
 COPY --from=builder /repo/apps/studio/server/dist ./dist
+# Boot applies these SQL migrations; the entry resolves ../drizzle relative
+# to dist/index.js, i.e. this directory.
+COPY --from=builder /repo/apps/studio/server/drizzle ./drizzle
 # The server's default CLIENT_DIST resolves to ../client relative to the
 # bundle — this directory.
 COPY --from=builder /repo/apps/studio/client/dist ./client

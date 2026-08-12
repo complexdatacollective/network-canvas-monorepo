@@ -10,9 +10,10 @@ import { readEnv } from './env.ts';
 //
 // Deliberately NOT ported from src/index.ts:
 //   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
-//   - applyAuthSchema — there is no boot in a serverless runtime; run it once
-//     against the database out of band (`pnpm --filter @codaco/studio-server
-//     apply-schema`) rather than on every cold start
+//   - runMigrations — there is no boot in a serverless runtime; migrations
+//     run at build time instead (`build:netlify` invokes scripts/migrate.ts
+//     against the Netlify-injected DATABASE_URL; `pnpm --filter
+//     @codaco/studio-server db:migrate` is the manual equivalent)
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
 //     is excluded from `config.path` below
 
