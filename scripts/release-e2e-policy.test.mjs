@@ -34,6 +34,25 @@ function reasonForEverySuite(reason) {
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
 
+test('the pre-install policy has no runtime package imports', () => {
+  const source = readFileSync(
+    join(REPO_ROOT, 'scripts/release-e2e-policy.mjs'),
+    'utf8',
+  );
+  const runtimePackages = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
+    .map((match) => match[1])
+    .filter(
+      (specifier) =>
+        !specifier.startsWith('node:') && !specifier.startsWith('.'),
+    );
+
+  assert.deepEqual(
+    runtimePackages,
+    [],
+    'e2e-policy runs before pnpm install and may only import built-ins or local modules',
+  );
+});
+
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
@@ -187,6 +206,51 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
     dirs.has('packages/protocols'),
     'packages/protocols (devDependency) is in the interview closure',
   );
+});
+
+test('workspace discovery follows nested pnpm workspace patterns', () => {
+  const packages = collectWorkspacePackages(REPO_ROOT);
+
+  assert.equal(
+    packages.get('@codaco/studio-client')?.dir,
+    'apps/studio/client',
+  );
+  assert.equal(
+    packages.get('@codaco/studio-server')?.dir,
+    'apps/studio/server',
+  );
+});
+
+test('workspace discovery parses quoted patterns without installed packages', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-workspace-'));
+  writeFileSync(
+    join(cwd, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      "  - 'apps/*'",
+      '  - "apps/studio/*" # nested workspaces',
+      "  - '!apps/excluded'",
+      '',
+      'catalog:',
+      '  react: ^19.0.0',
+    ].join('\n'),
+  );
+  for (const [directory, name] of [
+    ['apps/root', '@example/root'],
+    ['apps/studio/client', '@example/client'],
+    ['apps/excluded', '@example/excluded'],
+  ]) {
+    mkdirSync(join(cwd, directory), { recursive: true });
+    writeFileSync(
+      join(cwd, directory, 'package.json'),
+      JSON.stringify({ name }),
+    );
+  }
+
+  const packages = collectWorkspacePackages(cwd);
+  assert.equal(packages.get('@example/root')?.dir, 'apps/root');
+  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/client');
+  assert.equal(packages.has('@example/excluded'), false);
 });
 
 test('all release policies share the central snapshot PR target', () => {
@@ -530,12 +594,19 @@ test('diff classification is fail-closed', () => {
   const packages = collectWorkspacePackages(cwd);
   const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
 
-  // Sibling-product and inert paths cannot affect the interviewer suite.
+  // Sibling-product and unit-test-only paths cannot affect the interviewer
+  // Playwright suite.
   assert.equal(
     diffIrrelevantToSuite(
       [
         'apps/architect/package.json',
         'apps/architect/CHANGELOG.md',
+        'apps/architect/vitest.config.ts',
+        'apps/architect/config/vitest/setup.ts',
+        'packages/interview/src/Example.test.tsx',
+        'packages/interview/src/__tests__/fixture.ts',
+        'tooling/vitest/modern/disable-animations.js',
+        'scripts/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
         'README.md',
@@ -549,6 +620,7 @@ test('diff classification is fail-closed', () => {
   // Anything in the closure is relevant — including non-markdown baselines.
   for (const relevantPath of [
     'apps/interviewer/src/main.tsx',
+    'apps/interviewer/e2e/session.spec.ts',
     'packages/interview/e2e/baseline.png',
     'packages/e2e-helpers/src/index.ts',
   ]) {
@@ -587,6 +659,43 @@ test('diff classification is fail-closed', () => {
 
   // An empty diff is trivially irrelevant (byte-identical case).
   assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
+});
+
+test('unit-only and unrelated nested-workspace changes select no E2E suites', () => {
+  const expected = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  };
+
+  for (const changedPath of [
+    'tooling/vitest/modern/disable-animations.js',
+    'tooling/vitest/legacy/disable-animations.js',
+    'tooling/vitest/package.json',
+    'scripts/vitest-animation-setup.test.mjs',
+    'apps/studio/client/vitest.config.ts',
+    'apps/studio/client/src/main.tsx',
+    'apps/architect/vitest.config.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      expected,
+      `${changedPath} must not select an unrelated E2E suite`,
+    );
+  }
+});
+
+test('Playwright specs remain relevant after unit-test paths become inert', () => {
+  for (const changedPath of [
+    'apps/architect/e2e/specs/protocol-authoring.spec.ts',
+    'apps/architect/e2e/specs/future-convention.test.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      { interview: false, interviewer: false, architect: true },
+      `${changedPath} remains relevant to Architect E2E`,
+    );
+  }
 });
 
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs

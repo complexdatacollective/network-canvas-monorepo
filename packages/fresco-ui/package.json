@@ -790,6 +790,7 @@
     "@chromatic-com/storybook": "catalog:",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@faker-js/faker": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",

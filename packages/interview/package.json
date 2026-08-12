@@ -82,6 +82,7 @@
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@microsoft/api-extractor": "catalog:",
     "@playwright/test": "catalog:",
     "@storybook/addon-a11y": "catalog:",

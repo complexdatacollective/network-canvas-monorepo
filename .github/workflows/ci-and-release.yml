@@ -588,15 +588,18 @@ jobs:
           # configs/scripts) can alter how tests run without being any turbo
           # task's input, so any such change forces the full suite. The
           # lockfile stays on the affected path because turbo hashes it
-          # granularly per package; docs, changesets, and markdown are inert
-          # to tests.
+          # granularly per package. Repository script tests run separately in
+          # quality-support, so changing only a scripts/*.test.mjs file does
+          # not invalidate workspace unit tests. Docs, changesets, and
+          # markdown are inert to tests as well.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
             && git diff --quiet "$DIFF_BASE_SHA" HEAD -- . \
               ':(exclude)packages' ':(exclude)apps' ':(exclude)workers' \
               ':(exclude)tooling' ':(exclude)docs' ':(exclude).changeset' \
-              ':(exclude)pnpm-lock.yaml' ':(exclude)*.md'; then
+              ':(exclude)pnpm-lock.yaml' \
+              ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
             TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
             exit 0

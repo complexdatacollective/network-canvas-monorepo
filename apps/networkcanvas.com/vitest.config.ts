@@ -3,6 +3,8 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -14,7 +16,7 @@ export default defineConfig({
     // job; a borderline jsdom test can be starved past the 5s default under
     // peak runner load, so give generous headroom.
     testTimeout: 20_000,
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: [disableModernAnimationsSetup, './vitest.setup.ts'],
     server: {
       deps: {
         inline: [/next-intl/],
