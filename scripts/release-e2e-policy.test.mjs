@@ -24,10 +24,34 @@ import {
   relevanceDirsForSubject,
   SUITE_KEYS,
   SUITES_BY_RELEASE_REF,
+  suiteSelectionForPaths,
 } from './release-e2e-policy.mjs';
+
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
+}
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
+
+test('the pre-install policy has no runtime package imports', () => {
+  const source = readFileSync(
+    join(REPO_ROOT, 'scripts/release-e2e-policy.mjs'),
+    'utf8',
+  );
+  const runtimePackages = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
+    .map((match) => match[1])
+    .filter(
+      (specifier) =>
+        !specifier.startsWith('node:') && !specifier.startsWith('.'),
+    );
+
+  assert.deepEqual(
+    runtimePackages,
+    [],
+    'e2e-policy runs before pnpm install and may only import built-ins or local modules',
+  );
+});
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -184,6 +208,51 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
   );
 });
 
+test('workspace discovery follows nested pnpm workspace patterns', () => {
+  const packages = collectWorkspacePackages(REPO_ROOT);
+
+  assert.equal(
+    packages.get('@codaco/studio-client')?.dir,
+    'apps/studio/client',
+  );
+  assert.equal(
+    packages.get('@codaco/studio-server')?.dir,
+    'apps/studio/server',
+  );
+});
+
+test('workspace discovery parses quoted patterns without installed packages', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-workspace-'));
+  writeFileSync(
+    join(cwd, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      "  - 'apps/*'",
+      '  - "apps/studio/*" # nested workspaces',
+      "  - '!apps/excluded'",
+      '',
+      'catalog:',
+      '  react: ^19.0.0',
+    ].join('\n'),
+  );
+  for (const [directory, name] of [
+    ['apps/root', '@example/root'],
+    ['apps/studio/client', '@example/client'],
+    ['apps/excluded', '@example/excluded'],
+  ]) {
+    mkdirSync(join(cwd, directory), { recursive: true });
+    writeFileSync(
+      join(cwd, directory, 'package.json'),
+      JSON.stringify({ name }),
+    );
+  }
+
+  const packages = collectWorkspacePackages(cwd);
+  assert.equal(packages.get('@example/root')?.dir, 'apps/root');
+  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/client');
+  assert.equal(packages.has('@example/excluded'), false);
+});
+
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
@@ -201,6 +270,14 @@ test('all release policies share the central snapshot PR target', () => {
         ...SUITES_BY_RELEASE_REF[releaseRef],
         releaseRef,
         snapshotBranch: 'e2e-snapshots/main',
+        reasons: Object.fromEntries(
+          SUITE_KEYS.map((key) => [
+            key,
+            SUITES_BY_RELEASE_REF[releaseRef][key]
+              ? `gates the ${releaseRef} release lane`
+              : `does not gate the ${releaseRef} release lane`,
+          ]),
+        ),
       },
     );
   }
@@ -213,6 +290,7 @@ test('merge groups never require E2E', () => {
     architect: false,
     releaseRef: '',
     snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for merge_group events'),
   });
 });
 
@@ -222,6 +300,11 @@ test('feature PRs require the suites the affected-path detector reports', () => 
     interviewer: false,
     architect: true,
   };
+  const detectedReasons = {
+    interview: 'interview witness',
+    interviewer: 'no changed file affects this suite',
+    architect: 'architect witness',
+  };
   assert.deepEqual(
     releaseE2EPolicy(
       {
@@ -230,9 +313,14 @@ test('feature PRs require the suites the affected-path detector reports', () => 
         baseSha: 'base',
         headSha: 'head',
       },
-      () => detected,
+      () => ({ required: detected, reasons: detectedReasons }),
     ),
-    { ...detected, releaseRef: '', snapshotBranch: '' },
+    {
+      ...detected,
+      releaseRef: '',
+      snapshotBranch: '',
+      reasons: detectedReasons,
+    },
   );
   assert.deepEqual(
     releaseE2EPolicy(
@@ -252,6 +340,9 @@ test('feature PRs require the suites the affected-path detector reports', () => 
       architect: true,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: reasonForEverySuite(
+        'fails closed: the PR diff could not be classified',
+      ),
     },
   );
 });
@@ -362,6 +453,55 @@ test('affected path selection fails closed when a suite subject is missing', () 
     interviewer: false,
     architect: true,
   });
+  assert.equal(
+    suiteSelectionForPaths(['README.md'], cwd).reasons.architect,
+    'fails closed: @codaco/architect is missing from the workspace graph',
+  );
+});
+
+test('suite selection reasons name the witness path for the status comment', () => {
+  const cwd = writeWorkspaceFixture();
+
+  // A shared-runtime change selects every suite, each citing the path.
+  assert.deepEqual(
+    suiteSelectionForPaths(
+      ['README.md', 'packages/interview/src/index.ts'],
+      cwd,
+    ),
+    {
+      required: { interview: true, interviewer: true, architect: true },
+      reasons: {
+        interview:
+          '`packages/interview/src/index.ts` is in the @codaco/interview workspace dependency closure',
+        interviewer:
+          '`packages/interview/src/index.ts` is in the @codaco/interviewer workspace dependency closure',
+        architect:
+          '`packages/interview/src/index.ts` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A single-product change explains both the selected and skipped suites.
+  assert.deepEqual(
+    suiteSelectionForPaths(['apps/architect/src/main.tsx'], cwd),
+    {
+      required: { interview: false, interviewer: false, architect: true },
+      reasons: {
+        interview: 'no changed file affects this suite',
+        interviewer: 'no changed file affects this suite',
+        architect:
+          '`apps/architect/src/main.tsx` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A path outside every workspace package fails closed and says so.
+  assert.deepEqual(
+    suiteSelectionForPaths(['turbo.json'], cwd).reasons,
+    reasonForEverySuite(
+      'fails closed: `turbo.json` is outside every workspace package',
+    ),
+  );
 });
 
 test('non-PR ordinary events do not require E2E', () => {
@@ -371,6 +511,7 @@ test('non-PR ordinary events do not require E2E', () => {
     architect: false,
     releaseRef: '',
     snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for push events'),
   };
   assert.deepEqual(
     releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
@@ -453,12 +594,19 @@ test('diff classification is fail-closed', () => {
   const packages = collectWorkspacePackages(cwd);
   const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
 
-  // Sibling-product and inert paths cannot affect the interviewer suite.
+  // Sibling-product and unit-test-only paths cannot affect the interviewer
+  // Playwright suite.
   assert.equal(
     diffIrrelevantToSuite(
       [
         'apps/architect/package.json',
         'apps/architect/CHANGELOG.md',
+        'apps/architect/vitest.config.ts',
+        'apps/architect/config/vitest/setup.ts',
+        'packages/interview/src/Example.test.tsx',
+        'packages/interview/src/__tests__/fixture.ts',
+        'tooling/vitest/modern/disable-animations.js',
+        'scripts/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
         'README.md',
@@ -472,6 +620,7 @@ test('diff classification is fail-closed', () => {
   // Anything in the closure is relevant — including non-markdown baselines.
   for (const relevantPath of [
     'apps/interviewer/src/main.tsx',
+    'apps/interviewer/e2e/session.spec.ts',
     'packages/interview/e2e/baseline.png',
     'packages/e2e-helpers/src/index.ts',
   ]) {
@@ -510,6 +659,43 @@ test('diff classification is fail-closed', () => {
 
   // An empty diff is trivially irrelevant (byte-identical case).
   assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
+});
+
+test('unit-only and unrelated nested-workspace changes select no E2E suites', () => {
+  const expected = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  };
+
+  for (const changedPath of [
+    'tooling/vitest/modern/disable-animations.js',
+    'tooling/vitest/legacy/disable-animations.js',
+    'tooling/vitest/package.json',
+    'scripts/vitest-animation-setup.test.mjs',
+    'apps/studio/client/vitest.config.ts',
+    'apps/studio/client/src/main.tsx',
+    'apps/architect/vitest.config.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      expected,
+      `${changedPath} must not select an unrelated E2E suite`,
+    );
+  }
+});
+
+test('Playwright specs remain relevant after unit-test paths become inert', () => {
+  for (const changedPath of [
+    'apps/architect/e2e/specs/protocol-authoring.spec.ts',
+    'apps/architect/e2e/specs/future-convention.test.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      { interview: false, interviewer: false, architect: true },
+      `${changedPath} remains relevant to Architect E2E`,
+    );
+  }
 });
 
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs

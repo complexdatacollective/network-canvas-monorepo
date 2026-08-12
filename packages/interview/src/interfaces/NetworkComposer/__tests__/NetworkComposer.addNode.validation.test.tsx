@@ -303,6 +303,28 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
 });
 
 describe('NetworkComposer quick-add submission lifecycle', () => {
+  it('treats a dotted protocol target variable containing a dangerous segment as opaque', async () => {
+    const onCreate = vi.fn(async () => {});
+
+    render(
+      <AddNodeInput
+        entityLabel="Person"
+        targetVariable="safe.__proto__.polluted"
+        onCreate={onCreate}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /person name/i });
+    await userEvent.type(input, 'Alice');
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith('Alice');
+      expect(input).toHaveValue('');
+    });
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
+  });
+
   it('waits for node creation before accepting another submission', async () => {
     let finishCreate: (() => void) | undefined;
     const onCreate = vi.fn(

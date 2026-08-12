@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import Field from '../../Field/Field';
 import type { FieldSlotController } from '../../Field/types';
+import FieldNamespace from '../../FieldNamespace';
 import FormStoreProvider from '../../store/formStoreProvider';
 import InputField from '../InputField';
 
@@ -40,6 +41,27 @@ function touchThenEmpty(input: HTMLInputElement) {
 }
 
 describe('Field container-scoped validation with an in-field control', () => {
+  it('preserves the public controller name for noncanonical namespaces', () => {
+    render(
+      <FormStoreProvider>
+        <FieldNamespace prefix="person name">
+          <Field
+            name="alias"
+            label="Alias"
+            component={InputField}
+            suffixComponent={(field: FieldSlotController) => (
+              <output data-testid="controller-name">{field.name}</output>
+            )}
+          />
+        </FieldNamespace>
+      </FormStoreProvider>,
+    );
+
+    expect(screen.getByTestId('controller-name')).toHaveTextContent(
+      'person name.alias',
+    );
+  });
+
   it('does not validate when focus moves from the input to a slot button', async () => {
     const { input, generate } = renderFieldWithGenerate();
 

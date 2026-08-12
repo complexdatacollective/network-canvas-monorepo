@@ -1,6 +1,10 @@
 import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
+import {
+  isVariableValue,
+  writeOwnAttribute,
+} from '../../../utils/writeOwnAttributes';
 import { buildChildParentage } from './buildChildParentage';
 import { readBiologicalSex } from './personAttributes';
 
@@ -20,8 +24,8 @@ function extractUnknownAttributes(
   const attrs: Record<string, VariableValue> = {};
   let hasAttrs = false;
   for (const [key, val] of Object.entries(obj)) {
-    if (!knownKeys.has(key) && val !== undefined) {
-      attrs[key] = val as VariableValue;
+    if (!knownKeys.has(key) && isVariableValue(val)) {
+      writeOwnAttribute(attrs, key, val);
       hasAttrs = true;
     }
   }
@@ -59,7 +63,9 @@ function buildBioParent(
   if (includeBiologicalSex) {
     const sex = readBiologicalSex(parent.biologicalSex);
     if (sex !== undefined) {
-      attributes[variableConfig.biologicalSexVariable] = [sex];
+      writeOwnAttribute(attributes, variableConfig.biologicalSexVariable, [
+        sex,
+      ]);
     }
   }
 
@@ -90,7 +96,7 @@ function buildAdditionalParent(
 
   const sex = readBiologicalSex(parent.biologicalSex);
   if (sex !== undefined) {
-    attributes[variableConfig.biologicalSexVariable] = [sex];
+    writeOwnAttribute(attributes, variableConfig.biologicalSexVariable, [sex]);
   }
 
   return {
@@ -196,8 +202,8 @@ export function egoCellTransform(
   ]);
   const egoCustomAttrs: Record<string, VariableValue> = {};
   for (const [key, val] of Object.entries(values)) {
-    if (!egoKnownKeys.has(key) && val !== undefined) {
-      egoCustomAttrs[key] = val as VariableValue;
+    if (!egoKnownKeys.has(key) && isVariableValue(val)) {
+      writeOwnAttribute(egoCustomAttrs, key, val);
     }
   }
 
@@ -210,7 +216,9 @@ export function egoCellTransform(
   // own sex-linked risk calculation.
   const egoSex = readBiologicalSex(values.biologicalSex);
   if (egoSex !== undefined) {
-    egoAttributes[variableConfig.biologicalSexVariable] = [egoSex];
+    writeOwnAttribute(egoAttributes, variableConfig.biologicalSexVariable, [
+      egoSex,
+    ]);
   }
 
   if (!existingEgoId) {
@@ -233,10 +241,16 @@ export function egoCellTransform(
       [variableConfig.isActiveVariable]: true,
     };
     if (parent.isGestationalCarrier) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
     if (parent.gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [parent.gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        parent.gameteRole,
+      ]);
     }
 
     batch.edges.push({
@@ -298,7 +312,9 @@ export function egoCellTransform(
     };
     const partnerSex = readBiologicalSex(partnerObj.biologicalSex);
     if (partnerSex !== undefined) {
-      partnerAttrs[variableConfig.biologicalSexVariable] = [partnerSex];
+      writeOwnAttribute(partnerAttrs, variableConfig.biologicalSexVariable, [
+        partnerSex,
+      ]);
     }
 
     batch.nodes.push({
@@ -347,7 +363,9 @@ export function egoCellTransform(
     };
     const childSex = readBiologicalSex(child.biologicalSex);
     if (childSex !== undefined) {
-      childAttrs[variableConfig.biologicalSexVariable] = [childSex];
+      writeOwnAttribute(childAttrs, variableConfig.biologicalSexVariable, [
+        childSex,
+      ]);
     }
 
     batch.nodes.push({

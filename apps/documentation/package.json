@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@microflash/rehype-figure": "^2.1.4",
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/typography": "catalog:",

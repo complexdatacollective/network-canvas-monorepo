@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const dirname =
   typeof __dirname !== 'undefined'
     ? __dirname
@@ -32,7 +34,10 @@ export default defineConfig({
           // borderline test (e.g. a WebGL-backed interface interaction) can be
           // starved past the 5s default, so give generous headroom.
           testTimeout: 20_000,
-          setupFiles: [path.join(dirname, 'vitest.setup.ts')],
+          setupFiles: [
+            disableModernAnimationsSetup,
+            path.join(dirname, 'vitest.setup.ts'),
+          ],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',

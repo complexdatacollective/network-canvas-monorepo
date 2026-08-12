@@ -9,6 +9,8 @@ import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -41,7 +43,7 @@ export default defineConfig({
           // Parallelised with the rest of the workspace's tests in the CI
           // quality job; give jsdom tests headroom under peak runner load.
           testTimeout: 20_000,
-          setupFiles: ['./src/test-setup.ts'],
+          setupFiles: [disableModernAnimationsSetup, './src/test-setup.ts'],
           include: ['src/**/*.{test,spec}.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',

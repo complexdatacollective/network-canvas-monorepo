@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -30,7 +32,10 @@ export default defineConfig({
           // quality job; a borderline jsdom test can be starved past the 5s
           // default under peak runner load, so give generous headroom.
           testTimeout: 20_000,
-          setupFiles: [resolve(here, 'vitest.setup.ts')],
+          setupFiles: [
+            disableModernAnimationsSetup,
+            resolve(here, 'vitest.setup.ts'),
+          ],
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',

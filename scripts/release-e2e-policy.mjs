@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { globSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const SUITE_KEYS = ['interview', 'interviewer', 'architect'];
@@ -27,74 +27,131 @@ export const E2E_JOB_NAMES = {
   architect: ['architect-e2e', 'architect-e2e-native'],
 };
 
-const WORKSPACE_GROUPS = ['packages', 'apps', 'tooling', 'workers'];
+const FALLBACK_WORKSPACE_PATTERNS = [
+  'packages/*',
+  'apps/*',
+  'tooling/*',
+  'workers/*',
+];
 
 // Mirrors the `test` job's inert set: docs, changesets, and markdown cannot
 // change what an E2E suite executes or asserts.
 function isInertPath(path) {
+  const segments = path.split('/');
+  const filename = segments.at(-1) ?? '';
+  const isPlaywrightSpec = path.includes('/e2e/specs/');
+
   return (
     path.startsWith('docs/') ||
     path.startsWith('.changeset/') ||
-    path.endsWith('.md')
+    path.endsWith('.md') ||
+    (!isPlaywrightSpec && filename.includes('.test.')) ||
+    filename.startsWith('vitest.') ||
+    segments.includes('__tests__') ||
+    path.startsWith('tooling/vitest/') ||
+    path.startsWith('config/vitest/') ||
+    path.includes('/config/vitest/')
   );
+}
+
+function workspacePatterns(cwd) {
+  let raw;
+  try {
+    raw = readFileSync(join(cwd, 'pnpm-workspace.yaml'), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return FALLBACK_WORKSPACE_PATTERNS;
+    throw error;
+  }
+
+  const lines = raw.split(/\r?\n/);
+  const packagesLine = lines.findIndex((line) =>
+    /^packages:\s*(?:#.*)?$/.test(line),
+  );
+  if (packagesLine === -1) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+
+  const patterns = [];
+  for (const line of lines.slice(packagesLine + 1)) {
+    if (/^\S/.test(line)) break;
+    if (/^\s*(?:#.*)?$/.test(line)) continue;
+
+    const item = line.match(/^\s+-\s+(.+?)\s*$/)?.[1];
+    if (item === undefined) {
+      throw new Error(
+        'pnpm-workspace.yaml packages must be a simple string list',
+      );
+    }
+
+    const doubleQuoted = item.match(/^("(?:[^"\\]|\\.)*")(?:\s+#.*)?$/);
+    const singleQuoted = item.match(/^('(?:[^']|'')*')(?:\s+#.*)?$/);
+    let pattern;
+    if (doubleQuoted) {
+      try {
+        pattern = JSON.parse(doubleQuoted[1]);
+      } catch (error) {
+        throw new Error('Invalid quoted pnpm workspace pattern', {
+          cause: error,
+        });
+      }
+    } else if (singleQuoted) {
+      pattern = singleQuoted[1].slice(1, -1).replaceAll("''", "'");
+    } else {
+      pattern = item.replace(/\s+#.*$/, '').trim();
+    }
+
+    if (pattern === '') {
+      throw new Error('pnpm workspace patterns cannot be empty');
+    }
+    patterns.push(pattern);
+  }
+
+  if (patterns.length === 0) {
+    throw new Error('pnpm-workspace.yaml must define a packages string array');
+  }
+  return patterns;
 }
 
 export function collectWorkspacePackages(cwd) {
   const packages = new Map();
-  for (const group of WORKSPACE_GROUPS) {
-    let entries;
+  const patterns = workspacePatterns(cwd);
+  const excluded = new Set(
+    patterns
+      .filter((pattern) => pattern.startsWith('!'))
+      .flatMap((pattern) =>
+        globSync(`${pattern.slice(1)}/package.json`, { cwd }),
+      ),
+  );
+  const manifestPaths = patterns
+    .filter((pattern) => !pattern.startsWith('!'))
+    .flatMap((pattern) => globSync(`${pattern}/package.json`, { cwd }))
+    .filter((manifestPath) => !excluded.has(manifestPath));
+
+  for (const manifestPath of new Set(manifestPaths)) {
+    let manifest;
     try {
-      entries = readdirSync(join(cwd, group), { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      // ENOENT (no package.json) means this directory is simply not a pnpm
-      // workspace member — continue silently, matching pnpm's own glob
-      // semantics. Any other read failure, or a parse failure on a manifest
-      // that IS present, means the workspace graph is broken and must not be
-      // silently treated as empty: that would misclassify every path inside
-      // it as "outside every workspace package", which fails OPEN for
-      // equivalence reuse. Propagate so the caller fails closed instead.
-      const manifestPath = join(cwd, group, entry.name, 'package.json');
-      let raw;
-      try {
-        raw = readFileSync(manifestPath, 'utf8');
-      } catch (error) {
-        if (error.code === 'ENOENT') continue;
-        throw error;
-      }
-      let manifest;
-      try {
-        manifest = JSON.parse(raw);
-      } catch (error) {
-        throw new Error(
-          `Unable to read workspace manifest ${group}/${entry.name}/package.json`,
-          { cause: error },
-        );
-      }
-      // pnpm tolerates nameless private workspace members. Such a package can
-      // never be depended on, and the fail-closed diff path already treats
-      // its directory as unrecognised (and therefore relevant), so skipping
-      // it here does not weaken equivalence reuse.
-      if (typeof manifest.name !== 'string') continue;
-      packages.set(manifest.name, {
-        dir: `${group}/${entry.name}`,
-        // devDependencies participate: they carry Playwright configs, e2e
-        // helpers, and build tooling that shape suite outcomes. peer and
-        // optional edges participate too: this repo declares some workspace
-        // edges (e.g. the styling/theme packages an e2e host renders with)
-        // as peerDependencies rather than dependencies or devDependencies.
-        // Non-workspace names harmlessly miss the package map below.
-        workspaceDeps: [
-          ...Object.keys(manifest.dependencies ?? {}),
-          ...Object.keys(manifest.devDependencies ?? {}),
-          ...Object.keys(manifest.peerDependencies ?? {}),
-          ...Object.keys(manifest.optionalDependencies ?? {}),
-        ],
+      manifest = JSON.parse(readFileSync(join(cwd, manifestPath), 'utf8'));
+    } catch (error) {
+      throw new Error(`Unable to read workspace manifest ${manifestPath}`, {
+        cause: error,
       });
     }
+    // pnpm tolerates nameless private workspace members. Such a package can
+    // never be depended on, and the fail-closed diff path treats its directory
+    // as unrecognised, so skipping it here does not weaken the policy.
+    if (typeof manifest.name !== 'string') continue;
+    packages.set(manifest.name, {
+      dir: dirname(manifestPath).replaceAll('\\', '/'),
+      // devDependencies participate: they carry Playwright configs, e2e
+      // helpers, and build tooling that shape suite outcomes. Peer and
+      // optional edges participate too.
+      workspaceDeps: [
+        ...Object.keys(manifest.dependencies ?? {}),
+        ...Object.keys(manifest.devDependencies ?? {}),
+        ...Object.keys(manifest.peerDependencies ?? {}),
+        ...Object.keys(manifest.optionalDependencies ?? {}),
+      ],
+    });
   }
   return packages;
 }
@@ -115,40 +172,59 @@ export function relevanceDirsForSubject(subjectName, packages) {
   return dirs;
 }
 
-// True only when EVERY changed path provably cannot affect the suite: it is
-// inert, or it lives inside a workspace package outside the suite's relevance
-// closure. Any other path — root configs, .github/, scripts/, the lockfile,
-// anything unrecognised — is relevant, so the suite runs (fail closed).
-export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+// The first changed path that can affect the suite, or undefined when every
+// changed path provably cannot: it is inert, or it lives inside a workspace
+// package outside the suite's relevance closure. Any other path — root
+// configs, .github/, scripts/, the lockfile, anything unrecognised — is
+// relevant, so the suite runs (fail closed).
+function firstRelevantPath(changedPaths, relevanceDirs, packages) {
   const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
-  return changedPaths.every((changedPath) => {
-    if (isInertPath(changedPath)) return true;
+  return changedPaths.find((changedPath) => {
+    if (isInertPath(changedPath)) return false;
     const owner = packageDirs.find((dir) => changedPath.startsWith(`${dir}/`));
-    return owner !== undefined && !relevanceDirs.has(owner);
+    return owner === undefined || relevanceDirs.has(owner);
   });
 }
 
+// True only when EVERY changed path provably cannot affect the suite.
+export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
+  return firstRelevantPath(changedPaths, relevanceDirs, packages) === undefined;
+}
+
 // Select each suite whose subject or workspace dependency closure contains a
-// changed path. Unknown paths fail closed for every suite via
-// diffIrrelevantToSuite; a missing subject fails closed for that suite because
-// its relevance closure cannot be trusted.
-export function affectedSuitesForPaths(changedPaths, cwd) {
+// changed path, and explain each decision with the witness path — the CI
+// status comment surfaces these reasons verbatim. Unknown paths fail closed
+// for every suite via firstRelevantPath; a missing subject fails closed for
+// that suite because its relevance closure cannot be trusted.
+export function suiteSelectionForPaths(changedPaths, cwd) {
   const packages = collectWorkspacePackages(cwd);
+  const packageDirs = [...packages.values()].map((pkg) => pkg.dir);
   const required = suites();
+  const reasons = {};
   for (const key of SUITE_KEYS) {
     const subject = E2E_SUITE_SUBJECTS[key];
     if (!packages.has(subject)) {
       required[key] = true;
+      reasons[key] =
+        `fails closed: ${subject} is missing from the workspace graph`;
       continue;
     }
     const relevanceDirs = relevanceDirsForSubject(subject, packages);
-    required[key] = !diffIrrelevantToSuite(
-      changedPaths,
-      relevanceDirs,
-      packages,
-    );
+    const witness = firstRelevantPath(changedPaths, relevanceDirs, packages);
+    if (witness === undefined) {
+      reasons[key] = 'no changed file affects this suite';
+      continue;
+    }
+    required[key] = true;
+    reasons[key] = packageDirs.some((dir) => witness.startsWith(`${dir}/`))
+      ? `\`${witness}\` is in the ${subject} workspace dependency closure`
+      : `fails closed: \`${witness}\` is outside every workspace package`;
   }
-  return required;
+  return { required, reasons };
+}
+
+export function affectedSuitesForPaths(changedPaths, cwd) {
+  return suiteSelectionForPaths(changedPaths, cwd).required;
 }
 
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
@@ -406,7 +482,7 @@ function tryGit(args, cwd) {
 // head is gated by the suites the PR can affect. This deliberately does not
 // use push-to-push carry-forward: an E2E verdict must describe the exact PR
 // head that the required quality check is evaluating.
-export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+export function pullRequestSuiteSelection(baseSha, headSha, cwd) {
   if (!baseSha || !headSha) {
     throw new Error('feature PR E2E detection requires base and head SHAs');
   }
@@ -417,37 +493,67 @@ export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
     cwd,
   );
   if (diff === null) throw new Error('Unable to read feature PR diff');
-  return affectedSuitesForPaths(diff.split('\n').filter(Boolean), cwd);
+  return suiteSelectionForPaths(diff.split('\n').filter(Boolean), cwd);
+}
+
+export function pullRequestRequiredSuites(baseSha, headSha, cwd) {
+  return pullRequestSuiteSelection(baseSha, headSha, cwd).required;
+}
+
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
 }
 
 export function releaseE2EPolicy(
   { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
-  pullRequestDetector = pullRequestRequiredSuites,
+  pullRequestDetector = pullRequestSuiteSelection,
 ) {
   const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
   if (releaseRef) {
+    const laneSuites = SUITES_BY_RELEASE_REF[releaseRef];
     return {
-      ...SUITES_BY_RELEASE_REF[releaseRef],
+      ...laneSuites,
       releaseRef,
       snapshotBranch: 'e2e-snapshots/main',
+      reasons: Object.fromEntries(
+        SUITE_KEYS.map((key) => [
+          key,
+          laneSuites[key]
+            ? `gates the ${releaseRef} release lane`
+            : `does not gate the ${releaseRef} release lane`,
+        ]),
+      ),
     };
   }
 
   if (eventName === 'pull_request') {
-    let required;
+    let selection;
     try {
-      required = pullRequestDetector(baseSha, headSha, process.cwd());
+      selection = pullRequestDetector(baseSha, headSha, process.cwd());
     } catch {
-      required = suites('interview', 'interviewer', 'architect');
+      selection = {
+        required: suites('interview', 'interviewer', 'architect'),
+        reasons: reasonForEverySuite(
+          'fails closed: the PR diff could not be classified',
+        ),
+      };
     }
     return {
-      ...required,
+      ...selection.required,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: selection.reasons,
     };
   }
 
-  return { ...suites(), releaseRef: '', snapshotBranch: '' };
+  return {
+    ...suites(),
+    releaseRef: '',
+    snapshotBranch: '',
+    reasons: reasonForEverySuite(
+      `E2E does not run for ${eventName || 'this'} events`,
+    ),
+  };
 }
 
 async function main() {
@@ -485,6 +591,8 @@ async function main() {
       for (const key of SUITE_KEYS) {
         if (policy[key] && validated[key]) {
           policy[key] = false;
+          policy.reasons[key] =
+            'verdict reused: the newest equivalent release-branch run passed this suite and nothing relevant changed since';
           console.error(
             `${E2E_JOB_NAMES[key]}: skipping — the newest equivalent verdict across generated release branches is successful and nothing relevant to this suite has changed since.`,
           );

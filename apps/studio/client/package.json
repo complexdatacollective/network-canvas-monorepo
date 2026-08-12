@@ -23,6 +23,7 @@
     "@codaco/studio-rpc": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@orpc/client": "2.0.0-beta.26",
     "@orpc/contract": "2.0.0-beta.26",
     "@orpc/tanstack-query": "2.0.0-beta.26",
