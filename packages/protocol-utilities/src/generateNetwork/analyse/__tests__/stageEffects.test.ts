@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 
 import {
-  DEFAULT_EDGE_TOPOLOGY,
+  defaultTopologyForStage,
   DEFAULT_NODE_COUNT,
 } from '../../plan/resolveSynthetic';
 import {
@@ -162,7 +162,8 @@ describe('analyseStageEffects', () => {
         promptIndex: 1,
         edgeType: 'friendship',
         subjectNodeType: 'person',
-        topology: DEFAULT_EDGE_TOPOLOGY,
+        // A Sociogram links at its own default, not the shared fallback.
+        topology: defaultTopologyForStage('Sociogram'),
         filter,
         ownNodesOnly: false,
         recordsNegatives: null,

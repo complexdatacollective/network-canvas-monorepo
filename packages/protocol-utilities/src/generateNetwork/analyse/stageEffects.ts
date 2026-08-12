@@ -6,7 +6,7 @@ import type {
 
 import { isContentStage } from '../contentStages';
 import {
-  DEFAULT_EDGE_TOPOLOGY,
+  defaultTopologyForStage,
   DEFAULT_NODE_COUNT,
 } from '../plan/resolveSynthetic';
 import {
@@ -253,6 +253,20 @@ export type StageEffects = {
    * filtering on it sees an unanswered entity however the plan ends up.
    */
   firstWriteIndex: Map<string, Map<string, number>>;
+  /**
+   * The first write of each variable that reaches EVERY entity of its scope —
+   * the first one behind no filter.
+   *
+   * `firstWriteIndex` answers "when does this variable first get written
+   * anywhere", which is population-wide only when that write is unconditional.
+   * Where the first writer is filtered, the entities it excluded still hold
+   * nothing until a later unconditional writer reaches them, and projecting
+   * the value from the filtered stage onward showed it on every entity: a
+   * following filtered stage then admitted subjects the live session excludes,
+   * and the same-stage edges planned for them are not rechecked at
+   * materialisation.
+   */
+  firstUnconditionalWriteIndex: Map<string, Map<string, number>>;
 };
 
 /**
@@ -276,8 +290,23 @@ export function attributesAsOf(
    * missing or extra edges.
    */
   fixedAtCreation?: Record<string, unknown>,
+  /**
+   * Whether the run respects filters. With filters ignored, every write
+   * reaches every entity and the first write of any kind is the honest
+   * answer; with them respected, only an unconditional write is certain to
+   * have reached THIS entity, so that is what makes the value visible.
+   *
+   * Conservative in the direction that matters: showing a value too early
+   * admits subjects the live session excludes, and the same-stage edges
+   * planned for them are never rechecked. Showing it too late leaves a subject
+   * out of a domain it might have joined, which plans fewer edges rather than
+   * wrong ones.
+   */
+  respectFiltering = false,
 ): Record<string, unknown> {
-  const first = effects.firstWriteIndex.get(scope);
+  const first = respectFiltering
+    ? effects.firstUnconditionalWriteIndex.get(scope)
+    : effects.firstWriteIndex.get(scope);
   if (first === undefined) return {};
   const projected: Record<string, unknown> = {};
   for (const [variableId, value] of Object.entries(attributes)) {
@@ -939,7 +968,8 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
   for (const creation of summary.edgeCreations) {
     creation.stageId = stage.id;
     if (creation.structured !== 'pedigree') {
-      creation.topology = declaredTopology ?? DEFAULT_EDGE_TOPOLOGY;
+      creation.topology =
+        declaredTopology ?? defaultTopologyForStage(stage.type);
     }
   }
 
@@ -972,10 +1002,19 @@ export function analyseStageEffects(
   const rewriteIndex = new Map<string, Map<string, number>>();
   const unconditionalWrites = new Map<string, Set<string>>();
 
-  const recordUnconditional = (scope: string, variableId: string): void => {
+  const firstUnconditionalWriteIndex = new Map<string, Map<string, number>>();
+  const recordUnconditional = (
+    scope: string,
+    variableId: string,
+    at: number,
+  ): void => {
     const forScope = unconditionalWrites.get(scope) ?? new Set<string>();
     forScope.add(variableId);
     unconditionalWrites.set(scope, forScope);
+    const firstFor =
+      firstUnconditionalWriteIndex.get(scope) ?? new Map<string, number>();
+    firstFor.set(variableId, Math.min(firstFor.get(variableId) ?? at, at));
+    firstUnconditionalWriteIndex.set(scope, firstFor);
   };
 
   const recordInto =
@@ -1003,7 +1042,7 @@ export function analyseStageEffects(
         recordWrite(scope, variableId, creation.stageIndex);
         // A creating interaction reaches every entity it makes, so what it
         // writes is never behind a filter.
-        recordUnconditional(scope, variableId);
+        recordUnconditional(scope, variableId, creation.stageIndex);
       }
       // A prompt's fixed values are written onto the node as surely as a form
       // field is, so they belong in the write set — the plan needs a value for
@@ -1012,7 +1051,7 @@ export function analyseStageEffects(
       for (const fixed of creation.promptFixedValues) {
         for (const variableId of Object.keys(fixed)) {
           recordWrite(scope, variableId, creation.stageIndex);
-          recordUnconditional(scope, variableId);
+          recordUnconditional(scope, variableId, creation.stageIndex);
         }
       }
     }
@@ -1023,14 +1062,14 @@ export function analyseStageEffects(
       const scope = scopeKeyFor('edge', creation.edgeType);
       for (const variableId of creation.writesAtCreation) {
         recordWrite(scope, variableId, creation.stageIndex);
-        recordUnconditional(scope, variableId);
+        recordUnconditional(scope, variableId, creation.stageIndex);
       }
     }
     for (const write of summary.writes) {
       const scope = scopeKeyFor(write.entity, write.entityType);
       recordWrite(scope, write.variableId, write.stageIndex);
       if (write.filter === undefined) {
-        recordUnconditional(scope, write.variableId);
+        recordUnconditional(scope, write.variableId, write.stageIndex);
       }
       if (write.filter === undefined && summary.stage.skipLogic === undefined) {
         recordRewrite(scope, write.variableId, write.stageIndex);
@@ -1048,6 +1087,7 @@ export function analyseStageEffects(
     unconditionalWrites,
     rewriteIndex,
     firstWriteIndex,
+    firstUnconditionalWriteIndex,
   };
 }
 

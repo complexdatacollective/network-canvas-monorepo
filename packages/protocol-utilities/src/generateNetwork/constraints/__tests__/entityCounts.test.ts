@@ -2964,9 +2964,10 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
       });
 
     expect(generate).toThrow(SyntheticDataConstraintError);
-    // Twenty-three, not the forty-five pairs: the plan draws a density of at
-    // most 0.5 over them and selects that many.
-    expect(generate).toThrow(/up to 23 edges of this type can be generated/);
+    // Twenty-seven, not the forty-five pairs: the plan draws a density of at
+    // most 0.6 — a census's own undeclared default — over them and selects
+    // that many.
+    expect(generate).toThrow(/up to 27 edges of this type can be generated/);
   });
 
   it('still refuses when the census own people exhaust the value space', () => {

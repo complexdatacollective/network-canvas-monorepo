@@ -3,6 +3,7 @@ import type {
   Stage,
   StructuralCodebook,
 } from '@codaco/protocol-validation';
+import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import {
@@ -220,10 +221,29 @@ function deriveFeasibilityConfig(
     }
   }
 
-  for (const [nodeType, entries] of ceilingsByType) {
+  // Walked in CODEBOOK order, and deducting from one run-level budget, because
+  // that is the order and the budget `planNetwork` trims against — read in
+  // first-appearance order, or per type, the two would disagree about which
+  // type keeps its people and preflight would size a population the plan does
+  // not build.
+  let populationBudget = MAX_SYNTHETIC_POPULATION;
+  const trimOrder = [
+    ...Object.keys(codebook.node ?? {}).filter((type) =>
+      ceilingsByType.has(type),
+    ),
+    // A creation naming a type the codebook does not carry cannot be planned,
+    // but it must not silently escape the budget either.
+    ...[...ceilingsByType.keys()].filter(
+      (type) => !(type in (codebook.node ?? {})),
+    ),
+  ];
+  for (const nodeType of trimOrder) {
+    const entries = ceilingsByType.get(nodeType) ?? [];
     const trimmed = withinPopulationCeiling(
       entries.map((entry) => entry.ceiling),
+      populationBudget,
     );
+    populationBudget -= trimmed.reduce((sum, count) => sum + count, 0);
     entries.forEach((entry, index) => {
       const ceiling = trimmed[index]!;
       const forStage = nodeCapByStage[entry.stageId] ?? {};

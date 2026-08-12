@@ -249,6 +249,62 @@ describe('planNetwork against the population ceiling', () => {
   });
 });
 
+describe('planNetwork against the population ceiling across node types', () => {
+  // A preview freezes on how many people it has to build, not on how many
+  // types they are spread across. Applied per type, ten types with a
+  // constant-10,000 creator each planned a hundred thousand people, every one
+  // of them inside a ceiling that only ever looked at its own type.
+  const manyTypes = (count: number): StructuralCodebook =>
+    ({
+      node: Object.fromEntries(
+        Array.from({ length: count }, (_unused, index) => [
+          `type-${index}`,
+          {
+            name: `Type ${index}`,
+            variables: { name: { name: 'Name', type: 'text' } },
+          },
+        ]),
+      ),
+      edge: {},
+      ego: { variables: {} },
+    }) as unknown as StructuralCodebook;
+
+  const creatorFor = (index: number): Stage =>
+    stage({
+      id: `ng-${index}`,
+      type: 'NameGeneratorQuickAdd',
+      label: `Names ${index}`,
+      subject: { entity: 'node', type: `type-${index}` },
+      quickAdd: 'name',
+      synthetic: { count: { distribution: 'constant', value: 10_000 } },
+      prompts: [{ id: `p-${index}`, text: 'Who?' }],
+    });
+
+  it('spends one budget across every type', () => {
+    const result = plan(
+      manyTypes(10),
+      Array.from({ length: 10 }, (_unused, index) => creatorFor(index)),
+    );
+    expect(result.nodes).toHaveLength(10_000);
+    // The codebook's first type keeps the people it asked for, as the first
+    // stage does within a type.
+    expect(result.nodes.every((node) => node.type === 'type-0')).toBe(true);
+  });
+
+  it('leaves modest populations across types untouched', () => {
+    const modest = (index: number): Stage =>
+      stage({
+        ...(creatorFor(index) as unknown as Record<string, unknown>),
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+      });
+    const result = plan(
+      manyTypes(4),
+      Array.from({ length: 4 }, (_unused, index) => modest(index)),
+    );
+    expect(result.nodes).toHaveLength(12);
+  });
+});
+
 describe('planNetwork against the pair-domain ceiling', () => {
   // A population bound alone is not enough: pairs grow quadratically, so a
   // count well inside the population cap still asks the planner to assemble
@@ -673,6 +729,72 @@ describe('planNetwork rosters', () => {
     }
   });
 
+  it('gives each prompt first refusal on the rows matched to it', () => {
+    // Prompt 0 can use either row and prompt 1 only `a`, so the matcher gives
+    // `b` to 0 and `a` to 1. Flattened into one ordering for the stage, the
+    // draw could still present `a` first and let prompt 0 consume it, leaving
+    // prompt 1 to reject `b` — a satisfiable count coming up short on the
+    // seeds where the shuffle happened to lead with `a`.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            kind: { name: 'Kind', type: 'number' },
+            target: {
+              name: 'Target',
+              type: 'number',
+              validation: { sameAs: 'kind' },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const asymmetric = stage({
+      id: 'roster-1',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      synthetic: { count: { distribution: 'constant', value: 2 } },
+      dataSource: 'people.csv',
+      prompts: [
+        // Fixes nothing, so it can use either row.
+        { id: 'p1', text: 'Anyone' },
+        {
+          id: 'p2',
+          text: 'Kind one only',
+          additionalAttributes: [{ variable: 'target', value: 1 }],
+        },
+      ],
+    });
+
+    const rows = [
+      {
+        [entityPrimaryKeyProperty]: 'a',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 1 },
+      },
+      {
+        [entityPrimaryKeyProperty]: 'b',
+        type: 'person',
+        [entityAttributesProperty]: { kind: 0 },
+      },
+    ] as unknown as NcNode[];
+
+    // Several seeds, because the shuffle decides which row the open prompt
+    // meets first.
+    for (let seed = 1; seed <= 12; seed++) {
+      const result = plan(codebook, [asymmetric], {
+        seed,
+        externalData: { 'roster-1': rows },
+      });
+      expect(result.nodes, `seed ${seed}`).toHaveLength(2);
+    }
+  });
+
   it('refuses a roster that cannot reach an undeclared stage minimum', () => {
     // No `synthetic.count`, so the generic 1-8 fallback is what was trimmed —
     // but `behaviours.minNodes` is something the author wrote and the
@@ -831,6 +953,73 @@ describe('planNetwork settling a creator against ego', () => {
     expect(result.nodes).toHaveLength(4);
   });
 
+  it("carries a settled guard's destination over the stages between", () => {
+    // The guard does not only remove its own stage: its destination makes the
+    // session jump, and the walk jumps with it. Judged stage by stage, the
+    // creators in between stayed planned — their people spending values and
+    // joining later filters — for a session that never reaches them.
+    const guardWithDestination = stage({
+      id: 'guarded',
+      type: 'NameGeneratorQuickAdd',
+      label: 'Guarded',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      synthetic: { count: { distribution: 'constant', value: 3 } },
+      prompts: [{ id: 'g-p1', text: 'Who?' }],
+      skipLogic: {
+        action: 'SKIP',
+        destination: { type: 'stage', stageId: 'after' },
+        filter: {
+          rules: [
+            {
+              id: 'consented',
+              type: 'ego',
+              options: {
+                attribute: 'consent',
+                operator: 'EXACTLY',
+                value: true,
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const jumpedOver = stage({
+      id: 'jumped',
+      type: 'NameGeneratorQuickAdd',
+      label: 'Jumped over',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      synthetic: { count: { distribution: 'constant', value: 5 } },
+      prompts: [{ id: 'j-p1', text: 'Who?' }],
+    });
+
+    const after = stage({
+      id: 'after',
+      type: 'NameGeneratorQuickAdd',
+      label: 'After',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      synthetic: { count: { distribution: 'constant', value: 2 } },
+      prompts: [{ id: 'a-p1', text: 'Who?' }],
+    });
+
+    const result = plan(
+      codebookWithConsent(),
+      [egoForm, guardWithDestination, jumpedOver, after],
+      { respectSkipLogicAndFiltering: true },
+    );
+
+    expect(result.ego.attributes.consent).toBe(true);
+    // Only the destination's own two people: the guarded stage is skipped and
+    // the stage it jumps over is never reached.
+    expect(result.nodes).toHaveLength(2);
+    expect(result.nodes.every((node) => node.creationStageIndex === 3)).toBe(
+      true,
+    );
+  });
+
   it('still settles a creator that follows it', () => {
     // Same guard, same draw — only the order changes. Here the form HAS run,
     // so the guard is decidable and the creator really is skipped.
@@ -942,6 +1131,99 @@ describe('planNetwork settling an edge creator against ego', () => {
       { respectSkipLogicAndFiltering: true },
     );
     expect(result.edges.length).toBeGreaterThan(0);
+  });
+});
+
+describe('planNetwork projecting a filtered write', () => {
+  // A variable first written by a FILTERED stage does not reach the entities
+  // that stage excluded. Projected from that stage's index for the whole
+  // population, those entities appeared to hold the value to a following
+  // filtered stage, which then planned same-stage edges for subjects the live
+  // session excludes — and materialisation does not recheck them.
+  it('shows it only once a writer that reaches everyone has run', () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            name: { name: 'N', type: 'text' },
+            flag: {
+              name: 'Flag',
+              type: 'boolean',
+              synthetic: { probabilityTrue: 1 },
+            },
+          },
+        },
+      },
+      edge: { knows: { name: 'Knows', variables: {} } },
+      ego: { variables: {} },
+    } as unknown as StructuralCodebook;
+
+    const onlyFlagged = {
+      join: 'AND',
+      rules: [
+        {
+          id: 'flagged',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'flag',
+            operator: 'EXACTLY',
+            value: true,
+          },
+        },
+      ],
+    };
+
+    // Writes `flag`, but only onto the people it admits — and it admits none,
+    // because nobody carries the flag when it runs.
+    const filteredForm = stage({
+      id: 'filtered-form',
+      type: 'AlterForm',
+      label: 'Filtered',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'flag', prompt: 'Flag?' }] },
+      filter: onlyFlagged,
+    });
+
+    // Reads `flag` behind the same filter, at density 1.
+    const filteredCensus = stage({
+      id: 'filtered-census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 't', text: 'x' },
+      synthetic: {
+        topology: {
+          metric: 'density',
+          distribution: { distribution: 'constant', value: 1 },
+        },
+      },
+      prompts: [{ id: 'c-p1', text: 'Know?', createEdge: 'knows' }],
+      filter: onlyFlagged,
+    });
+
+    // Written unconditionally LATER, which is what makes the plan draw it at
+    // all — and what makes the projection question live.
+    const laterForm = stage({
+      id: 'later-form',
+      type: 'AlterForm',
+      label: 'Everyone',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'flag', prompt: 'Flag?' }] },
+    });
+
+    const result = plan(
+      codebook,
+      [nameGenerator({}, 4), filteredForm, filteredCensus, laterForm],
+      { respectSkipLogicAndFiltering: true },
+    );
+
+    expect(result.nodes).toHaveLength(4);
+    // Nobody is flagged when the census runs, so it has no subjects and plans
+    // no edges. Reading the filtered write as population-wide gave it all four
+    // and planned every pair.
+    expect(result.edges).toHaveLength(0);
   });
 });
 

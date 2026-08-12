@@ -1,4 +1,8 @@
-import { filter as getFilter, isStageSkipped } from '@codaco/network-query';
+import {
+  filter as getFilter,
+  isStageSkipped,
+  resolveSkipLogicDestinationIndex,
+} from '@codaco/network-query';
 import {
   MAX_SYNTHETIC_PAIRS,
   MAX_SYNTHETIC_POPULATION,
@@ -111,19 +115,23 @@ export type EdgeTopologyTarget = {
  * than a synthetic declaration, so a protocol carrying a large one is not
  * wrong — its preview simply cannot render that many people. Trimmed from the
  * last stage back, so the earliest stages keep the people they asked for.
+ *
+ * `budget` is what remains of the WHOLE RUN's population, defaulting to the
+ * cap for a caller weighing one type alone. A preview freezes on the number of
+ * people it has to build, not on how many types they are spread across: ten
+ * schema-valid types with a constant-10,000 creator each planned a hundred
+ * thousand people, every type inside a ceiling applied only to itself.
  */
-export function withinPopulationCeiling(assigned: number[]): number[] {
-  const capped = assigned.map((count) =>
-    Math.min(count, MAX_SYNTHETIC_POPULATION),
-  );
+export function withinPopulationCeiling(
+  assigned: number[],
+  budget: number = MAX_SYNTHETIC_POPULATION,
+): number[] {
+  const ceiling = Math.max(0, Math.min(budget, MAX_SYNTHETIC_POPULATION));
+  const capped = assigned.map((count) => Math.min(count, ceiling));
   let total = capped.reduce((sum, count) => sum + count, 0);
-  for (
-    let index = capped.length - 1;
-    index >= 0 && total > MAX_SYNTHETIC_POPULATION;
-    index--
-  ) {
+  for (let index = capped.length - 1; index >= 0 && total > ceiling; index--) {
     const current = capped[index]!;
-    const drop = Math.min(current, total - MAX_SYNTHETIC_POPULATION);
+    const drop = Math.min(current, total - ceiling);
     capped[index] = current - drop;
     total -= drop;
   }
@@ -372,6 +380,7 @@ function plannedNetwork(
   edges: readonly PlannedEdge[],
   effects: StageEffects,
   asOf: number,
+  respectFiltering: boolean,
 ): NcNetwork {
   return {
     ego: {
@@ -388,6 +397,8 @@ function plannedNetwork(
         scopeKeyFor('ego'),
         egoAttributes,
         asOf,
+        undefined,
+        respectFiltering,
       ),
     } as NcNetwork['ego'],
     nodes: nodes.map((node) => ({
@@ -399,6 +410,7 @@ function plannedNetwork(
         node.attributes,
         asOf,
         node.fixedAtCreation,
+        respectFiltering,
       ),
     })) as NcNode[],
     edges: edges.map((edge) => ({
@@ -412,6 +424,7 @@ function plannedNetwork(
         edge.attributes,
         asOf,
         edge.fixedAtCreation,
+        respectFiltering,
       ),
     })) as NcEdge[],
   };
@@ -626,6 +639,7 @@ function eligiblePairsForCreation(
       ),
       effects,
       creation.stageIndex,
+      ctx.respectSkipLogicAndFiltering,
     );
     let candidates = existing.filter(
       (node) => node.type === creation.subjectNodeType,
@@ -867,7 +881,7 @@ function assignRosterRows(
   assigned: number[],
   nodeType: string,
   nodeTypeName: string | undefined,
-): Map<number, string[]> {
+): Map<number, Map<number, string[]>> {
   /**
    * Whether a stage could build a person from a row, judged the way the draw
    * judges it: the row's own values merged with what one of the stage's
@@ -937,6 +951,7 @@ function assignRosterRows(
   // then found nothing and ended the stage one person short in silence.
   const demands: {
     creationIndex: number;
+    promptIndex: number;
     wanted: number;
     pool: string[];
   }[] = [];
@@ -974,7 +989,12 @@ function assignRosterRows(
         0,
         Math.ceil((wanted - promptIndex) / promptCount),
       );
-      demands.push({ creationIndex: index, wanted: slots, pool: usable });
+      demands.push({
+        creationIndex: index,
+        promptIndex,
+        wanted: slots,
+        pool: usable,
+      });
     }
   });
   if (demands.length === 0) return new Map();
@@ -992,11 +1012,24 @@ function assignRosterRows(
     for (const uid of demand.pool) reach.add(uid);
     reachByCreation.set(demand.creationIndex, reach);
   }
-  // Contested at CREATION level, not demand level. Two prompts of one stage
-  // contend for its own rows by construction, and returning a preference for
-  // that would impose an order on a pool no other stage can reach — churning
-  // seeded output to no end, which is what this gate exists to prevent.
-  const contestedCreations = new Set<number>();
+  // A creation needs an assignment where anything contends for its rows — a
+  // second stage sharing the roster, or its OWN prompts, which is contention
+  // just the same once slots are matched per prompt. Only a single-prompt
+  // stage with a pool nobody else can reach is free of it, and there every
+  // ordering really is equivalent, so imposing one would churn seeded output
+  // to no end. That is what this gate keeps out.
+  const promptsPerCreation = new Map<number, number>();
+  for (const demand of demands) {
+    promptsPerCreation.set(
+      demand.creationIndex,
+      (promptsPerCreation.get(demand.creationIndex) ?? 0) + 1,
+    );
+  }
+  const contestedCreations = new Set<number>(
+    [...promptsPerCreation]
+      .filter(([, count]) => count > 1)
+      .map(([creationIndex]) => creationIndex),
+  );
   for (const [left, leftReach] of reachByCreation) {
     for (const [right, rightReach] of reachByCreation) {
       if (left === right) continue;
@@ -1013,7 +1046,7 @@ function assignRosterRows(
     (left, right) => pools.get(left)!.length - pools.get(right)!.length,
   );
   const unmatched = new Map<number, number>();
-  const preference = new Map<number, string[]>();
+  const preference = new Map<number, Map<number, string[]>>();
 
   // What is left is genuinely contested. Assigning greedily — smallest pool
   // first, claiming a prefix — rejects assignments that exist: with pools
@@ -1042,11 +1075,19 @@ function assignRosterRows(
     const creationIndex = demands[demandIndex]!.creationIndex;
     unmatched.set(creationIndex, (unmatched.get(creationIndex) ?? 0) + count);
   }
+  // Kept PER PROMPT, not flattened into one list per stage. The matcher
+  // assigns rows to individual prompt demands — with prompt 0 able to use `a`
+  // or `b` and prompt 1 only `a`, it gives `b` to 0 and `a` to 1 — and a
+  // flattened ordering let prompt 0 take `a` first all the same, leaving
+  // prompt 1 to reject `b` and the stage seed-dependently short of a count
+  // that was satisfiable.
   for (const [demandIndex, uids] of matched.chosen) {
-    const creationIndex = demands[demandIndex]!.creationIndex;
+    const { creationIndex, promptIndex } = demands[demandIndex]!;
     if (!contestedCreations.has(creationIndex)) continue;
-    const already = preference.get(creationIndex) ?? [];
-    preference.set(creationIndex, [...already, ...uids]);
+    const byPrompt =
+      preference.get(creationIndex) ?? new Map<number, string[]>();
+    byPrompt.set(promptIndex, [...(byPrompt.get(promptIndex) ?? []), ...uids]);
+    preference.set(creationIndex, byPrompt);
   }
 
   for (const [index, short] of unmatched) {
@@ -1148,13 +1189,15 @@ export function planNetwork(
           scopeKeyFor('ego'),
           egoAttributes,
           asOf,
+          undefined,
+          ctx.respectSkipLogicAndFiltering,
         ),
       },
       nodes: [],
       edges: [],
     }) as unknown as NcNetwork;
 
-  const settledAsSkipped = (
+  const guardSettlesSkip = (
     summary: StageEffects['stages'][number],
   ): boolean => {
     if (!ctx.respectSkipLogicAndFiltering) return false;
@@ -1164,6 +1207,40 @@ export function planNetwork(
       return false;
     return isStageSkipped(skipLogic, plannedEgoNetwork(summary.index));
   };
+
+  /**
+   * The stages this plan can actually arrive at, walked rather than filtered.
+   *
+   * A settled guard does not only remove its own stage: `skipLogic.destination`
+   * makes the session jump, and `materialiseSession` walks it that way. Judged
+   * stage by stage, the stages BETWEEN the guard and its destination stayed in
+   * the plan — their entities spending `unique` values, joining later filters
+   * and taking part in topology selection — while the session they belong to
+   * never reached them.
+   */
+  const stageList = effects.stages.map((summary) => summary.stage);
+  const plannedReachable = new Set<number>();
+  for (let index = 0; index < effects.stages.length; index++) {
+    const summary = effects.stages[index]!;
+    if (guardSettlesSkip(summary)) {
+      const destination = summary.stage.skipLogic?.destination;
+      if (destination !== undefined) {
+        const destinationIndex = resolveSkipLogicDestinationIndex(
+          destination,
+          stageList,
+          index,
+        );
+        // Only a destination strictly after the guard resolves, so this
+        // always moves forward and the walk terminates.
+        if (destinationIndex !== undefined) index = destinationIndex - 1;
+      }
+      continue;
+    }
+    plannedReachable.add(index);
+  }
+
+  const settledAsSkipped = (summary: StageEffects['stages'][number]): boolean =>
+    !plannedReachable.has(summary.index);
 
   // --- Node populations ----------------------------------------------------
   const nodes: PlannedNode[] = [];
@@ -1182,6 +1259,12 @@ export function planNetwork(
       creationsByType.set(creation.nodeType, list);
     }
   }
+
+  // What the run has left to spend on people, across every type. The trim is
+  // applied within a type and then deducted, so the types the codebook lists
+  // first keep the people they asked for — the same 'earliest keeps its own'
+  // rule the per-stage trim follows.
+  let populationBudget = MAX_SYNTHETIC_POPULATION;
 
   for (const [type, definition] of Object.entries(ctx.codebook.node ?? {})) {
     const creations = creationsByType.get(type) ?? [];
@@ -1205,7 +1288,9 @@ export function planNetwork(
         const { min, max } = creation.capacity;
         return Math.max(min, max === null ? drawn : Math.min(max, drawn));
       }),
+      populationBudget,
     );
+    populationBudget -= assigned.reduce((sum, count) => sum + count, 0);
 
     // Roster rows are drawn without replacement across the whole run, so
     // stages over overlapping pools contest the same people. With counts fixed
@@ -1249,7 +1334,7 @@ export function planNetwork(
 
     // Roster stages draw real rows without replacement across the run. Built
     // before any draw so the values they carry can be held back from it.
-    const rosterPools = creations.map((creation, creationIndex) => {
+    const rosterPools = creations.map((creation) => {
       if (creation.rosterStageId === undefined) return undefined;
       const pool = ctx.externalData?.[creation.rosterStageId];
       if (pool === undefined) return undefined;
@@ -1260,23 +1345,36 @@ export function planNetwork(
         source.stream('roster', creation.rosterStageId),
       );
 
-      const preferred = rosterPreference.get(creationIndex);
-      if (preferred === undefined) return available;
+      return available;
+    });
 
-      // A preference, not a restriction. The assignment above is blind to
-      // whether a row can actually satisfy this type's rules, so holding a
-      // stage to its assigned rows alone would starve it of the ones it could
-      // have used — a pool of a hundred rows where only ten are completable
-      // would hand over ten arbitrary rows and build one person. Ordering
-      // leaves every row reachable and only decides who gets first refusal on
-      // the contested ones. Sort is stable, so the rest keep their shuffle.
-      const rank = new Map(preferred.map((uid, order) => [uid, order]));
-      const rankOf = (row: NcNode): number =>
-        rank.get(row[entityPrimaryKeyProperty]) ?? Number.MAX_SAFE_INTEGER;
-      return [...available].toSorted(
-        (left, right) => rankOf(left) - rankOf(right),
+    /**
+     * The rows the assignment gave each prompt, as a queue that prompt draws
+     * from first.
+     *
+     * A preference, not a restriction. The assignment is blind to what the
+     * registry will hold by the time a row is reached, so holding a prompt to
+     * its assigned rows alone would starve it of ones it could have used —
+     * a pool of a hundred rows where only ten are completable would hand over
+     * ten and build one person. Its queue is tried first and the whole pool
+     * remains behind it.
+     *
+     * Per PROMPT rather than as one ordering per stage: the matcher assigns
+     * rows to individual prompt demands, and a stage-wide ordering let the
+     * first prompt take a row the matcher had given to the second.
+     */
+    const preferredQueues = creations.map((_creation, creationIndex) => {
+      const byPrompt = rosterPreference.get(creationIndex);
+      if (byPrompt === undefined) return undefined;
+      return new Map(
+        [...byPrompt].map(([promptIndex, uids]) => [promptIndex, [...uids]]),
       );
     });
+    const rowsByUid = rosterPools.map((pool) =>
+      pool === undefined
+        ? undefined
+        : new Map(pool.map((row) => [row[entityPrimaryKeyProperty], row])),
+    );
 
     // Hold every value this type will be given from outside the registry, so
     // a free draw at an earlier stage leaves alone what a later prompt fixes
@@ -1332,6 +1430,33 @@ export function planNetwork(
         unreserveFixedValues(ctx, ref, row[entityAttributesProperty]);
       };
 
+      /**
+       * Whether this prompt can build a person from a row, recording the
+       * verdict so no (row, prompt) pair is judged twice and releasing the
+       * hold on a row every prompt has now turned away.
+       */
+      const judgeFor = (
+        promptIndex: number,
+        promptFixed: Record<string, VariableValue>,
+        candidate: NcNode,
+      ): Record<string, VariableValue> | undefined => {
+        const rowValues = candidate[entityAttributesProperty];
+        const merged = creation.rosterValuesWin
+          ? { ...promptFixed, ...rowValues }
+          : { ...rowValues, ...promptFixed };
+        if (rowIsDrawable?.(merged) ?? true) return merged;
+
+        const seen = rejectedByPrompt.get(promptIndex) ?? new Set<NcNode>();
+        seen.add(candidate);
+        rejectedByPrompt.set(promptIndex, seen);
+        const rejectedEverywhere = Array.from(
+          { length: promptCount },
+          (_unused, at) => at,
+        ).every((at) => rejectedByPrompt.get(at)?.has(candidate) === true);
+        if (rejectedEverywhere) releaseHold(candidate);
+        return undefined;
+      };
+
       for (let i = 0; i < share; i++) {
         const promptIndex = i % promptCount;
         const promptFixed = creation.promptFixedValues[promptIndex] ?? {};
@@ -1339,6 +1464,31 @@ export function planNetwork(
         let rosterRow: NcNode | undefined;
         let fixed: Record<string, VariableValue> = { ...promptFixed };
         if (rosterRows !== undefined) {
+          // First refusal goes to the rows the assignment gave THIS prompt.
+          // The pool behind them is still reachable, so a queue that empties
+          // or whose rows the registry has since taken costs this prompt
+          // nothing.
+          const queue = preferredQueues[creationIndex]?.get(promptIndex);
+          const byUid = rowsByUid[creationIndex];
+          while (
+            queue !== undefined &&
+            byUid !== undefined &&
+            queue.length > 0
+          ) {
+            const uid = queue.shift()!;
+            if (ctx.usedRosterUids.has(uid)) continue;
+            const candidate = byUid.get(uid);
+            if (candidate === undefined) continue;
+            if (rejectedByPrompt.get(promptIndex)?.has(candidate)) continue;
+            const merged = judgeFor(promptIndex, promptFixed, candidate);
+            if (merged === undefined) continue;
+            releaseHold(candidate);
+            rosterRow = candidate;
+            fixed = merged;
+            break;
+          }
+        }
+        if (rosterRow === undefined && rosterRows !== undefined) {
           // Rows this prompt cannot use, kept for the prompts that follow.
           // A roster stage's prompts fix DIFFERENT values, so "not drawable"
           // is a judgement about this prompt rather than about the roster:
@@ -1348,7 +1498,6 @@ export function planNetwork(
           const passedOver: NcNode[] = [];
           while (rosterRows.length > 0) {
             const candidate = rosterRows.shift()!;
-            const rowValues = candidate[entityAttributesProperty];
             // Each stage's pool is taken before any of them draws, so a row
             // two stages share sits in both. One person is never added twice —
             // and this one is drawable by nobody, so its hold is released for
@@ -1364,10 +1513,8 @@ export function planNetwork(
               passedOver.push(candidate);
               continue;
             }
-            const merged = creation.rosterValuesWin
-              ? { ...promptFixed, ...rowValues }
-              : { ...rowValues, ...promptFixed };
-            if (rowIsDrawable?.(merged) ?? true) {
+            const merged = judgeFor(promptIndex, promptFixed, candidate);
+            if (merged !== undefined) {
               // Released here because the draw itself claims what it settles.
               releaseHold(candidate);
               rosterRow = candidate;
@@ -1375,18 +1522,8 @@ export function planNetwork(
               break;
             }
             // Kept for a later prompt, which fixes different values. This
-            // prompt will not ask again.
-            const seen = rejectedByPrompt.get(promptIndex) ?? new Set<NcNode>();
-            seen.add(candidate);
-            rejectedByPrompt.set(promptIndex, seen);
-            // The hold stays while any prompt could still take the row. Turned
-            // away by all of them it can never be drawn here, so it stops
-            // constraining the draws that follow.
-            const rejectedEverywhere = Array.from(
-              { length: promptCount },
-              (_unused, at) => at,
-            ).every((at) => rejectedByPrompt.get(at)?.has(candidate) === true);
-            if (rejectedEverywhere) releaseHold(candidate);
+            // prompt will not ask again, and the hold stays while any prompt
+            // still could — `judgeFor` releases it once none can.
             passedOver.push(candidate);
           }
           rosterRows.unshift(...passedOver);

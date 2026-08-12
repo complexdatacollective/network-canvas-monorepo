@@ -8,6 +8,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
+  defaultTopologyForStage,
 } from '@codaco/protocol-utilities';
 import {
   StageEdgeSyntheticSchema,
@@ -288,13 +289,19 @@ const seedTopology = (metric: string, family: string): EdgeTopology => {
 function EdgeSyntheticControl({
   value,
   onChange,
+  interfaceType,
 }: {
   value: StageEdgeSynthetic | undefined;
   onChange: (next: StageEdgeSynthetic | undefined) => void;
+  interfaceType: string;
 }) {
   const topology = value?.topology;
   const distribution = topology?.distribution;
   const isDensity = topology?.metric === 'density';
+  const stageDefault = defaultTopologyForStage(interfaceType) as {
+    metric: 'density';
+    distribution: { distribution: 'uniform'; min?: number; max?: number };
+  };
   const patch = (next: Record<string, number | undefined>) => {
     if (!topology) return;
     onChange({
@@ -310,10 +317,12 @@ function EdgeSyntheticControl({
       <LooseField
         component={FrescoToggle}
         label="Set how densely this stage links the people it can see"
-        hint="Off: generated samples use the runtime default (density between 0.3 and 0.5)."
+        // The runtime default differs by interface, so the hint and the value
+        // the toggle seeds both have to come from this stage's own.
+        hint={`Off: generated samples use the runtime default for this stage (density between ${stageDefault.distribution.min ?? 0} and ${stageDefault.distribution.max ?? 1}).`}
         value={Boolean(value)}
         onChange={(enabled: unknown) =>
-          onChange(enabled ? { topology: DEFAULT_EDGE_TOPOLOGY } : undefined)
+          onChange(enabled ? { topology: stageDefault } : undefined)
         }
       />
       {topology && distribution && (
@@ -525,11 +534,13 @@ const SyntheticField = ({
   onChange,
   showCount,
   showTopology,
+  interfaceType,
 }: {
   value?: StageNodeAndEdgeSynthetic;
   onChange?: (next: StageNodeAndEdgeSynthetic | null) => void;
   showCount: boolean;
   showTopology: boolean;
+  interfaceType: string;
 }) => {
   // `null` rather than `undefined` for a section switched off, so the form
   // records a WRITE rather than an absence. `prune` drops the key on its way
@@ -550,6 +561,7 @@ const SyntheticField = ({
         <EdgeSyntheticControl
           value={value?.topology ? { topology: value.topology } : undefined}
           onChange={(edge) => emit({ ...value, topology: edge?.topology })}
+          interfaceType={interfaceType}
         />
       )}
     </>
@@ -594,6 +606,7 @@ export default function SyntheticData({
         initialValue={initialValue}
         showCount={showCount}
         showTopology={showTopology}
+        interfaceType={interfaceType}
         validation={validation}
       />
     </Section>

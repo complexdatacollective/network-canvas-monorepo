@@ -932,12 +932,17 @@ const stages = [
     type: 'Sociogram',
     label: 'Connections',
     subject: { entity: 'node', type: 'person' },
-    // Two edge-creating prompts over the same six people: each prompt draws
-    // its own per-pair probability and rolls every pair against it, so a
-    // second pass is a second, independent chance for a pair the first pass
-    // left unconnected. One prompt alone can and does land on a single edge
-    // at some seeds (weakness 1 in the review), which leaves `unique` on an
-    // edge variable with no peer to collide with.
+    // The point of this stage is that `unique` on an edge variable has peers
+    // to collide with, so the density is DECLARED rather than left to the
+    // interface default — a sociogram's default is deliberately sparse (the
+    // figure the generator has always used), and a test about edge validators
+    // should not be reading it.
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0.5 },
+      },
+    },
     prompts: [
       {
         id: 'p3',

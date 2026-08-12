@@ -29,6 +29,7 @@ export {
 // exactly what an undeclared protocol produces.
 export {
   DEFAULT_EDGE_TOPOLOGY,
+  defaultTopologyForStage,
   DEFAULT_NODE_COUNT,
   inferTextGenerator,
   type ResolvedVariableSynthetic,

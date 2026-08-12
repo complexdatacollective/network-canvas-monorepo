@@ -32,10 +32,41 @@ export const DEFAULT_NODE_COUNT: SyntheticCount = {
   max: 8,
 };
 
-export const DEFAULT_EDGE_TOPOLOGY: EdgeTopology = {
+/**
+ * The density an edge-creating stage links at when its author declared none.
+ *
+ * Per INTERFACE, because the interfaces differ in what they ask of a
+ * participant and always have: a census walks every pair and asks about each,
+ * so a dense graph is the ordinary outcome; a sociogram asks someone to draw
+ * lines, and a composer to build a network from nothing, where far fewer get
+ * drawn. These are the figures the previous generator used
+ * (`sociogramEdgeProbability`, `censusEdgeProbability`,
+ * `networkComposerEdgeProbability`), kept so a protocol declaring no synthetic
+ * metadata generates as it did before the redesign.
+ */
+const DENSITY = (min: number, max: number): EdgeTopology => ({
   metric: 'density',
-  distribution: { distribution: 'uniform', min: 0.3, max: 0.5 },
+  distribution: { distribution: 'uniform', min, max },
+});
+
+const DEFAULT_EDGE_TOPOLOGY_BY_STAGE: Readonly<Record<string, EdgeTopology>> = {
+  Sociogram: DENSITY(0.08, 0.15),
+  DyadCensus: DENSITY(0.4, 0.6),
+  OneToManyDyadCensus: DENSITY(0.4, 0.6),
+  TieStrengthCensus: DENSITY(0.4, 0.6),
+  NetworkComposer: DENSITY(0.05, 0.1),
 };
+
+/**
+ * The fallback for a stage type with no figure of its own — a new
+ * edge-creating interface, or a caller resolving a topology outside any stage.
+ * Deliberately mid-range rather than borrowed from one interface.
+ */
+export const DEFAULT_EDGE_TOPOLOGY: EdgeTopology = DENSITY(0.3, 0.5);
+
+/** The density this stage type links at when nothing is declared. */
+export const defaultTopologyForStage = (stageType: string): EdgeTopology =>
+  DEFAULT_EDGE_TOPOLOGY_BY_STAGE[stageType] ?? DEFAULT_EDGE_TOPOLOGY;
 
 /** Window a number variable draws over when validation gives no usable one. */
 const DEFAULT_NUMBER_WINDOW = { min: 18, max: 80 } as const;
