@@ -33,7 +33,7 @@ const writeOwnProperty = (
   });
 };
 
-const createDictionary = (): Record<string, unknown> => ({ __proto__: null });
+const createDictionary = (): Record<string, unknown> => ({});
 
 const cloneArray = (existing: unknown[]): unknown[] => {
   const clone: unknown[] = [];

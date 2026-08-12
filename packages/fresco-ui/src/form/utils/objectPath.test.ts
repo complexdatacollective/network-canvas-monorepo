@@ -216,6 +216,7 @@ describe('Object Path Utils', () => {
           },
         },
       });
+      expect(Object.getPrototypeOf(obj.a)).toBe(Object.prototype);
     });
 
     it('should handle mixed object and array paths', () => {

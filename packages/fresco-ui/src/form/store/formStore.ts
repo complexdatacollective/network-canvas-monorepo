@@ -516,7 +516,7 @@ export const createFormStore = (): FormStoreApi => {
 
       getFormValues: () => {
         const state = get();
-        const values: Record<string, FieldValue> = Object.create(null);
+        const values: Record<string, FieldValue> = {};
         // Only registered fields contribute: an unmounted field's value is
         // not part of the form's output. Dormant storage exists solely to
         // restore a value when the field remounts and to back the

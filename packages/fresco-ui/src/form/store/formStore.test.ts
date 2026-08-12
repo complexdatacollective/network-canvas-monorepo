@@ -421,6 +421,7 @@ describe('FormStore', () => {
       expect(store.getState().getFormValues()).toEqual({
         'favorite.color': 'blue',
       });
+      expect(store.getState().getFormValues()).toBeInstanceOf(Object);
     });
 
     it('combines nested namespace segments with an opaque dotted field name', () => {
