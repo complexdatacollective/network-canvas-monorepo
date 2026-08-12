@@ -1,5 +1,8 @@
-import { filter as getFilter } from '@codaco/network-query';
-import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
+import { filter as getFilter, isStageSkipped } from '@codaco/network-query';
+import {
+  MAX_SYNTHETIC_PAIRS,
+  MAX_SYNTHETIC_POPULATION,
+} from '@codaco/protocol-validation';
 import type {
   EdgeTopology,
   StructuralCodebook,
@@ -609,6 +612,35 @@ function eligiblePairsForCreation(
       );
       candidates = candidates.filter((node) => kept.has(node.uid));
     }
+    // Counted BEFORE the pairs are built, because building them is the harm:
+    // pairs grow quadratically, so the population cap alone still admits a
+    // domain of tens of millions of map entries, assembled synchronously on
+    // Architect's main thread before any topology is selected from it.
+    const possiblePairs = (candidates.length * (candidates.length - 1)) / 2;
+    if (possiblePairs > MAX_SYNTHETIC_PAIRS) {
+      const definition = ctx.codebook.edge?.[creation.edgeType];
+      throw new SyntheticDataConstraintError(
+        [
+          {
+            entity: 'edge',
+            entityType: creation.edgeType,
+            ...(definition?.name === undefined
+              ? {}
+              : { entityTypeName: definition.name }),
+            variableIds: [],
+            variableNames: [],
+            rules: ['pair domain'],
+            reason:
+              `${candidates.length.toLocaleString('en')} people are eligible to be linked here, which is ` +
+              `${possiblePairs.toLocaleString('en')} possible pairs; a preview is ` +
+              `generated synchronously, so it is capped at ` +
+              MAX_SYNTHETIC_PAIRS.toLocaleString('en'),
+          },
+        ],
+        'a stage would have to consider more pairs than a preview can build',
+      );
+    }
+
     for (let i = 0; i < candidates.length; i++) {
       for (let j = i + 1; j < candidates.length; j++) {
         const a = candidates[i]!.uid;
@@ -709,18 +741,6 @@ function assignRosterRows(
     (left, right) => pools.get(left)!.length - pools.get(right)!.length,
   );
   for (const index of order) {
-    const creation = creations[index]!;
-    // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
-    // which says nothing about this roster: the real Development Protocol has
-    // six classmates and a stage the default would have asked eight of. Cap it
-    // at what the pool could offer, and reserve the refusal for a count the
-    // author actually wrote.
-    if (!creation.countDeclared) {
-      assigned[index] = Math.min(
-        assigned[index] ?? 0,
-        pools.get(index)!.length,
-      );
-    }
     for (let taken = 0; taken < (assigned[index] ?? 0); taken++) {
       slots.push(index);
     }
@@ -756,6 +776,18 @@ function assignRosterRows(
   for (const [index, short] of unmatched) {
     const creation = creations[index]!;
     const wanted = assigned[index] ?? 0;
+
+    // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
+    // which says nothing about this roster: the real Development Protocol has
+    // six classmates and a stage the default would have asked eight of. Take
+    // what the assignment could actually give it — decided HERE rather than
+    // against its own pool size, because a shared pool's rows may already have
+    // gone to another stage. The refusal is reserved for a count the author
+    // actually wrote.
+    if (!creation.countDeclared) {
+      assigned[index] = wanted - short;
+      continue;
+    }
     const offered = wanted - short;
     const label =
       effects.stages[creation.stageIndex]?.stage.label ?? creation.stageId;
@@ -812,10 +844,45 @@ export function planNetwork(
     scopeKeyFor('ego'),
   );
 
+  /**
+   * Whether the ego this plan just drew settles a stage's skip logic.
+   *
+   * `reachableStagesForFeasibility` runs BEFORE anything is drawn, so a guard
+   * on an ego attribute an EgoForm collects is undecidable there and the stage
+   * stays in conservatively. By this point ego HAS been drawn, so a guard whose
+   * every rule is an ego rule can be settled — and a creator settled as skipped
+   * must not be planned for: its people never materialise, yet the values
+   * claimed for them are spent, and a `unique` space can be exhausted by
+   * entities the session never holds.
+   *
+   * Only all-ego guards. A rule about alters is still undecidable here, since
+   * the nodes it asks about are what this pass is about to plan.
+   */
+  const plannedEgoNetwork: NcNetwork = {
+    ego: {
+      [entityPrimaryKeyProperty]: egoUid,
+      [entityAttributesProperty]: egoAttributes,
+    },
+    nodes: [],
+    edges: [],
+  } as unknown as NcNetwork;
+
+  const settledAsSkipped = (
+    summary: StageEffects['stages'][number],
+  ): boolean => {
+    if (!ctx.respectSkipLogicAndFiltering) return false;
+    const { skipLogic } = summary.stage;
+    if (skipLogic === undefined) return false;
+    if (skipLogic.filter.rules.some((rule) => rule.type !== 'ego'))
+      return false;
+    return isStageSkipped(skipLogic, plannedEgoNetwork);
+  };
+
   // --- Node populations ----------------------------------------------------
   const nodes: PlannedNode[] = [];
   const creationsByType = new Map<string, NodeCreation[]>();
   for (const summary of effects.stages) {
+    if (settledAsSkipped(summary)) continue;
     for (const creation of summary.nodeCreations) {
       // A family pedigree builds its own people and links through the
       // specialist generator at materialisation, because a family has to hold

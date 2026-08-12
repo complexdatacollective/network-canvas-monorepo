@@ -117,6 +117,25 @@ const plan = (
   options?: Parameters<typeof makeCtx>[1],
 ) => planNetwork(makeCtx(codebook, options), analyseStageEffects(stages));
 
+const withPairEdgeType = (
+  codebook: StructuralCodebook,
+  type: string,
+): StructuralCodebook =>
+  ({
+    ...codebook,
+    edge: { [type]: { name: type, variables: {} } },
+  }) as unknown as StructuralCodebook;
+
+const pairCensus = (createEdge: string): Stage =>
+  stage({
+    id: `census-${createEdge}`,
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 't', text: 'x' },
+    prompts: [{ id: 'p1', text: 'Know?', createEdge }],
+  });
+
 describe('planNetwork populations', () => {
   it('draws the declared constant population', () => {
     const result = plan(baseCodebook(), [
@@ -227,6 +246,40 @@ describe('planNetwork against the population ceiling', () => {
       nameGenerator({ id: 'ng-b', behaviours: { minNodes: 3 } }, 0),
     ]);
     expect(result.nodes).toHaveLength(5);
+  });
+});
+
+describe('planNetwork against the pair-domain ceiling', () => {
+  // A population bound alone is not enough: pairs grow quadratically, so a
+  // count well inside the population cap still asks the planner to assemble
+  // tens of millions of map entries on Architect's main thread.
+  it('refuses a linkable set larger than a preview can pair', () => {
+    const codebook = withPairEdgeType(baseCodebook(), 'knows');
+    expect(() =>
+      plan(codebook, [
+        nameGenerator({ behaviours: { minNodes: 1_000, maxNodes: 1_000 } }, 1),
+        pairCensus('knows'),
+      ]),
+    ).toThrow(/more pairs than a preview can build/);
+  });
+
+  it('names the count and the cap so the figure is actionable', () => {
+    const codebook = withPairEdgeType(baseCodebook(), 'knows');
+    expect(() =>
+      plan(codebook, [
+        nameGenerator({ behaviours: { minNodes: 1_000, maxNodes: 1_000 } }, 1),
+        pairCensus('knows'),
+      ]),
+    ).toThrow(/1,000 people are eligible.*499,500 possible pairs.*250,000/s);
+  });
+
+  it('builds a linkable set that fits', () => {
+    const codebook = withPairEdgeType(baseCodebook(), 'knows');
+    const result = plan(codebook, [
+      nameGenerator({ behaviours: { minNodes: 60, maxNodes: 60 } }, 1),
+      pairCensus('knows'),
+    ]);
+    expect(result.nodes).toHaveLength(60);
   });
 });
 

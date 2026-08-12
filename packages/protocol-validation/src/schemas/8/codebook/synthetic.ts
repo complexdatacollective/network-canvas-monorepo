@@ -90,6 +90,23 @@ const requireSomeField = (
  */
 export const MAX_SYNTHETIC_POPULATION = 10_000;
 
+/**
+ * The most unordered PAIRS a preview may enumerate for one edge-creating
+ * stage.
+ *
+ * A population bound alone is not enough, because pairs grow quadratically:
+ * the schema-valid 10,000 people admitted here reach 49,995,000 pairs, and the
+ * planner materialises that domain as map entries before it selects any
+ * topology from it. Generation is synchronous on Architect's main thread, so
+ * that exhausts memory rather than merely taking a while.
+ *
+ * Bounded separately from the population because it constrains a different
+ * thing: a node type no stage links may hold ten thousand people quite
+ * happily. 250,000 pairs is roughly 707 people in one linkable set — far past
+ * any interview a participant could sit through.
+ */
+export const MAX_SYNTHETIC_PAIRS = 250_000;
+
 const nonNegativeInt = z.number().int().min(0);
 const populationInt = nonNegativeInt.max(MAX_SYNTHETIC_POPULATION);
 
