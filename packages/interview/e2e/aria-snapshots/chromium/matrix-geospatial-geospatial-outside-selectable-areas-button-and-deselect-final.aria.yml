@@ -4,14 +4,14 @@
   - button "Recenter Map"
   - status:
     - heading "Where does this person currently live?" [level=4]
-  - button "Mohammad"
+  - button "Ansel"
   - button "Outside Selectable Areas"
   - region "Map"
   - button "Toggle attribution"
   - link "Mapbox homepage":
     - /url: https://www.mapbox.com/
   - navigation:
-    - button "Previous Step"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"
