@@ -1,5 +1,4 @@
 {
-  "typescript.tsdk": "./node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "cSpell.words": ["netcanvas", "Tipbox", "codaco"],
   "editor.defaultFormatter": "oxc.oxc-vscode",
@@ -17,5 +16,5 @@
     "*.css": "tailwindcss"
   },
   "java.configuration.updateBuildConfiguration": "disabled",
-  "js/ts.tsdk.path": "./node_modules/typescript/lib"
+  "js/ts.experimental.useTsgo": true
 }
