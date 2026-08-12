@@ -1,3 +1,7 @@
+import { pathToFileURL } from 'node:url';
+
+import { vi } from 'vitest';
+
 const createMotionValue = (initialValue) => {
   let currentValue = initialValue;
   const subscribers = new Set();
@@ -31,16 +35,32 @@ const Presence = ({ children }) => children;
 // MotionGlobalConfig.skipAnimations. Keep their real non-rendering exports,
 // but replace animated elements and scheduling hooks with synchronous test
 // equivalents so presence changes take effect immediately in jsdom.
-globalThis.vi.mock('framer-motion', async (importOriginal) => {
-  const React = await globalThis.vi.importActual('react');
+// Resolve from the active Vitest workspace so pnpm's isolated installs target
+// each Classic app's own Framer Motion version instead of this shared package.
+const activeWorkspace = pathToFileURL(`${process.cwd()}/package.json`);
+const framerMotionUrl = import.meta.resolve('framer-motion', activeWorkspace);
+
+vi.doMock(framerMotionUrl, async (importOriginal) => {
+  const React = await vi.importActual('react');
   const original = await importOriginal();
 
-  const filterMotionProps = (props) =>
-    Object.fromEntries(
+  const filterMotionProps = (props) => {
+    const domProps = Object.fromEntries(
       Object.entries(props).filter(
         ([key]) => key === 'style' || !original.isValidMotionProp(key),
       ),
     );
+
+    if (typeof props.onTap === 'function') {
+      const onClick = domProps.onClick;
+      domProps.onClick = (event) => {
+        props.onTap(event);
+        onClick?.(event);
+      };
+    }
+
+    return domProps;
+  };
 
   const motionComponentCache = new Map();
   const createMotionComponent = (component) => {

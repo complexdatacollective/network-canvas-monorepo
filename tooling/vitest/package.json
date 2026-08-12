@@ -15,5 +15,8 @@
   },
   "dependencies": {
     "motion": "catalog:"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
   }
 }

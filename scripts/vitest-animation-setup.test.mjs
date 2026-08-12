@@ -80,6 +80,7 @@ function findUnconfiguredWorkspaces({
   for (const manifestPath of workspaceManifests) {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     if (
+      manifest.name === '@codaco/vitest-config' ||
       !declaresDependency(manifest, 'vitest') ||
       !declaresDependency(manifest, dependencyName)
     ) {
@@ -207,7 +208,9 @@ test('legacy animation setup and Vitest configs stay ESM-native', () => {
     path.join(repoRoot, legacySetupPath),
     'utf8',
   );
-  assert.doesNotMatch(legacySetup, /createRequire|\brequire\s*\(|process\.cwd/);
+  assert.doesNotMatch(legacySetup, /createRequire|\brequire\s*\(/);
+  assert.match(legacySetup, /import\.meta\.resolve/);
+  assert.match(legacySetup, /pathToFileURL/);
   assert.match(legacySetup, /vi\.importActual\(['"]react['"]\)/);
 
   for (const workspace of [
