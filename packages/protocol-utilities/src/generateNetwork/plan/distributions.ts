@@ -199,8 +199,22 @@ export function sampleContinuous(
       }
       return stream.float(lower, upper);
     }
-    case 'normal':
-      return clamp(stream.normal(descriptor.mean, descriptor.sd), lower, upper);
+    case 'normal': {
+      const drawn = clamp(
+        stream.normal(descriptor.mean, descriptor.sd),
+        lower,
+        upper,
+      );
+      // An unbounded normal has no finite bound for `clamp` to repair with, so
+      // schema-valid parameters near the top of the range — `mean: 1e308,
+      // sd: 1e308` — overflow the sum to ±Infinity and reach the network as a
+      // value that fails number validation and serialises to null. The mean is
+      // the draw's own centre and is finite by construction, so it is what a
+      // draw that overflowed away from it falls back to.
+      return Number.isFinite(drawn)
+        ? drawn
+        : clamp(descriptor.mean, lower, upper);
+    }
     case 'lognormal': {
       if (descriptor.sd === 0) {
         return clamp(descriptor.mean, lower, upper);

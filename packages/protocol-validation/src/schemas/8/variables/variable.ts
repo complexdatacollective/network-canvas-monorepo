@@ -208,9 +208,13 @@ const rejectMissingOnRequired = (
   },
   ctx: z.RefinementCtx,
 ) => {
+  // Only a POSITIVE probability conflicts. An explicit zero says the variable
+  // is never unanswered, which is exactly what `required` says — and it is
+  // reachable in imported or programmatically authored metadata, where an
+  // otherwise populated descriptor may carry it.
   if (
     variable.validation?.required === true &&
-    variable.synthetic?.missingProbability !== undefined
+    (variable.synthetic?.missingProbability ?? 0) > 0
   ) {
     ctx.addIssue({
       code: 'custom' as const,

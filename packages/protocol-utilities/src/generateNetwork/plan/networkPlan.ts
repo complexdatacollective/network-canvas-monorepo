@@ -112,7 +112,7 @@ export type EdgeTopologyTarget = {
  * wrong — its preview simply cannot render that many people. Trimmed from the
  * last stage back, so the earliest stages keep the people they asked for.
  */
-function withinPopulationCeiling(assigned: number[]): number[] {
+export function withinPopulationCeiling(assigned: number[]): number[] {
   const capped = assigned.map((count) =>
     Math.min(count, MAX_SYNTHETIC_POPULATION),
   );

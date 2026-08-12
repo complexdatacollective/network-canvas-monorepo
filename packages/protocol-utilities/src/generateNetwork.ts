@@ -32,7 +32,10 @@ import { DEFAULT_PEDIGREE_NODE_CEILING } from './generateNetwork/familyPedigree/
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { countCeiling } from './generateNetwork/plan/distributions';
-import { planNetwork } from './generateNetwork/plan/networkPlan';
+import {
+  planNetwork,
+  withinPopulationCeiling,
+} from './generateNetwork/plan/networkPlan';
 import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
@@ -193,6 +196,15 @@ function deriveFeasibilityConfig(
   // out, exactly as the planner leaves them out.
   const nodeCapByStage: Record<string, Record<string, number>> = {};
   const effectivePopulation = new Map<string, number>();
+  // Gathered per type first, then trimmed through the SAME reckoning the
+  // planner applies. Counting the untrimmed figure here refused protocols the
+  // preview can build quite happily: `behaviours.minNodes` is unbounded in the
+  // schema, so a stage declaring a billion made preflight demand a billion
+  // unique values while `planNetwork` went on to build ten thousand nodes.
+  const ceilingsByType = new Map<
+    string,
+    { stageId: string; ceiling: number }[]
+  >();
   for (const summary of effects.stages) {
     for (const creation of summary.nodeCreations) {
       if (creation.source === 'pedigree') continue;
@@ -202,18 +214,28 @@ function deriveFeasibilityConfig(
         min,
         max === null ? declared : Math.min(max, declared),
       );
+      const list = ceilingsByType.get(creation.nodeType) ?? [];
+      list.push({ stageId: creation.stageId, ceiling });
+      ceilingsByType.set(creation.nodeType, list);
+    }
+  }
 
-      const forStage = nodeCapByStage[creation.stageId] ?? {};
+  for (const [nodeType, entries] of ceilingsByType) {
+    const trimmed = withinPopulationCeiling(
+      entries.map((entry) => entry.ceiling),
+    );
+    entries.forEach((entry, index) => {
+      const ceiling = trimmed[index]!;
+      const forStage = nodeCapByStage[entry.stageId] ?? {};
       // A stage creating one type through two interactions gets both.
-      forStage[creation.nodeType] =
-        (forStage[creation.nodeType] ?? 0) + ceiling;
-      nodeCapByStage[creation.stageId] = forStage;
+      forStage[nodeType] = (forStage[nodeType] ?? 0) + ceiling;
+      nodeCapByStage[entry.stageId] = forStage;
 
       effectivePopulation.set(
-        creation.nodeType,
-        (effectivePopulation.get(creation.nodeType) ?? 0) + ceiling,
+        nodeType,
+        (effectivePopulation.get(nodeType) ?? 0) + ceiling,
       );
-    }
+    });
   }
 
   let nodeCap = 1;
