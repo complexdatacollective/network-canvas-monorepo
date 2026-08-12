@@ -1528,6 +1528,11 @@ jobs:
           # Strip any chars that would break GitHub Pages URLs or filesystem paths.
           SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
           SLUG=${SLUG:-unknown}
+          # Normalisation is lossy (feature/foo and feature-foo collide), and a
+          # collision would let one branch's run overwrite or delete another
+          # branch's still-current report. A short digest of the raw ref keeps
+          # every branch's directory its own while the readable name leads.
+          SLUG="$SLUG-$(printf '%s' "$REF" | sha256sum | cut -c1-8)"
           printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
       - name: Download reports
         # Only failed jobs' reports are published, but the artifacts carry no
@@ -1567,6 +1572,13 @@ jobs:
             cp -r existing-pages/. merged/
             rm -rf merged/.git
           fi
+          # A root marker keeps the published tree non-empty even when a green
+          # run removes the last remaining failure report — an empty tree
+          # would make the state-branch commit below fail and leave the stale
+          # report live instead of deleted.
+          printf '%s\n' \
+            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;/</code>.</p>' \
+            > merged/index.html
           changed=false
           published='{}'
           merge_report() {

@@ -537,6 +537,21 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
   assert.match(reportJob, /Only the latest run's report is kept/);
 
+  // Review hardening: distinct refs must never share a report directory
+  // (lossy tr normalisation collides feature/foo with feature-foo), and the
+  // published tree must never be empty (an empty state-branch commit fails
+  // and leaves a deleted report live).
+  assert.match(
+    reportJob,
+    /SLUG="\$SLUG-\$\(printf '%s' "\$REF" \| sha256sum \| cut -c1-8\)"/,
+    'the slug carries a digest of the raw ref',
+  );
+  assert.match(
+    reportJob,
+    /> merged\/index\.html/,
+    'a root marker keeps the published tree non-empty',
+  );
+
   // The status comment is a single sticky comment, updated in place, and only
   // ever posted on pull requests.
   assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
