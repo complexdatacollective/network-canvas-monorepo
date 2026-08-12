@@ -31,6 +31,14 @@ describe('Object Path Utils', () => {
       expect(parseObjectPath(formatted)).toEqual(path);
     });
 
+    it('preserves a legacy nonnumeric bracketed name as one key', () => {
+      expect(parseObjectPath('weight[kg]')).toEqual(['weight[kg]']);
+      expect(parseObjectPath('measurements.weight[kg]')).toEqual([
+        'measurements',
+        'weight[kg]',
+      ]);
+    });
+
     it.each(['__proto__', 'safe.__proto__.polluted', 'constructor.prototype'])(
       'rejects the unsafe structural path %s',
       (path) => {
@@ -366,6 +374,32 @@ describe('Object Path Utils', () => {
 
       expect(obj).toEqual({ settings: { theme: 'dark', locale: 'en' } });
     });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'preserves the inert own key %s while cloning an overlapping container',
+      (key) => {
+        const settings: Record<string, unknown> = { theme: 'dark' };
+        Object.defineProperty(settings, key, {
+          configurable: true,
+          enumerable: true,
+          value: 'preserved',
+          writable: true,
+        });
+        const obj: Record<string, unknown> = { settings };
+
+        setValue(obj, 'settings.locale', 'en');
+
+        expect(obj).toEqual({
+          settings: {
+            theme: 'dark',
+            [key]: 'preserved',
+            locale: 'en',
+          },
+        });
+        expect(getValue(obj, 'settings.locale')).toBe('en');
+        expectObjectPrototypeUnchanged();
+      },
+    );
 
     it('reuses containers created by one scoped writer for sibling paths', () => {
       const obj: Record<string, unknown> = {};

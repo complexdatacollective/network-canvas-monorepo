@@ -54,11 +54,29 @@ const cloneDictionary = (existing: object): Record<string, unknown> => {
   const clone = createDictionary();
 
   for (const key of Object.keys(existing)) {
-    if (!isSafeSegment(key)) continue;
     writeOwnProperty(clone, key, readOwnProperty(existing, key));
   }
 
   return clone;
+};
+
+const parseLegacyPath = (path: string): ObjectPath => {
+  const segments: ObjectPath = [];
+
+  for (const part of path.split('.')) {
+    const bracketMatch = /^([^[]*)\[(\d+)\]$/.exec(part);
+    const key = bracketMatch?.[1];
+    const encodedIndex = bracketMatch?.[2];
+
+    if (key === undefined || encodedIndex === undefined) {
+      segments.push(part);
+      continue;
+    }
+
+    segments.push(key, Number(encodedIndex));
+  }
+
+  return segments;
 };
 
 const writableContainer = (
@@ -150,19 +168,33 @@ export function parseObjectPath(path: string): ObjectPath | null {
     if (character === '[') {
       if (path[index + 1] === '"') {
         const quoted = readQuotedSegment(path, index);
-        if (!quoted) return null;
+        if (!quoted) {
+          const legacyPath = parseLegacyPath(path);
+          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+        }
         segments.push(quoted.segment);
         index = quoted.nextIndex;
       } else {
         const closeIndex = path.indexOf(']', index + 1);
-        if (closeIndex === -1) return null;
+        if (closeIndex === -1) {
+          const legacyPath = parseLegacyPath(path);
+          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+        }
         const encodedIndex = path.slice(index + 1, closeIndex);
-        if (!/^\d+$/.test(encodedIndex)) return null;
+        if (!/^\d+$/.test(encodedIndex)) {
+          const legacyPath = parseLegacyPath(path);
+          return legacyPath.every(isSafeSegment) ? legacyPath : null;
+        }
         segments.push(Number(encodedIndex));
         index = closeIndex + 1;
       }
       expectSegment = false;
       continue;
+    }
+
+    if (!expectSegment) {
+      const legacyPath = parseLegacyPath(path);
+      return legacyPath.every(isSafeSegment) ? legacyPath : null;
     }
 
     const segmentStart = index;

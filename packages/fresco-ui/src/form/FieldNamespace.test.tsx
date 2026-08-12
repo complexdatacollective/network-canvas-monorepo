@@ -99,6 +99,10 @@ describe('FieldNamespace', () => {
       expect(resolveFieldPath(result.current, 'name')).toEqual(['name']);
     });
 
+    it('preserves a legacy nonnumeric bracketed field name', () => {
+      expect(resolveFieldPath([], 'weight[kg]')).toEqual(['weight[kg]']);
+    });
+
     it('keeps an opaque dotted field name in one segment', () => {
       const { result } = renderHook(() => useFieldNamespacePath(), {
         wrapper: wrapper('steps[0]'),
