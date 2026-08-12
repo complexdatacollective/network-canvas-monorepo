@@ -543,13 +543,28 @@ test('the unified E2E report aggregates every suite job and publishes failures o
   // and leaves a deleted report live).
   assert.match(
     reportJob,
-    /SLUG="\$SLUG-\$\(printf '%s' "\$REF" \| sha256sum \| cut -c1-8\)"/,
+    /printf '%s-%s\\n' "\$s" "\$\(printf '%s' "\$1" \| sha256sum \| cut -c1-8\)"/,
     'the slug carries a digest of the raw ref',
   );
   assert.match(
     reportJob,
     /> merged\/index\.html/,
     'a root marker keeps the published tree non-empty',
+  );
+
+  // Orphan sweep: reports for branches that no longer exist are deleted on
+  // every report run, and a failed live-branch listing skips the sweep
+  // rather than deleting on doubt.
+  assert.match(reportJob, /git ls-remote --heads/);
+  assert.match(
+    reportJob,
+    /if \[ -s "\$RUNNER_TEMP\/live-slugs\.txt" \]; then/,
+    'the sweep only runs with a non-empty live-branch listing',
+  );
+  const doubtGuards = reportJob.match(/never delete on doubt/g) ?? [];
+  assert.ok(
+    doubtGuards.length >= 2,
+    'both the listing and the sweep document the fail-safe',
   );
 
   // The status comment is a single sticky comment, updated in place, and only

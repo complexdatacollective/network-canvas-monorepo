@@ -390,7 +390,9 @@ suite jobs, where Reason is the policy's per-suite selection explanation
 publish their Playwright report, to GitHub Pages at
 `https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
 each branch keeps only its latest run's report, and a later green run removes
-the stale one.
+the stale one. Every report run also sweeps directories whose slug matches no
+live branch, so reports for merged or deleted branches disappear on the next
+publish from any branch.
 
 Generated release branches use equivalence reuse: a suite is skipped when the
 newest equivalent native pull-request verdict across the generated release

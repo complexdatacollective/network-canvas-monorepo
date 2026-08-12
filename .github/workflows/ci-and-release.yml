@@ -1523,17 +1523,37 @@ jobs:
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          SLUG=$(printf '%s' "$REF" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
-          # Strip any chars that would break GitHub Pages URLs or filesystem paths.
-          SLUG=$(printf '%s' "$SLUG" | tr -c '[:alnum:]-_.' '-')
-          SLUG=${SLUG:-unknown}
-          # Normalisation is lossy (feature/foo and feature-foo collide), and a
-          # collision would let one branch's run overwrite or delete another
-          # branch's still-current report. A short digest of the raw ref keeps
-          # every branch's directory its own while the readable name leads.
-          SLUG="$SLUG-$(printf '%s' "$REF" | sha256sum | cut -c1-8)"
-          printf 'slug=%s\n' "$SLUG" >> "$GITHUB_OUTPUT"
+          # Report directory scheme: the normalised ref for readability plus a
+          # short digest of the raw ref. Normalisation alone is lossy
+          # (feature/foo and feature-foo collide), and a collision would let
+          # one branch's run overwrite or delete another branch's
+          # still-current report. The orphan sweep in the merge step
+          # recomputes this for every live branch, which is why it must stay
+          # a single shared function.
+          slugify() {
+            local s
+            s=$(printf '%s' "$1" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+            # Strip any chars that would break GitHub Pages URLs or
+            # filesystem paths.
+            s=$(printf '%s' "$s" | tr -c '[:alnum:]-_.' '-')
+            s=${s:-unknown}
+            printf '%s-%s\n' "$s" "$(printf '%s' "$1" | sha256sum | cut -c1-8)"
+          }
+          printf 'slug=%s\n' "$(slugify "$REF")" >> "$GITHUB_OUTPUT"
+          # Slugs of every live branch, for the merge step's orphan sweep. A
+          # failed listing leaves the file absent and the sweep skipped —
+          # never delete on doubt.
+          if refs=$(git ls-remote --heads \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            2>/dev/null); then
+            : > "$RUNNER_TEMP/live-slugs.txt"
+            printf '%s\n' "$refs" | awk '{print $2}' | sed 's#^refs/heads/##' \
+              | while IFS= read -r branch; do
+                  [ -n "$branch" ] && slugify "$branch" >> "$RUNNER_TEMP/live-slugs.txt"
+                done
+          fi
       - name: Download reports
         # Only failed jobs' reports are published, but the artifacts carry no
         # failure marker of their own — download the set and let the merge
@@ -1581,6 +1601,27 @@ jobs:
             > merged/index.html
           changed=false
           published='{}'
+          # Sweep orphaned reports: a directory whose slug matches no live
+          # branch belongs to a deleted or merged branch (or the legacy
+          # always-publish scheme, whose slugs carry no digest), and no
+          # future run of its own branch can ever replace or remove it.
+          # Fork-PR refs never publish (their token cannot push gh-pages), so
+          # only same-repo branches matter here. Skipped entirely when the
+          # live-branch listing failed — never delete on doubt.
+          if [ -s "$RUNNER_TEMP/live-slugs.txt" ]; then
+            for job_dir in merged/interview-e2e merged/interview-e2e-native \
+              merged/interviewer-e2e merged/interviewer-e2e-native \
+              merged/architect-e2e merged/architect-e2e-native; do
+              [ -d "$job_dir" ] || continue
+              for report_dir in "$job_dir"/*/; do
+                [ -d "$report_dir" ] || continue
+                if ! grep -qxF "$(basename "$report_dir")" "$RUNNER_TEMP/live-slugs.txt"; then
+                  rm -rf "$report_dir"
+                  changed=true
+                fi
+              done
+            done
+          fi
           merge_report() {
             local job=$1 result=$2 artifact=$3
             local dir="merged/$job/$SLUG"
