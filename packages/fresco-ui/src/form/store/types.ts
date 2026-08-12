@@ -7,6 +7,8 @@ import type {
   NcNode,
 } from '@codaco/shared-consts';
 
+import type { ObjectPath } from '../utils/objectPath';
+
 // Re-export FieldValue for convenience
 export type { FieldValue } from '../Field/types';
 
@@ -65,7 +67,7 @@ export type ValidationContext = {
   currentEntityId?: string;
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
   /** Resolve form-to-form comparison rules within this FieldNamespace. */
-  formValueNamespace?: string;
+  formValueNamespace?: ObjectPath;
   /**
    * Map a codebook variable ID to the form key that currently represents it.
    * The original ID remains authoritative for codebook and entity lookups.
@@ -78,6 +80,7 @@ export type ValidationContext = {
 // ═══════════════════════════════════════════════════════════════
 
 export type FieldState = {
+  path: ObjectPath;
   value: FieldValue;
   initialValue?: FieldValue;
   meta: {
@@ -91,10 +94,12 @@ export type FieldState = {
 };
 
 export type FieldConfig = {
-  name: string;
+  name: FieldReference;
   initialValue?: FieldValue;
   validation?: FieldValidationFunction;
 };
+
+export type FieldReference = string | ObjectPath;
 
 // ═══════════════════════════════════════════════════════════════
 // Submission handling

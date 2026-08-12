@@ -1,11 +1,31 @@
 'use client';
 
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
-const FieldNamespaceContext = createContext<string>('');
+import type { ObjectPath } from './utils/objectPath';
+import { isSafeObjectPath, parseObjectPath } from './utils/objectPath';
 
-export function useFieldNamespace(): string {
+const emptyNamespace: ObjectPath = [];
+const FieldNamespaceContext = createContext<ObjectPath>(emptyNamespace);
+
+export type FieldNameMode = 'opaque' | 'path';
+
+export function useFieldNamespace(): ObjectPath {
   return useContext(FieldNamespaceContext);
+}
+
+export function resolveFieldPath(
+  namespace: ObjectPath,
+  name: string,
+  mode: FieldNameMode = 'path',
+): ObjectPath {
+  const relativePath = mode === 'opaque' ? [name] : parseObjectPath(name);
+
+  if (!relativePath || !isSafeObjectPath(relativePath)) {
+    throw new Error(`Unsafe form field path: ${name}`);
+  }
+
+  return [...namespace, ...relativePath];
 }
 
 type FieldNamespaceProps = {
@@ -18,9 +38,10 @@ export default function FieldNamespace({
   children,
 }: FieldNamespaceProps) {
   const parentNamespace = useFieldNamespace();
-  const fullNamespace = parentNamespace
-    ? `${parentNamespace}.${prefix}`
-    : prefix;
+  const fullNamespace = useMemo(
+    () => resolveFieldPath(parentNamespace, prefix),
+    [parentNamespace, prefix],
+  );
 
   return (
     <FieldNamespaceContext.Provider value={fullNamespace}>

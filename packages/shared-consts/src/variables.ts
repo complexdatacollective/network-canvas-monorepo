@@ -1,7 +1,19 @@
 import { z } from 'zod';
 
 // Constants for repeated values
-export const VariableNameSchema = z.string().regex(/^[a-zA-Z0-9._:-]+$/); // TODO: think about using branding here
+const dangerousVariableNames = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+
+export const VariableNameSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9._:-]+$/)
+  .refine((name) => !dangerousVariableNames.has(name), {
+    message:
+      'Variable name cannot be "__proto__", "prototype", or "constructor"',
+  }); // TODO: think about using branding here
 
 // TODO: Should be with protocol definitions.
 

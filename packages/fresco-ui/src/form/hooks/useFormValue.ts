@@ -1,7 +1,11 @@
 import { useShallow } from 'zustand/react/shallow';
 
 import type { FieldValue } from '../Field/types';
-import { useFieldNamespace } from '../FieldNamespace';
+import {
+  type FieldNameMode,
+  resolveFieldPath,
+  useFieldNamespace,
+} from '../FieldNamespace';
 import useFormStore from './useFormStore';
 
 /**
@@ -13,15 +17,18 @@ import useFormStore from './useFormStore';
 export function useFormValue<
   const K extends readonly string[],
   T extends FieldValue = FieldValue,
->(fieldNames: K): Record<K[number], T | undefined> {
+>(
+  fieldNames: K,
+  nameMode: FieldNameMode = 'path',
+): Record<K[number], T | undefined> {
   const namespace = useFieldNamespace();
 
   return useFormStore(
     useShallow((state) => {
       const values: Record<string, T | undefined> = {};
       for (const name of fieldNames) {
-        const resolvedName = namespace ? `${namespace}.${name}` : name;
-        const field = state.getFieldState(resolvedName);
+        const resolvedPath = resolveFieldPath(namespace, name, nameMode);
+        const field = state.getFieldState(resolvedPath);
         values[name] = field?.value as T | undefined;
       }
       return values as Record<K[number], T | undefined>;

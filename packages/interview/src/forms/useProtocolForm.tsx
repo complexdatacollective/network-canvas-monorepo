@@ -191,6 +191,7 @@ export default function useProtocolForm({
 
     const props: {
       name: string;
+      nameMode: 'opaque';
       label: string;
       hint?: string;
       showValidationHints?: boolean;
@@ -210,6 +211,7 @@ export default function useProtocolForm({
       validationContext?: ValidationContext;
     } & Partial<ValidationPropsCatalogue> = {
       name: fieldName,
+      nameMode: 'opaque',
       label: field.label,
       component: field.component,
       ...(field.hint !== undefined && { hint: field.hint }),
@@ -224,7 +226,11 @@ export default function useProtocolForm({
     }
 
     // Set initial value if provided
-    if (initialValues?.[field.variable] !== undefined) {
+    if (
+      initialValues &&
+      Object.hasOwn(initialValues, field.variable) &&
+      initialValues[field.variable] !== undefined
+    ) {
       props.initialValue = initialValues[field.variable];
     }
 

@@ -12,6 +12,7 @@ import {
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import FieldNamespace, {
+  resolveFieldPath,
   useFieldNamespace,
 } from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
@@ -118,9 +119,7 @@ function ParentSection({
       ownValue !== 'new' &&
       ownValue === otherValue
     ) {
-      const resolvedOther = namespace
-        ? `${namespace}.${excludeSelectionFrom}`
-        : excludeSelectionFrom;
+      const resolvedOther = resolveFieldPath(namespace, excludeSelectionFrom);
       setFieldValue(resolvedOther, undefined);
     }
   }, [ownValue, otherValue, namespace, excludeSelectionFrom, setFieldValue]);

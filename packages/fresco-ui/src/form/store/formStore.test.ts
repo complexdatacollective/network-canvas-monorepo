@@ -408,6 +408,86 @@ describe('FormStore', () => {
       });
     });
 
+    it('round-trips an opaque dotted field name as one output key', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: ['favorite.color'],
+        initialValue: 'blue',
+      });
+
+      expect(store.getState().getFieldState(['favorite.color'])?.value).toBe(
+        'blue',
+      );
+      expect(store.getState().getFormValues()).toEqual({
+        'favorite.color': 'blue',
+      });
+    });
+
+    it('combines nested namespace segments with an opaque dotted field name', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: ['steps', 0, 'egg-parent', 'favorite.color'],
+        initialValue: 'blue',
+      });
+
+      expect(store.getState().getFormValues()).toEqual({
+        steps: [{ 'egg-parent': { 'favorite.color': 'blue' } }],
+      });
+    });
+
+    it('preserves bracket arrays and sparse array positions', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'steps[0].egg-parent.name',
+        initialValue: 'Alice',
+      });
+      store.getState().registerField({
+        name: 'steps[2].egg-parent.name',
+        initialValue: 'Charlie',
+      });
+
+      expect(store.getState().getFormValues()).toEqual({
+        steps: [
+          { 'egg-parent': { name: 'Alice' } },
+          undefined,
+          { 'egg-parent': { name: 'Charlie' } },
+        ],
+      });
+    });
+
+    it('keeps overlapping container and leaf fields when the container is frozen', () => {
+      store.getState().reset();
+      store.getState().registerField({
+        name: 'mapOptions.style',
+        initialValue: 'streets',
+      });
+      store.getState().registerField({
+        name: 'mapOptions',
+        initialValue: Object.freeze({ color: 'blue', style: 'satellite' }),
+      });
+
+      expect(store.getState().getFormValues()).toEqual({
+        mapOptions: { color: 'blue', style: 'streets' },
+      });
+    });
+
+    it.each([
+      '__proto__.frescoUiPolluted',
+      'safe.__proto__.frescoUiPolluted',
+      'constructor',
+      'constructor.prototype',
+      'prototype',
+    ])('rejects unsafe registered field path %s', (name) => {
+      store.getState().reset();
+      expect(() =>
+        store.getState().registerField({ name, initialValue: 'polluted' }),
+      ).toThrow(`Unsafe form field path: ${name}`);
+      expect(Object.hasOwn(Object.prototype, 'frescoUiPolluted')).toBe(false);
+      expect(
+        Object.getOwnPropertyDescriptor(Object.prototype, 'frescoUiPolluted'),
+      ).toBeUndefined();
+    });
+
     it('should get form errors with nested structure', async () => {
       const mockError1 = new z.core.$ZodError([
         { code: 'custom', message: 'Name required', path: ['user', 'name'] },
@@ -1546,6 +1626,29 @@ describe('FormStore', () => {
       expect(field?.value).toBe('changed@example.com');
       expect(field?.meta.isTouched).toBe(true);
       expect(field?.meta.isDirty).toBe(true);
+    });
+
+    it('preserves an opaque dotted field path while dormant', () => {
+      const path = ['favorite.color'];
+      persistentStore.getState().registerField({
+        name: path,
+        initialValue: 'blue',
+      });
+      persistentStore.getState().setFieldValue(path, 'green');
+      persistentStore.getState().unregisterField(path);
+
+      expect(persistentStore.getState().getFormValues()).toEqual({});
+      expect(persistentStore.getState().getFieldState(path)?.value).toBe(
+        'green',
+      );
+
+      persistentStore.getState().registerField({
+        name: path,
+        initialValue: 'red',
+      });
+      expect(persistentStore.getState().getFormValues()).toEqual({
+        'favorite.color': 'green',
+      });
     });
 
     it('should remove entry from dormantValues after restoring', () => {

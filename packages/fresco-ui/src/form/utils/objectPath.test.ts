@@ -1,8 +1,43 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { getValue, setValue } from './objectPath';
+import {
+  formatObjectPath,
+  getValue,
+  parseObjectPath,
+  setValue,
+} from './objectPath';
+
+const pollutionKey = 'frescoUiPolluted';
+
+const expectObjectPrototypeUnchanged = () => {
+  expect(Object.hasOwn(Object.prototype, pollutionKey)).toBe(false);
+  expect(
+    Object.getOwnPropertyDescriptor(Object.prototype, pollutionKey),
+  ).toBeUndefined();
+};
 
 describe('Object Path Utils', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(Object.prototype, pollutionKey);
+  });
+
+  describe('path parsing', () => {
+    it('round-trips an opaque dotted segment without making it structural', () => {
+      const path = ['favorite.color'];
+      const formatted = formatObjectPath(path);
+
+      expect(formatted).toBe('["favorite.color"]');
+      expect(parseObjectPath(formatted)).toEqual(path);
+    });
+
+    it.each(['__proto__', 'safe.__proto__.polluted', 'constructor.prototype'])(
+      'rejects the unsafe structural path %s',
+      (path) => {
+        expect(parseObjectPath(path)).toBeNull();
+      },
+    );
+  });
+
   describe('getValue', () => {
     it('should get simple property', () => {
       const obj = { name: 'John', age: 30 };
@@ -80,6 +115,23 @@ describe('Object Path Utils', () => {
       const obj = { steps: [{ name: 'Alice' }] };
 
       expect(getValue(obj, 'steps[5].name')).toBeUndefined();
+    });
+
+    it('does not read through inherited properties', () => {
+      const obj: Record<string, unknown> = {
+        __proto__: { inherited: 'secret' },
+      };
+
+      expect(getValue(obj, 'inherited')).toBeUndefined();
+      expect(getValue(obj, 'constructor')).toBeUndefined();
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('reads an opaque dotted key only when passed as one segment', () => {
+      const obj = { 'favorite.color': 'blue' };
+
+      expect(getValue(obj, ['favorite.color'])).toBe('blue');
+      expect(getValue(obj, 'favorite.color')).toBeUndefined();
     });
   });
 
@@ -257,6 +309,59 @@ describe('Object Path Utils', () => {
       expect(
         Array.isArray((obj.data as Record<string, unknown>[])[0]?.items),
       ).toBe(true);
+    });
+
+    it.each([
+      '__proto__.frescoUiPolluted',
+      'safe.__proto__.frescoUiPolluted',
+      'constructor',
+      'constructor.prototype',
+      'prototype',
+    ])('does not write the unsafe structural path %s', (path) => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, path, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+      expect(getValue(obj, path)).toBeUndefined();
+    });
+
+    it('does not mutate a prototype reached through an own property', () => {
+      const obj: Record<string, unknown> = { safe: Object.prototype };
+
+      setValue(obj, `safe.${pollutionKey}`, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+      expect(getValue(obj, `safe.${pollutionKey}`)).toBe('polluted');
+      expect(obj.safe).not.toBe(Object.prototype);
+    });
+
+    it('does not write when the root object is itself a prototype', () => {
+      const prototype: Record<string, unknown> = Object.getPrototypeOf({});
+
+      setValue(prototype, pollutionKey, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('writes an opaque dotted key as one property', () => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, ['favorite.color'], 'blue');
+
+      expect(obj).toEqual({ 'favorite.color': 'blue' });
+      expect(getValue(obj, ['favorite.color'])).toBe('blue');
+      expect(getValue(obj, 'favorite.color')).toBeUndefined();
+    });
+
+    it('copies frozen containers before writing nested values', () => {
+      const obj: Record<string, unknown> = {
+        settings: Object.freeze({ theme: 'dark' }),
+      };
+
+      setValue(obj, 'settings.locale', 'en');
+
+      expect(obj).toEqual({ settings: { theme: 'dark', locale: 'en' } });
     });
   });
 });

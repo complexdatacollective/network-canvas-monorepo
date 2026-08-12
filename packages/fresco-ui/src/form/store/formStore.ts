@@ -3,10 +3,17 @@ import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
 import type { FieldValue } from '../Field/types';
-import { setValue } from '../utils/objectPath';
+import {
+  formatObjectPath,
+  isSafeObjectPath,
+  type ObjectPath,
+  parseObjectPath,
+  setValue,
+} from '../utils/objectPath';
 import { validateFieldValue } from '../validation/helpers';
 import type {
   FieldConfig,
+  FieldReference,
   FieldState,
   FlattenedErrors,
   FormConfig,
@@ -16,30 +23,27 @@ import type {
 // Enable Map/Set support in Immer
 enableMapSet();
 
-/**
- * How deeply a field name addresses the form's value tree — `a` is 1,
- * `a.b` is 2, `a[0].b` is 3. Used to order `getFormValues`'s writes so a
- * container path is always written before the leaves inside it.
- */
-const pathSpecificity = (fieldName: string): number =>
-  fieldName
-    .split('.')
-    .reduce((total, part) => total + (/\[\d+\]$/.test(part) ? 2 : 1), 0);
+const resolveFieldPath = (field: FieldReference): ObjectPath => {
+  const path = typeof field === 'string' ? parseObjectPath(field) : field;
 
-/**
- * Every path a field name sits inside — `a[0].b` yields `a`, `a[0]`, `a[0].b`
- * minus itself. Used to spot a field whose value another registered field
- * would overwrite.
- */
-const enclosingPaths = (fieldName: string): string[] => {
-  const paths: string[] = [];
-  for (let index = 1; index < fieldName.length; index += 1) {
-    if (fieldName[index] === '.' || fieldName[index] === '[') {
-      paths.push(fieldName.slice(0, index));
-    }
+  if (!path || !isSafeObjectPath(path)) {
+    const fieldName =
+      typeof field === 'string' ? field : formatObjectPath(field);
+    throw new Error(`Unsafe form field path: ${fieldName}`);
   }
-  return paths;
+
+  return [...path];
 };
+
+const resolveFieldName = (field: FieldReference): string =>
+  formatObjectPath(resolveFieldPath(field));
+
+const isEnclosingPath = (
+  possibleParent: ObjectPath,
+  path: ObjectPath,
+): boolean =>
+  possibleParent.length < path.length &&
+  possibleParent.every((segment, index) => segment === path[index]);
 
 /**
  * Helper to calculate form validity based on both field states and form-level errors.
@@ -98,23 +102,23 @@ export type FormStore = {
 
   // Field management
   registerField: (config: FieldConfig) => void;
-  unregisterField: (fieldName: string) => void;
+  unregisterField: (fieldName: FieldReference) => void;
 
   // Field state updates
-  setFieldValue: (fieldName: string, value: FieldValue) => void;
-  setFieldTouched: (fieldName: string, touched: boolean) => void;
-  setFieldBlurred: (fieldName: string) => void;
+  setFieldValue: (fieldName: FieldReference, value: FieldValue) => void;
+  setFieldTouched: (fieldName: FieldReference, touched: boolean) => void;
+  setFieldBlurred: (fieldName: FieldReference) => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
 
   // Getters with selective subscription
-  getFieldState: (fieldName: string) => FieldState | undefined;
+  getFieldState: (fieldName: FieldReference) => FieldState | undefined;
   getFormValues: () => Record<string, FieldValue>;
   getFormErrors: () => string[] | null;
-  getFieldErrors: (fieldName: string) => string[] | null;
+  getFieldErrors: (fieldName: FieldReference) => string[] | null;
 
   // Validation
-  validateField: (fieldName: string) => Promise<void>;
+  validateField: (fieldName: FieldReference) => Promise<void>;
   validateForm: () => Promise<boolean>;
 
   // Form submission
@@ -123,7 +127,7 @@ export type FormStore = {
 
   // Form reset
   resetForm: () => void;
-  resetField: (fieldName: string) => void;
+  resetField: (fieldName: FieldReference) => void;
 };
 export type FormStoreApi = Mutate<
   StoreApi<FormStore>,
@@ -201,6 +205,8 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       registerField: (config) => {
+        const fieldPath = resolveFieldPath(config.name);
+        const fieldName = formatObjectPath(fieldPath);
         // Mounting a field is an authoritative transition — it adds a value to
         // the snapshot every other field's schema can see — so it invalidates
         // every in-flight validation. Reschedule the ones belonging to OTHER
@@ -213,7 +219,7 @@ export const createFormStore = (): FormStoreApi => {
         // the field is blurred again.
         const supersededFields = collectSupersededFields(
           get().fields,
-          config.name,
+          fieldName,
         );
         invalidateAllValidations();
         set((state) => {
@@ -222,15 +228,16 @@ export const createFormStore = (): FormStoreApi => {
             field.meta.isValidating = false;
           });
 
-          const dormant = state.dormantValues.get(config.name);
+          const dormant = state.dormantValues.get(fieldName);
           const hasDormantValue = dormant !== undefined;
           const value = hasDormantValue ? dormant.value : config.initialValue;
 
           if (hasDormantValue) {
-            state.dormantValues.delete(config.name);
+            state.dormantValues.delete(fieldName);
           }
 
           const fieldState: FieldState = {
+            path: dormant?.path ?? fieldPath,
             initialValue: config.initialValue,
             validation: config.validation,
             value,
@@ -243,7 +250,7 @@ export const createFormStore = (): FormStoreApi => {
             },
           };
 
-          state.fields.set(config.name, fieldState);
+          state.fields.set(fieldName, fieldState);
 
           state.isValid = calculateFormValidity(
             state.fields,
@@ -256,7 +263,8 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      unregisterField: (fieldName) => {
+      unregisterField: (fieldReference) => {
+        const fieldName = resolveFieldName(fieldReference);
         // Check if field exists before updating to avoid unnecessary renders
         const currentState = get();
         if (currentState.fields.has(fieldName)) {
@@ -277,6 +285,7 @@ export const createFormStore = (): FormStoreApi => {
             const field = state.fields.get(fieldName);
             if (field) {
               state.dormantValues.set(fieldName, {
+                path: field.path,
                 initialValue: field.initialValue,
                 validation: field.validation,
                 value: field.value,
@@ -293,7 +302,7 @@ export const createFormStore = (): FormStoreApi => {
             state.fields.delete(fieldName);
 
             // Clean up any errors for this field
-            if (state.errors.fieldErrors[fieldName]) {
+            if (Object.hasOwn(state.errors.fieldErrors, fieldName)) {
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const { [fieldName]: _removed, ...remainingFieldErrors } =
                 state.errors.fieldErrors;
@@ -365,7 +374,9 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      setFieldValue: (fieldName, value) => {
+      setFieldValue: (fieldReference, value) => {
+        const fieldPath = resolveFieldPath(fieldReference);
+        const fieldName = formatObjectPath(fieldPath);
         if (!get().fields.has(fieldName)) {
           // A host may stage a value for a field that is not currently
           // mounted (Architect's undo/redo). The write is parked in dormant
@@ -374,6 +385,7 @@ export const createFormStore = (): FormStoreApi => {
           set((state) => {
             const existing = state.dormantValues.get(fieldName);
             state.dormantValues.set(fieldName, {
+              path: existing?.path ?? fieldPath,
               initialValue: existing?.initialValue,
               validation: existing?.validation,
               value,
@@ -417,7 +429,8 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      setFieldTouched: (fieldName, touched) => {
+      setFieldTouched: (field, touched) => {
+        const fieldName = resolveFieldName(field);
         set((state) => {
           if (!state.fields.get(fieldName)) return;
 
@@ -425,7 +438,8 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      setFieldBlurred: (fieldName) => {
+      setFieldBlurred: (field) => {
+        const fieldName = resolveFieldName(field);
         set((state) => {
           if (!state.fields.get(fieldName)) return;
 
@@ -433,7 +447,8 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      getFieldState: (fieldName) => {
+      getFieldState: (field) => {
+        const fieldName = resolveFieldName(field);
         const state = get();
         return (
           state.fields.get(fieldName) ??
@@ -444,16 +459,15 @@ export const createFormStore = (): FormStoreApi => {
 
       getFormValues: () => {
         const state = get();
-        const values = {};
-        const hasField = (name: string) => state.fields.has(name);
+        const values: Record<string, FieldValue> = Object.create(null);
         // Only registered fields contribute: an unmounted field's value is
         // not part of the form's output. Dormant storage exists solely to
         // restore a value when the field remounts and to back the
         // getFieldState fallback for cross-step reads.
         //
         // Registration order, which is also the output's key order.
-        state.fields.forEach((fieldState, fieldName) => {
-          setValue(values, fieldName, fieldState.value);
+        state.fields.forEach((fieldState) => {
+          setValue(values, fieldState.path, fieldState.value);
         });
 
         // A form may register a field at a CONTAINER path (`mapOptions`)
@@ -463,15 +477,19 @@ export const createFormStore = (): FormStoreApi => {
         // just those nested fields, shallowest first, so the more specific
         // field always wins — and only they, so a form without overlapping
         // paths keeps byte-identical output.
-        const nested = Array.from(state.fields.keys())
-          .filter((name) => enclosingPaths(name).some(hasField))
-          .toSorted((a, b) => pathSpecificity(a) - pathSpecificity(b));
+        const nested = Array.from(state.fields.entries())
+          .filter(([, fieldState]) =>
+            Array.from(state.fields.values()).some((possibleParent) =>
+              isEnclosingPath(possibleParent.path, fieldState.path),
+            ),
+          )
+          .toSorted(([, a], [, b]) => a.path.length - b.path.length);
 
-        for (const name of nested) {
-          setValue(values, name, state.fields.get(name)!.value);
+        for (const [, fieldState] of nested) {
+          setValue(values, fieldState.path, fieldState.value);
         }
 
-        return values as Record<string, FieldValue>;
+        return values;
       },
 
       getFormErrors: () => {
@@ -483,16 +501,20 @@ export const createFormStore = (): FormStoreApi => {
         return formErrors.length > 0 ? formErrors : null;
       },
 
-      getFieldErrors: (fieldName: string) => {
+      getFieldErrors: (field) => {
+        const fieldName = resolveFieldName(field);
         const state = get();
         if (!state.errors) return null;
 
         // Return field errors from flattened structure
         // Return null if no errors or empty array (consistent API)
-        const fieldErrors = state.errors.fieldErrors[fieldName];
+        const fieldErrors = Object.hasOwn(state.errors.fieldErrors, fieldName)
+          ? state.errors.fieldErrors[fieldName]
+          : undefined;
         return fieldErrors && fieldErrors.length > 0 ? fieldErrors : null;
       },
-      validateField: async (fieldName) => {
+      validateField: async (fieldReference) => {
+        const fieldName = resolveFieldName(fieldReference);
         const state = get();
         const field = state.fields.get(fieldName);
         // Whole-form validation owns the current snapshot. A delayed
@@ -772,7 +794,8 @@ export const createFormStore = (): FormStoreApi => {
         });
       },
 
-      resetField: (fieldName) => {
+      resetField: (fieldReference) => {
+        const fieldName = resolveFieldName(fieldReference);
         if (!get().fields.has(fieldName)) return;
 
         invalidateAllValidations();

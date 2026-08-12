@@ -1,9 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { renderHook } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { isValidElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   asEntityAttributeReference,
   type FormField,
@@ -20,6 +28,7 @@ const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
 const DISPLAY_NAME_VAR = 'displayName';
 const ALIAS_VAR = 'alias';
+const DOTTED_VAR = 'favorite.color';
 
 // A FamilyPedigree stage has no top-level subject, so getStageSubject — and
 // therefore the base validation context's stageSubject — is null.
@@ -61,6 +70,11 @@ function makeWrapper() {
                   type: 'text',
                   component: 'Text',
                   validation: { sameAs: DISPLAY_NAME_VAR },
+                },
+                [DOTTED_VAR]: {
+                  name: DOTTED_VAR,
+                  type: 'text',
+                  component: 'Text',
                 },
               },
             },
@@ -157,5 +171,47 @@ describe('useProtocolForm stageSubject', () => {
         formValueAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
       }),
     );
+  });
+
+  it('submits a dotted protocol variable identifier as one output key', async () => {
+    const onSubmit = vi.fn();
+    const dottedFields: FormField[] = [
+      {
+        variable: asEntityAttributeReference(DOTTED_VAR),
+        prompt: 'Favorite color',
+      },
+    ];
+
+    function Harness() {
+      const { fieldComponents } = useProtocolForm({
+        fields: dottedFields,
+        subject: { entity: 'node', type: NODE_TYPE },
+      });
+
+      return (
+        <Form
+          onSubmit={(values) => {
+            onSubmit(values);
+            return { success: true };
+          }}
+        >
+          {fieldComponents}
+          <SubmitButton>Submit</SubmitButton>
+        </Form>
+      );
+    }
+
+    const { container } = render(<Harness />, { wrapper: makeWrapper() });
+    const input = container.querySelector(`input[name="${DOTTED_VAR}"]`);
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Dotted protocol field was not rendered');
+    }
+
+    fireEvent.change(input, { target: { value: 'blue' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ 'favorite.color': 'blue' });
+    });
   });
 });
