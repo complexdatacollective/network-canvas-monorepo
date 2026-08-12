@@ -48,7 +48,7 @@
     "dotenv": "catalog:",
     "effect": "catalog:",
     "es-toolkit": "catalog:",
-    "immer": "^11.1.15",
+    "immer": "^11.1.16",
     "jszip": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",

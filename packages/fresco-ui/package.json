@@ -772,7 +772,7 @@
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
-    "immer": "^11.1.8",
+    "immer": "^11.1.16",
     "lucide-react": "catalog:",
     "nanoid": "^6.0.0",
     "react-aria-components": "^1.18.0",
