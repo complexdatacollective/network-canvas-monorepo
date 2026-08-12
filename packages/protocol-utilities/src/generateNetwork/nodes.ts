@@ -1,4 +1,8 @@
-import type { AdditionalAttributes, Stage } from '@codaco/protocol-validation';
+import {
+  type AdditionalAttributes,
+  MAX_SYNTHETIC_POPULATION,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNode,
@@ -827,10 +831,27 @@ export function getNodeCountBounds(
     subjectType === undefined
       ? undefined
       : config.nodeCapByStage?.[stage.id]?.[subjectType];
-  const minNodes =
+  const configured =
     behaviours && 'minNodes' in behaviours && behaviours.minNodes !== undefined
       ? behaviours.minNodes
       : declared.min;
+  // The floor the PLANNER honours, which is not always the one the protocol
+  // asks for. `behaviours.minNodes` is unbounded in the stage schema, and
+  // `withinPopulationCeiling` trims a declared population to what a synchronous
+  // preview can build — per stage and in sum. Counting the raw figure here
+  // refused protocols the preview builds quite happily: a stage asking for a
+  // billion made this pass demand a billion distinct values of a `unique`
+  // variable while `planNetwork` went on to build ten thousand nodes.
+  //
+  // Where the run apportioned a share, that share IS the trimmed reckoning —
+  // it was derived by running the planner's own trim over the same declared
+  // ceilings — so it bounds the floor as well. Without one (a bare config, as
+  // `SyntheticInterview` and direct `analyseFeasibility` callers pass), the
+  // per-stage cap is the honest bound.
+  const minNodes = Math.min(
+    configured,
+    apportioned ?? MAX_SYNTHETIC_POPULATION,
+  );
   const maxNodes =
     apportioned ??
     (behaviours && 'maxNodes' in behaviours && behaviours.maxNodes !== undefined

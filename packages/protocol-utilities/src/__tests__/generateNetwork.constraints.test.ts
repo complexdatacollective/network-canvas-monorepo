@@ -3370,4 +3370,40 @@ describe('feasibility counting a plan-first run', () => {
       }),
     ).toThrow(SyntheticDataConstraintError);
   });
+
+  it('counts a demand past the population ceiling at the ceiling', () => {
+    // `behaviours.minNodes` is unbounded in the stage schema, and the planner
+    // trims a population to what a synchronous preview can build. Both readers
+    // have to agree on that trim: counting the raw minimum here demanded a
+    // billion distinct values of a `unique` variable — refusing a protocol
+    // whose plan then went on to build ten thousand nodes quite happily, from
+    // a domain of a million.
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            code: {
+              name: 'Code',
+              type: 'number',
+              validation: { unique: true, minValue: 0, maxValue: 999_999 },
+            },
+          },
+        },
+      },
+      edge: {},
+      ego: { variables: {} },
+    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
+
+    const insatiable = {
+      ...generator('ng-one', 1),
+      quickAdd: 'code',
+      behaviours: { minNodes: 1_000_000_000 },
+    } as unknown as Stage;
+
+    expect(() =>
+      generateNetwork({ seed: 1, codebook, stages: [insatiable] }),
+    ).not.toThrow();
+  });
 });
