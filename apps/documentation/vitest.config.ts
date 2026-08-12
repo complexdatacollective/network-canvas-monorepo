@@ -3,6 +3,8 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -10,10 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: [
-      '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
-      './vitest.setup.ts',
-    ],
+    setupFiles: [disableModernAnimationsSetup, './vitest.setup.ts'],
     include: [
       'components/**/__tests__/**/*.{ts,tsx}',
       'lib/**/__tests__/**/*.{ts,tsx}',

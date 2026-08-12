@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "files": [
-    "legacy/**"
+    "legacy/**",
+    "modern/**"
   ],
   "type": "module",
   "exports": {
     "./legacy/disable-animations": "./legacy/disable-animations.js",
-    "./legacy/setup-path": "./legacy/setup-path.js"
+    "./legacy/setup-path": "./legacy/setup-path.js",
+    "./modern/disable-animations": "./modern/disable-animations.js",
+    "./modern/setup-path": "./modern/setup-path.js"
+  },
+  "dependencies": {
+    "motion": "catalog:"
   }
 }

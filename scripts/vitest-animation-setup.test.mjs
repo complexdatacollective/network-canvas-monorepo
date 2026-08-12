@@ -1,16 +1,26 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { vendorSharedVitestConfig } from './mirror-app.mjs';
+import { resolveManifest } from './resolve-manifest.mjs';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const sharedSetupPath = 'packages/fresco-ui/vitest.setup.disable-animations.ts';
-const sharedSetupFilename = path.basename(sharedSetupPath);
+const sharedSetupPath = 'tooling/vitest/modern/disable-animations.js';
+const sharedSetupFilename = '@codaco/vitest-config/modern/setup-path';
 const legacySetupPath = 'tooling/vitest/legacy/disable-animations.js';
 const legacySetupFilename = '@codaco/vitest-config/legacy/setup-path';
 const dependencyGroups = [
@@ -150,17 +160,17 @@ test('every modern Motion Vitest workspace loads the shared animation setup', ()
   );
 });
 
-test('modern Motion Vitest consumers inherit setup changes through Fresco UI', () => {
+test('modern Motion Vitest consumers inherit setup changes through Vitest tooling', () => {
   const missingDependency = findConsumersMissingWorkspaceDependency({
     consumerDependency: 'motion',
-    requiredDependency: '@codaco/fresco-ui',
+    requiredDependency: '@codaco/vitest-config',
     workspaceManifests,
   });
 
   assert.deepEqual(
     missingDependency,
     [],
-    `Modern Motion Vitest consumers must declare @codaco/fresco-ui as a workspace dependency so Turbo selects them when ${sharedSetupPath} changes: ${missingDependency.join(', ')}`,
+    `Modern Motion Vitest consumers must declare @codaco/vitest-config as a workspace dependency so Turbo selects them when ${sharedSetupPath} changes: ${missingDependency.join(', ')}`,
   );
 });
 
@@ -224,6 +234,75 @@ test('legacy animation setup and Vitest configs stay ESM-native', () => {
   }
 });
 
+test('modern animation setup and path export stay ESM-native', () => {
+  const modernSetup = readFileSync(
+    path.join(repoRoot, sharedSetupPath),
+    'utf8',
+  );
+  const pathExport = readFileSync(
+    path.join(repoRoot, 'tooling/vitest/modern/setup-path.js'),
+    'utf8',
+  );
+
+  assert.match(modernSetup, /from ['"]motion\/react['"]/);
+  assert.doesNotMatch(modernSetup, /createRequire|\brequire\s*\(|__dirname/);
+  assert.match(pathExport, /fileURLToPath/);
+  assert.doesNotMatch(pathExport, /createRequire|\brequire\s*\(|__dirname/);
+});
+
+test('mirrored apps vendor the private shared Vitest package', () => {
+  for (const app of [
+    'apps/architect-classic',
+    'apps/interviewer-classic',
+    'apps/fresco',
+  ]) {
+    const appDirectory = path.join(repoRoot, app);
+    const { manifest, dropped } = resolveManifest(appDirectory);
+    const staging = mkdtempSync(path.join(tmpdir(), 'vitest-config-mirror-'));
+
+    try {
+      vendorSharedVitestConfig(staging, manifest, dropped);
+
+      assert.equal(
+        manifest.devDependencies['@codaco/vitest-config'],
+        'file:vendor/vitest-config',
+        `${app} points at the vendored package`,
+      );
+
+      const vendoredPackagePath = path.join(
+        staging,
+        'vendor/vitest-config/package.json',
+      );
+      const vendoredPackage = JSON.parse(
+        readFileSync(vendoredPackagePath, 'utf8'),
+      );
+      const isClassic = app.endsWith('-classic');
+      assert.equal(vendoredPackage.type, 'module');
+      assert.doesNotMatch(
+        readFileSync(vendoredPackagePath, 'utf8'),
+        /(?:workspace|catalog):/,
+      );
+      assert.equal(
+        vendoredPackage.files.includes('legacy/**'),
+        isClassic,
+        `${app} packages only the legacy setup when it uses Framer Motion`,
+      );
+      assert.equal(
+        vendoredPackage.files.includes('modern/**'),
+        !isClassic,
+        `${app} packages only the modern setup when it uses Motion`,
+      );
+      assert.equal(
+        vendoredPackage.dependencies?.motion !== undefined,
+        !isClassic,
+        `${app} does not introduce Motion's React 18+ peer requirement into a React 16 Classic mirror`,
+      );
+    } finally {
+      rmSync(staging, { recursive: true, force: true });
+    }
+  }
+});
+
 test('shared animation helpers are not global inputs for unrelated test tasks', () => {
   const turboConfig = readFileSync(path.join(repoRoot, 'turbo.json'), 'utf8');
   const testStart = turboConfig.indexOf('    "test": {');
@@ -251,17 +330,21 @@ test('Turbo resolves animation setup changes only through consumer task graphs',
 
   assert.ok(
     Object.hasOwn(
-      task('@codaco/fresco-ui#test').inputs,
-      'vitest.setup.disable-animations.ts',
+      task('@codaco/vitest-config#topo').inputs,
+      'modern/disable-animations.js',
     ),
-    'Fresco UI hashes its own modern animation setup',
+    'Vitest tooling hashes the modern animation setup',
   );
-  assert.ok(
-    task('@codaco/architect#test').dependencies.includes(
-      '@codaco/fresco-ui#topo',
-    ),
-    'a modern consumer inherits setup changes through Fresco UI',
-  );
+  for (const modernTask of [
+    '@codaco/architect#test',
+    '@codaco/fresco-ui#test',
+    '@codaco/interview#test',
+  ]) {
+    assert.ok(
+      task(modernTask).dependencies.includes('@codaco/vitest-config#topo'),
+      `${modernTask} inherits the shared modern setup`,
+    );
+  }
   for (const classicTask of [
     '@codaco/architect-classic#test',
     '@codaco/interviewer-classic#test',
@@ -285,6 +368,6 @@ test('Turbo resolves animation setup changes only through consumer task graphs',
       dependency.includes('vitest-config'),
     ),
     false,
-    'an unrelated unit task has no legacy setup dependency',
+    'an unrelated unit task has no shared Vitest tooling dependency',
   );
 });

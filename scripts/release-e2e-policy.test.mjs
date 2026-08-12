@@ -528,7 +528,7 @@ test('diff classification is fail-closed', () => {
         'apps/architect/config/vitest/setup.ts',
         'packages/interview/src/Example.test.tsx',
         'packages/interview/src/__tests__/fixture.ts',
-        'packages/fresco-ui/vitest.setup.disable-animations.ts',
+        'tooling/vitest/modern/disable-animations.js',
         'scripts/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
@@ -592,8 +592,9 @@ test('unit-only and unrelated nested-workspace changes select no E2E suites', ()
   };
 
   for (const changedPath of [
-    'packages/fresco-ui/vitest.setup.disable-animations.ts',
+    'tooling/vitest/modern/disable-animations.js',
     'tooling/vitest/legacy/disable-animations.js',
+    'tooling/vitest/package.json',
     'scripts/vitest-animation-setup.test.mjs',
     'apps/studio/client/vitest.config.ts',
     'apps/studio/client/src/main.tsx',

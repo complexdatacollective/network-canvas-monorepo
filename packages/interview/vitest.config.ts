@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const dirname =
   typeof __dirname !== 'undefined'
     ? __dirname
@@ -33,10 +35,7 @@ export default defineConfig({
           // starved past the 5s default, so give generous headroom.
           testTimeout: 20_000,
           setupFiles: [
-            path.join(
-              dirname,
-              '../fresco-ui/vitest.setup.disable-animations.ts',
-            ),
+            disableModernAnimationsSetup,
             path.join(dirname, 'vitest.setup.ts'),
           ],
           include: [

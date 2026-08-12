@@ -48,6 +48,7 @@ function isInertPath(path) {
     (!isPlaywrightSpec && filename.includes('.test.')) ||
     filename.startsWith('vitest.') ||
     segments.includes('__tests__') ||
+    path.startsWith('tooling/vitest/') ||
     path.startsWith('config/vitest/') ||
     path.includes('/config/vitest/')
   );

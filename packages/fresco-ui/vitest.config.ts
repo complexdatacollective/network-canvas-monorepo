@@ -6,6 +6,8 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -31,7 +33,7 @@ export default defineConfig({
           // default under peak runner load, so give generous headroom.
           testTimeout: 20_000,
           setupFiles: [
-            resolve(here, 'vitest.setup.disable-animations.ts'),
+            disableModernAnimationsSetup,
             resolve(here, 'vitest.setup.ts'),
           ],
           include: [

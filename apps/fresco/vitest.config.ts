@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 const dirname = import.meta.dirname;
 
 export default defineConfig({
@@ -25,13 +27,7 @@ export default defineConfig({
             '**/*.stories.ts',
           ],
           name: 'units',
-          setupFiles: [
-            path.resolve(
-              dirname,
-              '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
-            ),
-            './vitest.setup.ts',
-          ],
+          setupFiles: [disableModernAnimationsSetup, './vitest.setup.ts'],
           server: {
             deps: { inline: ['@codaco/interview'] },
           },

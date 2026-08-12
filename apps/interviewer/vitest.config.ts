@@ -9,6 +9,8 @@ import { playwright } from '@vitest/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
+import { disableModernAnimationsSetup } from '@codaco/vitest-config/modern/setup-path';
+
 import { arrayBufferAssetPlugin } from './vite.renderer.config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -45,10 +47,7 @@ export default defineConfig({
           // borderline test can be starved past the 5s default, so give
           // generous headroom.
           testTimeout: 20_000,
-          setupFiles: [
-            '../../packages/fresco-ui/vitest.setup.disable-animations.ts',
-            './src/test-setup.ts',
-          ],
+          setupFiles: [disableModernAnimationsSetup, './src/test-setup.ts'],
           include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
           exclude: [
             '**/node_modules/**',
