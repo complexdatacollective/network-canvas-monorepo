@@ -598,8 +598,57 @@ describe('useNodeGestures: drags', () => {
     fireEvent.click(target());
 
     expect(onDragStart).not.toHaveBeenCalled();
-    // The movement belongs to an external drag system, which owns its own
-    // click suppression — a tap after slight movement still reads as a tap.
+    // No drag was classified, but the gesture stopped being a tap the moment
+    // it moved: the click a mouse or sub-slop touch release still synthesizes
+    // must not select the node a participant was only trying to hold.
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it('still passes a tap through when movement stays under the threshold', () => {
+    const onClickResult = vi.fn();
+    render(<Probe dragEnabled={false} onClickResult={onClickResult} />);
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 103, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    fireEvent.click(target());
+
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
+  });
+});
+
+describe('useNodeGestures: losing the pointer to the window', () => {
+  it('ends a live drag as cancelled when the window blurs', () => {
+    const onDragEnd = vi.fn();
+    render(<Probe dragEnabled onDragStart={vi.fn()} onDragEnd={onDragEnd} />);
+
+    press(100, 100);
+    fireEvent.pointerMove(window, { clientX: 140, clientY: 100, pointerId: 1 });
+    // The participant switches apps mid-drag: no pointerup or pointercancel
+    // will ever arrive for this sequence.
+    fireEvent.blur(window);
+
+    expect(onDragEnd).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+      cancelled: true,
+    });
+  });
+
+  it('releases pointer ownership when the window blurs mid-hold', () => {
+    const onLongPress = vi.fn();
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={onLongPress} onClickResult={onClickResult} />);
+
+    press(100, 100);
+    fireEvent.blur(window);
+
+    // The abandoned sequence neither fires its hold nor squats on the
+    // pointer: the next press is a fresh gesture that can tap normally.
+    act(() => void vi.advanceTimersByTime(HOLD_DURATION + 1));
+    expect(onLongPress).not.toHaveBeenCalled();
+
+    press(100, 100);
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    fireEvent.click(target());
     expect(onClickResult).toHaveBeenCalledExactlyOnceWith(false);
   });
 });

@@ -88,10 +88,12 @@ type UseNodeGesturesResult = {
  * or a drag (`onDragStart`/`Move`/`End`; the click is swallowed) — so no two
  * behaviours ever fight over the same gesture.
  *
- * When `dragEnabled` is false, movement past the drag distance abandons the
- * hold but classifies nothing: an external drag system composing its own
- * pointer handlers on the node (e.g. `useDragSource`) owns that movement and
- * its own click suppression.
+ * Movement past the drag distance always stops the gesture being a tap: the
+ * hold is abandoned and the click the browser may still synthesize on release
+ * is swallowed. When `dragEnabled` is false the movement itself classifies
+ * nothing further — an external drag system composing its own pointer
+ * handlers on the node (e.g. `useDragSource`, which shares the same
+ * threshold) owns what the movement becomes.
  */
 export function useNodeGestures({
   onLongPress,
@@ -283,7 +285,14 @@ export function useNodeGestures({
         if (Math.hypot(dx, dy) < DRAG_DISTANCE) return;
 
         // The gesture is no longer a tap or a still hold, whatever it becomes.
+        // A browser may still synthesize a click on release — a mouse released
+        // within the same button does, and touch movement inside the browser's
+        // own slop does — and a gesture already classified as movement must
+        // not read as a tap, whether the movement becomes this recognizer's
+        // drag, an external system's (which swallows its own post-drag click
+        // before it reaches the node), or nothing at all.
         moved = true;
+        suppressClickRef.current = true;
         abandonHold();
         optionsRef.current.onHoldInterrupted?.();
 
@@ -291,16 +300,10 @@ export function useNodeGestures({
           draggingRef.current = true;
           lastDragEventRef.current = moveEvent;
           activeDragEndRef.current = optionsRef.current.onDragEnd ?? null;
-          // A drag resolves the gesture, so the click that pointer capture
-          // will still deliver to this node must not read as a tap.
-          suppressClickRef.current = true;
           setIsDragging(true);
           optionsRef.current.onDragStart?.(moveEvent);
           optionsRef.current.onDragMove?.(moveEvent);
         }
-        // Without drag callbacks the movement belongs to an external drag
-        // system composing its own handlers; it owns its own click
-        // suppression, so a tap-after-slight-move still reads as a tap here.
       };
 
       const handleEnd = (endEvent: PointerEvent) => {
@@ -338,6 +341,16 @@ export function useNodeGestures({
         optionsRef.current.onHoldInterrupted?.();
       };
 
+      const handleWindowBlur = () => {
+        // The window lost the pointer without a pointerup or pointercancel —
+        // an app switch, or a release outside the browser. Nothing else will
+        // end the sequence: a live drag must still be heard ending, and the
+        // gesture must give up its pointer ownership or the node would refuse
+        // every later press.
+        cancelActiveDrag();
+        endGesture();
+      };
+
       // Listening on the window rather than the node keeps the gesture
       // correct once an external drag system has taken pointer capture, and
       // catches releases that happen away from the node.
@@ -345,12 +358,14 @@ export function useNodeGestures({
       window.addEventListener('pointerup', handleEnd);
       window.addEventListener('pointercancel', handleEnd);
       window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('blur', handleWindowBlur);
 
       detachRef.current = () => {
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleEnd);
         window.removeEventListener('pointercancel', handleEnd);
         window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('blur', handleWindowBlur);
       };
 
       if (optionsRef.current.holdEnabled) {
@@ -374,7 +389,15 @@ export function useNodeGestures({
 
       return true;
     },
-    [abandonHold, disabled, endGesture, feedbackDelay, holdDuration, teardown],
+    [
+      abandonHold,
+      cancelActiveDrag,
+      disabled,
+      endGesture,
+      feedbackDelay,
+      holdDuration,
+      teardown,
+    ],
   );
 
   const shouldSuppressClick = useCallback(() => {
