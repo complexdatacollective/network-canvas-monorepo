@@ -88,7 +88,7 @@ export function useForm(config: FormConfig) {
         };
         setErrors(submissionErrors);
         setTimeout(() => {
-          configRef.current.onSubmitInvalid?.(errorsRef.current);
+          configRef.current.onSubmitInvalid?.(submissionErrors);
         }, 0);
       } catch {
         setErrors({

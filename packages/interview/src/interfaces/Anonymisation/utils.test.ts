@@ -11,25 +11,18 @@ describe('generateSecureAttributes', () => {
       Object.prototype,
       '__proto__',
     );
-    const attributes: NcNode[EntityAttributesProperty] = {};
-    Object.defineProperty(attributes, '__proto__', {
-      configurable: true,
-      enumerable: true,
-      value: 'secret value',
-      writable: true,
-    });
-    const codebookVariables: Record<string, Variable> = {};
-    Object.defineProperty(codebookVariables, '__proto__', {
-      configurable: true,
-      enumerable: true,
-      value: {
-        component: 'Text',
-        encrypted: true,
-        name: '__proto__',
-        type: 'text',
-      },
-      writable: true,
-    });
+    const attributes: NcNode[EntityAttributesProperty] = Object.fromEntries([
+      ['__proto__', 'secret value'],
+    ]);
+    const encryptedVariable: Variable = {
+      component: 'Text',
+      encrypted: true,
+      name: '__proto__',
+      type: 'text',
+    };
+    const codebookVariables: Record<string, Variable> = Object.fromEntries([
+      ['__proto__', encryptedVariable],
+    ]);
 
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(

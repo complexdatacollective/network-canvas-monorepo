@@ -110,7 +110,7 @@ describe('useForm submission errors', () => {
       expect(onSubmitInvalid).toHaveBeenCalledWith({
         formErrors: [],
         fieldErrors: {
-          '["favorite.color"]': ['Choose another color'],
+          'favorite.color': ['Choose another color'],
         },
       });
     });
@@ -161,7 +161,7 @@ describe('useForm submission errors', () => {
       expect(onSubmitInvalid).toHaveBeenCalledWith({
         formErrors: [],
         fieldErrors: {
-          '["weight[kg]"]': ['Enter a supported weight'],
+          'weight[kg]': ['Enter a supported weight'],
         },
       });
     });
@@ -211,7 +211,7 @@ describe('useForm submission errors', () => {
       expect(onSubmitInvalid).toHaveBeenCalledWith({
         formErrors: [],
         fieldErrors: {
-          'person["favorite.color"]': ['Choose another color'],
+          'person.favorite.color': ['Choose another color'],
         },
       });
     });
