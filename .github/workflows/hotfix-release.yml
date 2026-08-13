@@ -13,11 +13,19 @@ name: Hotfix Release
 #
 # The workflow is dispatched FROM main and takes the branch to release as an
 # input, so the job definition — which steps run, which secrets they see, which
-# guards they pass — is always reviewed code from the protected branch. Only the
-# tree that gets built comes from the hotfix branch. That tree still executes
-# its own build scripts, so this lane is gated on the `<app>-hotfix-production`
-# environment; give it required reviewers (see each app's RELEASING.md) or a
-# dispatch is only as trustworthy as write access to the repository.
+# guards they pass — is reviewed code from the protected branch. Only the tree
+# that gets built comes from the hotfix branch.
+#
+# NOTE(human-setup-required): that separation is a convention this file cannot
+# enforce. GitHub runs whichever copy of a workflow lives on the ref a dispatch
+# selects, so a writer who selects their own branch runs their own definition —
+# including one with the guard below and the `environment:` line deleted. No
+# check written here survives that, because the attacker edits the check. The
+# same is already true of any workflow in this repository that a branch can
+# trigger, so this lane widens nothing; what closes it is configuration:
+# `<app>-hotfix-production` needs required reviewers AND its deployment branches
+# restricted to main, with the deploy credentials held as environment secrets
+# rather than repository secrets. See each app's RELEASING.md.
 #
 # Procedure (see each app's RELEASING.md):
 #   1. Cut `hotfix/<app>-<version>` from the released tag, cherry-pick the fix,
@@ -172,6 +180,25 @@ jobs:
           git fetch --tags --force origin
           node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
+      # Claimed BEFORE the deploy, deliberately. Tagging afterwards fails
+      # unsafely: a deploy whose tag step then errors leaves production carrying
+      # a release that neither lane's guard can see, so the next normal release
+      # quietly overwrites it. This way the inconsistency points the other way —
+      # a tag with nothing live, which blocks later releases until someone
+      # reconciles it, and is visible on a run that has already gone red.
+      # Creating the ref through the API is atomic, so a duplicate run fails
+      # here rather than racing. If the deploy below fails, delete this tag
+      # before re-dispatching (see the app's RELEASING.md).
+      - name: Claim the release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$SHA"
+
       - name: Deploy ${{ inputs.app }} to production
         # Both site ids come in as environment variables and the app picks one in
         # bash. A `inputs.app == 'x' && secrets.A || secrets.B` expression would
@@ -211,8 +238,9 @@ jobs:
           --since "$SINCE"
           --out "${RUNNER_TEMP}/hotfix-notes.md"
 
-      # Always the newest line — resolve-hotfix-release.mjs refuses anything
-      # older than the current release — so this is always the latest release.
+      # The tag already exists from the claim step; this only attaches the
+      # release notes to it. Always the newest line — resolve-hotfix-release.mjs
+      # refuses anything older than the current release.
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'

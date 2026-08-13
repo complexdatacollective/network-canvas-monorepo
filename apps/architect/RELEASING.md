@@ -97,10 +97,34 @@ is not ready to go out, release from the previous tag instead:
    the version number, and downgrading main's version would make its next
    changeset release calculate from the wrong baseline.
 
-**Setup:** the workflow is gated on the `architect-hotfix-production` GitHub
-environment. Give that environment required reviewers, or any dispatch deploys
-straight to production — the job definition comes from main, but the tree it
-builds (and the build scripts it runs) come from the branch being released.
+**Setup (one-time, and load-bearing).** The workflow declares the
+`architect-hotfix-production` environment, but a workflow file cannot enforce
+its own protection: GitHub runs whichever copy of the YAML lives on the ref a
+dispatch selects, so a branch copy with the guard and the `environment:` line
+deleted would run instead. Only repository configuration closes that, and it is
+what makes this lane safe to have:
+
+1. Create the `architect-hotfix-production` environment.
+2. Give it **required reviewers**, so a dispatch pauses for a human.
+3. Restrict its **deployment branches** to `main`, so a job reaching for it from
+   any other ref is refused.
+4. Hold the deploy credentials (`NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID_ARCHITECT`,
+   the PostHog pair) as **environment** secrets rather than repository secrets,
+   so a workflow copy that drops the `environment:` line gets nothing. Note the
+   normal release lane reads the same names at repository scope today, so this
+   step is a wider change than the hotfix lane alone — until it happens, steps
+   2 and 3 are the protection.
+
+**If a dispatch fails.** The tag is claimed before the production deploy, so a
+run that goes red after tagging has left `@codaco/architect@<version>` pointing at
+a version that may never have gone live. That state deliberately blocks later
+releases rather than letting one quietly overwrite an unrecorded deploy. Check
+what production is actually serving, then either re-run the deploy or delete the
+tag before re-dispatching:
+
+```bash
+git push --delete origin '@codaco/architect@<version>'
+```
 
 ## Developer site
 
