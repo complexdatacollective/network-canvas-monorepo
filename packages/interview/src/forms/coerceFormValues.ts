@@ -8,7 +8,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * non-numeric input is left untouched (validation rejects it separately).
  */
 export function coerceFormValues(
-  values: Record<string, FieldValue>,
+  values: Readonly<Record<string, FieldValue>>,
   numberFieldNames: ReadonlySet<string>,
 ): Record<string, FieldValue> {
   const coerced: Record<string, FieldValue> = { ...values };

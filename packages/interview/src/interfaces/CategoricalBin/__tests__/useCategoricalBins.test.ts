@@ -7,10 +7,6 @@ describe('isUncategorised', () => {
     expect(isUncategorised({ v: 0 }, 'v', undefined)).toBe(false);
   });
 
-  it('treats null on the active variable as uncategorised', () => {
-    expect(isUncategorised({ v: null }, 'v', undefined)).toBe(true);
-  });
-
   it('treats a missing active variable as uncategorised', () => {
     expect(isUncategorised({}, 'v', undefined)).toBe(true);
   });
@@ -25,7 +21,6 @@ describe('isUncategorised', () => {
 
   it('treats both variables unset as uncategorised', () => {
     expect(isUncategorised({}, 'v', 'o')).toBe(true);
-    expect(isUncategorised({ v: null, o: null }, 'v', 'o')).toBe(true);
   });
 
   it('treats an empty array on the active variable as uncategorised', () => {

@@ -66,7 +66,12 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(node, codebook, mockExportOptions);
+      const result = await processAttributes(
+        node,
+        codebook,
+        mockExportOptions,
+        new Map(),
+      );
       const dataElements = getDataElements(result);
 
       // The keys are hashed, so we need to find them by looking for true/false values
@@ -110,7 +115,12 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(node, codebook, mockExportOptions);
+      const result = await processAttributes(
+        node,
+        codebook,
+        mockExportOptions,
+        new Map(),
+      );
       const dataElements = getDataElements(result);
 
       const values = Object.values(dataElements);

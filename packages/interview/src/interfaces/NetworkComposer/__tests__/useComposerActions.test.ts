@@ -477,7 +477,7 @@ describe('useComposerActions', () => {
     await act(async () => {
       await result.current.updateNodeAttributes(
         nodeId,
-        { [QUICK_ADD_VAR]: 'New' },
+        { set: { [QUICK_ADD_VAR]: 'New' }, unset: [] },
         `node-attr:${nodeId}`,
       );
     });
@@ -487,7 +487,10 @@ describe('useComposerActions', () => {
       await store.dispatch(
         updateNode({
           nodeId,
-          newAttributeData: { [LAYOUT_VAR]: { x: 0.8, y: 0.8 } },
+          attributePatch: {
+            set: { [LAYOUT_VAR]: { x: 0.8, y: 0.8 } },
+            unset: [],
+          },
           currentStep: 0,
         }),
       );
@@ -505,6 +508,70 @@ describe('useComposerActions', () => {
       x: 0.8,
       y: 0.8,
     });
+  });
+
+  it('updateNodeAttributes undo restores prior absence and redo restores the value', async () => {
+    const nodeId = 'node-absent';
+    const store = makeStore([
+      {
+        [entityPrimaryKeyProperty]: nodeId,
+        type: NODE_TYPE,
+        [entityAttributesProperty]: {
+          [LAYOUT_VAR]: { x: 0.2, y: 0.2 },
+        },
+      },
+    ]);
+    const undoStore = createUndoStore();
+
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    await act(async () => {
+      await result.current.updateNodeAttributes(nodeId, {
+        set: { [QUICK_ADD_VAR]: 'New' },
+        unset: [],
+      });
+    });
+
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        QUICK_ADD_VAR
+      ],
+    ).toBe('New');
+
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    expect(
+      Object.hasOwn(
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+          {},
+        QUICK_ADD_VAR,
+      ),
+    ).toBe(false);
+
+    await act(async () => {
+      await undoStore.getState().redo();
+    });
+
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        QUICK_ADD_VAR
+      ],
+    ).toBe('New');
   });
 
   // toggleGroupMembership adds the value when absent and removes it when
@@ -561,6 +628,16 @@ describe('useComposerActions', () => {
     const afterUndo = store.getState().session.network.nodes[0];
     if (!afterUndo) throw new Error('expected the node to still exist');
     expect(afterUndo[entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+
+    const afterSecondUndo = store.getState().session.network.nodes[0];
+    if (!afterSecondUndo) throw new Error('expected the node to still exist');
+    expect(
+      Object.hasOwn(afterSecondUndo[entityAttributesProperty], GROUP_VAR),
+    ).toBe(false);
   });
 
   it('setGroupMembership adds and removes a value across many nodes as one undo step', async () => {
@@ -579,6 +656,11 @@ describe('useComposerActions', () => {
         [entityPrimaryKeyProperty]: 'c',
         type: NODE_TYPE,
         [entityAttributesProperty]: {},
+      } as NcNode,
+      {
+        [entityPrimaryKeyProperty]: 'd',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: { [GROUP_VAR]: [] },
       } as NcNode,
     ]);
     const undoStore = createUndoStore();
@@ -600,7 +682,7 @@ describe('useComposerActions', () => {
 
     await act(async () => {
       await result.current.setGroupMembership(
-        ['a', 'b', 'c'],
+        ['a', 'b', 'c', 'd'],
         GROUP_VAR,
         'a',
         true,
@@ -616,6 +698,7 @@ describe('useComposerActions', () => {
     expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
     expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
     expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
+    expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
 
     // A single undo reverts the additions on a and c back to no membership,
     // while b (which was skipped) is untouched.
@@ -623,29 +706,44 @@ describe('useComposerActions', () => {
       await undoStore.getState().undo();
     });
 
-    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('a')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
     expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
-    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('c')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
+    expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
 
     await act(async () => {
       await result.current.setGroupMembership(
-        ['a', 'b', 'c'],
+        ['a', 'b', 'c', 'd'],
         GROUP_VAR,
         'a',
         false,
       );
     });
 
-    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('a')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
     expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
-    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('c')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
+    expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
 
     await act(async () => {
       await undoStore.getState().undo();
     });
 
-    expect(byId('a')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('a')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
     expect(byId('b')![entityAttributesProperty][GROUP_VAR]).toEqual(['a']);
-    expect(byId('c')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+    expect(Object.hasOwn(byId('c')![entityAttributesProperty], GROUP_VAR)).toBe(
+      false,
+    );
+    expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
   });
 });

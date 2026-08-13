@@ -15,10 +15,6 @@ describe('isUnplaced', () => {
     expect(isUnplaced(5, optionValues)).toBe(true);
   });
 
-  it('treats a null value as unplaced (regression guard)', () => {
-    expect(isUnplaced(null, optionValues)).toBe(true);
-  });
-
   it('treats an undefined value as unplaced (regression guard)', () => {
     expect(isUnplaced(undefined, optionValues)).toBe(true);
   });

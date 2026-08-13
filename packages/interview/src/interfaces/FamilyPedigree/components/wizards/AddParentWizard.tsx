@@ -26,7 +26,10 @@ import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import type { ParentEdgeTypeOption } from '../quickStartWizard/fieldOptions';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { socialParentCandidates } from './parentCandidates';
-import { extractCustomAttributes } from './transforms/personAttributes';
+import {
+  extractCustomAttributes,
+  runFamilyPedigreeTransform,
+} from './transforms/personAttributes';
 
 const partnershipOptions = [
   { value: 'current', label: 'Current partners' },
@@ -265,11 +268,8 @@ export async function openAddParentWizard(
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return transformToCommitBatch(
-        formValues,
-        anchorNodeId,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        transformToCommitBatch(formValues, anchorNodeId, edges, variableConfig),
       );
     },
   });

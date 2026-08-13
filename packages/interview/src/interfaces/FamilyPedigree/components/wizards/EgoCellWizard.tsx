@@ -36,6 +36,7 @@ import {
   type EgoCellResult,
   egoCellTransform,
 } from './transforms/egoCellTransform';
+import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 
 type EgoCellWizardProps = {
   egoId?: string;
@@ -170,7 +171,9 @@ export default function EgoCellWizard({
         },
       ],
       onFinish: (formValues: Record<string, unknown>) => {
-        return egoCellTransform(formValues, variableConfig, egoId);
+        return runFamilyPedigreeTransform(() =>
+          egoCellTransform(formValues, variableConfig, egoId),
+        );
       },
     });
 

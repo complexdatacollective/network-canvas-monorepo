@@ -25,7 +25,6 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { TitlelessForm } from '@codaco/protocol-validation';
 import {
-  type EntityAttributesProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
@@ -37,11 +36,14 @@ import {
   buildProtocolFieldErrors,
   type ProtocolFieldErrorEntry,
 } from '../../forms/buildProtocolFieldErrors';
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
+import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import type { Subject } from '../../selectors/forms';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
@@ -54,10 +56,7 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   form: TitlelessForm;
   items: T[];
   subject: Subject;
-  updateItem: (
-    id: string,
-    newAttributeData: NcNode[EntityAttributesProperty],
-  ) => void;
+  updateItem: (id: string, attributePatch: AttributePatch) => void;
   onNavigateBack?: () => void;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
@@ -80,7 +79,7 @@ const discardChangesDialog = {
 
 type SlideHandle = {
   validate: () => Promise<boolean>;
-  submit: () => Promise<void>;
+  submit: () => Promise<boolean>;
   isDirty: () => boolean;
   focusFirstError: () => void;
   getFieldErrors: () => ProtocolFieldErrorEntry[];
@@ -92,10 +91,7 @@ type SlideContentProps = {
   subject: Subject;
   header: ReactNode;
   submitButton: ReactNode;
-  onUpdate: (
-    id: string,
-    newAttributeData: NcNode[EntityAttributesProperty],
-  ) => void;
+  onUpdate: (id: string, attributePatch: AttributePatch) => void;
   onReadyChange: (ready: boolean) => void;
   form_kind?: FormKind;
 };
@@ -119,12 +115,13 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     const rawAttributes = item[entityAttributesProperty];
 
     const initialValues: Record<string, FieldValue> | undefined = rawAttributes
-      ? (Object.fromEntries(
-          Object.entries(rawAttributes).map(([key, value]) => [
-            key,
-            value ?? undefined,
-          ]),
-        ) as Record<string, FieldValue>)
+      ? Object.entries(rawAttributes).reduce<Record<string, FieldValue>>(
+          (values, [name, value]) => {
+            values[name] = value;
+            return values;
+          },
+          {},
+        )
       : undefined;
 
     const {
@@ -141,16 +138,26 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     });
 
     const handleSubmit: FormSubmitHandler = (values) => {
-      // Coerce values to their declared codebook type (e.g. number fields,
-      // which emit raw strings) before persisting.
-      onUpdate(id, coerceValues(values) as NcNode[EntityAttributesProperty]);
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        form.fields.map((field) => field.variable),
+      );
+
+      if (!patchResult.success) {
+        return {
+          success: false,
+          formErrors: ['An error occurred while submitting the form.'],
+        };
+      }
+
+      onUpdate(id, patchResult.patch);
       track('form_submitted', {
         form_kind,
         ...(form_kind === 'alter' || form_kind === 'alter_edge'
           ? { entity_id: id }
           : {}),
       });
-      return { success: true as const };
+      return { success: true };
     };
 
     const storeApi = useContext(FormStoreContext);
@@ -189,9 +196,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
     }, []);
 
     useImperativeHandle(ref, () => ({
-      validate: () => storeApi!.getState().validateForm(),
-      submit: () => storeApi!.getState().submitForm(),
-      isDirty: () => storeApi!.getState().isDirty,
+      validate: async () =>
+        storeApi ? storeApi.getState().validateForm() : false,
+      submit: async () => (storeApi ? submitRegisteredForm(storeApi) : false),
+      isDirty: () => storeApi?.getState().isDirty ?? false,
       focusFirstError: () => focusFirstError(formErrorsRef.current),
       getFieldErrors: () =>
         buildProtocolFieldErrors(
@@ -313,8 +321,7 @@ export default function SlidesForm({
       const formIsValid = await slideRef.current?.validate();
 
       if (formIsValid) {
-        await slideRef.current?.submit();
-        return true;
+        return (await slideRef.current?.submit()) ?? false;
       }
 
       if (!slideRef.current?.isDirty()) {
@@ -354,7 +361,10 @@ export default function SlidesForm({
       }
 
       if (formIsValid) {
-        await slideRef.current?.submit();
+        const submitted = await slideRef.current?.submit();
+        if (!submitted) {
+          return false;
+        }
       }
 
       setActiveIndex((prev) => prev - 1);
@@ -371,7 +381,10 @@ export default function SlidesForm({
       return false;
     }
 
-    await slideRef.current?.submit();
+    const submitted = await slideRef.current?.submit();
+    if (!submitted) {
+      return false;
+    }
 
     if (activeIndex >= items.length - 1) {
       return true;

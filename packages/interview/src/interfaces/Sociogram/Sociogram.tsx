@@ -32,6 +32,7 @@ import {
   getNetworkNodesForType,
   getPromptSortOrder,
 } from '../../selectors/session';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import {
   toggleEdge,
   toggleNodeAttributes,
@@ -48,6 +49,12 @@ type SociogramProps = StageProps<'Sociogram'>;
 // DnD item type registered while dragging an already-placed node, so the
 // unplaced-node drawer can accept it back.
 const PLACED_NODE_ITEM_TYPE = 'PLACED_NODE';
+
+export function unplaceNodeAttributePatch(
+  layoutVariable: string,
+): AttributePatch {
+  return { set: {}, unset: [layoutVariable] };
+}
 
 const Sociogram = (stageProps: SociogramProps) => {
   const { stage } = stageProps;
@@ -217,7 +224,10 @@ const Sociogram = (stageProps: SociogramProps) => {
           dispatch(
             toggleNodeAttributes({
               nodeId,
-              attributes: { [highlightAttribute]: !currentValue },
+              attributePatch: {
+                set: { [highlightAttribute]: !currentValue },
+                unset: [],
+              },
             }),
           );
         }
@@ -244,8 +254,11 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
+          attributePatch: {
+            set: {
+              [layoutVariable]: { x: position.x, y: position.y },
+            },
+            unset: [],
           },
           currentStep,
         }),
@@ -264,8 +277,11 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [layoutVariable]: { x: position.x, y: position.y },
+          attributePatch: {
+            set: {
+              [layoutVariable]: { x: position.x, y: position.y },
+            },
+            unset: [],
           },
           currentStep,
         }),
@@ -303,7 +319,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       void dispatch(
         updateNode({
           nodeId,
-          newAttributeData: { [layoutVariable]: null },
+          attributePatch: unplaceNodeAttributePatch(layoutVariable),
           currentStep,
         }),
       );

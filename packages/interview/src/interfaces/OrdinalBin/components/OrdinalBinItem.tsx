@@ -121,7 +121,10 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     void dispatch(
       updateNode({
         nodeId,
-        newAttributeData: { [activePromptVariable]: bin.value },
+        attributePatch: {
+          set: { [activePromptVariable]: bin.value },
+          unset: [],
+        },
         currentStep,
       }),
     );

@@ -91,7 +91,7 @@ const buildWithUnplacedNodes = () => {
   const stage = si.addStage('Sociogram', { initialNodes: { count: 6 } });
   stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
   for (let i = 3; i < 6; i++) {
-    si.setNodeAttribute(i, layoutVar.id, null);
+    si.unsetNodeAttribute(i, layoutVar.id);
   }
   si.addInformationStage({
     title: 'Complete',
@@ -247,7 +247,11 @@ const buildWithHighlighting = () => {
   });
   const hlValues = [true, false, true, null, true, false];
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, highlightVar.id, v);
+    if (v === null) {
+      si.unsetNodeAttribute(i, highlightVar.id);
+    } else {
+      si.setNodeAttribute(i, highlightVar.id, v);
+    }
   });
   si.addInformationStage({
     title: 'Complete',

@@ -1,38 +1,5 @@
 import type { VariableValue } from '@codaco/shared-consts';
 
-export function isVariableValue(value: unknown): value is VariableValue {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  ) {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.every(
-      (item) =>
-        typeof item === 'string' ||
-        typeof item === 'number' ||
-        typeof item === 'boolean',
-    );
-  }
-
-  if (typeof value !== 'object') return false;
-
-  const x = Object.getOwnPropertyDescriptor(value, 'x');
-  const y = Object.getOwnPropertyDescriptor(value, 'y');
-  return (
-    x !== undefined &&
-    'value' in x &&
-    typeof x.value === 'number' &&
-    y !== undefined &&
-    'value' in y &&
-    typeof y.value === 'number'
-  );
-}
-
 export function writeOwnAttribute(
   target: Record<string, VariableValue>,
   key: string,

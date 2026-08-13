@@ -27,15 +27,12 @@ import processAttributes from './processAttributes';
 export default function getDataElementGenerator(
   codebook: Codebook,
   exportOptions: ExportOptions,
+  externalKeyIds: ReadonlyMap<string, string>,
 ) {
   return async (
     entities: NodeWithResequencedID[] | EdgeWithResequencedID[] | NcEgo,
   ): Promise<DocumentFragment> => {
     const fragment = createDocumentFragment();
-
-    if (!entities) {
-      return fragment;
-    }
 
     // If the entity is an object (not an array) it is an ego
     if (!Array.isArray(entities)) {
@@ -43,13 +40,19 @@ export default function getDataElementGenerator(
         entities,
         codebook,
         exportOptions,
+        externalKeyIds,
       );
       fragment.appendChild(entityDataElements);
     } else {
       // Process entities in parallel; append results in original order to preserve output stability
       const entityFragments = await Promise.all(
         entities.map((entity) =>
-          generateDataElementsForEntity(entity, codebook, exportOptions),
+          generateDataElementsForEntity(
+            entity,
+            codebook,
+            exportOptions,
+            externalKeyIds,
+          ),
         ),
       );
       for (const entityDataElements of entityFragments) {
@@ -65,6 +68,7 @@ async function generateDataElementsForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
   exportOptions: ExportOptions,
+  externalKeyIds: ReadonlyMap<string, string>,
 ): Promise<DocumentFragment> {
   const fragment = createDocumentFragment();
   const dom = new DOMImplementation().createDocument(null, 'root', null);
@@ -80,13 +84,12 @@ async function generateDataElementsForEntity(
       entity,
       codebook,
       exportOptions,
+      externalKeyIds,
     );
     fragment.appendChild(dataElements);
     return fragment;
   }
 
-  // After ego check, entity is NodeWithResequencedID | EdgeWithResequencedID
-  // Edge entities have an edgeExportIDProperty; node entities have nodeExportIDProperty
   if (edgeExportIDProperty in entity) {
     const edge = entity;
     const domElement = dom.createElement('edge');
@@ -109,7 +112,12 @@ async function generateDataElementsForEntity(
     domElement.appendChild(
       createDataElement({ key: ncTargetUUID }, edge[ncTargetUUID]),
     );
-    const dataElements = await processAttributes(edge, codebook, exportOptions);
+    const dataElements = await processAttributes(
+      edge,
+      codebook,
+      exportOptions,
+      externalKeyIds,
+    );
     domElement.appendChild(dataElements);
     fragment.appendChild(domElement);
     return fragment;
@@ -138,12 +146,12 @@ async function generateDataElementsForEntity(
     if (isEncrypted) {
       domElement.appendChild(createDataElement({ key: 'label' }, 'Encrypted'));
     } else {
-      domElement.appendChild(
-        createDataElement(
-          { key: 'label' },
-          node[entityAttributesProperty][labelAttribute] as string,
-        ),
-      );
+      const labelValue = node[entityAttributesProperty][labelAttribute];
+      if (typeof labelValue === 'string' || typeof labelValue === 'number') {
+        domElement.appendChild(
+          createDataElement({ key: 'label' }, String(labelValue)),
+        );
+      }
     }
   } else {
     domElement.appendChild(
@@ -154,7 +162,12 @@ async function generateDataElementsForEntity(
     );
   }
 
-  const dataElements = await processAttributes(node, codebook, exportOptions);
+  const dataElements = await processAttributes(
+    node,
+    codebook,
+    exportOptions,
+    externalKeyIds,
+  );
   domElement.appendChild(dataElements);
   fragment.appendChild(domElement);
   return fragment;

@@ -85,7 +85,7 @@ export function markStageInProgress(
   for (const idx of indices.slice(0, clearCount)) {
     const attrs = subjectNodes[idx]![entityAttributesProperty];
     for (const varId of variables) {
-      attrs[varId] = null;
+      delete attrs[varId];
     }
   }
 }

@@ -59,10 +59,9 @@ describe('resolveRosterNodeLabel', () => {
     expect(result).toBe('Alice Smith');
   });
 
-  it('skips empty/null and non-primitive values when choosing the first value', () => {
+  it('skips empty and non-primitive values when choosing the first value', () => {
     const node = makeNode({
       'empty': '',
-      'nullish': null,
       'object-value': { x: 1, y: 2 },
       'first-real': 42,
     });

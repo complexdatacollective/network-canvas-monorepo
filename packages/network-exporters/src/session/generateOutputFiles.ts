@@ -6,7 +6,7 @@ import { invariant } from 'es-toolkit';
 import { sessionProperty } from '@codaco/shared-consts';
 
 import type { ExportEvent } from '../events';
-import type { ProtocolExportInput, SessionWithResequencedIDs } from '../input';
+import type { SessionWithResequencedIDs, ProtocolExportInput } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type { ExportFailure, ExportSuccess, OutputEntry } from '../output';
 import { getFilePrefix } from '../utils/general';

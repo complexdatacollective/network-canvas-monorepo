@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
 import { FRAMING_IDS } from './family-pedigree-framing.ts';
+import { EntityAttributesSchema, VariableValueSchema } from './network.ts';
 
-const FamilyPedigreeStageMetadataSchema = z.object({
+const FamilyPedigreeMetadataFields = {
   isNetworkCommitted: z.boolean(),
   // Version 1 records edge ids from the shared Redux network. Older pedigree
   // snapshots omitted this marker and may contain interface-local edge ids.
@@ -18,27 +19,31 @@ const FamilyPedigreeStageMetadataSchema = z.object({
       }),
     ),
   ),
+};
+
+const FamilyPedigreeStageMetadataSchema = z.object({
+  ...FamilyPedigreeMetadataFields,
   edges: z.optional(
     z.array(
       z.object({
         id: z.string(),
         from: z.string(),
         to: z.string(),
-        attributes: z.record(
-          z.string(),
-          z.union([
-            z.string(),
-            z.number(),
-            z.boolean(),
-            z.null(),
-            z.array(z.number()),
-            z.array(z.union([z.string(), z.number(), z.boolean()])),
-            z.record(
-              z.string(),
-              z.union([z.string(), z.boolean(), z.number()]),
-            ),
-          ]),
-        ),
+        attributes: EntityAttributesSchema,
+      }),
+    ),
+  ),
+});
+
+const StrictFamilyPedigreeStageMetadataSchema = z.object({
+  ...FamilyPedigreeMetadataFields,
+  edges: z.optional(
+    z.array(
+      z.object({
+        id: z.string(),
+        from: z.string(),
+        to: z.string(),
+        attributes: z.record(z.string(), VariableValueSchema),
       }),
     ),
   ),
@@ -89,5 +94,5 @@ export const isNetworkComposerStageMetadata = (
 // NetworkComposer object, so callers must narrow before reading pedigree fields.
 export const isFamilyPedigreeStageMetadata = (
   value: unknown,
-): value is z.infer<typeof FamilyPedigreeStageMetadataSchema> =>
-  FamilyPedigreeStageMetadataSchema.safeParse(value).success;
+): value is z.output<typeof StrictFamilyPedigreeStageMetadataSchema> =>
+  StrictFamilyPedigreeStageMetadataSchema.safeParse(value).success;

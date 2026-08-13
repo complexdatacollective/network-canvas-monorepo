@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { type Filter, stageSchema } from '@codaco/protocol-validation';
 import {
+  NcNetworkSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNetwork,
@@ -47,7 +48,9 @@ describe('SyntheticInterview', () => {
       const stageB = b.addStage('Sociogram', { initialNodes: { count: 5 } });
       stageB.addPrompt();
 
-      expect(a.getNetwork()).toEqual(b.getNetwork());
+      const network = a.getNetwork();
+      expect(network).toEqual(b.getNetwork());
+      expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
     });
 
     it('produces different output for different seeds', () => {
@@ -474,11 +477,17 @@ describe('SyntheticInterview', () => {
           { label: 'B', value: 'b' },
         ],
       });
+      const score = nt.addVariable({ type: 'number', name: 'score' });
+      const nickname = nt.addVariable({ type: 'text', name: 'nickname' });
 
       const stage = si.addStage('Narrative', {
         subject: { entity: 'node', type: nt.id },
       });
-      si.addManualNode(stage.id, nt.id, 'person-1', { [isEgo.id]: true });
+      si.addManualNode(stage.id, nt.id, 'person-1', {
+        [isEgo.id]: true,
+        [score.id]: null,
+        [nickname.id]: undefined,
+      });
 
       const network = si.getNetwork();
       const node = network.nodes.find(
@@ -492,6 +501,23 @@ describe('SyntheticInterview', () => {
       expect(attrs[affected.id]).toBe(false);
       expect(attrs[relationship.id]).toBe('');
       expect(attrs[tags.id]).toEqual([]);
+      expect(attrs).not.toHaveProperty(score.id);
+      expect(attrs).not.toHaveProperty(nickname.id);
+    });
+
+    it('rejects malformed defined attributes on manual nodes', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const flag = nt.addVariable({ type: 'boolean', name: 'flag' });
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', type: nt.id },
+      });
+
+      si.addManualNode(stage.id, nt.id, 'person-1', {
+        [flag.id]: Symbol('not the omission sentinel'),
+      });
+
+      expect(() => si.getNetwork()).toThrow();
     });
 
     it('still randomises unset attributes on procedurally-generated nodes', () => {
@@ -508,6 +534,25 @@ describe('SyntheticInterview', () => {
       const value = node[entityAttributesProperty][label.id];
       expect(typeof value).toBe('string');
       expect(value).not.toBe('');
+    });
+
+    it('omits an attribute whose variable has no drawable value', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const unanswered = nt.addVariable({
+        type: 'ordinal',
+        name: 'Unanswered',
+        options: [],
+      });
+
+      si.addStage('Narrative', {
+        initialNodes: { count: 1 },
+        subject: { entity: 'node', type: nt.id },
+      });
+
+      expect(
+        si.getNetwork().nodes[0]![entityAttributesProperty],
+      ).not.toHaveProperty(unanswered.id);
     });
   });
 
@@ -980,6 +1025,42 @@ describe('SyntheticInterview', () => {
     it('throws for out-of-range edge index', () => {
       const si = new SyntheticInterview();
       expect(() => si.setEdgeAttribute(0, 'var', 1)).toThrow(/out of range/);
+    });
+
+    it('keeps explicitly unset node and edge variables absent', () => {
+      const si = new SyntheticInterview(21);
+      const nt = si.addNodeType({ name: 'Person' });
+      const nodeVariable = nt.addVariable({ type: 'boolean', name: 'Flag' });
+      const et = si.addEdgeType({ name: 'Friendship' });
+      const edgeVariable = et.addVariable({ type: 'boolean', name: 'Flag' });
+
+      si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 2 },
+      });
+      si.addEdges([[0, 1]], et.id);
+      si.unsetNodeAttribute(0, nodeVariable.id);
+      si.unsetEdgeAttribute(0, edgeVariable.id);
+
+      const network = si.getNetwork();
+      expect(network.nodes[0]![entityAttributesProperty]).not.toHaveProperty(
+        nodeVariable.id,
+      );
+      expect(network.edges[0]![entityAttributesProperty]).not.toHaveProperty(
+        edgeVariable.id,
+      );
+    });
+
+    it('rejects malformed defined attributes on manual edges', () => {
+      const si = new SyntheticInterview();
+      const et = si.addEdgeType({ name: 'Friendship' });
+      const flag = et.addVariable({ type: 'boolean', name: 'Flag' });
+
+      si.addManualEdge(et.id, 'edge-1', 'person-1', 'person-2', {
+        [flag.id]: { invalid: true },
+      });
+
+      expect(() => si.getNetwork()).toThrow();
     });
   });
 

@@ -198,47 +198,6 @@ describe('processEntityVariables', () => {
       });
     });
 
-    it('should handle null categorical data', () => {
-      const codebook = {
-        node: {
-          person: {
-            name: 'person',
-            color: 'color',
-            variables: {
-              'gender-uuid': {
-                name: 'gender',
-                type: 'categorical',
-                options: [
-                  { value: 'male', label: 'Male' },
-                  { value: 'female', label: 'Female' },
-                ],
-              },
-            },
-          },
-        },
-      } as unknown as Codebook;
-
-      const node = {
-        [entityPrimaryKeyProperty]: '1',
-        type: 'person',
-        [entityAttributesProperty]: {
-          'gender-uuid': null,
-        },
-      } as unknown as NcNode;
-
-      const result = processEntityVariables(
-        node,
-        'node',
-        codebook,
-        mockExportOptions,
-      );
-
-      expect(result[entityAttributesProperty]).toEqual({
-        gender_male: false,
-        gender_female: false,
-      });
-    });
-
     it('matches numeric-like categorical option values without substring matching', () => {
       // Categorical attributes are stored as arrays; ['10'] must match only the
       // '10' option, not '1' or '100' via substring matching.

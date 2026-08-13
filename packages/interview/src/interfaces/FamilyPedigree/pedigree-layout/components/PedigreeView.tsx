@@ -7,10 +7,12 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../../../forms/formValuesToAttributePatch';
 import { useNodeMeasurement } from '../../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import AddPersonFields from '../../components/AddPersonForm';
@@ -46,10 +48,7 @@ import {
   getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '../../utils/nodeUtils';
-import {
-  isVariableValue,
-  writeOwnAttribute,
-} from '../../utils/writeOwnAttributes';
+import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';
@@ -141,7 +140,9 @@ export default function PedigreeView({
     storeFraming ?? 'gamete',
   );
 
-  const handleAddPerson = async (nodeId: string) => {
+  const handleAddPerson = async (
+    nodeId: string,
+  ): Promise<FormSubmissionResult | undefined> => {
     const result = await openDialog({
       type: 'form',
       title: 'Add partner',
@@ -173,18 +174,25 @@ export default function PedigreeView({
           [isActiveVariable]: result.current !== 'ex',
         },
       });
-      return;
+      return { success: true };
     }
 
     const name = typeof result.name === 'string' ? result.name : '';
 
-    const formAttrs: Record<string, VariableValue> = {};
-    for (const field of resolvedFormFields) {
-      const value = result[field.variableId];
-      if (isVariableValue(value)) {
-        writeOwnAttribute(formAttrs, field.variableId, value);
-      }
+    const formPatchResult = formValuesToAttributePatch(
+      result,
+      resolvedFormFields.map((field) => field.variableId),
+    );
+    if (!formPatchResult.success) {
+      return {
+        success: false,
+        formErrors: ['An error occurred while submitting the form.'],
+      };
     }
+
+    const formAttrs: Record<string, VariableValue> = {
+      ...formPatchResult.patch.set,
+    };
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
       writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
@@ -226,9 +234,13 @@ export default function PedigreeView({
         });
       }
     }
+
+    return { success: true };
   };
 
-  const handleEdit = async (nodeId: string) => {
+  const handleEdit = async (
+    nodeId: string,
+  ): Promise<FormSubmissionResult | undefined> => {
     const currentNode = nodes.get(nodeId);
     if (!currentNode) return;
 
@@ -308,22 +320,33 @@ export default function PedigreeView({
 
     const name = typeof result.name === 'string' ? result.name : '';
 
-    const formAttrs: Record<string, VariableValue> = {};
-    for (const field of resolvedFormFields) {
-      const value = result[field.variableId];
-      if (isVariableValue(value)) {
-        writeOwnAttribute(formAttrs, field.variableId, value);
-      }
-    }
-    const biologicalSex = readBiologicalSex(result.biologicalSex);
-    if (biologicalSex) {
-      writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
+    const formPatchResult = formValuesToAttributePatch(
+      result,
+      resolvedFormFields.map((field) => field.variableId),
+    );
+    if (!formPatchResult.success) {
+      return {
+        success: false,
+        formErrors: ['An error occurred while submitting the form.'],
+      };
     }
 
-    updateNode(nodeId, {
-      ...currentNode[entityAttributesProperty],
+    const set: Record<string, VariableValue> = {
+      ...formPatchResult.patch.set,
       [nodeLabelVariable]: name,
-      ...formAttrs,
+    };
+    const biologicalSex = readBiologicalSex(result.biologicalSex);
+    if (biologicalSex) {
+      writeOwnAttribute(set, biologicalSexVariable, [biologicalSex]);
+    }
+
+    const unset = biologicalSex
+      ? formPatchResult.patch.unset
+      : [...formPatchResult.patch.unset, biologicalSexVariable];
+
+    updateNode(nodeId, {
+      set,
+      unset: unset.filter((fieldName) => !Object.hasOwn(set, fieldName)),
     });
 
     const internalResult = result[INTERNAL_EDIT_NAMESPACE];
@@ -351,6 +374,7 @@ export default function PedigreeView({
       }
     }
     if (partnershipChanged && isFinalized) syncMetadata();
+    return { success: true };
   };
 
   const handleAddChild = async (nodeId: string) => {

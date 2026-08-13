@@ -632,7 +632,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
         '1 unplaced',
       );
       let state = await protocol.getNetworkState(interview.interviewId);
-      expect(nodeAttribute(state, nameVarId, 'Ash', layoutVarId)).toBeNull();
+      expect(
+        nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+      ).toBeUndefined();
 
       await unplaceNodeViaKeyboard(page, 'Bea');
 
@@ -640,7 +642,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
         '2 unplaced',
       );
       state = await protocol.getNetworkState(interview.interviewId);
-      expect(nodeAttribute(state, nameVarId, 'Bea', layoutVarId)).toBeNull();
+      expect(
+        nodeAttribute(state, nameVarId, 'Bea', layoutVarId),
+      ).toBeUndefined();
     },
   };
 }

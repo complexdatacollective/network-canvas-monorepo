@@ -1,3 +1,4 @@
+import { hash } from 'ohash';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -108,6 +109,18 @@ describe('loadExternalData CSV-vs-JSON selection', () => {
     });
   });
 
+  it('preserves CSV attribute names until codebook remapping', async () => {
+    const csvText = 'Full Name,profile.name\nAlice,friend\n';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(csvText));
+
+    const { nodes } = await loadExternalData('classmates.csv', 'stub://url');
+
+    expect(nodes[0]?.[entityAttributesProperty]).toEqual({
+      'Full Name': 'Alice',
+      'profile.name': 'friend',
+    });
+  });
+
   it('parses JSON when the filename has a .json extension', async () => {
     const jsonPayload = {
       nodes: [{ [entityAttributesProperty]: { name: 'Carol' } }],
@@ -121,5 +134,85 @@ describe('loadExternalData CSV-vs-JSON selection', () => {
 
     expect(nodes).toHaveLength(1);
     expect(nodes[0]?.[entityAttributesProperty]).toEqual({ name: 'Carol' });
+  });
+
+  it('preserves valid unknown JSON attributes and omits legacy nullish entries', async () => {
+    const jsonPayload = {
+      nodes: [
+        {
+          sourceId: 'legacy-1',
+          [entityAttributesProperty]: {
+            unknownScalar: 42,
+            unknownCategorical: ['friend', 2, true],
+            unknownLayout: { x: 10, y: 20 },
+            legacyNull: null,
+          },
+        },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(jsonPayload)),
+    );
+
+    const { nodes } = await loadExternalData('classmates.json', 'stub://url');
+    const [node] = nodes;
+
+    if (!node) {
+      throw new Error('Expected one parsed external node.');
+    }
+
+    expect(node).toEqual({
+      sourceId: 'legacy-1',
+      [entityAttributesProperty]: {
+        unknownScalar: 42,
+        unknownCategorical: ['friend', 2, true],
+        unknownLayout: { x: 10, y: 20 },
+      },
+    });
+    expect(
+      makeVariableUUIDReplacer(codebook, 'person')(node, 0)[
+        entityPrimaryKeyProperty
+      ],
+    ).toBe(`person_${hash({ node, index: 0 })}`);
+  });
+
+  it('omits legacy own-undefined JSON attribute entries', async () => {
+    const jsonPayload = {
+      nodes: [
+        {
+          [entityAttributesProperty]: {
+            name: 'Carol',
+            legacyUndefined: undefined,
+          },
+        },
+      ],
+    };
+    const response = new Response();
+    vi.spyOn(response, 'json').mockResolvedValue(jsonPayload);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+
+    const { nodes } = await loadExternalData('classmates.json', 'stub://url');
+
+    expect(nodes[0]?.[entityAttributesProperty]).toEqual({ name: 'Carol' });
+  });
+
+  it('rejects a JSON node containing an invalid defined attribute value', async () => {
+    const jsonPayload = {
+      nodes: [
+        {
+          [entityAttributesProperty]: {
+            name: 'Carol',
+            profile: { unexpected: 'object' },
+          },
+        },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(jsonPayload)),
+    );
+
+    await expect(
+      loadExternalData('classmates.json', 'stub://url'),
+    ).rejects.toThrow();
   });
 });

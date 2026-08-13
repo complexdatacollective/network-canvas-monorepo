@@ -1,5 +1,5 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 export type StoredAssetType =
   | 'image'
@@ -49,7 +49,7 @@ export type StoredSession = {
   // an authored stage that is currently available. Navigation clears it.
   resumeStageOverrideIndex?: number;
   network: NcNetwork;
-  stageMetadata?: Record<string, unknown>;
+  stageMetadata?: StageMetadata;
   // Optional so pre-existing rows (undefined) read as not synthetic.
   isSynthetic?: boolean;
 };
