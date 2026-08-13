@@ -386,8 +386,28 @@ export class SyntheticInterview {
     return id;
   }
 
-  /** Records an id the caller supplied so {@link nextId} steps over it. */
-  private reserveSuppliedId(id: string): string {
+  /**
+   * Records an id the caller supplied so {@link nextId} steps over it, and
+   * refuses one the destination already holds.
+   *
+   * Reserving alone only protects ids minted LATER. An id already in the map
+   * — the seeded name variable `addNodeType` creates, or an earlier explicit
+   * declaration — was overwritten by the `set` that followed: the first
+   * variable vanished from the codebook while every handle and stage
+   * reference taken against it went on resolving, silently, to the caller's
+   * new definition. A builder cannot hold two variables under one id, so this
+   * is refused where it is asked for rather than lost where it is stored.
+   */
+  private reserveSuppliedId(
+    id: string,
+    destination: ReadonlyMap<string, unknown>,
+    scope: string,
+  ): string {
+    if (destination.has(id)) {
+      throw new Error(
+        `Cannot declare a second variable with id "${id}" on ${scope}: that id is already in use.`,
+      );
+    }
     this.suppliedIds.add(id);
     return id;
   }
@@ -499,7 +519,11 @@ export class SyntheticInterview {
 
     const varId =
       opts?.id !== undefined
-        ? this.reserveSuppliedId(opts.id)
+        ? this.reserveSuppliedId(
+            opts.id,
+            nodeType.variables,
+            `node type "${nodeTypeId}"`,
+          )
         : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 
@@ -554,7 +578,11 @@ export class SyntheticInterview {
 
     const varId =
       opts?.id !== undefined
-        ? this.reserveSuppliedId(opts.id)
+        ? this.reserveSuppliedId(
+            opts.id,
+            edgeType.variables,
+            `edge type "${edgeTypeId}"`,
+          )
         : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 

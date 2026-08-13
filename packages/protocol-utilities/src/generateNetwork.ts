@@ -34,7 +34,10 @@ import {
 } from './generateNetwork/constraints/composerRenderings';
 import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
 import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
-import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages';
+import {
+  reachableStagesForFeasibility,
+  settledEgoValues,
+} from './generateNetwork/constraints/reachableStages';
 import type { EntityConstraints } from './generateNetwork/constraints/types';
 import { UniqueRegistry } from './generateNetwork/constraints/uniqueRegistry';
 import type { GenerationContext } from './generateNetwork/context';
@@ -215,10 +218,16 @@ function stagesThePlanMaySettleSkipped(
   stages: Stage[],
   reachableIndexes: ReadonlySet<number>,
   respectSkipLogicAndFiltering: boolean,
+  codebook: StructuralCodebook,
 ): Set<number> {
   const maybeSkipped = new Set<number>();
   if (!respectSkipLogicAndFiltering) return maybeSkipped;
 
+  // The reachability pass's own reading of which ego values the seed cannot
+  // move, asked for rather than restated so the two cannot disagree about
+  // which guards are already settled.
+  const { values: pinnedEgoValues, certainlyAbsent: certainlyAbsentEgoValues } =
+    settledEgoValues(codebook);
   const possibleEgoAttributes = new Set<string>();
   for (let index = 0; index < stages.length; index++) {
     // A stage already proven unreachable contributes no creations to the
@@ -233,7 +242,16 @@ function stagesThePlanMaySettleSkipped(
       skipLogic.filter.rules.some((rule) => {
         const attribute =
           'attribute' in rule.options ? rule.options.attribute : undefined;
-        return attribute !== undefined && possibleEgoAttributes.has(attribute);
+        if (attribute === undefined) return false;
+        // A value the seed cannot move leaves nothing for the planner to
+        // decide, so a guard reading only such values is already settled —
+        // and settled as NOT skipped, since one that fired was removed from
+        // the reachable list before this ran. Counting it as merely writable
+        // put an always-reached creator's floor at zero, and preflight then
+        // handed a later creator slots the plan had already spent.
+        if (pinnedEgoValues.has(attribute)) return false;
+        if (certainlyAbsentEgoValues.has(attribute)) return false;
+        return possibleEgoAttributes.has(attribute);
       });
     if (undecided) {
       maybeSkipped.add(index);
@@ -677,6 +695,7 @@ export function generateNetwork(
         stages,
         reachableIndexes,
         respectSkipLogicAndFiltering,
+        codebook,
       ),
     ),
     externalData,

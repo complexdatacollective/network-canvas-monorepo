@@ -20,6 +20,7 @@ import {
   resolveVariableSynthetic,
   type ResolvedVariableSynthetic,
 } from '../plan/resolveSynthetic';
+import { numberFallbackFloor } from './generateEntityAttributes';
 import { booleanDomainValues } from './valueSpace';
 
 const EMPTY_NETWORK: NcNetwork = {
@@ -111,12 +112,14 @@ function seedIndependentValue(
     case 'number': {
       if (resolved.descriptor.distribution !== 'constant') return undefined;
       const { value } = resolved.descriptor;
-      const { min, max } = resolved.bounds;
-      // A number bounded ABOVE and not below picks up a derived floor
-      // (`withFallbackFloor`) that the clamp then applies, so the value the
-      // draw returns is not necessarily the one declared. Left unsettled
-      // rather than re-derived.
-      if (min === undefined && max !== undefined) return undefined;
+      const { max } = resolved.bounds;
+      // A number bounded ABOVE and not below picks up a derived floor that the
+      // clamp then applies. Asked for through the draw's own helper rather
+      // than restated, so this cannot form a second opinion about where an
+      // open-below window starts: a constant inside the window that floor
+      // leaves is returned unchanged, and is as seed-independent as one
+      // between declared bounds.
+      const min = resolved.bounds.min ?? numberFallbackFloor(undefined, max);
       if (min !== undefined && value < min) return undefined;
       if (max !== undefined && value > max) return undefined;
       return value;
@@ -169,7 +172,7 @@ function seedIndependentValue(
  * - Anything between 0 and 1 leaves the seed deciding whether the value is
  *   there at all, so it settles nothing either way.
  */
-function settledEgoValues(codebook: StructuralCodebook): {
+export function settledEgoValues(codebook: StructuralCodebook): {
   values: Map<string, VariableValue>;
   certainlyAbsent: Set<string>;
 } {

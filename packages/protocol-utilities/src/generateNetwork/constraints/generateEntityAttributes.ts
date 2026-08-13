@@ -527,6 +527,29 @@ export function comparatorFoldEmptied(
  */
 const NUMBER_OPEN_RANGE = { floor: 18, span: 62 };
 
+/**
+ * The floor a number given a ceiling but no floor of its own draws above, or
+ * nothing where the declared bounds already leave the draw somewhere sensible.
+ *
+ * Exported because more than the draw needs it: deciding whether a declared
+ * constant survives its own clamp is the same question, and answering it
+ * separately would be a second opinion about where an open-below window
+ * starts.
+ */
+export function numberFallbackFloor(
+  minValue: number | undefined,
+  maxValue: number | undefined,
+): number | undefined {
+  if (
+    minValue !== undefined ||
+    maxValue === undefined ||
+    maxValue >= NUMBER_OPEN_RANGE.floor
+  ) {
+    return undefined;
+  }
+  return maxValue - NUMBER_OPEN_RANGE.span;
+}
+
 /** A floor for a group given a ceiling but left without one. */
 function withFallbackFloor(
   entry: VariableEntry,
@@ -534,16 +557,10 @@ function withFallbackFloor(
 ): VariableConstraints {
   if (entry.type !== 'number') return constraints;
 
-  const { minValue, maxValue } = constraints;
-  if (
-    minValue !== undefined ||
-    maxValue === undefined ||
-    maxValue >= NUMBER_OPEN_RANGE.floor
-  ) {
-    return constraints;
-  }
+  const floor = numberFallbackFloor(constraints.minValue, constraints.maxValue);
+  if (floor === undefined) return constraints;
 
-  return { ...constraints, minValue: maxValue - NUMBER_OPEN_RANGE.span };
+  return { ...constraints, minValue: floor };
 }
 
 /**
