@@ -79,6 +79,36 @@ const hungryGenerator = {
 } as unknown as Stage;
 
 describe('the population cap holds across a pedigree', () => {
+  // The ordering the first version of this test missed. A pedigree standing
+  // BEFORE the stages that spend the budget sees an almost empty session and
+  // grows to its own ceiling; the people already committed to those later
+  // stages are then materialised on top of it. Reserving only the required
+  // core held in one order and not the other.
+  it('stays within the cap when a pedigree PRECEDES the generator', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [pedigree('stage-pedigree'), hungryGenerator],
+    });
+
+    expect(network.nodes.length).toBeLessThanOrEqual(MAX_SYNTHETIC_POPULATION);
+  });
+
+  it('stays within the cap when several pedigrees precede it', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [
+        pedigree('stage-pedigree-1'),
+        pedigree('stage-pedigree-2'),
+        pedigree('stage-pedigree-3'),
+        hungryGenerator,
+      ],
+    });
+
+    expect(network.nodes.length).toBeLessThanOrEqual(MAX_SYNTHETIC_POPULATION);
+  });
+
   it('stays within the cap when a pedigree follows a budget-filling generator', () => {
     const { network } = generateNetwork({
       seed: 1,

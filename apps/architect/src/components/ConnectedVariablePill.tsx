@@ -433,6 +433,16 @@ export default function ConnectedVariablePill({
           anchor={pillAnchorRef}
           align="center"
           className="w-[29rem] max-w-[calc(100vw-2rem)]"
+          // The summary opens on hover and on focus, so it must not claim
+          // focus for itself. Base UI would otherwise move focus to the first
+          // action in the panel: merely pointing at a pill would take a mouse
+          // user's caret out of the field they were typing in, and a keyboard
+          // user would be moved off the pill the instant they arrived — while
+          // the pill went on announcing `aria-expanded` for a control they
+          // were no longer on, with its own Enter/Space out of reach. Tab from
+          // the pill still steps into the panel, which is how a non-modal
+          // disclosure is meant to be entered.
+          initialFocus={false}
           keepMounted={false}
           onBlur={handleBlur}
           onFocus={openSummary}

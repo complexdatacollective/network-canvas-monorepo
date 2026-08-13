@@ -46,6 +46,7 @@ import { completionCheckFor } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
 import type { GenerationContext } from '../context';
 import { MAX_REQUIRED_PEDIGREE_CORE } from '../familyPedigree/generateFamilyPedigree';
+import { DEFAULT_PEDIGREE_NODE_CEILING } from '../familyPedigree/stageCeiling';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { sampleContinuous, sampleCount } from './distributions';
 import { deterministicUuid, type RandomSource } from './random';
@@ -1216,6 +1217,14 @@ function assignRosterRows(
 export function planNetwork(
   ctx: GenerationContext,
   effects: StageEffects,
+  /**
+   * The most people ONE reachable pedigree can end up holding.
+   *
+   * Reserved rather than assumed, because a family is built during the walk
+   * and admits its required core whatever ceiling it is given. Defaulted for
+   * callers that weigh a plan without pedigrees in mind.
+   */
+  pedigreeNodeCeiling: number = DEFAULT_PEDIGREE_NODE_CEILING,
 ): NetworkPlan {
   const source = ctx.valueGen.randomSource;
   const missing = missingProbabilities(ctx.codebook);
@@ -1445,10 +1454,42 @@ export function planNetwork(
       if (settledAsSkipped(summary)) continue;
       if (summary.pedigree !== undefined) pedigreeStages += 1;
     }
+    // The whole CEILING a family may reach, not merely the core it is
+    // guaranteed. Reserving the core alone held only where every pedigree ran
+    // after the stages that spend the budget: a pedigree standing FIRST sees
+    // an almost empty session, grows to its own ceiling, and the people this
+    // plan has already committed to later stages are then materialised on top
+    // of it — a cap of 10,000 reaching 10,016, and 10,041 for three families.
+    // A family cannot exceed its ceiling, so setting that aside makes the cap
+    // hold whatever order the stages are in.
     populationBudget = Math.max(
       0,
-      populationBudget - pedigreeStages * MAX_REQUIRED_PEDIGREE_CORE,
+      populationBudget -
+        pedigreeStages *
+          Math.max(pedigreeNodeCeiling, MAX_REQUIRED_PEDIGREE_CORE),
     );
+    // Where the required cores ALONE cannot fit, no allocation can honour
+    // them: the cores bypass every ceiling, so trimming elsewhere would not
+    // help and the run would silently exceed the bound it exists to keep.
+    if (
+      pedigreeStages * MAX_REQUIRED_PEDIGREE_CORE >
+      MAX_SYNTHETIC_POPULATION
+    ) {
+      throw new SyntheticDataConstraintError(
+        [
+          {
+            entity: 'node',
+            variableIds: [],
+            variableNames: [],
+            rules: ['family pedigree'],
+            reason:
+              `this protocol reaches ${pedigreeStages} family pedigrees, whose required members alone exceed ` +
+              `the ${MAX_SYNTHETIC_POPULATION.toLocaleString('en')} people a synchronous preview can build`,
+          },
+        ],
+        'the required members of these family pedigrees alone exceed the population a preview can build',
+      );
+    }
   }
 
   // Declared stage minimums are floors trimming may not cross: the live

@@ -458,6 +458,9 @@ function deriveFeasibilityConfig(
     // topology target independently, so taking only their largest declared
     // bound under-counts the edges those stages can build between them.
     const ceilingBySubject = new Map<string, number>();
+    // Per (subject, filter) — one pair domain — before those are summed.
+    const boundsByDomain = new Map<string, number>();
+    const subjectOfDomain = new Map<string, string>();
     // One bound per TARGET, not per creation. Prompts on one stage creating
     // the same edge type share a topology — the stage declared it once — and
     // `topologyKey` is what the plan draws that single target against, so
@@ -490,12 +493,38 @@ function deriveFeasibilityConfig(
           topology.metric === 'density' ? most * pairs : (most * count) / 2,
         ),
       );
+      // Summed across stages that reach DIFFERENT pairs, maxed across stages
+      // that reach the same ones.
+      //
+      // Both readings are needed and neither alone is right. The plan settles
+      // each creation over the domain accumulated so far and tops up to that
+      // creation's target, so two stages whose filters admit disjoint people
+      // build two separate sets of edges (measured: two), while two stages
+      // over one domain top up to a single level and build one (measured:
+      // one). Summing everything refused a protocol whose `unique` edge
+      // variable the run never exhausts; taking the largest let a disjoint
+      // pair of stages clear preflight and exhaust it mid-plan.
+      //
+      // A domain is identified by its subject and its filter: identical
+      // filters admit identical people, whatever they say. Anything else is
+      // summed, which is the safe direction — a domain that turns out to
+      // overlap is only counted generously.
+      const domainKey = `${creation.subjectNodeType}\u0000${JSON.stringify(creation.filter ?? null)}`;
+      boundsByDomain.set(
+        domainKey,
+        Math.max(boundsByDomain.get(domainKey) ?? 0, bound),
+      );
+      subjectOfDomain.set(domainKey, creation.subjectNodeType);
+    }
+    for (const [domainKey, bound] of boundsByDomain) {
+      const subject = subjectOfDomain.get(domainKey)!;
+      const subjectPairs = pairsAmong(
+        (effectivePopulation.get(subject) ?? 0) +
+          (pedigreePopulation.get(subject) ?? 0),
+      );
       ceilingBySubject.set(
-        creation.subjectNodeType,
-        Math.min(
-          pairs,
-          (ceilingBySubject.get(creation.subjectNodeType) ?? 0) + bound,
-        ),
+        subject,
+        Math.min(subjectPairs, (ceilingBySubject.get(subject) ?? 0) + bound),
       );
     }
     edgeCountByType[type] = [...ceilingBySubject.values()].reduce(
@@ -716,7 +745,7 @@ export function generateNetwork(
   // edge of the same type ends up with.
   reserveFamilyPedigreeFixedValues(ctx, feasibilityStages);
 
-  const plan = planNetwork(ctx, effects);
+  const plan = planNetwork(ctx, effects, resolvedFamilyPedigree.maxNodes);
 
   return materialiseSession({
     ctx,

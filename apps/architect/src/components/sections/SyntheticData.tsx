@@ -601,15 +601,34 @@ export default function SyntheticData({
 }: StageEditorSectionProps) {
   const showCount = COUNT_STAGES.has(interfaceType);
   const showTopology = TOPOLOGY_STAGES.has(interfaceType);
-  const behaviours = useStageFormValue<
-    { minNodes?: number; maxNodes?: number } | undefined
-  >('behaviours');
+  // Read from the two LEAF paths rather than the `behaviours` container: no
+  // field named `behaviours` is ever registered — `MinMaxAlterLimits` registers
+  // `behaviours.minNodes` and `behaviours.maxNodes` — so a container read
+  // cannot be resolved from field state, and once that section is toggled off
+  // its cleared leaves leave `getFormValues()` entirely. The container read
+  // would then fall through to the COMMITTED stage and validate the count
+  // against a window the author has just cleared, refusing an edit that is
+  // valid. The leaves resolve from their own dormant field state, which
+  // records the clearing.
+  const minNodes = useStageFormValue<number | null | undefined>(
+    'behaviours.minNodes',
+  );
+  const maxNodes = useStageFormValue<number | null | undefined>(
+    'behaviours.maxNodes',
+  );
   // Memoised so the field is not handed a new validator identity every render.
+  // `null` is folded into absence because the rule skips only a strictly
+  // `undefined` limit — the min/max fields' own validators guard against a
+  // `null` sitting in either path, and a `null` maximum reaching the rule
+  // would compare as a cap of zero and refuse every count there is.
   const validation = useMemo(
     () => ({
-      synthetic: validateSynthetic(showCount, showTopology, behaviours),
+      synthetic: validateSynthetic(showCount, showTopology, {
+        minNodes: minNodes ?? undefined,
+        maxNodes: maxNodes ?? undefined,
+      }),
     }),
-    [behaviours, showCount, showTopology],
+    [minNodes, maxNodes, showCount, showTopology],
   );
   const initialValue = useStageInitialValue('synthetic') as
     | StageNodeAndEdgeSynthetic

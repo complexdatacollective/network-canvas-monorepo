@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { StageType } from '@codaco/protocol-validation';
 import SyntheticData from '~/components/sections/SyntheticData';
@@ -7,6 +7,19 @@ import {
   asStage,
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
+
+// The min/max section clears its values behind a confirmation, so the one test
+// below that turns it off auto-confirms, as MinMaxAlterLimits' own tests do.
+const confirm = vi.fn(async ({ onConfirm }: { onConfirm?: () => void }) => {
+  onConfirm?.();
+  return true;
+});
+
+vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
+  default: () => ({ confirm }),
+}));
+
+import MinMaxAlterLimits from '~/components/sections/MinMaxAlterLimits';
 
 /**
  * `getFormValues()` includes REGISTERED fields only, so a section that writes
@@ -120,5 +133,46 @@ describe('the stage synthetic-data section', () => {
 
     // Nothing is edited: the section only has to not lose what was there.
     expect(getFormValues().synthetic).toEqual(declared);
+  });
+
+  /**
+   * The count is checked against the alter window the stage is ABOUT TO BE
+   * SAVED with, not the one it arrived carrying. Turning "Min/max alters" off
+   * clears both limits and unmounts their fields, so they leave
+   * `getFormValues()` altogether; reading the `behaviours` container path here
+   * would find nothing registered and fall back to the committed stage, and go
+   * on refusing a count that nothing in the edited stage rules out. The author
+   * would be unable to finish the edit at all.
+   */
+  it('accepts a count once the alter window that refused it has been cleared', async () => {
+    const { getStoreApi, getFormValues } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'NameGenerator',
+        behaviours: { maxNodes: 5 },
+        synthetic: { count: { distribution: 'constant', value: 20 } },
+      }),
+      children: (
+        <>
+          <MinMaxAlterLimits {...sectionProps} />
+          <SyntheticData {...sectionProps} />
+        </>
+      ),
+    });
+
+    // While the window is live, 20 is correctly out of reach.
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(false);
+
+    // The author turns the section off and confirms "Clear values".
+    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText(/Maximum Number of Alters/),
+      ).not.toBeInTheDocument();
+    });
+    expect(getFormValues()).not.toHaveProperty('behaviours.maxNodes');
+
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(true);
   });
 });

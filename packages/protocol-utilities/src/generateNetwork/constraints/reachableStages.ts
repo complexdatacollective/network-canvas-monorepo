@@ -328,9 +328,27 @@ export function reachableStagesForFeasibility(
    * the plan projects ego through the analysis its settled jumps leave behind
    * (`viewAfterJump`), so a form it jumps over writes nothing at all, and a
    * value pinned from such a form would answer a later guard about an
-   * attribute the plan's ego does not hold.
+   * attribute the plan's ego does not hold. Nor may a settled skip standing
+   * inside one spend its jump, for the reason given where the walk takes it.
    */
   const unreachableByPlan = new Set<number>();
+
+  /**
+   * Everything one guard's jump takes with it, read as stages the plan may
+   * never arrive at: the guard itself, and every stage its destination clears.
+   * A jump this pass cannot rely on is one whose whole span the plan may walk
+   * differently, so the two are always recorded together.
+   */
+  const markJumpUnreliable = (
+    index: number,
+    destinationIndex: number | undefined,
+  ): void => {
+    unreachableByPlan.add(index);
+    if (destinationIndex === undefined) return;
+    for (let jumped = index + 1; jumped < destinationIndex; jumped++) {
+      unreachableByPlan.add(jumped);
+    }
+  };
 
   for (let index = 0; index < stages.length; index++) {
     const stage = stages[index]!;
@@ -351,6 +369,25 @@ export function reachableStagesForFeasibility(
           );
 
     if (skipped === true) {
+      // The stage itself goes either way: arrived at, the guard settles it
+      // skipped and binds the planner to the same reading; not arrived at, it
+      // never runs at all. The JUMP is the part this pass may not always take.
+      //
+      // Standing inside a span an earlier non-binding guard may clear, this
+      // stage is one the plan's walk may never arrive at — and where it does
+      // not, it lands somewhere the jump would have passed over, because the
+      // stages between a guard and its destination are exactly the ones the
+      // enclosing jump can deliver it to. Walking to the destination there
+      // stops this pass being a superset of every walk the plan can take, and
+      // the stages it drops come back from `analyseStageEffects` as empty
+      // summaries — so a creator the session really does reach is planned for
+      // nobody and builds nothing. The jump is withheld instead, and the
+      // stages it would have cleared inherit the reading that made it
+      // unusable, since the walks where the jump does happen pass over them.
+      if (unreachableByPlan.has(index)) {
+        markJumpUnreliable(index, destinationIndex);
+        continue;
+      }
       if (destinationIndex !== undefined) index = destinationIndex - 1;
       continue;
     }
@@ -360,14 +397,7 @@ export function reachableStagesForFeasibility(
     // A guard the plan can settle takes its own stage with it, and every stage
     // between it and its destination — the plan walks the jump, so those
     // stages belong to one ego draw and not to another.
-    if (!bindsPlanner) {
-      unreachableByPlan.add(index);
-      if (destinationIndex !== undefined) {
-        for (let jumped = index + 1; jumped < destinationIndex; jumped++) {
-          unreachableByPlan.add(jumped);
-        }
-      }
-    }
+    if (!bindsPlanner) markJumpUnreliable(index, destinationIndex);
 
     if (stage.type === 'EgoForm') {
       // The fields this form actually collects, not every ego variable the

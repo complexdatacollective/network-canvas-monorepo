@@ -2167,71 +2167,101 @@ export class SyntheticInterview {
    * the protocol record refinement rejected exactly that combination. The
    * check is `@codaco/protocol-validation`'s own, called rather than
    * re-derived, so the two surfaces cannot disagree again.
+   *
+   * Read from the NetworkComposer stages' own fields, which is the only thing
+   * the record refinement reads. The resolved rendering map beside this is a
+   * different object: `mergedRendering` closes each contributing window
+   * through `buildVariableConstraints`, so an open full-resolution picker
+   * arrives back carrying `max: today` — a stand-in ceiling the drawer is
+   * meant to REPLACE (`ceilingIsStandIn` in {@link ValueGenerator}), re-emitted
+   * as an explicit bound with its `maxDerived` flag gone. Judged against that,
+   * a window declared entirely in the future read as unreachable, and a
+   * builder with no NetworkComposer in it at all — the map is fed by every
+   * ordinary form too — was refused for a ceiling nobody wrote, on a verdict
+   * that changed as the wall clock passed the declared floor.
    */
-  private assertRenderedSyntheticIsReachable(rendered: ComposerRenderings) {
-    const scopes: [string, Map<string, Map<string, ComposerRendering>>][] = [
-      ['node', rendered.node],
-      ['edge', rendered.edge],
-    ];
-    for (const [entity, byType] of scopes) {
-      for (const [typeId, renderings] of byType) {
-        const variables = (
-          entity === 'node' ? this.nodeTypes : this.edgeTypes
-        ).get(typeId)?.variables;
-        if (variables === undefined) continue;
-        const codebookVariables: Record<string, Variable> = {};
-        const fields: {
-          variable: string;
-          component: string;
-          parameters?: Record<string, unknown>;
-        }[] = [];
-        for (const [varId, rendering] of renderings) {
-          const declared = variables.get(varId);
-          if (declared?.synthetic === undefined) continue;
-          codebookVariables[varId] = {
-            name: declared.name,
-            type: declared.type,
-            ...(declared.options !== undefined
-              ? { options: declared.options }
-              : {}),
-            ...(declared.validation !== undefined
-              ? { validation: declared.validation }
-              : {}),
-            ...(declared.parameters !== undefined
-              ? { parameters: declared.parameters }
-              : {}),
-            synthetic: declared.synthetic,
-          } as unknown as Variable;
-          fields.push({
-            variable: varId,
-            component: rendering.component,
-            ...('parameters' in rendering
-              ? { parameters: rendering.parameters }
-              : {}),
-          });
-        }
-        if (fields.length === 0) continue;
-        const issues: string[] = [];
-        validateComposerRenderedSynthetic(
-          codebookVariables,
-          fields as never,
-          [],
-          (issue) => {
-            if (issue.message !== undefined) issues.push(issue.message);
-          },
+  private assertRenderedSyntheticIsReachable() {
+    for (const stage of this.stages) {
+      if (stage.type !== 'NetworkComposer') continue;
+
+      const nodeType = stage.subject?.type;
+      if (nodeType !== undefined) {
+        this.assertComposerFormIsReachable(
+          'node',
+          nodeType,
+          stage.nodeForm?.fields,
         );
-        if (issues.length > 0) {
-          throw new Error(
-            `Synthetic metadata on ${entity} type "${typeId}" cannot be reached through the NetworkComposer field that renders it: ${issues.join('; ')}`,
-          );
-        }
       }
+
+      for (const edge of stage.networkComposerEdges ?? []) {
+        this.assertComposerFormIsReachable(
+          'edge',
+          edge.subject.type,
+          edge.form?.fields,
+        );
+      }
+    }
+  }
+
+  /**
+   * One NetworkComposer form's fields, against the synthetic metadata of the
+   * type they write onto.
+   *
+   * Each form is judged on its own, exactly as the record refinement judges
+   * `nodeForm` and every `edges[].form` separately: a field's `component` and
+   * `parameters` are what that stage puts in front of the participant, and the
+   * check's own parameter fallback reads the codebook's window through a field
+   * that re-declares only the control.
+   */
+  private assertComposerFormIsReachable(
+    entity: 'node' | 'edge',
+    typeId: string,
+    fields: NetworkComposerFormFieldEntry[] | undefined,
+  ) {
+    if (fields === undefined || fields.length === 0) return;
+    const variables = (entity === 'node' ? this.nodeTypes : this.edgeTypes).get(
+      typeId,
+    )?.variables;
+    if (variables === undefined) return;
+
+    const codebookVariables: Record<string, Variable> = {};
+    for (const [varId, declared] of variables) {
+      if (declared.synthetic === undefined) continue;
+      codebookVariables[varId] = {
+        name: declared.name,
+        type: declared.type,
+        ...(declared.options !== undefined
+          ? { options: declared.options }
+          : {}),
+        ...(declared.validation !== undefined
+          ? { validation: declared.validation }
+          : {}),
+        ...(declared.parameters !== undefined
+          ? { parameters: declared.parameters }
+          : {}),
+        synthetic: declared.synthetic,
+      } as unknown as Variable;
+    }
+
+    const issues: string[] = [];
+    validateComposerRenderedSynthetic(
+      codebookVariables,
+      fields as never,
+      [],
+      (issue) => {
+        if (issue.message !== undefined) issues.push(issue.message);
+      },
+    );
+    if (issues.length > 0) {
+      throw new Error(
+        `Synthetic metadata on ${entity} type "${typeId}" cannot be reached through the NetworkComposer field that renders it: ${issues.join('; ')}`,
+      );
     }
   }
 
   private generationContext(today: string): GenerationContext {
     const rendered = this.composerRenderings(today);
-    this.assertRenderedSyntheticIsReachable(rendered);
+    this.assertRenderedSyntheticIsReachable();
 
     const constraintsOf = (
       variables: Map<string, VariableEntry>,

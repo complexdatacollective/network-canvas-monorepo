@@ -139,3 +139,49 @@ export const SummaryDisclosure: Story = {
     ).toBeVisible();
   },
 };
+
+/**
+ * The disclosure semantics above are only honest while the pill keeps focus:
+ * `aria-expanded` describes the control the user is on, and a keystroke the
+ * pill handles has to land on the pill. The summary opens on hover and on
+ * focus, so a panel that grabbed focus for itself would announce a state on a
+ * control the user had already been moved off — and would drag a mouse user
+ * out of whatever field they were typing in, just for passing over a pill.
+ * The panel is still reached the way a non-modal disclosure is reached: by
+ * tabbing forward from the control that announced it.
+ */
+export const SummaryLeavesFocusWhereTheUserIs: Story = {
+  render: ({ entity, type, uuid }) => (
+    <div className="bg-surface-2 flex max-w-full flex-col gap-4 rounded p-8">
+      <input aria-label="unrelated field" />
+      <ConnectedVariablePill entity={entity} type={type} uuid={uuid} />
+    </div>
+  ),
+  play: async () => {
+    const field = screen.getByLabelText('unrelated field');
+    field.focus();
+
+    const pill = await screen.findByRole('button', { name: PILL_NAME });
+
+    // A mouse user only pointed at the pill; their caret must stay put.
+    await userEvent.hover(pill);
+    await waitFor(() => expect(pill).toHaveAttribute('aria-expanded', 'true'));
+    await expect(await screen.findByRole('dialog')).toBeVisible();
+    await expect(document.activeElement).toBe(field);
+
+    // A keyboard user arriving on the pill stays on the pill, so the state it
+    // announces is the state of the control they are standing on.
+    pill.focus();
+    await waitFor(() => expect(pill).toHaveAttribute('aria-expanded', 'true'));
+    await expect(
+      await screen.findByRole('button', { name: 'Rename' }),
+    ).toBeVisible();
+    await expect(document.activeElement).toBe(pill);
+
+    // ...and the actions the pill promised are one Tab away.
+    await userEvent.tab();
+    await expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Rename' }),
+    );
+  },
+};

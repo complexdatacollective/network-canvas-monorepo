@@ -23,6 +23,13 @@ import { cx } from '~/utils/cva';
  * description: a screen reader user would hear the variable, receive no hint
  * that anything is reachable from it, and never learn that arriving on the
  * pill had revealed a panel of actions.
+ *
+ * The owner has to keep focus ON THE PILL when the popover opens — the pill
+ * opens on focus and on hover, so a panel that pulled focus into itself would
+ * announce `aria-expanded` on a control the user had already been moved off,
+ * put the pill's own keys out of reach, and take a mouse user's caret out of
+ * whatever they were typing in. The panel is reached the way any non-modal
+ * disclosure is: by tabbing on from the control that announced it.
  */
 export type VariablePillDisclosure = {
   /** True while the disclosed popover is on screen. */
@@ -30,7 +37,8 @@ export type VariablePillDisclosure = {
   /**
    * Opens the popover. Only ever opens: focus already opens it, and assistive
    * technology focuses a control before activating it, so a toggle here would
-   * close the popover that the very same keystroke had just revealed.
+   * close the popover that the very same keystroke had just revealed. It is
+   * what brings the panel back after a dismissal, since focus has not moved.
    */
   onActivate: () => void;
 };
