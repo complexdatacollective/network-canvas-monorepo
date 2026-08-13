@@ -276,6 +276,12 @@ const NameGenerator = (props: NameGeneratorProps) => {
     [form, passphrase, useEncryption, codebookForNodeType],
   );
 
+  // Tapping a node opens it for editing, which only exists when the stage has
+  // a form: a quick-add stage has none, and offering the tap anyway gives the
+  // node every clickable affordance — pointer cursor, press feedback, a
+  // toggle role — for something that does nothing.
+  const onNodeTapped = form ? handleSelectNode : undefined;
+
   const stageElement = usePortalTarget('stage');
   const isSmallScreen = useMediaQuery('(max-aspect-ratio: 3/4)');
   const isWideScreen = useMediaQuery('(min-aspect-ratio: 3/2)');
@@ -323,7 +329,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              onItemClick={handleSelectNode}
+              onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
               announcedName="Added Nodes"
@@ -338,7 +344,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              onItemClick={handleSelectNode}
+              onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
               announcedName="Added Nodes"

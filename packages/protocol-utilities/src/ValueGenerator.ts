@@ -209,7 +209,8 @@ export class ValueGenerator {
   }
 
   generateName(): string {
-    return this.source.stream('names').faker().person.firstName();
+    const faker = this.source.stream('names').faker();
+    return `${faker.person.firstName()} ${faker.person.lastName()}`;
   }
 
   generatePromptText(stageType: string): string {
@@ -287,27 +288,25 @@ export class ValueGenerator {
     constraints: VariableConstraints,
     source: Faker,
   ): string | undefined {
+    // Longest-preferred: node labels drive the label-fitting and reveal
+    // behaviour, so a name variable draws a full name wherever constraints
+    // allow — shorter forms are fallbacks for a declared cap, not the default.
     const firstName = source.person.firstName();
-    if (fitsLength(firstName, constraints)) return firstName;
-    if (
-      constraints.maxLength !== undefined &&
-      firstName.length > constraints.maxLength
-    ) {
-      return undefined;
-    }
-
     const lastName = source.person.lastName();
-    const firstAndLast = `${firstName} ${lastName}`;
-    if (fitsLength(firstAndLast, constraints)) return firstAndLast;
+    const fullName = `${firstName} ${lastName}`;
+    if (fitsLength(fullName, constraints)) return fullName;
+
     if (
       constraints.maxLength !== undefined &&
-      firstAndLast.length > constraints.maxLength
+      fullName.length > constraints.maxLength
     ) {
-      return undefined;
+      // The cap has no room for a full name; a first name alone may still fit.
+      return fitsLength(firstName, constraints) ? firstName : undefined;
     }
 
-    const fullName = `${firstName} ${source.person.middleName()} ${lastName}`;
-    return fitsLength(fullName, constraints) ? fullName : undefined;
+    // The full name sits under a declared floor: lengthen with a middle name.
+    const withMiddle = `${firstName} ${source.person.middleName()} ${lastName}`;
+    return fitsLength(withMiddle, constraints) ? withMiddle : undefined;
   }
 
   /**

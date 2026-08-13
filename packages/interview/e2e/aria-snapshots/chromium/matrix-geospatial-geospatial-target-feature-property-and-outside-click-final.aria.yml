@@ -6,7 +6,7 @@
   - button "Recenter Map"
   - status:
     - heading "Select the test tract for this person." [level=4]
-  - button "Ansel"
+  - button "Ansel Schneider"
   - button "Outside Selectable Areas" [disabled]
   - region "Map"
   - button "Toggle attribution"

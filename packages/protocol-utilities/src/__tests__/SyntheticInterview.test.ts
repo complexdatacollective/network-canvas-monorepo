@@ -2100,7 +2100,7 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Ansel',
+        name: 'Ansel Schneider',
         label: 'lucky',
         age: 64,
         small: 5,
@@ -2114,7 +2114,7 @@ describe('validation rules on generated nodes', () => {
         },
       },
       {
-        name: 'Rebecca',
+        name: 'Alvina Heaney',
         label: 'with slump',
         age: 79,
         small: 3,
@@ -2128,7 +2128,7 @@ describe('validation rules on generated nodes', () => {
         },
       },
       {
-        name: 'Alvina',
+        name: 'Monty Kirlin',
         label: 'denitrify',
         age: 48,
         small: -19,
@@ -2142,7 +2142,7 @@ describe('validation rules on generated nodes', () => {
         },
       },
       {
-        name: 'Georgia',
+        name: 'Elizabeth Christiansen-Littel',
         label: 'round outlying',
         age: 47,
         small: -21,

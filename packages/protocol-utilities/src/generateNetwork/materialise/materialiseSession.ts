@@ -205,23 +205,11 @@ export function materialiseSession(params: {
     finalPairsByType.set(edge.type, set);
   }
 
-  /**
-   * What each census asked about, answered after the walk rather than during
-   * it.
-   *
-   * A census answer is a claim about the network the session RETURNS. Read
-   * from the plan mid-walk it was a claim about the completed session instead:
-   * where `simulateDropOut` stops the walk after a census but before a later
-   * creator of the same edge type, the census called a pair linked on the
-   * strength of an edge that creator would have made, while the returned
-   * network — which never reached it — holds no such edge. The subject set is
-   * still a fact about the moment the census ran, so that is captured here;
-   * only the answers wait.
-   */
+  /** What each census asked and answered as its prompts ran. */
   const pendingCensus: {
     index: number;
     negativesOnly: boolean;
-    prompts: string[];
+    prompts: Set<string>[];
     subjectUids: string[];
   }[] = [];
 
@@ -804,9 +792,8 @@ export function materialiseSession(params: {
         source.stream('edges', 'unplanned', creation.edgeType),
       ).slice(0, outstanding);
 
-      // The census answers below read final membership, so a pair joined here
-      // has to join the set they read. Left out, the same pair would carry an
-      // edge and a negative nomination saying it has none.
+      // Keep the walk's final membership in sync with an edge the fallback
+      // added so later creators can reuse it rather than draw it again.
       const finalPairs =
         finalPairsByType.get(creation.edgeType) ?? new Set<string>();
       finalPairsByType.set(creation.edgeType, finalPairs);
@@ -952,12 +939,26 @@ export function materialiseSession(params: {
      * untouched by this — and a stage with no prompt-owned writes replays
      * exactly as it always did.
      */
+    const censusMembersByPrompt = new Map<number, Set<string>>();
     const promptOrderedEffects = [
       ...summary.edgeCreations.map((creation) => ({
         at: creation.promptIndex,
         run: () => {
           materialisePlannedEdges(creation);
           applyFallbackTopology(creation);
+          if (
+            stage.type === 'DyadCensus' ||
+            stage.type === 'TieStrengthCensus'
+          ) {
+            censusMembersByPrompt.set(
+              creation.promptIndex,
+              new Set(
+                draft.edges
+                  .filter((edge) => edge.type === creation.edgeType)
+                  .map((edge) => pairKey(edge.from, edge.to)),
+              ),
+            );
+          }
         },
       })),
       ...writes.flatMap((write) =>
@@ -982,9 +983,9 @@ export function materialiseSession(params: {
 
     // --- Stage metadata -------------------------------------------------
     if (stage.type === 'DyadCensus' || stage.type === 'TieStrengthCensus') {
-      // The pairs this census asked about, recorded now because the subject
-      // set is a fact about this moment in the walk. What it ANSWERS is
-      // settled once the walk is over — see `censusAnswers`.
+      // Both the subject set and each answer are facts about the moment that
+      // prompt ran. A later stage may create the same edge type, but the live
+      // interview does not retroactively rewrite the earlier census tuple.
       //
       // Read as a draft throughout: Architect previews a stage while it is
       // still being authored, and a missing subject or prompt must leave the
@@ -992,7 +993,15 @@ export function materialiseSession(params: {
       pendingCensus.push({
         index: i,
         negativesOnly: stage.type === 'TieStrengthCensus',
-        prompts: (stage.prompts ?? []).map((prompt) => prompt.createEdge),
+        prompts: (stage.prompts ?? []).map(
+          (prompt, promptIndex) =>
+            censusMembersByPrompt.get(promptIndex) ??
+            new Set(
+              draft.edges
+                .filter((edge) => edge.type === prompt.createEdge)
+                .map((edge) => pairKey(edge.from, edge.to)),
+            ),
+        ),
         subjectUids: censusSubjectUids ?? [],
       });
       // A FamilyPedigree's metadata — its committed membership snapshot and
@@ -1009,22 +1018,14 @@ export function materialiseSession(params: {
     currentStep = totalStages;
   }
 
-  // Census answers, settled against the network the session actually returns.
-  // A pair the walk joined is a "yes" — including one an earlier stage created
-  // and this census reused, exactly as the interview's own `edgeExists` reads
-  // it — and a pair left unjoined is an explicit negative nomination.
+  // Serialize the census snapshots after the walk. A pair joined before or by
+  // its prompt is a "yes"; a pair joined by a later prompt or stage remains the
+  // answer the participant gave at the time.
   // TieStrengthCensus records negatives only: a positive lives as the ordinal
   // value on the edge itself.
-  const walkedPairsByType = new Map<string, Set<string>>();
-  for (const edge of draft.edges) {
-    const set = walkedPairsByType.get(edge.type) ?? new Set<string>();
-    set.add(pairKey(edge.from, edge.to));
-    walkedPairsByType.set(edge.type, set);
-  }
   for (const census of pendingCensus) {
     const tuples: DyadCensusMetadataItem[] = [];
-    census.prompts.forEach((createEdge, promptIndex) => {
-      const members = walkedPairsByType.get(createEdge) ?? new Set<string>();
+    census.prompts.forEach((members, promptIndex) => {
       for (let a = 0; a < census.subjectUids.length; a++) {
         for (let b = a + 1; b < census.subjectUids.length; b++) {
           const uidA = census.subjectUids[a]!;

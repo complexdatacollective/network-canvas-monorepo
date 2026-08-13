@@ -6,7 +6,7 @@
   - button "Recenter Map"
   - status:
     - heading "Where does this person currently live?" [level=4]
-  - button "Ansel"
+  - button "Ansel Schneider"
   - button "Outside Selectable Areas"
   - region "Map"
   - navigation:

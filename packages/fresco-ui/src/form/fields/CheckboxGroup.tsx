@@ -107,6 +107,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
               className={groupOptionVariants({
                 size,
                 disabled: isOptionDisabled,
+                readOnly: Boolean(readOnly),
               })}
             >
               <Checkbox

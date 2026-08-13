@@ -1,10 +1,10 @@
 - main:
-  - text: Ansel and Alvina
-  - button "Ansel"
-  - button "Alvina"
+  - text: Ansel Schneider and Monty Kirlin
+  - button "Ansel Schneider"
+  - button "Monty Kirlin"
   - status:
     - 'heading "Prompt 2: know each other?" [level=2]'
-  - 'radiogroup "Ansel and Alvina Prompt 2: know each other?"':
+  - 'radiogroup "Ansel Schneider and Monty Kirlin Prompt 2: know each other?"':
     - radio "Yes"
     - radio "No"
   - navigation:

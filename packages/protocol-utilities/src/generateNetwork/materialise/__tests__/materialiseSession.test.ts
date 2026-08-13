@@ -160,6 +160,55 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
     expect(negatives.every(([, , , answer]) => !answer)).toBe(true);
   });
 
+  it('keeps census answers from the moment the census ran', () => {
+    const result = generateNetwork({
+      codebook: codebook(),
+      stages: [
+        nameGenerator,
+        stage({
+          ...dyadCensus,
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 0 },
+            },
+          },
+        }),
+        stage({
+          id: 'later-sociogram',
+          type: 'Sociogram',
+          synthetic: {
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 1 },
+            },
+          },
+          label: 'Later links',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'later-prompt',
+              text: 'Who knows whom?',
+              layout: { layoutVariable: 'layout' },
+              edges: { create: 'knows' },
+            },
+          ],
+        }),
+      ],
+      seed: 1,
+    });
+
+    expect(result.network.edges).toHaveLength(6);
+    const censusAnswers = (result.stageMetadata?.[1] ?? []) as [
+      number,
+      string,
+      string,
+      boolean,
+    ][];
+    expect(censusAnswers).toHaveLength(6);
+    expect(censusAnswers.every(([, , , answer]) => !answer)).toBe(true);
+  });
+
   it('links census tuple uids to materialised nodes', () => {
     const result = generateNetwork({
       codebook: codebook(),

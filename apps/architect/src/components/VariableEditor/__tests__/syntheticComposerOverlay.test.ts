@@ -130,6 +130,38 @@ describe('editor-approved synthetic drafts vs record-level Composer overlay', ()
     ).toBe(true);
   });
 
+  it('datetime window pinned out of reach by an anchored Composer RelativeDatePicker field', () => {
+    const dob = { name: 'DOB', type: 'datetime' } as const satisfies Variable;
+    const synthetic: VariableSynthetic = {
+      distribution: 'uniform',
+      min: '1950-01-01',
+      max: '1960-12-31',
+    } as VariableSynthetic;
+
+    const field = {
+      variable: 'dob',
+      component: 'RelativeDatePicker',
+      parameters: { anchor: '2000-01-01', before: 0, after: 0 },
+    };
+    const protocol = protocolWith({ dob: { ...dob } }, [field]);
+
+    const control = CurrentProtocolSchema.safeParse(protocol);
+    expect(control.success, `control invalid: ${issueText(control)}`).toBe(
+      true,
+    );
+
+    const editorErrors = validateAssembledVariable(
+      contextFor(dob, 'dob', protocol),
+      synthetic,
+    );
+    const saved = CurrentProtocolSchema.safeParse(
+      protocolWith({ dob: { ...dob, synthetic } }, [field]),
+    );
+
+    expect(saved.success).toBe(false);
+    expect(editorErrors).toBeDefined();
+  });
+
   it('boolean probabilityTrue a Composer Boolean field cannot draw', () => {
     const agreed = {
       name: 'Agreed',

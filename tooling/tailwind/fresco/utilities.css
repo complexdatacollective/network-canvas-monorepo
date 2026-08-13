@@ -7,7 +7,12 @@
 @custom-variant focus-visible-within (&:has(:focus-visible));
 
 @utility focus-styles {
-  @apply outline-2 outline-offset-3 transition-all duration-200 ease-in-out;
+  /* Transition only the outline this utility animates. `transition-all` here
+     would capture every property on the focused element for as long as
+     `:focus-visible` matches — re-tweening each frame of a script-driven
+     animation (a node's press scale, a dragged node's position) through a
+     200ms ease and smearing it visibly behind the input. */
+  @apply outline-2 outline-offset-3 transition-[outline-color,outline-offset,outline-width] duration-200 ease-in-out;
 }
 
 @utility focusable {

@@ -199,9 +199,9 @@ const COMPONENTS_BY_CONTROL = {
 // location have empty lists — they have no participant-facing control — so they
 // have no place in the input-control dropdown.
 type RenderableVariableType = {
-  [Type in keyof typeof VARIABLE_TYPE_COMPONENTS]: (typeof VARIABLE_TYPE_COMPONENTS)[Type]['length'] extends 0
-    ? never
-    : Type;
+  [
+    Type in keyof typeof VARIABLE_TYPE_COMPONENTS
+  ]: (typeof VARIABLE_TYPE_COMPONENTS)[Type]['length'] extends 0 ? never : Type;
 }[keyof typeof VARIABLE_TYPE_COMPONENTS];
 
 const variableTypeGroup = (

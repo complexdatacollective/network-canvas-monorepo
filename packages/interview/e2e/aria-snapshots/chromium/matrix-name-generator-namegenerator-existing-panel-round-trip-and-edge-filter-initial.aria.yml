@@ -4,8 +4,8 @@
   - button "Previous interview":
     - heading "Previous interview" [level=3]
   - listbox "Previous interview":
-    - option "Ansel"
-    - option "Rebecca"
+    - option "Ansel Schneider"
+    - option "Alvina Heaney"
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - button "Add a person":

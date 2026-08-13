@@ -1,13 +1,13 @@
 - main:
-  - text: Ansel and Alvina
-  - button "Ansel"
-  - button "Alvina"
+  - text: Ansel Schneider and Monty Kirlin
+  - button "Ansel Schneider"
+  - button "Monty Kirlin"
   - status:
     - heading "Do they know each other?" [level=2]:
       - text: ""
       - strong: know
       - text: ""
-  - radiogroup "Ansel and Alvina Do they know each other?":
+  - radiogroup "Ansel Schneider and Monty Kirlin Do they know each other?":
     - radio "Yes"
     - radio "No"
   - navigation:

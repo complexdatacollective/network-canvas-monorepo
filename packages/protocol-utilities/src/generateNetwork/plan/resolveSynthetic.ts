@@ -152,17 +152,15 @@ export type ResolvedVariableSynthetic =
   // Layout and location values are owned by the stages that place them.
   | { kind: 'stageOwned' };
 
-// 'name', 'nickname', 'firstName', 'first_name', … — endings are the signal;
-// anything else gets neutral words rather than today's incongruous
-// first-names-for-everything.
-const NAME_LIKE = /name$/;
+// Mirrors the interview runtime's label resolution: anything whose name
+// contains "name" is displayed as a node label and should draw a realistic
+// name. Everything else gets neutral words.
+const NAME_LIKE = /name/i;
 
 export function inferTextGenerator(
   variableName: string,
 ): SyntheticTextGenerator | 'neutralWords' {
-  return NAME_LIKE.test(variableName.trim().toLowerCase())
-    ? 'personName'
-    : 'neutralWords';
+  return NAME_LIKE.test(variableName.trim()) ? 'personName' : 'neutralWords';
 }
 
 /**

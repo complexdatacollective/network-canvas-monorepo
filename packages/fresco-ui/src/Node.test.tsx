@@ -13,13 +13,13 @@ describe('Node label layout', () => {
     const visibleLabel = within(node).getByText(label);
 
     expect(node).toHaveClass('aspect-square', 'min-w-0', 'shrink-0', 'size-24');
-    expect(visibleLabel).toHaveClass(
-      'w-[80%]',
-      'min-w-0',
-      'hyphens-auto',
-      'wrap-anywhere',
-      'line-clamp-3',
-    );
+    // line-clamp itself hides overflow, so containment needs no separate
+    // overflow class.
+    expect(visibleLabel).toHaveClass('w-[80%]', 'min-w-0', 'line-clamp-3');
+    // Word-breaking is not a base style: it would hide a too-long word from
+    // the fit ladder. Only the ladder's own floor rungs may break words.
+    expect(visibleLabel).not.toHaveClass('wrap-anywhere');
+    expect(visibleLabel).not.toHaveClass('hyphens-auto');
     expect(visibleLabel).toHaveTextContent(label);
   });
 

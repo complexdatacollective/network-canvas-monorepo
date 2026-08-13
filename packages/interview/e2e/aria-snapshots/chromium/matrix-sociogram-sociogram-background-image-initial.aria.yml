@@ -1,8 +1,8 @@
 - main:
   - application "Sociogram Canvas":
-    - button "Ansel"
-    - button "Rebecca"
-    - button "Alvina"
+    - button "Ansel Schneider"
+    - button "Alvina Heaney"
+    - button "Monty Kirlin"
   - button "Expand drawer": 0 unplaced
   - text: Drop here to remove
   - button "Hide instructions" [expanded]

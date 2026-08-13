@@ -1001,8 +1001,10 @@ describe('synthetic data conformance', () => {
 
     expect(unchecked).toEqual([]);
 
+    // Seed chosen so the draw produces multiple edges (see the >= 2 guard
+    // below); re-scan candidate seeds if generator draw order changes again.
     const { network } = generateNetwork({
-      seed: 11,
+      seed: 13,
       codebook,
       stages,
       config: { today },
@@ -1013,7 +1015,7 @@ describe('synthetic data conformance', () => {
 
   it('generates values that pass the real form validators for every legal rule', async () => {
     const { network } = generateNetwork({
-      seed: 11,
+      seed: 13,
       codebook,
       stages,
       config: { today },

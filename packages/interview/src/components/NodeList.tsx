@@ -211,7 +211,11 @@ const NodeList = memo(
           nodeId={node[entityPrimaryKeyProperty]}
           type={node.type}
           size={nodeSize}
-          onClick={() => onItemClick?.(node)}
+          // Wrapping an absent handler would still hand the node a function,
+          // which it reads as "this can be tapped" and answers with a pointer
+          // cursor and press feedback. A list whose nodes are only draggable
+          // must offer no click at all.
+          onClick={onItemClick ? () => onItemClick(node) : undefined}
         />
       ),
       [nodeSize, onItemClick],

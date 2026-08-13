@@ -7,12 +7,18 @@ import {
   type CurrentProtocol,
   type DatetimeSynthetic,
   DEFAULT_OPTION_WEIGHT,
+  isIsoDate,
   optionValueKey,
   rejectInvalidDatetimeSynthetic,
   type Variable,
   VariableSchema,
   type VariableSynthetic,
 } from '@codaco/protocol-validation';
+import {
+  dateWithinPickerRange,
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+} from '@codaco/shared-consts';
 
 /**
  * Pure draft model for the variable editor's "Synthetic data" section.
@@ -712,7 +718,8 @@ function composerOverlayIssues(
   for (const rendering of ctx.composerRenderings) {
     if (
       ctx.variable.type === 'datetime' &&
-      rendering.component === ComponentTypes.DatePicker
+      (rendering.component === ComponentTypes.DatePicker ||
+        rendering.component === ComponentTypes.RelativeDatePicker)
     ) {
       const parameters =
         rendering.parameters !== undefined
@@ -720,12 +727,35 @@ function composerOverlayIssues(
           : 'parameters' in ctx.variable
             ? ctx.variable.parameters
             : undefined;
-      const window = parameters as
+      let resolution: 'full' | 'month' | 'year' = 'full';
+      let window:
         | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
         | undefined;
+      if (rendering.component === ComponentTypes.RelativeDatePicker) {
+        const relative = parameters as
+          | { anchor?: string; before?: number; after?: number }
+          | undefined;
+        if (relative?.anchor === undefined || !isIsoDate(relative.anchor))
+          continue;
+        window = {
+          min: dateWithinPickerRange(
+            relative.anchor,
+            -(relative.before ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE),
+          ),
+          max: dateWithinPickerRange(
+            relative.anchor,
+            relative.after ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+          ),
+        };
+      } else {
+        window = parameters as
+          | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
+          | undefined;
+        resolution = window?.type ?? 'full';
+      }
       rejectInvalidDatetimeSynthetic(
         synthetic as DatetimeSynthetic,
-        window?.type ?? 'full',
+        resolution,
         window,
         {
           addIssue: (issue: { message?: string; path?: PropertyKey[] }) => {
