@@ -3,22 +3,14 @@ import type * as z from 'zod/mini';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { resolveVariableSynthetic } from '@codaco/protocol-utilities';
 import {
-  ComponentTypes,
   type CurrentProtocol,
-  type DatetimeSynthetic,
   DEFAULT_OPTION_WEIGHT,
-  isIsoDate,
   optionValueKey,
-  rejectInvalidDatetimeSynthetic,
   type Variable,
   VariableSchema,
   type VariableSynthetic,
+  validateComposerRenderedSynthetic,
 } from '@codaco/protocol-validation';
-import {
-  dateWithinPickerRange,
-  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
-  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
-} from '@codaco/shared-consts';
 
 /**
  * Pure draft model for the variable editor's "Synthetic data" section.
@@ -678,24 +670,30 @@ const describeIssue = (issue: SchemaIssue): string => {
 type OverlayIssue = { path: PropertyKey[]; message: string };
 
 /**
- * The record-level Composer overlay rejections, applied to the draft. The
- * variable schema can only judge the descriptor against the variable's OWN
- * component and parameters; the protocol record additionally superRefines
- * every NetworkComposer field's rendering of the variable
- * (validateComposerFieldSyntheticWindows /
- * validateComposerFieldBooleanProbabilities in schema.ts), because
- * `applyComposerRenderings` makes the field's control authoritative for the
- * values that stage generates. Run the same two checks here so a draft the
- * record will refuse is refused where the author can fix it, instead of
- * saving cleanly and surfacing later as a whole-protocol error anchored at
- * the stage.
+ * The record-level Composer overlay rejections, applied to the draft.
  *
- * The datetime half reuses the schema's own `rejectInvalidDatetimeSynthetic`
- * with the same window resolution (the field's parameters where declared,
- * the variable's otherwise). The Boolean half mirrors
- * `validateComposerFieldBooleanProbabilities`, which is not exported: a
- * componentless boolean whose sole offered option a Composer `Boolean` field
- * renders leaves `probabilityTrue` at the opposite end undrawable.
+ * The variable schema can only judge a descriptor against the variable's OWN
+ * component and parameters. The protocol record additionally refines every
+ * NetworkComposer field's rendering of it, because `applyComposerRenderings`
+ * makes the field's control authoritative for the values that stage
+ * generates — so a descriptor the lone variable accepts can still be one the
+ * protocol refuses, and an editor that could not see the overlay reported a
+ * save safe that then failed whole-protocol validation with its error
+ * anchored at a stage this dialog cannot show.
+ *
+ * The rules are `@codaco/protocol-validation`'s own
+ * (`validateComposerRenderedSynthetic`), called rather than restated. The copy
+ * this replaces agreed with them on every construction a protocol can
+ * actually hold — its Boolean exemption was written differently (any declared
+ * component, rather than a declared `Boolean`) but the two coincide, since a
+ * boolean carrying options is either componentless or `Boolean` and the schema
+ * refuses every other pairing. What changes is that agreement stops being a
+ * coincidence maintained by hand: the window arithmetic, the picker defaults
+ * and the one-sided option rule now have one definition, so a rule added to
+ * the record reaches this dialog without anyone remembering to copy it.
+ *
+ * The draft is adapted into the shape those rules read: the variable as
+ * edited, carrying the descriptor being judged, and one field per rendering.
  */
 function composerOverlayIssues(
   ctx: SyntheticDraftContext,
@@ -703,102 +701,41 @@ function composerOverlayIssues(
 ): OverlayIssue[] {
   const issues: OverlayIssue[] = [];
   if (!synthetic || !ctx.composerRenderings?.length) return issues;
-  const add = (issue: OverlayIssue) => {
-    if (
-      !issues.some(
-        (existing) =>
-          existing.message === issue.message &&
-          existing.path.join('.') === issue.path.join('.'),
-      )
-    ) {
-      issues.push(issue);
-    }
-  };
 
-  for (const rendering of ctx.composerRenderings) {
-    if (
-      ctx.variable.type === 'datetime' &&
-      (rendering.component === ComponentTypes.DatePicker ||
-        rendering.component === ComponentTypes.RelativeDatePicker)
-    ) {
-      const parameters =
-        rendering.parameters !== undefined
-          ? rendering.parameters
-          : 'parameters' in ctx.variable
-            ? ctx.variable.parameters
-            : undefined;
-      let resolution: 'full' | 'month' | 'year' = 'full';
-      let window:
-        | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
-        | undefined;
-      if (rendering.component === ComponentTypes.RelativeDatePicker) {
-        const relative = parameters as
-          | { anchor?: string; before?: number; after?: number }
-          | undefined;
-        if (relative?.anchor === undefined || !isIsoDate(relative.anchor))
-          continue;
-        window = {
-          min: dateWithinPickerRange(
-            relative.anchor,
-            -(relative.before ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE),
-          ),
-          max: dateWithinPickerRange(
-            relative.anchor,
-            relative.after ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER,
-          ),
-        };
-      } else {
-        window = parameters as
-          | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
-          | undefined;
-        resolution = window?.type ?? 'full';
-      }
-      rejectInvalidDatetimeSynthetic(
-        synthetic as DatetimeSynthetic,
-        resolution,
-        window,
-        {
-          addIssue: (issue: { message?: string; path?: PropertyKey[] }) => {
-            add({
-              message: issue.message ?? 'Synthetic window is not valid here',
-              // Kept at the descriptor path the helper writes (`synthetic`,
-              // bound) — unlike the record, which re-anchors at the stage
-              // field, this editor owns the control the bound came from.
-              path: issue.path ?? ['synthetic'],
-            });
-          },
-        } as unknown as Parameters<typeof rejectInvalidDatetimeSynthetic>[3],
-      );
-    }
+  const DRAFT = 'draft';
+  const fields = ctx.composerRenderings.map((rendering) => ({
+    variable: DRAFT,
+    component: rendering.component,
+    ...(rendering.parameters !== undefined
+      ? { parameters: rendering.parameters }
+      : {}),
+  }));
 
-    if (
-      ctx.variable.type === 'boolean' &&
-      rendering.component === ComponentTypes.Boolean &&
-      // A variable that declares the control already carries the rule itself
-      // (the variable schema rejects it), so only the componentless case is
-      // the overlay's to judge.
-      !('component' in ctx.variable && ctx.variable.component !== undefined)
-    ) {
-      const probabilityTrue = (synthetic as { probabilityTrue?: number })
-        .probabilityTrue;
-      const options =
-        'options' in ctx.variable && Array.isArray(ctx.variable.options)
-          ? (ctx.variable.options as { value: unknown }[])
-          : undefined;
-      if (probabilityTrue === undefined || !options) continue;
-      const offered = new Set(options.map((option) => option.value));
-      if (offered.size !== 1) continue;
+  validateComposerRenderedSynthetic(
+    { [DRAFT]: { ...ctx.variable, synthetic } as Variable },
+    fields as never,
+    [],
+    (issue: { message?: string; path?: PropertyKey[] }) => {
+      // The field index the shared rules lead with addresses a stage; this
+      // editor owns the control the bound came from, so it is dropped and the
+      // descriptor path behind it is what the error is anchored at.
+      const [, ...descriptorPath] = issue.path ?? [];
+      const candidate: OverlayIssue = {
+        message: issue.message ?? 'Synthetic window is not valid here',
+        path: descriptorPath.length > 0 ? descriptorPath : ['synthetic'],
+      };
       if (
-        (offered.has(false) && probabilityTrue > 0) ||
-        (offered.has(true) && probabilityTrue < 1)
+        !issues.some(
+          (existing) =>
+            existing.message === candidate.message &&
+            existing.path.join('.') === candidate.path.join('.'),
+        )
       ) {
-        add({
-          message: `A stage renders this variable with the "Boolean" control, where the only option offered is ${String(offered.has(true))} — a probability of ${probabilityTrue} can never be drawn.`,
-          path: ['synthetic', 'probabilityTrue'],
-        });
+        issues.push(candidate);
       }
-    }
-  }
+    },
+  );
+
   return issues;
 }
 

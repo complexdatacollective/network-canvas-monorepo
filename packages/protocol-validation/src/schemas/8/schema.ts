@@ -409,7 +409,11 @@ const validateComposerFieldBooleanProbabilities = (
     ) {
       addIssue({
         message: `NetworkComposer field for "${variable.name}" renders it with the "Boolean" control, where the only option offered is ${String(offered.has(true))} — probabilityTrue ${probabilityTrue} can never be drawn.`,
-        path: [...fieldsPath, fieldIndex],
+        // Suffixed with the descriptor path the datetime half also reports, so
+        // every issue this pair emits reads as (field, then what about the
+        // descriptor) — a consumer anchoring on its own draft can drop the
+        // field prefix and be left with a usable path.
+        path: [...fieldsPath, fieldIndex, 'synthetic', 'probabilityTrue'],
       });
     }
   });
