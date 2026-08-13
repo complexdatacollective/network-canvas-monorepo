@@ -353,7 +353,7 @@ export default function Node(props: UINodeProps) {
     );
 
   // Use the interaction hook for press animation
-  const { scope, nodeProps } = useNodeInteractions({
+  const { scope, nodeProps, isPressed } = useNodeInteractions({
     hasClickHandler,
     disabled,
   });
@@ -472,15 +472,26 @@ export default function Node(props: UINodeProps) {
   // the ring follows the shape's border radius and rotation)
   const [stateScope, animate] = useSafeAnimate<HTMLSpanElement>();
 
+  // The ring waits for the press that caused it to lift. Keyboard activation
+  // toggles state while the node is still depressed (Enter clicks on keydown;
+  // Space before the held-back release), and a ring springing in under a
+  // still-held press reads as the interface acting before the participant has
+  // finished. Announcements (`aria-pressed`) and the semantic data attribute
+  // stay immediate — only the ring is choreographed.
+  const [displayedSelected, setDisplayedSelected] = useState(selected);
+  useEffect(() => {
+    if (!isPressed) setDisplayedSelected(selected);
+  }, [isPressed, selected]);
+
   // Track previous states for animation transitions
-  const prevSelected = usePrevious(selected);
+  const prevSelected = usePrevious(displayedSelected);
   const prevHighlighted = usePrevious(highlighted);
 
   // Box-shadow animation for selected and highlighted states
   useEffect(() => {
     if (!stateScope.current) return;
 
-    const isActive = selected || highlighted;
+    const isActive = displayedSelected || highlighted;
     const wasActive = prevSelected === true || prevHighlighted === true;
 
     if (isActive && !wasActive) {
@@ -507,7 +518,7 @@ export default function Node(props: UINodeProps) {
       );
     }
   }, [
-    selected,
+    displayedSelected,
     highlighted,
     prevSelected,
     prevHighlighted,

@@ -11,9 +11,14 @@ import { useSafeAnimate } from './useSafeAnimate';
 /**
  * The least time a keyboard-initiated press stays visibly depressed. A quick
  * Enter or Space tap releases faster than the press spring can be seen at
- * all, which reads as the activation giving no feedback.
+ * all, which reads as the activation giving no feedback. The key press
+ * reaches full depth by KEY_PRESS_DOWN_S, so the whole tap cycle stays
+ * tight: down, a beat at the bottom, and a stiff spring back.
  */
-const MIN_KEY_PRESS_VISIBLE_MS = 150;
+const MIN_KEY_PRESS_VISIBLE_MS = 120;
+
+/** A key stroke is instantaneous, so its press dives rather than eases. */
+const KEY_PRESS_DOWN_S = 0.09;
 
 type UseNodeInteractionsOptions = {
   /** Whether the node has a click handler (enables press animation) */
@@ -151,7 +156,11 @@ export function useNodeInteractions(
       keyPressedAtRef.current = performance.now();
       if (enablePressAnimation && scope.current) {
         setIsPressed(true);
-        animate(scope.current, { scale: 0.92 });
+        animate(
+          scope.current,
+          { scale: 0.92 },
+          { duration: KEY_PRESS_DOWN_S, ease: 'easeOut' },
+        );
       }
     },
     [disabled, enablePressAnimation, animate, scope, cancelPendingKeyRelease],
