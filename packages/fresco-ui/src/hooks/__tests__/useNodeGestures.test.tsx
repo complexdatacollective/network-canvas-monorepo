@@ -144,6 +144,21 @@ describe('useNodeGestures: holds', () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
+  it('never lets a press interrupted by scrolling also tap', () => {
+    const onClickResult = vi.fn();
+    render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);
+
+    // A wheel or second finger scrolls while the pointer rests on the node;
+    // the release under the pointer still synthesizes a native click, but the
+    // gesture was classified as a scroll, not a tap.
+    press();
+    fireEvent.scroll(document);
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    fireEvent.click(target());
+
+    expect(onClickResult).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
   it('suppresses the click that follows a hold, exactly once', () => {
     const onClickResult = vi.fn();
     render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);

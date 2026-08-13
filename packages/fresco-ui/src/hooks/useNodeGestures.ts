@@ -335,8 +335,11 @@ export function useNodeGestures({
       const handleScroll = () => {
         // Scrolling under a still press means the gesture became a scroll:
         // abandon the hold, but a drag in flight is unaffected (its own
-        // touch-action already prevents scroll).
+        // touch-action already prevents scroll). A gesture classified as a
+        // scroll is not also a tap — if the node is still under the pointer
+        // on release, the click the browser synthesizes must be swallowed.
         if (draggingRef.current) return;
+        suppressClickRef.current = true;
         abandonHold();
         optionsRef.current.onHoldInterrupted?.();
       };
