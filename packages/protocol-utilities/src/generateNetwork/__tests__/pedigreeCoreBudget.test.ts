@@ -78,6 +78,45 @@ const hungryGenerator = {
   prompts: [{ id: 'p1', text: 'Name people' }],
 } as unknown as Stage;
 
+/**
+ * A creator's declared `minNodes` is a floor the live interface enforces — the
+ * stage will not let a participant leave below it — so a run that quietly
+ * builds fewer has produced a session no participant could have. Reserving a
+ * family's whole optional ceiling before ordinary floors were allocated did
+ * exactly that: a 9,998-person creator beside one default family came back
+ * with 9,968, and the refusal that should have caught it was weighing floors
+ * against the raw cap rather than against what the families leave.
+ */
+const flooredGenerator = {
+  ...hungryGenerator,
+  id: 'stage-floored',
+  behaviours: {
+    minNodes: MAX_SYNTHETIC_POPULATION - 2,
+    maxNodes: MAX_SYNTHETIC_POPULATION - 2,
+  },
+} as unknown as Stage;
+
+describe('a declared minimum beside a pedigree', () => {
+  it('is honoured, or the protocol is refused — never quietly trimmed', () => {
+    let built: number | undefined;
+    try {
+      const { network } = generateNetwork({
+        seed: 1,
+        codebook,
+        stages: [flooredGenerator, pedigree('stage-pedigree')],
+      });
+      built = network.nodes.filter(
+        (node) => node.stageId === 'stage-floored',
+      ).length;
+    } catch {
+      // Refusing is the other honest answer, and the one this shape takes
+      // once the floors are weighed against what the family reserves.
+      return;
+    }
+    expect(built).toBeGreaterThanOrEqual(MAX_SYNTHETIC_POPULATION - 2);
+  });
+});
+
 describe('the population cap holds across a pedigree', () => {
   // The ordering the first version of this test missed. A pedigree standing
   // BEFORE the stages that spend the budget sees an almost empty session and

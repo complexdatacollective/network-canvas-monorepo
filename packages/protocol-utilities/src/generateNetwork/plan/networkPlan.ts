@@ -46,7 +46,6 @@ import { completionCheckFor } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
 import type { GenerationContext } from '../context';
 import { MAX_REQUIRED_PEDIGREE_CORE } from '../familyPedigree/generateFamilyPedigree';
-import { DEFAULT_PEDIGREE_NODE_CEILING } from '../familyPedigree/stageCeiling';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { sampleContinuous, sampleCount } from './distributions';
 import { deterministicUuid, type RandomSource } from './random';
@@ -1217,14 +1216,6 @@ function assignRosterRows(
 export function planNetwork(
   ctx: GenerationContext,
   effects: StageEffects,
-  /**
-   * The most people ONE reachable pedigree can end up holding.
-   *
-   * Reserved rather than assumed, because a family is built during the walk
-   * and admits its required core whatever ceiling it is given. Defaulted for
-   * callers that weigh a plan without pedigrees in mind.
-   */
-  pedigreeNodeCeiling: number = DEFAULT_PEDIGREE_NODE_CEILING,
 ): NetworkPlan {
   const source = ctx.valueGen.randomSource;
   const missing = missingProbabilities(ctx.codebook);
@@ -1448,26 +1439,28 @@ export function planNetwork(
   // the only place that can hold something back from a draw that ignores
   // ceilings.
   let populationBudget = MAX_SYNTHETIC_POPULATION;
+  let pedigreeRequiredReserve = 0;
   {
     let pedigreeStages = 0;
     for (const summary of walked.stages) {
       if (settledAsSkipped(summary)) continue;
       if (summary.pedigree !== undefined) pedigreeStages += 1;
     }
-    // The whole CEILING a family may reach, not merely the core it is
-    // guaranteed. Reserving the core alone held only where every pedigree ran
-    // after the stages that spend the budget: a pedigree standing FIRST sees
-    // an almost empty session, grows to its own ceiling, and the people this
-    // plan has already committed to later stages are then materialised on top
-    // of it — a cap of 10,000 reaching 10,016, and 10,041 for three families.
-    // A family cannot exceed its ceiling, so setting that aside makes the cap
-    // hold whatever order the stages are in.
-    populationBudget = Math.max(
-      0,
-      populationBudget -
-        pedigreeStages *
-          Math.max(pedigreeNodeCeiling, MAX_REQUIRED_PEDIGREE_CORE),
-    );
+    // Only the REQUIRED core is reserved here — the part that bypasses every
+    // ceiling and so must be held back before anything else is allocated.
+    //
+    // Reserving a family's whole optional ceiling instead made the cap hold in
+    // any stage order, but at the price of the other guarantee this plan
+    // owes: a creator's declared `minNodes` is a floor the live interface
+    // enforces, and taking 32 from the budget before ordinary floors were
+    // allocated silently trimmed a 9,998-person creator to 9,968 — a
+    // completed session no participant could have produced. A family's
+    // OPTIONAL growth is discretionary, so it is settled where the family is
+    // built, against what the plan has actually left unspent
+    // (`materializeFamilyPedigree` subtracts the nodes still to be
+    // materialised as well as those already placed).
+    pedigreeRequiredReserve = pedigreeStages * MAX_REQUIRED_PEDIGREE_CORE;
+    populationBudget = Math.max(0, populationBudget - pedigreeRequiredReserve);
     // Where the required cores ALONE cannot fit, no allocation can honour
     // them: the cores bypass every ceiling, so trimming elsewhere would not
     // help and the run would silently exceed the bound it exists to keep.
@@ -1513,7 +1506,12 @@ export function planNetwork(
       );
       typeFloors.set(type, floors);
       floorTotal += floors;
-      if (floorTotal > MAX_SYNTHETIC_POPULATION) {
+      // Weighed against what the reachable pedigrees leave, not the raw cap:
+      // their required cores are spoken for before any ordinary person is,
+      // so floors that fit the cap but not the remainder are floors this run
+      // cannot honour — and honouring them silently was the trim this refusal
+      // exists to prevent.
+      if (floorTotal > MAX_SYNTHETIC_POPULATION - pedigreeRequiredReserve) {
         throw new SyntheticDataConstraintError(
           [
             {
