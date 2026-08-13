@@ -676,11 +676,22 @@ export class ValueGenerator {
         const { min, max } = selectionSizeRange(variable);
         const resolved = this.resolvedFor(entry);
         if (resolved.kind === 'categorical') {
+          const declaredEmptySelection =
+            entry.synthetic !== undefined &&
+            'selectionCount' in entry.synthetic &&
+            entry.synthetic.selectionCount?.probabilities.some(
+              (selection) => selection.count === 0,
+            ) === true;
           // The resolved table already respects the variable's own
           // validation; the constraint window can only be narrower (e.g. a
-          // composer rendering), so illegal counts are dropped here.
+          // composer rendering), so illegal counts are dropped here. An
+          // explicitly declared empty selection is an answered value distinct
+          // from missingness, so it deliberately lowers the ordinary sample
+          // floor of one.
           const legal = resolved.selectionCounts.filter(
-            (entry_) => entry_.count >= min && entry_.count <= max,
+            (entry_) =>
+              entry_.count >= (declaredEmptySelection ? 0 : min) &&
+              entry_.count <= max,
           );
           const count =
             legal.length > 0

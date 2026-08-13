@@ -179,7 +179,7 @@ function NodeSyntheticControl({
               label="Mean"
               value={count.mean}
               onChange={(next) => patch({ mean: next ?? 0 })}
-              min={0}
+              min={count.distribution === 'poisson' ? 0 : undefined}
             />
           )}
           {count.distribution === 'normal' && (
@@ -529,7 +529,7 @@ const pruned = (
  * editors take the same shape: the schema validates the block as a whole, and
  * a half-written descriptor is not a state the protocol can hold.
  */
-const SyntheticField = ({
+export const SyntheticField = ({
   value,
   onChange,
   showCount,

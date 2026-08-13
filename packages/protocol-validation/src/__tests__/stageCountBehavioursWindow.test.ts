@@ -85,4 +85,30 @@ describe('synthetic count vs behaviours window (verify-15)', () => {
     );
     expect(result.success).toBe(true);
   });
+
+  it.each([
+    {
+      label: 'normal',
+      count: { distribution: 'normal', mean: 8, sd: 3 },
+    },
+    {
+      label: 'poisson',
+      count: { distribution: 'poisson', mean: 8 },
+    },
+  ])(
+    'rejects an open $label count whose sampler ceiling is below minNodes',
+    ({ count }) => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWith(disjointStage({ minNodes: 30 }, count)),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: expect.arrayContaining(['synthetic', 'count']),
+          message: expect.stringContaining('can reach at most'),
+        }),
+      );
+    },
+  );
 });

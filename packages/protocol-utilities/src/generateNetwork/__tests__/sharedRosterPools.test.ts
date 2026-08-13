@@ -41,6 +41,19 @@ const rosterStage = (id: string, count: number) => ({
   prompts: [{ id: `${id}-p`, text: 'Pick people' }],
 });
 
+const panelStage = (id: string, count: number) => ({
+  id,
+  type: 'NameGenerator',
+  label: id,
+  subject: { entity: 'node', type: 'person' },
+  form: { title: 'Add a person', fields: [] },
+  synthetic: { count: { distribution: 'constant', value: count } },
+  panels: [
+    { id: `${id}-panel`, title: 'Known people', dataSource: 'existing' },
+  ],
+  prompts: [{ id: `${id}-p`, text: 'Name people' }],
+});
+
 const codebook = {
   node: {
     person: {
@@ -53,7 +66,7 @@ const codebook = {
 } as never;
 
 const run = (
-  stages: ReturnType<typeof rosterStage>[],
+  stages: (ReturnType<typeof rosterStage> | ReturnType<typeof panelStage>)[],
   externalData: Record<string, NcNode[]>,
   seed = 1,
 ) => generateNetwork({ seed, codebook, stages: stages as never, externalData });
@@ -76,6 +89,23 @@ describe('two roster stages over one pool', () => {
       );
       expect(new Set(names).size, `seed ${seed}`).toBe(names.length);
     }
+  });
+});
+
+describe('a panel-backed generator before a closed roster', () => {
+  it('leaves a shared row for the roster and fabricates its own person', () => {
+    const shared = poolOf('shared');
+    const { network } = run(
+      [panelStage('panel', 1), rosterStage('roster', 1)],
+      { panel: shared, roster: shared },
+    );
+
+    expect(network.nodes).toHaveLength(2);
+    const rosterNodes = network.nodes.filter(
+      (node) => node.stageId === 'roster',
+    );
+    expect(rosterNodes).toHaveLength(1);
+    expect(rosterNodes[0]?.attributes.name).toBe('Person shared');
   });
 });
 

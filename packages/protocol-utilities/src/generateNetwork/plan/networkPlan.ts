@@ -1008,15 +1008,15 @@ function assignRosterRows(
     promptIndex: number;
     wanted: number;
     pool: string[];
+    binding: boolean;
   }[] = [];
   creations.forEach((creation, index) => {
-    // Only a roster interface's pool binds. A name generator's panel is a
-    // shortcut for naming someone already known, not a closed list — it can
-    // always add someone the panel does not mention — so it is neither
-    // assigned rows nor held to the pool's size.
-    if (creation.source !== 'roster' || creation.rosterStageId === undefined) {
-      return;
-    }
+    // A panel-backed name generator can fabricate, so its pool does not bind
+    // its final count. It still consumes panel rows before fabricating,
+    // however, and therefore has to participate in the same assignment as a
+    // closed roster that shares those rows. Closed rosters are served first;
+    // a panel receives only rows left for it and fabricates any shortfall.
+    if (creation.rosterStageId === undefined) return;
     const pool = ctx.externalData?.[creation.rosterStageId];
     if (pool === undefined) return;
     const promptCount = promptsOf(creation).length;
@@ -1048,6 +1048,7 @@ function assignRosterRows(
         promptIndex,
         wanted: slots,
         pool: usable,
+        binding: creation.source === 'roster',
       });
     }
   });
@@ -1097,7 +1098,9 @@ function assignRosterRows(
   }
 
   const order = [...pools.keys()].toSorted(
-    (left, right) => pools.get(left)!.length - pools.get(right)!.length,
+    (left, right) =>
+      Number(demands[right]!.binding) - Number(demands[left]!.binding) ||
+      pools.get(left)!.length - pools.get(right)!.length,
   );
   const unmatched = new Map<number, number>();
   const preference = new Map<number, Map<number, string[]>>();
@@ -1135,17 +1138,23 @@ function assignRosterRows(
   // flattened ordering let prompt 0 take `a` first all the same, leaving
   // prompt 1 to reject `b` and the stage seed-dependently short of a count
   // that was satisfiable.
+  for (const creationIndex of contestedCreations) {
+    preference.set(creationIndex, new Map());
+  }
   for (const [demandIndex, uids] of matched.chosen) {
     const { creationIndex, promptIndex } = demands[demandIndex]!;
     if (!contestedCreations.has(creationIndex)) continue;
-    const byPrompt =
-      preference.get(creationIndex) ?? new Map<number, string[]>();
+    const byPrompt = preference.get(creationIndex)!;
     byPrompt.set(promptIndex, [...(byPrompt.get(promptIndex) ?? []), ...uids]);
     preference.set(creationIndex, byPrompt);
   }
 
   for (const [index, short] of unmatched) {
     const creation = creations[index]!;
+    // A panel is an open shortcut: the matching decides which shared rows it
+    // may consume, and it fabricates the rest of its assigned population.
+    // Only a closed roster can be under-provisioned by a short match.
+    if (creation.source !== 'roster') continue;
     const wanted = assigned[index] ?? 0;
 
     // An UNDECLARED roster stage is only carrying the generic 1-8 fallback,
@@ -1549,13 +1558,21 @@ export function planNetwork(
 
     // Roster stages draw real rows without replacement across the run. Built
     // before any draw so the values they carry can be held back from it.
-    const rosterPools = creations.map((creation) => {
+    const rosterPools = creations.map((creation, creationIndex) => {
       if (creation.rosterStageId === undefined) return undefined;
       const pool = ctx.externalData?.[creation.rosterStageId];
       if (pool === undefined) return undefined;
+      const assignedPanelRows = rosterPreference.get(creationIndex);
+      const allowedPanelUids =
+        creation.source !== 'roster' && assignedPanelRows !== undefined
+          ? new Set([...assignedPanelRows.values()].flat())
+          : undefined;
       const available = shuffled(
         pool.filter(
-          (row) => !ctx.usedRosterUids.has(row[entityPrimaryKeyProperty]),
+          (row) =>
+            !ctx.usedRosterUids.has(row[entityPrimaryKeyProperty]) &&
+            (allowedPanelUids === undefined ||
+              allowedPanelUids.has(row[entityPrimaryKeyProperty])),
         ),
         source.stream('roster', creation.rosterStageId),
       );
@@ -1937,7 +1954,10 @@ export function planNetwork(
     bySubject: Map<
       string,
       {
+        /** Union across stages, retained for the synchronous pair cap. */
         domain: Map<string, EligiblePair>;
+        /** Eligible pairs accumulated only within one (stage, edge type). */
+        domainsByTopology: Map<string, Map<string, EligiblePair>>;
         edges: PlannedEdge[];
         taken: Set<string>;
       }
@@ -2063,6 +2083,7 @@ export function planNetwork(
       if (existing) return existing;
       const created = {
         domain: new Map<string, EligiblePair>(),
+        domainsByTopology: new Map<string, Map<string, EligiblePair>>(),
         edges: [] as PlannedEdge[],
         taken: new Set<string>(),
       };
@@ -2071,9 +2092,14 @@ export function planNetwork(
     };
     const {
       domain,
+      domainsByTopology,
       edges: subjectEdges,
       taken,
     } = subjectState(creation.subjectNodeType);
+    const targetKey = topologyKey(creation);
+    const targetDomain =
+      domainsByTopology.get(targetKey) ?? new Map<string, EligiblePair>();
+    domainsByTopology.set(targetKey, targetDomain);
     for (const [key, pair] of eligiblePairsForCreation(
       ctx,
       creation,
@@ -2084,6 +2110,7 @@ export function planNetwork(
       walked,
     )) {
       if (!domain.has(key)) domain.set(key, pair);
+      if (!targetDomain.has(key)) targetDomain.set(key, pair);
     }
     // The ACCUMULATED domain, which the per-creation ceiling does not bound.
     // Where filters are respected, each stage can expose a different subset
@@ -2101,24 +2128,28 @@ export function planNetwork(
         `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
       );
     }
-    if (domain.size === 0) continue;
+    if (targetDomain.size === 0) continue;
 
-    const target = topologyTargets.get(topologyKey(creation));
+    const target = topologyTargets.get(targetKey);
     if (target === undefined) continue;
 
     const eligibleNodeCount = new Set(
-      [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
+      [...targetDomain.values()].flatMap((pair) => [pair.a, pair.b]),
     ).size;
-    // Still measured over the domain accumulated so far and reduced by what
-    // this type already holds, not by this creation's own contribution
-    // alone: two stages declaring 0.5 over overlapping pairs describe one
-    // graph at 0.5, not 0.75.
+    const existingInTargetDomain = subjectEdges.filter((edge) =>
+      targetDomain.has(pairKey(edge.from, edge.to)),
+    ).length;
+    // A topology belongs to its stage, so earlier edges count only where they
+    // are inside this stage's own eligible domain. Edges from a disjoint stage
+    // remain in the safety union above but cannot satisfy this target.
     const outstanding =
-      topologyTarget(target, domain.size, eligibleNodeCount) -
-      subjectEdges.length;
+      topologyTarget(target, targetDomain.size, eligibleNodeCount) -
+      existingInTargetDomain;
     if (outstanding <= 0) continue;
 
-    const available = [...domain.entries()].filter(([key]) => !taken.has(key));
+    const available = [...targetDomain.entries()].filter(
+      ([key]) => !taken.has(key),
+    );
     for (const [key, pair] of shuffled(available, state.edgeStream).slice(
       0,
       outstanding,

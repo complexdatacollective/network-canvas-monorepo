@@ -166,6 +166,25 @@ describe('codebook selectors', () => {
       expect(result).toMatchSnapshot();
     });
 
+    it('treats a dotted variable UUID as a literal key', () => {
+      const variable = { name: 'Age', type: 'number' };
+      const state = {
+        activeProtocol: {
+          present: {
+            codebook: {
+              node: {
+                person: { variables: { 'person.age': variable } },
+              },
+              edge: {},
+              ego: { variables: {} },
+            },
+          },
+        },
+      } as unknown as RootState;
+
+      expect(makeGetVariable('person.age')(state)).toBe(variable);
+    });
+
     it('returns null if variable is not found', () => {
       const result = makeGetVariable('not found')(
         testState as unknown as RootState,

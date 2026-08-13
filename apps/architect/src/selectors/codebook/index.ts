@@ -271,7 +271,7 @@ export const makeGetVariable = (uuid: string) => (state: RootState) => {
   const codebook = getCodebook(state);
   if (!codebook) return null;
   const variables = getAllVariablesByUUID(codebook);
-  return get(variables, uuid, null);
+  return variables[uuid] ?? null;
 };
 
 // Main selector for getting variable options. Its inputs are chosen for

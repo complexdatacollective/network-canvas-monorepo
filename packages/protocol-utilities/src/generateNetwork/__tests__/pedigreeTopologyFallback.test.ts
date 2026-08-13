@@ -284,14 +284,9 @@ describe('a composer edge form over a pedigree', () => {
   });
 });
 
-describe('two walk-time creators whose subject sets overlap', () => {
-  it('targets the union of their domains, not each in turn', () => {
-    // Neither census's subject set contains the other's, so a target measured
-    // over each in turn is a target over neither: the first spends its share
-    // on its own pairs, and the second re-measures against a domain that never
-    // includes the pairs only the first could see.
-    const density = 0.5;
-    const overlapping = {
+describe('two walk-time creators over disjoint filtered subjects', () => {
+  it("measures each stage topology over that stage's own domain", () => {
+    const filtered = {
       node: {
         person: {
           name: 'Person',
@@ -309,24 +304,21 @@ describe('two walk-time creators whose subject sets overlap', () => {
           name: 'Knows',
           color: 'edge-color-seq-1',
           variables: {},
-          synthetic: {
-            metric: 'density',
-            topology: {
-              metric: 'density',
-              distribution: { distribution: 'constant', value: density },
-            },
-          },
         },
       },
     } as unknown as Codebook;
 
-    const censusExcluding = (id: string, relationship: string): Stage =>
+    const filteredCensus = (
+      id: string,
+      operator: 'EXACTLY' | 'NOT',
+      density: number,
+    ): Stage =>
       ({
         id,
         type: 'DyadCensus',
         label: 'Who knows whom',
         subject: { entity: 'node', type: 'person' },
-        synthetic: densityTopology(0.5),
+        synthetic: densityTopology(density),
         prompts: [{ id: `${id}-p1`, text: 'Which?', createEdge: 'knows' }],
         filter: {
           join: 'AND',
@@ -337,8 +329,8 @@ describe('two walk-time creators whose subject sets overlap', () => {
               options: {
                 type: 'person',
                 attribute: 'relationship',
-                operator: 'NOT',
-                value: relationship,
+                operator,
+                value: 'Parent',
               },
             },
           ],
@@ -348,26 +340,21 @@ describe('two walk-time creators whose subject sets overlap', () => {
     for (let seed = 1; seed <= 10; seed++) {
       const { network } = generateNetwork({
         seed,
-        codebook: overlapping,
+        codebook: filtered,
         stages: [
           pedigree,
-          censusExcluding('census-a', 'Parent'),
-          censusExcluding('census-b', 'Sibling'),
+          filteredCensus('parents', 'EXACTLY', 1),
+          filteredCensus('non-parents', 'NOT', 0.5),
         ],
         respectSkipLogicAndFiltering: true,
       });
 
       const people = network.nodes.filter((node) => node.type === 'person');
-      const relationshipOf = (uid: string) =>
-        people.find((node) => node[entityPrimaryKeyProperty] === uid)?.[
-          'attributes' as never
-        ] as unknown as Record<string, unknown> | undefined;
-
-      const pairsOf = (excluded: string) => {
-        const set = people.filter(
-          (node) =>
-            (relationshipOf(node[entityPrimaryKeyProperty])?.relationship ??
-              null) !== excluded,
+      const pairsOf = (parents: boolean) => {
+        const set = people.filter((node) =>
+          parents
+            ? node.attributes.relationship === 'Parent'
+            : node.attributes.relationship !== 'Parent',
         );
         const keys = new Set<string>();
         for (let a = 0; a < set.length; a++) {
@@ -383,11 +370,16 @@ describe('two walk-time creators whose subject sets overlap', () => {
         return keys;
       };
 
-      const union = new Set([...pairsOf('Parent'), ...pairsOf('Sibling')]);
+      const parentPairs = pairsOf(true);
+      const otherPairs = pairsOf(false);
       const knows = network.edges.filter((edge) => edge.type === 'knows');
+      const edgesInside = (pairs: Set<string>) =>
+        knows.filter((edge) => pairs.has(pairKey(edge.from, edge.to))).length;
 
-      expect(union.size).toBeGreaterThan(0);
-      expect(knows).toHaveLength(Math.round(density * union.size));
+      expect(parentPairs.size).toBeGreaterThan(0);
+      expect(otherPairs.size).toBeGreaterThan(0);
+      expect(edgesInside(parentPairs)).toBe(parentPairs.size);
+      expect(edgesInside(otherPairs)).toBe(Math.round(otherPairs.size * 0.5));
     }
   });
 });

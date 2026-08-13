@@ -1504,6 +1504,80 @@ describe('planNetwork edges', () => {
     }
   });
 
+  it("measures each stage topology over that stage's eligible domain", () => {
+    const codebook = withEdgeType(
+      baseCodebook({ group: { name: 'Group', type: 'boolean' } }),
+      'knows',
+    );
+    const groupCreator = (id: string, value: boolean) =>
+      nameGenerator(
+        {
+          id,
+          prompts: [
+            {
+              id: `${id}-p`,
+              text: 'Who?',
+              additionalAttributes: [{ variable: 'group', value }],
+            },
+          ],
+        },
+        3,
+      );
+    const groupCensus = (id: string, value: boolean, density: number) =>
+      stage({
+        id,
+        type: 'DyadCensus',
+        label: id,
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: { title: 't', text: 'x' },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: density },
+          },
+        },
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: `${id}-filter`,
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'group',
+                operator: 'EXACTLY',
+                value,
+              },
+            },
+          ],
+        },
+        prompts: [{ id: `${id}-p`, text: 'Know?', createEdge: 'knows' }],
+      });
+
+    const result = plan(
+      codebook,
+      [
+        groupCreator('group-a', true),
+        groupCreator('group-b', false),
+        groupCensus('census-a', true, 1),
+        groupCensus('census-b', false, 0.5),
+      ],
+      { respectSkipLogicAndFiltering: true },
+    );
+
+    const byGroup = new Map(
+      result.nodes.map((node) => [node.uid, node.attributes.group]),
+    );
+    const edgesFor = (value: boolean) =>
+      result.edges.filter(
+        (edge) =>
+          byGroup.get(edge.from) === value && byGroup.get(edge.to) === value,
+      );
+
+    expect(edgesFor(true)).toHaveLength(3);
+    expect(edgesFor(false)).toHaveLength(2);
+  });
+
   it('defaults an edge type with no creating stage to no edges', () => {
     const codebook = withEdgeType(baseCodebook(), 'knows');
     const result = plan(codebook, [nameGenerator({}, 5)]);

@@ -1014,6 +1014,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
             entity: 'edge',
             entityType: edgeType,
             variableId,
+            subjectNodeType: nodeType,
             mode: 'form',
           });
         }

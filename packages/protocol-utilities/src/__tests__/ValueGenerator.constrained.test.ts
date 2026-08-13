@@ -617,6 +617,26 @@ describe('generateConstrained', () => {
     }
   });
 
+  it('preserves a declared empty categorical selection', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' },
+      ],
+      synthetic: {
+        selectionCount: {
+          probabilities: [{ count: 0, probability: 1 }],
+        },
+      },
+    });
+
+    expect(gen.generateConstrained(variable, 0, SCOPE)).toEqual([]);
+  });
+
   // The schema requires a categorical to offer two options but not two values,
   // so an imported protocol can list one value under two labels. A selection is
   // a set: picking both entries hands back one value, which is a shorter answer

@@ -4,6 +4,7 @@ import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   StageNodeSyntheticSchema,
   type SyntheticCount,
+  syntheticCountCeiling,
 } from '../codebook/synthetic.ts';
 import {
   FormSchema,
@@ -40,9 +41,8 @@ export const nameGeneratorBehavioursSchema = z
  * The node counts a synthetic count declaration can actually land on, as an
  * inclusive [floor, ceiling] window. A constant names one value and uniform
  * declares both ends; for the clamped families an explicit bound pins its
- * side, while an unbounded side falls back to the distribution's own support
- * — every family draws non-negative counts, and nothing but an explicit
- * `max` caps a poisson or normal draw from above.
+ * side, while an unbounded side falls back to the same finite six-deviation
+ * ceiling the sampler uses. Every family draws non-negative counts.
  */
 const syntheticCountRange = (
   count: SyntheticCount,
@@ -56,7 +56,7 @@ const syntheticCountRange = (
     case 'normal':
       return {
         floor: count.min ?? 0,
-        ceiling: count.max ?? Number.POSITIVE_INFINITY,
+        ceiling: syntheticCountCeiling(count),
       };
   }
 };

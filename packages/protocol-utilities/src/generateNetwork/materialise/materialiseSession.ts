@@ -187,20 +187,15 @@ export function materialiseSession(params: {
   const materialisedEdges = new Set<string>();
 
   /**
-   * The domain each walk-time topology is measured over, keyed by edge type
-   * AND subject node type (see `walkDomainKey`), grown as the walk meets
-   * creators of that type.
-   *
-   * Accumulated across creations and stages, not recomputed per creator, for
-   * the reason the planner accumulates its own: two creators of one type can
-   * have overlapping but different filtered subject sets, and a target
-   * measured over each in turn is a target over neither. Two four-node
-   * domains sharing two nodes at density 0.5 span eleven pairs and want six
-   * edges; taken separately they want three and then three-less-the-shared,
-   * which is five.
+   * Walk-time pairs have two scopes. The type-and-subject union bounds the
+   * total synchronous work across stages, while each (stage, edge type) target
+   * is measured only over the eligible pairs that stage can actually see.
+   * Prompts on one stage share a topology key and therefore still share one
+   * accumulated target.
    */
   const walkPairsByType = new Map<string, Set<string>>();
-  const walkNodesByType = new Map<string, Set<string>>();
+  const walkPairsByTopology = new Map<string, Set<string>>();
+  const walkNodesByTopology = new Map<string, Set<string>>();
 
   // Final pair membership per edge type, for the walk-time topology fallback.
   const finalPairsByType = new Map<string, Set<string>>();
@@ -706,9 +701,9 @@ export function materialiseSession(params: {
           .filter((edge) => edge.type === creation.edgeType)
           .map((edge) => pairKey(edge.from, edge.to)),
       );
-      // Measured over the whole subject graph and reduced by what that graph
-      // already holds, rather than targeted independently at the partition
-      // this block can add to.
+      // Measured over this stage's whole subject graph and reduced by what
+      // that graph already holds, rather than targeted independently at the
+      // partition this block can add to.
       //
       // Two reasons, and mean degree is the one that makes it necessary. It is
       // a property of a graph, not of a subset: the plan has already emitted
@@ -720,25 +715,24 @@ export function materialiseSession(params: {
       // density again to what the last pass left: two passes at 0.5 leaving
       // 0.75. Counting what exists towards the target settles both.
       //
-      // The domain is also carried between creators rather than rebuilt for
-      // each, so two whose filtered subject sets overlap without matching are
-      // measured over their union.
-      //
-      // Kept per (edge type, SUBJECT node type), as the plan keeps its own
-      // domains. A pair is two nodes of one type, so creators over different
-      // types reach disjoint pairs — and a domain spanning both let a
-      // density-1 creator over `place` put its pairs into the target measured
-      // for a later density-0.5 creator over `person`, which then subtracted
-      // the place edge and made fewer person edges than `person`'s own
-      // declared topology asks for.
+      // Prompts on the same stage share the topology key, so a duplicate
+      // prompt does not apply the density twice. Different stages keep their
+      // own target domains: an edge a disjoint earlier stage created cannot
+      // satisfy what this one declared. The type-and-subject union beside it
+      // exists only to cap their aggregate pair-enumeration cost.
       const domainKey = walkDomainKey(
         creation.edgeType,
         creation.subjectNodeType,
       );
-      const domainPairs = walkPairsByType.get(domainKey) ?? new Set<string>();
-      walkPairsByType.set(domainKey, domainPairs);
-      const domainNodes = walkNodesByType.get(domainKey) ?? new Set<string>();
-      walkNodesByType.set(domainKey, domainNodes);
+      const safetyPairs = walkPairsByType.get(domainKey) ?? new Set<string>();
+      walkPairsByType.set(domainKey, safetyPairs);
+      const targetKey = topologyKey(creation);
+      const domainPairs =
+        walkPairsByTopology.get(targetKey) ?? new Set<string>();
+      walkPairsByTopology.set(targetKey, domainPairs);
+      const domainNodes =
+        walkNodesByTopology.get(targetKey) ?? new Set<string>();
+      walkNodesByTopology.set(targetKey, domainNodes);
 
       // Counted BEFORE this creation's pairs are built, for the reason the
       // plan counts its own: pairs grow quadratically, and this is the walk's
@@ -761,7 +755,9 @@ export function materialiseSession(params: {
         for (let b = a + 1; b < subjects.length; b++) {
           const uidA = subjects[a]![entityPrimaryKeyProperty];
           const uidB = subjects[b]![entityPrimaryKeyProperty];
-          domainPairs.add(pairKey(uidA, uidB));
+          const key = pairKey(uidA, uidB);
+          safetyPairs.add(key);
+          domainPairs.add(key);
           domainNodes.add(uidA);
           domainNodes.add(uidB);
           // Only pairs the plan could not reach are this block's to add: one
@@ -781,11 +777,11 @@ export function materialiseSession(params: {
       // preview whose union sat comfortably inside the cap. Checked after the
       // merge for the reason the plan checks after its own: the transient cost
       // is one creation's pairs, which the check above already bounds.
-      if (domainPairs.size > MAX_SYNTHETIC_PAIRS) {
+      if (safetyPairs.size > MAX_SYNTHETIC_PAIRS) {
         refuseTooManyPairs(
           ctx,
           creation.edgeType,
-          `the stages linking this type reach ${domainPairs.size.toLocaleString('en')} pairs between them`,
+          `the stages linking this type reach ${safetyPairs.size.toLocaleString('en')} pairs between them`,
         );
       }
       if (reachable.length === 0) return;

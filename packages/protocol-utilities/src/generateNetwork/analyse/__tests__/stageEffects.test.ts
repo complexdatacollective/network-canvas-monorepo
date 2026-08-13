@@ -420,6 +420,14 @@ describe('analyseStageEffects', () => {
       ownNodesOnly: false,
       writesAtCreation: ['since'],
     });
+    expect(summary?.writes).toContainEqual({
+      stageIndex: 0,
+      entity: 'edge',
+      entityType: 'works_with',
+      variableId: 'since',
+      subjectNodeType: 'person',
+      mode: 'form',
+    });
   });
 
   it('writes geospatial prompt variables', () => {
