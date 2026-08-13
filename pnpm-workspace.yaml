@@ -101,6 +101,7 @@ catalog:
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
+  postcss: ^8.5.26
   posthog-js: ^1.413.2
   react: ^19.2.8
   react-dom: ^19.2.8
@@ -150,7 +151,6 @@ overrides:
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
-  postcss: '^8.5.26'
   sharp: '^0.35.3'
   valibot: '^1.4.2'
 autoInstallPeers: true
