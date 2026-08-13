@@ -238,11 +238,11 @@ describe('SegmentedToolbar — toggles', () => {
     expect(typeof eventDetails.cancel).toBe('function');
   });
 
-  it('renders without a live-looking control when a controlled toggle segment omits its callback', async () => {
+  it('disables a controlled toggle segment that omits its callback', async () => {
     // A controlled `pressed` prop with no `onPressedChange` is exactly the
     // hazard the audit flagged: Base UI cannot update `pressed` in response
-    // to a click, so the toggle can never visually change state. Clicking it
-    // must not throw and must leave `aria-pressed` untouched.
+    // to a click, so the toggle can never visually change state. Rather than
+    // leave a live-looking control wired to nothing, it's disabled outright.
     const items: ToolbarSegment[] = [
       {
         type: 'toggle',
@@ -254,8 +254,26 @@ describe('SegmentedToolbar — toggles', () => {
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
     const button = screen.getByRole('button', { name: 'Freeze' });
+    expect(button).toBeDisabled();
     await userEvent.click(button);
     expect(button).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('leaves an uncontrolled toggle segment (no pressed prop) enabled even without a callback', () => {
+    // Only the controlled+callback-less combination is inert. Base UI
+    // manages an uncontrolled toggle's state itself, so a tap still works
+    // even when the consumer isn't listening for the change.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        defaultPressed: false,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Freeze' })).toBeEnabled();
   });
 });
 
@@ -384,6 +402,27 @@ describe('SegmentedToolbar — groups', () => {
     ];
     expect(eventDetails).toBeDefined();
     expect(typeof eventDetails.cancel).toBe('function');
+  });
+
+  it('disables every option when a controlled group segment omits its callback', () => {
+    // Same hazard as a controlled toggle without onPressedChange: a
+    // controlled `value` with no `onValueChange` can never change, so every
+    // option in the group is disabled rather than left live-looking.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'group',
+        id: 'view',
+        mode: 'single',
+        value: ['list'],
+        options: [
+          { value: 'list', label: 'List', icon: <List /> },
+          { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
+        ],
+      },
+    ];
+    render(<SegmentedToolbar label="View" items={items} />);
+    expect(screen.getByRole('button', { name: 'List' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Grid' })).toBeDisabled();
   });
 });
 
