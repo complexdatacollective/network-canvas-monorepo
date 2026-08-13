@@ -21,12 +21,7 @@ const Variable = ({ id }: VariableProps) => {
 
   return (
     <DualLink to={`#variable-${id}`}>
-      <VariablePill
-        interactive={false}
-        label={name}
-        type={meta.type as VariableType}
-        validations={[]}
-      />
+      <VariablePill label={name} type={meta.type as VariableType} />
     </DualLink>
   );
 };

@@ -11,19 +11,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import {
-  type NodeVariablesFor,
-  withRuleTiedVariables,
-} from '../analyse/ruleTiedVariables';
-import {
-  declaresNodeCollection,
-  lastExistingWriterByType,
-  nodeVariablesWrittenOnCreation,
-  pedigreeEgoNodeVariables,
-  pedigreeNodeVariables,
-  stageWritesExistingNodeVariable,
-} from '../analyse/stageEffects';
-import type { FeasibilityConfig } from '../config';
+import type { GenerationConfig } from '../config';
 import type { StageOfType } from '../context';
 import {
   attainableFamilyPedigreeNodeCeiling,
@@ -38,6 +26,16 @@ import {
 } from '../nodes';
 import { getSubjectType } from '../subject';
 import { completionCheckFor } from './generateEntityAttributes';
+import {
+  declaresNodeCollection,
+  lastExistingWriterByType,
+  nodeVariablesWrittenOnCreation,
+  pedigreeEgoNodeVariables,
+  pedigreeNodeVariables,
+  stageWritesExistingNodeVariable,
+  withRuleTiedVariables,
+  type NodeVariablesFor,
+} from './stageWrites';
 import type { EntityConstraints } from './types';
 import { valueKey } from './uniqueRegistry';
 
@@ -943,7 +941,7 @@ function pedigreeGuaranteesMaleSibling(
 }
 
 export function pedigreeNodeCeiling(
-  config: FeasibilityConfig,
+  config: GenerationConfig,
   context?: PedigreeCeilingContext,
 ): number {
   const { min, max } = config.familyPedigreeNodeCount;
@@ -961,7 +959,7 @@ export function pedigreeNodeCeiling(
 
 /** Conservative upper bound for parentage, partner, and scenario edges. */
 export function pedigreeEdgeCeiling(
-  config: FeasibilityConfig,
+  config: GenerationConfig,
   context?: PedigreeCeilingContext,
 ): number {
   const nodes = pedigreeNodeCeiling(config, context);
@@ -1168,7 +1166,7 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  */
 export function worstCaseEntityCounts(
   stages: Stage[],
-  config: FeasibilityConfig,
+  config: GenerationConfig,
   externalData?: Record<string, NcNode[]>,
   nodeConstraints?: NodeConstraintsFor,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
@@ -1299,16 +1297,12 @@ export function worstCaseEntityCounts(
             : stage.type === 'NameGeneratorRoster'
               ? 'all'
               : stage.prompts
-                  .map((_prompt, promptIndex) => ({
+                  .map((prompt, promptIndex) => ({
                     count: fabricatedPromptNodeCeiling(promptIndex, bounds),
-                    variables: declaresNodeCollection(stage, promptIndex)
+                    variables: declaresNodeCollection(stage, prompt)
                       ? withRuleTiedVariables(
                           variables,
-                          nodeVariablesWrittenOnCreation(
-                            stage,
-                            stages,
-                            promptIndex,
-                          ),
+                          nodeVariablesWrittenOnCreation(stage, stages, prompt),
                         )
                       : ('all' as const),
                   }))
@@ -1459,9 +1453,6 @@ export function worstCaseEntityCounts(
     }
   }
 
-  // The edges a stage builds regardless of any declared topology, per type.
-  const structuralFloor = new Map<string, number>();
-
   for (const [edgeType, byNodeType] of paired) {
     for (const { maxPairs } of byNodeType.values()) {
       add(base, edgeType, maxPairs);
@@ -1489,16 +1480,6 @@ export function worstCaseEntityCounts(
     // can never exceed the type's whole pair count, since every ceiling is
     // inside `nodeTotal` and pairs grow faster than nodes.
     if ((paired.get(edgeType)?.get(nodeType)?.lastIndex ?? -1) > stageIndex) {
-      // Folded into the later pair set, but NOT discretionary: these edges are
-      // built whatever topology that later stage draws. The topology ceiling
-      // bounds what the pairing stage ADDS, so it must not clamp the count
-      // below what this stage structurally creates — at a target of zero the
-      // whole tally went to zero while the session still held every one of
-      // the pedigree's links.
-      structuralFloor.set(
-        edgeType,
-        (structuralFloor.get(edgeType) ?? 0) + count,
-      );
       continue;
     }
 
@@ -1516,36 +1497,12 @@ export function worstCaseEntityCounts(
     pedigree.set(edgeType, forType);
   }
 
-  // Counting, not certainty: a filtered write must be counted against the
-  // whole type here even though `rewriteIndex` leaves it out, because the
-  // question is how many entities COULD hold the value rather than which
-  // stage certainly writes it.
   for (const [nodeType, writers] of lastExistingWriterByType(
     stages,
     nodeVariables,
     respectSkipLogicAndFiltering,
-    true,
   )) {
     tallyFor(node, nodeType).written = writers;
-  }
-
-  // The pair counting above answers "how many pairs could this type reach",
-  // which was the right question when every pair was an independent coin. The
-  // planner instead draws one target from the declared topology and selects
-  // exactly that many, so the pairs are the domain and the target is the
-  // count. Held down to it here rather than in the loops, because the ceiling
-  // is a property of the edge type across every stage that creates it — and
-  // only downwards, so a run that derives no ceiling counts as it always did.
-  //
-  // Pedigree edges are structural rather than drawn from a topology, so they
-  // are tallied separately and are not touched by this.
-  for (const [edgeType, ceiling] of Object.entries(
-    config.edgeCountByType ?? {},
-  )) {
-    const floor = structuralFloor.get(edgeType) ?? 0;
-    const bound = Math.max(ceiling, floor);
-    const counted = base.get(edgeType);
-    if (counted !== undefined && counted > bound) base.set(edgeType, bound);
   }
 
   return {

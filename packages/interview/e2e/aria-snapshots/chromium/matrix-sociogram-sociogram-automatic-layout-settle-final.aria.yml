@@ -1,12 +1,12 @@
 - main:
   - application "Sociogram Canvas":
     - img
-    - button "Ansel Schneider"
-    - button "Alvina Heaney"
-    - button "Monty Kirlin"
-    - button "Elizabeth Christiansen-Littel"
-    - button "Kendra Corwin"
-    - button "Erma Walker"
+    - button "Mohammad Crist"
+    - button "Laury Wisozk"
+    - button "Clinton Leffler"
+    - button "Lynette Hilll"
+    - button "Cloyd Bayer"
+    - button "Arnold Schowalter-Haag"
   - button "Hide instructions" [expanded]
   - status:
     - heading "Place people in the circles based on how close you are to them." [level=4]

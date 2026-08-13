@@ -33,14 +33,7 @@ export class SyntheticDataConstraintError extends Error {
         conflict.entity === 'ego'
           ? 'ego'
           : `${conflict.entity} "${conflict.entityTypeName ?? conflict.entityType}"`;
-      // A conflict need not be about variables — a roster too small for its
-      // stages names none — so the variable clause is omitted rather than
-      // rendered as an empty gap between commas.
-      const named = conflict.variableNames
-        .map((name) => `"${name}"`)
-        .join(' and ');
-      const about = named === '' ? subject : `${subject}, ${named}`;
-      return `  - ${about} (${conflict.rules.join(', ')}): ${conflict.reason}`;
+      return `  - ${subject}, ${conflict.variableNames.map((name) => `"${name}"`).join(' and ')} (${conflict.rules.join(', ')}): ${conflict.reason}`;
     });
 
     super(

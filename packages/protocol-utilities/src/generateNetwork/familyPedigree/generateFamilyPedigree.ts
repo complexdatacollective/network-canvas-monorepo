@@ -77,22 +77,6 @@ function reachableScenarios(
   return reachable;
 }
 
-/**
- * The most people a family can be REQUIRED to hold.
- *
- * A pedigree's core is structural rather than sized: the plan builder admits
- * these regardless of `maxNodes`, because a family missing one of them does
- * not hold together. Whoever is spending the run's population budget has to
- * set this aside before allocating anything else, since a clamp applied to
- * the pedigree itself cannot reach values that bypass it.
- *
- * The worst case is adoption's nine, plus the male sibling a gendered framing
- * can require. Reserving the maximum rather than the scenario's own number is
- * the safe direction — the scenario is drawn during the walk, long after the
- * budget is divided.
- */
-export const MAX_REQUIRED_PEDIGREE_CORE = 10;
-
 function requiredNodesForScenario(
   scenario: FamilyPedigreePlan['scenario'],
 ): number {

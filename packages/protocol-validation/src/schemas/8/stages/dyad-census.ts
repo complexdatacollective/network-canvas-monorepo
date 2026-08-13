@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
-import { StageEdgeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   dyadCensusPromptSchema,
   IntroductionPanelSchema,
@@ -12,7 +11,6 @@ import { baseStageSchema } from './base.ts';
 
 export const dyadCensusStage = baseStageSchema.extend({
   type: z.literal('DyadCensus'),
-  synthetic: StageEdgeSyntheticSchema.optional(),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z

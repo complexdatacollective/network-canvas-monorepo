@@ -313,10 +313,9 @@ const VariableSpotlight = ({
       >
         {item.kind === 'variable' && (
           <VariablePill
-            interactive={false}
             label={item.label}
             type={item.variableType}
-            validations={[]}
+            width="100%"
           />
         )}
         {item.kind === 'create' && (

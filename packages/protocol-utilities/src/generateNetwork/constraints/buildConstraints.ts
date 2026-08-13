@@ -362,7 +362,6 @@ function resolveDateWindow(
     resolution,
     ...(min !== undefined ? { min } : {}),
     max,
-    ...(declaredMax === undefined ? { maxDerived: true } : {}),
   };
 }
 

@@ -10,7 +10,14 @@ describe('resolveGenerationConfig', () => {
   // is the signal that the change needs a major release rather than a minor.
   it('accepts a complete config annotated without a date', () => {
     const config: GenerationConfig = {
+      rosterDrawRatio: 0.7,
+      nodeCount: { min: 1, max: 8 },
       dropOutFactor: 0.15,
+      sociogramEdgeProbability: { min: 0.3, max: 0.5 },
+      sociogramLayoutRange: { min: 0.1, max: 0.9 },
+      censusEdgeProbability: { min: 0.4, max: 0.6 },
+      networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
+      familyPedigreeNodeCount: { min: 4, max: 10 },
       inProgressClearRatio: 0.5,
     };
 
@@ -29,6 +36,7 @@ describe('resolveGenerationConfig', () => {
     const config = resolveGenerationConfig();
 
     expect(config.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(config.sociogramEdgeProbability).toEqual({ min: 0.08, max: 0.15 });
   });
 
   it('resolves a date rather than keeping an explicit undefined', () => {
@@ -41,6 +49,6 @@ describe('resolveGenerationConfig', () => {
     const config = resolveGenerationConfig({ dropOutFactor: 0.9 });
 
     expect(config.dropOutFactor).toBe(0.9);
-    expect(config.inProgressClearRatio).toBe(0.5);
+    expect(config.nodeCount).toEqual({ min: 1, max: 8 });
   });
 });

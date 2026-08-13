@@ -13,7 +13,6 @@ const nameGenerator = {
   type: 'NameGenerator',
   label: 'People',
   subject: { entity: 'node', type: 'person' },
-  form: { title: 'About this person', fields: [] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { minNodes: 3, maxNodes: 3 },
 } as unknown as Stage;

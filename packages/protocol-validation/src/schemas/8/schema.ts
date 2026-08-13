@@ -2,11 +2,8 @@ import { z } from 'zod';
 
 import {
   BIOLOGICAL_SEX_OPTIONS,
-  dateWithinPickerRange,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
-  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
@@ -47,9 +44,7 @@ import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
-  isIsoDate,
   NON_RENDERABLE_VARIABLE_TYPES,
-  rejectInvalidDatetimeSynthetic,
   type Variable,
   VARIABLE_REFERENCE_VALIDATIONS,
   VARIABLE_TYPE_COMPONENTS,
@@ -256,202 +251,6 @@ const validateFormFieldVariable = (
  * EFFECTIVE rendering is known independently of the codebook default, so the
  * check belongs here rather than at the record level.
  */
-/**
- * NetworkComposer stage-effective synthetic-window check.
- *
- * A datetime variable's `synthetic` window is validated on the variable
- * against the variable's OWN picker parameters, which is all the record-level
- * check can see. A composer field carries its own `component` and
- * `parameters`, and `applyComposerRenderings` makes those authoritative for
- * the values this stage generates — so an otherwise unbounded date variable
- * with a synthetic range of 1950-1960, rendered here by a picker pinned to
- * 2000-2010, declares a range generation can never produce and validation had
- * nothing to say about it.
- *
- * Run in the same overlay the contradiction check uses: the field's own
- * component always wins (it is required on the field), while `parameters`
- * FALL BACK to the codebook's, mirroring the runtime's
- * `fieldParameters ?? codebookParameters`. A field that re-declares a control
- * without repeating the window therefore keeps the window it inherits rather
- * than being read as unbounded.
- */
-const validateComposerFieldSyntheticWindows = (
-  codebookVariables: Record<string, Variable>,
-  fields: ComposerFormField[] | undefined,
-  fieldsPath: (string | number)[],
-  addIssue: IssueReporter,
-) => {
-  if (!fields) return;
-  fields.forEach((field, fieldIndex) => {
-    const variable = codebookVariables[field.variable];
-    if (!variable || variable.type !== 'datetime') return;
-    if (!('synthetic' in variable) || variable.synthetic === undefined) return;
-    // Only a picker with a KNOWN window pins the dates a field accepts: a
-    // DatePicker declares its window outright, and a RelativeDatePicker with
-    // a declared anchor fixes its own (anchor ± before/after). An anchorless
-    // RelativeDatePicker's window moves with the interview date, so it can
-    // never make a stored protocol invalid and is skipped below.
-    if (
-      field.component !== ComponentTypes.DatePicker &&
-      field.component !== ComponentTypes.RelativeDatePicker
-    )
-      return;
-
-    const parameters =
-      'parameters' in field && field.parameters !== undefined
-        ? field.parameters
-        : 'parameters' in variable
-          ? variable.parameters
-          : undefined;
-
-    const fieldCtx = {
-      addIssue: (issue: { message?: string; path?: (string | number)[] }) => {
-        addIssue({
-          message: issue.message ?? 'Synthetic window is not valid here',
-          // Anchored at the FIELD, since it is the field's own rendering
-          // that makes the descriptor unreachable.
-          path: [...fieldsPath, fieldIndex, ...(issue.path ?? [])],
-        });
-      },
-    } as unknown as z.RefinementCtx;
-
-    if (field.component === ComponentTypes.RelativeDatePicker) {
-      // A declared anchor fixes the window this field accepts, exactly as it
-      // does on the variable's own component (see
-      // dateTimeRelativeDatePickerSchema's refinement) — and generation folds
-      // that fixed window in as the stage-effective bounds, dropping a
-      // disjoint descriptor in silence. Derived through the same shared
-      // helper the runtime and the generator both use, so there is no second
-      // reading of the window. Parameters that carry no valid anchor (either
-      // an anchorless relative window, or an inherited DatePicker-shaped
-      // window a re-declared control no longer reads) resolve against the
-      // interview date and are skipped.
-      const relative = parameters as
-        | { anchor?: string; before?: number; after?: number }
-        | undefined;
-      const anchor = relative?.anchor;
-      if (anchor === undefined || !isIsoDate(anchor)) return;
-      rejectInvalidDatetimeSynthetic(
-        variable.synthetic,
-        'full',
-        {
-          min: dateWithinPickerRange(
-            anchor,
-            -(relative?.before ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE),
-          ),
-          max: dateWithinPickerRange(
-            anchor,
-            relative?.after ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER,
-          ),
-        },
-        fieldCtx,
-      );
-      return;
-    }
-
-    const window = parameters as
-      | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
-      | undefined;
-
-    rejectInvalidDatetimeSynthetic(
-      variable.synthetic,
-      window?.type ?? 'full',
-      window,
-      fieldCtx,
-    );
-  });
-};
-
-/**
- * NetworkComposer stage-effective Boolean-probability check.
- *
- * A one-sided option list has no second answer to draw, so the generator
- * returns the sole offered value and `probabilityTrue` is ignored. The
- * variable-level rule scopes itself to a variable whose OWN component is
- * `Boolean`, deliberately: a componentless boolean can be rendered as a
- * `Toggle`, which ignores options and leaves both values drawable, and
- * refusing there would reject a descriptor that takes effect perfectly well.
- *
- * A composer field supplies exactly the rendering the variable lacked. Where
- * it renders such a boolean through `Boolean`, the options become
- * authoritative for the values this stage generates, and a probability the
- * list cannot express is metadata that can never take effect — the same thing
- * the variable-level rule rejects, one level up.
- */
-const validateComposerFieldBooleanProbabilities = (
-  codebookVariables: Record<string, Variable>,
-  fields: ComposerFormField[] | undefined,
-  fieldsPath: (string | number)[],
-  addIssue: IssueReporter,
-) => {
-  if (!fields) return;
-  fields.forEach((field, fieldIndex) => {
-    const variable = codebookVariables[field.variable];
-    if (!variable || variable.type !== 'boolean') return;
-    if (field.component !== ComponentTypes.Boolean) return;
-    // Only a variable whose OWN control is Boolean already carries this rule.
-    // A different declared control does not make the Composer field's
-    // stage-effective Boolean rendering disappear.
-    if (variable.component === ComponentTypes.Boolean) return;
-    if (!('synthetic' in variable) || variable.synthetic === undefined) return;
-    const probabilityTrue = (variable.synthetic as { probabilityTrue?: number })
-      .probabilityTrue;
-    if (probabilityTrue === undefined) return;
-    if (!('options' in variable) || !Array.isArray(variable.options)) return;
-
-    const offered = new Set(
-      (variable.options as { value: unknown }[]).map((option) => option.value),
-    );
-    if (offered.size !== 1) return;
-    if (
-      (offered.has(false) && probabilityTrue > 0) ||
-      (offered.has(true) && probabilityTrue < 1)
-    ) {
-      addIssue({
-        message: `NetworkComposer field for "${variable.name}" renders it with the "Boolean" control, where the only option offered is ${String(offered.has(true))} — probabilityTrue ${probabilityTrue} can never be drawn.`,
-        // Suffixed with the descriptor path the datetime half also reports, so
-        // every issue this pair emits reads as (field, then what about the
-        // descriptor) — a consumer anchoring on its own draft can drop the
-        // field prefix and be left with a usable path.
-        path: [...fieldsPath, fieldIndex, 'synthetic', 'probabilityTrue'],
-      });
-    }
-  });
-};
-
-/**
- * Every rule a NetworkComposer field's RENDERING imposes on the synthetic
- * metadata of the variable it renders.
- *
- * Exported because three surfaces have to agree about it and none of them can
- * see the others' reasoning: the protocol record refinement below, the
- * `SyntheticInterview` builder, and Architect's variable editor. Derived
- * separately they drifted — the builder accepted a 1950-1960 datetime range
- * beside a Composer DatePicker pinned to 2000-2001, then silently clamped
- * every draw into the picker's window, while the record refinement rejected
- * the identical pair. One entry point, so a surface can only be wrong by not
- * calling it.
- */
-export const validateComposerRenderedSynthetic = (
-  codebookVariables: Record<string, Variable>,
-  fields: ComposerFormField[] | undefined,
-  fieldsPath: (string | number)[],
-  addIssue: IssueReporter,
-) => {
-  validateComposerFieldSyntheticWindows(
-    codebookVariables,
-    fields,
-    fieldsPath,
-    addIssue,
-  );
-  validateComposerFieldBooleanProbabilities(
-    codebookVariables,
-    fields,
-    fieldsPath,
-    addIssue,
-  );
-};
-
 const validateComposerFieldComponents = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
@@ -1021,12 +820,6 @@ const ProtocolSchema = z
           nodeFormPath,
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
-        validateComposerRenderedSynthetic(
-          nodeVariables,
-          stage.nodeForm?.fields,
-          nodeFormPath,
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        );
         validateComposerFieldContradictions(
           nodeVariables,
           stage.nodeForm?.fields,
@@ -1052,12 +845,6 @@ const ProtocolSchema = z
             'fields',
           ];
           validateComposerFieldComponents(
-            edgeVariables,
-            edge.form?.fields,
-            edgeFormPath,
-            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          );
-          validateComposerRenderedSynthetic(
             edgeVariables,
             edge.form?.fields,
             edgeFormPath,

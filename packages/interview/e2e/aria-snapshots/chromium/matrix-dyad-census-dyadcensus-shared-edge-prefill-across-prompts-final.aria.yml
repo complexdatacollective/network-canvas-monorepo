@@ -1,10 +1,10 @@
 - main:
-  - text: Ansel Schneider and Monty Kirlin
-  - button "Ansel Schneider"
-  - button "Monty Kirlin"
+  - text: Mohammad Crist and Clinton Leffler
+  - button "Mohammad Crist"
+  - button "Clinton Leffler"
   - status:
     - 'heading "Prompt 2: know each other?" [level=2]'
-  - 'radiogroup "Ansel Schneider and Monty Kirlin Prompt 2: know each other?"':
+  - 'radiogroup "Mohammad Crist and Clinton Leffler Prompt 2: know each other?"':
     - radio "Yes"
     - radio "No"
   - navigation:

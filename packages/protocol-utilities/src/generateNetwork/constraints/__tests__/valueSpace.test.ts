@@ -64,7 +64,7 @@ function drawnBySequence(
   const values: VariableValue[] = [];
 
   for (let seq = 0; seq < ranks; seq++) {
-    const value = generator.generateConstrained(variable, 0, SCOPE, {
+    const value = generator.generateConstrained(variable, 0, {
       distinctSeq: seq,
     });
     if (value === undefined) throw new Error('Expected a generated value');
@@ -102,9 +102,6 @@ function narrowedScalar(bounds: {
  * place between them empties it — while a narrower one would promise a
  * separation no pair of drawn values reaches.
  */
-/** Any stable scope key; these tests never cross entity scopes. */
-const SCOPE = 'node:person';
-
 describe('decimalGridStep', () => {
   const walked = (min: number, max: number) => {
     const grid = decimalGrid(min, max);
@@ -569,9 +566,7 @@ describe('valueSpaceSize', () => {
       for (let seq = 0; seq < size; seq++) {
         drawn.add(
           String(
-            generator.generateConstrained(variable, 0, SCOPE, {
-              distinctSeq: seq,
-            }),
+            generator.generateConstrained(variable, 0, { distinctSeq: seq }),
           ),
         );
       }
@@ -581,9 +576,7 @@ describe('valueSpaceSize', () => {
       expect(
         drawn.has(
           String(
-            generator.generateConstrained(variable, 0, SCOPE, {
-              distinctSeq: size,
-            }),
+            generator.generateConstrained(variable, 0, { distinctSeq: size }),
           ),
         ),
       ).toBe(true);
@@ -672,9 +665,7 @@ describe('valueSpaceSize', () => {
     for (let seq = 0; seq < 1462; seq++) {
       drawn.add(
         String(
-          generator.generateConstrained(variable, 0, SCOPE, {
-            distinctSeq: seq,
-          }),
+          generator.generateConstrained(variable, 0, { distinctSeq: seq }),
         ),
       );
     }
@@ -749,9 +740,7 @@ describe('valueSpaceSize', () => {
       for (const seq of [0, 1, 41]) {
         expect(
           String(
-            generator.generateConstrained(overCap, 0, SCOPE, {
-              distinctSeq: seq,
-            }),
+            generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
           ).length,
         ).toBe(textDrawLength(overCap.constraints));
       }
@@ -759,7 +748,7 @@ describe('valueSpaceSize', () => {
       // The free draw is bounded by the same rules from the other side: a name
       // padded to no floor stays short of the ceiling either way.
       expect(
-        String(generator.generateConstrained(overCap, 0, SCOPE)).length,
+        String(generator.generateConstrained(overCap, 0)).length,
       ).toBeLessThanOrEqual(MAX_TEXT_DRAW_LENGTH);
     });
 
@@ -776,9 +765,7 @@ describe('valueSpaceSize', () => {
       for (let seq = 0; seq < 40; seq++) {
         drawn.add(
           String(
-            generator.generateConstrained(overCap, 0, SCOPE, {
-              distinctSeq: seq,
-            }),
+            generator.generateConstrained(overCap, 0, { distinctSeq: seq }),
           ),
         );
       }

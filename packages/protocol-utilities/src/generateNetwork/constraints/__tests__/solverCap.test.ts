@@ -8,7 +8,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { ValueGenerator } from '../../../ValueGenerator';
-import { type FeasibilityConfig, resolveGenerationConfig } from '../../config';
+import { resolveGenerationConfig } from '../../config';
 import type { GenerationContext } from '../../context';
 import { buildEntityConstraints } from '../buildConstraints';
 import { analyseFeasibility } from '../feasibility';
@@ -25,17 +25,6 @@ vi.mock(import('../solverLimits'), async (importOriginal) => ({
 
 const TODAY = '2026-07-27';
 const config = resolveGenerationConfig({ today: TODAY });
-
-/** Worst-case bounds for `analyseFeasibility`, constructed literally. */
-const feasibilityConfig: FeasibilityConfig = {
-  nodeCount: { min: 1, max: 8 },
-  rosterDrawRatio: 0.7,
-  sociogramEdgeProbability: { min: 0.3, max: 0.5 },
-  censusEdgeProbability: { min: 0.4, max: 0.6 },
-  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-  familyPedigreeNodeCount: { min: 4, max: 10 },
-  today: TODAY,
-};
 
 const nameGenerator = {
   id: 'stage-1',
@@ -70,9 +59,7 @@ describe('solver search budget exhaustion', () => {
       },
     } as unknown as StructuralCodebook;
 
-    expect(
-      analyseFeasibility(codebook, [nameGenerator], feasibilityConfig),
-    ).toEqual([
+    expect(analyseFeasibility(codebook, [nameGenerator], config)).toEqual([
       expect.objectContaining({
         rules: ['differentFrom'],
         variableNames: ['V0', 'V1', 'V2', 'V3', 'V4'],
@@ -109,7 +96,7 @@ describe('solver search budget exhaustion', () => {
       entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
     };
 
-    const spy = vi.spyOn(ctx.valueGen, 'scopedInt');
+    const spy = vi.spyOn(ctx.valueGen, 'randomInt');
     const attrs = generateEntityAttributes(
       entity,
       ctx,
@@ -124,11 +111,10 @@ describe('solver search budget exhaustion', () => {
       expect(value).toBeLessThanOrEqual(4);
     }
 
-    // The abandoned solve's shuffle seed is one draw from its OWN addressed
-    // stream, and the six greedy value draws each consume their own
-    // variable's semantic substream, so however the search ends — success,
-    // failure, or budget exhaustion — no other consumer's sequence moves.
-    expect(spy).toHaveBeenCalledTimes(1);
+    // One draw seeded the abandoned solve and one first-attempt draw fell to
+    // each of the six greedy values: the stream moves the same distance
+    // whether the search succeeded, failed, or ran out of budget.
+    expect(spy).toHaveBeenCalledTimes(7);
     spy.mockRestore();
   });
 });

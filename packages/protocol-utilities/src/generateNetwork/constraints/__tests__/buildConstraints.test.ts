@@ -7,7 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { ValueGenerator } from '../../../ValueGenerator';
-import type { FeasibilityConfig } from '../../config';
+import { resolveGenerationConfig } from '../../config';
 import {
   buildEntityConstraints,
   buildVariableConstraints,
@@ -22,9 +22,6 @@ import { analyseFeasibility } from '../feasibility';
 import { valueSpaceSize } from '../valueSpace';
 
 const TODAY = '2026-07-27';
-
-/** Any stable scope key; these tests never cross entity scopes. */
-const SCOPE = 'node:person';
 
 describe('buildVariableConstraints', () => {
   it('reads single-variable rules from validation', () => {
@@ -100,11 +97,7 @@ describe('buildVariableConstraints', () => {
       TODAY,
     );
 
-    expect(result.dateWindow).toEqual({
-      resolution: 'full',
-      max: TODAY,
-      maxDerived: true,
-    });
+    expect(result.dateWindow).toEqual({ resolution: 'full', max: TODAY });
   });
 
   // DatePicker's field offers no date after today when the protocol declares no
@@ -149,7 +142,6 @@ describe('buildVariableConstraints', () => {
       resolution: 'year',
       min: '2030',
       max: '2136',
-      maxDerived: true,
     });
   });
 
@@ -157,12 +149,7 @@ describe('buildVariableConstraints', () => {
     {
       type: 'year',
       parameters: {},
-      expected: {
-        resolution: 'year',
-        min: '1920',
-        max: '2026',
-        maxDerived: true,
-      },
+      expected: { resolution: 'year', min: '1920', max: '2026' },
     },
     {
       type: 'year',
@@ -177,12 +164,7 @@ describe('buildVariableConstraints', () => {
     {
       type: 'month',
       parameters: { min: '2030' },
-      expected: {
-        resolution: 'month',
-        min: '2030-01',
-        max: '2136-12',
-        maxDerived: true,
-      },
+      expected: { resolution: 'month', min: '2030-01', max: '2136-12' },
     },
   ])(
     'matches the today-dependent $type dropdown window for $parameters',
@@ -363,7 +345,6 @@ describe('buildVariableConstraints', () => {
       resolution: 'full',
       min: '2030-01-01',
       max: '2030-01-01',
-      maxDerived: true,
     });
   });
 
@@ -520,7 +501,6 @@ describe('buildVariableConstraints', () => {
       const value = generator.generateConstrained(
         { entry, constraints },
         index,
-        SCOPE,
       );
       expect(typeof value).toBe('string');
       if (typeof value === 'string') drawn.add(value);
@@ -760,7 +740,6 @@ describe('buildVariableConstraints', () => {
       const value = generator.generateConstrained(
         { entry, constraints },
         index,
-        SCOPE,
       );
       expect(typeof value).toBe('string');
       if (typeof value === 'string') drawn.add(value);
@@ -985,18 +964,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
     max?: string;
   };
 
-  // Worst-case feasibility bounds, constructed literally: `analyseFeasibility`
-  // takes the internal `FeasibilityConfig`, which `generateNetwork` derives
-  // from the codebook's declared counts rather than from run-level tuning.
-  const config: FeasibilityConfig = {
-    nodeCount: { min: 1, max: 8 },
-    rosterDrawRatio: 0.7,
-    sociogramEdgeProbability: { min: 0.3, max: 0.5 },
-    censusEdgeProbability: { min: 0.4, max: 0.6 },
-    networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-    familyPedigreeNodeCount: { min: 4, max: 10 },
-    today: TODAY,
-  };
+  const config = resolveGenerationConfig({ today: TODAY });
 
   const nameGenerator: Stage = {
     id: 'stage-1',

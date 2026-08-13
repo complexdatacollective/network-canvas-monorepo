@@ -13,8 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { analyseStageEffects, writtenVariables } from '../analyse/stageEffects';
-import type { FeasibilityConfig } from '../config';
+import type { ResolvedGenerationConfig } from '../config';
 import { isContentStage } from '../contentStages';
 import {
   PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
@@ -28,7 +27,6 @@ import {
   type RosterCarriedValues,
   ruleBrokenByFixedValues,
 } from '../nodes';
-import { resolveVariableSynthetic } from '../plan/resolveSynthetic';
 import { getSubjectType } from '../subject';
 import { collectBinOnlyVariables } from './binOnlyVariables';
 import { buildEntityConstraints } from './buildConstraints';
@@ -45,10 +43,7 @@ import {
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
-import {
-  comparatorFoldEmptied,
-  joinIdsInjectively,
-} from './generateEntityAttributes';
+import { comparatorFoldEmptied } from './generateEntityAttributes';
 import {
   differentFromGroups,
   emptyGroupBounds,
@@ -69,49 +64,6 @@ import {
   MAX_TEXT_DRAW_LENGTH,
   valueSpaceSize,
 } from './valueSpace';
-
-/**
- * Whether every entity's value for an equality group is certainly unanswered.
- *
- * The runtime's own `unique` validator exempts empty values — "required owns
- * emptiness; uniqueness begins only once a value is supplied" — so a group the
- * plan will null on every entity spends no unique values at all, and counting
- * its value space against the entities that carry it refuses a protocol that
- * would have generated perfectly well.
- *
- * The conditions mirror `applyMissingness` exactly, because this is only sound
- * while the two agree: a required member forbids missingness outright, a
- * probability below 1 leaves values that must be counted, and one member whose
- * value some interaction settles takes the whole group out of missingness —
- * a fixed value was never a question left unanswered.
- */
-function certainlyMissing(
-  members: readonly string[],
-  scope: EntityScope,
-): boolean {
-  const variables = scope.variables;
-  if (variables === undefined) return false;
-
-  let highest = 0;
-  for (const id of members) {
-    if (
-      scope.fixedValues.has(id) ||
-      scope.pedigreeFixedValues.has(id) ||
-      scope.rosterCarriedValues.has(id)
-    ) {
-      return false;
-    }
-    const variable = variables[id];
-    if (variable === undefined) return false;
-    const resolved = resolveVariableSynthetic(variable);
-    if (resolved.kind === 'stageOwned') return false;
-    if ('validation' in variable && variable.validation?.required === true) {
-      return false;
-    }
-    highest = Math.max(highest, resolved.missingProbability);
-  }
-  return highest === 1;
-}
 
 type EntityScope = {
   entity: 'ego' | 'node' | 'edge';
@@ -347,7 +299,7 @@ function regeneratedEdgeAttributes(
  */
 function countPedigreeFixedValues(
   stages: Stage[],
-  config: FeasibilityConfig,
+  config: ResolvedGenerationConfig,
   respectSkipLogicAndFiltering: boolean,
   nodeBeforeStage: ReadonlyMap<number, ReadonlyMap<string, number>>,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
@@ -588,45 +540,6 @@ function collectReferencedScopes(stages: Stage[]): {
  */
 function stagesWriteEgo(stages: Stage[]): boolean {
   return stages.some((stage) => stage.type === 'EgoForm');
-}
-
-/**
- * Ego variables nothing in the run reaches, gathered per equality group.
- *
- * The plan restricts its ego draw to `writtenVariables(effects, 'ego')`, so a
- * variable no form field names is never drawn, never emitted, and its rules
- * never applied — analysing it refused a preview over a variable the run does
- * not reach. That is the exemption; these are the two readers that decide it.
- *
- * BOTH have to agree the variable is unreached, exactly as both have to agree
- * before the whole ego scope is dropped. The schema's tags resolve a form
- * field's `variable` against its stage's subject, while the stage-effect
- * analysis sees the writes `generateNetwork` will actually perform, and
- * neither on its own can delete a rule: a stage type the schema gives an ego
- * subject is reached by the first reader though the second models no write for
- * it. Exempting wrongly is the expensive direction — it does not make the draw
- * fail, it makes it emit a value the rule rejects.
- *
- * Per group rather than per variable: a form filling one member of a `sameAs`
- * group settles the value its siblings share, so a group with any reached
- * member is analysed in full.
- */
-function unreachedEgoVariables(
-  stages: Stage[],
-  groups: readonly (readonly string[])[],
-): ReadonlySet<string> {
-  const written = writtenVariables(analyseStageEffects(stages), 'ego');
-  const referenced = new Set(
-    collectEntityAttributeReferences({ stages })
-      .filter((hit) => hit.subject?.entity === 'ego')
-      .map((hit) => hit.variableId),
-  );
-  const unreached = new Set<string>();
-  for (const members of groups) {
-    if (members.some((id) => written.has(id) || referenced.has(id))) continue;
-    for (const id of members) unreached.add(id);
-  }
-  return unreached;
 }
 
 /**
@@ -914,7 +827,7 @@ function adaptDelegatedContradiction(
 
 function analyseEntity(
   scope: EntityScope,
-  config: FeasibilityConfig,
+  config: ResolvedGenerationConfig,
 ): ConstraintConflict[] {
   const entity = buildEntityConstraints(
     scope.variables,
@@ -1048,11 +961,7 @@ function analyseEntity(
     const broken = ruleBrokenByFixedValues(entity, assignment);
     if (broken === undefined) continue;
 
-    // Joined injectively rather than on a bare comma: a variable id may
-    // itself contain one, and two distinct broken pairs whose ids happened to
-    // spell the same joined string deduplicated to one report — hiding a
-    // contradiction the protocol genuinely contains from the author fixing it.
-    const key = `${broken.rule}:${joinIdsInjectively(broken.variableIds)}`;
+    const key = `${broken.rule}:${broken.variableIds.join(',')}`;
     if (brokenReported.has(key)) continue;
     brokenReported.add(key);
 
@@ -1160,7 +1069,6 @@ function analyseEntity(
         if (
           size !== 'unbounded' &&
           size < holders &&
-          !certainlyMissing(members, scope) &&
           !uniqueReported.has(group)
         ) {
           uniqueReported.add(group);
@@ -1506,7 +1414,7 @@ function solvedComponentRules(
 export function analyseFeasibility(
   codebook: StructuralCodebook,
   stages: Stage[],
-  config: FeasibilityConfig,
+  config: ResolvedGenerationConfig,
   externalData?: Record<string, NcNode[]>,
   respectSkipLogicAndFiltering = false,
   familyPedigree?: ResolvedFamilyPedigreeGenerationOptions,
@@ -1587,22 +1495,7 @@ export function analyseFeasibility(
     scopes.push({
       entity: 'ego',
       variables: codebook.ego?.variables,
-      // An ego variable no stage writes carries the same exemption a node or
-      // edge variable does. `handleEgoForm` once drew the codebook's whole ego
-      // attribute set whatever its form declared, which is why this was empty;
-      // the plan draws `writtenVariables(effects, 'ego')` and nothing else, so
-      // a variable no form collects is never drawn, never emitted, and its
-      // rules never applied. Validating it refused a preview over a variable
-      // the run does not reach.
-      //
-      // Per group rather than per variable, as the node and edge exemptions
-      // are: a form filling one member of a `sameAs` group settles the value
-      // its siblings share, so a group with any written member is analysed in
-      // full.
-      unvalidated: unreachedEgoVariables(
-        stages,
-        equalityGroupsOf(codebook.ego?.variables, config.today),
-      ),
+      unvalidated: NO_UNVALIDATED_VARIABLES,
       worstCaseCountFor: () => 1,
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
       // name-generator prompt, and a pedigree's ego flag to its own nodes, both
