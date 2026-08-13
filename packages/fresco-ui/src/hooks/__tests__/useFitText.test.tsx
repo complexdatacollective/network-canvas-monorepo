@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -79,6 +79,38 @@ describe('useFitText', () => {
 
     rerender(<Probe text={'a'.repeat(20)} />);
     await waitFor(() => expect(state()).toBe('0:false'));
+  });
+
+  it('re-fits when fluid type changes without resizing the container', async () => {
+    uninstallLabelMetrics();
+    let fluidTypeHasGrown = false;
+    const defineMetric = (
+      metric: string,
+      get: (this: HTMLElement) => number,
+    ) => {
+      Object.defineProperty(HTMLSpanElement.prototype, metric, {
+        configurable: true,
+        get,
+      });
+    };
+    defineMetric('clientWidth', () => 100);
+    defineMetric('scrollWidth', function (this: HTMLElement) {
+      return fluidTypeHasGrown && this.className.includes('text-base')
+        ? 101
+        : 100;
+    });
+    defineMetric('clientHeight', () => 20);
+    defineMetric('scrollHeight', () => 20);
+
+    render(<Probe text="Fluid label" />);
+    await waitFor(() => expect(state()).toBe('0:false'));
+
+    // The node box stays fixed while a viewport-based text token grows.
+    // ResizeObserver therefore has nothing to report from the container.
+    fluidTypeHasGrown = true;
+    fireEvent.resize(window);
+
+    await waitFor(() => expect(state()).toBe('1:false'));
   });
 
   it('still reports truncation for a single-rung ladder', async () => {

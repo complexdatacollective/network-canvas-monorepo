@@ -360,6 +360,7 @@ export default function Node(props: UINodeProps) {
     onPointerUp: externalPointerUp,
     onKeyDown: externalKeyDown,
     onKeyUp: externalKeyUp,
+    onBlur: externalBlur,
     onClick,
     onLongPress,
     onDragStart,
@@ -622,6 +623,7 @@ export default function Node(props: UINodeProps) {
       onPointerLeave={nodeProps.onPointerLeave}
       onKeyDown={composeEventHandlers(externalKeyDown, nodeProps.onKeyDown)}
       onKeyUp={composeEventHandlers(externalKeyUp, nodeProps.onKeyUp)}
+      onBlur={composeEventHandlers(nodeProps.onBlur, externalBlur)}
       onClick={handleClick}
     >
       {/* Shape layer - carries the background, state box-shadows, and (for
@@ -712,10 +714,17 @@ export default function Node(props: UINodeProps) {
         // The full label is already the button's accessible name, so announcing
         // the popup as well would read it twice.
         aria-hidden="true"
-        pointerEvents="none"
-        className="wrap-anywhere whitespace-pre-line"
+        // A short viewport may not have enough room for the entire label at
+        // once. Keep it inside Base UI's available space and let touch,
+        // pointer, and wheel users scroll the rest.
+        className="flex max-h-(--available-height) flex-col"
       >
-        {label}
+        <span
+          data-node-label-reveal
+          className="min-h-0 touch-pan-y overflow-y-auto overscroll-contain wrap-anywhere whitespace-pre-line"
+        >
+          {label}
+        </span>
       </TooltipContent>
     </Tooltip>
   );

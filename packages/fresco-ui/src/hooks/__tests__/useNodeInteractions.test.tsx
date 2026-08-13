@@ -19,7 +19,7 @@ function Probe() {
   );
 }
 
-const node = () => screen.getByRole('button');
+const node = () => screen.getByRole('button', { name: 'Node' });
 const pressed = () => node().getAttribute('data-pressed');
 
 beforeEach(() => {
@@ -85,6 +85,30 @@ describe('useNodeInteractions: minimum visible key press', () => {
     fireEvent.keyDown(node(), { key: 'Enter' });
     fireEvent.keyUp(node(), { key: 'Enter' });
     fireEvent.blur(window);
+
+    expect(pressed()).toBe('false');
+  });
+
+  it('lifts a key press when activation moves focus before keyup', () => {
+    render(
+      <>
+        <Probe />
+        <button type="button">Dialog field</button>
+      </>,
+    );
+
+    const button = node();
+    const dialogField = screen.getByRole('button', { name: 'Dialog field' });
+    button.focus();
+    act(() => {
+      button.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+      );
+      // Enter can synchronously open a form whose autofocus target receives
+      // the eventual keyup. Blur therefore happens before the key-down state
+      // has committed a render.
+      dialogField.focus();
+    });
 
     expect(pressed()).toBe('false');
   });
