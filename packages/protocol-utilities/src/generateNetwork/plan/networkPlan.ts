@@ -1288,7 +1288,27 @@ export function planNetwork(
     if (skipLogic === undefined) return false;
     if (skipLogic.filter.rules.some((rule) => rule.type !== 'ego'))
       return false;
-    return isStageSkipped(skipLogic, plannedEgoNetwork(summary.index, view));
+    // Strictly BEFORE the guarded stage, which is what separates a guard from
+    // a filter. A filter runs while its stage is on screen, so a value that
+    // stage collects belongs in it — the interview's `getFilteredNetwork`
+    // recomputes as each prompt lands. A guard decides whether the stage is
+    // shown at all, so it can only read what the session held on arrival.
+    //
+    // The difference is decisive where a form guards on a field it collects
+    // itself, because the reading is self-referential: the only thing that
+    // could answer that field is the very stage the guard suppresses. Live
+    // (`buildStageAvailabilityMap`), `SKIP` on `NOT_EXISTS` skips the form and
+    // the field stays unanswered forever; on `EXISTS` the form runs, and the
+    // answer it collects arrives too late to have hidden it. Projected as of
+    // the stage itself, the plan read the drawn value and decided both the
+    // other way — and disagreed with `reachableStagesForFeasibility`, which
+    // reads the same guard against an ego who has not answered. Feasibility
+    // then dropped stages the plan went on to build, leaving the entities it
+    // built unanalysed.
+    return isStageSkipped(
+      skipLogic,
+      plannedEgoNetwork(summary.index - 1, view),
+    );
   };
 
   /**

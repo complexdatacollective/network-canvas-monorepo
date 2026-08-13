@@ -267,9 +267,11 @@ function stagesThePlanMaySettleSkipped(
       }
     }
     // Collected AFTER the stage's own guard is judged, as the planner projects
-    // ego: a guard reads only the attributes written before its stage
-    // (`attributesAsOf`), so a form's own fields cannot decide the guard
-    // standing on that form.
+    // ego: `guardSettlesSkip` reads it STRICTLY before the guarded stage, so a
+    // form's own fields cannot decide the guard standing on that form — the
+    // reading `reachableStagesForFeasibility` makes too, and the one the live
+    // interview makes, since the only thing that could answer such a field is
+    // the stage its guard decides about.
     if (stage.type === 'EgoForm') {
       for (const field of stage.form?.fields ?? []) {
         // Tolerated as a draft: Architect previews a form whose field has no
@@ -572,7 +574,11 @@ export function generateNetwork(
     DEFAULT_PEDIGREE_NODE_CEILING,
   );
 
+  // The codebook as supplied, before the composer renderings folded in below:
+  // the pass reads ego's declared `synthetic` metadata, which a rendering
+  // never touches. See its own note.
   const feasibilityStages = reachableStagesForFeasibility(
+    codebook,
     stages,
     respectSkipLogicAndFiltering,
   );

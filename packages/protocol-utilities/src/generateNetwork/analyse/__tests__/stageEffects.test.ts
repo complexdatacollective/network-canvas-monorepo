@@ -127,6 +127,8 @@ describe('analyseStageEffects', () => {
       }),
     ]);
     const [summary] = effects.stages;
+    // Each write records the prompt that collects it, so materialisation can
+    // replay a stage's effects in the order its screens present them.
     expect(summary?.writes).toEqual([
       {
         stageIndex: 0,
@@ -134,6 +136,7 @@ describe('analyseStageEffects', () => {
         entityType: 'person',
         variableId: 'position',
         filter,
+        promptIndex: 0,
         mode: 'layout',
       },
       {
@@ -142,6 +145,7 @@ describe('analyseStageEffects', () => {
         entityType: 'person',
         variableId: 'flagged',
         filter,
+        promptIndex: 0,
         mode: 'highlight',
       },
       {
@@ -150,6 +154,7 @@ describe('analyseStageEffects', () => {
         entityType: 'person',
         variableId: 'position',
         filter,
+        promptIndex: 1,
         mode: 'layout',
       },
     ]);
@@ -230,6 +235,7 @@ describe('analyseStageEffects', () => {
         // Carried so the write stays confined to the pairs this census walks,
         // rather than reaching every edge of the type.
         subjectNodeType: 'person',
+        promptIndex: 0,
         mode: 'tieStrength',
       },
     ]);

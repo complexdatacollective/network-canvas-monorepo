@@ -158,6 +158,20 @@ export type VariableWrite = {
    * write is confined to those pairs rather than reaching the whole edge type.
    */
   subjectNodeType?: string;
+  /**
+   * Which of its stage's prompts collects this write, where one does.
+   *
+   * A stage's prompts are separate screens shown in order, and the interview's
+   * filtered network is a live selector — so what one prompt writes decides
+   * who the NEXT prompt is shown. Materialisation replays a stage's effects in
+   * this order for that reason; grouped by operation instead, every edge the
+   * stage creates was made before any of its writes had landed, so a prompt
+   * that marks people ran too late to keep a later prompt from linking them.
+   *
+   * Absent for a write no single prompt owns — a form's fields, a composer's
+   * hull — which the stage presents as one pass over everything it can reach.
+   */
+  promptIndex?: number;
   mode: WriteMode;
 };
 
@@ -671,6 +685,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
             entityType: nodeType,
             variableId: layoutVariable,
             ...(stage.filter ? { filter: stage.filter } : {}),
+            promptIndex,
             mode: 'layout',
           });
         }
@@ -688,6 +703,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
             entityType: nodeType,
             variableId: prompt.highlight.variable,
             ...(stage.filter ? { filter: stage.filter } : {}),
+            promptIndex,
             mode: 'highlight',
           });
         }
@@ -764,6 +780,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           variableId: prompt.edgeVariable,
           ...(stage.filter ? { filter: stage.filter } : {}),
           subjectNodeType: nodeType,
+          promptIndex,
           mode: 'tieStrength',
         });
       }
@@ -774,7 +791,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     case 'CategoricalBin': {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
-      for (const prompt of promptsOf(stage.prompts)) {
+      for (const [promptIndex, prompt] of promptsOf(stage.prompts).entries()) {
         if (prompt.variable === undefined) continue;
         summary.writes.push({
           stageIndex: index,
@@ -782,6 +799,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           entityType: nodeType,
           variableId: prompt.variable,
           ...(stage.filter ? { filter: stage.filter } : {}),
+          promptIndex,
           mode: stage.type === 'OrdinalBin' ? 'ordinalBin' : 'categoricalBin',
         });
       }
@@ -900,7 +918,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
     case 'Geospatial': {
       const nodeType = subjectTypeOf(stage.subject);
       if (nodeType === undefined) break;
-      for (const prompt of promptsOf(stage.prompts)) {
+      for (const [promptIndex, prompt] of promptsOf(stage.prompts).entries()) {
         if (prompt.variable === undefined) continue;
         summary.writes.push({
           stageIndex: index,
@@ -908,6 +926,7 @@ function summariseStage(stage: Stage, index: number): StageEffectSummary {
           entityType: nodeType,
           variableId: prompt.variable,
           ...(stage.filter ? { filter: stage.filter } : {}),
+          promptIndex,
           mode: 'geospatial',
         });
       }

@@ -14,7 +14,11 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { StageEffectSummary, StageEffects } from '../analyse/stageEffects';
+import type {
+  EdgeCreation,
+  StageEffectSummary,
+  StageEffects,
+} from '../analyse/stageEffects';
 import { constraintsFor, drawVariableOnto } from '../attributes';
 import {
   type EntityScopeRef,
@@ -596,7 +600,29 @@ export function materialiseSession(params: {
       draft.nodes.map((node) => node[entityPrimaryKeyProperty]),
     );
 
-    for (const creation of summary.edgeCreations) {
+    /**
+     * The people a census puts in front of the participant, read BEFORE the
+     * stage's own effects.
+     *
+     * A census derives its pair sequence from the filtered network as it is
+     * entered — `getNodePairs` over `getNetworkNodesForType` — and then walks
+     * that sequence creating edges and answers. What it ASKED is therefore a
+     * fact about stage entry, while reading it at the end of the stage
+     * describes the network the census itself produced. No filter rule
+     * currently makes the two diverge (an edge rule answers with the endpoints
+     * of edges of OTHER types, so adding edges of the type a census creates
+     * cannot move its own subject set), so this is the reading made correct
+     * before a rule that can tell them apart is added — not a repair.
+     */
+    const censusSubjectUids =
+      stage.type === 'DyadCensus' || stage.type === 'TieStrengthCensus'
+        ? filteredSubjects(
+            stage.subject?.type ?? '',
+            'filter' in stage ? stage.filter : undefined,
+          ).map((node) => node[entityPrimaryKeyProperty])
+        : undefined;
+
+    const materialisePlannedEdges = (creation: EdgeCreation): void => {
       // Who this interaction could actually join, for judging an edge planned
       // before it. Built lazily: only a retry consults it.
       let reach: Set<string> | undefined;
@@ -658,7 +684,7 @@ export function materialiseSession(params: {
         materialisedEdges.add(planned.uid);
         draft.edges.push(edge);
       }
-    }
+    };
 
     // A FamilyPedigree builds its people during this walk, so the plan had no
     // domain over which to place a later census or sociogram's edges between
@@ -666,10 +692,10 @@ export function materialiseSession(params: {
     // declared topology is applied here to exactly the pairs the plan could
     // not see: every candidate below has at least one endpoint the plan never
     // held, so nothing the plan already decided is drawn twice.
-    for (const creation of summary.edgeCreations) {
-      if (creation.structured !== null) continue;
+    const applyFallbackTopology = (creation: EdgeCreation): void => {
+      if (creation.structured !== null) return;
       const target = plan.topologyTargets.get(topologyKey(creation));
-      if (target === undefined) continue;
+      if (target === undefined) return;
 
       const subjects = filteredSubjects(
         creation.subjectNodeType,
@@ -762,7 +788,7 @@ export function materialiseSession(params: {
           `the stages linking this type reach ${domainPairs.size.toLocaleString('en')} pairs between them`,
         );
       }
-      if (reachable.length === 0) continue;
+      if (reachable.length === 0) return;
 
       // What the accumulated domain already holds, however it came to hold it.
       let domainLinked = 0;
@@ -774,7 +800,7 @@ export function materialiseSession(params: {
       const outstanding =
         topologyTarget(target, domainPairs.size, domainNodes.size) -
         domainLinked;
-      if (outstanding <= 0) continue;
+      if (outstanding <= 0) return;
 
       const ref = { entity: 'edge' as const, type: creation.edgeType };
       const chosen = shuffled(
@@ -832,7 +858,7 @@ export function materialiseSession(params: {
           );
         }
       }
-    }
+    };
 
     // --- Variable writes ------------------------------------------------
     // A FamilyPedigree's own writes — its nomination and disease variables —
@@ -859,19 +885,21 @@ export function materialiseSession(params: {
      */
     const formNodeAudience = new Map<(typeof writes)[number], NcNode[]>();
     const formEdgeAudience = new Map<(typeof writes)[number], NcEdge[]>();
-    for (const write of writes) {
-      if (write.mode !== 'form') continue;
-      if (write.entity === 'node') {
-        formNodeAudience.set(
-          write,
-          filteredSubjects(write.entityType ?? '', write.filter),
-        );
-      } else if (write.entity === 'edge') {
-        formEdgeAudience.set(write, writtenEdges(write));
+    const resolveFormAudiences = (): void => {
+      for (const write of writes) {
+        if (write.mode !== 'form') continue;
+        if (write.entity === 'node') {
+          formNodeAudience.set(
+            write,
+            filteredSubjects(write.entityType ?? '', write.filter),
+          );
+        } else if (write.entity === 'edge') {
+          formEdgeAudience.set(write, writtenEdges(write));
+        }
       }
-    }
+    };
 
-    for (const write of writes) {
+    const landStageWrite = (write: (typeof writes)[number]): void => {
       if (write.entity === 'ego') {
         const egoValue = valueFor(plan.ego, write.variableId);
         if (egoValue === undefined) {
@@ -879,7 +907,7 @@ export function materialiseSession(params: {
         } else {
           draft.egoAttributes[write.variableId] = egoValue;
         }
-        continue;
+        return;
       }
       if (write.entity === 'node') {
         const ref = { entity: 'node' as const, type: write.entityType ?? '' };
@@ -895,7 +923,7 @@ export function materialiseSession(params: {
             write.variableId,
           );
         }
-        continue;
+        return;
       }
       const ref = { entity: 'edge' as const, type: write.entityType ?? '' };
       for (const edge of formEdgeAudience.get(write) ?? writtenEdges(write)) {
@@ -907,6 +935,53 @@ export function materialiseSession(params: {
           write.variableId,
         );
       }
+    };
+
+    /**
+     * The stage's effects, replayed in the order its prompts present them.
+     *
+     * A prompt is a screen, and the interview's filtered network is a live
+     * selector: as one prompt writes an answer or draws an edge, the set the
+     * NEXT prompt is shown recomputes. Grouped by operation instead — every
+     * edge creation, then every write — a Sociogram that marks people at
+     * prompt 0 and links whoever is still unmarked at prompt 1 did its linking
+     * first, against a network where the mark that excludes everyone had not
+     * been written yet: a whole pedigree family joined at density 1 where the
+     * participant would have been shown an empty canvas.
+     *
+     * Effects of one prompt keep their existing relative order: what a prompt
+     * creates precedes what it writes, since a value written on the strength
+     * of an edge the same screen drew is the ordering a participant produces.
+     * Ties are stable, so a stage whose writes carry no prompt of their own is
+     * untouched by this — and a stage with no prompt-owned writes replays
+     * exactly as it always did.
+     */
+    const promptOrderedEffects = [
+      ...summary.edgeCreations.map((creation) => ({
+        at: creation.promptIndex,
+        run: () => {
+          materialisePlannedEdges(creation);
+          applyFallbackTopology(creation);
+        },
+      })),
+      ...writes.flatMap((write) =>
+        write.promptIndex === undefined
+          ? []
+          : [{ at: write.promptIndex, run: () => landStageWrite(write) }],
+      ),
+    ].toSorted((a, b) => a.at - b.at);
+    for (const effect of promptOrderedEffects) effect.run();
+
+    // Everything the stage presents as one pass over what it can reach — a
+    // form's fields, a composer's hull — runs once its prompt-owned effects
+    // are done. The audiences are resolved HERE rather than at stage entry:
+    // a NetworkComposer's edge form opens on the edges the composer itself
+    // has just created, so resolving before them would leave those edges
+    // unwritten.
+    resolveFormAudiences();
+    for (const write of writes) {
+      if (write.promptIndex !== undefined) continue;
+      landStageWrite(write);
     }
 
     // --- Stage metadata -------------------------------------------------
@@ -918,15 +993,11 @@ export function materialiseSession(params: {
       // Read as a draft throughout: Architect previews a stage while it is
       // still being authored, and a missing subject or prompt must leave the
       // preview without metadata rather than throw.
-      const subjects = filteredSubjects(
-        stage.subject?.type ?? '',
-        'filter' in stage ? stage.filter : undefined,
-      );
       pendingCensus.push({
         index: i,
         negativesOnly: stage.type === 'TieStrengthCensus',
         prompts: (stage.prompts ?? []).map((prompt) => prompt.createEdge),
-        subjectUids: subjects.map((node) => node[entityPrimaryKeyProperty]),
+        subjectUids: censusSubjectUids ?? [],
       });
       // A FamilyPedigree's metadata — its committed membership snapshot and
       // chosen framing — is written by the generator that built the family,
