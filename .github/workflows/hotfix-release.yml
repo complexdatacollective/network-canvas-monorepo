@@ -1,0 +1,141 @@
+name: Hotfix Release
+
+# Releases Architect or Interviewer from a branch that is NOT main.
+#
+# The normal lane (`apps-release-detect` + `apps-release-<app>` in
+# ci-and-release.yml) builds whatever is on main, so it can only ship a patch
+# together with everything else merged since the last release. When main
+# carries work that is not ready to go out, the only way to ship a fix alone is
+# a branch cut from the released tag — and nothing on such a branch can trigger
+# the normal lane, which fires exclusively on push-to-main. This workflow is
+# that missing trigger: the same build → deploy → tag → release steps, run
+# against the dispatched ref.
+#
+# Procedure (see each app's RELEASING.md):
+#   1. Cut `hotfix/<app>-<version>` from the released tag, cherry-pick the fix,
+#      bump package.json and CHANGELOG.md, push the branch.
+#   2. Run this workflow with that branch selected under "Use workflow from".
+#   3. Record the released version on main afterwards, or the normal lane's tag
+#      guard will silently swallow main's next release.
+#
+# The chosen ref supplies both the workflow file and the tree that is built, so
+# a hotfix branch cut from an old tag must carry this file too.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App to release
+        required: true
+        type: choice
+        options:
+          - interviewer
+          - architect
+      mark_latest:
+        description: Mark the GitHub release as "Latest" (turn off when patching an older line)
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One release per app+version, and never cancelled: a half-finished deploy is
+# worse than a queued one. Mirrors the normal lane's per-release group.
+concurrency:
+  group: hotfix-release-@codaco/${{ inputs.app }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hotfix-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      APP: ${{ inputs.app }}
+    steps:
+      - name: Refuse to run on main
+        if: github.ref_name == 'main'
+        run: |
+          echo "::error::main releases through apps-release-<app> in ci-and-release.yml. This lane exists for hotfix branches cut from a release tag." >&2
+          exit 1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-tags: true
+          persist-credentials: false
+
+      # Unlike the normal lane — which is self-healing and silently skips an
+      # already-tagged version on every main push — a dispatch is a deliberate
+      # request, so an already-released version is an error, not a no-op.
+      - name: Resolve and validate the version
+        id: version
+        run: |
+          version=$(node -p "require('./apps/$APP/package.json').version")
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::apps/$APP/package.json version '$version' is not a stable semver. Bump it on the hotfix branch first." >&2
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/@codaco/$APP@$version" >/dev/null; then
+            echo "::error::@codaco/$APP@$version is already released. Bump the version on the hotfix branch." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$APP" in
+            interviewer) echo 'label=Interviewer' >> "$GITHUB_OUTPUT" ;;
+            architect) echo 'label=Architect' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # A hotfix branch has no required `quality` gate behind it, so the app's
+      # own suites run here. Its workspace dependencies are whatever the release
+      # tag pinned, already verified by the release they shipped in; a hotfix
+      # that changes a dependency package belongs in a pull request, not here.
+      - name: Verify the app
+        run: pnpm exec turbo run typecheck test --filter=@codaco/${{ env.APP }}
+
+      - name: Build ${{ inputs.app }}
+        # Scoped to this step alone, exactly as in the normal lane: only the
+        # build needs the PostHog credentials that switch source-map upload on,
+        # and keeping them off the job means the deploy step's dynamically
+        # fetched netlify-cli never sees them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: pnpm exec turbo run build --filter=@codaco/${{ env.APP }}
+
+      - name: Deploy ${{ inputs.app }} to production
+        run: |
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter="@codaco/$APP" \
+            --dir="apps/$APP/dist" \
+            --site="${{ inputs.app == 'interviewer' && secrets.NETLIFY_SITE_ID_INTERVIEWER || secrets.NETLIFY_SITE_ID_ARCHITECT }}"
+
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: >-
+          node scripts/release-notes.mjs
+          --app "apps/$APP"
+          --pkg "@codaco/$APP"
+          --version "$VERSION"
+          --out "${RUNNER_TEMP}/hotfix-notes.md"
+
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/hotfix-notes.md
+          prerelease: false
+          make_latest: ${{ inputs.mark_latest }}

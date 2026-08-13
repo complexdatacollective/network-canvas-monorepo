@@ -153,6 +153,18 @@ pnpm publish-packages
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
+#### Hotfix releases for Architect and Interviewer
+
+Both apps' production jobs build `main`, so the normal lane cannot ship a patch
+without everything else merged since the last release. When `main` holds work
+that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
+cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
+**Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) against
+that branch. Afterwards, record the released version on `main` — the lane is
+tag-driven and self-healing, so a version whose tag already exists is skipped,
+and skipping it on `main` means `main` never deploys. Full procedure in each
+app's `RELEASING.md`.
+
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own

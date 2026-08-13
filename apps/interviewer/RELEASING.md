@@ -36,6 +36,41 @@ directly on the PR. Production is no longer deployed on every push to `main`—i
 is deployed only when the Version Packages PR containing an Interviewer version
 bump merges.
 
+## Hotfix releases (when main is ahead)
+
+The changeset lane always builds main, so it can only ship a patch together
+with everything else merged since the last release. When main carries work that
+is not ready to go out, release from the previous tag instead:
+
+1. Cut the branch from the released tag and cherry-pick the fix:
+
+   ```bash
+   git switch -c hotfix/interviewer-8.1.3 '@codaco/interviewer@8.1.2'
+   git cherry-pick <sha>
+   ```
+
+   Land the same fix on main through the usual pull request as well — the
+   hotfix branch is a delivery vehicle, not the source of truth.
+
+2. Bump `apps/interviewer/package.json` to the hotfix version and add the
+   matching `## <version>` section to `CHANGELOG.md`; `scripts/release-notes.mjs`
+   reads that section for the GitHub release. Do **not** run
+   `changeset version` on the branch — it would consume changesets that belong
+   to main's next release.
+3. Make sure `.github/workflows/hotfix-release.yml` exists on the branch
+   (cherry-pick it if the branch predates it): a dispatch runs the workflow file
+   from the ref it targets.
+4. Push, then run the **Hotfix Release** workflow with _Use workflow from_ set
+   to the hotfix branch and `app: interviewer`. It runs the app's typecheck and
+   tests, builds with PostHog source maps and the PWA assertion, deploys to
+   Netlify production, and cuts `@codaco/interviewer@<version>`.
+5. **Record the released version on main** in a follow-up PR: bump
+   `package.json` and `CHANGELOG.md` to the hotfix version and delete the
+   changeset it consumed. This step is not optional. The lane is tag-driven and
+   self-healing (`.github/scripts/detect-app-release.sh`), so if main later
+   versions itself to the same number the existing tag makes the guard skip
+   it — and main's release would never deploy.
+
 ## Developer site
 
 The separate `.dev` Netlify site is intentionally linked to this repository and
