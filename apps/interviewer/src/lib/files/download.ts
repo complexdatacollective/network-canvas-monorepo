@@ -1,3 +1,5 @@
+import { isHandheldPlatform } from '~/lib/platform';
+
 export type DownloadResult = { saved: boolean };
 
 export type SaveAction = 'save-as' | 'share' | 'download';
@@ -12,6 +14,12 @@ function getSavePicker(): NonNullable<Window['showSaveFilePicker']> | null {
 }
 
 function canShareFile(file: File): boolean {
+  // Desktop Safari advertises file sharing, but a desktop browser already has
+  // a downloads folder and a downloads UI: routing the archive through the
+  // macOS share sheet made researchers pick a destination app for a file they
+  // only wanted on disk (community #258). The share rung exists for handheld
+  // platforms, where no such download destination is reachable.
+  if (!isHandheldPlatform()) return false;
   return navigator.canShare?.({ files: [file] }) ?? false;
 }
 
@@ -32,11 +40,13 @@ export function saveAction(blob: Blob, suggestedName: string): SaveAction {
 // 1. File System Access Save-As picker (desktop Chromium) — the only path
 //    that can confirm the bytes reached disk. A cancelled picker is a final
 //    "no"; a failure after picking falls through to the anchor download.
-// 2. Web Share (iOS/Android, desktop Safari) — the share sheet resolving is
-//    an OS-confirmed handoff. canShare() can overpromise (#889), so any
-//    failure other than the user cancelling falls through.
+// 2. Web Share (iOS/iPadOS/Android only) — the share sheet resolving is an
+//    OS-confirmed handoff, and on a handheld it is the only way to put the
+//    file somewhere the researcher can reach. canShare() can overpromise
+//    (#889), so any failure other than the user cancelling falls through.
 // 3. Object-URL <a download> — hands the file to the browser's own download
 //    UI. The outcome is unobservable, so saved is reported optimistically.
+//    This is the desktop-Safari and desktop-Firefox rung.
 export async function saveBlob(
   blob: Blob,
   suggestedName: string,
