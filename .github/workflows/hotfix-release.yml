@@ -44,11 +44,15 @@ on:
 permissions:
   contents: read
 
-# Serialized per app rather than per ref: two branches carrying the same version
-# would each pass the tag check and race, leaving one SHA tagged while the other
-# build is what production actually serves.
+# Deliberately the same group the normal lane's apps-release-<app> job uses, so
+# the two lanes cannot deploy the same production site at once: a hotfix that
+# validated before a concurrent main release tagged a newer version would
+# otherwise land last and roll production back. Per app rather than per version
+# because two branches carrying the same version would each pass the tag check
+# and race, and because the version is not knowable at job-start — it comes from
+# the checked-out ref.
 concurrency:
-  group: hotfix-release-@codaco/${{ inputs.app }}
+  group: apps-release-@codaco/${{ inputs.app }}
   cancel-in-progress: false
 
 jobs:
@@ -80,13 +84,27 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      # The ref being released is a branch cut from a release tag, so it predates
+      # this lane and carries no copy of the validator. Take that one file from
+      # the dispatching main commit instead — it is also the only copy anyone has
+      # reviewed. It reads apps/<app>/package.json and `git tag` relative to the
+      # working directory, never to its own location, so it validates the ref's
+      # tree while living outside it.
+      - name: Check out the lane's validator from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .hotfix-lane
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       - name: Resolve the released commit
         id: commit
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Resolve and validate the version
         id: version
-        run: node .github/scripts/resolve-hotfix-release.mjs
+        run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
       - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
@@ -115,11 +133,28 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/${{ env.APP }}
 
       - name: Deploy ${{ inputs.app }} to production
+        # Both site ids come in as environment variables and the app picks one in
+        # bash. A `inputs.app == 'x' && secrets.A || secrets.B` expression would
+        # silently fall through to the *other* app's site whenever the selected
+        # secret is unset — deploying, say, Interviewer over Architect's
+        # production site instead of failing for the missing setup.
+        env:
+          SITE_ID_INTERVIEWER: ${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}
+          SITE_ID_ARCHITECT: ${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}
         run: |
+          case "$APP" in
+            interviewer) site="$SITE_ID_INTERVIEWER"; secret=NETLIFY_SITE_ID_INTERVIEWER ;;
+            architect) site="$SITE_ID_ARCHITECT"; secret=NETLIFY_SITE_ID_ARCHITECT ;;
+            *) echo "::error::No production site is configured for '$APP'." >&2; exit 1 ;;
+          esac
+          if [[ -z "$site" ]]; then
+            echo "::error::$secret is unset. See apps/$APP/RELEASING.md for the one-time setup." >&2
+            exit 1
+          fi
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter="@codaco/$APP" \
             --dir="apps/$APP/dist" \
-            --site="${{ inputs.app == 'interviewer' && secrets.NETLIFY_SITE_ID_INTERVIEWER || secrets.NETLIFY_SITE_ID_ARCHITECT }}"
+            --site="$site"
 
       - name: Release notes
         env:

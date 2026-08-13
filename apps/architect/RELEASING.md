@@ -58,6 +58,10 @@ is not ready to go out, release from the previous tag instead:
    builds with PostHog source maps, deploys to Netlify production, and cuts
    `@codaco/architect@<version>`.
 
+   A hotfix and a normal release for the same app share one concurrency lock, so
+   a dispatch made while a Version Packages release is deploying waits for it to
+   finish rather than racing it to the production site.
+
    The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
    refuses a version older than the current release, because each app has one
    production site and `netlify deploy --prod` always replaces what is live.

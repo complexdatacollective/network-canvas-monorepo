@@ -2055,13 +2055,18 @@ jobs:
     if: needs.apps-release-detect.outputs.architect_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version. With per-commit push concurrency (see top of file)
-    # main pushes run in parallel, so two runs can both detect the same untagged
-    # version and race into a duplicate build/deploy/release. Serialise them on
-    # the tag so only one runs at a time; the guard step below turns the run that
+    # One release at a time per app. With per-commit push concurrency (see top of
+    # file) main pushes run in parallel, so two runs can both detect the same
+    # untagged version and race into a duplicate build/deploy/release. Serialise
+    # them so only one runs at a time; the guard step below turns the run that
     # starts after the tag exists into a clean no-op (no redundant prod deploy).
+    # The group deliberately omits the version so hotfix-release.yml — which
+    # cannot know its version before checkout — shares the same lock and can
+    # never deploy this app's single production site concurrently with this job.
+    # A pending run superseded by a newer one is recoverable: detection is
+    # tag-driven and self-healing, so the next main push releases it.
     concurrency:
-      group: apps-release-@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}
+      group: apps-release-@codaco/architect
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2142,9 +2147,10 @@ jobs:
     if: needs.apps-release-detect.outputs.interviewer_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version — see apps-release-architect for the rationale.
+    # One release at a time per app, shared with the hotfix lane — see
+    # apps-release-architect for the rationale.
     concurrency:
-      group: apps-release-@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}
+      group: apps-release-@codaco/interviewer
       cancel-in-progress: false
     permissions:
       contents: write
