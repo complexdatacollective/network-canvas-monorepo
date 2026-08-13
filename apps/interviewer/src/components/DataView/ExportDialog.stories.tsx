@@ -73,8 +73,8 @@ constraint). Driven entirely by the \`ExportFlow\` state from
 - \`onSave\` must be wired straight to \`handleShareReady\`: the handler calls
   \`saveBlob\` with no await before it, keeping the gesture fresh.
 - The primary action's verb is derived from the platform capability ladder
-  (Save-As picker → Web Share → anchor download), so the label varies by
-  browser.
+  (Save-As picker → Web Share on handheld platforms → anchor download), so the
+  label varies by browser: desktop Safari downloads rather than sharing.
 - \`onDismiss\` discards a built-but-unsaved archive; sessions are only marked
   exported after a genuine save.
         `,
