@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { StageSubject, StageType } from '@codaco/protocol-validation';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { getInterfaceTemplate } from '~/components/StageEditor/interfaceTemplates';
+import { requireStageFieldValue } from '~/components/StageEditor/requireStageFieldValue';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
@@ -83,7 +84,7 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
         // saved still carrying the previous subject's variable references.
         clearFieldValue(storeApi, field);
 
-        setStageValue(field, template[field] ?? null);
+        setStageValue(field, template[field]);
 
         const { fields, dormantValues } = storeApi.getState();
         const names = new Set([...fields.keys(), ...dormantValues.keys()]);
@@ -93,7 +94,8 @@ const useResetStageOnSubjectChange = (interfaceType: StageType): void => {
           }
           // A nested template default has to be addressed by the same name the
           // section registered, or it lands on the container instead.
-          setStageValue(name, get(template, name));
+          const templateValue = get(template, name);
+          setStageValue(name, requireStageFieldValue(templateValue));
         }
       });
     });

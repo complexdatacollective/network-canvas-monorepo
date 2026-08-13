@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -16,7 +16,7 @@ type Probe = {
   value: unknown;
   initialValue: unknown;
   subject: ReturnType<typeof useSubject>;
-  setValue: (path: string, value: unknown) => void;
+  setValue: ReturnType<typeof useSetStageValue>;
 };
 
 /** Captures the hooks' output for the path under test. */
@@ -43,6 +43,12 @@ const makeProbe = (path: string) => {
 };
 
 describe('stageFormHooks', () => {
+  it('rejects null writes at the stage-field boundary', () => {
+    expectTypeOf<null>().not.toMatchTypeOf<
+      Parameters<ReturnType<typeof useSetStageValue>>[1]
+    >();
+  });
+
   describe('useStageFormValue', () => {
     it('falls back to the committed stage while no field is registered', () => {
       const { ProbeComponent, latest } = makeProbe('interviewScript');

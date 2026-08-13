@@ -51,9 +51,9 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
 }
 
 describe('buildProtocolWithStage', () => {
-  it('prunes a freshly-created panel’s null filter so the wip protocol validates (regression)', async () => {
-    // This is the shape `createNewPanel` pushes once the user gives the panel a
-    // title and selects a roster: `filter` is still the placeholder `null`.
+  it('prunes a direct draft’s invalid null filter before preview', async () => {
+    // Callers outside the form can construct a draft that has not crossed the
+    // typed field writer. Preview must still match the pruned commit boundary.
     const wipStage = {
       ...makeProtocol().stages[0],
       panels: [

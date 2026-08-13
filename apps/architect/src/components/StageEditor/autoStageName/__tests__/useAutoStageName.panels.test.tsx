@@ -76,7 +76,7 @@ function renderNameGeneratorWithPanels() {
     subject: { entity: 'node', type: 'person' },
   } as unknown as Stage;
 
-  let setStageValue: ((path: string, value: unknown) => void) | null = null;
+  let setStageValue: ReturnType<typeof useSetStageValue> | null = null;
   const Probe = () => {
     setStageValue = useSetStageValue();
     return null;

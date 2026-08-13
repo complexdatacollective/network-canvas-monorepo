@@ -1,8 +1,11 @@
-import { act } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { type ComponentType, useEffect, useRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { StageType } from '@codaco/protocol-validation';
 import {
   asStage,
@@ -52,6 +55,24 @@ const SubjectField = () => (
   />
 );
 
+type BinPrompt = { id: string; text: string };
+
+const BinPromptItem = ({ item }: ArrayFieldItemProps<BinPrompt>) => (
+  <span>{item.text}</span>
+);
+
+const BinPromptField = ({ prompts }: { prompts: BinPrompt[] }) => (
+  <Field
+    name="prompts"
+    label="Prompts"
+    component={ArrayField<BinPrompt>}
+    initialValue={prompts}
+    itemComponent={BinPromptItem}
+    itemTemplate={() => ({ id: 'draft', text: '' })}
+    confirmDelete={false}
+  />
+);
+
 const ResetOnSubjectChange = ({
   interfaceType,
 }: {
@@ -62,6 +83,43 @@ const ResetOnSubjectChange = ({
 };
 
 describe('useResetStageOnSubjectChange', () => {
+  it.each(['OrdinalBin', 'CategoricalBin'] as const)(
+    'clears a rendered %s prompt array without passing null to ArrayField',
+    async (interfaceType) => {
+      const prompts = [{ id: 'p1', text: 'Old subject prompt' }];
+      const { getFieldState, getStoreApi } = renderStageForm({
+        committedStage: asStage({
+          id: 'stage-1',
+          type: interfaceType,
+          label: 'Sort people',
+          subject: PERSON,
+          prompts,
+        }),
+        children: (
+          <DialogProvider>
+            <ResetOnSubjectChange interfaceType={interfaceType} />
+            <SubjectField />
+            <BinPromptField prompts={prompts} />
+          </DialogProvider>
+        ),
+      });
+
+      expect(screen.getByText('Old subject prompt')).toBeInTheDocument();
+
+      act(() => {
+        getStoreApi().getState().setFieldValue('subject', FRIEND);
+      });
+
+      expect(getFieldState('prompts')?.value).toBeUndefined();
+      await waitFor(() => {
+        expect(
+          screen.queryByText('Old subject prompt'),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByText(/no items added yet/i)).toBeInTheDocument();
+    },
+  );
+
   it('resets the descendants a section registers, not just their container', () => {
     const { getFieldState, getFormValues, getStoreApi } = renderStageForm({
       committedStage: asStage({
@@ -246,9 +304,9 @@ describe('useResetStageOnSubjectChange', () => {
       expect(getPresent()).toEqual({
         subject: FRIEND,
         form: {},
-        // The template has no prompts for an AlterForm, so the reset parks an
-        // explicit empty value rather than leaving the old subject's.
-        prompts: null,
+        // The template has no prompts for an AlterForm, so the reset uses the
+        // form contract's unset value rather than leaving the old subject's.
+        prompts: undefined,
       });
     });
 
@@ -277,7 +335,7 @@ describe('useResetStageOnSubjectChange', () => {
 
       expect(getFieldState('subject')?.value).toEqual(FRIEND);
       expect(getFieldState('form.fields')?.value).toBeUndefined();
-      expect(getFieldState('prompts')?.value).toBeNull();
+      expect(getFieldState('prompts')?.value).toBeUndefined();
       expect(snapshots).toHaveLength(1);
       expect(store.getState().stageEditorDraft.history.future).toHaveLength(0);
       expect(getHistory().canUndo).toBe(true);

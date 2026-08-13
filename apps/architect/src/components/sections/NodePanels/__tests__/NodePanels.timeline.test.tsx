@@ -126,7 +126,7 @@ describe('NodePanels undo timeline', () => {
 
   it('does not record an entry for a stage that opens with panels already configured', async () => {
     const { getHistory, snapshots } = renderPanels([
-      { id: 'panel-1', title: 'A', dataSource: 'existing', filter: null },
+      { id: 'panel-1', title: 'A', dataSource: 'existing', filter: undefined },
     ]);
 
     await waitFor(() =>
