@@ -1,3 +1,6 @@
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && { npx --yes turbo@2.10.4 query affected --tasks build --packages @codaco/documentation networkcanvas.com --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; test $? -eq 0; }"
+
 [[redirects]]
 from = "/"
 to = "/en"

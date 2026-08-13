@@ -4,3 +4,6 @@ publish = "apps/interviewer/dist"
 
 [build.environment]
 NODE_OPTIONS = "--max-old-space-size=4096"
+
+[context.deploy-preview]
+ignore = "cd \"$(git rev-parse --show-toplevel)\" && test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && { npx --yes turbo@2.10.4 query affected --tasks build --packages @codaco/interviewer --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; test $? -eq 0; }"
