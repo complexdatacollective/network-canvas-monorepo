@@ -637,7 +637,7 @@ function ownRuleBroken(
   }
 
   if (dateWindow !== undefined && typeof value === 'string' && value !== '') {
-    const { resolution, min, max } = dateWindow;
+    const { resolution, min, max, maxDerived } = dateWindow;
     // A picker writes its dates at one resolution and no other, and offers only
     // days the calendar holds, so a value of any other shape is one the control
     // could neither have produced nor display: `2020-05-01` in a year picker,
@@ -648,7 +648,18 @@ function ownRuleBroken(
     // Both ends are now written at the same resolution, so they order as
     // strings — which is how the runtime's own min/max validators compare them.
     if (min !== undefined && value < min) return 'parameters';
-    if (max !== undefined && value > max) return 'parameters';
+    // A ceiling the window DERIVED is not a rule to judge against. An open
+    // full-resolution picker has no submission validator above its window, so
+    // today's date only marks where that open window was cut off — the same
+    // reading `ValueGenerator` applies before it treats a ceiling as authored
+    // (its `ceilingIsStandIn`). Judged as authored here, a date the drawer had
+    // deliberately placed beyond the stand-in came straight back as a broken
+    // rule, and a protocol whose declared window lies in the future was
+    // refused by the very value it asked for.
+    const ceilingIsStandIn = maxDerived === true && resolution === 'full';
+    if (max !== undefined && !ceilingIsStandIn && value > max) {
+      return 'parameters';
+    }
   }
 
   return undefined;
