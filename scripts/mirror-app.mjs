@@ -200,7 +200,7 @@ overrides:
   'effect@3.17.7': '${effectVersion}'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
-  postcss: '^8.5.23'
+  postcss: '^8.5.26'
   sharp: '^0.35.3'
   valibot: '^1.4.2'
 `;
