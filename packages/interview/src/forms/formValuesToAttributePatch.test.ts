@@ -89,11 +89,7 @@ describe('formValuesToAttributePatch', () => {
   });
 
   it('treats dangerous field names as own keys instead of prototype properties', () => {
-    const values: Record<string, string> = {};
-    Object.defineProperty(values, '__proto__', {
-      enumerable: true,
-      value: 'preserved',
-    });
+    const values = Object.fromEntries([['__proto__', 'preserved']]);
 
     const result = formValuesToAttributePatch(values, [
       '__proto__',
@@ -103,7 +99,7 @@ describe('formValuesToAttributePatch', () => {
     expect(result).toEqual({
       success: true,
       patch: {
-        set: { ['__proto__']: 'preserved' },
+        set: Object.fromEntries([['__proto__', 'preserved']]),
         unset: ['constructor'],
       },
     });
