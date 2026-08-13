@@ -26,7 +26,7 @@ export const getStageEditorInitialValues = ({
     : {};
 
   // The concentric-circles editor renders an optional toggle whose established
-  // form default is `false`. Include that default in redux-form's initial
+  // form default is `false`. Include that default in the editor's initial
   // values so mounting the field does not look like a user edit. Image-backed
   // Sociograms do not render the toggle, so their persisted shape stays intact.
   if (background.image || typeof background.skewedTowardCenter === 'boolean') {

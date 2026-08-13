@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import type { Form } from '@codaco/protocol-validation';
 import {
+  type VariableValue,
   type EntityAttributesProperty,
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -42,6 +43,12 @@ import { decryptData } from '../Anonymisation/utils';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
+
+function isNumberArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === 'number')
+  );
+}
 
 type NameGeneratorProps = StageProps<'NameGeneratorQuickAdd' | 'NameGenerator'>;
 
@@ -208,7 +215,9 @@ const NameGenerator = (props: NameGeneratorProps) => {
         // Map the node's attributes, check the codebook encrypted property, and pass to decryptData if required.
         const decryptedAttributes = await Promise.all(
           Object.entries(node[entityAttributesProperty]).map(
-            async ([variableId, value]) => {
+            async ([variableId, value]): Promise<
+              readonly [string, VariableValue | null]
+            > => {
               if (codebookForNodeType[variableId]?.encrypted) {
                 const secureAttributes = node[entitySecureAttributesMeta];
                 if (!secureAttributes?.[variableId]) {
@@ -216,11 +225,16 @@ const NameGenerator = (props: NameGeneratorProps) => {
                     `Secure attributes missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
                   );
                 }
+                if (!isNumberArray(value)) {
+                  throw new Error(
+                    `Encrypted value missing for ${variableId} on node ${node[entityPrimaryKeyProperty]}`,
+                  );
+                }
 
                 const decrypted = await decryptData(
                   {
                     secureAttributes: secureAttributes[variableId],
-                    data: value as number[],
+                    data: value,
                   },
                   passphrase,
                 );
@@ -232,20 +246,41 @@ const NameGenerator = (props: NameGeneratorProps) => {
           ),
         );
 
+        const attributes = decryptedAttributes.reduce<
+          Record<string, VariableValue>
+        >((result, [variableId, value]) => {
+          if (value !== null) {
+            result[variableId] = value;
+          }
+          return result;
+        }, {});
+
         const decryptedNode: NcNode = {
           ...node,
-          [entityAttributesProperty]: Object.fromEntries(
-            decryptedAttributes,
-          ) as NcNode[EntityAttributesProperty],
+          [entityAttributesProperty]: attributes,
         };
 
         setSelectedNode(decryptedNode);
         return;
       }
-      setSelectedNode(node);
+      const attributes = Object.entries(node[entityAttributesProperty]).reduce<
+        Record<string, VariableValue>
+      >((result, [variableId, value]) => {
+        if (value !== null) {
+          result[variableId] = value;
+        }
+        return result;
+      }, {});
+      setSelectedNode({ ...node, [entityAttributesProperty]: attributes });
     },
     [form, passphrase, useEncryption, codebookForNodeType],
   );
+
+  // Tapping a node opens it for editing, which only exists when the stage has
+  // a form: a quick-add stage has none, and offering the tap anyway gives the
+  // node every clickable affordance — pointer cursor, press feedback, a
+  // toggle role — for something that does nothing.
+  const onNodeTapped = form ? handleSelectNode : undefined;
 
   const stageElement = usePortalTarget('stage');
   const isSmallScreen = useMediaQuery('(max-aspect-ratio: 3/4)');
@@ -294,7 +329,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              onItemClick={handleSelectNode}
+              onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
               announcedName="Added Nodes"
@@ -309,7 +344,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              onItemClick={handleSelectNode}
+              onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
               announcedName="Added Nodes"

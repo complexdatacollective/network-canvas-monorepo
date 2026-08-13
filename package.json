@@ -21,17 +21,17 @@
     "typecheck": "turbo run typecheck --continue",
     "generate:interface-images": "pnpm --filter @codaco/interface-images generate",
     "prepare": "husky",
-    "knip": "SKIP_ENV_VALIDATION=true knip --exclude catalog"
+    "knip": "SKIP_ENV_VALIDATION=true knip"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.0",
     "@total-typescript/ts-reset": "catalog:",
     "@types/node": "catalog:",
     "@typescript/typescript6": "catalog:",
     "husky": "^9.1.7",
     "knip": "^6.26.0",
     "lint-staged": "^17.0.8",
-    "oxfmt": "^0.62.0",
+    "oxfmt": "^0.63.0",
     "oxlint": "^1.74.0",
     "oxlint-tailwindcss": "^1.3.5",
     "oxlint-tsgolint": "^0.24.0",

@@ -39,11 +39,7 @@ const ImageInput = ({
   canvasBackgroundPreview = false,
   ...props
 }: ImageInputProps) => (
-  <File
-    type="image"
-    // eslint-disable-next-line react/jsx-props-no-spreading
-    {...props}
-  >
+  <File type="image" {...props}>
     {(id: string) => (
       <ImagePreview id={id} canvasBackground={canvasBackgroundPreview} />
     )}

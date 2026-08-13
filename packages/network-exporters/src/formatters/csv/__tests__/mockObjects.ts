@@ -43,6 +43,16 @@ export const mockCodebook = {
         'mock-uuid-6': { name: 'unusedBool', type: 'boolean' },
       },
     },
+    'mock-node-type-2': {
+      name: 'organization',
+      color: 'color',
+      variables: {
+        'unrepresented-node-variable': {
+          name: 'unrepresentedNodeVariable',
+          type: 'text',
+        },
+      },
+    },
   },
   edge: {
     'mock-edge-type': {
@@ -63,6 +73,12 @@ export const mockCodebook = {
     'mock-edge-type-2': {
       name: 'likes',
       color: 'color',
+      variables: {
+        'unrepresented-edge-variable': {
+          name: 'unrepresentedEdgeVariable',
+          type: 'boolean',
+        },
+      },
     },
   },
 } as unknown as Codebook;
@@ -77,7 +93,7 @@ export const mockExportOptions: ExportOptions = {
   },
 };
 
-export const mockNetwork = {
+export const mockNetwork: FormattedSession = {
   nodes: [
     {
       [entityPrimaryKeyProperty]: '1',
@@ -87,10 +103,6 @@ export const mockNetwork = {
         'mock-uuid-2': 40,
         'mock-uuid-3': { x: 0, y: 0 },
         'mock-uuid-4': true,
-        'mock-uuid-5': null,
-        'mock-uuid-6': null,
-        'mock-uuid-7': null,
-        'mock-uuid-8': null,
       },
     },
     {
@@ -101,7 +113,6 @@ export const mockNetwork = {
         'mock-uuid-2': 0,
         'mock-uuid-3': { x: 0, y: 0 },
         'mock-uuid-4': false,
-        'mock-uuid-5': null,
       },
     },
     {
@@ -110,9 +121,7 @@ export const mockNetwork = {
       [entityAttributesProperty]: {
         'mock-uuid-1': 'Jumbo',
         'mock-uuid-2': 50,
-        'mock-uuid-3': null,
         'mock-uuid-4': true,
-        'mock-uuid-5': null,
       },
     },
     {
@@ -122,13 +131,12 @@ export const mockNetwork = {
         'mock-uuid-1': 'Francis',
         'mock-uuid-2': 10,
         'mock-uuid-3': { x: 0, y: 0 },
-        'mock-uuid-4': null,
-        'mock-uuid-5': null,
       },
     },
   ],
   edges: [
     {
+      [entityPrimaryKeyProperty]: 'edge-1',
       from: '1',
       to: '2',
       type: 'mock-edge-type',
@@ -146,20 +154,20 @@ export const mockNetwork = {
     },
   },
   sessionVariables: {
-    [caseProperty]: 123,
+    [caseProperty]: '123',
     [protocolName]: 'protocol name',
     [protocolProperty]: 'protocol-uid-1',
     [sessionProperty]: 'session-id-1',
-    [sessionStartTimeProperty]: 100,
-    [sessionFinishTimeProperty]: 200,
-    [sessionExportTimeProperty]: 300,
+    [sessionStartTimeProperty]: '100',
+    [sessionFinishTimeProperty]: '200',
+    [sessionExportTimeProperty]: '300',
     [codebookHashProperty]: '14fa461bf4b98155e82adc86532938553b4d33a9',
     APP_VERSION: 'mock-app-version',
     COMMIT_HASH: 'mock-commit-hash',
   },
 };
 
-export const mockNetwork2 = {
+export const mockNetwork2: FormattedSession = {
   nodes: [
     {
       [entityPrimaryKeyProperty]: '10',
@@ -180,7 +188,15 @@ export const mockNetwork2 = {
       },
     },
   ],
-  edges: [{ from: '10', to: '20', type: 'mock-edge-type' }],
+  edges: [
+    {
+      [entityPrimaryKeyProperty]: 'edge-10',
+      from: '10',
+      to: '20',
+      type: 'mock-edge-type',
+      [entityAttributesProperty]: {},
+    },
+  ],
   ego: {
     [entityPrimaryKeyProperty]: 'ego-id-10',
     [entityAttributesProperty]: {
@@ -190,24 +206,21 @@ export const mockNetwork2 = {
     },
   },
   sessionVariables: {
-    [caseProperty]: 456,
+    [caseProperty]: '456',
     [protocolName]: 'protocol name',
     [protocolProperty]: 'protocol-uid-1',
     [sessionProperty]: 'session-id-2',
-    [sessionStartTimeProperty]: 1000,
-    [sessionFinishTimeProperty]: 2000,
-    [sessionExportTimeProperty]: 3000,
+    [sessionStartTimeProperty]: '1000',
+    [sessionFinishTimeProperty]: '2000',
+    [sessionExportTimeProperty]: '3000',
     [codebookHashProperty]: '14fa461bf4b98155e82adc86532938553b4d33a9',
     APP_VERSION: 'mock-app-version',
     COMMIT_HASH: 'mock-commit-hash',
   },
 };
 
-// Mirrors the flow in processSessions. The parameter accepts unknown[] because
-// mock session variables use numeric timestamps rather than the string
-// timestamps that FormattedSession requires; callers need not cast.
-export const processMockNetworks = (networkCollection: unknown[]) => {
-  const sessions = (networkCollection as FormattedSession[])
+export const processMockNetworks = (networkCollection: FormattedSession[]) => {
+  const sessions = networkCollection
     .map(insertEgoIntoSessionNetwork)
     .map(resequenceSessionIds);
   return groupBy(sessions, (s) => s.sessionVariables[protocolProperty]);

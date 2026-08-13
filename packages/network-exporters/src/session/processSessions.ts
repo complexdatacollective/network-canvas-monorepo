@@ -1,14 +1,14 @@
 import { Effect } from 'effect';
 
-import { sessionProperty } from '@codaco/shared-consts';
+import { NcNetworkSchema, sessionProperty } from '@codaco/shared-consts';
 
 import { formatExportableSession } from '../formatters/formatExportableSessions';
 import type {
   FormattedSession,
-  InterviewExportInput,
-  ProtocolExportInput,
   SessionWithNetworkEgo,
   SessionWithResequencedIDs,
+  InterviewExportInput,
+  ProtocolExportInput,
 } from '../input';
 import type { ExportOptions } from '../options';
 import type { ExportFailure } from '../output';
@@ -60,7 +60,15 @@ export const processSessions = (
               `unreachable: protocol ${s.protocolHash} dropped earlier`,
             );
           }
-          return formatExportableSession(s, protocol, exportOptions);
+          const parsedSession = {
+            ...s,
+            network: NcNetworkSchema.parse(s.network),
+          };
+          return formatExportableSession(
+            parsedSession,
+            protocol,
+            exportOptions,
+          );
         }),
       getInterviewId,
     )(resolvable).pipe(Effect.withSpan('format.buildVariables'));

@@ -101,6 +101,7 @@ export default function QuickAddField({
 
   const { id, meta, fieldProps } = useField({
     name: targetVariable,
+    nameMode: 'opaque',
     initialValue: '',
     disabled,
     validateOnChange: true,
@@ -110,6 +111,7 @@ export default function QuickAddField({
   });
 
   const isFormSubmitting = useFormStore((state) => state.isSubmitting);
+  const pathOperations = useFormStore((state) => state.pathOperations);
   const resetFormField = useFormStore((state) => state.resetField);
   const wasSubmittingRef = useRef(false);
   const explicitSuccessPendingRef = useRef(false);
@@ -126,11 +128,15 @@ export default function QuickAddField({
     // A successful write starts a fresh entry rather than entering a new,
     // invalid blank value. Resetting restores the field's initial value and
     // clears its dirty/blurred/error state without running required validation.
-    resetFormField(targetVariable);
+    if (pathOperations) {
+      pathOperations.resetField([targetVariable]);
+    } else {
+      resetFormField(targetVariable);
+    }
     setSubmissionCount((count) => count + 1);
     setShowErrors(false);
     celebrate();
-  }, [resetFormField, targetVariable, celebrate]);
+  }, [pathOperations, resetFormField, targetVariable, celebrate]);
 
   useEffect(() => {
     if (
@@ -352,7 +358,14 @@ export default function QuickAddField({
                     )}
                   >
                     {fieldProps.value ? (
-                      <span className={labelVariants()}>
+                      // This live preview has no fit ladder, so it opts into
+                      // emergency breaking to keep the input inside the shape
+                      // while it is being typed.
+                      <span
+                        className={labelVariants({
+                          className: 'wrap-anywhere',
+                        })}
+                      >
                         {truncateNodeLabel(fieldProps.value as string)}
                       </span>
                     ) : (

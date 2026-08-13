@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   caseProperty,
   egoProperty,
@@ -46,7 +46,37 @@ const printableAttribute = (attribute: string) => {
   }
 };
 
-function collectHeaders(ego: Record<string, unknown>): string[] {
+const isUnknownRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const addVariableHeaders = (
+  headers: Set<string>,
+  variables: Record<string, Variable> | undefined,
+  exportOptions: ExportOptions,
+) => {
+  for (const variable of Object.values(variables ?? {})) {
+    if (variable.type === 'categorical') {
+      for (const option of variable.options) {
+        headers.add(`${variable.name}_${option.value}`);
+      }
+    } else if (variable.type === 'layout') {
+      headers.add(`${variable.name}_x`);
+      headers.add(`${variable.name}_y`);
+      if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+        headers.add(`${variable.name}_screenSpaceX`);
+        headers.add(`${variable.name}_screenSpaceY`);
+      }
+    } else {
+      headers.add(variable.name);
+    }
+  }
+};
+
+function collectHeaders(
+  ego: Record<string, unknown>,
+  codebook: Codebook,
+  exportOptions: ExportOptions,
+): string[] {
   const headers = new Set<string>([
     entityPrimaryKeyProperty,
     caseProperty,
@@ -59,8 +89,12 @@ function collectHeaders(ego: Record<string, unknown>): string[] {
     'COMMIT_HASH',
   ]);
 
-  const attrs =
-    (ego[entityAttributesProperty] as Record<string, unknown>) ?? {};
+  addVariableHeaders(headers, codebook.ego?.variables, exportOptions);
+
+  const attrs = ego[entityAttributesProperty];
+  if (!isUnknownRecord(attrs)) {
+    return [...headers];
+  }
   for (const key of Object.keys(attrs)) {
     headers.add(key);
   }
@@ -73,19 +107,12 @@ export function* egoListRows(
   codebook: Codebook,
   exportOptions: ExportOptions,
 ): Generator<string, void, void> {
-  const merged = {
-    ...(network.ego as Record<string, unknown>),
-    ...(network.sessionVariables as Record<string, unknown>),
+  const ego: Record<string, unknown> = {
+    ...processEntityVariables(network.ego, 'ego', codebook, exportOptions),
+    ...network.sessionVariables,
   };
 
-  const ego = processEntityVariables(
-    merged as never,
-    'ego',
-    codebook,
-    exportOptions,
-  ) as Record<string, unknown>;
-
-  const headers = collectHeaders(ego);
+  const headers = collectHeaders(ego, codebook, exportOptions);
 
   yield (
     headers
@@ -93,12 +120,13 @@ export function* egoListRows(
       .join(',') + csvEOL
   );
 
+  const attrs = ego[entityAttributesProperty];
   const cells = headers.map((header) => {
     const value = TOP_LEVEL_KEYS.has(header)
       ? ego[header]
-      : (
-          ego[entityAttributesProperty] as Record<string, unknown> | undefined
-        )?.[header];
+      : isUnknownRecord(attrs)
+        ? attrs[header]
+        : undefined;
     return String(sanitizeCellValue(value) ?? '');
   });
 

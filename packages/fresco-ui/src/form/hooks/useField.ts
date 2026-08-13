@@ -7,7 +7,13 @@ import type {
   FieldValue,
   ValidationPropsCatalogue,
 } from '../Field/types';
-import { useFieldNamespace } from '../FieldNamespace';
+import {
+  type FieldNameMode,
+  resolveFieldName,
+  resolveFieldPath,
+  useFieldNamespace,
+  useFieldNamespacePath,
+} from '../FieldNamespace';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
 import {
@@ -63,7 +69,8 @@ type UseFieldResult = {
     isValid: boolean;
   };
   containerProps: {
-    'data-field-name': string; // Used for scrolling to field errors
+    'data-field-name': string;
+    'data-field-path': string; // Canonical internal key used to focus errors
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
     // (a slot button, a sibling radio…) does not validate prematurely.
@@ -94,6 +101,7 @@ const DEFAULT_VALIDATE_ON_CHANGE_DELAY = 1000;
 
 type UseFieldConfig = {
   name: string;
+  nameMode?: FieldNameMode;
   initialValue?: FieldValue;
   showValidationHints?: boolean;
   /**
@@ -125,20 +133,31 @@ type UseFieldConfig = {
 export function useField(config: UseFieldConfig): UseFieldResult {
   const {
     name,
+    nameMode = 'legacy',
     initialValue,
     showValidationHints = false,
     validationContext,
     ...validationProps
   } = config;
 
-  const namespace = useFieldNamespace();
-  const resolvedName = namespace ? `${namespace}.${name}` : name;
+  const namespace = useFieldNamespacePath();
+  const namespaceName = useFieldNamespace();
+  const resolvedPath = useMemo(
+    () => resolveFieldPath(namespace, name, nameMode),
+    [namespace, name, nameMode],
+  );
+  const resolvedName = resolveFieldName(namespace, name, nameMode);
+  const publicResolvedName = namespaceName ? `${namespaceName}.${name}` : name;
   const resolvedValidationContext = useMemo(
     () =>
-      namespace && validationContext
-        ? { ...validationContext, formValueNamespace: namespace }
+      namespace.length > 0 && validationContext
+        ? {
+            ...validationContext,
+            formValueNamespace: namespaceName,
+            formValueNamespacePath: namespace,
+          }
         : validationContext,
-    [namespace, validationContext],
+    [namespace, namespaceName, validationContext],
   );
 
   const id = useId();
@@ -175,12 +194,21 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     [showValidationHints, validationPropsJson, resolvedValidationContext],
   );
 
-  const fieldState = useFormStore((state) => state.getFieldState(resolvedName));
+  const fieldState = useFormStore((state) =>
+    state.pathOperations
+      ? state.pathOperations.getFieldState(resolvedPath)
+      : state.getFieldState(publicResolvedName),
+  );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
 
   const fieldErrors = useFormStore(
-    useShallow((state) => state.getFieldErrors(resolvedName)),
+    useShallow((state) =>
+      state.pathOperations
+        ? state.pathOperations.getFieldErrors(resolvedPath)
+        : state.getFieldErrors(publicResolvedName),
+    ),
   );
+  const pathOperations = useFormStore((store) => store.pathOperations);
   const registerField = useFormStore((store) => store.registerField);
   const unregisterField = useFormStore((store) => store.unregisterField);
   const setFieldValue = useFormStore((store) => store.setFieldValue);
@@ -201,14 +229,37 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validateOnChange,
   );
 
+  const validateResolvedField = useCallback(() => {
+    const request = pathOperations
+      ? pathOperations.validateField(resolvedPath)
+      : validateField(publicResolvedName);
+    void request;
+  }, [pathOperations, publicResolvedName, resolvedPath, validateField]);
+
+  const setResolvedFieldValue = useCallback(
+    (value: FieldValue) => {
+      if (pathOperations) {
+        pathOperations.setFieldValue(resolvedPath, value);
+        return;
+      }
+      setFieldValue(publicResolvedName, value);
+    },
+    [pathOperations, publicResolvedName, resolvedPath, setFieldValue],
+  );
+
+  const setResolvedFieldBlurred = useCallback(() => {
+    if (pathOperations) {
+      pathOperations.setFieldBlurred(resolvedPath);
+      return;
+    }
+    setFieldBlurred(publicResolvedName);
+  }, [pathOperations, publicResolvedName, resolvedPath, setFieldBlurred]);
+
   // Create a debounced validation function for validateOnChange
   // This prevents excessive validation calls while the user is typing
   const debouncedValidate = useMemo(() => {
-    const validate = (fieldName: string) => {
-      void validateField(fieldName);
-    };
-    return debounce(validate, validateOnChangeDelay);
-  }, [validateField, validateOnChangeDelay]);
+    return debounce(validateResolvedField, validateOnChangeDelay);
+  }, [validateResolvedField, validateOnChangeDelay]);
 
   // Cancel debounced validation on unmount
   useEffect(() => {
@@ -219,36 +270,60 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   // Register field on mount
   useEffect(() => {
-    registerField({
-      name: resolvedName,
-      initialValue,
-      validation,
-    });
+    const submissionErrorKey =
+      publicResolvedName !== resolvedName ? publicResolvedName : undefined;
+    if (pathOperations) {
+      pathOperations.registerField({
+        name: resolvedPath,
+        submissionErrorKey,
+        initialValue,
+        validation,
+      });
+    } else {
+      registerField({
+        name: publicResolvedName,
+        submissionErrorKey,
+        initialValue,
+        validation,
+      });
+    }
 
     return () => {
-      unregisterField(resolvedName);
+      if (pathOperations) {
+        pathOperations.unregisterField(resolvedPath);
+        return;
+      }
+      unregisterField(publicResolvedName);
     };
-  }, [resolvedName, initialValue, validation, unregisterField, registerField]);
+  }, [
+    resolvedPath,
+    pathOperations,
+    publicResolvedName,
+    resolvedName,
+    initialValue,
+    validation,
+    unregisterField,
+    registerField,
+  ]);
 
   const handleChange = useCallback(
     (value: FieldValue) => {
-      setFieldValue(resolvedName, value);
+      setResolvedFieldValue(value);
 
       // If validateOnChange is enabled, use debounced validation
       // Otherwise, only validate after the field has been blurred once
       if (config.validateOnChange) {
-        debouncedValidate(resolvedName);
+        debouncedValidate();
       } else if (fieldState?.meta.isBlurred) {
         // After first blur, validate immediately on change (no debounce)
-        void validateField(resolvedName);
+        validateResolvedField();
       }
     },
     [
-      resolvedName,
       config.validateOnChange,
-      setFieldValue,
+      setResolvedFieldValue,
       fieldState?.meta.isBlurred,
-      validateField,
+      validateResolvedField,
       debouncedValidate,
     ],
   );
@@ -277,20 +352,19 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       }
 
       // Mark the field as having been blurred at least once
-      setFieldBlurred(resolvedName);
+      setResolvedFieldBlurred();
 
       // For validateOnChange fields, don't validate on blur - the debounced
       // change validation handles it. For other fields, validate on blur.
       if (!config.validateOnChange) {
-        void validateField(resolvedName);
+        validateResolvedField();
       }
     },
     [
-      resolvedName,
       config.validateOnChange,
       config.validateOnControlBlur,
-      setFieldBlurred,
-      validateField,
+      setResolvedFieldBlurred,
+      validateResolvedField,
     ],
   );
 
@@ -304,17 +378,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const controller = useMemo<FieldSlotController>(
     () => ({
-      name: resolvedName,
+      name: publicResolvedName,
       value: currentValue,
       setValue: handleChange,
-      validate: () => {
-        void validateField(resolvedName);
-      },
+      validate: validateResolvedField,
       focusInput: () => {
         document.getElementById(id)?.focus();
       },
     }),
-    [resolvedName, currentValue, handleChange, validateField, id],
+    [publicResolvedName, currentValue, handleChange, validateResolvedField, id],
   );
 
   const result: UseFieldResult = {
@@ -329,7 +401,8 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       isValidating: fieldState?.meta.isValidating ?? false,
     },
     containerProps: {
-      'data-field-name': resolvedName, // Used for scrolling to field errors
+      'data-field-name': publicResolvedName,
+      'data-field-path': resolvedName,
       'onBlur': handleContainerBlur,
     },
     fieldProps: {

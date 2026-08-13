@@ -199,7 +199,7 @@ function NameGeneratorPromptEditor({
       return { success: false as const, errors: z.flattenError(result.error) };
     }
 
-    onSave({
+    onSave?.({
       id: item?.id ?? crypto.randomUUID(),
       text: result.data.text,
       additionalAttributes: result.data.additionalAttributes,

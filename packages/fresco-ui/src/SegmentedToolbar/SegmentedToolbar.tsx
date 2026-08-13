@@ -67,7 +67,10 @@ export type ToggleSegment = {
   disabled?: boolean;
   pressed?: boolean;
   defaultPressed?: boolean;
-  onPressedChange?: (pressed: boolean) => void;
+  onPressedChange?: (
+    pressed: boolean,
+    eventDetails: Toggle.ChangeEventDetails,
+  ) => void;
 } & SegmentContent;
 
 export type GroupSegment = {
@@ -76,7 +79,10 @@ export type GroupSegment = {
   mode: 'single' | 'multiple';
   value?: string[];
   defaultValue?: string[];
-  onValueChange?: (value: string[]) => void;
+  onValueChange?: (
+    value: string[],
+    eventDetails: ToggleGroup.ChangeEventDetails,
+  ) => void;
   options: Array<SegmentContent & { value: string; disabled?: boolean }>;
 };
 
@@ -284,14 +290,22 @@ function ToolbarToggleSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
+  // A controlled `pressed` with no `onPressedChange` can never change state —
+  // Base UI won't manage it internally once it's controlled, so a tap would
+  // advertise an activation that does nothing. Disable that combination
+  // rather than leave a live-looking control wired to nothing; an
+  // uncontrolled toggle (no `pressed`) is unaffected, since Base UI manages
+  // its own state regardless of whether a callback is supplied.
+  const isUncontrollable =
+    segment.pressed !== undefined && !segment.onPressedChange;
   const toggle = (
     <Toolbar.Button
       render={
         <Toggle
           pressed={segment.pressed}
           defaultPressed={segment.defaultPressed}
-          onPressedChange={(pressed) => segment.onPressedChange?.(pressed)}
-          disabled={segment.disabled}
+          onPressedChange={segment.onPressedChange}
+          disabled={segment.disabled || isUncontrollable}
           render={segmentButton(segment, size, pressedClasses)}
         />
       }
@@ -314,12 +328,18 @@ function ToolbarGroupSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
+  // Same rationale as the toggle segment above: a controlled `value` with no
+  // `onValueChange` can never change, since Base UI won't manage selection
+  // internally once the group is controlled.
+  const isUncontrollable =
+    segment.value !== undefined && !segment.onValueChange;
   return (
     <ToggleGroup
       multiple={segment.mode === 'multiple'}
       value={segment.value}
       defaultValue={segment.defaultValue}
-      onValueChange={(value) => segment.onValueChange?.(value)}
+      onValueChange={segment.onValueChange}
+      disabled={isUncontrollable}
       orientation={orientation}
       className={cx(
         'flex items-center gap-1',

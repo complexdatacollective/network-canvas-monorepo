@@ -80,7 +80,17 @@ const renderItem = (
   item: Item,
   itemProps: React.HTMLAttributes<HTMLElement>,
 ) => {
-  const { onPointerDown, onPointerUp, ...restProps } = itemProps;
+  // Node owns the gesture contract for onDragStart/onDragEnd (pointer-based),
+  // so the HTML5 drag-event handlers in the generic attribute bag must not be
+  // spread into it.
+  const {
+    onPointerDown,
+    onPointerUp,
+    onDrag,
+    onDragStart,
+    onDragEnd,
+    ...restProps
+  } = itemProps;
   return (
     <Node
       label={item.name}

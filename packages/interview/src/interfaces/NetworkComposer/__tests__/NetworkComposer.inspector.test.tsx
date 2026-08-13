@@ -76,6 +76,7 @@ const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
 const NODE_NAME_VAR = 'var-name';
 const EDGE_STRENGTH_VAR = 'var-strength';
+const PROTOTYPE_VAR = '__proto__';
 
 const nodeForm = {
   fields: [
@@ -193,7 +194,11 @@ function makePreloadedEdges() {
   ];
 }
 
-function makeStore(includeEdges = false, stageForStore: object = stage) {
+function makeStore(
+  includeEdges = false,
+  stageForStore: object = stage,
+  codebookForStore: object = codebook,
+) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -210,7 +215,7 @@ function makeStore(includeEdges = false, stageForStore: object = stage) {
         id: 'p',
         hash: 'h',
         schemaVersion: 8,
-        codebook,
+        codebook: codebookForStore,
         stages: [stageForStore],
       } as never,
     },
@@ -265,12 +270,15 @@ function tapNode(nodeEl: HTMLElement) {
     clientY: 10,
     pointerId: 1,
   });
-  fireEvent.pointerUp(document, {
+  fireEvent.pointerUp(nodeEl, {
     button: 0,
     clientX: 10,
     clientY: 10,
     pointerId: 1,
   });
+  // A still release is a tap: the browser follows it with a click on the
+  // node, which Node's gesture recognizer lets through.
+  fireEvent.click(nodeEl, { detail: 1 });
 }
 
 describe('NetworkComposer inspector — node', () => {
@@ -317,6 +325,78 @@ describe('NetworkComposer inspector — node', () => {
         expect(updatedNode?.[entityAttributesProperty]?.[NODE_NAME_VAR]).toBe(
           'Alice Updated',
         );
+      },
+      { timeout: 2000 },
+    );
+  });
+
+  it('restarts autosave after each edit to an opaque __proto__ field', async () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const prototypeStage = {
+      ...stage,
+      nodeForm: {
+        fields: [{ prompt: 'Prototype value', variable: PROTOTYPE_VAR }],
+      },
+    };
+    const prototypeCodebook = {
+      ...codebook,
+      node: {
+        ...codebook.node,
+        [NODE_TYPE]: {
+          ...codebook.node[NODE_TYPE],
+          variables: {
+            ...codebook.node[NODE_TYPE].variables,
+            [PROTOTYPE_VAR]: {
+              component: 'Text',
+              name: 'Prototype value',
+              type: 'text',
+            },
+          },
+        },
+      },
+    };
+    const store = makeStore(false, prototypeStage, prototypeCodebook);
+    renderInterface(store, prototypeStage);
+
+    const nodeA = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeA);
+    });
+    const input = await screen.findByLabelText('Prototype value');
+
+    fireEvent.change(input, { target: { value: 'first value' } });
+    await waitFor(
+      () => {
+        const node = store
+          .getState()
+          .session.network.nodes.find(
+            (candidate) => candidate[entityPrimaryKeyProperty] === NODE_A_ID,
+          );
+        expect(node?.[entityAttributesProperty]?.[PROTOTYPE_VAR]).toBe(
+          'first value',
+        );
+      },
+      { timeout: 2000 },
+    );
+
+    fireEvent.change(input, { target: { value: 'final value' } });
+    await waitFor(
+      () => {
+        const node = store
+          .getState()
+          .session.network.nodes.find(
+            (candidate) => candidate[entityPrimaryKeyProperty] === NODE_A_ID,
+          );
+        const attributes = node?.[entityAttributesProperty];
+        expect(Object.hasOwn(attributes ?? {}, PROTOTYPE_VAR)).toBe(true);
+        expect(attributes?.[PROTOTYPE_VAR]).toBe('final value');
+        expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+        expect(
+          Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+        ).toEqual(prototypeDescriptor);
       },
       { timeout: 2000 },
     );

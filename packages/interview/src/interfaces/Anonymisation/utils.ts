@@ -1,9 +1,22 @@
 import type { Variable } from '@codaco/protocol-validation';
 import type {
+  NcNode,
   EntityAttributesProperty,
   EntitySecureAttributesMeta,
-  NcNode,
 } from '@codaco/shared-consts';
+
+const writeOwnProperty = <Value>(
+  target: Record<string, Value>,
+  key: string,
+  value: Value,
+): void => {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+};
 
 export class UnauthorizedError extends Error {
   constructor(message?: string) {
@@ -89,7 +102,9 @@ export async function generateSecureAttributes(
   encryptedAttributes: NcNode[EntityAttributesProperty];
 }> {
   const secureAttributes: NcNode[EntitySecureAttributesMeta] = {};
-  const encryptedAttributes: NcNode[EntityAttributesProperty] = attributes;
+  const encryptedAttributes: NcNode[EntityAttributesProperty] = {
+    ...attributes,
+  };
 
   for (const [key, value] of Object.entries(attributes)) {
     // If this attribute is not encrypted, we can skip it
@@ -111,12 +126,16 @@ export async function generateSecureAttributes(
         encoder.encode(value),
       );
 
-      secureAttributes[key] = {
+      writeOwnProperty(secureAttributes, key, {
         iv: Array.from(iv),
         salt: Array.from(salt),
-      };
+      });
 
-      encryptedAttributes[key] = Array.from(new Uint8Array(encryptedData));
+      writeOwnProperty(
+        encryptedAttributes,
+        key,
+        Array.from(new Uint8Array(encryptedData)),
+      );
     }
   }
 

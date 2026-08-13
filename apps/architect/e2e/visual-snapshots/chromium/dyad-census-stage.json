@@ -1,9 +1,10 @@
 {
   "label": "Do They Know Each Other?",
+  "id": "id-1",
   "type": "DyadCensus",
   "subject": {
-    "type": "id-1",
-    "entity": "node"
+    "entity": "node",
+    "type": "id-2"
   },
   "introductionPanel": {
     "title": "Do They Know Each Other?",
@@ -11,10 +12,9 @@
   },
   "prompts": [
     {
-      "id": "id-2",
+      "id": "id-3",
       "text": "Do they know each other?",
-      "createEdge": "id-3"
+      "createEdge": "id-4"
     }
-  ],
-  "id": "id-4"
+  ]
 }

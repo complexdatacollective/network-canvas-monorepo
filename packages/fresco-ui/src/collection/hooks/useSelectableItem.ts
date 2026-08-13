@@ -178,7 +178,9 @@ export function useSelectableItem(
     itemProps: {
       'tabIndex': -1,
       'onFocus': handleFocus,
-      'onClick': handleClick,
+      // Withheld entirely when nothing can be selected, so renderers do not
+      // advertise a click that would do nothing.
+      'onClick': selectionMode === 'none' ? undefined : handleClick,
       'onKeyDown': handleKeyDown,
       'aria-selected': selectionMode !== 'none' ? isSelected : undefined,
       'aria-disabled': isDisabled ? true : undefined,

@@ -5,15 +5,11 @@ on:
     branches:
       - main
       - 'changeset-release/**'
-  # Merge groups publish zero-snapshot statuses at the commit that later lands
-  # on main. The subsequent main push must replace that skipped target with a
-  # real build for every project so future PR changesets have snapshots to use.
-  # Once the three `UI Tests: ...` contexts are required on main, every PR and
-  # merge-group SHA must receive them. Normal trusted PRs and merge groups use
-  # Chromatic's zero-snapshot `--skip` path below; release PRs receive the same
-  # contexts from their real release-branch push run.
+  # Normal trusted PRs receive zero-snapshot statuses from Chromatic's `--skip`
+  # path below; release PRs receive the same contexts from their real
+  # release-branch push run. Merge groups deliberately do no Chromatic work.
   pull_request:
-  merge_group:
+    branches: [main]
   # Dependabot and fork PR events cannot read Actions secrets. Wait for the
   # unprivileged CI run, then publish status-only Chromatic results from the
   # trusted default-branch workflow without checking out proposed code.
@@ -42,22 +38,21 @@ concurrency:
   # Main needs one completed target build for every merge commit, so give each
   # push its own group. Other event classes keep only the newest run for a ref;
   # release uploads remain isolated from status-only PR runs.
-  group: chromatic-${{ github.event_name }}-${{ (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.sha) || github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
+  group: chromatic-${{ github.event_name }}-${{ (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch && github.sha) || github.event.pull_request.head.ref || github.event.workflow_run.pull_requests[0].number || github.ref_name || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   # GitHub required contexts apply to every PR targeting main, not only release
   # PRs. Emit all three external UI Test statuses without publishing snapshots
-  # for normal PRs and merge-group commits. `workflow_run` handles Dependabot
-  # and forks only after their unprivileged CI run, checks out trusted
-  # default-branch code, and never executes the proposed head. Generated release
-  # PRs are deliberately excluded: their push run below publishes real or
-  # lane-proven `--skip` results at the same head SHA.
+  # for normal PRs. `workflow_run` handles Dependabot and forks only after their
+  # unprivileged CI run, checks out trusted default-branch code, and never
+  # executes the proposed head. Generated release PRs are deliberately excluded:
+  # their push run below publishes real or lane-proven `--skip` results at the
+  # same head SHA.
   required-statuses:
     name: Required UI Test statuses
     if: >-
-      github.event_name == 'merge_group'
-      || (github.event_name == 'pull_request'
+      (github.event_name == 'pull_request'
       && github.actor != 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
       && !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
@@ -73,7 +68,7 @@ jobs:
         with:
           # workflow_run defaults to the trusted default branch. No later step
           # checks out or evaluates the untrusted PR head.
-          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Fetch untrusted status commit without checking it out
@@ -92,7 +87,7 @@ jobs:
           echo "current=true" >> "$GITHUB_OUTPUT"
       # This privileged status-only path deliberately avoids shared caches and
       # installs only the three Chromatic workspaces from trusted code.
-      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
           install: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -107,8 +102,8 @@ jobs:
       - name: Publish passing UI Test statuses without snapshots
         if: steps.verify-head.outputs.current != 'false'
         env:
-          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.event.workflow_run.head_sha || github.sha }}
-          CHROMATIC_BRANCH: ${{ (github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.head.label) || github.event.pull_request.head.ref || github.event.merge_group.head_ref || github.event.workflow_run.head_branch || github.ref_name }}
+          CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
+          CHROMATIC_BRANCH: ${{ (github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.head.label) || github.event.pull_request.head.ref || github.event.workflow_run.head_branch || github.ref_name }}
           CHROMATIC_SLUG: ${{ github.repository }}
           FRESCO_UI_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_FRESCO_UI }}
           INTERVIEW_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN_INTERVIEW }}

@@ -13,6 +13,12 @@
 // reads state scopes its decision to the library lane. Nothing is committed:
 // the publish path never commits, and the version path starts with the
 // action's own `git reset --hard`, which restores the deleted files.
+//
+// That reset only happens on the action's Git CLI push path, so the release
+// job pins `push-with-git-cli: true`. The v2 default (GitHub API push) commits
+// the whole working-tree diff against the pushed SHA instead, which would turn
+// these deletions into real ones and drop the gated-product changesets. Do not
+// remove that input without replacing this working-tree-only approach.
 import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 

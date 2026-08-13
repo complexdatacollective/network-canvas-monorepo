@@ -96,6 +96,12 @@
         "@fontsource-variable/nunito"
       ]
     },
+    "tooling/vitest": {
+      // The legacy setup deliberately resolves the active Classic workspace's
+      // Framer Motion installation rather than declaring a second copy here.
+      // Consumer coverage is enforced by vitest-animation-setup.test.mjs.
+      "ignoreDependencies": ["framer-motion"]
+    },
     "apps/interviewer-classic": {
       "project": ["src/**/*.{js,jsx}"],
       "paths": { "@/*": ["./src/*"] },
@@ -133,6 +139,14 @@
         "@modules/*": ["./src/ducks/modules/*"],
         "@utils/*": ["./src/utils/*"]
       }
+    },
+    "apps/studio/client": {
+      "entry": ["index.html!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/studio/server": {
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [

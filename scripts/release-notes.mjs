@@ -51,6 +51,33 @@ export function notesFromDedicatedChangeset(pkgName, version, changesetDir) {
   return '';
 }
 
+// Every stable version in the changelog above `since` and up to `version`,
+// newest first. A release run can be dropped while pending on its app's
+// concurrency group (see apps-release-<app> in ci-and-release.yml), and the
+// next release is then the first to mention those changes — so its body has to
+// carry their sections too, or the skipped notes never reach anyone.
+export function versionsSince(appDir, version, since) {
+  const changelogPath = join(appDir, 'CHANGELOG.md');
+  if (!existsSync(changelogPath)) return [];
+  const stable = /^## +(\d+\.\d+\.\d+)\s*$/gm;
+  const found = [...readFileSync(changelogPath, 'utf8').matchAll(stable)].map(
+    (match) => match[1],
+  );
+  const rank = (semver) => semver.split('.').map(Number);
+  const newer = (a, b) => {
+    const [left, right] = [rank(a), rank(b)];
+    for (let i = 0; i < 3; i += 1) {
+      if (left[i] !== right[i]) return left[i] > right[i];
+    }
+    return false;
+  };
+  return found.filter(
+    (candidate) =>
+      !newer(candidate, version) &&
+      (candidate === version || !since || newer(candidate, since)),
+  );
+}
+
 export function notesFromChangelog(appDir, version) {
   const changelogPath = join(appDir, 'CHANGELOG.md');
   if (!existsSync(changelogPath)) return '';
@@ -65,13 +92,29 @@ export function notesFromChangelog(appDir, version) {
   return section.replace(/^## .*\n?/, '').trim();
 }
 
-export function releaseNotes({ appDir, pkgName, version }) {
+export function releaseNotes({ appDir, pkgName, version, since }) {
   const dedicated = notesFromDedicatedChangeset(
     pkgName,
     version,
     join(repoRoot, '.changeset'),
   );
   if (dedicated) return dedicated;
+
+  // Only ever more than one when a release was skipped: each extra section
+  // keeps its own heading so the reader can see which versions rolled up here.
+  // Without a previous release there is nothing to roll up — an app's whole
+  // changelog is not release notes for one version.
+  const versions = since ? versionsSince(appDir, version, since) : [];
+  if (versions.length > 1) {
+    const rolled = versions
+      .map((each) => {
+        const body = notesFromChangelog(appDir, each);
+        return body ? `## ${each}\n\n${body}` : '';
+      })
+      .filter(Boolean);
+    if (rolled.length) return rolled.join('\n\n');
+  }
+
   const fromChangelog = notesFromChangelog(appDir, version);
   if (fromChangelog) return fromChangelog;
   return `Release v${version}`;
@@ -86,14 +129,14 @@ function parseArgs(argv) {
 }
 
 function main() {
-  const { app, pkg, version, out } = parseArgs(process.argv.slice(2));
+  const { app, pkg, version, since, out } = parseArgs(process.argv.slice(2));
   if (!app || !pkg || !version) {
     console.error(
-      'Usage: node scripts/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--out <path>]',
+      'Usage: node scripts/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--since <version>] [--out <path>]',
     );
     process.exit(1);
   }
-  const notes = releaseNotes({ appDir: app, pkgName: pkg, version });
+  const notes = releaseNotes({ appDir: app, pkgName: pkg, version, since });
   if (out) {
     writeFileSync(out, `${notes}\n`);
     console.error(`[release-notes] wrote ${out}`);

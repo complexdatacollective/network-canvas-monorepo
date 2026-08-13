@@ -932,12 +932,17 @@ const stages = [
     type: 'Sociogram',
     label: 'Connections',
     subject: { entity: 'node', type: 'person' },
-    // Two edge-creating prompts over the same six people: each prompt draws
-    // its own per-pair probability and rolls every pair against it, so a
-    // second pass is a second, independent chance for a pair the first pass
-    // left unconnected. One prompt alone can and does land on a single edge
-    // at some seeds (weakness 1 in the review), which leaves `unique` on an
-    // edge variable with no peer to collide with.
+    // The point of this stage is that `unique` on an edge variable has peers
+    // to collide with, so the density is DECLARED rather than left to the
+    // interface default — a sociogram's default is deliberately sparse (the
+    // figure the generator has always used), and a test about edge validators
+    // should not be reading it.
+    synthetic: {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0.5 },
+      },
+    },
     prompts: [
       {
         id: 'p3',
@@ -996,8 +1001,10 @@ describe('synthetic data conformance', () => {
 
     expect(unchecked).toEqual([]);
 
+    // Seed chosen so the draw produces multiple edges (see the >= 2 guard
+    // below); re-scan candidate seeds if generator draw order changes again.
     const { network } = generateNetwork({
-      seed: 11,
+      seed: 13,
       codebook,
       stages,
       config: { today },
@@ -1008,7 +1015,7 @@ describe('synthetic data conformance', () => {
 
   it('generates values that pass the real form validators for every legal rule', async () => {
     const { network } = generateNetwork({
-      seed: 11,
+      seed: 13,
       codebook,
       stages,
       config: { today },
@@ -1185,15 +1192,17 @@ describe('a variable used by both a form and a binning stage', () => {
     expect(measurement.violatingNodes).toBe(0);
   });
 
-  // Not a defect to fix in generation: the bin stages write the values a
-  // participant's drags would write, and those are the values the form's rules
-  // reject. The count is left unpinned because it is a property of the fixture's
-  // option counts, not a contract.
-  it('stops conforming once the bin stages write it', async () => {
+  // Generation plans one final value per variable, satisfying every rule
+  // declared on it, and each stage that writes the variable lands that same
+  // value. A bin therefore sorts the node into the bin its planned value
+  // belongs to instead of choosing a value of its own, and the form's rules
+  // still hold. (The previous generator drew separately at each writer, so a
+  // bin routinely wrote what the form rejected.)
+  it('keeps conforming once the bin stages write it too', async () => {
     const measurement = await measureHazard(hazardFormAndBinStages);
 
     expect(measurement.nodes).toBe(80);
-    expect(measurement.violatingNodes).toBeGreaterThan(0);
+    expect(measurement.violatingNodes).toBe(0);
   });
 
   // Conformance alone would be satisfied by a handler that wrote nothing, and a
@@ -1710,6 +1719,9 @@ const rosterPinCodebook: Codebook = {
   },
 };
 
+// The roster interface collects no answers of its own — it adds the person a
+// row describes — so the drawn end of the comparator is asked for by a form
+// pass over the people it added.
 const rosterPinStages = [
   {
     id: 'stage-roster-pins',
@@ -1717,11 +1729,17 @@ const rosterPinStages = [
     label: 'People',
     subject: { entity: 'node', type: 'rosterPinned' },
     prompts: [{ id: 'p1', text: 'Pick people' }],
+    behaviours: { minNodes: 2, maxNodes: 2 },
+  },
+  {
+    id: 'stage-roster-pins-form',
+    type: 'AlterForm',
+    label: 'About this person',
+    subject: { entity: 'node', type: 'rosterPinned' },
     form: {
       title: 'About this person',
       fields: formFields(rosterPinVariables),
     },
-    behaviours: { minNodes: 2, maxNodes: 2 },
   },
 ] as unknown as Stage[];
 

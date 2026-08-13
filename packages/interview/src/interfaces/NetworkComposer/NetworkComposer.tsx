@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
+import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -265,7 +266,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         void dispatch(
           updateNode({
             nodeId,
-            newAttributeData: { [layoutVariable]: position },
+            attributePatch: {
+              set: { [layoutVariable]: position },
+              unset: [],
+            },
             currentStep,
           }),
         );
@@ -294,8 +298,15 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   }, [composerStore]);
 
   const handleNodeTap = useCallback(
-    async (tappedId: string, modifiers: NodeTapModifiers) => {
-      rootRef.current?.focus();
+    async (
+      tappedId: string,
+      modifiers: NodeTapModifiers,
+      activationSource: ActivationSource = 'pointer',
+    ) => {
+      // A pointer tap has no focus of its own to preserve, so the stage root
+      // takes it to keep its shortcuts live. Taking it from a keyboard user
+      // would throw them back to the tool palette after every selection.
+      if (activationSource !== 'keyboard') rootRef.current?.focus();
       const {
         activeTool,
         pendingEdgeSource,
@@ -715,8 +726,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}
         onBackgroundTap={handleBackgroundTap}
-        onNodeTap={(nodeId, modifiers) => {
-          void handleNodeTap(nodeId, modifiers);
+        onNodeTap={(nodeId, modifiers, source) => {
+          void handleNodeTap(nodeId, modifiers, source);
         }}
         onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}

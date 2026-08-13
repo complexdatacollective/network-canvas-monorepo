@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad and Laury
-  - button "Mohammad"
-  - button "Laury"
+  - text: Ansel Schneider and Monty Kirlin
+  - button "Ansel Schneider"
+  - button "Monty Kirlin"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad and Laury How close are these two people?":
+  - listbox "Ansel Schneider and Monty Kirlin How close are these two people?":
     - option "Weak"
     - option "Moderate"
     - option "Strong"

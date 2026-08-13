@@ -15,6 +15,9 @@ const snapshotWorkflow = readFileSync(
   ),
   'utf8',
 );
+const frescoPackage = JSON.parse(
+  readFileSync(new URL('../apps/fresco/package.json', import.meta.url), 'utf8'),
+);
 
 const topLevelConcurrency = workflow.match(
   /^concurrency:\n(?<config>[\s\S]*?)\n\njobs:/m,
@@ -28,6 +31,32 @@ function job(name) {
     ),
   )?.groups?.body;
 }
+
+test('full CI runs on PRs to main while merge groups request only quality', () => {
+  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+  assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
+
+  for (const jobName of [
+    'detect',
+    'e2e-policy',
+    'lint',
+    'quality-support',
+    'test',
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} exists`);
+    assert.match(
+      body,
+      /github\.event_name != 'merge_group'/,
+      `${jobName} skips merge groups`,
+    );
+  }
+
+  const quality = job('quality');
+  assert.ok(quality, 'quality job exists');
+  assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
+  assert.match(quality, /PR quality verdicts are authoritative/);
+});
 
 test('superseded CI runs are cancelled for every pull request', () => {
   assert.ok(
@@ -122,7 +151,7 @@ test('website dead-link crawl waits for the documentation preview it links to', 
   );
 });
 
-test('each release E2E suite gates on its own policy flag', () => {
+test('each E2E suite gates on its own policy flag', () => {
   for (const [jobName, flag] of [
     ['interview-e2e', 'interview'],
     ['interview-e2e-native', 'interview'],
@@ -192,6 +221,49 @@ test('manual Interview E2E benchmarks cannot enter the legacy release lane', () 
   }
 });
 
+test('classic release builds use the proven macOS signing secrets', () => {
+  for (const jobName of [
+    'interviewer-release-build',
+    'architect-release-build',
+  ]) {
+    const releaseBuild = job(jobName);
+    assert.ok(releaseBuild, `${jobName} exists`);
+    assert.match(releaseBuild, /secrets\.MAC_CSC_LINK/);
+    assert.match(releaseBuild, /secrets\.MAC_CSC_KEY_PASSWORD/);
+    assert.match(releaseBuild, /secrets\.APPLE_ID/);
+    assert.match(releaseBuild, /secrets\.APPLE_APP_SPECIFIC_PASSWORD/);
+    assert.match(releaseBuild, /secrets\.APPLE_TEAM_ID/);
+    assert.doesNotMatch(releaseBuild, /Decode App Store Connect API key/);
+    assert.doesNotMatch(releaseBuild, /secrets\.CSC_LINK/);
+    assert.doesNotMatch(releaseBuild, /secrets\.APPLE_API_KEY/);
+  }
+});
+
+test('Classic release names remain bare semver for legacy update checks', () => {
+  for (const [jobName, app] of [
+    ['interviewer-mirror', 'interviewer'],
+    ['architect-mirror', 'architect'],
+  ]) {
+    const mirrorJob = job(jobName);
+    assert.ok(mirrorJob, `${jobName} exists`);
+    assert.match(
+      mirrorJob,
+      new RegExp(
+        `name: \\$\\{\\{ needs\\.legacy-release-detect\\.outputs\\.${app}_version \\}\\}`,
+      ),
+    );
+    assert.doesNotMatch(mirrorJob, /name: Network Canvas/);
+  }
+});
+
+test('Fresco postinstall is portable to Windows release runners', () => {
+  assert.equal(
+    frescoPackage.scripts.postinstall,
+    'cross-env SKIP_ENV_VALIDATION=true prisma generate && cross-env SKIP_ENV_VALIDATION=true next typegen',
+  );
+  assert.equal(frescoPackage.devDependencies['cross-env'], '^10.1.0');
+});
+
 test('published Classic releases advance latest and rebuild the website', () => {
   for (const [jobName, repository] of [
     ['interviewer-release-publish', 'interviewer'],
@@ -239,9 +311,10 @@ test('published Classic releases advance latest and rebuild the website', () => 
   );
 });
 
-test('pull requests lint only changed files while merge groups lint fully', () => {
+test('pull requests lint only changed files and merge groups skip lint', () => {
   const lint = job('lint');
   assert.ok(lint, 'lint job exists');
+  assert.match(lint, /github\.event_name != 'merge_group'/);
   assert.match(lint, /fetch-depth: 0/);
   assert.match(lint, /pnpm lint:changed HEAD\^1/);
   assert.match(lint, /pnpm exec turbo run \/\/#lint/);
@@ -290,30 +363,32 @@ test('the quality gate verifies each required E2E suite individually', () => {
   assert.match(qualityJob, /verify_required_e2e architect-e2e/);
 });
 
-test('e2e-policy can query the Actions API for the merge-queue fast path', () => {
+test('e2e-policy can query the Actions API for release-PR reuse', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(policyJob, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(policyJob, /fetch-depth: 0/);
   assert.match(
     policyJob,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
   );
+  assert.doesNotMatch(policyJob, /github\.event\.merge_group/);
 });
 
-test('unit tests use affected task selection for PRs and merge groups', () => {
+test('unit tests use affected task selection for PRs and skip merge groups', () => {
   const testJob = job('test');
   assert.ok(testJob, 'test job exists');
   assert.match(
     testJob,
-    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.merge_group\.base_sha \}\}/,
-    'test job diffs each event against its full base',
+    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    'test job diffs the PR against its full base',
   );
+  assert.match(testJob, /github\.event_name != 'merge_group'/);
   assert.match(
     testJob,
-    /pull_request\|merge_group\)/,
-    'both PR and merge-group events enter the affected path',
+    /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/,
   );
+  assert.doesNotMatch(testJob, /pull_request\|merge_group/);
   assert.match(
     testJob,
     /TURBO_SCM_BASE="\$DIFF_BASE_SHA" pnpm exec turbo run test --affected/,
@@ -322,6 +397,11 @@ test('unit tests use affected task selection for PRs and merge groups', () => {
     testJob,
     /git cat-file -e "\$DIFF_BASE_SHA\^\{commit\}"/,
     'a missing diff base fails closed to the full suite',
+  );
+  assert.match(
+    testJob,
+    /':\(exclude\)scripts\/\*\.test\.mjs'/,
+    'repository script tests do not invalidate workspace unit tests',
   );
 });
 
@@ -339,14 +419,51 @@ test('release job prunes ignored-lane changesets before changesets/action', () =
     pruneIndex < actionIndex,
     'prune step must run before changesets/action reads changeset state',
   );
+
+  // The prune is working-tree-only. It survives as a deletion-free no-op solely
+  // because the action's Git CLI push path opens with `git reset --hard`. The
+  // v2 default (GitHub API push) commits the whole diff against the pushed SHA,
+  // which would delete the gated-product changesets for real.
+  assert.match(
+    releaseJob,
+    /push-with-git-cli: true/,
+    "the working-tree prune depends on the Git CLI push path's reset",
+  );
+});
+
+test('release job uses the changesets/action v2 input names', () => {
+  const releaseJob = job('release');
+  assert.ok(releaseJob, 'release job exists');
+
+  assert.match(releaseJob, /version-script: pnpm run version-packages/);
+  assert.match(releaseJob, /publish-script: pnpm run publish-packages/);
+  assert.match(releaseJob, /create-github-releases: true/);
+  // v1 spellings are silently ignored by v2, so a stale name would quietly
+  // fall back to `changeset version` and skip publishing altogether.
+  for (const legacyInput of [
+    'version:',
+    'publish:',
+    'createGithubReleases:',
+    'commit:',
+    'title:',
+    'branch:',
+    'cwd:',
+  ]) {
+    assert.ok(
+      !releaseJob.includes(`\n          ${legacyInput}`),
+      `release job must not use the v1 input \`${legacyInput}\``,
+    );
+  }
 });
 
 test('generated release PRs use the dedicated PAT and rely on native PR CI', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');
+  // changesets/action v2 ignores the GITHUB_TOKEN environment variable; the
+  // PAT only takes effect through the `github-token` input.
   assert.match(
     releaseJob,
-    /GITHUB_TOKEN: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
+    /github-token: \$\{\{ secrets\.RELEASE_PR_TOKEN \}\}/,
   );
   assert.doesNotMatch(releaseJob, /gh workflow run ci-and-release\.yml/);
   assert.doesNotMatch(releaseJob, /actions: write/);
@@ -427,21 +544,170 @@ test('closed snapshot PRs cannot leave permanent pending state', () => {
 });
 
 test('the informational Pages deploy has a bounded failure window', () => {
-  const reportJob = job('interview-e2e-report');
-  assert.ok(reportJob, 'interview-e2e-report job exists');
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
   assert.match(
     reportJob,
-    /- name: Deploy report to Pages\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
+    /- name: Deploy report to Pages\n\s+id: deploy\n\s+if: [^\n]+\n\s+uses: actions\/deploy-pages@[^\n]+\n\s+timeout-minutes: 3\n\s+continue-on-error: true/,
   );
 });
 
-test('e2e-policy receives the equivalence-reuse inputs', () => {
+test('the unified E2E report aggregates every suite job and publishes failures only', () => {
+  assert.equal(
+    job('interview-e2e-report'),
+    undefined,
+    'the per-suite interview report job was replaced by e2e-report',
+  );
+
+  const reportJob = job('e2e-report');
+  assert.ok(reportJob, 'e2e-report job exists');
+  for (const name of Object.values(E2E_JOB_NAMES).flat()) {
+    assert.match(
+      reportJob,
+      new RegExp(`^ {6}- ${name}$`, 'm'),
+      `e2e-report needs ${name}`,
+    );
+    assert.match(
+      reportJob,
+      new RegExp(`merge_report ${name} `),
+      `${name} is mapped in the merge step`,
+    );
+  }
+
+  // Reports go to Pages only for FAILED jobs, and a green job removes its
+  // branch's stale failure report — only the latest run's report is kept.
+  assert.match(reportJob, /case "\$result" in\n\s+failure\)/);
+  assert.match(reportJob, /Only the latest run's report is kept/);
+
+  // Review hardening: distinct refs must never share a report directory
+  // (lossy tr normalisation collides feature/foo with feature-foo), and the
+  // published tree must never be empty (an empty state-branch commit fails
+  // and leaves a deleted report live).
+  assert.match(
+    reportJob,
+    /printf '%s-%s\\n' "\$s" "\$\(printf '%s' "\$1" \| sha256sum \| cut -c1-8\)"/,
+    'the slug carries a digest of the raw ref',
+  );
+  assert.match(
+    reportJob,
+    /> merged\/index\.html/,
+    'a root marker keeps the published tree non-empty',
+  );
+
+  // A failed job's previous report is removed even when this failure died
+  // before producing a replacement artifact — the old rm must precede the
+  // artifact-existence check.
+  const failureCase = reportJob.match(/failure\)([\s\S]*?);;/)?.[1] ?? '';
+  assert.ok(
+    failureCase.indexOf('rm -rf "$dir"') !== -1 &&
+      failureCase.indexOf('rm -rf "$dir"') <
+        failureCase.indexOf('[ -d "$src" ]'),
+    'the failure case removes the stale report before checking the artifact',
+  );
+
+  // The merge step (and therefore the orphan sweep) is not gated on any
+  // suite having run, so all-skipped runs still clean up deleted branches'
+  // reports. Its only gate is the stale-head guard; the artifact download
+  // stays failure-gated.
+  assert.match(
+    reportJob,
+    /- name: Merge failure reports into per-job branch subdirectories\n(?:\s+#[^\n]*\n)*\s+id: merge\n\s+if: steps\.guard\.outputs\.current == 'true'\n\s+env:/,
+    'the merge step is gated only on the stale-head guard',
+  );
+
+  // A truncated slug component stays within filesystem limits; the digest
+  // suffix keeps truncated names unambiguous.
+  assert.match(
+    reportJob,
+    /s=\$\{s:0:100\}/,
+    'the readable slug portion is bounded',
+  );
+
+  // A transiently failed Pages deploy must be retried: gh-pages-deployed
+  // advances only on deploy success, and a mismatch versus gh-pages forces
+  // needs_deploy on the next run.
+  assert.match(reportJob, /pending_deploy/);
+  assert.match(
+    reportJob,
+    /gh-pages:refs\/heads\/gh-pages-deployed/,
+    'the deployed pointer is recorded from the state branch',
+  );
+  assert.match(
+    reportJob,
+    /- name: Record the deployed state\n(?:\s+#[^\n]*\n)*\s+if: >-\n\s+\$\{\{ steps\.merge\.outputs\.needs_deploy == 'true'\n\s+&& steps\.deploy\.outcome == 'success' \}\}/,
+    'the deployed pointer advances only when deploy-pages succeeded',
+  );
+
+  // A rerun of an outdated head must not rewrite the report site or the
+  // sticky comment with obsolete results.
+  assert.match(
+    reportJob,
+    /- name: Confirm this run still describes the PR head\n(?:\s+#[^\n]*\n)*\s+id: guard\n/,
+    'the stale-head guard step exists',
+  );
+
+  // Orphan sweep: reports for branches that no longer exist are deleted on
+  // every report run, and a failed live-branch listing skips the sweep
+  // rather than deleting on doubt.
+  assert.match(reportJob, /git ls-remote --heads/);
+  assert.match(
+    reportJob,
+    /if \[ -s "\$RUNNER_TEMP\/live-slugs\.txt" \]; then/,
+    'the sweep only runs with a non-empty live-branch listing',
+  );
+  assert.ok(
+    reportJob.indexOf('merge_report architect-e2e-native') <
+      reportJob.indexOf('if [ -s "$RUNNER_TEMP/live-slugs.txt" ]'),
+    'the sweep runs after merging, so a branch deleted mid-run cannot re-publish its orphan',
+  );
+  assert.match(
+    reportJob,
+    /grep -qxF -- /,
+    'the slug pattern is terminated so dash-leading slugs cannot parse as grep options',
+  );
+  assert.match(
+    reportJob,
+    /success \| skipped\)/,
+    'a skipped job also drops its stale report',
+  );
+  const doubtGuards = reportJob.match(/never delete on doubt/g) ?? [];
+  assert.ok(
+    doubtGuards.length >= 2,
+    'both the listing and the sweep document the fail-safe',
+  );
+
+  // The status comment is a single sticky comment, updated in place, only
+  // ever posted on pull requests, and never rewritten by an obsolete rerun.
+  assert.match(reportJob, /<!-- network-canvas-e2e-status -->/);
+  assert.match(
+    reportJob,
+    /\$\{\{ always\(\) && github\.event_name == 'pull_request'\n\s+&& steps\.guard\.outputs\.current == 'true' \}\}/,
+  );
+  assert.match(reportJob, /updateComment/);
+  assert.match(reportJob, /createComment/);
+
+  // The decision matrix comes from the policy job's reasons output.
+  assert.match(reportJob, /needs\.e2e-policy\.outputs\.reasons/);
+  const policyJob = job('e2e-policy');
+  assert.match(policyJob, /reasons=\$\(jq -c '\.reasons \/\/ \{\}'/);
+  assert.match(
+    policyJob,
+    /reasons: \$\{\{ steps\.policy\.outputs\.reasons \}\}/,
+  );
+});
+
+test('e2e-policy receives affected-PR and equivalence-reuse inputs', () => {
   const policyJob = job('e2e-policy');
   assert.ok(policyJob, 'e2e-policy job exists');
   assert.match(
     policyJob,
-    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.merge_group\.head_sha \}\}/,
-    'policy step receives the PR tip (or merge-group head) as HEAD_SHA',
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    'policy step receives the PR base as BASE_SHA',
+  );
+  assert.match(
+    policyJob,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+    'policy step receives the PR tip as HEAD_SHA',
   );
   assert.match(
     policyJob,

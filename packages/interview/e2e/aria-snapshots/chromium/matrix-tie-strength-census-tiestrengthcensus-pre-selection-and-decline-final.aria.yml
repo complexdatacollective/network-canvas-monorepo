@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad and Charlie
-  - button "Mohammad"
-  - button "Charlie"
+  - text: Ansel Schneider and Alvina Heaney
+  - button "Ansel Schneider"
+  - button "Alvina Heaney"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad and Charlie How close are these two people?":
+  - listbox "Ansel Schneider and Alvina Heaney How close are these two people?":
     - option "Weak"
     - option "Moderate"
     - option "Strong"

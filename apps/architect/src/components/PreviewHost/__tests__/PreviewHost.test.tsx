@@ -208,7 +208,15 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       ego: {
         variables: {
           screening: { name: 'Screening', type: 'boolean' },
-          consent: { name: 'Consent', type: 'boolean' },
+          // This protocol exists to exercise the route a refused consent
+          // takes, so the refusal is declared rather than left to whatever
+          // the seed happens to draw — a preview that consented would skip
+          // nothing and the routing assertions below would prove nothing.
+          consent: {
+            name: 'Consent',
+            type: 'boolean',
+            synthetic: { probabilityTrue: 0 },
+          },
         },
       },
     },
@@ -435,10 +443,10 @@ describe('PreviewHost', () => {
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] === null,
+      (n) => !Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
-    const placed = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] !== null,
+    const placed = nodes.filter((n) =>
+      Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
     expect(unplaced.length).toBeGreaterThan(0);
     expect(placed.length).toBeGreaterThan(0);

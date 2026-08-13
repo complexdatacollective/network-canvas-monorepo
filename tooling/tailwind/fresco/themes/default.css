@@ -131,6 +131,8 @@
     --surface-2-contrast: var(--text);
     --surface-3: oklch(from var(--background) calc(l - 0.06) c h);
     --surface-3-contrast: var(--text);
+    --surface-4: oklch(from var(--background) calc(l - 0.09) c h);
+    --surface-4-contrast: var(--text);
 
     --surface-popover: oklch(var(--white));
     --surface-popover-contrast: var(--text);
@@ -256,6 +258,8 @@
     --surface-2-contrast: var(--text);
     --surface-3: oklch(from var(--background) calc(l + 0.11) c h);
     --surface-3-contrast: var(--text);
+    --surface-4: oklch(from var(--background) calc(l + 0.14) c h);
+    --surface-4-contrast: var(--text);
 
     --surface-popover: oklch(from var(--background) calc(l + 0.06) c h);
     --surface-popover-contrast: var(--text);

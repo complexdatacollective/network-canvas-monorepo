@@ -43,10 +43,9 @@ const normalizeOption = (option: unknown): unknown => {
 };
 
 /**
- * Controlled field for form plumbing that lives outside redux-form (the
- * Query/Rules editors). Runs the same on-change validation as connected fields
- * and renders a fresco field directly, without fabricating redux-form's
- * input/meta props.
+ * Controlled field for the Query/Rules editors, whose values live outside any
+ * form store. Runs the same on-change validation as connected fields and
+ * renders a fresco field directly.
  */
 const RuleField = ({
   component,

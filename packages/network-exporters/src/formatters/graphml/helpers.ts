@@ -1,14 +1,12 @@
 import { DOMImplementation } from '@xmldom/xmldom';
-import { isNil } from 'es-toolkit';
 
-import type { Codebook, Variable } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
+  type NcEgo,
+  type NcEntity,
   caseProperty,
   codebookHashProperty,
   edgeSourceProperty,
-  type NcEdge,
-  type NcEgo,
-  type NcNode,
   protocolName,
   protocolProperty,
   sessionExportTimeProperty,
@@ -26,44 +24,15 @@ export function getCodebookVariablesForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
   codebook: Codebook,
 ) {
-  const entityType = deriveEntityType(entity);
-  // Fetch the codebook variables for this entity
-  let codebookVariables: Record<string, Variable>;
-  if ('type' in entity) {
-    codebookVariables =
-      codebook[entityType as 'node' | 'edge']?.[entity.type]?.variables ?? {};
-  } else {
-    codebookVariables = codebook.ego?.variables ?? {};
+  if (!('type' in entity)) {
+    return codebook.ego?.variables ?? {};
   }
 
-  return codebookVariables;
-}
-
-export function deriveEntityType(
-  entities:
-    | NodeWithResequencedID[]
-    | EdgeWithResequencedID[]
-    | NcEgo
-    | NcNode
-    | NcEdge,
-) {
-  if (!Array.isArray(entities)) {
-    return 'type' in entities
-      ? Object.hasOwn(entities, edgeSourceProperty)
-        ? 'edge'
-        : 'node'
-      : 'ego';
+  if (edgeSourceProperty in entity) {
+    return codebook.edge?.[entity.type]?.variables ?? {};
   }
 
-  // Handle empty arrays
-  if (entities.length === 0) {
-    return 'node';
-  }
-
-  const first = entities[0];
-  return first !== undefined && Object.hasOwn(first, edgeSourceProperty)
-    ? 'edge'
-    : 'node';
+  return codebook.node?.[entity.type]?.variables ?? {};
 }
 
 export function createDocumentFragment() {
@@ -94,14 +63,6 @@ export const setUpXml = (
     'version="1.0" encoding="UTF-8"',
   );
   doc.insertBefore(pi, doc.firstChild);
-
-  // Create <key> for a 'label' variable for display in Gephi.
-  const labelDataElement = doc.createElement('key');
-  labelDataElement.setAttribute('id', 'label');
-  labelDataElement.setAttribute('attr.name', 'label');
-  labelDataElement.setAttribute('attr.type', 'string');
-  labelDataElement.setAttribute('for', 'all');
-  root.appendChild(labelDataElement);
 
   // Create the graph element
   const graph = doc.createElement('graph');
@@ -173,14 +134,14 @@ type GraphMLKeyType =
   | 'string';
 
 export const getGraphMLTypeForKey = (
-  data: NodeWithResequencedID[] | NcEgo[],
+  data: readonly NcEntity[],
   key: string,
 ): GraphMLKeyType =>
   data.reduce<GraphMLKeyType | null>((result, value) => {
     const attrs = getEntityAttributes(value);
 
     // If the attribute is not present, return the current result
-    if (isNil(attrs[key])) return result;
+    if (attrs[key] === undefined) return result;
 
     const currentType = getAttributeType(attrs[key]);
 
@@ -213,9 +174,7 @@ function getAttributeType(attribute: VariableValue): GraphMLKeyType {
   // Handle potential object values before stringifying
   const attrVal = attribute;
   const attrStr =
-    typeof attrVal === 'object' && attrVal !== null
-      ? JSON.stringify(attrVal)
-      : String(attrVal);
+    typeof attrVal === 'object' ? JSON.stringify(attrVal) : attrVal;
 
   // Integer pattern
   if (/^-?\d+$/.exec(attrStr)) {

@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
-  type EntityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
@@ -21,6 +20,7 @@ import {
   getNetworkNodes,
   makeGetEdgeColor,
 } from '../../selectors/session';
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
@@ -67,11 +67,11 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
   const [isFormReady, setIsFormReady] = useState(false);
 
   const handleUpdateItem = useCallback(
-    (id: string, newAttributeData: NcEdge[EntityAttributesProperty]) => {
+    (id: string, attributePatch: AttributePatch) => {
       void dispatch(
         updateEdge({
           edgeId: id,
-          newAttributeData,
+          attributePatch,
         }),
       );
     },

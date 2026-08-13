@@ -4,6 +4,7 @@ import { Router } from 'wouter';
 import type { AroundNavHandler } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { store } from '~/ducks/store';
 import {
@@ -13,7 +14,7 @@ import {
   promptLeaveEditor,
   useProtocolNavGuard,
 } from '~/hooks/useProtocolNavGuard';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 const NavGuardListener = () => {
   useProtocolNavGuard();
@@ -38,6 +39,14 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
         return;
       }
 
+      // The stage form's mirror into Redux is debounced, so the edit the user
+      // made in the moment before pressing "Return to start screen" is not
+      // there yet. Reading the dirty flag without flushing first shows the
+      // reassuring "your work is saved automatically" dialog over an edit that
+      // is about to be thrown away — the same flush the popstate guard in
+      // `useProtocolNavGuard` already performs for Back.
+      flushStageLiveValues();
+
       void promptLeaveEditor(
         dispatch,
         openDialog,
@@ -45,7 +54,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
           collapseProtocolHistory(to, () =>
             nav(to, { ...opts, replace: true }),
           ),
-        getStageDraftDirty(store.getState()),
+        getLiveStageDraftDirty(store.getState()),
       );
     },
     [dispatch, openDialog],

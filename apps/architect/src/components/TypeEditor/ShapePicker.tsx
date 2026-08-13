@@ -1,13 +1,11 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
-import type { ComponentType, FocusEventHandler } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
 import { cx } from '~/utils/cva';
 
 export const SHAPES: Array<{ value: NodeShape; label: string }> = [
@@ -19,25 +17,24 @@ export const SHAPES: Array<{ value: NodeShape; label: string }> = [
 const isNodeShape = (value: unknown): value is NodeShape =>
   SHAPES.some((shape) => shape.value === value);
 
-type ShapePickerControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: NodeShape;
-  'onChange'?: (value: NodeShape) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'small'?: boolean;
-  'nodeColor'?: string;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'required'?: boolean;
-  'aria-label'?: string;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-  'aria-required'?: boolean;
-};
+type ShapePickerProps = CreateFormFieldProps<
+  NodeShape,
+  'fieldset',
+  {
+    /** Compact swatches for an inline mapping row (no labels, no chrome). */
+    small?: boolean;
+    nodeColor?: string;
+    /** Only reaches the control through `UnconnectedField`; `Field` strips
+     * validation props and signals the same thing via `aria-required`. */
+    required?: boolean;
+  }
+>;
 
+/**
+ * Node-shape swatch picker. Labelling belongs to the surrounding field — pass
+ * it through `ArchitectField`'s `label`/`hint`, or `aria-label` when used
+ * standalone inside a mapping row.
+ */
 export const ShapePickerControl = ({
   id,
   name,
@@ -55,7 +52,7 @@ export const ShapePickerControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: ShapePickerControlProps) => {
+}: ShapePickerProps) => {
   const nodeSize = small ? 'xs' : 'sm';
 
   return (
@@ -93,7 +90,13 @@ export const ShapePickerControl = ({
           key={shape.value}
           value={shape.value}
           nativeButton
-          render={(renderProps, state) => (
+          render={(
+            // Node's onDragStart/onDragEnd are pointer-based gesture props;
+            // the HTML5 drag-event handlers in the generic bag must not be
+            // spread into them.
+            { onDrag, onDragStart, onDragEnd, ...renderProps },
+            state,
+          ) => (
             <Node
               {...renderProps}
               label={small ? '' : shape.label}
@@ -118,32 +121,3 @@ export const ShapePickerControl = ({
     </RadioGroup>
   );
 };
-
-type ShapePickerProps = WrappedFieldProps & {
-  label?: string;
-  small?: boolean;
-  nodeColor?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoShapePickerControl = ShapePickerControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const ShapePickerBase = ({ label = 'Shape', ...props }: ShapePickerProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoShapePickerControl}
-  />
-);
-
-const ShapePicker = ShapePickerBase as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-export default ShapePicker;

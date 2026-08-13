@@ -2,7 +2,7 @@
   - heading "About You" [level=1]
   - paragraph: Please confirm your details.
   - text: What is your name?
-  - textbox "What is your name?": Mohammad
+  - textbox "What is your name?": Gennaro Harvey
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

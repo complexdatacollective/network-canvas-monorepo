@@ -1,11 +1,15 @@
 import type { NodeDefinition } from '@codaco/protocol-validation';
-import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
+import type {
+  NcNode,
+  VariableValue,
+  EntityAttributesProperty,
+} from '@codaco/shared-consts';
 
 const isValidLabelCandidate = (
-  value: unknown,
+  value: VariableValue | undefined,
   variableDefinition?: NonNullable<NodeDefinition['variables']>[string],
 ) => {
-  if (value === null || value === undefined || value === '') {
+  if (value === undefined || value === '') {
     return false;
   }
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   Grid3x3,
@@ -205,7 +205,75 @@ describe('SegmentedToolbar — toggles', () => {
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
     await userEvent.click(screen.getByRole('button', { name: 'Freeze' }));
-    expect(onPressedChange).toHaveBeenCalledWith(true);
+    expect(onPressedChange).toHaveBeenCalledWith(true, expect.anything());
+  });
+
+  // Regression: the toggle segment's onPressedChange used to be wrapped in
+  // `(pressed) => segment.onPressedChange?.(pressed)`, which silently
+  // dropped Base UI's second `eventDetails` argument (the object a consumer
+  // needs to call `eventDetails.cancel()` and veto the change). Forwarding
+  // the segment's callback directly — the same pattern already used for
+  // button segments' `onClick` — passes through everything Base UI provides.
+  it('forwards the eventDetails argument Base UI provides to onPressedChange', async () => {
+    const onPressedChange = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        defaultPressed: false,
+        onPressedChange,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Freeze' }));
+
+    expect(onPressedChange).toHaveBeenCalledTimes(1);
+    const [, eventDetails] = onPressedChange.mock.calls[0] as [
+      boolean,
+      { cancel: () => void },
+    ];
+    expect(eventDetails).toBeDefined();
+    expect(typeof eventDetails.cancel).toBe('function');
+  });
+
+  it('disables a controlled toggle segment that omits its callback', async () => {
+    // A controlled `pressed` prop with no `onPressedChange` is exactly the
+    // hazard the audit flagged: Base UI cannot update `pressed` in response
+    // to a click, so the toggle can never visually change state. Rather than
+    // leave a live-looking control wired to nothing, it's disabled outright.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        pressed: false,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const button = screen.getByRole('button', { name: 'Freeze' });
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('leaves an uncontrolled toggle segment (no pressed prop) enabled even without a callback', () => {
+    // Only the controlled+callback-less combination is inert. Base UI
+    // manages an uncontrolled toggle's state itself, so a tap still works
+    // even when the consumer isn't listening for the change.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        defaultPressed: false,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('button', { name: 'Freeze' })).toBeEnabled();
   });
 });
 
@@ -314,12 +382,52 @@ describe('SegmentedToolbar — groups', () => {
     const onValueChange = vi.fn();
     render(<SegmentedToolbar label="View" items={groupItems(onValueChange)} />);
     await userEvent.click(screen.getByRole('button', { name: 'Grid' }));
-    expect(onValueChange).toHaveBeenCalledWith(['grid']);
+    expect(onValueChange).toHaveBeenCalledWith(['grid'], expect.anything());
+  });
+
+  // Regression: the group segment's onValueChange used to be wrapped in
+  // `(value) => segment.onValueChange?.(value)`, which silently dropped Base
+  // UI's second `eventDetails` argument. Forwarding the segment's callback
+  // directly — the same pattern already used for button segments' `onClick`
+  // — passes through everything Base UI provides.
+  it('forwards the eventDetails argument Base UI provides to onValueChange', async () => {
+    const onValueChange = vi.fn();
+    render(<SegmentedToolbar label="View" items={groupItems(onValueChange)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Grid' }));
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    const [, eventDetails] = onValueChange.mock.calls[0] as [
+      string[],
+      { cancel: () => void },
+    ];
+    expect(eventDetails).toBeDefined();
+    expect(typeof eventDetails.cancel).toBe('function');
+  });
+
+  it('disables every option when a controlled group segment omits its callback', () => {
+    // Same hazard as a controlled toggle without onPressedChange: a
+    // controlled `value` with no `onValueChange` can never change, so every
+    // option in the group is disabled rather than left live-looking.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'group',
+        id: 'view',
+        mode: 'single',
+        value: ['list'],
+        options: [
+          { value: 'list', label: 'List', icon: <List /> },
+          { value: 'grid', label: 'Grid', icon: <Grid3x3 /> },
+        ],
+      },
+    ];
+    render(<SegmentedToolbar label="View" items={items} />);
+    expect(screen.getByRole('button', { name: 'List' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Grid' })).toBeDisabled();
   });
 });
 
 describe('SegmentedToolbar — add/remove', () => {
-  it('adds and removes segments when items change', () => {
+  it('adds and removes segments when items change', async () => {
     const base: ToolbarSegment[] = [
       { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },
     ];
@@ -340,7 +448,11 @@ describe('SegmentedToolbar — add/remove', () => {
     expect(screen.getByRole('button', { name: 'B' })).toBeInTheDocument();
 
     rerender(<SegmentedToolbar label="Tools" items={base} />);
-    expect(screen.queryByRole('button', { name: 'B' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'B' }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -390,13 +502,12 @@ describe('SegmentedToolbar — draggable', () => {
     );
     const handle = screen.getByRole('button', { name: 'Move toolbar' });
     handle.focus();
-    // Motion owns the live position and is mocked in unit tests, so each nudge
-    // reports its delta from the origin; cumulative motion is exercised visually
-    // in Storybook.
+    // Motion owns the live position, so keyboard nudges accumulate from the
+    // current position just as pointer drags do.
     await userEvent.keyboard('{ArrowRight}');
     expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 0 });
     await userEvent.keyboard('{ArrowDown}');
-    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 0, y: 8 });
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 8 });
   });
 
   it('announces movement via an aria-live region', async () => {

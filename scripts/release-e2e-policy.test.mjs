@@ -13,21 +13,45 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  affectedSuitesForPaths,
   collectWorkspacePackages,
   diffIrrelevantToSuite,
   equivalentValidatedSuites,
   E2E_SUITE_SUBJECTS,
-  mergeGroupRequiredSuites,
-  releaseBranchForMergeQueue,
+  pullRequestRequiredSuites,
   releaseE2EPolicy,
   releaseRefForEvent,
   relevanceDirsForSubject,
   SUITE_KEYS,
   SUITES_BY_RELEASE_REF,
+  suiteSelectionForPaths,
 } from './release-e2e-policy.mjs';
+
+function reasonForEverySuite(reason) {
+  return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
+}
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
+
+test('the pre-install policy has no runtime package imports', () => {
+  const source = readFileSync(
+    join(REPO_ROOT, 'scripts/release-e2e-policy.mjs'),
+    'utf8',
+  );
+  const runtimePackages = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
+    .map((match) => match[1])
+    .filter(
+      (specifier) =>
+        !specifier.startsWith('node:') && !specifier.startsWith('.'),
+    );
+
+  assert.deepEqual(
+    runtimePackages,
+    [],
+    'e2e-policy runs before pnpm install and may only import built-ins or local modules',
+  );
+});
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -35,8 +59,8 @@ function git(cwd, ...args) {
 
 function initRepo() {
   const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-'));
-  // -b main: the merge-queue tests check out `main` by name, which must not
-  // depend on the host's init.defaultBranch (CI runners default to master).
+  // -b main keeps fixture branch names independent of the host's
+  // init.defaultBranch (CI runners default to master).
   git(cwd, 'init', '-q', '-b', 'main');
   git(cwd, 'config', 'user.email', 'ci@example.com');
   git(cwd, 'config', 'user.name', 'ci');
@@ -184,6 +208,51 @@ test('interview relevance closure covers peer-declared and asset-only workspace 
   );
 });
 
+test('workspace discovery follows nested pnpm workspace patterns', () => {
+  const packages = collectWorkspacePackages(REPO_ROOT);
+
+  assert.equal(
+    packages.get('@codaco/studio-client')?.dir,
+    'apps/studio/client',
+  );
+  assert.equal(
+    packages.get('@codaco/studio-server')?.dir,
+    'apps/studio/server',
+  );
+});
+
+test('workspace discovery parses quoted patterns without installed packages', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'release-e2e-workspace-'));
+  writeFileSync(
+    join(cwd, 'pnpm-workspace.yaml'),
+    [
+      'packages:',
+      "  - 'apps/*'",
+      '  - "apps/studio/*" # nested workspaces',
+      "  - '!apps/excluded'",
+      '',
+      'catalog:',
+      '  react: ^19.0.0',
+    ].join('\n'),
+  );
+  for (const [directory, name] of [
+    ['apps/root', '@example/root'],
+    ['apps/studio/client', '@example/client'],
+    ['apps/excluded', '@example/excluded'],
+  ]) {
+    mkdirSync(join(cwd, directory), { recursive: true });
+    writeFileSync(
+      join(cwd, directory, 'package.json'),
+      JSON.stringify({ name }),
+    );
+  }
+
+  const packages = collectWorkspacePackages(cwd);
+  assert.equal(packages.get('@example/root')?.dir, 'apps/root');
+  assert.equal(packages.get('@example/client')?.dir, 'apps/studio/client');
+  assert.equal(packages.has('@example/excluded'), false);
+});
+
 test('all release policies share the central snapshot PR target', () => {
   for (const [eventName, releaseRef] of [
     ['pull_request', 'changeset-release/main'],
@@ -201,29 +270,68 @@ test('all release policies share the central snapshot PR target', () => {
         ...SUITES_BY_RELEASE_REF[releaseRef],
         releaseRef,
         snapshotBranch: 'e2e-snapshots/main',
+        reasons: Object.fromEntries(
+          SUITE_KEYS.map((key) => [
+            key,
+            SUITES_BY_RELEASE_REF[releaseRef][key]
+              ? `gates the ${releaseRef} release lane`
+              : `does not gate the ${releaseRef} release lane`,
+          ]),
+        ),
       },
     );
   }
 });
 
-test('merge groups require the suites the detector reports', () => {
+test('merge groups never require E2E', () => {
+  assert.deepEqual(releaseE2EPolicy({ eventName: 'merge_group' }), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+    releaseRef: '',
+    snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for merge_group events'),
+  });
+});
+
+test('feature PRs require the suites the affected-path detector reports', () => {
   const detected = {
     interview: true,
     interviewer: false,
     architect: true,
   };
+  const detectedReasons = {
+    interview: 'interview witness',
+    interviewer: 'no changed file affects this suite',
+    architect: 'architect witness',
+  };
   assert.deepEqual(
     releaseE2EPolicy(
-      { eventName: 'merge_group', baseSha: 'base', headSha: 'head' },
-      () => detected,
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
+      () => ({ required: detected, reasons: detectedReasons }),
     ),
-    { ...detected, releaseRef: '', snapshotBranch: '' },
+    {
+      ...detected,
+      releaseRef: '',
+      snapshotBranch: '',
+      reasons: detectedReasons,
+    },
   );
   assert.deepEqual(
     releaseE2EPolicy(
-      { eventName: 'merge_group', baseSha: 'base', headSha: 'head' },
+      {
+        eventName: 'pull_request',
+        headRef: 'feature/example',
+        baseSha: 'base',
+        headSha: 'head',
+      },
       () => {
-        throw new Error('unreadable merge history');
+        throw new Error('unreadable PR history');
       },
     ),
     {
@@ -232,162 +340,15 @@ test('merge groups require the suites the detector reports', () => {
       architect: true,
       releaseRef: '',
       snapshotBranch: '',
+      reasons: reasonForEverySuite(
+        'fails closed: the PR diff could not be classified',
+      ),
     },
   );
 });
 
-test('merge groups derive suites from the app versions that move', () => {
+test('feature PR suite selection follows the workspace dependency graph', () => {
   const cwd = initRepo();
-  commitManifest(
-    cwd,
-    'apps/interviewer/package.json',
-    '{"name":"@codaco/interviewer","version":"1.0.0"}\n',
-    'add interviewer',
-  );
-  const baseSha = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.0"}\n',
-    'add architect',
-  );
-  const architectBump = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1"}\n',
-    'release architect',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(baseSha, architectBump, cwd), {
-    interview: true,
-    interviewer: false,
-    architect: true,
-  });
-
-  const bothBumped = commitManifest(
-    cwd,
-    'apps/interviewer/package.json',
-    '{"name":"@codaco/interviewer","version":"1.0.1"}\n',
-    'release interviewer too',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(baseSha, bothBumped, cwd), {
-    interview: true,
-    interviewer: true,
-    architect: true,
-  });
-
-  const manifestOnly = commitManifest(
-    cwd,
-    'apps/interviewer/package.json',
-    '{"name":"@codaco/interviewer","version":"1.0.1","scripts":{}}\n',
-    'manifest metadata',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(bothBumped, manifestOnly, cwd), {
-    interview: false,
-    interviewer: false,
-    architect: false,
-  });
-});
-
-test('merge-group version bumps require only the affected lanes', () => {
-  const cwd = initRepo();
-  commitManifest(
-    cwd,
-    'apps/networkcanvas.com/package.json',
-    '{"name":"networkcanvas.com","version":"0.1.1"}\n',
-    'add website',
-  );
-  commitManifest(
-    cwd,
-    'packages/protocol-validation/package.json',
-    '{"name":"@codaco/protocol-validation","version":"9.9.8"}\n',
-    'add library',
-  );
-  const baseSha = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.0"}\n',
-    'base',
-  );
-
-  // A website bump releases nothing the suites test.
-  const websiteBump = commitManifest(
-    cwd,
-    'apps/networkcanvas.com/package.json',
-    '{"name":"networkcanvas.com","version":"0.1.2"}\n',
-    'release website',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(baseSha, websiteBump, cwd), {
-    interview: false,
-    interviewer: false,
-    architect: false,
-  });
-
-  // An architect bump releases the architect app, which ships the interview
-  // runtime.
-  const architectBump = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1"}\n',
-    'release architect',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(websiteBump, architectBump, cwd), {
-    interview: true,
-    interviewer: false,
-    architect: true,
-  });
-
-  // A library bump can ship in every app.
-  const libraryBump = commitManifest(
-    cwd,
-    'packages/protocol-validation/package.json',
-    '{"name":"@codaco/protocol-validation","version":"9.9.9"}\n',
-    'release library',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(architectBump, libraryBump, cwd), {
-    interview: true,
-    interviewer: true,
-    architect: true,
-  });
-
-  // Content-only manifest changes (no version movement) require nothing.
-  const scriptChange = commitManifest(
-    cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1","scripts":{}}\n',
-    'manifest content change',
-  );
-  assert.deepEqual(mergeGroupRequiredSuites(libraryBump, scriptChange, cwd), {
-    interview: false,
-    interviewer: false,
-    architect: false,
-  });
-});
-
-test('ordinary events do not require release E2E', () => {
-  const none = {
-    interview: false,
-    interviewer: false,
-    architect: false,
-    releaseRef: '',
-    snapshotBranch: '',
-  };
-  assert.deepEqual(
-    releaseE2EPolicy({ eventName: 'pull_request', headRef: 'feature/example' }),
-    none,
-  );
-  assert.deepEqual(
-    releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
-    none,
-  );
-});
-
-// Build a repo shaped like a merge-queue checkout: main, a release branch
-// with a version bump, and a merge commit of the branch into main (HEAD).
-// Returns the branch tip so tests can point origin/changeset-release/* at it.
-function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
-  const cwd = initRepo();
-  // @codaco/interview must be a real discovered package: equivalence reuse
-  // now refuses to trust a relevance judgment about a suite whose subject is
-  // missing from the graph entirely.
   commitManifest(
     cwd,
     'packages/interview/package.json',
@@ -396,130 +357,166 @@ function initMergeQueueRepo({ advanceMainWith = '' } = {}) {
   );
   commitManifest(
     cwd,
-    'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.0"}\n',
-    'base',
+    'apps/interviewer/package.json',
+    '{"name":"@codaco/interviewer","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add interviewer',
   );
-  git(cwd, 'checkout', '-qb', 'release');
-  const branchTip = commitManifest(
+  commitManifest(
     cwd,
     'apps/architect/package.json',
-    '{"name":"@codaco/architect","version":"1.0.1"}\n',
-    'version architect',
+    '{"name":"@codaco/architect","version":"1.0.0","dependencies":{"@codaco/interview":"workspace:^"}}\n',
+    'add architect',
+  );
+  const commonBase = commitManifest(
+    cwd,
+    'apps/documentation/package.json',
+    '{"name":"@codaco/documentation","version":"1.0.0"}\n',
+    'add documentation',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-architect', commonBase);
+  const architectHead = commitManifest(
+    cwd,
+    'apps/architect/src/main.tsx',
+    'export {};\n',
+    'change architect',
   );
   git(cwd, 'checkout', '-q', 'main');
-  if (advanceMainWith) {
-    commitManifest(cwd, advanceMainWith, 'moved\n', 'main moved');
-  }
-  git(cwd, 'merge', '-q', '--no-ff', '--no-edit', 'release');
-  return { cwd, branchTip };
-}
-
-function releaseLaneQueueCall(cwd, fetcher) {
-  const branch = releaseBranchForMergeQueue(cwd);
-  return equivalentValidatedSuites({
+  const advancedBase = commitManifest(
     cwd,
-    repository: 'example/repo',
-    token: 'token',
-    branch,
-    headSha: git(cwd, 'rev-parse', 'HEAD'),
-    requiredSuites: { interview: true, interviewer: false, architect: true },
-    fetcher,
-  });
-}
-
-// Each suite reports two halves (Dockerized pixel + native functional), and
-// reuse requires both — see E2E_JOB_NAMES in release-e2e-policy.mjs.
-const RELEASE_LANE_ARCHITECT_SUCCESS_JOBS = [
-  { name: 'architect-e2e', conclusion: 'success' },
-  { name: 'architect-e2e-native', conclusion: 'success' },
-  { name: 'interview-e2e', conclusion: 'success' },
-  { name: 'interview-e2e-native', conclusion: 'success' },
-  { name: 'quality', conclusion: 'success' },
-];
-
-test('merge queue identifies the release lane from the merge second parent', () => {
-  const { cwd, branchTip } = initMergeQueueRepo();
-  assert.equal(releaseBranchForMergeQueue(cwd), '');
-  git(
-    cwd,
-    'update-ref',
-    `refs/remotes/origin/${NORMAL_RELEASE_REF}`,
-    branchTip,
+    'apps/interviewer/src/main.tsx',
+    'export {};\n',
+    'advance main',
   );
-  assert.equal(releaseBranchForMergeQueue(cwd), NORMAL_RELEASE_REF);
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, architectHead, cwd),
+    { interview: false, interviewer: false, architect: true },
+    'merge-base diff excludes unrelated movement on the base branch',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-interview', commonBase);
+  const interviewHead = commitManifest(
+    cwd,
+    'packages/interview/src/index.ts',
+    'export {};\n',
+    'change interview',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, interviewHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'a shared runtime change selects every downstream suite',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-documentation', commonBase);
+  const documentationHead = commitManifest(
+    cwd,
+    'apps/documentation/src/page.tsx',
+    'export {};\n',
+    'change documentation',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, documentationHead, cwd),
+    { interview: false, interviewer: false, architect: false },
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-root-config', commonBase);
+  const rootConfigHead = commitManifest(
+    cwd,
+    'turbo.json',
+    '{}\n',
+    'change root config',
+  );
+  assert.deepEqual(
+    pullRequestRequiredSuites(advancedBase, rootConfigHead, cwd),
+    { interview: true, interviewer: true, architect: true },
+    'an unrecognised root path fails closed',
+  );
+
+  git(cwd, 'checkout', '-qb', 'feature-docs-only', commonBase);
+  const docsHead = commitManifest(cwd, 'README.md', 'Docs\n', 'change docs');
+  assert.deepEqual(pullRequestRequiredSuites(advancedBase, docsHead, cwd), {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  });
 });
 
-test('merge-queue reuse skips suites validated at the branch tip', async () => {
-  const { cwd, branchTip } = initMergeQueueRepo();
-  git(
-    cwd,
-    'update-ref',
-    `refs/remotes/origin/${NORMAL_RELEASE_REF}`,
-    branchTip,
+test('affected path selection fails closed when a suite subject is missing', () => {
+  const cwd = writeWorkspaceFixture();
+  const manifest = join(cwd, 'apps/architect/package.json');
+  writeFileSync(
+    manifest,
+    '{"name":"@codaco/not-architect","version":"1.0.0"}\n',
   );
-  // The merge added nothing beyond the branch: empty diff, trivial case.
+  assert.deepEqual(affectedSuitesForPaths(['README.md'], cwd), {
+    interview: false,
+    interviewer: false,
+    architect: true,
+  });
+  assert.equal(
+    suiteSelectionForPaths(['README.md'], cwd).reasons.architect,
+    'fails closed: @codaco/architect is missing from the workspace graph',
+  );
+});
+
+test('suite selection reasons name the witness path for the status comment', () => {
+  const cwd = writeWorkspaceFixture();
+
+  // A shared-runtime change selects every suite, each citing the path.
   assert.deepEqual(
-    await releaseLaneQueueCall(
+    suiteSelectionForPaths(
+      ['README.md', 'packages/interview/src/index.ts'],
       cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, branchTip)],
-        jobsByRun: { 1: RELEASE_LANE_ARCHITECT_SUCCESS_JOBS },
-      }),
     ),
-    { interview: true, interviewer: false, architect: true },
+    {
+      required: { interview: true, interviewer: true, architect: true },
+      reasons: {
+        interview:
+          '`packages/interview/src/index.ts` is in the @codaco/interview workspace dependency closure',
+        interviewer:
+          '`packages/interview/src/index.ts` is in the @codaco/interviewer workspace dependency closure',
+        architect:
+          '`packages/interview/src/index.ts` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A single-product change explains both the selected and skipped suites.
+  assert.deepEqual(
+    suiteSelectionForPaths(['apps/architect/src/main.tsx'], cwd),
+    {
+      required: { interview: false, interviewer: false, architect: true },
+      reasons: {
+        interview: 'no changed file affects this suite',
+        interviewer: 'no changed file affects this suite',
+        architect:
+          '`apps/architect/src/main.tsx` is in the @codaco/architect workspace dependency closure',
+      },
+    },
+  );
+
+  // A path outside every workspace package fails closed and says so.
+  assert.deepEqual(
+    suiteSelectionForPaths(['turbo.json'], cwd).reasons,
+    reasonForEverySuite(
+      'fails closed: `turbo.json` is outside every workspace package',
+    ),
   );
 });
 
-test('merge-queue reuse classifies batched main movement by relevance', async () => {
-  // Main moved with a file inside the architect subject: the architect suite
-  // re-runs. The interview suite may still skip — apps/architect is outside
-  // the interview package's closure, so its e2e outcome cannot change.
-  const relevant = initMergeQueueRepo({
-    advanceMainWith: 'apps/architect/src/main.tsx',
-  });
-  git(
-    relevant.cwd,
-    'update-ref',
-    `refs/remotes/origin/${NORMAL_RELEASE_REF}`,
-    relevant.branchTip,
-  );
+test('non-PR ordinary events do not require E2E', () => {
+  const none = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+    releaseRef: '',
+    snapshotBranch: '',
+    reasons: reasonForEverySuite('E2E does not run for push events'),
+  };
   assert.deepEqual(
-    await releaseLaneQueueCall(
-      relevant.cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, relevant.branchTip)],
-        jobsByRun: { 1: RELEASE_LANE_ARCHITECT_SUCCESS_JOBS },
-      }),
-    ),
-    { interview: true, interviewer: false, architect: false },
+    releaseE2EPolicy({ eventName: 'push', refName: 'main' }),
+    none,
   );
-
-  // Main moved with an inert file (README): the batched merge still cannot
-  // affect the suites, so reuse holds. (Old byte-identical semantics re-ran
-  // here; relevance classification is the intended improvement.)
-  const inert = initMergeQueueRepo({ advanceMainWith: 'README.md' });
-  git(
-    inert.cwd,
-    'update-ref',
-    `refs/remotes/origin/${NORMAL_RELEASE_REF}`,
-    inert.branchTip,
-  );
-  assert.deepEqual(
-    await releaseLaneQueueCall(
-      inert.cwd,
-      fakeActionsApi({
-        runs: [fakeRun(1, inert.branchTip)],
-        jobsByRun: { 1: RELEASE_LANE_ARCHITECT_SUCCESS_JOBS },
-      }),
-    ),
-    { interview: true, interviewer: false, architect: true },
-  );
-
-  // An ordinary PR that bumps a version must never satisfy reuse: without a
-  // matching origin/changeset-release/* tip there is no branch to walk.
-  const untrusted = initMergeQueueRepo();
-  assert.equal(releaseBranchForMergeQueue(untrusted.cwd), '');
 });
 
 // Scaffold a repo-shaped directory tree (no git needed for these tests):
@@ -597,12 +594,19 @@ test('diff classification is fail-closed', () => {
   const packages = collectWorkspacePackages(cwd);
   const relevance = relevanceDirsForSubject('@codaco/interviewer', packages);
 
-  // Sibling-product and inert paths cannot affect the interviewer suite.
+  // Sibling-product and unit-test-only paths cannot affect the interviewer
+  // Playwright suite.
   assert.equal(
     diffIrrelevantToSuite(
       [
         'apps/architect/package.json',
         'apps/architect/CHANGELOG.md',
+        'apps/architect/vitest.config.ts',
+        'apps/architect/config/vitest/setup.ts',
+        'packages/interview/src/Example.test.tsx',
+        'packages/interview/src/__tests__/fixture.ts',
+        'tooling/vitest/modern/disable-animations.js',
+        'scripts/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
         'README.md',
@@ -616,6 +620,7 @@ test('diff classification is fail-closed', () => {
   // Anything in the closure is relevant — including non-markdown baselines.
   for (const relevantPath of [
     'apps/interviewer/src/main.tsx',
+    'apps/interviewer/e2e/session.spec.ts',
     'packages/interview/e2e/baseline.png',
     'packages/e2e-helpers/src/index.ts',
   ]) {
@@ -654,6 +659,43 @@ test('diff classification is fail-closed', () => {
 
   // An empty diff is trivially irrelevant (byte-identical case).
   assert.equal(diffIrrelevantToSuite([], relevance, packages), true);
+});
+
+test('unit-only and unrelated nested-workspace changes select no E2E suites', () => {
+  const expected = {
+    interview: false,
+    interviewer: false,
+    architect: false,
+  };
+
+  for (const changedPath of [
+    'tooling/vitest/modern/disable-animations.js',
+    'tooling/vitest/legacy/disable-animations.js',
+    'tooling/vitest/package.json',
+    'scripts/vitest-animation-setup.test.mjs',
+    'apps/studio/client/vitest.config.ts',
+    'apps/studio/client/src/main.tsx',
+    'apps/architect/vitest.config.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      expected,
+      `${changedPath} must not select an unrelated E2E suite`,
+    );
+  }
+});
+
+test('Playwright specs remain relevant after unit-test paths become inert', () => {
+  for (const changedPath of [
+    'apps/architect/e2e/specs/protocol-authoring.spec.ts',
+    'apps/architect/e2e/specs/future-convention.test.ts',
+  ]) {
+    assert.deepEqual(
+      affectedSuitesForPaths([changedPath], REPO_ROOT),
+      { interview: false, interviewer: false, architect: true },
+      `${changedPath} remains relevant to Architect E2E`,
+    );
+  }
 });
 
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs

@@ -1,16 +1,22 @@
 import { isEmpty, omit } from 'es-toolkit/compat';
-import { compose } from 'react-recompose';
+import type { ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageInitialValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
 
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
-import withSubject from '../../enhancers/withSubject';
 import PresetFields from './PresetFields';
 import PresetPreview from './PresetPreview';
+
+type Preset = Record<string, unknown>;
+
 const hasDisplayEdges = (edges: unknown): boolean => {
   if (edges === null || typeof edges !== 'object' || !('display' in edges)) {
     return false;
@@ -49,51 +55,79 @@ const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-type NarrativePresetsProps = StageEditorSectionProps & {
-  entity?: string;
-  type?: string;
+
+// Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
+// only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
+// disabledMessage}` (injected) — the component it wraps must accept exactly
+// that shape (or less) for the composition below to typecheck. `stagePath`/
+// `stagePosition` pass through unread (the section doesn't need them).
+type NarrativePresetsProps = {
   disabled?: boolean;
   disabledMessage?: string;
 };
+
 const NarrativePresets = ({
-  entity,
-  type,
   disabled,
   disabledMessage,
-}: NarrativePresetsProps) => (
-  <Section
-    disabled={disabled}
-    disabledMessage={disabledMessage}
-    summary={
-      <Paragraph>
-        Add one or more &quot;presets&quot; below, to create different
-        visualizations that you can switch between within the interview.
-      </Paragraph>
-    }
-    title="Narrative Presets"
-  >
-    <ValidatedFieldArray
-      name="presets"
-      label="Narrative presets"
-      labelHidden
-      component={DialogArrayField}
-      validation={{ notEmpty }}
-      componentProps={{
-        addTitle: 'Edit Preset',
-        editorFieldsComponent: PresetFields,
-        editorProps: { entity, type },
-        editorTitle: 'Edit Preset',
-        itemLabel: 'preset',
-        itemTemplate: template,
-        normalizeItem: normalizePreset,
-        previewComponent: PresetPreview,
-        requestedEditFormName: 'editable-list-form',
-        sortable: true,
-      }}
-    />
-  </Section>
-);
-export default compose<NarrativePresetsProps, StageEditorSectionProps>(
-  withSubject,
-  withDisabledSubjectRequired,
-)(NarrativePresets);
+}: NarrativePresetsProps) => {
+  const { entity, type } = useSubject();
+  const initialPresets = useStageInitialValue<Preset[]>('presets');
+
+  return (
+    <Section
+      disabled={disabled}
+      disabledMessage={disabledMessage}
+      summary={
+        <Paragraph>
+          Add one or more &quot;presets&quot; below, to create different
+          visualizations that you can switch between within the interview.
+        </Paragraph>
+      }
+      title="Narrative Presets"
+    >
+      <ArchitectArrayField
+        name="presets"
+        label="Narrative presets"
+        labelHidden
+        component={DialogArrayField}
+        validation={{ notEmpty }}
+        initialValue={initialPresets}
+        addTitle="Edit Preset"
+        editorFieldsComponent={
+          PresetFields as ComponentType<Record<string, unknown>>
+        }
+        editorProps={{ entity, type }}
+        editorTitle="Edit Preset"
+        itemLabel="preset"
+        itemTemplate={template}
+        normalizeItem={(value) =>
+          normalizePreset(value as Record<string, unknown>)
+        }
+        previewComponent={
+          PresetPreview as ComponentType<Record<string, unknown>>
+        }
+        requestedEditFormName="editable-list-form"
+        sortable
+      />
+    </Section>
+  );
+};
+
+const NarrativePresetsWithDisabledState =
+  withDisabledSubjectRequired(NarrativePresets);
+
+/**
+ * `withDisabledSubjectRequired` computes `disabled`/`disabledMessage` from
+ * `interfaceType`/`type` props (the `withSubject` enhancer used to inject
+ * `type`). Sections no longer receive `type` as a prop — it comes from
+ * `useSubject()` — so this forwards it explicitly rather than composing the
+ * two enhancers as before.
+ */
+const NarrativePresetsSection = (props: StageEditorSectionProps) => {
+  const { type } = useSubject();
+  return (
+    <NarrativePresetsWithDisabledState {...props} type={type ?? undefined} />
+  );
+};
+
+export default NarrativePresetsSection;

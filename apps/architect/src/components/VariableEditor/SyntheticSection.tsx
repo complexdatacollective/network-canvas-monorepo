@@ -1,0 +1,399 @@
+import { useMemo } from 'react';
+
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import { SYNTHETIC_TEXT_GENERATORS } from '@codaco/protocol-validation';
+import { Section } from '~/components/EditorLayout';
+
+import {
+  initialSyntheticValues,
+  selectionCountRows,
+  SYNTHETIC_ENABLED_FIELD,
+  type SyntheticDraftContext,
+  syntheticField,
+  weightRows,
+} from './syntheticDraft';
+
+/**
+ * The optional "Synthetic data generation" section of the variable editor.
+ *
+ * Off by default: nothing is stored and the documented runtime defaults
+ * apply. Enabling it initialises every control from the resolved default for
+ * this variable's type, so what the researcher first sees is exactly what an
+ * undeclared protocol generates with. Turning it off again removes the
+ * stored property entirely (the submit handler omits it).
+ */
+
+const DISTRIBUTION_OPTIONS: Record<string, { label: string; value: string }[]> =
+  {
+    number: [
+      { label: 'Uniform', value: 'uniform' },
+      { label: 'Normal', value: 'normal' },
+      { label: 'Log-normal', value: 'lognormal' },
+      { label: 'Constant', value: 'constant' },
+    ],
+    scalar: [
+      { label: 'Uniform', value: 'uniform' },
+      { label: 'Normal', value: 'normal' },
+      { label: 'Beta', value: 'beta' },
+      { label: 'Constant', value: 'constant' },
+    ],
+    datetime: [
+      { label: 'Uniform', value: 'uniform' },
+      { label: 'Normal', value: 'normal' },
+    ],
+  };
+
+const GENERATOR_LABELS: Record<string, string> = {
+  // Listed like any other generator, because it is one. Naming it here rather
+  // than prepending a hand-written entry is what keeps the choice single: the
+  // enum already carries `neutralWords`, so a separate entry would render a
+  // second option with the same value and the same React key.
+  neutralWords: 'Neutral words (default)',
+  personName: 'Person name',
+  firstName: 'First name',
+  lastName: 'Last name',
+  placeName: 'Place name',
+  organisationName: 'Organisation name',
+  occupation: 'Occupation',
+  email: 'Email address',
+  phoneNumber: 'Phone number',
+  streetAddress: 'Street address',
+  sentence: 'Sentence',
+  paragraph: 'Paragraph',
+};
+
+/** One option per declared generator, in the order the schema lists them. */
+export const generatorOptions = (): { label: string; value: string }[] =>
+  SYNTHETIC_TEXT_GENERATORS.map((generator) => ({
+    label: GENERATOR_LABELS[generator] ?? generator,
+    value: generator,
+  }));
+
+const probabilityFieldProps = {
+  component: InputField,
+  type: 'number',
+  step: '0.01',
+  min: 0,
+  max: 1,
+} as const;
+
+function NumericParameters({
+  kind,
+  initial,
+}: {
+  kind: 'number' | 'scalar';
+  initial: Record<string, unknown>;
+}) {
+  const { [syntheticField('distribution')]: distribution } = useFormValue([
+    syntheticField('distribution'),
+  ] as const);
+  const initialFor = (name: string) =>
+    String(initial[syntheticField(name)] ?? '');
+
+  if (distribution === 'constant') {
+    return (
+      <Field
+        name={syntheticField('value')}
+        label="Value"
+        initialValue={initialFor('value')}
+        component={InputField}
+        type="number"
+        step="any"
+        required
+      />
+    );
+  }
+
+  const bounded =
+    kind === 'scalar'
+      ? probabilityFieldProps
+      : ({
+          component: InputField,
+          type: 'number',
+          step: 'any',
+        } as const);
+
+  // A number's uniform is the one descriptor whose bounds the schema demands:
+  // `numberUniformSchema` takes `min` and `max` as required, while its normal
+  // and lognormal take them optionally and a scalar's uniform likewise. An
+  // author switching an existing number from normal to uniform meets two empty
+  // controls, so calling them optional there sends them to a save that cannot
+  // succeed.
+  const boundsRequired = kind === 'number' && distribution === 'uniform';
+  const boundsHint = boundsRequired
+    ? 'Required for a uniform distribution.'
+    : kind === 'scalar'
+      ? 'Optional. Scalar values always stay within 0 and 1.'
+      : 'Optional. Values are always kept inside the validation bounds.';
+
+  return (
+    <>
+      {distribution !== 'uniform' && (
+        <>
+          <Field
+            name={syntheticField('mean')}
+            label="Mean"
+            initialValue={initialFor('mean')}
+            required
+            {...bounded}
+          />
+          <Field
+            name={syntheticField('sd')}
+            label="Standard deviation"
+            initialValue={initialFor('sd')}
+            component={InputField}
+            type="number"
+            step="any"
+            min={0}
+            required
+          />
+        </>
+      )}
+      {/*
+        Only where the descriptor accepts them. A number takes bounds on every
+        distribution it offers, but a scalar takes them on `uniform` alone —
+        its normal and beta schemas are strict objects without them, so a bound
+        entered against those makes the variable unsavable. Rendering has to
+        match the schema in both directions: an unrendered bound is an
+        unregistered one, and submission rebuilds `synthetic` from the
+        registered fields, so leaving a supported bound out silently widens the
+        distribution on the next save.
+      */}
+      {(kind === 'number' || distribution === 'uniform') && (
+        <>
+          <Field
+            name={syntheticField('min')}
+            label="Minimum"
+            hint={boundsHint}
+            initialValue={initialFor('min')}
+            required={boundsRequired}
+            {...bounded}
+          />
+          <Field
+            name={syntheticField('max')}
+            label="Maximum"
+            hint={boundsHint}
+            initialValue={initialFor('max')}
+            required={boundsRequired}
+            {...bounded}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function DatetimeParameters({ initial }: { initial: Record<string, unknown> }) {
+  const { [syntheticField('distribution')]: distribution } = useFormValue([
+    syntheticField('distribution'),
+  ] as const);
+  const initialFor = (name: string) =>
+    String(initial[syntheticField(name)] ?? '');
+
+  return (
+    <>
+      {distribution === 'normal' && (
+        <>
+          <Field
+            name={syntheticField('mean')}
+            label="Mean date"
+            hint="A full ISO date (YYYY-MM-DD)."
+            initialValue={initialFor('mean')}
+            component={InputField}
+            required
+          />
+          <Field
+            name={syntheticField('sdDays')}
+            label="Standard deviation (days)"
+            initialValue={initialFor('sdDays')}
+            component={InputField}
+            type="number"
+            step="any"
+            min={0}
+            required
+          />
+        </>
+      )}
+      <Field
+        name={syntheticField('min')}
+        label="Earliest date"
+        hint="Optional. Uses this variable's date resolution."
+        initialValue={initialFor('min')}
+        component={InputField}
+      />
+      <Field
+        name={syntheticField('max')}
+        label="Latest date"
+        hint="Optional. Leave empty to end at the interview date."
+        initialValue={initialFor('max')}
+        component={InputField}
+      />
+    </>
+  );
+}
+
+function WeightTable({ context }: { context: SyntheticDraftContext }) {
+  const rows = weightRows(context);
+  return (
+    <>
+      {rows.map((row) => (
+        <Field
+          key={row.fieldName}
+          name={row.fieldName}
+          label={row.label}
+          initialValue={String(row.initial)}
+          component={InputField}
+          type="number"
+          step="any"
+          min={0}
+        />
+      ))}
+    </>
+  );
+}
+
+function SelectionCountTable({ context }: { context: SyntheticDraftContext }) {
+  // Against the weights as they stand, not as they were saved: raising a
+  // zero-weight option makes a further count reachable, and the table has to
+  // offer it without a save-and-reopen first.
+  const weightFields = weightRows(context).map((row) => row.fieldName);
+  const liveWeights = useFormValue(weightFields);
+  const positiveWeights = weightFields.filter((name) => {
+    const value = liveWeights[name];
+    return value !== undefined && value !== null && Number(value) > 0;
+  }).length;
+  const rows = selectionCountRows(context, positiveWeights);
+  return (
+    <>
+      {rows.map((row) => (
+        <Field
+          key={row.fieldName}
+          name={row.fieldName}
+          label={row.label}
+          initialValue={String(row.initial)}
+          {...probabilityFieldProps}
+        />
+      ))}
+    </>
+  );
+}
+
+export default function SyntheticSection({
+  context,
+}: {
+  context: SyntheticDraftContext;
+}) {
+  // Seeded from the name as it stands in the draft, not as it was saved.
+  // A text generator is inferred from the variable's name, so renaming
+  // `friend_name` to `occupation` and enabling this section in one edit
+  // seeded the generator from the OLD name — and the author had to save,
+  // reopen and correct it.
+  const { name: draftName } = useFormValue(['name'] as const);
+  const initial = useMemo(
+    () =>
+      initialSyntheticValues(
+        typeof draftName === 'string' && draftName.trim() !== ''
+          ? { ...context, variable: { ...context.variable, name: draftName } }
+          : context,
+      ),
+    [context, draftName],
+  );
+  const { [SYNTHETIC_ENABLED_FIELD]: enabled } = useFormValue([
+    SYNTHETIC_ENABLED_FIELD,
+  ] as const);
+  const { type } = context.variable;
+
+  if (type === 'layout' || type === 'location') return null;
+
+  const showMissing = !context.required;
+  const distributionOptions = DISTRIBUTION_OPTIONS[type];
+
+  return (
+    <Section
+      title="Synthetic data generation"
+      layout="vertical"
+      required={false}
+      summary={
+        <p>
+          Describe the distribution of values this variable should take in
+          generated preview and sample data. This never affects real interviews.
+        </p>
+      }
+    >
+      <Field
+        name={SYNTHETIC_ENABLED_FIELD}
+        label="Configure synthetic data for this variable"
+        initialValue={Boolean(initial[SYNTHETIC_ENABLED_FIELD])}
+        component={ToggleField}
+      />
+      {!enabled && <p>Runtime defaults will be used for this variable.</p>}
+      {Boolean(enabled) && (
+        <>
+          {distributionOptions && (
+            <Field
+              name={syntheticField('distribution')}
+              label="Distribution"
+              initialValue={String(
+                initial[syntheticField('distribution')] ?? '',
+              )}
+              component={NativeSelectField}
+              options={distributionOptions}
+            />
+          )}
+          {(type === 'number' || type === 'scalar') && (
+            <NumericParameters kind={type} initial={initial} />
+          )}
+          {type === 'datetime' && <DatetimeParameters initial={initial} />}
+          {type === 'boolean' && (
+            <Field
+              name={syntheticField('probabilityTrue')}
+              label="Probability of true"
+              initialValue={String(
+                initial[syntheticField('probabilityTrue')] ?? '',
+              )}
+              {...probabilityFieldProps}
+            />
+          )}
+          {type === 'text' && (
+            <Field
+              name={syntheticField('generator')}
+              label="Generator"
+              hint="How realistic values are produced for this field."
+              initialValue={String(initial[syntheticField('generator')] ?? '')}
+              component={NativeSelectField}
+              options={generatorOptions()}
+            />
+          )}
+          {(type === 'ordinal' || type === 'categorical') && (
+            <WeightTable context={context} />
+          )}
+          {type === 'categorical' && (
+            <>
+              <p>
+                How many values get selected. Probabilities are normalised to
+                sum to 1 when saved; a count of 0 is an answered-but-empty
+                selection, not a missing value.
+              </p>
+              <SelectionCountTable context={context} />
+            </>
+          )}
+          {showMissing && (
+            <Field
+              name={syntheticField('missingProbability')}
+              label="Missing probability"
+              hint="Chance this variable is left unanswered (stored as null). Unavailable on required variables."
+              initialValue={String(
+                initial[syntheticField('missingProbability')] ?? '',
+              )}
+              {...probabilityFieldProps}
+            />
+          )}
+        </>
+      )}
+    </Section>
+  );
+}

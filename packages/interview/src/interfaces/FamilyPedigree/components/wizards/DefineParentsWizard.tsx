@@ -21,6 +21,7 @@ import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { defineParentsTransform } from './transforms/defineParentsTransform';
+import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 
 function getNodeDisplayName(
   nodeId: string,
@@ -131,7 +132,9 @@ export async function openDefineParentsWizard(
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return defineParentsTransform(formValues, focalNodeId, variableConfig);
+      return runFamilyPedigreeTransform(() =>
+        defineParentsTransform(formValues, focalNodeId, variableConfig),
+      );
     },
   });
 

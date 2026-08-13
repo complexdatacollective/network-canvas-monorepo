@@ -16,7 +16,24 @@ const routeHandler = async (
 ) => {
   const { interviewId } = await params;
 
-  const rawPayload = await request.json();
+  const invalidRequest = (error: unknown) => {
+    after(async () => {
+      await captureException(error, { interviewId });
+      await shutdownPostHog();
+    });
+
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400 },
+    );
+  };
+
+  let rawPayload: unknown;
+  try {
+    rawPayload = await request.json();
+  } catch (error) {
+    return invalidRequest(error);
+  }
 
   const Schema = z.object({
     id: z.string(),
@@ -29,19 +46,9 @@ const routeHandler = async (
   const validatedRequest = Schema.safeParse(rawPayload);
 
   if (!validatedRequest.success) {
-    after(async () => {
-      await captureException(validatedRequest.error, {
-        interviewId,
-      });
-      await shutdownPostHog();
-    });
-
     // Return a generic message rather than the full Zod error, which would
     // otherwise disclose the accepted schema shape to unauthenticated callers.
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 },
-    );
+    return invalidRequest(validatedRequest.error);
   }
 
   const { network, currentStep, stageMetadata } = validatedRequest.data;

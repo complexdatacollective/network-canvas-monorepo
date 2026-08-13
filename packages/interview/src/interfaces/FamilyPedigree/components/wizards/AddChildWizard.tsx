@@ -30,7 +30,10 @@ import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
 import { childCellTransform } from './transforms/childCellTransform';
-import { readBiologicalSex } from './transforms/personAttributes';
+import {
+  readBiologicalSex,
+  runFamilyPedigreeTransform,
+} from './transforms/personAttributes';
 
 function getPreselection(
   anchorNodeId: string,
@@ -168,12 +171,14 @@ export async function openAddChildWizard(
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return childCellTransform(
-        formValues,
-        anchorNodeId,
-        nodes,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        childCellTransform(
+          formValues,
+          anchorNodeId,
+          nodes,
+          edges,
+          variableConfig,
+        ),
       );
     },
   });

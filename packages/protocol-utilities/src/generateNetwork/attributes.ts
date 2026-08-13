@@ -1,9 +1,5 @@
 import type { Variable } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  type NcNode,
-  type VariableValue,
-} from '@codaco/shared-consts';
+import { VariableValueSchema, type VariableValue } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
 import {
@@ -14,7 +10,6 @@ import {
 } from './constraints/generateEntityAttributes';
 import type { EntityConstraints } from './constraints/types';
 import type { GenerationContext } from './context';
-import type { PromptFixedValues } from './nodes';
 
 export function toVariableEntry(id: string, variable: Variable): VariableEntry {
   const options =
@@ -36,7 +31,30 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     options,
     validation: 'validation' in variable ? variable.validation : undefined,
     parameters: 'parameters' in variable ? variable.parameters : undefined,
+    // Load-bearing: the draw resolves a variable's distribution from its
+    // entry, so dropping this here silently returns every declared
+    // distribution, generator, option weighting and missingness to its
+    // default while counts and topology — read straight off the codebook —
+    // went on working.
+    synthetic: 'synthetic' in variable ? variable.synthetic : undefined,
   };
+}
+
+export function definedAttributesOf(
+  attributes: Readonly<Record<string, unknown>>,
+  omissionSentinel?: symbol,
+): Record<string, VariableValue> {
+  const defined: Record<string, VariableValue> = {};
+
+  for (const [id, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined || value === omissionSentinel) {
+      continue;
+    }
+
+    defined[id] = VariableValueSchema.parse(value);
+  }
+
+  return defined;
 }
 
 /** The rules one entity scope draws against, whichever scope it is. */
@@ -66,6 +84,8 @@ export function generateAttributesForEntity(
     existing?: Record<string, VariableValue>;
     only?: Set<string>;
     preferRealisticNameVariables?: ReadonlySet<string>;
+    /** Variables drawn as Sociogram highlights, which have their own rate. */
+    highlightVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   return generateEntityAttributes(
@@ -75,55 +95,6 @@ export function generateAttributesForEntity(
     index,
     options,
   );
-}
-
-function applyRosterReservations(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-  hold: boolean,
-): void {
-  if (rows.length === 0) return;
-  const registry = scopeKey(ref);
-
-  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
-    for (const row of rows) {
-      for (const id of memberIds) {
-        const value = row[entityAttributesProperty][id];
-        if (value === undefined) continue;
-        if (hold) ctx.uniqueRegistry.reserve(registry, slot, value);
-        else ctx.uniqueRegistry.unreserve(registry, slot, value);
-      }
-    }
-  }
-}
-
-/**
- * Holds every `unique` value a drawable roster row carries back from generated
- * draws. A row is a real person the run may still add, carrying values the
- * researcher supplied rather than ones the registry issued, so a fabricated
- * entity must not be issued a value a row is about to arrive holding.
- */
-export function reserveRosterValues(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-): void {
-  applyRosterReservations(ctx, ref, rows, true);
-}
-
-/**
- * Gives those reservations back, once the rows are no longer drawable. A row
- * that was never drawn holds nothing, and a value reserved for it would
- * otherwise stay unavailable to entities the rest of the run creates. A row
- * that was drawn keeps its value through the claim made when it arrived.
- */
-export function releaseRosterValues(
-  ctx: GenerationContext,
-  ref: EntityScopeRef,
-  rows: readonly NcNode[],
-): void {
-  applyRosterReservations(ctx, ref, rows, false);
 }
 
 /**
@@ -159,54 +130,12 @@ export function rosterRowIsDrawable(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value === undefined) continue;
+      if (value === undefined || value === null) continue;
       if (ctx.uniqueRegistry.isTaken(registry, slot, value)) return false;
     }
   }
 
   return true;
-}
-
-/**
- * Holds back every `unique` value a prompt's `additionalAttributes` will fix,
- * for the whole run and before any stage draws.
- *
- * A fixed value only reaches the registry when the node carrying it is built,
- * which is too late for the stages that ran first: a boolean `unique` variable
- * drawn on an earlier stage takes the first value of its sequence, a later
- * prompt fixes that same value, and the finished network holds it twice — the
- * duplicate `unique` forbids, on every seed. The prompt's value is protocol
- * rather than draw, so it is known before the run starts and can be kept out of
- * the earlier draw's way.
- *
- * Reserved rather than claimed, because a claim is a refusal: a prompt whose
- * stage the run never reaches, or that creates no node, would take a value out
- * of circulation for people who really needed it, and a value space sized to
- * the entity count would then run out. A reservation only redirects a draw that
- * has somewhere else to go.
- *
- * `fixedByType` is the same tally feasibility counts against the node ceiling,
- * so a value it found could never land — every row of a roster stage already
- * supplying the variable — is absent here too and reserves nothing.
- */
-export function reservePromptFixedValues(
-  ctx: GenerationContext,
-  fixedByType: Map<string, PromptFixedValues>,
-): void {
-  for (const [type, byVariable] of fixedByType) {
-    const ref: EntityScopeRef = { entity: 'node', type };
-    const registry = scopeKey(ref);
-
-    for (const [slot, memberIds] of uniqueSlotMembers(
-      constraintsFor(ctx, ref),
-    )) {
-      for (const id of memberIds) {
-        for (const { value } of byVariable.get(id)?.values() ?? []) {
-          ctx.uniqueRegistry.reserve(registry, slot, value);
-        }
-      }
-    }
-  }
 }
 
 /**
@@ -230,9 +159,101 @@ export function claimFixedValues(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
+}
+
+/**
+ * Holds the `unique` values an entity will be given from outside the registry
+ * back from generated draws, without issuing them.
+ *
+ * The plan walks a type's creating stages in interview order, so a stage that
+ * draws freely runs before a later stage's prompt or roster row is known. A
+ * free draw that took a value one of those will write leaves the network
+ * holding it twice, which `unique` forbids and nothing downstream repairs.
+ * Reservations are soft — a draw with nothing else left takes one anyway —
+ * which is the right strength here: refusing a value on account of an entity
+ * the run may never build would fail protocols that generate perfectly well.
+ *
+ * Every hold is released as its value is consumed or its row passed over, so
+ * a pool the draw never reaches stops constraining it.
+ */
+export function reserveFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined)
+        ctx.uniqueRegistry.reserve(registry, slot, value);
+    }
+  }
+}
+
+export function unreserveFixedValues(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  fixed: Record<string, VariableValue>,
+): void {
+  const registry = scopeKey(ref);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined) {
+        ctx.uniqueRegistry.unreserve(registry, slot, value);
+      }
+    }
+  }
+}
+
+/**
+ * Draws one variable onto an entity the plan does not own.
+ *
+ * A FamilyPedigree builds its people and links during the session walk rather
+ * than in the plan, so a later stage that writes onto them has no planned
+ * value to land. The value is drawn here instead, against the same constraints
+ * and the same registry every other value was drawn against — the pedigree's
+ * own materialisation already works this way, so this keeps one entity's
+ * history consistent rather than introducing a second source of values.
+ *
+ * Whatever the entity already holds for the variable is released from the
+ * registry and withheld from the draw: this is the last writer replacing an
+ * earlier value, so keeping the old one issued would have the entity competing
+ * with itself for a `unique` slot, and leaving it in `existing` would pin the
+ * redraw to the value it is meant to replace.
+ */
+export function drawVariableOnto(
+  ctx: GenerationContext,
+  ref: EntityScopeRef,
+  attributes: Record<string, VariableValue>,
+  variableId: string,
+  index: number,
+): void {
+  const registry = scopeKey(ref);
+  for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
+    if (!memberIds.includes(variableId)) continue;
+    for (const id of memberIds) {
+      const value = attributes[id];
+      if (value !== undefined)
+        ctx.uniqueRegistry.release(registry, slot, value);
+    }
+  }
+
+  const context = { ...attributes };
+  delete context[variableId];
+  const drawn = generateAttributesForEntity(ctx, ref, index, {
+    existing: context,
+    only: new Set([variableId]),
+  });
+  if (variableId in drawn) attributes[variableId] = drawn[variableId]!;
 }
 
 /**
@@ -254,12 +275,14 @@ export function replaceFixedValues(
 
     for (const id of memberIds) {
       const value = previous[id];
-      if (value !== undefined)
+      if (value !== undefined && value !== null)
         ctx.uniqueRegistry.release(registry, slot, value);
     }
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }

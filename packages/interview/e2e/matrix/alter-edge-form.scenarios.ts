@@ -1056,9 +1056,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('story')).toBeVisible();
         await expect(stage.form.getFieldError('contexts')).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
-        // Manually seeded entities carry the variable type's neutral value
-        // until a valid submission replaces it.
-        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeNull();
+        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeUndefined();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.
         await stage.form.selectCheckbox('contexts', 'Social');

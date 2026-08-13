@@ -171,6 +171,7 @@ const PreviewText = ({
             />
             <Copy>has</Copy>
             <VariablePill
+              interactive={false}
               label={options.attribute ?? ''}
               type={
                 (options.variableType as
@@ -184,8 +185,7 @@ const PreviewText = ({
                   | 'layout'
                   | 'location') ?? 'text'
               }
-              minWidth="0"
-              width="100%"
+              validations={[]}
             />
           </div>
           <Operator value={options.operator} isEgo />
@@ -205,6 +205,7 @@ const PreviewText = ({
         />
         <Copy>has</Copy>
         <VariablePill
+          interactive={false}
           label={options.attribute ?? ''}
           type={
             (options.variableType as
@@ -218,6 +219,7 @@ const PreviewText = ({
               | 'layout'
               | 'location') ?? 'text'
           }
+          validations={[]}
         />
         <Operator value={options.operator} isEgo />
         <Value value={options.value} />
@@ -265,6 +267,7 @@ const PreviewText = ({
           />
           <Copy>where</Copy>
           <VariablePill
+            interactive={false}
             label={options.attribute ?? ''}
             type={
               (options.variableType as
@@ -278,8 +281,7 @@ const PreviewText = ({
                 | 'layout'
                 | 'location') ?? 'text'
             }
-            minWidth="0"
-            width="100%"
+            validations={[]}
           />
         </div>
         <Operator value={options.operator} />
@@ -298,6 +300,7 @@ const PreviewText = ({
       />
       <Copy>where</Copy>
       <VariablePill
+        interactive={false}
         label={options.attribute ?? ''}
         type={
           (options.variableType as
@@ -311,6 +314,7 @@ const PreviewText = ({
             | 'layout'
             | 'location') ?? 'text'
         }
+        validations={[]}
       />
       <Operator value={options.operator} />
       <Value value={options.value} />

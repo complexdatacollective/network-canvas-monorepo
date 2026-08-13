@@ -17,9 +17,16 @@ type QualifierResolvers = {
   resolveVariableName: (variableId: string) => string | null;
 };
 
+/**
+ * Only the data source distinguishes the panel qualifiers, so the caller can
+ * pass panels assembled from just that leaf — which is what
+ * `usePanelsForAutoName` does, rather than reading the whole `panels` value.
+ */
+type PanelQualifierInput = Pick<Panel, 'dataSource'>;
+
 type QualifierStageFields = {
   type?: StageType;
-  panels?: Panel[];
+  panels?: PanelQualifierInput[];
   items?: Item[];
   nominationPrompts?: { variable: string }[];
 };
@@ -75,7 +82,9 @@ const MEDIA_LABELS: Record<string, string> = {
 // regardless of the order the Information items happen to be in.
 const MEDIA_LABEL_ORDER = ['Image', 'Video', 'Audio'];
 
-function resolvePanelQualifier(panels: Panel[] | undefined): Qualifier | null {
+function resolvePanelQualifier(
+  panels: PanelQualifierInput[] | undefined,
+): Qualifier | null {
   if (!panels || panels.length === 0) {
     return null;
   }

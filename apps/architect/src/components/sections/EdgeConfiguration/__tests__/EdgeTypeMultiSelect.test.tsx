@@ -1,5 +1,10 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import ArchitectField from '~/components/Form/ArchitectField';
 
 // EntityTypeDialog (inside NewTypeDialog) reads the redux store even while
 // hidden; stub the dialog with a trigger that completes with a fixed new id.
@@ -20,8 +25,7 @@ vi.mock('~/components/Dialog/NewTypeDialog', () => ({
 }));
 
 import type { EdgeEntry } from '../EdgeTypeMultiSelect';
-import {
-  EdgeTypeMultiSelectControl,
+import EdgeTypeMultiSelectField, {
   EdgeTypeMultiSelectInner,
 } from '../EdgeTypeMultiSelect';
 
@@ -200,18 +204,38 @@ describe('EdgeTypeMultiSelectInner', () => {
   });
 });
 
-describe('EdgeTypeMultiSelectControl', () => {
-  it('renders without crashing when redux-form supplies an unset value ("")', () => {
-    // redux-form initialises an unset field to '' (not undefined/array). The
-    // control must coerce that to an empty selection instead of calling ''.map.
-    expect(() =>
-      render(
-        <EdgeTypeMultiSelectControl
-          edgeTypes={[{ value: 'knows', label: 'Knows' }]}
-          input={{ value: '', onChange: vi.fn() }}
-        />,
-      ),
-    ).not.toThrow();
+describe('EdgeTypeMultiSelectField', () => {
+  const renderField = (edgeTypes: Record<string, { name: string }>) => {
+    const store = configureStore({
+      reducer: {
+        activeProtocol: (
+          state = { present: { codebook: { edge: edgeTypes } } },
+        ) => state,
+      },
+    });
+
+    return render(
+      <Provider store={store}>
+        <Form onSubmit={() => ({ success: true })}>
+          <ArchitectField
+            name="edges"
+            label="Edge types"
+            labelHidden
+            component={EdgeTypeMultiSelectField}
+          />
+        </Form>
+      </Provider>,
+    );
+  };
+
+  it('sources its options from the codebook edge types', () => {
+    renderField({ knows: { name: 'Knows' } });
+
+    expect(screen.getByRole('checkbox', { name: 'Knows' })).toBeInTheDocument();
+  });
+
+  it('renders with no options checked when the field has no initial value', () => {
+    renderField({ knows: { name: 'Knows' } });
 
     expect(screen.getByRole('checkbox', { name: 'Knows' })).not.toBeChecked();
   });

@@ -5,10 +5,10 @@ import type { StoreApi } from 'zustand';
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
 import { findSourceZone } from '@codaco/fresco-ui/dnd/utils';
+import type { NodeDragEndInfo } from '@codaco/fresco-ui/Node';
 
 import type { CanvasStoreApi } from './useCanvasStore';
 
-const DRAG_THRESHOLD = 5;
 const NUDGE_AMOUNT = 0.02;
 
 type UseCanvasDragOptions = {
@@ -16,7 +16,6 @@ type UseCanvasDragOptions = {
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onClick?: () => void;
   disabled?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: { x: number; y: number }) => void;
@@ -38,24 +37,29 @@ type UseCanvasDragOptions = {
   onRemove?: ((nodeId: string) => void) | null;
 };
 
+/**
+ * The canvas's drag *effects*. Node's own gesture recognizer decides when a
+ * gesture is a drag (and guarantees it is never also a tap or a hold); this
+ * hook implements what a drag means on a canvas — moving the node in
+ * normalized canvas space, driving a simulation, and offering the node to DnD
+ * drop targets — plus the keyboard equivalents (arrow-key nudging,
+ * Delete/Backspace to remove).
+ */
 export function useCanvasDrag({
   nodeId,
   canvasRef,
   store,
   onDragEnd,
-  onClick,
   disabled = false,
   simulation = null,
   dndItem = null,
   dndStore = null,
   onRemove = null,
 }: UseCanvasDragOptions) {
-  const isDraggingRef = useRef(false);
-  const isPointerActiveRef = useRef(false);
-  const startPosRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef<number | null>(null);
-  // Reactive mirror of isDraggingRef so consumers can restyle the node while
-  // it is dragged (e.g. lift it above overlapping drop targets).
+  const dndStartedRef = useRef(false);
+  // Reactive so consumers can restyle the node while it is dragged (e.g. lift
+  // it above overlapping drop targets).
   const [isDragging, setIsDragging] = useState(false);
 
   const screenToNormalized = useCallback(
@@ -71,139 +75,89 @@ export function useCanvasDrag({
     [canvasRef],
   );
 
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (disabled) return;
-      if (e.button !== 0) return;
-      if (isPointerActiveRef.current) return;
+  const handleDragStart = useCallback(
+    (event: PointerEvent) => {
+      setIsDragging(true);
 
-      isPointerActiveRef.current = true;
-
-      e.stopPropagation();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-      isDraggingRef.current = false;
-      startPosRef.current = { x: e.clientX, y: e.clientY };
-
-      const pointerId = e.pointerId;
-      const targetElement = e.target instanceof HTMLElement ? e.target : null;
-      let dndStarted = false;
-
-      const handleMove = (moveEvent: PointerEvent) => {
-        const dx = moveEvent.clientX - startPosRef.current.x;
-        const dy = moveEvent.clientY - startPosRef.current.y;
-
-        if (
-          !isDraggingRef.current &&
-          Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD
-        ) {
-          return;
-        }
-
-        if (!isDraggingRef.current) setIsDragging(true);
-        isDraggingRef.current = true;
-
-        if (dndItem && dndStore && targetElement && !dndStarted) {
-          dndStarted = true;
-          const rect = targetElement.getBoundingClientRect();
-          dndStore.getState().startDrag(
-            {
-              id: nodeId,
-              type: dndItem.type,
-              metadata: dndItem.metadata,
-              _sourceZone: findSourceZone(targetElement),
-            },
-            {
-              x: moveEvent.clientX,
-              y: moveEvent.clientY,
-              width: rect.width,
-              height: rect.height,
-            },
-            // No preview: the canvas node itself follows the pointer.
-            null,
-          );
-        }
-
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-        }
-
-        rafRef.current = requestAnimationFrame(() => {
-          const pos = screenToNormalized(moveEvent.clientX, moveEvent.clientY);
-          store.getState().setPosition(nodeId, pos);
-          simulation?.moveNode(nodeId, pos);
-          if (dndStarted && dndStore) {
-            dndStore
-              .getState()
-              .updateDragPosition(moveEvent.clientX, moveEvent.clientY);
-          }
-          rafRef.current = null;
-        });
-      };
-
-      const handleUp = (upEvent: PointerEvent) => {
-        document.removeEventListener('pointermove', handleMove);
-        document.removeEventListener('pointerup', handleUp);
-        document.removeEventListener('pointercancel', handleUp);
-
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
-        }
-
-        try {
-          (e.target as HTMLElement).releasePointerCapture(pointerId);
-        } catch {
-          // Pointer capture may already be released
-        }
-
-        let droppedOnDndTarget = false;
-        if (dndStarted && dndStore) {
-          const dndState = dndStore.getState();
-          // A cancelled pointer must not commit a drop.
-          if (upEvent.type === 'pointercancel') {
-            dndState.setActiveDropTarget(null);
-          } else {
-            droppedOnDndTarget = dndState.activeDropTargetId !== null;
-          }
-          // Triggers the active target's onDrop via its isDragging subscription.
-          dndState.endDrag();
-        }
-
-        if (isDraggingRef.current) {
-          const pos = store.getState().positions.get(nodeId);
-          if (pos) {
-            simulation?.releaseNode(nodeId);
-            // When a drop target claimed the node, its onDrop owns the outcome —
-            // persisting the canvas position here would race with it.
-            if (!droppedOnDndTarget) {
-              onDragEnd?.(nodeId, pos);
-            }
-          }
-        } else {
-          onClick?.();
-        }
-
-        isDraggingRef.current = false;
-        isPointerActiveRef.current = false;
-        setIsDragging(false);
-      };
-
-      document.addEventListener('pointermove', handleMove);
-      document.addEventListener('pointerup', handleUp);
-      document.addEventListener('pointercancel', handleUp);
+      const targetElement =
+        event.target instanceof HTMLElement ? event.target : null;
+      if (dndItem && dndStore && targetElement) {
+        dndStartedRef.current = true;
+        const rect = targetElement.getBoundingClientRect();
+        dndStore.getState().startDrag(
+          {
+            id: nodeId,
+            type: dndItem.type,
+            metadata: dndItem.metadata,
+            _sourceZone: findSourceZone(targetElement),
+          },
+          {
+            x: event.clientX,
+            y: event.clientY,
+            width: rect.width,
+            height: rect.height,
+          },
+          // No preview: the canvas node itself follows the pointer.
+          null,
+        );
+      }
     },
-    [
-      disabled,
-      nodeId,
-      screenToNormalized,
-      store,
-      simulation,
-      onDragEnd,
-      onClick,
-      dndItem,
-      dndStore,
-    ],
+    [dndItem, dndStore, nodeId],
+  );
+
+  const handleDragMove = useCallback(
+    (event: PointerEvent) => {
+      const { clientX, clientY } = event;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        const pos = screenToNormalized(clientX, clientY);
+        store.getState().setPosition(nodeId, pos);
+        simulation?.moveNode(nodeId, pos);
+        if (dndStartedRef.current && dndStore) {
+          dndStore.getState().updateDragPosition(clientX, clientY);
+        }
+        rafRef.current = null;
+      });
+    },
+    [dndStore, nodeId, screenToNormalized, simulation, store],
+  );
+
+  const handleDragEnd = useCallback(
+    (_event: PointerEvent, info: NodeDragEndInfo) => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+
+      let droppedOnDndTarget = false;
+      if (dndStartedRef.current && dndStore) {
+        const dndState = dndStore.getState();
+        // A cancelled pointer must not commit a drop.
+        if (info.cancelled) {
+          dndState.setActiveDropTarget(null);
+        } else {
+          droppedOnDndTarget = dndState.activeDropTargetId !== null;
+        }
+        // Triggers the active target's onDrop via its isDragging subscription.
+        dndState.endDrag();
+      }
+      dndStartedRef.current = false;
+
+      const pos = store.getState().positions.get(nodeId);
+      if (pos) {
+        simulation?.releaseNode(nodeId);
+        // When a drop target claimed the node, its onDrop owns the outcome —
+        // persisting the canvas position here would race with it.
+        if (!droppedOnDndTarget) {
+          onDragEnd?.(nodeId, pos);
+        }
+      }
+
+      setIsDragging(false);
+    },
+    [dndStore, nodeId, onDragEnd, simulation, store],
   );
 
   const onKeyDown = useCallback(
@@ -216,16 +170,6 @@ export function useCanvasDrag({
       let newPos: { x: number; y: number } | null = null;
 
       switch (e.key) {
-        case 'Enter':
-          // ARIA button pattern: Enter activates on keydown (and auto-repeats).
-          e.preventDefault();
-          onClick?.();
-          return;
-        case ' ':
-          // ARIA button pattern: Space activates on keyup; keydown only
-          // preventDefaults to suppress page scroll.
-          e.preventDefault();
-          return;
         case 'Delete':
         case 'Backspace':
           if (!onRemove) return;
@@ -257,27 +201,15 @@ export function useCanvasDrag({
       simulation?.releaseNode(nodeId);
       onDragEnd?.(nodeId, newPos);
     },
-    [disabled, nodeId, store, simulation, onDragEnd, onClick, onRemove],
-  );
-
-  const onKeyUp = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (disabled) return;
-      if (e.key !== ' ') return;
-      onClick?.();
-    },
-    [disabled, onClick],
+    [disabled, nodeId, store, simulation, onDragEnd, onRemove],
   );
 
   return {
     dragProps: {
-      onPointerDown,
+      onDragStart: handleDragStart,
+      onDragMove: handleDragMove,
+      onDragEnd: handleDragEnd,
       onKeyDown,
-      onKeyUp,
-      style: {
-        cursor: disabled ? 'default' : 'grab',
-        touchAction: 'none' as const,
-      },
     },
     isDragging,
   };

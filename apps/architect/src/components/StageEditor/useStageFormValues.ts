@@ -1,0 +1,95 @@
+import { get } from 'es-toolkit/compat';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
+
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+
+import { useStageFormContext } from './stageFormContext';
+
+type StageFormValues = Record<string, FieldValue>;
+type SelectedValues = Record<string, FieldValue | undefined>;
+
+type ValuesCache = {
+  /** Identity of the store's `fields` map the cached values were built from. */
+  fields: unknown;
+  values: StageFormValues;
+  pathsKey: string;
+  selectedSource: StageFormValues | null;
+  selected: SelectedValues;
+};
+
+const shallowEqual = (a: SelectedValues, b: SelectedValues) => {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) => Object.is(a[key], b[key]));
+};
+
+/**
+ * Reads the stage form's values from outside the fresco-ui field tree —
+ * including from inside a dialog that has mounted its own form store, where
+ * `useFormValue` would address the dialog's form.
+ *
+ * Values come from `getFormValues()`, so a field that is not currently
+ * registered contributes nothing. Use `useFormValue` when a dormant (unmounted)
+ * value must still be visible.
+ */
+export function useStageFormValues(): StageFormValues;
+export function useStageFormValues<const K extends readonly string[]>(
+  paths: K,
+): Record<K[number], FieldValue | undefined>;
+export function useStageFormValues(
+  paths?: readonly string[],
+): StageFormValues | SelectedValues {
+  const { storeApi } = useStageFormContext();
+
+  const cache = useRef<ValuesCache>({
+    fields: null,
+    values: {},
+    pathsKey: '',
+    selectedSource: null,
+    selected: {},
+  });
+
+  const pathsKey = paths ? paths.join('\u0000') : '';
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
+    [storeApi],
+  );
+
+  // `getFormValues()` assembles a fresh object on every call, so the snapshot
+  // is cached against the identity of the map it is derived from — otherwise
+  // useSyncExternalStore would see a new value on every render.
+  const getSnapshot = useCallback(() => {
+    const state = storeApi.getState();
+    const current = cache.current;
+
+    if (current.fields !== state.fields) {
+      current.fields = state.fields;
+      current.values = state.getFormValues();
+    }
+
+    if (!paths) return current.values;
+
+    if (
+      current.selectedSource !== current.values ||
+      current.pathsKey !== pathsKey
+    ) {
+      const selected: SelectedValues = {};
+      for (const path of paths) {
+        selected[path] = get(current.values, path) as FieldValue | undefined;
+      }
+
+      current.selectedSource = current.values;
+      current.pathsKey = pathsKey;
+      // Keep the previous object when nothing selected changed, so an edit
+      // elsewhere in the form does not re-render this consumer.
+      if (!shallowEqual(current.selected, selected)) {
+        current.selected = selected;
+      }
+    }
+
+    return current.selected;
+  }, [paths, pathsKey, storeApi]);
+
+  return useSyncExternalStore(subscribe, getSnapshot);
+}

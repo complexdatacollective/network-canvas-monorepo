@@ -1,12 +1,14 @@
 import { v4 as uuid } from 'uuid';
 
 import {
+  type VariableValue,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { AttributePatch } from '../../store/entityAttributePatch';
 import {
   addEdge,
   addNode,
@@ -37,12 +39,12 @@ type ComposerActions = {
   deleteEdgeById: (id: string) => void;
   updateNodeAttributes: (
     id: string,
-    data: NcNode[typeof entityAttributesProperty],
+    attributePatch: AttributePatch,
     coalesceKey?: string,
   ) => Promise<void>;
   updateEdgeAttributes: (
     id: string,
-    data: NcEdge[typeof entityAttributesProperty],
+    attributePatch: AttributePatch,
     coalesceKey?: string,
   ) => Promise<void>;
   repositionNode: (
@@ -317,7 +319,7 @@ export function useComposerActions({
 
   async function updateNodeAttributes(
     id: string,
-    data: NcNode[typeof entityAttributesProperty],
+    attributePatch: AttributePatch,
     coalesceKey?: string,
   ): Promise<void> {
     let priorAttributes: NcNode[typeof entityAttributesProperty] = {};
@@ -335,16 +337,32 @@ export function useComposerActions({
     });
 
     await dispatch(
-      updateNode({ nodeId: id, newAttributeData: data, currentStep }),
+      updateNode({ nodeId: id, attributePatch, currentStep }),
     ).unwrap();
 
-    // Scope undo to edited keys so a coalesced autosave undo can't clobber
-    // unrelated attributes changed while the drawer was open.
-    const editedKeys = new Set(Object.keys(data));
-    const capturedPrior: NcNode[typeof entityAttributesProperty] =
-      Object.fromEntries(
-        Object.entries(priorAttributes).filter(([key]) => editedKeys.has(key)),
-      );
+    const editedKeys = [
+      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
+    ];
+    const inverseSet: Record<string, VariableValue> = {};
+    const inverseUnset: string[] = [];
+
+    for (const key of editedKeys) {
+      const priorValue = priorAttributes[key];
+      if (
+        Object.hasOwn(priorAttributes, key) &&
+        priorValue !== null &&
+        priorValue !== undefined
+      ) {
+        inverseSet[key] = priorValue;
+      } else {
+        inverseUnset.push(key);
+      }
+    }
+
+    const inversePatch: AttributePatch = {
+      set: inverseSet,
+      unset: inverseUnset,
+    };
 
     void undoStore.getState().push({
       label: `Update node attributes`,
@@ -353,14 +371,14 @@ export function useComposerActions({
         await dispatch(
           updateNode({
             nodeId: id,
-            newAttributeData: capturedPrior,
+            attributePatch: inversePatch,
             currentStep,
           }),
         ).unwrap();
       },
       redo: async () => {
         await dispatch(
-          updateNode({ nodeId: id, newAttributeData: data, currentStep }),
+          updateNode({ nodeId: id, attributePatch, currentStep }),
         ).unwrap();
       },
     });
@@ -368,7 +386,7 @@ export function useComposerActions({
 
   async function updateEdgeAttributes(
     id: string,
-    data: NcEdge[typeof entityAttributesProperty],
+    attributePatch: AttributePatch,
     coalesceKey?: string,
   ): Promise<void> {
     let priorAttributes: NcEdge[typeof entityAttributesProperty] = {};
@@ -385,28 +403,42 @@ export function useComposerActions({
       }
     });
 
-    await dispatch(updateEdge({ edgeId: id, newAttributeData: data })).unwrap();
+    await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
 
-    // Scope undo to edited keys so a coalesced autosave undo can't clobber
-    // unrelated attributes changed while the drawer was open.
-    const editedKeys = new Set(Object.keys(data));
-    const capturedPrior: NcEdge[typeof entityAttributesProperty] =
-      Object.fromEntries(
-        Object.entries(priorAttributes).filter(([key]) => editedKeys.has(key)),
-      );
+    const editedKeys = [
+      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
+    ];
+    const inverseSet: Record<string, VariableValue> = {};
+    const inverseUnset: string[] = [];
+
+    for (const key of editedKeys) {
+      const priorValue = priorAttributes[key];
+      if (
+        Object.hasOwn(priorAttributes, key) &&
+        priorValue !== null &&
+        priorValue !== undefined
+      ) {
+        inverseSet[key] = priorValue;
+      } else {
+        inverseUnset.push(key);
+      }
+    }
+
+    const inversePatch: AttributePatch = {
+      set: inverseSet,
+      unset: inverseUnset,
+    };
 
     void undoStore.getState().push({
       label: `Update edge attributes`,
       coalesceKey,
       undo: async () => {
         await dispatch(
-          updateEdge({ edgeId: id, newAttributeData: capturedPrior }),
+          updateEdge({ edgeId: id, attributePatch: inversePatch }),
         ).unwrap();
       },
       redo: async () => {
-        await dispatch(
-          updateEdge({ edgeId: id, newAttributeData: data }),
-        ).unwrap();
+        await dispatch(updateEdge({ edgeId: id, attributePatch })).unwrap();
       },
     });
   }
@@ -419,7 +451,10 @@ export function useComposerActions({
     await dispatch(
       updateNode({
         nodeId: id,
-        newAttributeData: { [layoutVariable]: position },
+        attributePatch: {
+          set: { [layoutVariable]: position },
+          unset: [],
+        },
         currentStep,
       }),
     ).unwrap();
@@ -430,7 +465,10 @@ export function useComposerActions({
         await dispatch(
           updateNode({
             nodeId: id,
-            newAttributeData: { [layoutVariable]: previous },
+            attributePatch: {
+              set: { [layoutVariable]: previous },
+              unset: [],
+            },
             currentStep,
           }),
         ).unwrap();
@@ -439,7 +477,10 @@ export function useComposerActions({
         await dispatch(
           updateNode({
             nodeId: id,
-            newAttributeData: { [layoutVariable]: position },
+            attributePatch: {
+              set: { [layoutVariable]: position },
+              unset: [],
+            },
             currentStep,
           }),
         ).unwrap();
@@ -460,8 +501,13 @@ export function useComposerActions({
       .map(String);
   }
 
-  function readGroupValues(id: string, variable: string): string[] {
-    let values: string[] = [];
+  type GroupValuesSnapshot = {
+    values: string[];
+    present: boolean;
+  };
+
+  function readGroupValues(id: string, variable: string): GroupValuesSnapshot {
+    let snapshot: GroupValuesSnapshot = { values: [], present: false };
     dispatch((_, getState) => {
       const { session: sessionState } = getState() as {
         session: { network: { nodes: NcNode[] } };
@@ -470,23 +516,31 @@ export function useComposerActions({
         (n) => n[entityPrimaryKeyProperty] === id,
       );
       if (node) {
-        values = normalizeGroupValues(node[entityAttributesProperty][variable]);
+        const attributes = node[entityAttributesProperty];
+        const raw = attributes[variable];
+        snapshot = {
+          values: normalizeGroupValues(raw),
+          present:
+            Object.hasOwn(attributes, variable) &&
+            raw !== null &&
+            raw !== undefined,
+        };
       }
     });
-    return values;
+    return snapshot;
   }
 
   async function writeGroupValues(
     id: string,
     variable: string,
-    prior: string[],
+    prior: GroupValuesSnapshot,
     next: string[],
     label: string,
   ): Promise<void> {
     await dispatch(
       updateNode({
         nodeId: id,
-        newAttributeData: { [variable]: next },
+        attributePatch: { set: { [variable]: next }, unset: [] },
         currentStep,
       }),
     ).unwrap();
@@ -497,7 +551,9 @@ export function useComposerActions({
         await dispatch(
           updateNode({
             nodeId: id,
-            newAttributeData: { [variable]: prior },
+            attributePatch: prior.present
+              ? { set: { [variable]: prior.values }, unset: [] }
+              : { set: {}, unset: [variable] },
             currentStep,
           }),
         ).unwrap();
@@ -506,7 +562,7 @@ export function useComposerActions({
         await dispatch(
           updateNode({
             nodeId: id,
-            newAttributeData: { [variable]: next },
+            attributePatch: { set: { [variable]: next }, unset: [] },
             currentStep,
           }),
         ).unwrap();
@@ -520,9 +576,9 @@ export function useComposerActions({
     value: string,
   ): Promise<void> {
     const prior = readGroupValues(id, variable);
-    const next = prior.includes(value)
-      ? prior.filter((v) => v !== value)
-      : [...prior, value];
+    const next = prior.values.includes(value)
+      ? prior.values.filter((v) => v !== value)
+      : [...prior.values, value];
     await writeGroupValues(
       id,
       variable,
@@ -538,16 +594,20 @@ export function useComposerActions({
     value: string,
     member: boolean,
   ): Promise<void> {
-    const changes: { id: string; prior: string[]; next: string[] }[] = [];
+    const changes: {
+      id: string;
+      prior: GroupValuesSnapshot;
+      next: string[];
+    }[] = [];
     for (const id of ids) {
       const prior = readGroupValues(id, variable);
-      if (prior.includes(value) === member) continue;
+      if (prior.values.includes(value) === member) continue;
       changes.push({
         id,
         prior,
         next: member
-          ? [...prior, value]
-          : prior.filter((groupValue) => groupValue !== value),
+          ? [...prior.values, value]
+          : prior.values.filter((groupValue) => groupValue !== value),
       });
     }
 
@@ -557,7 +617,7 @@ export function useComposerActions({
       await dispatch(
         updateNode({
           nodeId: id,
-          newAttributeData: { [variable]: next },
+          attributePatch: { set: { [variable]: next }, unset: [] },
           currentStep,
         }),
       ).unwrap();
@@ -570,7 +630,9 @@ export function useComposerActions({
           await dispatch(
             updateNode({
               nodeId: id,
-              newAttributeData: { [variable]: prior },
+              attributePatch: prior.present
+                ? { set: { [variable]: prior.values }, unset: [] }
+                : { set: {}, unset: [variable] },
               currentStep,
             }),
           ).unwrap();
@@ -581,7 +643,7 @@ export function useComposerActions({
           await dispatch(
             updateNode({
               nodeId: id,
-              newAttributeData: { [variable]: next },
+              attributePatch: { set: { [variable]: next }, unset: [] },
               currentStep,
             }),
           ).unwrap();

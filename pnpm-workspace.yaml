@@ -1,5 +1,8 @@
 packages:
   - apps/*
+  # Studio is two deployables plus a leaf boundary package (#1244); its
+  # halves nest under apps/studio/.
+  - apps/studio/*
   - packages/*
   - tooling/*
   - workers/*
@@ -39,7 +42,7 @@ catalog:
   '@capacitor/share': ^8.0.1
   '@capawesome/capacitor-file-picker': ^8.0.2
   '@chromatic-com/storybook': ^5.2.1
-  '@faker-js/faker': ^10.4.0
+  '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
   '@microsoft/api-extractor': ^7.58.12
@@ -48,22 +51,26 @@ catalog:
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
+  '@posthog/nextjs-config': ^1.9.68
   '@posthog/react': ^1.10.3
-  '@radix-ui/react-dialog': ^1.1.15
+  '@posthog/rollup-plugin': ^1.4.7
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
-  '@storybook/addon-a11y': ^10.5.6
-  '@storybook/addon-docs': ^10.5.6
+  '@storybook/addon-a11y': ^10.5.7
+  '@storybook/addon-docs': ^10.5.7
   '@storybook/addon-mcp': ^0.7.0
-  '@storybook/addon-vitest': ^10.5.6
-  '@storybook/nextjs-vite': ^10.5.5
-  '@storybook/react-vite': ^10.5.6
+  '@storybook/addon-vitest': ^10.5.7
+  '@storybook/nextjs-vite': ^10.5.7
+  '@storybook/react-vite': ^10.5.7
   '@tailwindcss/cli': ^4.3.3
-  '@tailwindcss/container-queries': ^0.1.1
   '@tailwindcss/postcss': ^4.3.3
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
   '@tanstack/react-table': ^8.21.3
+  # Declared so the shared Vitest setup can call `configure()` on the very same
+  # module instance the suites' own queries read. React Testing Library depends
+  # on this range, so the catalog pin keeps it a single copy.
+  '@testing-library/dom': ^10.4.1
   '@testing-library/jest-dom': ^7.0.0
   '@testing-library/react': ^16.3.2
   '@total-typescript/ts-reset': ^0.6.1
@@ -78,7 +85,6 @@ catalog:
   '@vitest/browser-playwright': ^4.1.10
   '@vitest/coverage-v8': ^4.1.10
   chromatic: ^18.1.0
-  class-variance-authority: 0.7.1
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
   effect: ^3.22.1
@@ -90,11 +96,12 @@ catalog:
   jsdom: ^30.0.0
   jszip: ^3.10.1
   lucide-react: ^1.27.0
-  motion: ^12.43.0
+  motion: ^13.1.0
   next: ^16.3.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
+  postcss: ^8.5.26
   posthog-js: ^1.413.2
   react: ^19.2.8
   react-dom: ^19.2.8
@@ -103,7 +110,7 @@ catalog:
   redux-form: ^8.3.10
   redux-logger: ^3.0.6
   sass: ^1.102.0
-  storybook: ^10.5.6
+  storybook: ^10.5.7
   tailwind-merge: ^3.6.0
   tailwindcss: ^4.3.3
   tsx: ^4.23.1
@@ -144,7 +151,9 @@ overrides:
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
-  postcss: '^8.5.23'
+  # Next pins an exact PostCSS version, so keep transitives on the patched
+  # catalog version rather than duplicating the version here.
+  postcss: 'catalog:'
   sharp: '^0.35.3'
   valibot: '^1.4.2'
 autoInstallPeers: true
@@ -166,3 +175,22 @@ minimumReleaseAgeExclude:
   - '@codaco/network-query@1.2.0'
   - '@codaco/protocol-validation@11.9.0'
   - '@codaco/shared-consts@5.5.0'
+  - '@tanstack/react-router@1.170.22'
+  - '@tanstack/router-core@1.171.19'
+  # The Changesets v3 majors, published 2026-08-11 — pinned only so this PR's
+  # own CI could install before they aged out at 2026-08-12T12:11Z. Inert since,
+  # and safe to delete in any passing sweep.
+  - '@changesets/apply-release-plan@8.0.0'
+  - '@changesets/assemble-release-plan@7.0.0'
+  - '@changesets/changelog-git@1.0.0'
+  - '@changesets/cli@3.0.0'
+  - '@changesets/config@4.0.0'
+  - '@changesets/errors@1.0.0'
+  - '@changesets/get-dependents-graph@3.0.0'
+  - '@changesets/git@4.0.0'
+  - '@changesets/parse@1.0.0'
+  - '@changesets/pre@3.0.0'
+  - '@changesets/read@1.0.0'
+  - '@changesets/should-skip-package@1.0.0'
+  - '@changesets/types@7.0.0'
+  - '@changesets/write@1.0.0'

@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { find, get, isObject } from 'es-toolkit/compat';
+import { get, isObject } from 'es-toolkit/compat';
 
 import type {
   Codebook,
@@ -14,7 +14,7 @@ import type { RootState } from '~/ducks/store';
 
 import { getCodebook } from '../protocol';
 import { asOptions } from '../utils';
-import { type GetIsUsedOptions, makeOptionsWithIsUsedSelector } from './isUsed';
+import { getIsUsed } from './isUsed';
 
 // Types
 type Subject = {
@@ -137,68 +137,6 @@ export const getAllVariablesByUUID = (codebook: Codebook): Variables => {
   return flattenedVariables;
 };
 
-// Memoized selector for getting all variables with entity information
-const getAllVariablesByEntitySelector = createSelector(
-  [getCodebook],
-  (codebook): VariableWithEntity[] => {
-    if (!codebook) return [];
-
-    const variables: VariableWithEntity[] = [];
-    const { node: nodeTypes = {}, edge: edgeTypes = {}, ego } = codebook;
-
-    // Process nodes
-    for (const [nodeType, typeData] of Object.entries(nodeTypes) as [
-      string,
-      NodeDefinition,
-    ][]) {
-      const nodeVariables = typeData.variables || {};
-      for (const [uuid, variable] of Object.entries(nodeVariables)) {
-        if (!variable || typeof variable !== 'object') continue;
-        variables.push({
-          uuid,
-          name: variable.name,
-          entity: 'node',
-          entityType: nodeType,
-          type: variable.type,
-        });
-      }
-    }
-
-    // Process edges
-    for (const [edgeType, typeData] of Object.entries(edgeTypes) as [
-      string,
-      EdgeDefinition,
-    ][]) {
-      const edgeVariables = typeData.variables || {};
-      for (const [uuid, variable] of Object.entries(edgeVariables)) {
-        if (!variable || typeof variable !== 'object') continue;
-        variables.push({
-          uuid,
-          name: variable.name,
-          entity: 'edge',
-          entityType: edgeType,
-          type: variable.type,
-        });
-      }
-    }
-
-    // Process ego
-    const egoVariables = ego?.variables || {};
-    for (const [uuid, variable] of Object.entries(egoVariables)) {
-      if (!variable || typeof variable !== 'object') continue;
-      variables.push({
-        uuid,
-        name: variable.name,
-        entity: 'ego',
-        entityType: null,
-        type: variable.type,
-      });
-    }
-
-    return variables;
-  },
-);
-
 // Legacy function for backward compatibility
 export const getAllVariableUUIDsByEntity = (
   codebook: Codebook,
@@ -260,77 +198,35 @@ export const getAllVariableUUIDsByEntity = (
   return variables;
 };
 
-// Factory for creating a memoized selector for a specific variable
-export const makeGetVariableWithEntity = (uuid: string) =>
-  createSelector([getAllVariablesByEntitySelector], (variables) =>
-    find(variables, { uuid }),
-  );
-
 // Legacy function for backward compatibility
 export const makeGetVariable = (uuid: string) => (state: RootState) => {
   const codebook = getCodebook(state);
   if (!codebook) return null;
   const variables = getAllVariablesByUUID(codebook);
-  return get(variables, uuid, null);
+  return variables[uuid] ?? null;
 };
 
-// Create a properly memoized selector factory for variable options
-const createVariableOptionsSelector = () => {
-  const cache = new Map<string, ReturnType<typeof createSelector>>();
-
-  return (isUsedOptions: GetIsUsedOptions = {}) => {
-    const cacheKey = JSON.stringify(isUsedOptions);
-
-    if (!cache.has(cacheKey)) {
-      const selector = createSelector(
-        [
-          (state: RootState) => state,
-          (_state: RootState, variables: Variables) => variables,
-        ],
-        (state, variables): VariableOption[] => {
-          const options = asOptions(variables);
-          const optionsWithIsUsedSelector =
-            makeOptionsWithIsUsedSelector(isUsedOptions);
-          return optionsWithIsUsedSelector(state, options);
-        },
-      );
-      cache.set(cacheKey, selector);
-    }
-
-    const cachedSelector = cache.get(cacheKey);
-    if (!cachedSelector) {
-      throw new Error(`Selector not found in cache for key: ${cacheKey}`);
-    }
-    return cachedSelector;
-  };
-};
-
-// Create the cached factory instance
-const getVariableOptionsSelector = createVariableOptionsSelector();
-
-// Main selector for getting variable options - properly memoized
+// Main selector for getting variable options. Its inputs are chosen for
+// identity stability: `getIsUsed` keeps its map reference across live-value
+// mirror ticks that don't change which variables are used (see its
+// `resultEqualityCheck`), and `getVariablesForSubjectSelector` is keyed on the
+// codebook slice — so the returned array (and its element objects) keep their
+// identity across unrelated store changes, and consumers' `useSelector` /
+// `shallowEqual` guards actually hold. Taking whole state as an input here
+// would mint a fresh array per dispatch and defeat every such guard.
 export const getVariableOptionsForSubjectSelector = createSelector(
-  [
-    (state: RootState) => state,
-    getVariablesForSubjectSelector,
-    (
-      _state: RootState,
-      _subject: Subject,
-      isUsedOptions: GetIsUsedOptions = {},
-    ) => isUsedOptions,
-  ],
-  (state, variables, isUsedOptions): VariableOption[] => {
-    const selector = getVariableOptionsSelector(isUsedOptions);
-    return selector(state, variables);
-  },
+  [getIsUsed, getVariablesForSubjectSelector],
+  (isUsed, variables): VariableOption[] =>
+    asOptions(variables).map((option) => ({
+      ...option,
+      isUsed: isUsed[option.value] ?? false,
+    })),
 );
 
 export const getVariableOptionsForSubject = (
   state: RootState,
   subject: Subject,
-  isUsedOptions: GetIsUsedOptions = {},
-): VariableOption[] =>
-  getVariableOptionsForSubjectSelector(state, subject, isUsedOptions);
+): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject);
 
 // Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
 const getOptionsForVariableSelector = createSelector(

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { type RefObject, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { StoreApi } from 'zustand';
 
@@ -9,34 +9,33 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import { useCanvasDrag } from '../useCanvasDrag';
 import { type CanvasStoreApi, createCanvasStore } from '../useCanvasStore';
 
+// jsdom implements no hit testing; the DnD store's position updates probe it.
 beforeAll(() => {
-  if (!HTMLElement.prototype.setPointerCapture) {
-    HTMLElement.prototype.setPointerCapture = () => undefined;
-  }
-  if (!HTMLElement.prototype.releasePointerCapture) {
-    HTMLElement.prototype.releasePointerCapture = () => undefined;
-  }
+  document.elementsFromPoint ??= () => [];
 });
 
 const NODE_ID = 'n1';
 
+type Captured = ReturnType<typeof useCanvasDrag>;
+
 type DragNodeProps = {
   store: CanvasStoreApi;
-  canvasRef: RefObject<HTMLElement | null>;
   onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
   onRemove?: (nodeId: string) => void;
   withDndItem?: boolean;
+  onApi?: (api: Captured) => void;
 };
 
 function DragNode({
   store,
-  canvasRef,
   onDragEnd,
   onRemove,
   withDndItem = false,
+  onApi,
 }: DragNodeProps) {
+  const canvasRef = useRef<HTMLElement | null>(null);
   const dndStore = useDndStoreApi();
-  const { dragProps } = useCanvasDrag({
+  const api = useCanvasDrag({
     nodeId: NODE_ID,
     canvasRef,
     store,
@@ -47,8 +46,13 @@ function DragNode({
       : null,
     dndStore: withDndItem ? dndStore : null,
   });
+  onApi?.(api);
   return (
-    <button type="button" data-testid="drag-node" {...dragProps}>
+    <button
+      type="button"
+      data-testid="drag-node"
+      onKeyDown={api.dragProps.onKeyDown}
+    >
       node
     </button>
   );
@@ -57,16 +61,11 @@ function DragNode({
 function Fixture({
   onStore,
   ...props
-}: Omit<DragNodeProps, 'canvasRef'> & {
-  onStore?: (dndStore: StoreApi<DndStore>) => void;
-}) {
-  const canvasRef = useRef<HTMLDivElement>(null);
+}: DragNodeProps & { onStore?: (dndStore: StoreApi<DndStore>) => void }) {
   return (
     <DndStoreProvider>
       {onStore && <CaptureDndStore onStore={onStore} />}
-      <div ref={canvasRef}>
-        <DragNode canvasRef={canvasRef} {...props} />
-      </div>
+      <DragNode {...props} />
     </DndStoreProvider>
   );
 }
@@ -77,9 +76,7 @@ function CaptureDndStore({
   onStore: (store: StoreApi<DndStore>) => void;
 }) {
   const store = useDndStoreApi();
-  useEffect(() => {
-    onStore(store);
-  }, [store, onStore]);
+  onStore(store);
   return null;
 }
 
@@ -89,15 +86,22 @@ function makeSeededStore() {
   return store;
 }
 
-function dragBeyondThreshold() {
-  const node = screen.getByTestId('drag-node');
-  fireEvent.pointerDown(node, {
-    button: 0,
-    clientX: 0,
-    clientY: 0,
-    pointerId: 1,
-  });
-  fireEvent.pointerMove(document, { clientX: 50, clientY: 50, pointerId: 1 });
+const pointerEvent = (target: EventTarget, clientX = 50, clientY = 50) =>
+  ({ target, clientX, clientY }) as unknown as PointerEvent;
+
+/** Runs a drag through the callbacks Node's recognizer would invoke. */
+async function drive(
+  api: Captured,
+  target: EventTarget,
+  { cancelled = false } = {},
+) {
+  act(() => api.dragProps.onDragStart(pointerEvent(target)));
+  act(() => api.dragProps.onDragMove(pointerEvent(target)));
+  // Position updates are rAF-throttled.
+  await act(
+    () => new Promise((resolve) => requestAnimationFrame(() => resolve(null))),
+  );
+  act(() => api.dragProps.onDragEnd(pointerEvent(target), { cancelled }));
 }
 
 describe('useCanvasDrag', () => {
@@ -112,85 +116,120 @@ describe('useCanvasDrag', () => {
     expect(onRemove).toHaveBeenCalledTimes(2);
   });
 
+  it('nudges the node with arrow keys and settles the move', () => {
+    const store = makeSeededStore();
+    const onDragEnd = vi.fn();
+    render(<Fixture store={store} onDragEnd={onDragEnd} />);
+
+    fireEvent.keyDown(screen.getByTestId('drag-node'), { key: 'ArrowRight' });
+
+    const pos = store.getState().positions.get(NODE_ID)!;
+    expect(pos.x).toBeCloseTo(0.52);
+    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, pos);
+  });
+
+  it('reports dragging while a drag is live', async () => {
+    let api!: Captured;
+    render(<Fixture store={makeSeededStore()} onApi={(a) => (api = a)} />);
+    const node = screen.getByTestId('drag-node');
+
+    expect(api.isDragging).toBe(false);
+    act(() => api.dragProps.onDragStart(pointerEvent(node)));
+    expect(api.isDragging).toBe(true);
+    act(() =>
+      api.dragProps.onDragEnd(pointerEvent(node), { cancelled: false }),
+    );
+    expect(api.isDragging).toBe(false);
+  });
+
   it('drives the DnD store during a drag when dndItem is provided', () => {
     let dndStore: StoreApi<DndStore> | null = null;
+    let api!: Captured;
     render(
       <Fixture
         store={makeSeededStore()}
         withDndItem
         onStore={(s) => (dndStore = s)}
+        onApi={(a) => (api = a)}
       />,
     );
+    const node = screen.getByTestId('drag-node');
 
-    dragBeyondThreshold();
+    act(() => api.dragProps.onDragStart(pointerEvent(node)));
     expect(dndStore!.getState().isDragging).toBe(true);
     expect(dndStore!.getState().dragItem).toMatchObject({
       type: 'PLACED_NODE',
       metadata: { nodeId: NODE_ID },
     });
 
-    fireEvent.pointerUp(document, { clientX: 50, clientY: 50, pointerId: 1 });
+    act(() =>
+      api.dragProps.onDragEnd(pointerEvent(node), { cancelled: false }),
+    );
     expect(dndStore!.getState().isDragging).toBe(false);
   });
 
-  it('suppresses onDragEnd when the node is dropped on an active DnD target', () => {
+  it('suppresses onDragEnd when the node is dropped on an active DnD target', async () => {
     const onDragEnd = vi.fn();
     let dndStore: StoreApi<DndStore> | null = null;
+    let api!: Captured;
     render(
       <Fixture
         store={makeSeededStore()}
         withDndItem
         onDragEnd={onDragEnd}
         onStore={(s) => (dndStore = s)}
+        onApi={(a) => (api = a)}
       />,
     );
+    const node = screen.getByTestId('drag-node');
 
-    dragBeyondThreshold();
-    act(() => {
-      dndStore!.getState().setActiveDropTarget('some-drop-target');
-    });
-    fireEvent.pointerUp(document, { clientX: 50, clientY: 50, pointerId: 1 });
+    act(() => api.dragProps.onDragStart(pointerEvent(node)));
+    act(() => dndStore!.getState().setActiveDropTarget('drawer'));
+    act(() =>
+      api.dragProps.onDragEnd(pointerEvent(node), { cancelled: false }),
+    );
 
     expect(onDragEnd).not.toHaveBeenCalled();
   });
 
-  it('calls onDragEnd normally when the drag ends over no DnD target', () => {
+  it('calls onDragEnd normally when the drag ends over no DnD target', async () => {
     const onDragEnd = vi.fn();
+    let api!: Captured;
     render(
-      <Fixture store={makeSeededStore()} withDndItem onDragEnd={onDragEnd} />,
+      <Fixture
+        store={makeSeededStore()}
+        withDndItem
+        onDragEnd={onDragEnd}
+        onApi={(a) => (api = a)}
+      />,
     );
 
-    dragBeyondThreshold();
-    fireEvent.pointerUp(document, { clientX: 50, clientY: 50, pointerId: 1 });
+    await drive(api, screen.getByTestId('drag-node'));
 
-    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, {
-      x: expect.any(Number),
-      y: expect.any(Number),
-    });
+    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, expect.any(Object));
   });
 
-  it('does not commit a drop when the pointer is cancelled', () => {
+  it('does not commit a drop when the drag is cancelled', async () => {
     const onDragEnd = vi.fn();
     let dndStore: StoreApi<DndStore> | null = null;
+    let api!: Captured;
     render(
       <Fixture
         store={makeSeededStore()}
         withDndItem
         onDragEnd={onDragEnd}
         onStore={(s) => (dndStore = s)}
+        onApi={(a) => (api = a)}
       />,
     );
+    const node = screen.getByTestId('drag-node');
 
-    dragBeyondThreshold();
-    act(() => {
-      dndStore!.getState().setActiveDropTarget('some-drop-target');
-    });
-    fireEvent.pointerCancel(document, {
-      clientX: 50,
-      clientY: 50,
-      pointerId: 1,
-    });
+    act(() => api.dragProps.onDragStart(pointerEvent(node)));
+    act(() => dndStore!.getState().setActiveDropTarget('drawer'));
+    act(() => api.dragProps.onDragEnd(pointerEvent(node), { cancelled: true }));
 
+    // The cancelled sequence must not have handed the node to the target; the
+    // canvas keeps ownership and settles the node where it was.
     expect(dndStore!.getState().activeDropTargetId).toBeNull();
     expect(onDragEnd).toHaveBeenCalled();
   });

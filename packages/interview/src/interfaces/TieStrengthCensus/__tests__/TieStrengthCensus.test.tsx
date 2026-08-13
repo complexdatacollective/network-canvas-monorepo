@@ -11,6 +11,7 @@ import {
   type NcEdge,
 } from '@codaco/shared-consts';
 
+import { withAnimationsEnabled } from '../../../__tests__/withAnimationsEnabled';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -203,13 +204,15 @@ describe('TieStrengthCensus interface', () => {
   });
 
   it('waits for the selection animation before advancing normally', async () => {
-    const { advancePastIntro, moveForward } = renderInterface();
-    await advancePastIntro();
+    await withAnimationsEnabled(async () => {
+      const { advancePastIntro, moveForward } = renderInterface();
+      await advancePastIntro();
 
-    fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
+      fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
 
-    expect(moveForward).not.toHaveBeenCalled();
-    await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+      expect(moveForward).not.toHaveBeenCalled();
+      await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+    });
   });
 
   it('advances immediately when animations are disabled', async () => {

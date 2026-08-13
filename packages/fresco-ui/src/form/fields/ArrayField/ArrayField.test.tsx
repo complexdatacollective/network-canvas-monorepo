@@ -49,7 +49,7 @@ function TestItem({
       <span>{item.label}</span>
       <button
         type="button"
-        onClick={() => onChange({ id: item.id, label: item.label ?? 'new' })}
+        onClick={() => onChange?.({ id: item.id, label: item.label ?? 'new' })}
       >
         Save
       </button>
@@ -80,7 +80,7 @@ function TestEditor({
       <span>{isNewItem ? 'New editor' : 'Existing editor'}</span>
       <button
         type="button"
-        onClick={() => onSave({ id: item.id, label: item.label })}
+        onClick={() => onSave?.({ id: item.id, label: item.label })}
       >
         Save editor
       </button>
@@ -397,6 +397,110 @@ describe('ArrayField', () => {
       screen.queryByRole('button', { name: 'Reorder item 1 of 1' }),
     ).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // Regression: ArrayField used to swap the real onDeleteItem/onEditItem/
+  // onChange/onUpdateItem handlers for `() => undefined` stubs while
+  // disabled/readOnly, rather than omitting them. Every one of those stubs
+  // is truthy, so an itemComponent that renders its edit/delete affordance
+  // from handler presence (a normal, encouraged pattern — see below) drew a
+  // live-looking control wired to a no-op instead of hiding it.
+  it.each([
+    ['disabled', { disabled: true }],
+    ['readOnly', { readOnly: true }],
+  ])(
+    'omits (rather than stubs) onDelete/onEdit/onChange/onUpdate passed to itemComponent when %s',
+    async (_label, fieldProps) => {
+      let latestProps: ArrayFieldItemProps<Item> | undefined;
+      function CapturingItem(props: ArrayFieldItemProps<Item>) {
+        latestProps = props;
+        return <div data-testid={`item-${props.item.label}`} />;
+      }
+
+      renderField({
+        ...fieldProps,
+        value: [{ id: 'one', label: 'one' }],
+        getId: (item) => item.id,
+        itemComponent: CapturingItem,
+      });
+
+      expect(latestProps?.onDelete).toBeUndefined();
+      expect(latestProps?.onEdit).toBeUndefined();
+      expect(latestProps?.onChange).toBeUndefined();
+      expect(latestProps?.onUpdate).toBeUndefined();
+    },
+  );
+
+  it('passes real onDelete/onEdit/onChange/onUpdate handlers to itemComponent when interaction is enabled', () => {
+    let latestProps: ArrayFieldItemProps<Item> | undefined;
+    function CapturingItem(props: ArrayFieldItemProps<Item>) {
+      latestProps = props;
+      return <div data-testid={`item-${props.item.label}`} />;
+    }
+
+    renderField({
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      itemComponent: CapturingItem,
+    });
+
+    expect(latestProps?.onDelete).toBeInstanceOf(Function);
+    expect(latestProps?.onEdit).toBeInstanceOf(Function);
+    expect(latestProps?.onUpdate).toBeInstanceOf(Function);
+  });
+
+  it('lets an itemComponent hide its edit/delete affordance from handler presence while disabled', () => {
+    function ConditionalItem({
+      item,
+      onEdit,
+      onDelete,
+    }: ArrayFieldItemProps<Item>) {
+      return (
+        <div data-testid={`item-${item.label}`}>
+          {onEdit && (
+            <button type="button" onClick={onEdit}>
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" onClick={onDelete}>
+              Delete
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    renderField({
+      disabled: true,
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      itemComponent: ConditionalItem,
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Delete' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('omits onSave passed to editorComponent when disabled', () => {
+    let latestOnSave: ((value: Item) => void) | undefined;
+    function CapturingEditor(props: ArrayFieldEditorProps<Item>) {
+      latestOnSave = props.onSave;
+      return null;
+    }
+
+    renderField({
+      disabled: true,
+      value: [{ id: 'one', label: 'one' }],
+      getId: (item) => item.id,
+      editorComponent: CapturingEditor,
+    });
+
+    expect(latestOnSave).toBeUndefined();
   });
 
   it('adds immediately without draft state when immediateAdd is enabled', async () => {

@@ -4,7 +4,7 @@
   - button "Drag to reposition"
   - toolbar "Presets":
     - button "Previous preset" [disabled]
-    - button "bleakly custody" [expanded]
+    - button "custody supposing" [expanded]
     - button "Next preset" [disabled]
   - status
   - dialog

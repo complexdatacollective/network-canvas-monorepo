@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -12,10 +13,13 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FieldValue,
   FlattenedErrors,
+  FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
@@ -25,9 +29,11 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import type { VariableValue } from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
+import { buildProtocolFieldErrors } from '../../forms/buildProtocolFieldErrors';
+import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
+import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -52,7 +58,7 @@ const EgoFormInner = (props: EgoFormProps) => {
   const [nudgeVisible, setNudgeVisible] = useState(false);
 
   const { isDirty: isFormDirty, isValid: isFormValid } = useFormMeta();
-  const submitForm = useFormStore((s) => s.submitForm);
+  const formStoreApi = useContext(FormStoreContext);
   const validateForm = useFormStore((s) => s.validateForm);
   const formErrors = useFormStore((s) => s.errors);
   const formErrorsRef = useRef<FlattenedErrors>(formErrors);
@@ -78,13 +84,20 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
 
-  const { fieldComponents, coerceValues, componentByVariable } =
-    useProtocolForm({
-      fields: form.fields,
-      initialValues: Object.fromEntries(
-        Object.entries(egoAttributes).filter(([, value]) => value !== null),
-      ) as Record<string, FieldValue>,
-    });
+  const {
+    fieldComponents,
+    coerceValues,
+    componentByVariable,
+    variableByFieldPath,
+  } = useProtocolForm({
+    fields: form.fields,
+    initialValues: Object.entries(egoAttributes).reduce<
+      Record<string, FieldValue>
+    >((values, [name, value]) => {
+      values[name] = value;
+      return values;
+    }, {}),
+  });
 
   // Audit sweep: the input control comes from the codebook entry. The shared
   // `FormFieldSchema` has no `component` key of its own, so the previous
@@ -123,7 +136,9 @@ const EgoFormInner = (props: EgoFormProps) => {
 
       // if form is valid submit the form and proceed backwards
       if (isFormDirty && isFormValid) {
-        await submitForm();
+        if (!formStoreApi || !(await submitRegisteredForm(formStoreApi))) {
+          return false;
+        }
       }
 
       return true;
@@ -132,27 +147,15 @@ const EgoFormInner = (props: EgoFormProps) => {
     // Validate form and submit if valid
     const formIsValid = await validateForm();
     if (formIsValid) {
-      await submitForm();
-      return true;
+      return formStoreApi ? submitRegisteredForm(formStoreApi) : false;
     }
 
-    const fieldErrorEntries: Array<{
-      field_index: number;
-      component: string;
-      message: string;
-    }> = [];
-    const fieldErrors = formErrorsRef.current?.fieldErrors;
-    if (fieldErrors) {
-      for (const [name, messages] of Object.entries(fieldErrors)) {
-        if (!Array.isArray(messages) || messages.length === 0) continue;
-        const idx = form.fields.findIndex((f) => f.variable === name);
-        if (idx === -1) continue;
-        const component = componentByVariable[name] ?? 'unknown';
-        for (const message of messages) {
-          fieldErrorEntries.push({ field_index: idx, component, message });
-        }
-      }
-    }
+    const fieldErrorEntries = buildProtocolFieldErrors(
+      formErrorsRef.current,
+      form.fields,
+      componentByVariable,
+      variableByFieldPath,
+    );
     track('form_validation_failed', {
       form_kind: 'ego',
       field_errors: fieldErrorEntries,
@@ -169,21 +172,20 @@ const EgoFormInner = (props: EgoFormProps) => {
 
   useBeforeNext(beforeNext);
 
-  const handleSubmitForm = useCallback(
+  const handleSubmitForm: FormSubmitHandler = useCallback(
     async (formData: Record<string, FieldValue>) => {
-      // Coerce values to their declared codebook type (e.g. number fields,
-      // which emit raw strings) before persisting.
       const coerced = coerceValues(formData);
-
-      // Only include fields from this stage to avoid overwriting values
-      // from previous EgoForm stages. Missing fields (unanswered questions)
-      // are set to null rather than omitted.
       const stageFieldIds = form.fields.map((f) => f.variable);
-      const completeData = Object.fromEntries(
-        stageFieldIds.map((id) => [id, coerced[id] ?? null]),
-      ) as Record<string, VariableValue>;
+      const patchResult = formValuesToAttributePatch(coerced, stageFieldIds);
 
-      await dispatch(updateEgo(completeData));
+      if (!patchResult.success) {
+        return {
+          success: false,
+          formErrors: ['An error occurred while submitting the form.'],
+        };
+      }
+
+      await dispatch(updateEgo(patchResult.patch)).unwrap();
       track('form_submitted', { form_kind: 'ego' });
       return { success: true };
     },

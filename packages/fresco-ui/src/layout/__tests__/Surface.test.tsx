@@ -60,7 +60,7 @@ describe('Surface depth derivation', () => {
     expect(getSurface('s1').className).toContain('[--surface-depth:1]');
   });
 
-  it('clamps depths beyond the token scale to level 3 and warns', () => {
+  it('renders the deepest token level without warning', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     render(
       <Surface>
@@ -73,7 +73,26 @@ describe('Surface depth derivation', () => {
         </Surface>
       </Surface>,
     );
-    expect(getSurface('s4').className).toContain('bg-surface-3');
+    expect(getSurface('s4').className).toContain('bg-surface-4');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('clamps depths beyond the token scale to level 4 and warns', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    render(
+      <Surface>
+        <Surface>
+          <Surface>
+            <Surface>
+              <Surface>
+                <Surface data-testid="s5" />
+              </Surface>
+            </Surface>
+          </Surface>
+        </Surface>
+      </Surface>,
+    );
+    expect(getSurface('s5').className).toContain('bg-surface-4');
     expect(warn).toHaveBeenCalledOnce();
     expect(warn.mock.calls[0]?.[0]).toContain('Surface');
   });
@@ -135,13 +154,15 @@ describe('floating Surface', () => {
         <Surface>
           <Surface>
             <Surface>
-              <Surface floating data-testid="deep-float" />
+              <Surface>
+                <Surface floating data-testid="deep-float" />
+              </Surface>
             </Surface>
           </Surface>
         </Surface>
       </Surface>,
     );
-    // The only depth-4 Surface is the floating one, which must not warn.
+    // The only depth-5 Surface is the floating one, which must not warn.
     expect(warn).not.toHaveBeenCalled();
     expect(getSurface('deep-float').className).toContain('bg-surface-popover');
   });
