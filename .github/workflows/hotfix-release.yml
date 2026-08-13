@@ -44,15 +44,17 @@ on:
 permissions:
   contents: read
 
-# Deliberately the same group the normal lane's apps-release-<app> job uses, so
-# the two lanes cannot deploy the same production site at once: a hotfix that
-# validated before a concurrent main release tagged a newer version would
-# otherwise land last and roll production back. Per app rather than per version
-# because two branches carrying the same version would each pass the tag check
-# and race, and because the version is not knowable at job-start — it comes from
-# the checked-out ref.
+# Serialized per app rather than per ref: two branches carrying the same version
+# would each pass the tag check and race, leaving one SHA tagged while the other
+# build is what production actually serves. Ordering against the normal lane is
+# enforced by version, not by a shared lock — this job re-validates against the
+# newest tag immediately before deploying, and the normal lane's guard refuses
+# anything older than the newest tag — because a lock the two lanes could share
+# would have to drop the version from the normal lane's group, and a versionless
+# group keeps only one pending run: a release queued behind another could be
+# dropped and never tagged.
 concurrency:
-  group: apps-release-@codaco/${{ inputs.app }}
+  group: hotfix-release-@codaco/${{ inputs.app }}
   cancel-in-progress: false
 
 jobs:
@@ -68,8 +70,14 @@ jobs:
       SOURCE_REF: ${{ inputs.source_ref }}
     steps:
       - name: Validate the dispatch
+        # DISPATCH_REF comes through the environment, never interpolated into the
+        # script: `$(...)` is a legal git ref name, and an expression pasted
+        # straight into bash would execute it before this check could reject it —
+        # with the environment's deploy credentials already in scope.
+        env:
+          DISPATCH_REF: ${{ github.ref }}
         run: |
-          if [[ "${{ github.ref_name }}" != 'main' ]]; then
+          if [[ "$DISPATCH_REF" != 'refs/heads/main' ]]; then
             echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
             exit 1
           fi
@@ -120,7 +128,7 @@ jobs:
       # compiles straight into the app. The filter therefore covers the app's
       # whole dependency closure (`...`), not just the app.
       - name: Verify the app and its workspace dependencies
-        run: pnpm exec turbo run typecheck test --filter=@codaco/${{ env.APP }}...
+        run: pnpm exec turbo run typecheck test --filter="@codaco/$APP..."
 
       - name: Build ${{ inputs.app }}
         # Scoped to this step alone, exactly as in the normal lane: only the
@@ -130,7 +138,17 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
-        run: pnpm exec turbo run build --filter=@codaco/${{ env.APP }}
+        run: pnpm exec turbo run build --filter="@codaco/$APP"
+
+      # The build takes minutes, during which the normal lane can tag and deploy
+      # a newer version. Re-fetch tags and re-run the same validator, so a hotfix
+      # that has been overtaken aborts here instead of putting older code live.
+      - name: Re-check the version against the newest release
+        run: |
+          # Anonymous fetch over https (the checkout persists no credentials);
+          # a failure here fails the step rather than validating stale tags.
+          git fetch --tags --force origin
+          node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
 
       - name: Deploy ${{ inputs.app }} to production
         # Both site ids come in as environment variables and the app picks one in

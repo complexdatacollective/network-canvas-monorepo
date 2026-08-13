@@ -2055,18 +2055,17 @@ jobs:
     if: needs.apps-release-detect.outputs.architect_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release at a time per app. With per-commit push concurrency (see top of
-    # file) main pushes run in parallel, so two runs can both detect the same
-    # untagged version and race into a duplicate build/deploy/release. Serialise
-    # them so only one runs at a time; the guard step below turns the run that
+    # One release per version. With per-commit push concurrency (see top of file)
+    # main pushes run in parallel, so two runs can both detect the same untagged
+    # version and race into a duplicate build/deploy/release. Serialise them on
+    # the tag so only one runs at a time; the guard step below turns the run that
     # starts after the tag exists into a clean no-op (no redundant prod deploy).
-    # The group deliberately omits the version so hotfix-release.yml — which
-    # cannot know its version before checkout — shares the same lock and can
-    # never deploy this app's single production site concurrently with this job.
-    # A pending run superseded by a newer one is recoverable: detection is
-    # tag-driven and self-healing, so the next main push releases it.
+    # The version stays in the group on purpose: a versionless group would keep
+    # only one pending run, so a release queued behind another could be dropped
+    # and never tagged. Ordering against the hotfix lane is enforced by the guard
+    # step's newest-tag check instead of by a shared lock.
     concurrency:
-      group: apps-release-@codaco/architect
+      group: apps-release-@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2079,17 +2078,15 @@ jobs:
         with:
           fetch-tags: true
           persist-credentials: false
-      - name: Skip if this version was already released
+      # Also refuses a version older than the newest released tag: the hotfix
+      # lane can move the released version out of band, and this app has one
+      # production site to roll back.
+      - name: Skip if this version should not be deployed
         id: guard
         env:
-          TAG: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
-        run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG already released — nothing to do"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          PKG_NAME: '@codaco/architect'
+          VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
+        run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
         uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
@@ -2147,10 +2144,9 @@ jobs:
     if: needs.apps-release-detect.outputs.interviewer_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release at a time per app, shared with the hotfix lane — see
-    # apps-release-architect for the rationale.
+    # One release per version — see apps-release-architect for the rationale.
     concurrency:
-      group: apps-release-@codaco/interviewer
+      group: apps-release-@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2161,17 +2157,15 @@ jobs:
         with:
           fetch-tags: true
           persist-credentials: false
-      - name: Skip if this version was already released
+      # Also refuses a version older than the newest released tag: the hotfix
+      # lane can move the released version out of band, and this app has one
+      # production site to roll back.
+      - name: Skip if this version should not be deployed
         id: guard
         env:
-          TAG: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
-        run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG already released — nothing to do"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          PKG_NAME: '@codaco/interviewer'
+          VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
+        run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
         uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:

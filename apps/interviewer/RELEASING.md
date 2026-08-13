@@ -63,9 +63,12 @@ is not ready to go out, release from the previous tag instead:
    builds with PostHog source maps, deploys to Netlify production, and cuts
    `@codaco/interviewer@<version>`.
 
-   A hotfix and a normal release for the same app share one concurrency lock, so
-   a dispatch made while a Version Packages release is deploying waits for it to
-   finish rather than racing it to the production site.
+   Ordering against the normal lane is enforced by version rather than by a
+   shared lock: the hotfix job re-checks the newest tag after building and
+   aborts if a normal release has overtaken it, and the normal lane's own guard
+   refuses to deploy anything older than the newest tag. A hotfix that loses
+   that race leaves production on the newer release and needs re-cutting from
+   the new tag.
 
    The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
    refuses a version older than the current release, because each app has one
