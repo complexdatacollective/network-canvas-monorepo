@@ -10,7 +10,7 @@ const options = [
 ];
 
 describe('CheckboxGroup readOnly', () => {
-  it('marks every option pointer-inert', () => {
+  it('marks every option, and its wrapping label, pointer-inert', () => {
     render(
       <CheckboxGroupField
         name="options"
@@ -24,6 +24,10 @@ describe('CheckboxGroup readOnly', () => {
     for (const option of options) {
       const checkbox = screen.getByRole('checkbox', { name: option.label });
       expect(checkbox.className).toContain('pointer-events-none');
+
+      const label = checkbox.closest('label');
+      expect(label).not.toBeNull();
+      expect(label?.className).toContain('pointer-events-none');
     }
   });
 
@@ -42,6 +46,29 @@ describe('CheckboxGroup readOnly', () => {
     );
 
     await user.click(screen.getByRole('checkbox', { name: 'Option B' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('does not report a change when the label text is clicked', async () => {
+    // The `<label for>` is associated with the checkbox's hidden native
+    // input, not its visible pointer-events-none control — clicking the
+    // label text still forwards a native label-click activation to that
+    // hidden input unless the label itself is also pointer-inert.
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <CheckboxGroupField
+        name="options"
+        options={options}
+        value={['a']}
+        readOnly
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByText('Option B'));
 
     expect(onChange).not.toHaveBeenCalled();
   });

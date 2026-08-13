@@ -358,10 +358,20 @@ export const groupOptionVariants = cva({
       true: 'cursor-not-allowed',
       false: 'cursor-pointer',
     },
+    // `<label>`-wrapped options (CheckboxGroup) associate the label with the
+    // control's hidden native input, not the visible pointer-events-none
+    // control — so a read-only option needs pointer-events-none on the label
+    // itself, or clicking anywhere on it still forwards a native label-click
+    // activation to that hidden input, bypassing the control's own inertness.
+    readOnly: {
+      true: 'pointer-events-none cursor-default',
+      false: '',
+    },
   },
   defaultVariants: {
     size: 'md',
     disabled: false,
+    readOnly: false,
   },
 });
 
