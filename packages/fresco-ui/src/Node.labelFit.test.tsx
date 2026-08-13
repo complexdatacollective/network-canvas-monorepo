@@ -105,6 +105,17 @@ describe('Node label fitting', () => {
     expect(label).not.toHaveClass('hyphens-auto');
   });
 
+  it('fits diamond labels inside the painted shape', async () => {
+    render(<Node label="Alexandria Jones" shape="diamond" />);
+
+    const label = labelOf('Alexandria Jones');
+    await waitFor(() =>
+      expect(label).toHaveClass('w-[60%]!', 'text-xs', 'line-clamp-4'),
+    );
+    expect(label).not.toHaveClass('hyphens-auto');
+    expect(label).not.toHaveClass('wrap-anywhere');
+  });
+
   it.each(['xxs', 'xs'] as const)(
     'concedes straight to breaking on %s, which has no smaller rungs',
     async (size) => {

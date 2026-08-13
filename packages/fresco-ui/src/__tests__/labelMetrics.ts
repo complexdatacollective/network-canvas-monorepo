@@ -17,6 +17,7 @@ const CHARACTERS_PER_LINE: Record<string, number> = {
 
 const LINE_HEIGHT = 20;
 const CHARACTER_WIDTH = 8;
+const DIAMOND_WIDTH_RATIO = 0.6 / 0.8;
 
 /**
  * The simulated hyphenation dictionary. Real engines only break words their
@@ -44,7 +45,8 @@ const readLabelShape = (element: HTMLElement) => {
     Object.keys(CHARACTERS_PER_LINE).find((candidate) =>
       className.includes(candidate),
     ) ?? 'text-base';
-  const perLine = CHARACTERS_PER_LINE[size]!;
+  const widthRatio = className.includes('w-[60%]!') ? DIAMOND_WIDTH_RATIO : 1;
+  const perLine = Math.floor(CHARACTERS_PER_LINE[size]! * widthRatio);
   const clampLines = Number(/line-clamp-(\d+)/.exec(className)?.[1] ?? 1);
   const mode: WrapMode = className.includes('wrap-anywhere')
     ? 'anywhere'

@@ -188,16 +188,27 @@ const LABEL_FIT_OVERRIDES: Record<NodeSize, readonly string[]> = {
 const HYPHENATED_BREAKS = 'hyphens-auto [hyphenate-limit-chars:6_3_2]';
 const EMERGENCY_BREAKS = 'wrap-anywhere';
 
-const buildFitSteps = (size: NodeSize): readonly [string, ...string[]] => {
+// The diamond is an 85%-scale square rotated 45 degrees. In root-size
+// coordinates its edge is |x| + |y| = 0.85 / sqrt(2), or about 60.1% from the
+// centre. A centred label no wider than 60% and no taller than the ladder's
+// existing 60% height budget therefore stays inside the painted shape.
+const DIAMOND_LABEL_WIDTH = 'w-[60%]!';
+
+const buildFitSteps = (
+  size: NodeSize,
+  labelClassName?: string,
+): readonly [string, ...string[]] => {
   const floor = LABEL_FIT_OVERRIDES[size].at(-1) ?? '';
+  const withLabelClass = (className?: string) =>
+    [className, labelClassName].filter(Boolean).join(' ');
   const atFloor = (breaks: string) =>
-    labelVariants({ size, className: `${floor} ${breaks}`.trim() });
+    labelVariants({ size, className: withLabelClass(`${floor} ${breaks}`) });
   return [
     // The first rung is the size's untouched default, so a label that already
     // fits renders exactly as it did before fitting existed.
-    labelVariants({ size }),
+    labelVariants({ size, className: labelClassName }),
     ...LABEL_FIT_OVERRIDES[size].map((className) =>
-      labelVariants({ size, className }),
+      labelVariants({ size, className: withLabelClass(className) }),
     ),
     atFloor(HYPHENATED_BREAKS),
     atFloor(EMERGENCY_BREAKS),
@@ -210,6 +221,17 @@ const LABEL_FIT_STEPS: Record<NodeSize, readonly [string, ...string[]]> = {
   sm: buildFitSteps('sm'),
   md: buildFitSteps('md'),
   lg: buildFitSteps('lg'),
+};
+
+const DIAMOND_LABEL_FIT_STEPS: Record<
+  NodeSize,
+  readonly [string, ...string[]]
+> = {
+  xxs: buildFitSteps('xxs', DIAMOND_LABEL_WIDTH),
+  xs: buildFitSteps('xs', DIAMOND_LABEL_WIDTH),
+  sm: buildFitSteps('sm', DIAMOND_LABEL_WIDTH),
+  md: buildFitSteps('md', DIAMOND_LABEL_WIDTH),
+  lg: buildFitSteps('lg', DIAMOND_LABEL_WIDTH),
 };
 
 export function truncateNodeLabel(label: string, maxLength = 35): string {
@@ -369,7 +391,10 @@ export default function Node(props: UINodeProps) {
   // Fit the label to the node rather than clipping it at a fixed size, so most
   // names are readable in full without any interaction at all.
   const labelBoxRef = useRef<HTMLSpanElement>(null);
-  const fitSteps = LABEL_FIT_STEPS[size ?? 'md'];
+  const fitSteps =
+    shape === 'diamond'
+      ? DIAMOND_LABEL_FIT_STEPS[size ?? 'md']
+      : LABEL_FIT_STEPS[size ?? 'md'];
   const {
     ref: labelRef,
     stepIndex,
