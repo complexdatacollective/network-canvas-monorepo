@@ -147,6 +147,7 @@
         "public/**",
         "index.html",
         "vite.config.*",
+        "vite.renderer.config.ts",
         "tailwind.config.*",
         "tsconfig*.json",
         "package.json"
