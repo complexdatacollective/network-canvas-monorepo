@@ -41,6 +41,8 @@ import {
   type RandomStream,
 } from './generateNetwork/plan/random';
 import {
+  DEFAULT_HIGHLIGHT_PROBABILITY,
+  DEFAULT_PROBABILITY_TRUE,
   type ResolvedVariableSynthetic,
   resolveVariableSynthetic,
 } from './generateNetwork/plan/resolveSynthetic';
@@ -357,6 +359,11 @@ export class ValueGenerator {
     opts?: {
       distinctSeq?: number;
       preferRealisticName?: boolean;
+      /**
+       * Whether this draw is a Sociogram highlight, which has its own
+       * undeclared rate — see `DEFAULT_HIGHLIGHT_PROBABILITY`.
+       */
+      sociogramHighlight?: boolean;
       forceRealisticName?: boolean;
     },
   ): VariableValue {
@@ -575,8 +582,17 @@ export class ValueGenerator {
 
         if (seq === undefined && hasDefaultPair) {
           const resolved = this.resolvedFor(entry);
+          const declared =
+            resolved.kind === 'boolean' && resolved.declared
+              ? resolved.probabilityTrue
+              : undefined;
+          // A declared probability always wins; the fallback is the highlight's
+          // own rate where this draw is one, and the generic one otherwise.
           const probabilityTrue =
-            resolved.kind === 'boolean' ? resolved.probabilityTrue : 0.5;
+            declared ??
+            (opts?.sociogramHighlight === true
+              ? DEFAULT_HIGHLIGHT_PROBABILITY
+              : DEFAULT_PROBABILITY_TRUE);
           return stream.bool(probabilityTrue);
         }
 

@@ -1227,6 +1227,125 @@ describe('planNetwork projecting a filtered write', () => {
   });
 });
 
+describe('planNetwork masking a jumped-over stage', () => {
+  // A settled guard's destination removes the stages between, and removing
+  // them from the CREATIONS is only half of it: their writes stayed in the
+  // indexes, so a jumped-over form still made its variable part of every
+  // entity's plan and visible to a later filtered stage.
+  it('hides the writes of a stage its guard jumps over', () => {
+    const codebook = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: {
+            name: { name: 'N', type: 'text' },
+            flag: {
+              name: 'Flag',
+              type: 'boolean',
+              synthetic: { probabilityTrue: 1 },
+            },
+          },
+        },
+      },
+      edge: { knows: { name: 'Knows', variables: {} } },
+      ego: {
+        variables: {
+          consent: {
+            name: 'Consent',
+            type: 'boolean',
+            synthetic: { probabilityTrue: 1 },
+          },
+        },
+      },
+    } as unknown as StructuralCodebook;
+
+    const egoForm = stage({
+      id: 'ego-form',
+      type: 'EgoForm',
+      label: 'About you',
+      introductionPanel: { title: 't', text: 'x' },
+      form: { fields: [{ variable: 'consent', prompt: 'Consent?' }] },
+    });
+
+    const people = nameGenerator({}, 4);
+
+    // Skipped, jumping over the form that would have written `flag`.
+    const guarded = stage({
+      id: 'guarded',
+      type: 'Information',
+      label: 'Guarded',
+      title: 'Guarded',
+      items: [],
+      skipLogic: {
+        action: 'SKIP',
+        destination: { type: 'stage', stageId: 'census' },
+        filter: {
+          rules: [
+            {
+              id: 'consented',
+              type: 'ego',
+              options: {
+                attribute: 'consent',
+                operator: 'EXACTLY',
+                value: true,
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const jumpedForm = stage({
+      id: 'jumped-form',
+      type: 'AlterForm',
+      label: 'Never reached',
+      subject: { entity: 'node', type: 'person' },
+      form: { fields: [{ variable: 'flag', prompt: 'Flag?' }] },
+    });
+
+    const flaggedCensus = stage({
+      id: 'census',
+      type: 'DyadCensus',
+      label: 'Census',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 't', text: 'x' },
+      synthetic: {
+        topology: {
+          metric: 'density',
+          distribution: { distribution: 'constant', value: 1 },
+        },
+      },
+      prompts: [{ id: 'c-p1', text: 'Know?', createEdge: 'knows' }],
+      filter: {
+        join: 'AND',
+        rules: [
+          {
+            id: 'flagged',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'flag',
+              operator: 'EXACTLY',
+              value: true,
+            },
+          },
+        ],
+      },
+    });
+
+    const result = plan(
+      codebook,
+      [egoForm, people, guarded, jumpedForm, flaggedCensus],
+      { respectSkipLogicAndFiltering: true },
+    );
+
+    expect(result.nodes).toHaveLength(4);
+    // The form that would have answered `flag` is never reached, so nobody
+    // carries it and the census has no subjects.
+    expect(result.edges).toHaveLength(0);
+  });
+});
+
 describe('planNetwork topology targets', () => {
   // A stage declares one topology, so a census whose prompts all create the
   // same edge type has one target between them however many prompts it has.

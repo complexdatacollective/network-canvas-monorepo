@@ -267,6 +267,15 @@ export type StageEffects = {
    * materialisation.
    */
   firstUnconditionalWriteIndex: Map<string, Map<string, number>>;
+  /**
+   * Variables written as a Sociogram HIGHLIGHT, per scope.
+   *
+   * A highlight is a mark on a minority of the people in front of the
+   * participant rather than an ordinary boolean answer, and it has its own
+   * undeclared rate — see `DEFAULT_HIGHLIGHT_PROBABILITY`. The draw cannot
+   * tell one boolean from another without being told which is which.
+   */
+  highlightVariables: Map<string, Set<string>>;
 };
 
 /**
@@ -1003,6 +1012,7 @@ export function analyseStageEffects(
   const unconditionalWrites = new Map<string, Set<string>>();
 
   const firstUnconditionalWriteIndex = new Map<string, Map<string, number>>();
+  const highlightVariables = new Map<string, Set<string>>();
   const recordUnconditional = (
     scope: string,
     variableId: string,
@@ -1068,6 +1078,11 @@ export function analyseStageEffects(
     for (const write of summary.writes) {
       const scope = scopeKeyFor(write.entity, write.entityType);
       recordWrite(scope, write.variableId, write.stageIndex);
+      if (write.mode === 'highlight') {
+        const forScope = highlightVariables.get(scope) ?? new Set<string>();
+        forScope.add(write.variableId);
+        highlightVariables.set(scope, forScope);
+      }
       if (write.filter === undefined) {
         recordUnconditional(scope, write.variableId, write.stageIndex);
       }
@@ -1088,6 +1103,7 @@ export function analyseStageEffects(
     rewriteIndex,
     firstWriteIndex,
     firstUnconditionalWriteIndex,
+    highlightVariables,
   };
 }
 

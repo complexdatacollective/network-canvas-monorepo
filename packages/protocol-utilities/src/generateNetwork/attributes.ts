@@ -67,6 +67,8 @@ export function generateAttributesForEntity(
     existing?: Record<string, VariableValue>;
     only?: Set<string>;
     preferRealisticNameVariables?: ReadonlySet<string>;
+    /** Variables drawn as Sociogram highlights, which have their own rate. */
+    highlightVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   return generateEntityAttributes(

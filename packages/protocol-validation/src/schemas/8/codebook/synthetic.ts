@@ -241,7 +241,12 @@ const normalCountSchema = z
     max: populationInt.optional(),
   })
   .superRefine(requireOrderedBounds)
-  .superRefine(rejectOversizedPopulation);
+  .superRefine(rejectOversizedPopulation)
+  // A negative mean is legitimate WITH spread — "usually zero, occasionally
+  // more" — but with none there is no occasionally: the sole draw is clamped
+  // to the window and the authored mean is discarded, exactly as it is for a
+  // topology or a variable descriptor.
+  .superRefine(requireReachableDegenerateMean({ min: 0 }));
 
 export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
   constantCountSchema,

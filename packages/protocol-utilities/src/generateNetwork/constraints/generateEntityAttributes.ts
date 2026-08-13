@@ -788,6 +788,7 @@ export function generateEntityAttributes(
     only?: Set<string>;
     /** Text variables that represent person labels even when not named `name`. */
     preferRealisticNameVariables?: ReadonlySet<string>;
+    highlightVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   const { order, membersOf, groupOf } = resolveGenerationOrder(entity);
@@ -838,6 +839,7 @@ export function generateEntityAttributes(
     only,
     existing,
     preferRealisticNameVariables: options?.preferRealisticNameVariables,
+    highlightVariables: options?.highlightVariables,
   };
   const solved = new Map<string, VariableValue>();
   const attempted = new Set<SolvableComponent>();
@@ -1129,6 +1131,7 @@ type DrawState = {
   only: Set<string> | undefined;
   existing: Record<string, VariableValue> | undefined;
   preferRealisticNameVariables: ReadonlySet<string> | undefined;
+  highlightVariables: ReadonlySet<string> | undefined;
 };
 
 /**
@@ -1196,6 +1199,7 @@ function drawGroup(
     only,
     existing,
     preferRealisticNameVariables,
+    highlightVariables,
   }: DrawState,
   solved?: VariableValue,
 ): VariableValue {
@@ -1273,6 +1277,9 @@ function drawGroup(
 
       const value = ctx.valueGen.generateConstrained(bounded, index, registry, {
         ...(seq !== undefined ? { distinctSeq: seq } : {}),
+        ...(highlightVariables?.has(variable.entry.id) === true
+          ? { sociogramHighlight: true }
+          : {}),
         ...(attempt === 0
           ? {
               preferRealisticName:

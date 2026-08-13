@@ -71,7 +71,19 @@ export const defaultTopologyForStage = (stageType: string): EdgeTopology =>
 /** Window a number variable draws over when validation gives no usable one. */
 const DEFAULT_NUMBER_WINDOW = { min: 18, max: 80 } as const;
 
-const DEFAULT_PROBABILITY_TRUE = 0.5;
+export const DEFAULT_PROBABILITY_TRUE = 0.5;
+
+/**
+ * How often an undeclared Sociogram highlight lands.
+ *
+ * A highlight is not an ordinary boolean answer — it is a mark a participant
+ * puts on a minority of the people in front of them — and the previous
+ * generator gave it its own rate (`sociogramHighlightProbability`). Resolved
+ * to the generic 0.5, metadata-free protocols highlighted roughly 43% more
+ * nodes than they used to. An explicitly declared `probabilityTrue` still
+ * wins; this is only the fallback.
+ */
+export const DEFAULT_HIGHLIGHT_PROBABILITY = 0.35;
 
 export type ResolvedDatetimeDescriptor =
   | { distribution: 'uniform'; min?: string; max?: string }
@@ -107,7 +119,13 @@ export type ResolvedVariableSynthetic =
       bounds: ValueBounds;
       missingProbability: number;
     }
-  | { kind: 'boolean'; probabilityTrue: number; missingProbability: number }
+  | {
+      kind: 'boolean';
+      probabilityTrue: number;
+      /** Whether the author wrote the probability, or it is the fallback. */
+      declared: boolean;
+      missingProbability: number;
+    }
   | {
       kind: 'ordinal';
       values: (string | number)[];
@@ -295,6 +313,7 @@ export function resolveVariableSynthetic(
         kind: 'boolean',
         probabilityTrue:
           variable.synthetic?.probabilityTrue ?? DEFAULT_PROBABILITY_TRUE,
+        declared: variable.synthetic?.probabilityTrue !== undefined,
         missingProbability: resolveMissingProbability(variable),
       };
 

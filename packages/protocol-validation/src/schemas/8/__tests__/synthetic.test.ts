@@ -76,6 +76,44 @@ describe('synthetic metadata (additive to schema 8)', () => {
       expect(parse(withNodeStageSynthetic({ count })).success).toBe(false);
     });
 
+    it.each([
+      ['a mean below its own minimum', { mean: 5, sd: 0, min: 10 }],
+      ['a negative mean', { mean: -5, sd: 0 }],
+      ['a mean above its own maximum', { mean: 40, sd: 0, max: 20 }],
+    ])('rejects a zero-deviation count with %s', (_label, count) => {
+      // Single-point support: the sole draw is clamped to the window, so the
+      // authored mean is discarded in silence.
+      const result = parse(
+        withNodeStageSynthetic({ count: { distribution: 'normal', ...count } }),
+      );
+      expect(result.success).toBe(false);
+      expect(
+        hasIssue(result, 'a standard deviation of 0 can reach nothing else'),
+      ).toBe(true);
+    });
+
+    it('accepts a zero-deviation count its window can return', () => {
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: { distribution: 'normal', mean: 12, sd: 0, min: 10 },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('leaves a negative mean WITH spread alone', () => {
+      // "Usually zero, occasionally more" is a legitimate parameterisation;
+      // only the degenerate case is decidable.
+      expect(
+        parse(
+          withNodeStageSynthetic({
+            count: { distribution: 'normal', mean: -5, sd: 4 },
+          }),
+        ).success,
+      ).toBe(true);
+    });
+
     it('rejects a population no preview could render', () => {
       // Generation is synchronous, and Architect's PreviewHost runs it on the
       // main thread: a billion people is arithmetically fine, schema-valid

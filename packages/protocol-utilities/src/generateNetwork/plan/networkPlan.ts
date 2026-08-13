@@ -22,6 +22,7 @@ import {
 } from '@codaco/shared-consts';
 
 import {
+  analyseStageEffects,
   attributesAsOf,
   type EdgeCreation,
   isRewrittenAfter,
@@ -1259,10 +1260,30 @@ export function planNetwork(
   const settledAsSkipped = (summary: StageEffects['stages'][number]): boolean =>
     !plannedReachable.has(summary.index);
 
+  /**
+   * The analysis as the WALK sees it, with the stages a settled guard removes
+   * reduced to empty summaries.
+   *
+   * Masking the creations alone was not enough: `writtenVariables` and
+   * `attributesAsOf` read the indexes, so a jumped-over form still made its
+   * variable part of every entity's plan and visible to a later filtered
+   * stage — which then admitted subjects the live session excludes, and the
+   * same-stage edges planned for them are never rechecked at materialisation.
+   *
+   * Re-analysed rather than patched: `analyseStageEffects` already reduces an
+   * unreachable stage to an empty summary and rebuilds every index from what
+   * remains, so no second notion of what a reachable stage writes can enter.
+   * Skipped entirely where nothing was settled, which is the ordinary case.
+   */
+  const walked: StageEffects =
+    plannedReachable.size === effects.stages.length
+      ? effects
+      : analyseStageEffects(stageList, plannedReachable);
+
   // --- Node populations ----------------------------------------------------
   const nodes: PlannedNode[] = [];
   const creationsByType = new Map<string, NodeCreation[]>();
-  for (const summary of effects.stages) {
+  for (const summary of walked.stages) {
     if (settledAsSkipped(summary)) continue;
     for (const creation of summary.nodeCreations) {
       // A family pedigree builds its own people and links through the
@@ -1316,7 +1337,7 @@ export function planNetwork(
     // cannot be filled is a protocol the researcher needs to hear about.
     const rosterPreference = assignRosterRows(
       ctx,
-      effects,
+      walked,
       creations,
       assigned,
       type,
@@ -1331,13 +1352,13 @@ export function planNetwork(
     // values on entities the session never writes them to, and can exhaust a
     // space feasibility sized to the one creator that collects it.
     const populationWritten = populationWrittenVariables(
-      effects,
+      walked,
       'node',
       type,
       ctx.respectSkipLogicAndFiltering,
     );
     const typeWritten = writtenVariables(
-      effects,
+      walked,
       'node',
       type,
       ctx.respectSkipLogicAndFiltering,
@@ -1573,7 +1594,7 @@ export function planNetwork(
 
         const { fixedFinal, fixedAtCreation } = splitFixedValues(
           fixed,
-          effects,
+          walked,
           scope,
           creation.stageIndex,
           rowSettled.size > 0 ? rowSettled : undefined,
@@ -1591,6 +1612,7 @@ export function planNetwork(
         const generated = generateAttributesForEntity(ctx, ref, typeIndex, {
           existing: fixedFinal,
           only: drawable,
+          highlightVariables: walked.highlightVariables.get(scope),
         });
         claimFixedValues(ctx, ref, fixedFinal);
         unreserveFixedValues(ctx, ref, promptFixed);
@@ -1652,8 +1674,8 @@ export function planNetwork(
    * census that had asked for none.
    */
   const reachableCreations = (type: string): EdgeCreation[] =>
-    (effects.edgeCreationsByType.get(type) ?? []).filter((creation) => {
-      const summary = effects.stages[creation.stageIndex];
+    (walked.edgeCreationsByType.get(type) ?? []).filter((creation) => {
+      const summary = walked.stages[creation.stageIndex];
       return summary === undefined || !settledAsSkipped(summary);
     });
   /**
@@ -1691,7 +1713,7 @@ export function planNetwork(
     const ref = { entity: 'edge' as const, type };
     const scope = scopeKeyFor('edge', type);
     const written = writtenVariables(
-      effects,
+      walked,
       'edge',
       type,
       ctx.respectSkipLogicAndFiltering,
@@ -1708,7 +1730,7 @@ export function planNetwork(
     ): PlannedEdge => {
       const { fixedFinal, fixedAtCreation } = splitFixedValues(
         fixed,
-        effects,
+        walked,
         scope,
         creationStageIndex,
       );
@@ -1724,6 +1746,7 @@ export function planNetwork(
       const generated = generateAttributesForEntity(ctx, ref, edgeIndex, {
         existing: fixedFinal,
         only: drawable,
+        highlightVariables: walked.highlightVariables.get(scope),
       });
       claimFixedValues(ctx, ref, fixedFinal);
       const attributes = { ...generated, ...fixedFinal };
@@ -1847,7 +1870,7 @@ export function planNetwork(
         egoUid,
         egoAttributes,
         [...plannedEdges, ...typeEdges],
-        effects,
+        walked,
       )) {
         if (!domain.has(key)) domain.set(key, pair);
       }
