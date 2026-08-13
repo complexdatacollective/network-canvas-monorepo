@@ -318,15 +318,32 @@ export function attributesAsOf(
     : effects.firstWriteIndex.get(scope);
   if (first === undefined) return {};
   const projected: Record<string, unknown> = {};
-  for (const [variableId, value] of Object.entries(attributes)) {
+  // The union of final and creation-time keys, not the final keys alone. A
+  // final value planned MISSING is an absent key, but where the creating
+  // interaction fixed a value the session still holds it until the rewrite
+  // runs — iterating `attributes` by itself hid exactly those values from
+  // every stage between creation and rewrite, excluding entities the live
+  // session includes.
+  const keys = new Set([
+    ...Object.keys(attributes),
+    ...Object.keys(fixedAtCreation ?? {}),
+  ]);
+  for (const variableId of keys) {
     const at = first.get(variableId);
     if (at === undefined || at > stageIndex) continue;
-    projected[variableId] =
+    const rewrite = effects.rewriteIndex.get(scope)?.get(variableId);
+    // The fixed value stands until its rewrite has RUN; from then on the
+    // final value — or, where the plan leaves it unanswered, nothing — is
+    // what the session shows.
+    if (
       fixedAtCreation !== undefined &&
       variableId in fixedAtCreation &&
-      isRewrittenAfter(effects, scope, variableId, stageIndex)
-        ? fixedAtCreation[variableId]
-        : value;
+      !(rewrite !== undefined && rewrite <= stageIndex)
+    ) {
+      projected[variableId] = fixedAtCreation[variableId];
+    } else if (variableId in attributes) {
+      projected[variableId] = attributes[variableId];
+    }
   }
   return projected;
 }

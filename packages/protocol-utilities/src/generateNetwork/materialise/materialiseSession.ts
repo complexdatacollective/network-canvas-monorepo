@@ -434,7 +434,16 @@ export function materialiseSession(params: {
       (variableId in planned.attributes || planned.missing.has(variableId))
     ) {
       const value = valueFor(planned, variableId);
-      if (value !== undefined) attributes[variableId] = value;
+      if (value !== undefined) {
+        attributes[variableId] = value;
+      } else {
+        // A planned-missing rewrite must UNDO what creation fixed: this stage
+        // is where the participant leaves the question unanswered, and
+        // returning with the creation-time value intact emitted a finished
+        // network holding an answer the declared missingness removed. The
+        // ego-write path already deletes; this is its entity counterpart.
+        delete attributes[variableId];
+      }
       return;
     }
     if (certainlyMissing(ref, variableId, planned)) {

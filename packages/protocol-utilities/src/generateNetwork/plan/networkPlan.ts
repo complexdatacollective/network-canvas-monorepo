@@ -1174,8 +1174,35 @@ export function planNetwork(
   const missing = missingProbabilities(ctx.codebook);
   const required = requiredVariables(ctx.codebook);
 
+  /**
+   * Every primary key the caller's rosters carry, drawn or not.
+   *
+   * A roster row's `_uid` is an arbitrary caller-chosen string, so nothing
+   * stops one matching a uid a stream mints — and a plan holding two entities
+   * under one key is silently halved at materialisation (`materialisedNodes`
+   * keeps whichever lands first) while topology can pair the two planned
+   * entries as identical endpoints. Undrawn rows are reserved too: a later
+   * stage may still draw one AFTER a fabricated node has taken its key.
+   *
+   * Redrawing advances the same memoised stream, so a protocol containing no
+   * collision — every fixture and committed snapshot — mints byte-identical
+   * ids to before the guard.
+   */
+  const suppliedRosterUids = new Set<string>();
+  for (const pool of Object.values(ctx.externalData ?? {})) {
+    for (const row of pool) {
+      suppliedRosterUids.add(row[entityPrimaryKeyProperty]);
+    }
+  }
+  const mintUid = (...path: (string | number)[]): string => {
+    const stream = source.stream(...path);
+    let uid = deterministicUuid(stream);
+    while (suppliedRosterUids.has(uid)) uid = deterministicUuid(stream);
+    return uid;
+  };
+
   // --- Ego -----------------------------------------------------------------
-  const egoUid = deterministicUuid(source.stream('id', 'ego'));
+  const egoUid = mintUid('id', 'ego');
   const egoAttributes = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
     only: writtenVariables(effects, 'ego'),
   });
@@ -1203,7 +1230,7 @@ export function planNetwork(
    * Only all-ego guards. A rule about alters is still undecidable here, since
    * the nodes it asks about are what this pass is about to plan.
    */
-  const plannedEgoNetwork = (asOf: number): NcNetwork =>
+  const plannedEgoNetwork = (asOf: number, view: StageEffects): NcNetwork =>
     ({
       ego: {
         [entityPrimaryKeyProperty]: egoUid,
@@ -1214,7 +1241,7 @@ export function planNetwork(
         // creator the session then reaches with nothing planned to introduce.
         // The stage-time filter shadow above is projected for the same reason.
         [entityAttributesProperty]: attributesAsOf(
-          effects,
+          view,
           scopeKeyFor('ego'),
           egoAttributes,
           asOf,
@@ -1228,13 +1255,14 @@ export function planNetwork(
 
   const guardSettlesSkip = (
     summary: StageEffects['stages'][number],
+    view: StageEffects,
   ): boolean => {
     if (!ctx.respectSkipLogicAndFiltering) return false;
     const { skipLogic } = summary.stage;
     if (skipLogic === undefined) return false;
     if (skipLogic.filter.rules.some((rule) => rule.type !== 'ego'))
       return false;
-    return isStageSkipped(skipLogic, plannedEgoNetwork(summary.index));
+    return isStageSkipped(skipLogic, plannedEgoNetwork(summary.index, view));
   };
 
   /**
@@ -1249,10 +1277,27 @@ export function planNetwork(
    */
   const stageList = effects.stages.map((summary) => summary.stage);
   const plannedReachable = new Set<number>();
+  /**
+   * The analysis a guard evaluated MID-walk may read: everything the walk has
+   * reached so far, plus every stage not yet judged. One settled jump removes
+   * the stages it clears from the view the NEXT guard sees — a consent-based
+   * jump over a flag form must leave a later flag-guarded creator reading an
+   * ego who never answered, exactly as the session will. Judged against the
+   * original analysis, that guard settled the creator as skipped on a value
+   * the session never collects, and materialisation then reached a creator
+   * with nothing planned to introduce.
+   */
+  let guardView = effects;
+  const viewAfterJump = (nextIndex: number): StageEffects => {
+    const mask = new Set(plannedReachable);
+    for (let i = nextIndex; i < effects.stages.length; i++) mask.add(i);
+    return analyseStageEffects(stageList, mask);
+  };
   for (let index = 0; index < effects.stages.length; index++) {
     const summary = effects.stages[index]!;
-    if (guardSettlesSkip(summary)) {
+    if (guardSettlesSkip(summary, guardView)) {
       const destination = summary.stage.skipLogic?.destination;
+      let next = index + 1;
       if (destination !== undefined) {
         const destinationIndex = resolveSkipLogicDestinationIndex(
           destination,
@@ -1261,8 +1306,12 @@ export function planNetwork(
         );
         // Only a destination strictly after the guard resolves, so this
         // always moves forward and the walk terminates.
-        if (destinationIndex !== undefined) index = destinationIndex - 1;
+        if (destinationIndex !== undefined) {
+          index = destinationIndex - 1;
+          next = destinationIndex;
+        }
       }
+      guardView = viewAfterJump(next);
       continue;
     }
     plannedReachable.add(index);
@@ -1585,7 +1634,7 @@ export function planNetwork(
 
         const uid = rosterRow
           ? rosterRow[entityPrimaryKeyProperty]
-          : deterministicUuid(source.stream('id', 'node', type));
+          : mintUid('id', 'node', type);
         if (rosterRow) ctx.usedRosterUids.add(uid);
 
         // A roster row is external data bound to this person: a later form
