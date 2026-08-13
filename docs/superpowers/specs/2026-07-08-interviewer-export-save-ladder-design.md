@@ -1,8 +1,17 @@
 # Interviewer export: deterministic save ladder, no confirmation dialog
 
 **Date:** 2026-07-08
-**Status:** Approved
+**Status:** Approved; amended 2026-08-13
 **Scope:** `apps/interviewer` only. Follow-up to PR #893 (issue #889).
+
+> **Amendment (2026-08-13):** rung 2 is handheld-only. Desktop Safari
+> advertises file sharing, so the ladder sent macOS researchers to the OS
+> share sheet when they only wanted the archive in their Downloads folder
+> (community thread #258). `canShareFile` is now gated on
+> `isHandheldPlatform()` (iOS/iPadOS/Android), so desktop Safari and desktop
+> Firefox both take rung 3 and the file downloads directly. Rung 2's row in
+> "Behavior by platform" below therefore reads "iOS / iPadOS / Android", and
+> desktop Safari joins the "Download starts in browser UI" row.
 
 ## Problem
 
