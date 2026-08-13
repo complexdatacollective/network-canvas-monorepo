@@ -5,13 +5,11 @@ import { v4 as uuid } from 'uuid';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
-  type EntityAttributesProperty,
   type EntityPrimaryKey,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
-  type NcEgo,
   type NcEntity,
   type NcNetwork,
   type NcNode,
@@ -30,8 +28,12 @@ import {
   getPrompts,
   makeGetNodeById,
 } from '../../selectors/session';
-import { getDefaultAttributesForEntityType } from '../../utils/getDefaultAttributesForEntityType';
 import { createAppAsyncThunk } from '../createAppAsyncThunk';
+import {
+  applyEntityAttributePatch,
+  type AttributePatch,
+  validateAttributePatch,
+} from '../entityAttributePatch';
 import { getShouldEncryptNames } from './protocol';
 
 // reducer helpers:
@@ -140,7 +142,7 @@ const initialState = {} as SessionState;
 
 type AddNodeArgs = {
   type: NcNode['type'];
-  attributeData?: NcNode[EntityAttributesProperty];
+  attributeData?: Readonly<Record<string, VariableValue | undefined>>;
   modelData?: {
     [entityPrimaryKeyProperty]: NcNode[EntityPrimaryKey];
   };
@@ -173,29 +175,30 @@ export const addNode = createAppAsyncThunk(
 
     const variablesForType = getCodebookVariablesForNodeType(type);
 
-    // Validate that all attribute keys exist in the codebook, unless explicitly allowed.
-    if (attributeData && !allowUnknownAttributes) {
-      const invalidKeys = Object.keys(attributeData).filter(
-        (key) => !(key in variablesForType),
+    const initialAttributes = applyEntityAttributePatch(
+      attributeData ?? {},
+      undefined,
+      { set: {}, unset: [] },
+    ).attributes;
+
+    if (!allowUnknownAttributes) {
+      const validation = validateAttributePatch(
+        { set: initialAttributes, unset: [] },
+        new Set(Object.keys(variablesForType)),
       );
 
       invariant(
-        invalidKeys.length === 0,
-        `Invalid node attributes for type "${type}": ${invalidKeys.join(', ')} do not exist in protocol codebook`,
+        validation.success,
+        `Invalid node attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
       );
     }
-
-    const mergedAttributes = {
-      ...getDefaultAttributesForEntityType(variablesForType),
-      ...attributeData,
-    };
 
     const sessionMeta = getSessionMeta(state, currentStep);
 
     if (!useEncryption) {
       return {
         type,
-        attributeData: mergedAttributes,
+        attributeData: initialAttributes,
         modelData,
         sessionMeta,
       };
@@ -210,7 +213,7 @@ export const addNode = createAppAsyncThunk(
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
-        mergedAttributes,
+        initialAttributes,
         variablesForType,
         passphrase,
       );
@@ -232,7 +235,7 @@ export const addEdge = createAppAsyncThunk(
       from: NcNode[EntityPrimaryKey];
       to: NcNode[EntityPrimaryKey];
       type: NcNode['type'];
-      attributeData?: Record<string, unknown>;
+      attributeData?: Readonly<Record<string, VariableValue | undefined>>;
       currentStep: number;
     },
     { getState },
@@ -246,22 +249,20 @@ export const addEdge = createAppAsyncThunk(
 
     const variablesForType = getCodebookVariablesForEdgeType(type);
 
-    // Validate that all attribute keys exist in the codebook
-    if (attributeData) {
-      const invalidKeys = Object.keys(attributeData).filter(
-        (key) => !(key in variablesForType),
-      );
+    const initialAttributes = applyEntityAttributePatch(
+      attributeData ?? {},
+      undefined,
+      { set: {}, unset: [] },
+    ).attributes;
+    const validation = validateAttributePatch(
+      { set: initialAttributes, unset: [] },
+      new Set(Object.keys(variablesForType)),
+    );
 
-      invariant(
-        invalidKeys.length === 0,
-        `Invalid edge attributes for type "${type}": ${invalidKeys.join(', ')} do not exist in protocol codebook`,
-      );
-    }
-
-    const mergedAttributes = {
-      ...getDefaultAttributesForEntityType(variablesForType),
-      ...attributeData,
-    };
+    invariant(
+      validation.success,
+      `Invalid edge attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
+    );
 
     const edgeId = uuid();
 
@@ -270,7 +271,7 @@ export const addEdge = createAppAsyncThunk(
       from,
       to,
       type,
-      attributeData: mergedAttributes,
+      attributeData: initialAttributes,
       edgeId,
     };
   },
@@ -282,12 +283,12 @@ export const updateNode = createAppAsyncThunk(
     args: {
       nodeId: NcNode[EntityPrimaryKey];
       newModelData?: Record<string, unknown>;
-      newAttributeData: NcNode[EntityAttributesProperty];
+      attributePatch: AttributePatch;
       currentStep: number;
     },
     thunkApi,
   ) => {
-    const { newAttributeData, newModelData, nodeId, currentStep } = args;
+    const { attributePatch, newModelData, nodeId, currentStep } = args;
     const state = thunkApi.getState();
     const getNodeById = makeGetNodeById(state, currentStep);
     const node = getNodeById(nodeId);
@@ -299,28 +300,30 @@ export const updateNode = createAppAsyncThunk(
 
     const variablesForType = getCodebookVariablesForNodeType(node.type);
 
-    // Validate that all attribute keys exist in the codebook
-    const invalidKeys = Object.keys(newAttributeData).filter(
-      (key) => !(key in variablesForType),
+    const validation = validateAttributePatch(
+      attributePatch,
+      new Set(Object.keys(variablesForType)),
     );
 
     invariant(
-      invalidKeys.length === 0,
-      `Invalid node attributes for type "${node.type}": ${invalidKeys.join(', ')} do not exist in protocol codebook`,
+      validation.success,
+      validation.success
+        ? ''
+        : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
     const useEncryption = getShouldEncryptNames(state);
     // We know that encryption is enabled at the protocol level, but are the node attributes we are updating encrypted?
-    const hasEncryptedAttributes = Object.keys(newAttributeData).some(
+    const hasEncryptedAttributes = Object.keys(attributePatch.set).some(
       (key) => variablesForType[key]?.encrypted,
     );
 
     if (!useEncryption || !hasEncryptedAttributes) {
       return {
         nodeId,
-        newAttributeData,
+        attributePatch,
         newModelData,
-        newSecureAttributes: undefined,
+        secureSet: undefined,
       };
     }
 
@@ -330,16 +333,19 @@ export const updateNode = createAppAsyncThunk(
 
     const { secureAttributes, encryptedAttributes } =
       await generateSecureAttributes(
-        newAttributeData,
+        attributePatch.set,
         variablesForType,
         passphrase,
       );
 
     return {
       nodeId,
-      newAttributeData: encryptedAttributes,
+      attributePatch: {
+        set: encryptedAttributes,
+        unset: attributePatch.unset,
+      },
       newModelData: newModelData,
-      newSecureAttributes: secureAttributes,
+      secureSet: secureAttributes,
     };
   },
 );
@@ -363,28 +369,26 @@ export const transitionStage = createAction(actionTypes.transitionStage);
 
 export const updateEgo = createAppAsyncThunk(
   actionTypes.updateEgo,
-  (egoAttributes: NcEgo[EntityAttributesProperty], { getState }) => {
+  (attributePatch: AttributePatch, { getState }) => {
     const state = getState();
     const codebook = state.protocol.codebook as Codebook; // Needed because schema 7 doesn't have strongly typed codebook
     const egoVariables = codebook.ego?.variables;
 
     invariant(egoVariables, 'Ego variables not defined in protocol codebook');
 
-    // Validate that all attribute keys exist in the codebook
-    const invalidKeys = Object.keys(egoAttributes).filter(
-      (key) => !(key in egoVariables),
+    const validation = validateAttributePatch(
+      attributePatch,
+      new Set(Object.keys(egoVariables)),
     );
 
     invariant(
-      invalidKeys.length === 0,
-      `Invalid ego attributes: ${invalidKeys.join(', ')} do not exist in protocol codebook`,
+      validation.success,
+      validation.success
+        ? ''
+        : `Invalid ego attribute patch: ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
-    // Return only the submitted attributes. The reducer merges with existing.
-    // EgoForm ensures all fields for its stage are included (with null if
-    // unanswered), so we don't need to merge with defaults here. Merging with
-    // ALL ego defaults would overwrite values from previous EgoForm stages.
-    return egoAttributes;
+    return attributePatch;
   },
 );
 
@@ -395,7 +399,7 @@ export const toggleEdge = createAppAsyncThunk(
       from: NcNode[EntityPrimaryKey];
       to: NcNode[EntityPrimaryKey];
       type: NcNode['type'];
-      attributeData?: Record<string, unknown>;
+      attributeData?: Readonly<Record<string, VariableValue | undefined>>;
       currentStep: number;
     },
     { getState, dispatch },
@@ -446,10 +450,41 @@ export const addNodeToPrompt = createAppAsyncThunk(
   },
 );
 
-export const toggleNodeAttributes = createAction<{
-  nodeId: NcNode[EntityPrimaryKey];
-  attributes: Record<string, VariableValue>;
-}>(actionTypes.toggleNodeAttributes);
+export const toggleNodeAttributes = createAppAsyncThunk(
+  actionTypes.toggleNodeAttributes,
+  (
+    args: {
+      nodeId: NcNode[EntityPrimaryKey];
+      attributePatch: AttributePatch;
+    },
+    { getState },
+  ) => {
+    const { nodeId, attributePatch } = args;
+    const state = getState();
+    const node = state.session.network.nodes.find(
+      (candidate) => candidate[entityPrimaryKeyProperty] === nodeId,
+    );
+
+    invariant(node, 'Node not found');
+
+    const variablesForType = makeGetCodebookVariablesForNodeType(state)(
+      node.type,
+    );
+    const validation = validateAttributePatch(
+      attributePatch,
+      new Set(Object.keys(variablesForType)),
+    );
+
+    invariant(
+      validation.success,
+      validation.success
+        ? ''
+        : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
+    );
+
+    return args;
+  },
+);
 
 type StagePrompt = NonNullable<ReturnType<typeof getPrompts>>[number];
 
@@ -486,27 +521,17 @@ export const removeNodeFromPrompt = createAppAsyncThunk(
       ? getPromptAdditionalAttributesMap(removedPrompt)
       : {};
 
-    // Derive the value for each variable the removed prompt contributed from the
-    // prompts the node will STILL belong to (last-wins, matching the spread
-    // order used when adding a node to a prompt). If a remaining prompt asserts
-    // the variable, that value wins; otherwise the attribute is cleared to its
-    // unset (null) value.
-    //
-    // The network is the single source of truth: the attribute was introduced by
-    // this prompt's `additionalAttributes`, so removing the node from the prompt
-    // undoes it. There is no per-variable provenance to preserve — a value a
-    // later form merely displayed (and the participant left unchanged) is not
-    // "owned" by the form, and must not survive removal.
     const getNodeById = makeGetNodeById(state, currentStep);
     const node = getNodeById(nodeId);
     const remainingPromptIds = (node?.promptIDs ?? []).filter(
       (id) => id !== promptId,
     );
 
-    const resolvedAttributes = Object.keys(removedAttributes).reduce<
-      Record<string, VariableValue>
-    >((acc, variable) => {
-      let resolvedValue: VariableValue = null;
+    const set: Record<string, VariableValue> = {};
+    const unset: string[] = [];
+
+    Object.keys(removedAttributes).forEach((variable) => {
+      let resolvedValue: boolean | undefined;
 
       prompts.forEach((prompt) => {
         if (!remainingPromptIds.includes(prompt.id)) {
@@ -514,18 +539,21 @@ export const removeNodeFromPrompt = createAppAsyncThunk(
         }
         const promptAttributes = getPromptAdditionalAttributesMap(prompt);
         if (variable in promptAttributes) {
-          resolvedValue = promptAttributes[variable]!;
+          resolvedValue = promptAttributes[variable];
         }
       });
 
-      acc[variable] = resolvedValue;
-      return acc;
-    }, {});
+      if (resolvedValue === undefined) {
+        unset.push(variable);
+      } else {
+        set[variable] = resolvedValue;
+      }
+    });
 
     return {
       nodeId,
       promptId,
-      resolvedAttributes,
+      attributePatch: { set, unset },
     };
   },
 );
@@ -536,11 +564,11 @@ export const updateEdge = createAppAsyncThunk(
     args: {
       edgeId: NcEntity[EntityPrimaryKey]; // Must be uid as this is shared between nodes and edges on slidesform
       newModelData?: Record<string, unknown>;
-      newAttributeData?: NcEdge[EntityAttributesProperty];
+      attributePatch: AttributePatch;
     },
     { getState },
   ) => {
-    const { edgeId, newModelData, newAttributeData } = args;
+    const { edgeId, newModelData, attributePatch } = args;
     const state = getState();
     const edge = state.session.network.edges.find(
       (e) => e[entityPrimaryKeyProperty] === edgeId,
@@ -548,27 +576,26 @@ export const updateEdge = createAppAsyncThunk(
 
     invariant(edge, 'Edge not found');
 
-    // Validate that all attribute keys exist in the codebook if newAttributeData is provided
-    if (newAttributeData) {
-      const getCodebookVariablesForEdgeType =
-        makeGetCodebookVariablesForEdgeType(state);
+    const getCodebookVariablesForEdgeType =
+      makeGetCodebookVariablesForEdgeType(state);
 
-      const variablesForType = getCodebookVariablesForEdgeType(edge.type);
+    const variablesForType = getCodebookVariablesForEdgeType(edge.type);
+    const validation = validateAttributePatch(
+      attributePatch,
+      new Set(Object.keys(variablesForType)),
+    );
 
-      const invalidKeys = Object.keys(newAttributeData).filter(
-        (key) => !(key in variablesForType),
-      );
-
-      invariant(
-        invalidKeys.length === 0,
-        `Invalid edge attributes for type "${edge.type}": ${invalidKeys.join(', ')} do not exist in protocol codebook`,
-      );
-    }
+    invariant(
+      validation.success,
+      validation.success
+        ? ''
+        : `Invalid edge attribute patch for type "${edge.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
+    );
 
     return {
       edgeId,
       newModelData,
-      newAttributeData,
+      attributePatch,
     };
   },
 );
@@ -639,13 +666,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
           // single source of truth: adding a node to this prompt asserts the
           // prompt's values, and a value a form merely displayed is not owned by
           // the form.
+          const patched = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            { set: promptAttributes, unset: [] },
+          );
+
           return {
             ...node,
             promptIDs: [...(node.promptIDs ?? []), promptId],
-            [entityAttributesProperty]: {
-              ...node[entityAttributesProperty],
-              ...promptAttributes,
-            },
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },
@@ -653,7 +684,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(removeNodeFromPrompt.fulfilled, (state, action) => {
-    const { nodeId, promptId, resolvedAttributes } = action.payload;
+    const { nodeId, promptId, attributePatch } = action.payload;
     const { network } = state;
     const { nodes } = network;
 
@@ -666,13 +697,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
             return node;
           }
 
+          const patched = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            attributePatch,
+          );
+
           return {
             ...node,
             promptIDs: node.promptIDs?.filter((id) => id !== promptId),
-            [entityAttributesProperty]: {
-              ...node[entityAttributesProperty],
-              ...resolvedAttributes,
-            },
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },
@@ -701,8 +736,8 @@ const sessionReducer = createReducer(initialState, (builder) => {
     });
   });
 
-  builder.addCase(toggleNodeAttributes, (state, action) => {
-    const { nodeId, attributes } = action.payload;
+  builder.addCase(toggleNodeAttributes.fulfilled, (state, action) => {
+    const { nodeId, attributePatch } = action.payload;
     const { network } = state;
 
     return withLastUpdated({
@@ -714,12 +749,16 @@ const sessionReducer = createReducer(initialState, (builder) => {
             return node;
           }
 
+          const patched = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            attributePatch,
+          );
+
           return {
             ...node,
-            [entityAttributesProperty]: {
-              ...node[entityAttributesProperty],
-              ...attributes,
-            },
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },
@@ -742,8 +781,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(updateNode.fulfilled, (state, action) => {
-    const { nodeId, newAttributeData, newModelData, newSecureAttributes } =
-      action.payload;
+    const { nodeId, attributePatch, newModelData, secureSet } = action.payload;
     const { network } = state;
     const { nodes } = network;
 
@@ -768,23 +806,28 @@ const sessionReducer = createReducer(initialState, (builder) => {
             });
           }
 
-          if (newModelData && 'promptId' in newModelData) {
-            const newId = newModelData.promptId as string;
+          if (
+            newModelData &&
+            'promptId' in newModelData &&
+            typeof newModelData.promptId === 'string'
+          ) {
+            const newId = newModelData.promptId;
             mergedPromptIDs.add(newId);
           }
+
+          const patched = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            attributePatch,
+            secureSet,
+          );
 
           return {
             ...node,
             ...newModelData,
             promptIDs: Array.from(mergedPromptIDs),
-            [entityAttributesProperty]: {
-              ...node[entityAttributesProperty],
-              ...newAttributeData,
-            },
-            [entitySecureAttributesMeta]: {
-              ...node[entitySecureAttributesMeta],
-              ...newSecureAttributes,
-            },
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },
@@ -796,7 +839,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
       payload: { from, to, type, attributeData, edgeId },
     } = action;
 
-    const newEdge = {
+    const newEdge: NcEdge = {
       [entityPrimaryKeyProperty]: edgeId,
       from,
       to,
@@ -809,7 +852,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
       network: {
         ...state.network,
         edges: [...state.network.edges, newEdge],
-      } as NcNetwork,
+      },
     });
   });
 
@@ -829,7 +872,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(updateEdge.fulfilled, (state, action) => {
-    const { edgeId, newModelData, newAttributeData } = action.payload;
+    const { edgeId, newModelData, attributePatch } = action.payload;
     const { network } = state;
     const { edges } = network;
 
@@ -842,13 +885,17 @@ const sessionReducer = createReducer(initialState, (builder) => {
             return edge;
           }
 
+          const patched = applyEntityAttributePatch(
+            edge[entityAttributesProperty],
+            edge[entitySecureAttributesMeta],
+            attributePatch,
+          );
+
           return {
             ...edge,
             ...newModelData,
-            [entityAttributesProperty]: {
-              ...edge[entityAttributesProperty],
-              ...newAttributeData,
-            },
+            [entityAttributesProperty]: patched.attributes,
+            [entitySecureAttributesMeta]: patched.secureAttributes,
           };
         }),
       },
@@ -868,6 +915,11 @@ const sessionReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(updateEgo.fulfilled, (state, action) => {
     const { network } = state;
+    const patched = applyEntityAttributePatch(
+      network.ego[entityAttributesProperty],
+      network.ego[entitySecureAttributesMeta],
+      action.payload,
+    );
 
     return withLastUpdated({
       ...state,
@@ -875,10 +927,8 @@ const sessionReducer = createReducer(initialState, (builder) => {
         ...network,
         ego: {
           ...network.ego,
-          [entityAttributesProperty]: {
-            ...network.ego[entityAttributesProperty],
-            ...action.payload,
-          },
+          [entityAttributesProperty]: patched.attributes,
+          [entitySecureAttributesMeta]: patched.secureAttributes,
         },
       },
     });

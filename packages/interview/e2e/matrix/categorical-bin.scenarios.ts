@@ -403,10 +403,10 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          synth.setNodeAttribute(0, otherReason.id, null);
+          synth.unsetNodeAttribute(0, otherReason.id);
           synth.setNodeAttribute(1, personName.id, 'Bob');
           synth.setNodeAttribute(1, categoryVar.id, []);
-          synth.setNodeAttribute(1, otherReason.id, null);
+          synth.unsetNodeAttribute(1, otherReason.id);
           synth.setNodeAttribute(2, personName.id, 'Carol');
           synth.setNodeAttribute(2, categoryVar.id, []);
           // Carol starts in the Other bin so the "move to a regular bin clears
@@ -543,10 +543,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          // seedNetwork randomises unset attributes on non-manual nodes; a
-          // random non-null otherReason would place Alice straight into the
-          // Other bin instead of the drawer.
-          synth.setNodeAttribute(0, otherReason.id, null);
+          // Suppress generation so Alice starts without an Other response.
+          synth.unsetNodeAttribute(0, otherReason.id);
           return synth;
         },
         run: async ({ page, stage, protocol, interview }) => {
@@ -629,10 +627,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           synth.setNodeAttribute(0, personName.id, 'Alice');
           synth.setNodeAttribute(0, categoryVar.id, []);
-          // seedNetwork randomises unset attributes on non-manual nodes; a
-          // random non-null otherReason would place Alice straight into the
-          // Other bin instead of the drawer.
-          synth.setNodeAttribute(0, otherReason.id, null);
+          // Suppress generation so Alice starts without an Other response.
+          synth.unsetNodeAttribute(0, otherReason.id);
           return synth;
         },
         run: async ({ page, stage, protocol, interview }) => {
@@ -839,11 +835,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           // node 1: empty array (unset).
           synth.setNodeAttribute(1, personName.id, 'Empty');
           synth.setNodeAttribute(1, categoryVar.id, []);
-          // node 2: null (the builder cannot emit a truly-undefined attribute
-          // under seedNetwork, so null stands in for the "no value" case — it
-          // is treated identically to the empty array).
+          // node 2: absent, with generation suppressed.
           synth.setNodeAttribute(2, personName.id, 'Unset');
-          synth.setNodeAttribute(2, categoryVar.id, null);
+          synth.unsetNodeAttribute(2, categoryVar.id);
 
           return synth;
         },

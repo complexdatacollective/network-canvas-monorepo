@@ -1,12 +1,12 @@
 import type { Codebook } from '@codaco/protocol-validation';
 import type {
+  NcEdge,
+  NcNetwork,
+  NcNode,
   caseProperty,
   codebookHashProperty,
   edgeExportIDProperty,
   egoProperty,
-  NcEdge,
-  NcNetwork,
-  NcNode,
   ncSourceUUID,
   ncTargetUUID,
   nodeExportIDProperty,

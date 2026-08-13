@@ -37,6 +37,17 @@ const SWEPT: Shape = {
   contested: true,
 };
 
+function requiredAttribute(
+  attributes: Readonly<Record<string, VariableValue>>,
+  name: string,
+): VariableValue {
+  const value = attributes[name];
+  if (value === undefined) {
+    throw new Error(`Expected generated attribute ${name}`);
+  }
+  return value;
+}
+
 /**
  * People and a `unique` variable offering more values than there are of them —
  * which feasibility accepts with room to spare — written by a binning stage and
@@ -166,8 +177,8 @@ function bandsForSeed(
 ): VariableValue[] {
   const { codebook, stages } = binAndFormProtocol(binType, order, shape);
   const { network } = generateNetwork({ seed, codebook, stages });
-  return network.nodes.map(
-    (node) => node[entityAttributesProperty].band ?? null,
+  return network.nodes.map((node) =>
+    requiredAttribute(node[entityAttributesProperty], 'band'),
   );
 }
 
@@ -245,8 +256,8 @@ describe('a unique variable a binning stage and a form both write', () => {
         echoed,
       );
       const { network } = generateNetwork({ seed, codebook, stages });
-      const echoes: VariableValue[] = network.nodes.map(
-        (node) => node[entityAttributesProperty].bandEcho ?? null,
+      const echoes: VariableValue[] = network.nodes.map((node) =>
+        requiredAttribute(node[entityAttributesProperty], 'bandEcho'),
       );
       if (new Set(echoes.map(valueKey)).size !== echoes.length) {
         failures.push(`seed ${seed}: echoes ${JSON.stringify(echoes)}`);

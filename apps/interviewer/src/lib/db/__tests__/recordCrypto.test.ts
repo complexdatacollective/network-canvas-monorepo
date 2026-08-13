@@ -6,6 +6,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { encryptJson } from '../../vault/crypto';
 import { clearVault, writeVault } from '../../vault/vaultStore';
 import {
   decryptAsset,
@@ -14,6 +15,7 @@ import {
   encryptAsset,
   encryptProtocol,
   encryptSession,
+  type StoredSessionRow,
 } from '../recordCrypto';
 import { setSessionDek } from '../sessionKey';
 import type { StoredAsset, StoredProtocol, StoredSession } from '../types';
@@ -49,9 +51,98 @@ const session: StoredSession = {
   currentStep: 3,
   progress: 40,
   network,
-  stageMetadata: { '0': { visited: true } },
+  stageMetadata: { '0': { automaticLayout: true } },
   isSynthetic: false,
 };
+
+const legacyNetwork = {
+  ego: {
+    [entityPrimaryKeyProperty]: 'ego',
+    [entityAttributesProperty]: {
+      unanswered: null,
+      falseValue: false,
+      zeroValue: 0,
+      emptyValue: '',
+      emptySelection: [],
+    },
+  },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: {
+        name: 'Ada',
+        unanswered: null,
+      },
+    },
+  ],
+  edges: [],
+};
+
+const networkWithPassThroughAttributes = {
+  ...legacyNetwork,
+  nodes: [
+    {
+      ...legacyNetwork.nodes[0],
+      attributes: {
+        ...legacyNetwork.nodes[0]?.attributes,
+        'profile page': 'https://example.com/people/ada',
+      },
+    },
+  ],
+};
+
+const legacyStageMetadata = {
+  familyPedigree: {
+    isNetworkCommitted: true,
+    edges: [
+      {
+        id: 'edge-1',
+        from: 'n1',
+        to: 'n2',
+        attributes: {
+          unanswered: null,
+          ownUndefined: undefined,
+          answered: false,
+        },
+      },
+    ],
+  },
+};
+
+function makeSessionRow(networkValue: unknown): StoredSessionRow {
+  return {
+    ...session,
+    network: networkValue,
+  };
+}
+
+async function makeEncryptedSessionRow(
+  networkValue: unknown,
+  dek: CryptoKey,
+  stageMetadataValue?: unknown,
+): Promise<StoredSessionRow> {
+  const aad = `sessions:${session.id}`;
+  return {
+    id: session.id,
+    protocolHash: session.protocolHash,
+    protocolName: session.protocolName,
+    caseId: session.caseId,
+    startedAt: session.startedAt,
+    lastUpdatedAt: session.lastUpdatedAt,
+    finishedAt: session.finishedAt,
+    exportedAt: session.exportedAt,
+    currentStep: session.currentStep,
+    progress: session.progress,
+    isSynthetic: session.isSynthetic,
+    _enc: {
+      network: await encryptJson(networkValue, dek, aad),
+      ...(stageMetadataValue === undefined
+        ? {}
+        : { stageMetadata: await encryptJson(stageMetadataValue, dek, aad) }),
+    },
+  };
+}
 
 const protocol: StoredProtocol = {
   id: 'h1',
@@ -115,6 +206,102 @@ describe('recordCrypto — encrypted mode', () => {
     expect(row._enc?.stageMetadata).toBeUndefined();
     const back = await decryptSession(row);
     expect(back.stageMetadata).toBeUndefined();
+  });
+
+  it('normalizes null-bearing encrypted networks to sparse attributes', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const row = await makeEncryptedSessionRow(legacyNetwork, dek);
+
+    const back = await decryptSession(row);
+
+    expect(back.network.ego.attributes).toEqual({
+      falseValue: false,
+      zeroValue: 0,
+      emptyValue: '',
+      emptySelection: [],
+    });
+    expect(back.network.nodes[0]?.attributes).toEqual({ name: 'Ada' });
+  });
+
+  it('preserves pass-through attribute keys in encrypted networks', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const row = await makeEncryptedSessionRow(
+      networkWithPassThroughAttributes,
+      dek,
+    );
+
+    const back = await decryptSession(row);
+
+    expect(back.network.nodes[0]?.attributes).toEqual({
+      'name': 'Ada',
+      'profile page': 'https://example.com/people/ada',
+    });
+  });
+
+  it('normalizes nullish encrypted Family Pedigree metadata attributes', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const row = await makeEncryptedSessionRow(
+      legacyNetwork,
+      dek,
+      legacyStageMetadata,
+    );
+
+    const back = await decryptSession(row);
+
+    expect(back.stageMetadata?.familyPedigree).toMatchObject({
+      edges: [{ attributes: { answered: false } }],
+    });
+  });
+
+  it('rejects invalid defined values in encrypted networks', async () => {
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const row = await makeEncryptedSessionRow(
+      {
+        ...legacyNetwork,
+        ego: {
+          ...legacyNetwork.ego,
+          attributes: { invalid: { nested: 'value' } },
+        },
+      },
+      dek,
+    );
+
+    await expect(decryptSession(row)).rejects.toThrow();
+  });
+
+  it('rejects invalid plaintext and encrypted stage metadata', async () => {
+    const invalidStageMetadata = {
+      familyPedigree: {
+        isNetworkCommitted: true,
+        edges: [
+          {
+            id: 'edge-1',
+            from: 'n1',
+            to: 'n2',
+            attributes: { invalid: { nested: 'value' } },
+          },
+        ],
+      },
+    };
+    const plaintextRow = {
+      ...makeSessionRow(network),
+      stageMetadata: invalidStageMetadata,
+    };
+
+    await expect(decryptSession(plaintextRow)).rejects.toThrow();
+
+    const dek = await makeDek();
+    setSessionDek(dek);
+    const encryptedRow = await makeEncryptedSessionRow(
+      network,
+      dek,
+      invalidStageMetadata,
+    );
+    await expect(decryptSession(encryptedRow)).rejects.toThrow();
   });
 
   it('round-trips a protocol and stores no plaintext protocol/codebook', async () => {
@@ -192,6 +379,67 @@ describe('recordCrypto — none mode (passthrough)', () => {
     expect(row.stageMetadata).toEqual(session.stageMetadata);
     const back = await decryptSession(row);
     expect(back).toEqual(session);
+  });
+
+  it('normalizes null and own undefined in plaintext networks', async () => {
+    const row = makeSessionRow({
+      ...legacyNetwork,
+      nodes: [
+        {
+          ...legacyNetwork.nodes[0],
+          attributes: {
+            ...legacyNetwork.nodes[0]?.attributes,
+            ownUndefined: undefined,
+          },
+        },
+      ],
+    });
+
+    const back = await decryptSession(row);
+
+    expect(back.network.ego.attributes).toEqual({
+      falseValue: false,
+      zeroValue: 0,
+      emptyValue: '',
+      emptySelection: [],
+    });
+    expect(back.network.nodes[0]?.attributes).toEqual({ name: 'Ada' });
+  });
+
+  it('preserves pass-through attribute keys in plaintext networks', async () => {
+    const back = await decryptSession(
+      makeSessionRow(networkWithPassThroughAttributes),
+    );
+
+    expect(back.network.nodes[0]?.attributes).toEqual({
+      'name': 'Ada',
+      'profile page': 'https://example.com/people/ada',
+    });
+  });
+
+  it('normalizes nullish plaintext Family Pedigree metadata attributes', async () => {
+    const row = {
+      ...makeSessionRow(legacyNetwork),
+      stageMetadata: legacyStageMetadata,
+    };
+
+    const back = await decryptSession(row);
+
+    expect(back.stageMetadata?.familyPedigree).toMatchObject({
+      edges: [{ attributes: { answered: false } }],
+    });
+  });
+
+  it('rejects invalid defined values in plaintext networks', async () => {
+    const row = makeSessionRow({
+      ...legacyNetwork,
+      ego: {
+        ...legacyNetwork.ego,
+        attributes: { invalid: { nested: 'value' } },
+      },
+    });
+
+    await expect(decryptSession(row)).rejects.toThrow();
   });
 
   it('stores plaintext protocol with no _enc', async () => {

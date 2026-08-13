@@ -2,7 +2,10 @@ import { enableMapSet } from 'immer';
 import { createStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+} from '@codaco/shared-consts';
 import type {
   FramingId,
   GAMETE_ROLES,
@@ -12,6 +15,10 @@ import type {
   VariableValue,
 } from '@codaco/shared-consts';
 
+import {
+  applyEntityAttributePatch,
+  type AttributePatch,
+} from '../../store/entityAttributePatch';
 import {
   addEdge as addEdgeToNetwork,
   addNode as addNodeToNetwork,
@@ -27,6 +34,7 @@ import {
   computeRelationshipsToEgo,
 } from './pedigree-layout/utils/getDisplayLabel';
 import { getEdgeRelationshipType } from './utils/edgeUtils';
+import { mergeOwnAttributes } from './utils/writeOwnAttributes';
 
 enableMapSet();
 
@@ -96,7 +104,7 @@ type NetworkActions = {
     attributes: Record<string, VariableValue>;
     id?: string;
   }) => string;
-  updateNode: (id: string, attributes: Record<string, VariableValue>) => void;
+  updateNode: (id: string, attributePatch: AttributePatch) => void;
   removeNode: (id: string) => void;
   addEdge: (edge: {
     from: string;
@@ -224,11 +232,17 @@ export const createFamilyPedigreeStore = (
           return nodeId;
         },
 
-        updateNode: (id, attributes) => {
+        updateNode: (id, attributePatch) => {
           set((state) => {
             const node = state.network.nodes.get(id);
             if (node) {
-              Object.assign(node[entityAttributesProperty], attributes);
+              const patched = applyEntityAttributePatch(
+                node[entityAttributesProperty],
+                node[entitySecureAttributesMeta],
+                attributePatch,
+              );
+              node[entityAttributesProperty] = patched.attributes;
+              node[entitySecureAttributesMeta] = patched.secureAttributes;
             }
           });
         },
@@ -272,7 +286,10 @@ export const createFamilyPedigreeStore = (
           set((state) => {
             const edge = state.network.edges.get(id);
             if (edge) {
-              Object.assign(edge[entityAttributesProperty], attributes);
+              edge[entityAttributesProperty] = mergeOwnAttributes(
+                edge[entityAttributesProperty],
+                attributes,
+              );
             }
           });
 
@@ -284,7 +301,7 @@ export const createFamilyPedigreeStore = (
           await dispatch(
             updateEdgeInNetwork({
               edgeId: reduxEdgeId,
-              newAttributeData: attributes,
+              attributePatch: { set: attributes, unset: [] },
             }),
           ).unwrap();
         },

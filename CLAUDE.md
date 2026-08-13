@@ -383,6 +383,17 @@ Feature PRs never inherit an E2E verdict from an earlier commit: suite
 selection uses the cumulative merge-base-to-current-head diff, so every
 required verdict describes the exact head under review.
 
+Each PR run upserts one sticky **E2E status** comment (the informational
+`e2e-report` job): a single Status/Name/Report/Reason table over all six
+suite jobs, where Reason is the policy's per-suite selection explanation
+(the witness changed path, lane membership, or reuse). Only FAILED jobs
+publish their Playwright report, to GitHub Pages at
+`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
+each branch keeps only its latest run's report, and a later green run removes
+the stale one. Every report run also sweeps directories whose slug matches no
+live branch, so reports for merged or deleted branches disappear on the next
+publish from any branch.
+
 Generated release branches use equivalence reuse: a suite is skipped when the
 newest equivalent native pull-request verdict across the generated release
 branches is successful and the diff since that commit touches only paths that

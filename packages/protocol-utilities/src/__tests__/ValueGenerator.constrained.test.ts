@@ -78,9 +78,32 @@ describe('neutralForVariable', () => {
       }),
     ).toBe(false);
   });
+
+  it('leaves a missing number attribute absent', () => {
+    const generator = new ValueGenerator(1);
+
+    expect(
+      generator.neutralForVariable({
+        id: 'score',
+        name: 'Score',
+        type: 'number',
+      }),
+    ).toBeUndefined();
+  });
 });
 
 describe('generateConstrained', () => {
+  it('returns no value when an option-backed variable has no domain', () => {
+    const generator = new ValueGenerator(1);
+
+    expect(
+      generator.generateConstrained(
+        make({ id: 'v', name: 'V', type: 'ordinal', options: [] }),
+        0,
+      ),
+    ).toBeUndefined();
+  });
+
   it('respects an exact text length', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
@@ -471,11 +494,11 @@ describe('generateConstrained', () => {
 
       expect(drawn.size).toBe(size);
       // One past the count wraps, so the space holds nothing further.
-      expect(
-        drawn.has(
-          valueKey(gen.generateConstrained(variable, 0, { distinctSeq: size })),
-        ),
-      ).toBe(true);
+      const repeated = gen.generateConstrained(variable, 0, {
+        distinctSeq: size,
+      });
+      if (repeated === undefined) throw new Error('Expected a number value');
+      expect(drawn.has(valueKey(repeated))).toBe(true);
     }
   });
 
@@ -680,9 +703,11 @@ describe('generateConstrained', () => {
 
     const drawn = new Set<string>();
     for (let seq = 0; seq < 2; seq++) {
-      drawn.add(
-        valueKey(gen.generateConstrained(variable, 0, { distinctSeq: seq })),
-      );
+      const value = gen.generateConstrained(variable, 0, {
+        distinctSeq: seq,
+      });
+      if (value === undefined) throw new Error('Expected an ordinal value');
+      drawn.add(valueKey(value));
     }
     expect(drawn.size).toBe(2);
 
@@ -691,7 +716,9 @@ describe('generateConstrained', () => {
     // sample of the option list's labels rather than of the data it records.
     const free = new Set<string>();
     for (let index = 0; index < 4; index++) {
-      free.add(valueKey(gen.generateConstrained(variable, index)));
+      const value = gen.generateConstrained(variable, index);
+      if (value === undefined) throw new Error('Expected an ordinal value');
+      free.add(valueKey(value));
     }
     expect(free.size).toBe(2);
   });

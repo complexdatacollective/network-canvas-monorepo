@@ -2,7 +2,12 @@ import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import FieldNamespace, { useFieldNamespace } from './FieldNamespace';
+import FieldNamespace, {
+  resolveFieldName,
+  resolveFieldPath,
+  useFieldNamespace,
+  useFieldNamespacePath,
+} from './FieldNamespace';
 
 function wrapper(prefix: string) {
   function Wrapper({ children }: { children: ReactNode }) {
@@ -24,19 +29,32 @@ function nestedWrapper(outer: string, inner: string) {
 
 describe('FieldNamespace', () => {
   describe('useFieldNamespace', () => {
-    it('should return empty string when no namespace provider exists', () => {
+    it('preserves the empty string returned without a provider', () => {
       const { result } = renderHook(() => useFieldNamespace());
       expect(result.current).toBe('');
     });
 
-    it('should return the prefix from a single namespace', () => {
+    it('treats an empty root prefix as no namespace', () => {
+      const { result } = renderHook(
+        () => ({
+          name: useFieldNamespace(),
+          path: useFieldNamespacePath(),
+        }),
+        { wrapper: wrapper('') },
+      );
+
+      expect(result.current).toEqual({ name: '', path: [] });
+      expect(resolveFieldPath(result.current.path, 'name')).toEqual(['name']);
+    });
+
+    it('preserves the structural string returned by one namespace', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: wrapper('steps[0]'),
       });
       expect(result.current).toBe('steps[0]');
     });
 
-    it('should stack prefixes from nested namespaces with dot separator', () => {
+    it('preserves nested string namespaces with dot separators', () => {
       const { result } = renderHook(() => useFieldNamespace(), {
         wrapper: nestedWrapper('steps[0]', 'egg-parent'),
       });
@@ -57,27 +75,101 @@ describe('FieldNamespace', () => {
       });
       expect(result.current).toBe('steps[0].egg-parent.details');
     });
+
+    it('preserves noncanonical prefixes verbatim', () => {
+      const { result } = renderHook(() => useFieldNamespace(), {
+        wrapper: nestedWrapper('person name', 'contact details'),
+      });
+
+      expect(result.current).toBe('person name.contact details');
+    });
+  });
+
+  describe('useFieldNamespacePath', () => {
+    it('returns typed path segments for internal field resolution', () => {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
+        wrapper: nestedWrapper('steps[0]', 'egg-parent'),
+      });
+      expect(result.current).toEqual(['steps', 0, 'egg-parent']);
+    });
   });
 
   describe('resolveFieldName', () => {
     it('should prepend namespace to field name', () => {
-      const { result } = renderHook(() => useFieldNamespace(), {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
         wrapper: wrapper('steps[0]'),
       });
 
-      const namespace = result.current;
-      const fieldName = 'name';
-      const resolved = namespace ? `${namespace}.${fieldName}` : fieldName;
-      expect(resolved).toBe('steps[0].name');
+      expect(resolveFieldPath(result.current, 'name')).toEqual([
+        'steps',
+        0,
+        'name',
+      ]);
     });
 
     it('should return bare field name when no namespace', () => {
-      const { result } = renderHook(() => useFieldNamespace());
+      const { result } = renderHook(() => useFieldNamespacePath());
 
-      const namespace = result.current;
-      const fieldName = 'name';
-      const resolved = namespace ? `${namespace}.${fieldName}` : fieldName;
-      expect(resolved).toBe('name');
+      expect(resolveFieldPath(result.current, 'name')).toEqual(['name']);
     });
+
+    it('preserves a legacy nonnumeric bracketed field name', () => {
+      expect(resolveFieldPath([], 'weight[kg]')).toEqual(['weight[kg]']);
+    });
+
+    it('preserves legacy quoted brackets unless structural parsing is explicit', () => {
+      expect(resolveFieldPath([], 'settings["locale"]')).toEqual([
+        'settings["locale"]',
+      ]);
+      expect(resolveFieldPath([], 'settings["locale"]', 'path')).toEqual([
+        'settings',
+        'locale',
+      ]);
+    });
+
+    it('keeps an opaque dotted field name in one segment', () => {
+      const { result } = renderHook(() => useFieldNamespacePath(), {
+        wrapper: wrapper('steps[0]'),
+      });
+
+      expect(
+        resolveFieldPath(result.current, 'favorite.color', 'opaque'),
+      ).toEqual(['steps', 0, 'favorite.color']);
+      expect(resolveFieldName(result.current, 'favorite.color', 'opaque')).toBe(
+        'steps[0]["favorite.color"]',
+      );
+    });
+
+    it.each([
+      '__proto__',
+      'safe.__proto__.polluted',
+      'constructor',
+      'prototype',
+    ])('rejects an unsafe namespace prefix %s', (prefix) => {
+      expect(() =>
+        renderHook(() => useFieldNamespacePath(), {
+          wrapper: wrapper(prefix),
+        }),
+      ).toThrow(`Unsafe form field path: ${prefix}`);
+    });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'keeps the dangerous legacy field name %s as an inert leaf',
+      (name) => {
+        expect(resolveFieldPath([], name)).toEqual([name]);
+        expect(resolveFieldPath(['safe'], name)).toEqual(['safe', name]);
+      },
+    );
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'keeps the dangerous opaque field name %s as an inert leaf',
+      (name) => {
+        expect(resolveFieldPath([], name, 'opaque')).toEqual([name]);
+        expect(resolveFieldPath(['safe'], name, 'opaque')).toEqual([
+          'safe',
+          name,
+        ]);
+      },
+    );
   });
 });

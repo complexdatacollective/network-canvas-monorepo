@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
@@ -15,7 +16,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
-  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { useTrack } from '../../../analytics/useTrack';
@@ -26,11 +26,13 @@ import {
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
+import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 
@@ -39,7 +41,9 @@ type NodeFormProps = {
   form: TForm;
   disabled: boolean;
   onClose: () => void;
-  addNode: (attributes: NcNode[EntityAttributesProperty]) => void;
+  addNode: (
+    attributes: NcNode[EntityAttributesProperty],
+  ) => void | Promise<void>;
 };
 
 const NodeForm = (props: NodeFormProps) => {
@@ -61,7 +65,7 @@ const NodeForm = (props: NodeFormProps) => {
     (payload: {
       nodeId: NcNode[EntityPrimaryKey];
       newModelData?: Record<string, unknown>;
-      newAttributeData: NcNode[EntityAttributesProperty];
+      attributePatch: AttributePatch;
     }) => dispatch(updateNodeAction({ ...payload, currentStep })),
     [dispatch, currentStep],
   );
@@ -102,13 +106,15 @@ const NodeForm = (props: NodeFormProps) => {
     },
   };
 
-  // Convert null values to undefined for form compatibility
   const initialValues = selectedNode?.[entityAttributesProperty]
-    ? Object.fromEntries(
-        Object.entries(selectedNode[entityAttributesProperty]).map(
-          ([key, value]) => [key, value ?? undefined],
-        ),
-      )
+    ? Object.entries(selectedNode[entityAttributesProperty]).reduce<
+        Record<string, FieldValue>
+      >((values, [name, value]) => {
+        if (value !== null) {
+          values[name] = value;
+        }
+        return values;
+      }, {})
     : undefined;
 
   const { fieldComponents, coerceValues } = useProtocolForm({
@@ -118,24 +124,29 @@ const NodeForm = (props: NodeFormProps) => {
     currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
   });
 
-  // Handle form submission
   const handleSubmit: FormSubmitHandler = useCallback(
-    (values) => {
-      // Coerce values to their declared codebook type (e.g. number fields,
-      // which emit raw strings) before persisting.
-      const variableValues = coerceValues(values) as Record<
-        string,
-        VariableValue
-      >;
+    async (values) => {
+      const patchResult = formValuesToAttributePatch(
+        coerceValues(values),
+        form.fields.map((field) => field.variable),
+      );
+
+      if (!patchResult.success) {
+        return {
+          success: false,
+          formErrors: ['An error occurred while submitting the form.'],
+        };
+      }
+
       const isNewNode = !selectedNode;
 
       if (isNewNode) {
-        addNode({ ...newNodeAttributes, ...variableValues });
+        await addNode({ ...newNodeAttributes, ...patchResult.patch.set });
       } else {
         const selectedUID = selectedNode[entityPrimaryKeyProperty];
-        void updateNode({
+        await updateNode({
           nodeId: selectedUID,
-          newAttributeData: variableValues,
+          attributePatch: patchResult.patch,
         });
       }
 
@@ -146,10 +157,11 @@ const NodeForm = (props: NodeFormProps) => {
         celebrate();
       }
 
-      return { success: true as const };
+      return { success: true };
     },
     [
       coerceValues,
+      form.fields,
       selectedNode,
       addNode,
       newNodeAttributes,

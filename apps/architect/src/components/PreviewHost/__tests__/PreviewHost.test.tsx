@@ -435,10 +435,10 @@ describe('PreviewHost', () => {
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] === null,
+      (n) => !Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
-    const placed = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] !== null,
+    const placed = nodes.filter((n) =>
+      Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
     expect(unplaced.length).toBeGreaterThan(0);
     expect(placed.length).toBeGreaterThan(0);

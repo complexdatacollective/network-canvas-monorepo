@@ -22,7 +22,6 @@ async function graphMLGenerator(
   const xmlDoc = setUpXml(network.sessionVariables);
 
   const generateKeyElements = getKeyElementGenerator(codebook, exportOptions);
-  const generateDataElements = getDataElementGenerator(codebook, exportOptions);
 
   // <graphml /> is where <key /> elements are attached
   const graphMLElement = xmlDoc.getElementsByTagName('graphml')[0];
@@ -34,26 +33,26 @@ async function graphMLGenerator(
     throw new Error('GraphML document missing expected root elements');
   }
 
-  if (network.ego) {
-    const [egoKeys, egoData] = await Promise.all([
-      generateKeyElements(network.ego),
-      generateDataElements(network.ego),
-    ]);
-    graphMLElement.insertBefore(egoKeys, graphElement);
-    graphElement.appendChild(egoData);
-  }
+  const { fragment: keyElements, externalKeyIds } = await generateKeyElements({
+    ego: [network.ego],
+    node: network.nodes,
+    edge: network.edges,
+  });
+  graphMLElement.insertBefore(keyElements, graphElement);
 
-  const [nodeKeys, nodeData, edgeKeys, edgeData] = await Promise.all([
-    generateKeyElements(network.nodes),
+  const generateDataElements = getDataElementGenerator(
+    codebook,
+    exportOptions,
+    externalKeyIds,
+  );
+  const [egoData, nodeData, edgeData] = await Promise.all([
+    generateDataElements(network.ego),
     generateDataElements(network.nodes),
-    generateKeyElements(network.edges),
     generateDataElements(network.edges),
   ]);
 
-  graphMLElement.insertBefore(nodeKeys, graphElement);
+  graphElement.appendChild(egoData);
   graphElement.appendChild(nodeData);
-
-  graphMLElement.insertBefore(edgeKeys, graphElement);
   graphElement.appendChild(edgeData);
 
   // Serialize the XML document

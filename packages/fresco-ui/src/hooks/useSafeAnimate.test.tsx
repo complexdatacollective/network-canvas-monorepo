@@ -1,18 +1,34 @@
 import { renderHook } from '@testing-library/react';
-import { MotionConfigContext } from 'motion/react';
+import { MotionConfigContext, MotionGlobalConfig } from 'motion/react';
 import type { PropsWithChildren } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { useShouldSkipAnimations } from './useSafeAnimate';
 
 describe('useShouldSkipAnimations', () => {
-  it('keeps animations enabled by default', () => {
+  afterEach(() => {
+    MotionGlobalConfig.skipAnimations = true;
+  });
+
+  it('keeps animations enabled when no animation control disables them', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
     const { result } = renderHook(() => useShouldSkipAnimations());
 
     expect(result.current).toBe(false);
   });
 
+  it('honours the global Motion test control', () => {
+    MotionGlobalConfig.skipAnimations = true;
+
+    const { result } = renderHook(() => useShouldSkipAnimations());
+
+    expect(result.current).toBe(true);
+  });
+
   it('honours MotionConfig skipAnimations', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
     const wrapper = ({ children }: PropsWithChildren) => (
       <MotionConfigContext.Provider
         value={{
@@ -33,6 +49,8 @@ describe('useShouldSkipAnimations', () => {
   });
 
   it('honours forced reduced motion', () => {
+    MotionGlobalConfig.skipAnimations = false;
+
     const wrapper = ({ children }: PropsWithChildren) => (
       <MotionConfigContext.Provider
         value={{

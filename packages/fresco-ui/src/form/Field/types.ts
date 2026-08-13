@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import type { Variable } from '@codaco/protocol-validation';
 
+import type { FieldNameMode } from '../FieldNamespace';
 import type { CustomFieldValidation, ValidationContext } from '../store/types';
 import type { ValidationPropKey } from '../validation/functions';
 
@@ -256,6 +257,13 @@ export type FieldSlotController = {
 type FieldOwnProps<C extends ValidFieldComponent> = {
   /** Unique field name, used as the key in form state. */
   name: string;
+  /**
+   * Interpret `name` as a structural path or as one opaque output key.
+   * Protocol-authored variable IDs must use `opaque`.
+   * `legacy` preserves the historical dot and terminal numeric-bracket rules.
+   * @default legacy
+   */
+  nameMode?: FieldNameMode;
   /** Label text rendered above (or beside when inline) the control. */
   label: string;
   /** Supplementary text rendered below the label. */

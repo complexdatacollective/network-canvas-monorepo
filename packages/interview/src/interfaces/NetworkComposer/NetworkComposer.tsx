@@ -266,7 +266,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         void dispatch(
           updateNode({
             nodeId,
-            newAttributeData: { [layoutVariable]: position },
+            attributePatch: {
+              set: { [layoutVariable]: position },
+              unset: [],
+            },
             currentStep,
           }),
         );

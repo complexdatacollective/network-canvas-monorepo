@@ -297,7 +297,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ agrees: false }));
+        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
         return true;
       });
     });
@@ -321,7 +321,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ agrees: false }));
+        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
         return true;
       });
     });
@@ -360,7 +360,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ agrees: false }));
+        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
         return true;
       });
     });
@@ -372,7 +372,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ agrees: true }));
+        await store.dispatch(updateEgo({ set: { agrees: true }, unset: [] }));
         return true;
       });
     });
@@ -392,7 +392,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ agrees: false }));
+        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
         return true;
       });
     });

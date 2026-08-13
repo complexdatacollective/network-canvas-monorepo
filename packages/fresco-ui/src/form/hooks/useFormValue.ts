@@ -1,7 +1,12 @@
 import { useShallow } from 'zustand/react/shallow';
 
 import type { FieldValue } from '../Field/types';
-import { useFieldNamespace } from '../FieldNamespace';
+import {
+  type FieldNameMode,
+  resolveFieldPath,
+  useFieldNamespace,
+  useFieldNamespacePath,
+} from '../FieldNamespace';
 import useFormStore from './useFormStore';
 
 /**
@@ -13,16 +18,28 @@ import useFormStore from './useFormStore';
 export function useFormValue<
   const K extends readonly string[],
   T extends FieldValue = FieldValue,
->(fieldNames: K): Record<K[number], T | undefined> {
-  const namespace = useFieldNamespace();
+>(
+  fieldNames: K,
+  nameMode: FieldNameMode = 'legacy',
+): Record<K[number], T | undefined> {
+  const namespace = useFieldNamespacePath();
+  const namespaceName = useFieldNamespace();
 
   return useFormStore(
     useShallow((state) => {
       const values: Record<string, T | undefined> = {};
       for (const name of fieldNames) {
-        const resolvedName = namespace ? `${namespace}.${name}` : name;
-        const field = state.getFieldState(resolvedName);
-        values[name] = field?.value as T | undefined;
+        const resolvedPath = resolveFieldPath(namespace, name, nameMode);
+        const publicName = namespaceName ? `${namespaceName}.${name}` : name;
+        const field = state.pathOperations
+          ? state.pathOperations.getFieldState(resolvedPath)
+          : state.getFieldState(publicName);
+        Object.defineProperty(values, name, {
+          configurable: true,
+          enumerable: true,
+          value: field?.value,
+          writable: true,
+        });
       }
       return values as Record<K[number], T | undefined>;
     }),

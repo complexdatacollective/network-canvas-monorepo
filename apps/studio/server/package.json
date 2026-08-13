@@ -1,0 +1,45 @@
+{
+  "name": "@codaco/studio-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Network Canvas Studio server — the Node deployable: public data API, internal RPC surface, app WebSocket endpoint, and self-host static serving.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "apps/studio/server"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n s3,server \"node scripts/dev-s3.ts\" \"node --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts\"",
+    "build": "vite build",
+    "start": "CLIENT_DIST=../client/dist node dist/index.js",
+    "typecheck": "tsc --build --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/studio-rpc": "workspace:^",
+    "@hono/node-server": "^2.1.0",
+    "@orpc/contract": "2.0.0-beta.26",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
+    "hono": "^4.13.0",
+    "ws": "^8.21.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@orpc/client": "2.0.0-beta.26",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^10.0.4",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
