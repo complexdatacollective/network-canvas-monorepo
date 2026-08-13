@@ -3,13 +3,17 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 /**
- * A one-pixel scroll-height excess is rounding noise from fractional line
- * boxes, and line height carries enough slack that tolerating it never clips
- * a glyph. Width has no such slack: a single hidden pixel is the upright
- * stroke of a final letter ("Mohammad" clipped to "Mohammac"), so any
- * measured width excess must step the ladder down.
+ * Fractional line boxes make integer scroll metrics lie a little: each line
+ * set on a non-integer line-height (the ladder floor's `leading-[1.15]` is
+ * 13.8px) can round scrollHeight up ~1px against clientHeight, so a clamp of
+ * four fully visible lines can measure several pixels "over". A genuinely
+ * hidden line contributes at least a full line box (≥12px at the smallest
+ * rung), so anything under half of that is rounding, not clipping. Width has
+ * no such slack: a single hidden pixel is the upright stroke of a final
+ * letter ("Mohammad" clipped to "Mohammac"), so any measured width excess
+ * must step the ladder down.
  */
-const HEIGHT_TOLERANCE = 1;
+const HEIGHT_TOLERANCE = 6;
 
 const overflows = (element: HTMLElement) =>
   element.scrollHeight - element.clientHeight > HEIGHT_TOLERANCE ||

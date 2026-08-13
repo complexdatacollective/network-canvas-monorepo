@@ -86,9 +86,11 @@ describe('useFitText', () => {
     await waitFor(() => expect(state()).toBe('0:true'));
   });
 
-  it('steps down for any width excess but tolerates a pixel of height rounding', async () => {
-    // A pixel of hidden width is a clipped letter stroke; a pixel of scroll
-    // height is fractional line-box rounding inside the leading's slack.
+  it('steps down for any width excess but tolerates line-rounding in height', async () => {
+    // A pixel of hidden width is a clipped letter stroke; a few pixels of
+    // scroll height are fractional line boxes rounding up — four visible
+    // lines on a 13.8px leading can measure that far "over" with nothing
+    // hidden. A genuinely clipped line adds a full line box, far more.
     uninstallLabelMetrics();
     const defineMetric = (
       metric: string,
@@ -104,12 +106,17 @@ describe('useFitText', () => {
       return this.className.includes('text-base') ? 101 : 100;
     });
     defineMetric('clientHeight', () => 20);
-    defineMetric('scrollHeight', () => 21);
+    defineMetric('scrollHeight', function (this: HTMLElement) {
+      // Rounding-sized excess everywhere except the smallest rung, which
+      // shows a whole hidden line.
+      return this.className.includes('text-xs') ? 34 : 26;
+    });
 
     render(<Probe text="x" />);
 
     // Rung 1, not 0: the one-pixel width excess at the largest rung is real
-    // overflow. Not truncated at rung 2: the one-pixel height excess is noise.
+    // overflow. Rung 1, not 2: the six-pixel height excess is rounding noise,
+    // so the ladder must not walk past it to the rung with a hidden line.
     await waitFor(() => expect(state()).toBe('1:false'));
   });
 
