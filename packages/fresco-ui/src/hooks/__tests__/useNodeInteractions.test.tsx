@@ -66,6 +66,29 @@ describe('useNodeInteractions: minimum visible key press', () => {
     expect(pressed()).toBe('true');
   });
 
+  it('lifts the press when the window takes the pointer away', () => {
+    render(<Probe />);
+
+    fireEvent.pointerDown(node(), { button: 0 });
+    expect(pressed()).toBe('true');
+
+    // An app switch mid-press: no pointerup, pointercancel or keyup will
+    // ever arrive for this press.
+    fireEvent.blur(window);
+
+    expect(pressed()).toBe('false');
+  });
+
+  it('lifts a key press held back by the dwell when the window blurs', () => {
+    render(<Probe />);
+
+    fireEvent.keyDown(node(), { key: 'Enter' });
+    fireEvent.keyUp(node(), { key: 'Enter' });
+    fireEvent.blur(window);
+
+    expect(pressed()).toBe('false');
+  });
+
   it('lets a pointer press cancel the held-back release', () => {
     render(<Probe />);
 

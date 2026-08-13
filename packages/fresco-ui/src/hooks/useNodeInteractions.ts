@@ -123,6 +123,19 @@ export function useNodeInteractions(
     }
   }, [isPressed, animate, scope]);
 
+  // Losing the window ends the press without any of the events that normally
+  // would: no pointerup, no pointercancel, no keyup. Left alone the node stays
+  // visibly depressed for as long as it is mounted, and anything a caller
+  // defers until the press lifts — the selection ring — waits with it.
+  useEffect(() => {
+    const handleWindowBlur = () => {
+      cancelPendingKeyRelease();
+      resetPress();
+    };
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [cancelPendingKeyRelease, resetPress]);
+
   const handlePointerUp = useCallback(
     (_e: React.PointerEvent) => {
       resetPress();

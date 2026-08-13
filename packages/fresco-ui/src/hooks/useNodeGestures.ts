@@ -337,8 +337,12 @@ export function useNodeGestures({
         // abandon the hold, but a drag in flight is unaffected (its own
         // touch-action already prevents scroll). A gesture classified as a
         // scroll is not also a tap — if the node is still under the pointer
-        // on release, the click the browser synthesizes must be swallowed.
+        // on release, the click the browser synthesizes must be swallowed —
+        // and it is not a drag either: settling it here stops later movement
+        // in the same sequence from picking the node up after the
+        // participant has already scrolled it out from under their finger.
         if (draggingRef.current) return;
+        moved = true;
         suppressClickRef.current = true;
         abandonHold();
         optionsRef.current.onHoldInterrupted?.();

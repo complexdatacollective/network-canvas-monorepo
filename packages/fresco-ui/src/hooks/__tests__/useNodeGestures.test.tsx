@@ -144,6 +144,22 @@ describe('useNodeGestures: holds', () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
+  it('never lets a press interrupted by scrolling become a drag', () => {
+    const onDragStart = vi.fn();
+    render(
+      <Probe dragEnabled onDragStart={onDragStart} onLongPress={vi.fn()} />,
+    );
+
+    // Held on the node, the surroundings scroll, and only then does the
+    // pointer move: the node has already been scrolled out from under the
+    // finger, so picking it up now would move the wrong thing.
+    press(100, 100);
+    fireEvent.scroll(document);
+    fireEvent.pointerMove(window, { clientX: 160, clientY: 100, pointerId: 1 });
+
+    expect(onDragStart).not.toHaveBeenCalled();
+  });
+
   it('never lets a press interrupted by scrolling also tap', () => {
     const onClickResult = vi.fn();
     render(<Probe onLongPress={vi.fn()} onClickResult={onClickResult} />);

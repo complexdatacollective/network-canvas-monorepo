@@ -59,6 +59,23 @@ describe('Node selected ring choreography', () => {
     expect(ringCalls().length).toBeGreaterThan(0);
   });
 
+  it('lands the ring when the window ends the press instead of a release', () => {
+    const { rerender } = render(
+      <Node label="Ash" onClick={vi.fn()} selected={false} />,
+    );
+    const node = screen.getByRole('button');
+
+    fireEvent.pointerDown(node, { button: 0 });
+    rerender(<Node label="Ash" onClick={vi.fn()} selected />);
+    expect(ringCalls()).toHaveLength(0);
+
+    // The press is ended by losing the window, not by a release. Deferring
+    // the ring until a release that will never arrive would strand it.
+    fireEvent.blur(window);
+
+    expect(ringCalls().length).toBeGreaterThan(0);
+  });
+
   it('shows the ring immediately when selection changes without a press', () => {
     const { rerender } = render(
       <Node label="Ash" onClick={vi.fn()} selected={false} />,
