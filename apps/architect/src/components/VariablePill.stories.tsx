@@ -47,7 +47,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A presentation-only variable reference. The type and validation regions remain fixed while the label uses the available width and truncates when constrained.',
+          'A presentation-only variable reference. The type region remains fixed while the label uses the available width and truncates when constrained. Active validation rules are included in the accessible name without adding visible glyphs.',
       },
     },
   },
@@ -79,7 +79,8 @@ const meta = {
     validations: {
       control: 'check',
       options: VALIDATION_NAMES,
-      description: 'Validation rules included in the accessible description.',
+      description:
+        'Validation rules announced in the accessible name; they do not change the visible pill.',
     },
   },
   render: ({ containerWidth, ...args }) => (

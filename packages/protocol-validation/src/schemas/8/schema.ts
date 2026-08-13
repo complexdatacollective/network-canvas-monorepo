@@ -389,8 +389,10 @@ const validateComposerFieldBooleanProbabilities = (
     const variable = codebookVariables[field.variable];
     if (!variable || variable.type !== 'boolean') return;
     if (field.component !== ComponentTypes.Boolean) return;
-    // A variable that declares the control already carries the rule itself.
-    if ('component' in variable && variable.component !== undefined) return;
+    // Only a variable whose OWN control is Boolean already carries this rule.
+    // A different declared control does not make the Composer field's
+    // stage-effective Boolean rendering disappear.
+    if (variable.component === ComponentTypes.Boolean) return;
     if (!('synthetic' in variable) || variable.synthetic === undefined) return;
     const probabilityTrue = (variable.synthetic as { probabilityTrue?: number })
       .probabilityTrue;

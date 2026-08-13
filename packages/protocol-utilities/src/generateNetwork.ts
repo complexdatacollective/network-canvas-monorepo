@@ -463,11 +463,11 @@ function deriveFeasibilityConfig(
     ).filter((creation) => creation.structured === null);
     if (topologyCreations.length === 0) continue;
 
-    // Bounded per creation, then MAXIMISED within a subject type and SUMMED
-    // across subject types. A pair is two nodes of one type: stages over
-    // different types reach disjoint sets of pairs and their edges add up,
-    // while stages over the same type reach the same pairs, so the loosest of
-    // their declared topologies bounds them all rather than their sum.
+    // Bounded per creation, then SUMMED within a subject type up to that
+    // subject's total pairs, and summed across subject types. Stages over one
+    // subject can expose disjoint filtered domains, and each rounds its own
+    // topology target independently, so taking only their largest declared
+    // bound under-counts the edges those stages can build between them.
     const ceilingBySubject = new Map<string, number>();
     for (const creation of topologyCreations) {
       const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
@@ -491,7 +491,10 @@ function deriveFeasibilityConfig(
       );
       ceilingBySubject.set(
         creation.subjectNodeType,
-        Math.max(ceilingBySubject.get(creation.subjectNodeType) ?? 0, bound),
+        Math.min(
+          pairs,
+          (ceilingBySubject.get(creation.subjectNodeType) ?? 0) + bound,
+        ),
       );
     }
     edgeCountByType[type] = [...ceilingBySubject.values()].reduce(

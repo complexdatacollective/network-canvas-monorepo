@@ -111,4 +111,34 @@ describe('synthetic count vs behaviours window (verify-15)', () => {
       );
     },
   );
+
+  it.each([
+    {
+      label: 'zero-variance normal',
+      behaviours: { minNodes: 5 },
+      count: { distribution: 'normal', mean: 4, sd: 0, max: 20 },
+      ceiling: 4,
+    },
+    {
+      label: 'zero-mean Poisson',
+      behaviours: { minNodes: 1 },
+      count: { distribution: 'poisson', mean: 0, max: 20 },
+      ceiling: 0,
+    },
+  ])(
+    'rejects a $label whose explicit max exceeds its single-point support',
+    ({ behaviours, count, ceiling }) => {
+      const result = ProtocolSchemaV8.safeParse(
+        protocolWith(disjointStage(behaviours, count)),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: expect.arrayContaining(['synthetic', 'count']),
+          message: expect.stringContaining(`can reach at most ${ceiling}`),
+        }),
+      );
+    },
+  );
 });

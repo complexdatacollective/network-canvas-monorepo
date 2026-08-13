@@ -53,7 +53,21 @@ const syntheticCountRange = (
     case 'uniform':
       return { floor: count.min, ceiling: count.max };
     case 'poisson':
+      // A zero-mean Poisson has exactly one outcome. An explicit maximum is
+      // only a clamp and cannot make any positive count reachable.
+      if (count.mean === 0) return { floor: 0, ceiling: 0 };
+      return {
+        floor: count.min ?? 0,
+        ceiling: syntheticCountCeiling(count),
+      };
     case 'normal':
+      // With no spread the sampler always rounds this one mean. Bounds are
+      // clamps, not extra support (the count schema has already proved the
+      // mean lies inside them).
+      if (count.sd === 0) {
+        const value = Math.round(count.mean);
+        return { floor: value, ceiling: value };
+      }
       return {
         floor: count.min ?? 0,
         ceiling: syntheticCountCeiling(count),
