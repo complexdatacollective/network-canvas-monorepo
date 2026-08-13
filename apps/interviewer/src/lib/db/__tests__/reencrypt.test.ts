@@ -54,7 +54,7 @@ function makeSession(id: string): StoredSession {
     currentStep: 3,
     progress: 40,
     network,
-    stageMetadata: { '0': { visited: true } },
+    stageMetadata: { '0': { automaticLayout: true } },
     isSynthetic: false,
   };
 }
@@ -152,7 +152,9 @@ describe('reencryptAllRecords — sweep after enrolment', () => {
     }
     const backSession = await decryptSession(sessionRow);
     expect(backSession.network).toEqual(network);
-    expect(backSession.stageMetadata).toEqual({ '0': { visited: true } });
+    expect(backSession.stageMetadata).toEqual({
+      '0': { automaticLayout: true },
+    });
     const backProtocol = await decryptProtocol(protocolRow);
     expect(backProtocol.protocol.name).toBe('Study');
     const backAsset = await decryptAsset(assetRow);

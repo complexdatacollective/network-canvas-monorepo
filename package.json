@@ -21,10 +21,10 @@
     "typecheck": "turbo run typecheck --continue",
     "generate:interface-images": "pnpm --filter @codaco/interface-images generate",
     "prepare": "husky",
-    "knip": "SKIP_ENV_VALIDATION=true knip --exclude catalog"
+    "knip": "SKIP_ENV_VALIDATION=true knip"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
+    "@changesets/cli": "^3.0.0",
     "@total-typescript/ts-reset": "catalog:",
     "@types/node": "catalog:",
     "@typescript/typescript6": "catalog:",

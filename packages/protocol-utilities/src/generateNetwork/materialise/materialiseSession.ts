@@ -113,11 +113,19 @@ type Planned = {
   missing: Set<string>;
 };
 
-/** The planned final state of one attribute: null when planned-missing. */
-const valueFor = (planned: Planned, variableId: string): VariableValue =>
-  planned.missing.has(variableId)
-    ? null
-    : (planned.attributes[variableId] ?? null);
+/**
+ * The planned final state of one attribute, or `undefined` where the plan
+ * leaves it unanswered.
+ *
+ * Attributes are SPARSE: an unset answer is a key the entity does not carry,
+ * not a key holding null. So a planned-missing variable has no value to write
+ * and its callers omit it.
+ */
+const valueFor = (
+  planned: Planned,
+  variableId: string,
+): VariableValue | undefined =>
+  planned.missing.has(variableId) ? undefined : planned.attributes[variableId];
 
 /**
  * What an entity carries the moment it is created.
@@ -131,9 +139,9 @@ const valueFor = (planned: Planned, variableId: string): VariableValue =>
 const creationValueFor = (
   planned: Planned,
   variableId: string,
-): VariableValue =>
+): VariableValue | undefined =>
   variableId in planned.fixedAtCreation
-    ? (planned.fixedAtCreation[variableId] ?? null)
+    ? planned.fixedAtCreation[variableId]
     : valueFor(planned, variableId);
 
 export function materialiseSession(params: {
@@ -376,8 +384,9 @@ export function materialiseSession(params: {
       unplannedMissing.set(decisionKey, decided);
     }
     if (!decided) return;
+    // Unanswered is ABSENT: the key is removed rather than nulled.
     for (const id of members) {
-      if (id in attributes) attributes[id] = null;
+      if (id in attributes) delete attributes[id];
     }
   };
 
@@ -424,11 +433,12 @@ export function materialiseSession(params: {
       planned &&
       (variableId in planned.attributes || planned.missing.has(variableId))
     ) {
-      attributes[variableId] = valueFor(planned, variableId);
+      const value = valueFor(planned, variableId);
+      if (value !== undefined) attributes[variableId] = value;
       return;
     }
     if (certainlyMissing(ref, variableId, planned)) {
-      attributes[variableId] = null;
+      // Left absent rather than written as null.
       return;
     }
     drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
@@ -526,7 +536,8 @@ export function materialiseSession(params: {
         ]);
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of writeSet) {
-          attributes[variableId] = creationValueFor(planned, variableId);
+          const value = creationValueFor(planned, variableId);
+          if (value !== undefined) attributes[variableId] = value;
         }
 
         const promptIDs =
@@ -604,7 +615,8 @@ export function materialiseSession(params: {
 
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of creation.writesAtCreation) {
-          attributes[variableId] = creationValueFor(planned, variableId);
+          const value = creationValueFor(planned, variableId);
+          if (value !== undefined) attributes[variableId] = value;
         }
         const edge = {
           [entityPrimaryKeyProperty]: planned.uid,
@@ -790,10 +802,12 @@ export function materialiseSession(params: {
     const writes = stage.type === 'FamilyPedigree' ? [] : summary.writes;
     for (const write of writes) {
       if (write.entity === 'ego') {
-        draft.egoAttributes[write.variableId] = valueFor(
-          plan.ego,
-          write.variableId,
-        );
+        const egoValue = valueFor(plan.ego, write.variableId);
+        if (egoValue === undefined) {
+          delete draft.egoAttributes[write.variableId];
+        } else {
+          draft.egoAttributes[write.variableId] = egoValue;
+        }
         continue;
       }
       if (write.entity === 'node') {

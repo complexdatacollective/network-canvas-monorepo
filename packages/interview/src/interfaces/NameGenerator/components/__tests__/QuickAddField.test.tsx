@@ -114,6 +114,31 @@ describe('QuickAddField', () => {
     );
   });
 
+  it('treats a dotted protocol variable containing a dangerous segment as opaque', async () => {
+    const onSubmit = vi.fn(async () => ({ success: true as const }));
+
+    render(
+      <Form onSubmit={onSubmit}>
+        <QuickAddField
+          name="safe.__proto__.polluted"
+          placeholder="Type a name"
+          disabled={false}
+        />
+      </Form>,
+    );
+
+    const input = await openField();
+    await userEvent.type(input, 'Alice');
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        'safe.__proto__.polluted': 'Alice',
+      });
+    });
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
+  });
+
   it('resets from the owning form success signal when submitting renders are batched', async () => {
     function Harness() {
       const [successfulSubmissionCount, setSuccessfulSubmissionCount] =

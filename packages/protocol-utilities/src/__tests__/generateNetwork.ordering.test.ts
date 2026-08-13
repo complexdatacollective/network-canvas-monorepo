@@ -508,7 +508,7 @@ describe('a variable certain to be unanswered', () => {
 
     expect(network.nodes).toHaveLength(3);
     for (const node of network.nodes) {
-      expect(attributesOf(node).note).toBeNull();
+      expect(attributesOf(node).note).toBeUndefined();
     }
   });
 });

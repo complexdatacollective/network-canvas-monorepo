@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   Grid3x3,
@@ -319,7 +319,7 @@ describe('SegmentedToolbar — groups', () => {
 });
 
 describe('SegmentedToolbar — add/remove', () => {
-  it('adds and removes segments when items change', () => {
+  it('adds and removes segments when items change', async () => {
     const base: ToolbarSegment[] = [
       { type: 'button', id: 'a', label: 'A', onClick: vi.fn() },
     ];
@@ -340,7 +340,11 @@ describe('SegmentedToolbar — add/remove', () => {
     expect(screen.getByRole('button', { name: 'B' })).toBeInTheDocument();
 
     rerender(<SegmentedToolbar label="Tools" items={base} />);
-    expect(screen.queryByRole('button', { name: 'B' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'B' }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -390,13 +394,12 @@ describe('SegmentedToolbar — draggable', () => {
     );
     const handle = screen.getByRole('button', { name: 'Move toolbar' });
     handle.focus();
-    // Motion owns the live position and is mocked in unit tests, so each nudge
-    // reports its delta from the origin; cumulative motion is exercised visually
-    // in Storybook.
+    // Motion owns the live position, so keyboard nudges accumulate from the
+    // current position just as pointer drags do.
     await userEvent.keyboard('{ArrowRight}');
     expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 0 });
     await userEvent.keyboard('{ArrowDown}');
-    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 0, y: 8 });
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 8, y: 8 });
   });
 
   it('announces movement via an aria-live region', async () => {

@@ -335,6 +335,13 @@ export function applyMissingness(
   source: RandomSource,
   /** The entity scope, so two scopes sharing a key do not share a stream. */
   scope: string,
+  /**
+   * Variables this entity REACHES but holds no value for — the certainly
+   * missing ones. Attributes are sparse, so they cannot be marked by writing a
+   * null; they are named here instead, and a group containing one is still
+   * this entity's group to decide.
+   */
+  alsoReached: ReadonlySet<string> = new Set(),
 ): Set<string> {
   const missing = new Set<string>();
   for (const members of groups) {
@@ -348,7 +355,9 @@ export function applyMissingness(
     // question the participant left unanswered, and a fixed value was never
     // asked. One fixed member settles the whole group's shared value.
     if (members.some((id) => fixedKeys.has(id))) continue;
-    const present = members.filter((id) => id in attributes);
+    const present = members.filter(
+      (id) => id in attributes || alsoReached.has(id),
+    );
     if (present.length === 0) continue;
     // Keyed by the sorted membership so a group's decision does not depend on
     // whichever member the codebook happens to list first, and by the scope so
@@ -363,8 +372,10 @@ export function applyMissingness(
     // stream path fixed the path, not the key handed to it.
     const key = missingGroupKey(members);
     if (!source.stream('missing', scope, key).bool(probability)) continue;
+    // Unanswered is ABSENT rather than null: the key is removed, and the
+    // returned set is what records that the entity reached the question.
     for (const id of present) {
-      attributes[id] = null;
+      delete attributes[id];
       missing.add(id);
     }
   }
@@ -1617,11 +1628,11 @@ export function planNetwork(
         claimFixedValues(ctx, ref, fixedFinal);
         unreserveFixedValues(ctx, ref, promptFixed);
         const attributes = { ...generated, ...fixedFinal };
-        // Present but unanswered, so `applyMissingness` still records them as
-        // this entity's missing values rather than leaving the key absent.
-        for (const id of certain) {
-          if (written.has(id)) attributes[id] = null;
-        }
+        // Reached but unanswered. Named rather than written as null, since an
+        // unset attribute is one the entity does not carry.
+        const reachedButUnanswered = new Set(
+          [...certain].filter((id) => written.has(id)),
+        );
         const missingSet = applyMissingness(
           attributes,
           fixedKeys,
@@ -1630,6 +1641,7 @@ export function planNetwork(
           missingGroups,
           source,
           scope,
+          reachedButUnanswered,
         );
 
         nodes.push({
@@ -1750,9 +1762,9 @@ export function planNetwork(
       });
       claimFixedValues(ctx, ref, fixedFinal);
       const attributes = { ...generated, ...fixedFinal };
-      for (const id of certain) {
-        if (written.has(id)) attributes[id] = null;
-      }
+      const reachedButUnanswered = new Set(
+        [...certain].filter((id) => written.has(id)),
+      );
       const missingSet = applyMissingness(
         attributes,
         fixedKeys,
@@ -1761,6 +1773,7 @@ export function planNetwork(
         missingGroups,
         source,
         scope,
+        reachedButUnanswered,
       );
       edgeIndex += 1;
       return {

@@ -314,10 +314,12 @@ describe('generateNetwork (plan → materialise pipeline)', () => {
       seed: 42,
       inProgressStageIndex: 1,
     });
-    const values = result.network.nodes.map(
-      (node) => node[entityAttributesProperty].rank,
+    // An unanswered value is an ABSENT key, so a partially-answered stage
+    // shows as some people carrying no `rank` at all.
+    const answered = result.network.nodes.map((node) =>
+      Object.hasOwn(node[entityAttributesProperty], 'rank'),
     );
-    expect(values.some((value) => value === null)).toBe(true);
+    expect(answered.some((has) => !has)).toBe(true);
   });
 
   it('reproduces byte-identical results for a fixed seed', () => {

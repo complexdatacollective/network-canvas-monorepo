@@ -525,16 +525,18 @@ export type BrokenFixedRule = {
   /** The variables the rule covers, in the order the codebook declares them. */
   variableIds: string[];
   /** The fixed values those variables hold, in the same order. */
-  values: VariableValue[];
+  values: FixedVariableValue[];
   rule: string;
 };
+
+type FixedVariableValue = VariableValue | null;
 
 /**
  * Whether the interview would read a value as no answer at all. Mirrors the
  * runtime's `required` validator: a null, a blank string, a `NaN` number and an
  * empty selection are each what an untouched field holds.
  */
-function isUnanswered(value: VariableValue): boolean {
+function isUnanswered(value: FixedVariableValue): boolean {
   if (value === null) return true;
   if (typeof value === 'string') return value.trim().length === 0;
   if (typeof value === 'number') return Number.isNaN(value);
@@ -584,7 +586,7 @@ function optionsOffer(entry: VariableEntry, value: VariableValue): boolean {
  */
 function ownRuleBroken(
   { entry, constraints }: ConstrainedVariable,
-  value: VariableValue,
+  value: FixedVariableValue,
 ): string | undefined {
   const {
     required,
@@ -714,7 +716,7 @@ function comparatorHolds(
  */
 export function ruleBrokenByFixedValues(
   entity: EntityConstraints,
-  fixed: Record<string, VariableValue>,
+  fixed: Readonly<Record<string, FixedVariableValue>>,
 ): BrokenFixedRule | undefined {
   return (
     ownRuleBrokenByFixedValues(entity, fixed) ??
@@ -735,14 +737,12 @@ export function ruleBrokenByFixedValues(
  */
 export function ownRuleBrokenByFixedValues(
   entity: EntityConstraints,
-  fixed: Record<string, VariableValue>,
+  fixed: Readonly<Record<string, FixedVariableValue>>,
 ): BrokenFixedRule | undefined {
   for (const [id, variable] of entity) {
     if (!(id in fixed)) continue;
-    // A key present without a value is what an emptied column arrives as, and
-    // it settles the variable exactly as any other fixed value does.
-    const value = fixed[id] ?? null;
-
+    const value = fixed[id];
+    if (value === undefined) continue;
     const rule = ownRuleBroken(variable, value);
     if (rule !== undefined) {
       return { variableIds: [id], values: [value], rule };
@@ -755,7 +755,7 @@ export function ownRuleBrokenByFixedValues(
 /** The first rule spanning two of an entity's fixed values that they break. */
 export function crossRuleBrokenByFixedValues(
   entity: EntityConstraints,
-  fixed: Record<string, VariableValue>,
+  fixed: Readonly<Record<string, FixedVariableValue>>,
 ): BrokenFixedRule | undefined {
   const declared = [...entity.keys()];
   const held = (id: string): VariableValue | undefined => {

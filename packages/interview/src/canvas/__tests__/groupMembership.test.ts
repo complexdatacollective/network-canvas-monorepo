@@ -36,13 +36,7 @@ describe('getGroupKeys', () => {
     expect(getGroupKeys(makeNode({ group: 7 }), 'group')).toEqual([7]);
   });
 
-  it('returns an empty array when the attribute is null', () => {
-    expect(getGroupKeys(makeNode({ group: null }), 'group')).toEqual([]);
-  });
-
   it('returns an empty array when the attribute is missing entirely', () => {
-    // A read of an absent key yields undefined at runtime; this is the same
-    // raw == null path the function guards, so it doubles as the undefined case.
     expect(getGroupKeys(makeNode({ other: 1 }), 'group')).toEqual([]);
   });
 

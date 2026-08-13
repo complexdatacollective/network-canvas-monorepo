@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   egoProperty,
   entityAttributesProperty,
@@ -7,7 +7,10 @@ import {
   nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
-import type { SessionWithResequencedIDs } from '../../input';
+import type {
+  NodeWithResequencedID,
+  SessionWithResequencedIDs,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { csvEOL, sanitizeCellValue, toAsyncBytes } from './csvShared';
 import processEntityVariables from './processEntityVariables';
@@ -15,14 +18,56 @@ import processEntityVariables from './processEntityVariables';
 const printableAttribute = (attribute: string) =>
   attribute === entityPrimaryKeyProperty ? ncUUIDProperty : attribute;
 
-type ProcessedNode = ReturnType<typeof processEntityVariables>;
+type ProcessedNode = NodeWithResequencedID & {
+  [entityAttributesProperty]: Record<string, unknown>;
+};
 
-function collectHeaders(nodes: ProcessedNode[]): string[] {
+const addVariableHeaders = (
+  headers: Set<string>,
+  variables: Record<string, Variable> | undefined,
+  exportOptions: ExportOptions,
+) => {
+  for (const variable of Object.values(variables ?? {})) {
+    if (variable.type === 'categorical') {
+      for (const option of variable.options) {
+        headers.add(`${variable.name}_${option.value}`);
+      }
+    } else if (variable.type === 'layout') {
+      headers.add(`${variable.name}_x`);
+      headers.add(`${variable.name}_y`);
+      if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+        headers.add(`${variable.name}_screenSpaceX`);
+        headers.add(`${variable.name}_screenSpaceY`);
+      }
+    } else {
+      headers.add(variable.name);
+    }
+  }
+};
+
+function collectHeaders(
+  nodes: ProcessedNode[],
+  codebook: Codebook,
+  exportOptions: ExportOptions,
+): string[] {
   const headers = new Set<string>([
     nodeExportIDProperty,
     egoProperty,
     entityPrimaryKeyProperty,
   ]);
+
+  const nodeTypes = new Set(nodes.map((node) => node.type));
+  const definitions =
+    nodeTypes.size === 0
+      ? Object.values(codebook.node ?? {})
+      : [...nodeTypes].flatMap((type) => {
+          const definition = codebook.node?.[type];
+          return definition ? [definition] : [];
+        });
+  for (const definition of definitions) {
+    addVariableHeaders(headers, definition.variables, exportOptions);
+  }
+
   for (const node of nodes) {
     for (const key of Object.keys(node[entityAttributesProperty])) {
       headers.add(key);
@@ -36,13 +81,11 @@ export function* attributeListRows(
   codebook: Codebook,
   exportOptions: ExportOptions,
 ): Generator<string, void, void> {
-  const nodes: ProcessedNode[] = (network.nodes ?? []).map((node) =>
-    codebook.node?.[node.type]
-      ? processEntityVariables(node, 'node', codebook, exportOptions)
-      : (node as unknown as ProcessedNode),
+  const nodes: ProcessedNode[] = network.nodes.map((node) =>
+    processEntityVariables(node, 'node', codebook, exportOptions),
   );
 
-  const headers = collectHeaders(nodes);
+  const headers = collectHeaders(nodes, codebook, exportOptions);
 
   yield (
     headers
@@ -53,16 +96,14 @@ export function* attributeListRows(
   for (const node of nodes) {
     const cells = headers.map((header) => {
       let value: unknown;
-      if (
-        header === entityPrimaryKeyProperty ||
-        header === egoProperty ||
-        header === nodeExportIDProperty
-      ) {
-        value = (node as Record<string, unknown>)[header];
+      if (header === entityPrimaryKeyProperty) {
+        value = node[entityPrimaryKeyProperty];
+      } else if (header === egoProperty) {
+        value = node[egoProperty];
+      } else if (header === nodeExportIDProperty) {
+        value = node[nodeExportIDProperty];
       } else {
-        value = (node[entityAttributesProperty] as Record<string, unknown>)[
-          header
-        ];
+        value = node[entityAttributesProperty][header];
       }
       return String(sanitizeCellValue(value) ?? '');
     });

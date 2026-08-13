@@ -1,5 +1,5 @@
 import type { Variable } from '@codaco/protocol-validation';
-import type { VariableValue } from '@codaco/shared-consts';
+import { VariableValueSchema, type VariableValue } from '@codaco/shared-consts';
 
 import type { VariableEntry } from '../types';
 import {
@@ -38,6 +38,23 @@ export function toVariableEntry(id: string, variable: Variable): VariableEntry {
     // went on working.
     synthetic: 'synthetic' in variable ? variable.synthetic : undefined,
   };
+}
+
+export function definedAttributesOf(
+  attributes: Readonly<Record<string, unknown>>,
+  omissionSentinel?: symbol,
+): Record<string, VariableValue> {
+  const defined: Record<string, VariableValue> = {};
+
+  for (const [id, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined || value === omissionSentinel) {
+      continue;
+    }
+
+    defined[id] = VariableValueSchema.parse(value);
+  }
+
+  return defined;
 }
 
 /** The rules one entity scope draws against, whichever scope it is. */
@@ -113,7 +130,7 @@ export function rosterRowIsDrawable(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value === undefined) continue;
+      if (value === undefined || value === null) continue;
       if (ctx.uniqueRegistry.isTaken(registry, slot, value)) return false;
     }
   }
@@ -142,7 +159,9 @@ export function claimFixedValues(
   for (const [slot, memberIds] of uniqueSlotMembers(constraintsFor(ctx, ref))) {
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }
@@ -256,12 +275,14 @@ export function replaceFixedValues(
 
     for (const id of memberIds) {
       const value = previous[id];
-      if (value !== undefined)
+      if (value !== undefined && value !== null)
         ctx.uniqueRegistry.release(registry, slot, value);
     }
     for (const id of memberIds) {
       const value = fixed[id];
-      if (value !== undefined) ctx.uniqueRegistry.claim(registry, slot, value);
+      if (value !== undefined && value !== null) {
+        ctx.uniqueRegistry.claim(registry, slot, value);
+      }
     }
   }
 }

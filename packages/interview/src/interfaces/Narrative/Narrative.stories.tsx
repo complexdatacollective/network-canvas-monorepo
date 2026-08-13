@@ -7,6 +7,22 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
+function setOptionalNodeAttribute(
+  interview: SyntheticInterview,
+  nodeIndex: number,
+  variableId: string,
+  value:
+    | Parameters<SyntheticInterview['setNodeAttribute']>[2]
+    | null
+    | undefined,
+): void {
+  if (value === null || value === undefined) {
+    interview.unsetNodeAttribute(nodeIndex, variableId);
+    return;
+  }
+  interview.setNodeAttribute(nodeIndex, variableId, value);
+}
+
 function createNarrativeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
   const nt = si.addNodeType({ name: 'Person' });
@@ -99,12 +115,12 @@ type NarrativeArgs = {
 };
 
 // A categorical value is always an array, even for a single membership.
-const COMMUNITY_VALUES = [
+const COMMUNITY_VALUES: string[][] = [
   ['family'],
   ['work'],
   ['school'],
   ['neighborhood'],
-] as const;
+];
 
 const buildFromArgs = (args: NarrativeArgs) => {
   const { si, layoutVar1, closeVar, communityVar, friendshipEt } =
@@ -138,7 +154,8 @@ const buildFromArgs = (args: NarrativeArgs) => {
 
   if (args.groups) {
     for (let i = 0; i < args.nodeCount; i++) {
-      si.setNodeAttribute(
+      setOptionalNodeAttribute(
+        si,
         i,
         communityVar.id,
         COMMUNITY_VALUES[i % COMMUNITY_VALUES.length],
@@ -147,7 +164,8 @@ const buildFromArgs = (args: NarrativeArgs) => {
   }
   if (args.highlight) {
     for (let i = 0; i < args.nodeCount; i++) {
-      si.setNodeAttribute(
+      setOptionalNodeAttribute(
+        si,
         i,
         closeVar.id,
         i % 3 === 0 ? true : i % 3 === 1 ? false : null,
@@ -277,7 +295,7 @@ const buildWithConvexHulls = () => {
     ['family', 'work'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addInformationStage({
     title: 'Complete',
@@ -300,7 +318,7 @@ const buildWithHighlighting = () => {
   });
   const hlValues = [true, false, true, null, true, false, true, false];
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    setOptionalNodeAttribute(si, i, closeVar.id, v);
   });
   si.addInformationStage({
     title: 'Complete',
@@ -342,7 +360,7 @@ const buildFullFeatured = () => {
     true,
   ];
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    setOptionalNodeAttribute(si, i, closeVar.id, v);
   });
   const groupValues: (string[] | null)[] = [
     ['family'],
@@ -357,7 +375,7 @@ const buildFullFeatured = () => {
     ['family', 'school'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addEdges(
     [
@@ -431,7 +449,7 @@ const buildMultiplePresets = () => {
     true,
   ];
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    setOptionalNodeAttribute(si, i, closeVar.id, v);
   });
   const groupValues: (string[] | null)[] = [
     ['family'],
@@ -446,13 +464,13 @@ const buildMultiplePresets = () => {
     ['school'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   const trustedValues = Array.from({ length: 10 }, (_, i) =>
     i % 3 === 0 ? true : i % 3 === 1 ? false : null,
   );
   trustedValues.forEach((v, i) => {
-    si.setNodeAttribute(i, trustedVar.id, v);
+    setOptionalNodeAttribute(si, i, trustedVar.id, v);
   });
   si.addEdges(
     [
@@ -551,7 +569,7 @@ const buildAllBehaviours = () => {
     true,
   ];
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    setOptionalNodeAttribute(si, i, closeVar.id, v);
   });
   const groupValues: (string[] | null)[] = [
     ['family'],
@@ -566,7 +584,7 @@ const buildAllBehaviours = () => {
     ['family', 'work'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addEdges(
     [
@@ -618,17 +636,17 @@ const buildManyNodes = () => {
     i % 3 === 0 ? true : i % 3 === 1 ? false : null,
   );
   hlValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    setOptionalNodeAttribute(si, i, closeVar.id, v);
   });
-  const catValues = [
+  const catValues: string[][] = [
     ['family'],
     ['work'],
     ['school'],
     ['neighborhood'],
-  ] as const;
+  ];
   const groupValues = Array.from({ length: 15 }, (_, i) => catValues[i % 4]);
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addEdges(
     [
@@ -682,7 +700,7 @@ const buildSingleNodeGroups = () => {
     ['neighborhood'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addInformationStage({
     title: 'Complete',
@@ -704,7 +722,7 @@ const buildTwoNodeGroup = () => {
   });
   const groupValues: string[][] = [['family'], ['family'], ['work'], ['work']];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addInformationStage({
     title: 'Complete',
@@ -934,7 +952,7 @@ const buildTwoCommunitiesBroker = () => {
     ['work'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addEdges(
     [
@@ -1054,7 +1072,7 @@ const buildEgoNetwork = () => {
     ['family'],
   ];
   groupValues.forEach((v, i) => {
-    si.setNodeAttribute(i, communityVar.id, v);
+    setOptionalNodeAttribute(si, i, communityVar.id, v);
   });
   si.addEdges(
     [

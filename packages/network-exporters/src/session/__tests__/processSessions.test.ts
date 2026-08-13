@@ -76,6 +76,43 @@ describe('processSessions', () => {
     expect(failures[0]?.sessionId).toBe('s2');
   });
 
+  it('removes legacy null attributes before grouping formatted sessions', async () => {
+    const session = mkSession('s1', 'hA');
+    session.network.ego[entityAttributesProperty].unanswered = null;
+    const repo = mkRepo({ hA: protocol('hA') });
+
+    const { grouped, failures } = await Effect.runPromise(
+      processSessions([session], opts).pipe(Effect.provide(repo)),
+    );
+
+    expect(failures).toEqual([]);
+    expect(grouped.hA?.[0]?.ego[entityAttributesProperty]).not.toHaveProperty(
+      'unanswered',
+    );
+  });
+
+  it('isolates invalid defined attribute values as per-session failures', async () => {
+    const validSession = mkSession('valid', 'hA');
+    const invalidSession = mkSession('invalid', 'hA');
+    Reflect.set(
+      invalidSession.network.ego[entityAttributesProperty],
+      'invalid-value',
+      { unsupported: true },
+    );
+    const repo = mkRepo({ hA: protocol('hA') });
+
+    const { grouped, failures } = await Effect.runPromise(
+      processSessions([validSession, invalidSession], opts).pipe(
+        Effect.provide(repo),
+      ),
+    );
+
+    expect(grouped.hA).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.kind).toBe('session-processing');
+    expect(failures[0]?.sessionId).toBe('invalid');
+  });
+
   it('propagates DatabaseError fatally', async () => {
     const sessions = [mkSession('s1', 'hA')];
     const failingRepo = Layer.succeed(ProtocolRepository, {

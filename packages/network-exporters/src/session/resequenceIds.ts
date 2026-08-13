@@ -24,7 +24,7 @@ export const resequenceSessionIds = (
 
   return {
     ...session,
-    nodes: session?.nodes?.map((node) => {
+    nodes: session.nodes.map((node) => {
       resequencedNodeId++;
       IDLookupMap[node[entityPrimaryKeyProperty]] =
         resequencedNodeId.toString();
@@ -34,7 +34,7 @@ export const resequenceSessionIds = (
       };
       return newNode;
     }),
-    edges: session?.edges?.map((edge) => {
+    edges: session.edges.map((edge) => {
       resequencedEdgeId++;
       IDLookupMap[edge[entityPrimaryKeyProperty]] =
         resequencedEdgeId.toString();

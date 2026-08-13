@@ -70,8 +70,8 @@ describe('missingness across a sameAs group', () => {
       expect(network.nodes.length, `seed ${seed}`).toBeGreaterThan(0);
       for (const node of network.nodes) {
         const attributes = node[entityAttributesProperty];
-        expect(attributes.answer, `seed ${seed}`).toBeNull();
-        expect(attributes.echo, `seed ${seed}`).toBeNull();
+        expect(attributes.answer, `seed ${seed}`).toBeUndefined();
+        expect(attributes.echo, `seed ${seed}`).toBeUndefined();
       }
     }
   });
@@ -86,7 +86,7 @@ describe('missingness across a sameAs group', () => {
 
       for (const node of network.nodes) {
         const attributes = node[entityAttributesProperty];
-        expect(attributes.answer, `seed ${seed}`).not.toBeNull();
+        expect(attributes.answer, `seed ${seed}`).toBeDefined();
         expect(attributes.echo, `seed ${seed}`).toEqual(attributes.answer);
       }
     }
@@ -108,7 +108,7 @@ describe('missingness across a sameAs group', () => {
       expect(network.nodes.length, `seed ${seed}`).toBeGreaterThan(0);
       for (const node of network.nodes) {
         const attributes = node[entityAttributesProperty];
-        expect(attributes.echo, `seed ${seed}`).not.toBeNull();
+        expect(attributes.echo, `seed ${seed}`).toBeDefined();
         expect(attributes.answer, `seed ${seed}`).toEqual(attributes.echo);
       }
     }

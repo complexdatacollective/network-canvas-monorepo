@@ -1398,9 +1398,9 @@ describe('planNetwork missingness', () => {
       [nameGenerator({}, 3), alterForm('hobby')],
     );
     for (const node of result.nodes) {
-      expect(node.attributes.hobby).toBeNull();
+      expect(node.attributes.hobby).toBeUndefined();
       expect(node.missing.has('hobby')).toBe(true);
-      expect(node.attributes.name).not.toBeNull();
+      expect(node.attributes.name).toBeDefined();
     }
   });
 });

@@ -108,10 +108,10 @@ function buildInterview(args: StoryArgs) {
   );
   for (let i = 0; i < clampedUnassigned; i++) {
     for (const varId of variables) {
-      interview.setNodeAttribute(i, varId, null);
+      interview.unsetNodeAttribute(i, varId);
     }
     if (otherVariableId) {
-      interview.setNodeAttribute(i, otherVariableId, null);
+      interview.unsetNodeAttribute(i, otherVariableId);
     }
   }
 

@@ -195,7 +195,7 @@ export class ValueGenerator {
    * filled with random data that would corrupt a deliberately-constructed
    * scenario (e.g. a random ego or random disease flags in a pedigree).
    */
-  neutralForVariable(variable: VariableEntry): VariableValue {
+  neutralForVariable(variable: VariableEntry): VariableValue | undefined {
     switch (variable.type) {
       case 'boolean':
         return false;
@@ -204,7 +204,7 @@ export class ValueGenerator {
       case 'categorical':
         return [];
       default:
-        return null;
+        return undefined;
     }
   }
 
@@ -366,7 +366,7 @@ export class ValueGenerator {
       sociogramHighlight?: boolean;
       forceRealisticName?: boolean;
     },
-  ): VariableValue {
+  ): VariableValue | undefined {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
     const stream = this.streamFor(entry, scope);
@@ -576,7 +576,7 @@ export class ValueGenerator {
 
       case 'boolean': {
         const values = booleanDomainValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
         const hasDefaultPair = values.includes(false) && values.includes(true);
         if (seq !== undefined && hasDefaultPair) return seq % 2 === 0;
 
@@ -597,7 +597,7 @@ export class ValueGenerator {
         }
 
         const value = values[(seq ?? 0) % values.length];
-        return value ?? null;
+        return value;
       }
 
       case 'ordinal': {
@@ -605,22 +605,21 @@ export class ValueGenerator {
         // options themselves — an imported list can write one value under
         // many labels, and a `unique` walk must meet each value once.
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
-        if (seq !== undefined) return values[seq % values.length] ?? null;
+        // An unanswered value is ABSENT rather than null (main's sparse
+        // attributes); the weighted draw is this branch's own.
+        if (values.length === 0) return undefined;
+        if (seq !== undefined) return values[seq % values.length];
 
         const resolved = this.resolvedFor(entry);
         if (resolved.kind === 'ordinal' && resolved.values.length > 0) {
-          return (
-            resolved.values[sampleWeightedIndex(resolved.weights, stream)] ??
-            null
-          );
+          return resolved.values[sampleWeightedIndex(resolved.weights, stream)];
         }
-        return values[index % values.length] ?? null;
+        return values[index % values.length];
       }
 
       case 'categorical': {
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
 
         // A distinct value has to be reachable for every selection the value
         // space counts, so a sequence number indexes the combination space
@@ -815,7 +814,7 @@ export class ValueGenerator {
       }
 
       default:
-        return null;
+        return undefined;
     }
   }
 

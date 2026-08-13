@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
 import {
+  NcNetworkSchema,
   entityAttributesProperty,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -604,7 +605,13 @@ function oracleSatisfiable(
 
   const indices = domains.map(() => 0);
   const assignment = new Map<string, VariableValue>();
-  const valueOf = (id: string): VariableValue => assignment.get(id) ?? null;
+  const valueOf = (id: string): VariableValue => {
+    const value = assignment.get(id);
+    if (value === undefined) {
+      throw new Error(`Oracle read unassigned variable ${id}`);
+    }
+    return value;
+  };
 
   for (;;) {
     variables.forEach((variable, at) => {
@@ -1047,6 +1054,7 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
               seed,
               config: { today: TODAY },
             });
+            expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
             const elapsed = performance.now() - startedAt;
             runs += 1;
             if (elapsed > slowestMs) {

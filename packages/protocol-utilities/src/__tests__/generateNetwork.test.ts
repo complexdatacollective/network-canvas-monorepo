@@ -8,6 +8,7 @@ import {
   stageSchema,
 } from '@codaco/protocol-validation';
 import {
+  NcNetworkSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
@@ -273,6 +274,34 @@ function makeSkipRoutingCodebook(): Codebook {
 }
 
 describe('generateNetwork', () => {
+  it('emits canonical sparse attributes for unanswered roster values', () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'var-nickname': { name: 'Nickname', type: 'text' },
+          },
+        },
+      },
+    });
+    const row = makeRosterPool(1)[0]!;
+    Reflect.set(row[entityAttributesProperty], 'var-nickname', null);
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [makeRosterStage({ behaviours: { minNodes: 1, maxNodes: 1 } })],
+      externalData: { 'stage-ngr': [row] },
+      seed: 42,
+    });
+
+    expect(network.nodes[0]![entityAttributesProperty]).not.toHaveProperty(
+      'var-nickname',
+    );
+    expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
+  });
+
   it('writes Sociogram highlights only when the prompt collects them', () => {
     const codebook = makeCodebook({
       node: {
@@ -774,7 +803,7 @@ describe('generateNetwork', () => {
 
       expect(network.nodes.length).toBeGreaterThan(0);
       for (const node of network.nodes) {
-        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+        expect(node[entityAttributesProperty]).toHaveProperty('var-ordinal');
       }
     });
 
@@ -791,10 +820,10 @@ describe('generateNetwork', () => {
 
       const nodeCount = network.nodes.length;
       const unplaced = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-ordinal'] === null,
+        (n) => !('var-ordinal' in n[entityAttributesProperty]),
       );
       const placed = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-ordinal'] !== null,
+        (n) => 'var-ordinal' in n[entityAttributesProperty],
       );
 
       expect(unplaced.length).toBe(Math.max(1, Math.floor(nodeCount / 2)));
@@ -822,12 +851,12 @@ describe('generateNetwork', () => {
       });
 
       const uncategorised = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-cat'] === null,
+        (n) => !('var-cat' in n[entityAttributesProperty]),
       );
       expect(uncategorised.length).toBeGreaterThan(0);
 
       for (const node of uncategorised) {
-        expect(node[entityAttributesProperty]['var-other']).toBeNull();
+        expect(node[entityAttributesProperty]).not.toHaveProperty('var-other');
       }
     });
 
@@ -868,7 +897,7 @@ describe('generateNetwork', () => {
       });
 
       const unplaced = network.nodes.filter(
-        (n) => n[entityAttributesProperty]['var-layout'] === null,
+        (n) => !('var-layout' in n[entityAttributesProperty]),
       );
       expect(unplaced.length).toBe(
         Math.max(1, Math.floor(network.nodes.length / 2)),
@@ -887,7 +916,7 @@ describe('generateNetwork', () => {
       });
 
       for (const node of network.nodes) {
-        expect(node[entityAttributesProperty]['var-ordinal']).not.toBeNull();
+        expect(node[entityAttributesProperty]).toHaveProperty('var-ordinal');
       }
     });
 

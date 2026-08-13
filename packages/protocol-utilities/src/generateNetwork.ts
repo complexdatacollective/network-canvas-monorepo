@@ -4,12 +4,17 @@ import type {
   StructuralCodebook,
 } from '@codaco/protocol-validation';
 import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
-import type { NcNetwork, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcNetwork,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import {
   analyseStageEffects,
   type StageEffects,
 } from './generateNetwork/analyse/stageEffects';
+import { definedAttributesOf } from './generateNetwork/attributes';
 import {
   type FeasibilityConfig,
   type GenerationConfig,
@@ -340,7 +345,7 @@ export function generateNetwork(
   const {
     codebook,
     stages,
-    externalData,
+    externalData: suppliedExternalData,
     seed,
     simulateDropOut = false,
     respectSkipLogicAndFiltering = false,
@@ -348,6 +353,32 @@ export function generateNetwork(
     config,
     familyPedigree,
   } = params;
+
+  /**
+   * Roster rows, with any legacy `null`/`undefined` attribute stripped.
+   *
+   * An unanswered attribute is an ABSENT key, and a caller's external data may
+   * still carry the old null placeholders — read as values they were merged
+   * onto the person built from the row, so a generated network came back
+   * holding a null the contract forbids.
+   */
+  const externalData =
+    suppliedExternalData === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(suppliedExternalData).map(([stageId, rows]) => [
+            stageId,
+            rows.map(
+              (row) =>
+                ({
+                  ...row,
+                  [entityAttributesProperty]: definedAttributesOf(
+                    row[entityAttributesProperty],
+                  ),
+                }) as NcNode,
+            ),
+          ]),
+        );
 
   const resolvedConfig = resolveGenerationConfig(config);
   // A pedigree sizes itself. No protocol-level constraint caps it: the

@@ -163,7 +163,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     dispatch(
       toggleNodeAttributes({
         nodeId,
-        attributes: { [variable]: !currentValue },
+        attributePatch: {
+          set: { [variable]: !currentValue },
+          unset: [],
+        },
       }),
     );
   };
@@ -556,7 +559,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
             onSubmit={(result) => {
               commitBatch(result.batch);
               if (egoId && result.egoAttributes) {
-                updateNode(egoId, result.egoAttributes);
+                updateNode(egoId, {
+                  set: result.egoAttributes,
+                  unset: [],
+                });
               }
               track('pedigree_wizard_complete', {
                 nodes_created: Object.keys(result.batch.nodes ?? {}).length,

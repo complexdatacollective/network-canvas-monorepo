@@ -40,7 +40,7 @@ const build = () => {
   // Clear the categorical value on the first few nodes so they appear in the
   // bucket (uncategorised) alongside nodes already sorted into bins.
   for (let i = 0; i < 3; i++) {
-    si.setNodeAttribute(i, categoryVar.id, null);
+    si.unsetNodeAttribute(i, categoryVar.id);
   }
 
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });

@@ -62,7 +62,7 @@ describe('a unique variable that is certainly missing', () => {
 
     expect(network.nodes).toHaveLength(3);
     for (const node of network.nodes) {
-      expect(node[entityAttributesProperty].flag).toBeNull();
+      expect(node[entityAttributesProperty].flag).toBeUndefined();
     }
   });
 

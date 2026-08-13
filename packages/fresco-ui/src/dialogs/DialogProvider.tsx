@@ -15,7 +15,6 @@ import { flushSync } from 'react-dom';
 import { Button } from '../Button';
 import type { FieldValue } from '../form/Field/types';
 import { FormWithoutProvider } from '../form/Form';
-import useFormStore from '../form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
 } from '../form/store/formStoreProvider';
@@ -175,17 +174,12 @@ function WizardDialogContent({
   dialogId: string;
   guardedCloseDialog: (id: string, value: unknown) => Promise<void>;
 }) {
-  const dormantValues = useFormStore((s) => s.dormantValues);
-  const fields = useFormStore((s) => s.fields);
   const formStoreApi = useContext(FormStoreContext)!;
 
   const getFieldValue: GetFieldValue = useCallback(
-    (fieldName: string) => {
-      const active = fields.get(fieldName);
-      if (active) return active.value;
-      return dormantValues.get(fieldName)?.value;
-    },
-    [fields, dormantValues],
+    (fieldName: string) =>
+      formStoreApi.getState().getFieldState(fieldName)?.value,
+    [formStoreApi],
   );
 
   const validateForm = useCallback(

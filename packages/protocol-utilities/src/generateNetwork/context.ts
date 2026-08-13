@@ -1,5 +1,5 @@
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
-import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
+import type { VariableValue, NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { ValueGenerator } from '../ValueGenerator';
 import type { ResolvedGenerationConfig } from './config';
