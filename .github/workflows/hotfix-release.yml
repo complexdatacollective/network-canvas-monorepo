@@ -95,18 +95,24 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
-      # The ref being released is a branch cut from a release tag, so it predates
-      # this lane and carries no copy of the validator. Take that one file from
-      # the dispatching main commit instead — it is also the only copy anyone has
-      # reviewed. It reads apps/<app>/package.json and `git tag` relative to the
-      # working directory, never to its own location, so it validates the ref's
-      # tree while living outside it.
-      - name: Check out the lane's validator from main
+      # The ref being released is a branch cut from a release tag, so its copy of
+      # this lane's tooling is whatever existed then — the validator did not
+      # exist at all, and release-notes.mjs predates `--since` and would ignore
+      # it silently. Both come from the dispatching main commit instead, which
+      # is also the only copy anyone has reviewed. Each reads its inputs
+      # (package.json, git tags, the app's CHANGELOG) relative to the working
+      # directory rather than to its own location, so they operate on the ref's
+      # tree while living outside it. One consequence: release-notes.mjs looks
+      # for a dedicated `release-*` changeset under `.hotfix-lane`, which the
+      # sparse checkout omits, so it always takes its CHANGELOG path here.
+      - name: Check out the lane's tooling from main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           ref: ${{ github.sha }}
           path: .hotfix-lane
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            scripts
           persist-credentials: false
 
       - name: Resolve the released commit
@@ -195,7 +201,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           SINCE: ${{ steps.version.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node .hotfix-lane/scripts/release-notes.mjs
           --app "apps/$APP"
           --pkg "@codaco/$APP"
           --version "$VERSION"
