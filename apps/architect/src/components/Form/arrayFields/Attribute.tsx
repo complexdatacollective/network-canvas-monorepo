@@ -232,7 +232,7 @@ const Attribute = ({
   const handleCreateOption = (variableName: string) => {
     void (async () => {
       const created = await createVariable(variableName, 'boolean');
-      if (created) onUpdate({ variable: created });
+      if (created) onUpdate?.({ variable: created });
     })();
   };
 
@@ -246,7 +246,7 @@ const Attribute = ({
           component={FrescoVariablePicker}
           value={variable}
           onChange={(value: unknown) =>
-            onUpdate({
+            onUpdate?.({
               variable: typeof value === 'string' ? value : null,
             })
           }
@@ -266,7 +266,7 @@ const Attribute = ({
             component={FrescoBooleanControl}
             value={item.value}
             onChange={(value: unknown) =>
-              onUpdate({
+              onUpdate?.({
                 value: typeof value === 'boolean' ? value : null,
               })
             }

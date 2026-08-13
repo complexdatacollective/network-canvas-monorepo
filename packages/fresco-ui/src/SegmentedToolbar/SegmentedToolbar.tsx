@@ -290,7 +290,7 @@ function ToolbarToggleSegment({
         <Toggle
           pressed={segment.pressed}
           defaultPressed={segment.defaultPressed}
-          onPressedChange={(pressed) => segment.onPressedChange?.(pressed)}
+          onPressedChange={segment.onPressedChange}
           disabled={segment.disabled}
           render={segmentButton(segment, size, pressedClasses)}
         />
@@ -319,7 +319,7 @@ function ToolbarGroupSegment({
       multiple={segment.mode === 'multiple'}
       value={segment.value}
       defaultValue={segment.defaultValue}
-      onValueChange={(value) => segment.onValueChange?.(value)}
+      onValueChange={segment.onValueChange}
       orientation={orientation}
       className={cx(
         'flex items-center gap-1',

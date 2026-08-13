@@ -136,7 +136,7 @@ const ThresholdItem = ({
         value={draft}
         onChange={(nextValue) => setDraft(nextValue ?? '')}
         onBlur={() =>
-          onUpdate({ value: parseThresholdValue(draft) ?? value, shape })
+          onUpdate?.({ value: parseThresholdValue(draft) ?? value, shape })
         }
       />
       <span className="text-muted text-xl">→</span>
@@ -146,7 +146,7 @@ const ThresholdItem = ({
         aria-label={`Shape at threshold ${value}`}
         value={shape}
         onChange={(nextShape) =>
-          onUpdate({
+          onUpdate?.({
             value: parseThresholdValue(draft) ?? value,
             shape: nextShape ?? shape,
           })

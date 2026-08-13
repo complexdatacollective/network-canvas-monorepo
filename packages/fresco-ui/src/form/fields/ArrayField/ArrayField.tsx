@@ -87,13 +87,32 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   committedIndex?: number;
   itemCount: number;
   isNewItem: boolean;
-  /** Save and exit editing mode. Use for inline editing pattern. */
-  onChange: (value: T) => void;
-  /** Update item data without affecting editing state. Use for always-editing pattern. */
-  onUpdate: (value: Partial<T>) => void;
+  /**
+   * Save and exit editing mode. Use for inline editing pattern. Undefined
+   * when the field is disabled or read-only — an ItemComponent that renders
+   * its save affordance from handler presence should omit it then.
+   */
+  onChange?: (value: T) => void;
+  /**
+   * Update item data without affecting editing state. Use for always-editing
+   * pattern. Undefined when the field is disabled or read-only — an
+   * ItemComponent that renders its edit affordance from handler presence
+   * should omit it then.
+   */
+  onUpdate?: (value: Partial<T>) => void;
   onCancel: () => void;
-  onDelete: () => void;
-  onEdit: () => void;
+  /**
+   * Undefined when the field is disabled or read-only — an ItemComponent
+   * that renders its delete affordance from handler presence should omit it
+   * then, rather than wiring a live-looking control to a no-op.
+   */
+  onDelete?: () => void;
+  /**
+   * Undefined when the field is disabled or read-only — an ItemComponent
+   * that renders its edit affordance from handler presence should omit it
+   * then, rather than wiring a live-looking control to a no-op.
+   */
+  onEdit?: () => void;
   onMove: (targetIndex: number) => void;
   isSortable: boolean;
   isBeingEdited: boolean;
@@ -108,7 +127,10 @@ export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
   isNewItem: boolean;
   // Editors get onSave to reflect the fact that this should be called once
   // the user is done editing, rather than onChange which implies continuous updates.
-  onSave: (value: T) => void;
+  // Undefined when the field is disabled or read-only — an EditorComponent
+  // that renders its save affordance from handler presence should omit it
+  // then, rather than wiring a live-looking control to a no-op.
+  onSave?: (value: T) => void;
   onCancel: () => void;
 };
 
@@ -270,10 +292,10 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   isNewItem: boolean;
   hasMounted: boolean;
   onCancel: () => void;
-  onChange: (value: T) => void;
-  onUpdateItem: (internalId: string, value: Partial<T>) => void;
-  onDeleteItem: (internalId: string) => void;
-  onEditItem: (internalId: string) => void;
+  onChange?: (value: T) => void;
+  onUpdateItem?: (internalId: string, value: Partial<T>) => void;
+  onDeleteItem?: (internalId: string) => void;
+  onEditItem?: (internalId: string) => void;
   onMoveItem: (internalId: string, targetIndex: number) => void;
   onDragStartItem: (internalId: string) => void;
   onDragEndItem: () => void;
@@ -320,19 +342,26 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       ? itemClasses(item, isBeingEdited)
       : itemClasses;
 
-  // Memoize item-specific callbacks to prevent re-renders
-  const onUpdate = useCallback(
-    (data: Partial<T>) => onUpdateItem(item._internalId, data),
+  // Memoize item-specific callbacks to prevent re-renders. Each stays
+  // `undefined` when the corresponding array-level handler is undefined
+  // (the field is disabled or read-only), rather than falling back to a
+  // no-op stub — an ItemComponent that renders its affordance from handler
+  // presence must see it absent, not a live-looking control wired to nothing.
+  const onUpdate = useMemo(
+    () =>
+      onUpdateItem
+        ? (data: Partial<T>) => onUpdateItem(item._internalId, data)
+        : undefined,
     [onUpdateItem, item._internalId],
   );
 
-  const onDelete = useCallback(
-    () => onDeleteItem(item._internalId),
+  const onDelete = useMemo(
+    () => (onDeleteItem ? () => onDeleteItem(item._internalId) : undefined),
     [onDeleteItem, item._internalId],
   );
 
-  const onEdit = useCallback(
-    () => onEditItem(item._internalId),
+  const onEdit = useMemo(
+    () => (onEditItem ? () => onEditItem(item._internalId) : undefined),
     [onEditItem, item._internalId],
   );
 
@@ -689,20 +718,14 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   isSortable={effectiveSortable}
                   hasMounted={hasMountedRef.current}
                   onDeleteItem={
-                    isInteractionDisabled ? () => undefined : requestDelete
+                    isInteractionDisabled ? undefined : requestDelete
                   }
-                  onEditItem={
-                    isInteractionDisabled ? () => undefined : startEditing
-                  }
+                  onEditItem={isInteractionDisabled ? undefined : startEditing}
                   onMoveItem={moveItem}
                   onDragStartItem={startPointerDrag}
                   onDragEndItem={finishPointerDrag}
-                  onChange={
-                    isInteractionDisabled ? () => undefined : commitEditing
-                  }
-                  onUpdateItem={
-                    isInteractionDisabled ? () => undefined : updateItem
-                  }
+                  onChange={isInteractionDisabled ? undefined : commitEditing}
+                  onUpdateItem={isInteractionDisabled ? undefined : updateItem}
                   isNewItem={!!item._draft}
                   isBeingEdited={editingItem?._internalId === item._internalId}
                   onCancel={cancelEditing}
@@ -741,7 +764,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
             item={editingItem}
             index={editingIndex}
             isNewItem={isAddingNew}
-            onSave={isInteractionDisabled ? () => undefined : commitEditing}
+            onSave={isInteractionDisabled ? undefined : commitEditing}
             onCancel={cancelEditing}
           />
         )}

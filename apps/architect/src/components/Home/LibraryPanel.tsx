@@ -237,13 +237,24 @@ type GalleryCardProps = {
   onDismiss: () => void;
 };
 const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    itemProps.onKeyDown?.(event);
-  };
   return (
     <div
       {...itemProps}
-      onKeyDown={handleKeyDown}
+      // Unlike a row item, this card has no row-level action of its own —
+      // its only affordances are the Dismiss button and the gallery link
+      // below, each already independently focusable and clickable. The
+      // Collection's default `role="option"`/`onClick`/`onKeyDown` imply a
+      // selectable, actionable option; all three are already no-ops here
+      // (selectionMode="none" withholds them), so keeping them would
+      // announce a live-looking control wired to nothing. `role="group"`
+      // with a label honestly frames this as a labelled region containing
+      // its own controls — `tabIndex`/`onFocus` (still spread from
+      // itemProps) keep it a valid roving-focus stop for arrow-key
+      // navigation into those controls.
+      role="group"
+      aria-label="Protocol gallery"
+      onClick={undefined}
+      onKeyDown={undefined}
       className="border-outline bg-surface-2 focusable data-focused:bg-surface-3 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5"
     >
       <IconButton

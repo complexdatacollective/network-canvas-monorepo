@@ -115,7 +115,7 @@ const Option = ({
     if (hasAutoOpenedRef.current || isBeingEdited) return;
     if (item.label || !isOptionValueEmpty(item.value)) return;
     hasAutoOpenedRef.current = true;
-    onEdit();
+    onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
 
   const labelContent = useMemo(
@@ -143,7 +143,7 @@ const Option = ({
       confirmLabel: 'Remove option',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: onDelete,
+      onConfirm: () => onDelete?.(),
     });
   };
 
@@ -250,7 +250,7 @@ const Option = ({
           // rewrite the whole array — dirtying the stage and adding a draft
           // timeline entry — merely by opening a row.
           if (label === (item.label ?? '')) return;
-          onUpdate({ label } as Partial<OptionValue>);
+          onUpdate?.({ label } as Partial<OptionValue>);
         }}
         validation={{ required: true, uniqueArrayAttribute: true }}
         allValues={allValues}
@@ -264,7 +264,7 @@ const Option = ({
         placeholder="Enter a value..."
         value={item.value}
         onChange={(value: unknown) =>
-          onUpdate({
+          onUpdate?.({
             value: parseOptionValue(
               typeof value === 'string' || typeof value === 'number'
                 ? String(value)
