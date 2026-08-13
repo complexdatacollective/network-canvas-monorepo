@@ -667,11 +667,28 @@ export function materializeFamilyPedigree(
   // reaching 10,016 for one family and 10,041 for three. The plan reserves
   // each family's required core; its optional growth is settled here, against
   // what is genuinely unspent.
+  // Derived BEFORE the family is sized, because its people are appended to
+  // whatever that sizing produces. Left until afterwards, the ancestors a
+  // required-contributor pedigree grafts onto inherited children — up to
+  // several per co-parent — escaped the clamp entirely, and a near-cap
+  // population beside two such families exceeded the bound again. It reads
+  // the draft and the stage alone, never the family plan, so computing it
+  // first changes nothing about what it produces.
+  const contributorAncestry = inheritedContributorAncestry(
+    draft,
+    inheritedEgo,
+    nodeType,
+    nodeConfig,
+    edgeType,
+    edgeConfig,
+    stage.boundaries?.requireChildrenContributors === 'required',
+  );
   const remainingPopulationBudget = Math.max(
     0,
     MAX_SYNTHETIC_POPULATION -
       draft.nodes.length -
       plannedNodesStillToCome -
+      contributorAncestry.people.length -
       pedigreesAhead * MAX_REQUIRED_PEDIGREE_CORE,
   );
   const budgetedOptions =
@@ -684,15 +701,6 @@ export function materializeFamilyPedigree(
     diseases,
     stage.boundaries?.requireChildrenContributors === 'required',
     inheritedEgoSex,
-  );
-  const contributorAncestry = inheritedContributorAncestry(
-    draft,
-    inheritedEgo,
-    nodeType,
-    nodeConfig,
-    edgeType,
-    edgeConfig,
-    stage.boundaries?.requireChildrenContributors === 'required',
   );
   const planPeople = [...plan.people, ...contributorAncestry.people];
   const planRelationships = [

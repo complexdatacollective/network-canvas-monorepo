@@ -535,9 +535,17 @@ export function materialiseSession(params: {
         // is drawn, so it keeps every stage whose guard the seed still
         // decides.
         walkedReachableStages,
-        // Everything the plan holds that this walk has yet to place: those
-        // people are already spoken for, so a family must not grow into them.
-        plan.nodes.length - materialisedNodes.size,
+        // The people the plan still has to place, which is not the same as
+        // the people it has not placed. A creator an alter-dependent guard
+        // skipped keeps its planned nodes forever unmaterialised, and
+        // counting those as pending reserved room for a stage that has
+        // already gone by — squeezing a later family down to its core while
+        // the finished network had space to spare. Only stages still ahead
+        // can still spend.
+        plan.nodes.filter(
+          (node) =>
+            node.creationStageIndex > i && !materialisedNodes.has(node.uid),
+        ).length,
         familyPedigreeSeed(runSeed, stage.id),
         // One ceiling for every pedigree in the protocol. Nothing in the
         // protocol caps a family — the codebook describes what a family is,

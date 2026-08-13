@@ -117,6 +117,53 @@ describe('a declared minimum beside a pedigree', () => {
   });
 });
 
+/** A pedigree that grafts required ancestors onto children it inherits. */
+const contributorPedigree = (id: string): Stage =>
+  ({
+    ...(pedigree(id) as unknown as Record<string, unknown>),
+    boundaries: {
+      requireGrandparents: 'off',
+      requireChildrenContributors: 'required',
+    },
+  }) as unknown as Stage;
+
+/**
+ * Cap guards for the required-contributor mode, NOT proof of the ancestry
+ * accounting: in both shapes below the top-up produces no people at all
+ * (measured), so they pass with the accounting removed. They are kept because
+ * the cap is worth asserting for this mode, and the accounting itself is
+ * argued rather than demonstrated — see the note on the review thread.
+ */
+describe('required contributor ancestry', () => {
+  it('is counted before the family is sized, so the cap still holds', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [
+        hungryGenerator,
+        contributorPedigree('stage-contrib-1'),
+        contributorPedigree('stage-contrib-2'),
+      ],
+    });
+
+    expect(network.nodes.length).toBeLessThanOrEqual(MAX_SYNTHETIC_POPULATION);
+  });
+
+  it('holds when the families precede the generator too', () => {
+    const { network } = generateNetwork({
+      seed: 1,
+      codebook,
+      stages: [
+        contributorPedigree('stage-contrib-1'),
+        contributorPedigree('stage-contrib-2'),
+        hungryGenerator,
+      ],
+    });
+
+    expect(network.nodes.length).toBeLessThanOrEqual(MAX_SYNTHETIC_POPULATION);
+  });
+});
+
 describe('the population cap holds across a pedigree', () => {
   // The ordering the first version of this test missed. A pedigree standing
   // BEFORE the stages that spend the budget sees an almost empty session and
