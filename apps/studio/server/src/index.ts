@@ -43,14 +43,19 @@ function handleSchemaState(state: SchemaState): void {
 
 // The schema is applied and fingerprinted at every boot — there is no
 // migration system yet, deliberately (pre-release; see src/db/schema.ts).
-// A configured production database that cannot be reached is a deployment
-// mistake and fails the boot; in development the server comes up and auth
-// surfaces fail until the dev Postgres is available.
+// A configured database that cannot be reached is a deployment mistake and
+// fails the boot. The one exception is the development lane, where the server
+// comes up and auth surfaces fail until the dev Postgres is available.
+//
+// Keyed on the development marker rather than `NODE_ENV`, because the retry
+// below exists for one situation — losing the race against the dev-pg
+// container — and a deployment that forgot `NODE_ENV=production` would
+// otherwise inherit it and boot green with no database.
 if (pool) {
   try {
     handleSchemaState(await ensureSchema(pool));
   } catch (error) {
-    if (env.production) throw error;
+    if (!env.devDefaults) throw error;
     // oxlint-disable-next-line no-console -- boot diagnostics
     console.warn(
       `Database unreachable; sign-in will fail until it is available: ${String(error)}`,

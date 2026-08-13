@@ -18,7 +18,7 @@ describe('development defaults', () => {
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
-    expect(env.production).toBe(false);
+    expect(env.devDefaults).toBe(true);
   });
 
   it('delivers magic links to the console', () => {
@@ -55,6 +55,32 @@ describe('the development marker', () => {
     expect(() => readEnv()).toThrow(/STUDIO_DEV_DEFAULTS must not be set/);
   });
 
+  it('is refused against a database that is not this machine', () => {
+    // An exported DATABASE_URL beats the committed file, so the marker and a
+    // remote database can meet without anyone choosing it — and the lane
+    // would apply its schema there under a publicly-known signing secret.
+    vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
+    expect(() => readEnv()).toThrow(/does not point at a local database/);
+  });
+
+  it('allows the loopback forms the dev container is reachable at', () => {
+    for (const host of ['127.0.0.1', 'localhost', '[::1]']) {
+      vi.stubEnv('DATABASE_URL', `postgres://postgres:spike@${host}:54318/x`);
+      expect(readEnv().db?.url).toContain(host);
+    }
+  });
+
+  it('leaves a remote database alone once the marker is gone', () => {
+    vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
+    // Without the marker the file's unpaired EMAIL_FROM is a deployment
+    // mistake in its own right, so this is the whole lane being left behind.
+    vi.stubEnv('EMAIL_FROM', '');
+    vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
+    const env = readEnv();
+    expect(env.devDefaults).toBe(false);
+    expect(env.auth?.mailer).toEqual({ kind: 'refuse' });
+  });
+
   it('is what enables the console mailer, not NODE_ENV', () => {
     // Without the marker and without SMTP, sends refuse — even though
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
@@ -74,9 +100,11 @@ describe('the development marker', () => {
 
 describe('database and auth', () => {
   it('uses DATABASE_URL when set', () => {
-    vi.stubEnv('DATABASE_URL', 'postgres://app@db.internal:5432/studio');
+    // Loopback because the committed development marker is still in play
+    // here, and that lane refuses anything else.
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/other');
     expect(readEnv().db).toEqual({
-      url: 'postgres://app@db.internal:5432/studio',
+      url: 'postgres://app@localhost:5433/other',
     });
   });
 

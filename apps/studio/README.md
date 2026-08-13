@@ -125,8 +125,12 @@ pnpm --filter @codaco/studio-server db:reset
 ```
 
 which drops the schema, rebuilds it, and seeds. It refuses to touch a
-non-loopback database unless you pass `--force`, and it is the command to run
-the first time you start the server after this check was introduced: databases
+non-loopback database unless you pass `--force`. It reads `.env` first and
+adds the committed development defaults only when the target is local, so a
+forced reset of a managed database never picks up the development marker.
+
+It is the command to run the first time you start the server after this check
+was introduced: databases
 created before it carry the tables but no fingerprint, and an unstamped
 database is indistinguishable from one built by older SQL, so it is refused
 rather than adopted.
@@ -159,14 +163,29 @@ clone runs `pnpm --filter @codaco/studio-server dev` and gets a working stack
 containers the dev script provisions. Put personal overrides (real SMTP
 credentials, say) in a gitignored `.env` beside it.
 
+Both files yield to the surrounding environment — Node's env-file loader never
+overwrites a variable that is already set — so an exported value beats either
+of them.
+
 No deployment path loads `.env.development`: the Docker image never copies it,
 Netlify injects variables into the process instead, and `pnpm start` reads
 only `.env`. That is what makes it safe to key the development conveniences —
 the console mailer, and tolerating an unpaired `EMAIL_FROM` — to the
-`STUDIO_DEV_DEFAULTS` marker that file sets. A deployment that somehow picks
-the file up is refused at boot rather than served with a publicly-known
-signing secret, so forgetting `NODE_ENV=production` cannot downgrade a
-deployment to development behaviour.
+`STUDIO_DEV_DEFAULTS` marker that file sets.
+
+Two rules keep that marker honest, because it licenses a publicly-known
+signing secret, a mailer that prints sign-in links, and a boot that applies
+the schema to whatever `DATABASE_URL` names:
+
+- It is refused unless `NODE_ENV` is `development` or `test`, so forgetting
+  `NODE_ENV=production` cannot downgrade a deployment to development
+  behaviour.
+- It is refused unless `DATABASE_URL` points at this machine. An exported
+  `DATABASE_URL` outranks the committed file, so otherwise the development
+  lane could quietly aim all of the above at someone's real database.
+
+To work against a remote database, leave the lane for that process rather than
+editing the committed file: `STUDIO_DEV_DEFAULTS= pnpm ...`.
 
 Because the schema carries no defaults, no development credential is compiled
 into the server bundle.
@@ -256,7 +275,10 @@ worth knowing before you rely on them:
 
 - **The persistent Node process needs neither.** `src/index.ts` runs the same
   schema check at boot, under an advisory lock so replicas starting together
-  cannot race. `apply-schema` exists for deployments that have no boot.
+  cannot race. `apply-schema` exists for deployments that have no boot. A
+  configured database it cannot reach fails that boot: only the development
+  lane comes up anyway and keeps retrying, because only there is the cause a
+  container that has not finished starting.
 - **The Netlify lane has no automation.** Its build command does not touch the
   database and its function has no boot, so `apply-schema` is a manual step
   there — and consequently the only place that lane ever detects a stale

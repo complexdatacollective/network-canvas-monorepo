@@ -91,11 +91,31 @@ export type StudioEnv = {
    * procedures refuse, but the server boots.
    */
   auth: AuthEnv | undefined;
-  production: boolean;
+  /**
+   * Running against the committed development defaults. It is the marker,
+   * not `NODE_ENV`, that says so — and it is the only lane where a missing
+   * database is survivable rather than a failed deployment.
+   */
+  devDefaults: boolean;
 };
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
+
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
+
+/**
+ * Whether a Postgres connection string names this machine. What decides
+ * whether a database is safe to create, destroy, or point development
+ * credentials at — not `NODE_ENV`, which is `production` on previews too.
+ */
+export function isLocalDatabase(url: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
 
 function resolveS3(raw: RawEnv): S3Env | undefined {
   const values = {
@@ -215,7 +235,6 @@ function resolveAuth(
 }
 
 export function resolve(raw: RawEnv): StudioEnv {
-  const production = raw.NODE_ENV === 'production';
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
   // The marker only ever arrives from the committed `.env.development`, which
@@ -242,6 +261,20 @@ export function resolve(raw: RawEnv): StudioEnv {
 
   const db = raw.DATABASE_URL ? { url: raw.DATABASE_URL } : undefined;
 
+  // The marker travels with a publicly-known signing secret, a console mailer,
+  // and a boot that applies the schema to whatever DATABASE_URL names. An
+  // exported DATABASE_URL beats the committed file (Node's env-file loader
+  // yields to the existing environment), so the two can meet without anyone
+  // choosing it — and the lane must never carry those credentials, or that
+  // DDL, to a database that isn't this machine's.
+  if (devDefaults && db && !isLocalDatabase(db.url)) {
+    throw new Error(
+      'STUDIO_DEV_DEFAULTS is set but DATABASE_URL does not point at a local database. ' +
+        'To work against a remote database, leave the development lane for the process: ' +
+        'STUDIO_DEV_DEFAULTS= <command>',
+    );
+  }
+
   return {
     port: raw.PORT ?? DEFAULT_PORT,
     host: raw.HOST ?? DEFAULT_HOST,
@@ -249,6 +282,6 @@ export function resolve(raw: RawEnv): StudioEnv {
     s3: resolveS3(raw),
     db,
     auth: resolveAuth(raw, db, devDefaults),
-    production,
+    devDefaults,
   };
 }

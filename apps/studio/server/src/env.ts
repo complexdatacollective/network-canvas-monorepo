@@ -20,6 +20,7 @@ export type {
   SocialProvidersEnv,
   StudioEnv,
 } from './env/resolve.ts';
+export { isLocalDatabase } from './env/resolve.ts';
 
 /**
  * Reads and validates the environment. A function rather than a module-scope

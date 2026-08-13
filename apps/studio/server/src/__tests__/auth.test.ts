@@ -122,7 +122,7 @@ describe('unconfigured auth', () => {
     s3: undefined,
     db: undefined,
     auth: undefined,
-    production: true,
+    devDefaults: false,
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {
