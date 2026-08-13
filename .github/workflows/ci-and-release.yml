@@ -2081,10 +2081,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, which a shallow clone cannot answer.
+          fetch-depth: 0
           persist-credentials: false
-      # Also refuses a version older than the newest released tag: the hotfix
-      # lane can move the released version out of band, and this app has one
-      # production site to roll back.
+      # Refuses anything the hotfix lane has overtaken — a version older than
+      # the newest tag, or a tree missing the newest released commit. This app
+      # has one production site, and either would roll a shipped fix off it.
       - name: Skip if this version should not be deployed
         id: guard
         env:
@@ -2166,10 +2169,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-tags: true
+          # Full history: the guard checks that this tree contains the newest
+          # released commit, which a shallow clone cannot answer.
+          fetch-depth: 0
           persist-credentials: false
-      # Also refuses a version older than the newest released tag: the hotfix
-      # lane can move the released version out of band, and this app has one
-      # production site to roll back.
+      # Refuses anything the hotfix lane has overtaken — a version older than
+      # the newest tag, or a tree missing the newest released commit. This app
+      # has one production site, and either would roll a shipped fix off it.
       - name: Skip if this version should not be deployed
         id: guard
         env:

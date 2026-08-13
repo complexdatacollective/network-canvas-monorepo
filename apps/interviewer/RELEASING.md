@@ -81,20 +81,26 @@ is not ready to go out, release from the previous tag instead:
    A branch that needs an older line published needs a separate channel, not
    this lane.
 
-4. **Record the released version on main** in a follow-up PR, whenever the
-   hotfix version is higher than main's current one:
-   - bump `package.json` and `CHANGELOG.md` to the hotfix version;
-   - remove **only** `'@codaco/interviewer'` from the changeset the hotfix
-     consumed, deleting the file only if the app was its sole target. Normal-lane
-     changesets may also name libraries, the other app, and Fresco, and those
-     packages still need their bumps from main's next release.
+4. **Merge the hotfix branch into main.** Open a pull request from the hotfix
+   branch itself rather than re-applying its content: the normal lane refuses
+   to deploy a tree that does not contain the newest released commit, so a
+   cherry-pick — which makes a different commit — leaves main blocked. The
+   merge brings the version bump and CHANGELOG with it. While you are there,
+   remove **only** `'@codaco/interviewer'` from the changeset the hotfix consumed,
+   deleting the file only if the app was its sole target: normal-lane
+   changesets may also name libraries, the other app, and Fresco, and those
+   packages still need their bumps from main's next release.
 
-   Recording is what keeps main releasable: the lane is tag-driven and
-   self-healing (`.github/scripts/detect-app-release.sh`), so if main later
-   versions itself to the number already tagged, the guard skips it and main's
-   release never deploys. If main is somehow already ahead of the hotfix
-   version, leave it alone — nothing needs recording, and downgrading main would
-   make its next changeset release calculate from the wrong baseline.
+   Both halves matter. Until the merge lands, `.github/scripts/app-release-guard.sh`
+   skips main's release of this app — deploying a tree without the hotfix would
+   take the fix off production behind a higher version number — and the tag
+   guard would swallow a main release that later reaches the version already
+   tagged. Once merged, the next push to main releases normally.
+
+   If main is somehow already ahead of the hotfix version, still merge the
+   branch: what unblocks the lane is the commit being in main's history, not
+   the version number, and downgrading main's version would make its next
+   changeset release calculate from the wrong baseline.
 
 **Setup:** the workflow is gated on the `interviewer-hotfix-production` GitHub
 environment. Give that environment required reviewers, or any dispatch deploys

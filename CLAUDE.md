@@ -162,11 +162,12 @@ cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
 **Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
 `main`, naming that branch in `source_ref`. The lane only ships the newest
 line — one production site per app means a `--prod` deploy always replaces what
-is live. Afterwards, record the released version on `main` (and drop only that
-app's entry from the changeset the hotfix consumed): the lane is tag-driven and
-self-healing, so a version whose tag already exists is skipped, and skipping it
-on `main` means `main` never deploys. Full procedure in each app's
-`RELEASING.md`.
+is live. Afterwards, merge the hotfix branch into `main` (dropping only that
+app's entry from the changeset it consumed). Both release lanes refuse to
+deploy a tree that does not contain the newest released commit, and the
+tag-driven guard skips a version whose tag already exists — so until that merge
+lands, `main` cannot release the app at all. Cherry-picking does not count: the
+guard checks commit ancestry. Full procedure in each app's `RELEASING.md`.
 
 #### Apps that release by mirroring
 

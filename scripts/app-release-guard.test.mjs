@@ -22,7 +22,7 @@ function git(cwd, ...args) {
 
 // A throwaway repo carrying `tags`, so the guard's tag lookups see them.
 // Returns the parsed $GITHUB_OUTPUT the script wrote.
-function guard({ version, tags = [] }) {
+function guard({ version, tags = [], strandedTags = [] }) {
   const cwd = mkdtempSync(join(tmpdir(), 'arg-'));
   git(cwd, 'init', '-q');
   git(cwd, 'config', 'user.email', 'ci@example.com');
@@ -31,6 +31,21 @@ function guard({ version, tags = [] }) {
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', 'first');
   for (const tag of tags) git(cwd, 'tag', tag);
+
+  // Tags on a commit this tree never saw — main's shape when a hotfix has
+  // shipped but its branch has not been merged back.
+  if (strandedTags.length) {
+    const head = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+    }).trim();
+    git(cwd, 'checkout', '-q', '-b', 'hotfix');
+    writeFileSync(join(cwd, 'HOTFIX.md'), 'shipped out of band\n');
+    git(cwd, 'add', '.');
+    git(cwd, 'commit', '-qm', 'hotfix');
+    for (const tag of strandedTags) git(cwd, 'tag', tag);
+    git(cwd, 'checkout', '-q', head);
+  }
 
   const outputPath = join(cwd, 'github-output');
   writeFileSync(outputPath, '');
@@ -104,4 +119,25 @@ test('ignores prereleases and other packages when picking the newest', () => {
   });
   assert.equal(out.skip, 'false');
   assert.equal(out.newest, '8.1.2');
+});
+
+// The mirror of the hotfix lane's descendant rule. main can be numerically
+// ahead of a hotfix while missing the fix itself, and deploying it would take
+// that fix off production behind a higher version number.
+test('skips when the tree does not contain the newest released commit', () => {
+  const out = guard({
+    version: '8.2.0',
+    tags: [`${PKG_NAME}@8.1.2`],
+    strandedTags: [`${PKG_NAME}@8.1.3`],
+  });
+  assert.equal(out.skip, 'true');
+});
+
+test('releases once the hotfix commit is in this tree', () => {
+  const out = guard({
+    version: '8.2.0',
+    tags: [`${PKG_NAME}@8.1.2`, `${PKG_NAME}@8.1.3`],
+  });
+  assert.equal(out.skip, 'false');
+  assert.equal(out.newest, '8.1.3');
 });
