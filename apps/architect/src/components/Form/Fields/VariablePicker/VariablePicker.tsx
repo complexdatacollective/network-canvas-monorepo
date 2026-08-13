@@ -1,4 +1,4 @@
-import { get, has } from 'es-toolkit/compat';
+import { get } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { VariableType } from '@codaco/protocol-validation';
-import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
+import { VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
 import VariableSpotlight from './VariableSpotlight';
@@ -77,18 +77,19 @@ export const VariablePickerControl = ({
   const variablePill = () => {
     if (!selectedOption) return null;
 
-    if (has(selectedOption, 'type') && selectedOption.type) {
-      return (
-        <ConnectedVariablePill animated editable uuid={selectedOption.value} />
-      );
-    }
-
     const selectedLabel = get(selectedOption, 'label', null);
     const selectedValue = get(selectedOption, 'value', null);
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (selectedOption.type ?? 'text') as VariableType;
 
-    return <VariablePill label={finalLabel} type={variableType} />;
+    return (
+      <VariablePill
+        interactive={false}
+        label={finalLabel}
+        type={variableType}
+        validations={[]}
+      />
+    );
   };
 
   return (

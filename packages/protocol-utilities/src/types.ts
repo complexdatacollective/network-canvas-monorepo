@@ -9,6 +9,7 @@ import type {
   FilterOperator,
   Item,
   StageType,
+  VariableSynthetic,
   VariableType,
 } from '@codaco/protocol-validation';
 
@@ -67,6 +68,8 @@ export type VariableEntry = {
   // Only meaningful on node text variables; the variable schema rejects
   // `encrypted` on ego/edge variables, so only the node codebook emits it.
   encrypted?: boolean;
+  /** Synthetic-generation metadata, emitted verbatim into the codebook. */
+  synthetic?: VariableSynthetic;
 };
 
 type ShapeMapping =
@@ -385,6 +388,8 @@ export type AddVariableInput = {
   validation?: Record<string, unknown>;
   parameters?: Record<string, unknown>;
   encrypted?: boolean;
+  /** Value-distribution metadata for the variable's type. */
+  synthetic?: VariableSynthetic;
 };
 
 export type FormFieldInput = {

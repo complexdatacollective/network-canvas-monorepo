@@ -1,12 +1,15 @@
 import { invariant } from 'es-toolkit';
 
-import type {
-  ComponentType,
-  Item,
-  Stage,
-  StageType,
-  StructuralCodebook,
-  VariableType,
+import {
+  type ComponentType,
+  type Item,
+  type Stage,
+  type StageType,
+  type StructuralCodebook,
+  type Variable,
+  VariableSchema,
+  type VariableType,
+  validateComposerRenderedSynthetic,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -23,6 +26,7 @@ import {
   NODE_COLORS,
   ORDINAL_COLORS,
 } from './constants';
+import { scopeKeyFor } from './generateNetwork/analyse/stageEffects';
 import {
   claimFixedValues,
   constraintsFor,
@@ -61,6 +65,15 @@ import {
   crossRuleBrokenByFixedValues,
   ownRuleBrokenByFixedValues,
 } from './generateNetwork/nodes';
+import {
+  applyMissingness,
+  equalityGroups,
+  groupMissingProbability,
+  missingProbabilities,
+  missingProbabilitiesFor,
+  requiredVariables,
+  requiredVariablesFor,
+} from './generateNetwork/plan/networkPlan';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,
@@ -303,6 +316,34 @@ const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 /** Shared default for deterministic synthetic interview fixtures. */
 export const DEFAULT_SYNTHETIC_SEED = 42;
 
+/**
+ * Refuses synthetic metadata that does not belong to the variable's type.
+ *
+ * `AddVariableInput.synthetic` is the whole union, so nothing in the type
+ * system stops `{ type: 'number', synthetic: { generator: 'personName' } }`.
+ * Stored unchecked it produces two disagreeing artefacts from one builder:
+ * `getProtocol()` emits a protocol the v8 schema rejects, while `getNetwork()`
+ * ignores the incompatible descriptor and draws the number default. The
+ * builder already throws on a redeclared type mismatch, so it refuses this the
+ * same way rather than emitting either.
+ */
+function assertSyntheticMatchesType(entry: VariableEntry, scope: string): void {
+  if (entry.synthetic === undefined) return;
+  const result = VariableSchema.safeParse({
+    name: entry.name,
+    type: entry.type,
+    ...(entry.component !== undefined ? { component: entry.component } : {}),
+    ...(entry.options !== undefined ? { options: entry.options } : {}),
+    ...(entry.validation !== undefined ? { validation: entry.validation } : {}),
+    ...(entry.parameters !== undefined ? { parameters: entry.parameters } : {}),
+    synthetic: entry.synthetic,
+  });
+  if (result.success) return;
+  throw new Error(
+    `Synthetic metadata for "${entry.name}" on ${scope} is not valid for a "${entry.type}" variable.`,
+  );
+}
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -318,6 +359,16 @@ export class SyntheticInterview {
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
   private experiments: { encryptedVariables?: boolean } | null = null;
+  /**
+   * Ids the caller declared outright, which the mint must never re-issue.
+   *
+   * `addVariable` accepts an explicit `id`, and nothing stops that id spelling
+   * the mint pattern itself. `nextId` counts blindly, so the counter would
+   * eventually mint the same string and `Map.set` would silently replace the
+   * caller's variable with a later one — a codebook missing a declaration while
+   * every stage referencing its id resolves to somebody else's.
+   */
+  private suppliedIds = new Set<string>();
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -325,8 +376,40 @@ export class SyntheticInterview {
   }
 
   private nextId(prefix: string): string {
-    this.idCounter++;
-    return `${prefix}-${this.seed}-${this.idCounter}`;
+    // Redrawn from the same counter until clear of every caller-supplied id,
+    // so a builder that supplies none keeps byte-identical ids throughout.
+    let id: string;
+    do {
+      this.idCounter++;
+      id = `${prefix}-${this.seed}-${this.idCounter}`;
+    } while (this.suppliedIds.has(id));
+    return id;
+  }
+
+  /**
+   * Records an id the caller supplied so {@link nextId} steps over it, and
+   * refuses one the destination already holds.
+   *
+   * Reserving alone only protects ids minted LATER. An id already in the map
+   * — the seeded name variable `addNodeType` creates, or an earlier explicit
+   * declaration — was overwritten by the `set` that followed: the first
+   * variable vanished from the codebook while every handle and stage
+   * reference taken against it went on resolving, silently, to the caller's
+   * new definition. A builder cannot hold two variables under one id, so this
+   * is refused where it is asked for rather than lost where it is stored.
+   */
+  private reserveSuppliedId(
+    id: string,
+    destination: ReadonlyMap<string, unknown>,
+    scope: string,
+  ): string {
+    if (destination.has(id)) {
+      throw new Error(
+        `Cannot declare a second variable with id "${id}" on ${scope}: that id is already in use.`,
+      );
+    }
+    this.suppliedIds.add(id);
+    return id;
   }
 
   // --- Manual codebook API ---
@@ -417,10 +500,31 @@ export class SyntheticInterview {
       if (opts?.encrypted) {
         existing.encrypted = true;
       }
+      // Nor a synthetic descriptor, for the same reason: giving the seeded
+      // "name" its own text generator is a redeclaration by construction, so
+      // dropping it here would silently ignore the one option such a call
+      // exists to pass.
+      if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `node type "${nodeTypeId}"`,
+        );
+        existing.synthetic = opts.synthetic;
+      }
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId =
+      opts?.id !== undefined
+        ? this.reserveSuppliedId(
+            opts.id,
+            nodeType.variables,
+            `node type "${nodeTypeId}"`,
+          )
+        : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -432,8 +536,10 @@ export class SyntheticInterview {
       validation: opts?.validation,
       parameters: opts?.parameters,
       encrypted: opts?.encrypted,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
+    assertSyntheticMatchesType(entry, `node type "${nodeTypeId}"`);
     nodeType.variables.set(varId, entry);
     return { id: varId };
   }
@@ -457,10 +563,27 @@ export class SyntheticInterview {
           `Variable "${name}" already exists on edge type "${edgeTypeId}" with type "${existing.type}"; cannot redeclare as "${type}".`,
         );
       }
+      if (opts?.synthetic) {
+        // Validated on a candidate rather than in place. Assigning first left
+        // the rejected metadata on the stored entry when the caller caught the
+        // error and carried on, so `getProtocol()` still emitted it.
+        assertSyntheticMatchesType(
+          { ...existing, synthetic: opts.synthetic },
+          `edge type "${edgeTypeId}"`,
+        );
+        existing.synthetic = opts.synthetic;
+      }
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId =
+      opts?.id !== undefined
+        ? this.reserveSuppliedId(
+            opts.id,
+            edgeType.variables,
+            `edge type "${edgeTypeId}"`,
+          )
+        : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -471,8 +594,10 @@ export class SyntheticInterview {
       options,
       validation: opts?.validation,
       parameters: opts?.parameters,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
 
+    assertSyntheticMatchesType(entry, `edge type "${edgeTypeId}"`);
     edgeType.variables.set(varId, entry);
     return { id: varId };
   }
@@ -500,7 +625,10 @@ export class SyntheticInterview {
       options,
       validation: opts?.validation,
       parameters: opts?.parameters,
+      ...(opts?.synthetic ? { synthetic: opts.synthetic } : {}),
     };
+
+    assertSyntheticMatchesType(entry, 'ego');
 
     this.egoVariables.set(varId, entry);
     return { id: varId };
@@ -1665,6 +1793,75 @@ export class SyntheticInterview {
     const ctx = this.generationContext(today);
     const stagesById = new Map(this.stages.map((stage) => [stage.id, stage]));
 
+    // A declared `missingProbability` describes a question the participant left
+    // unanswered. `getProtocol()` emits it, so a network assembled here has to
+    // honour it or `getInterviewPayload()` contradicts itself: a protocol
+    // saying a value is always missing beside a network holding that value.
+    //
+    // The planner's own pass, called with the planner's own inputs, so the two
+    // cannot come to different answers about one descriptor. Group-aware for
+    // the reason it is there: variables held equal share one decision, and a
+    // required member or a settled value suppresses it for the whole group.
+    //
+    // Read from `buildCodebook()` rather than from `ctx.codebook`: the
+    // generation context carries a structural shell of type names only, and
+    // the descriptors live on the emitted codebook — the same one
+    // `getProtocol()` returns, which is the artefact this has to agree with.
+    const declared = this.buildCodebook() as unknown as StructuralCodebook;
+    const missingByScope = missingProbabilities(declared);
+    const requiredByScope = requiredVariables(declared);
+    const applyMissing = (
+      ref: Parameters<typeof constraintsFor>[1],
+      attributes: Record<string, VariableValue>,
+      fixed: Record<string, VariableValue>,
+    ): void => {
+      const scope =
+        ref.entity === 'ego'
+          ? scopeKeyFor('ego')
+          : scopeKeyFor(ref.entity, ref.type);
+      applyMissingness(
+        attributes,
+        new Set(Object.keys(fixed)),
+        missingProbabilitiesFor(missingByScope, scope),
+        requiredVariablesFor(requiredByScope, scope),
+        equalityGroups(constraintsFor(ctx, ref)),
+        ctx.valueGen.randomSource,
+        scope,
+      );
+    };
+
+    // The groups `applyMissing` is certain to null: probability exactly 1, no
+    // required member, no member the caller settled. These are excluded from
+    // the draw rather than drawn and deleted, mirroring the plan path's
+    // `certainlyMissingVariables` bypass (which cannot be called here — the
+    // fixed keys differ per entity) and for its reason: a `unique` draw CLAIMS
+    // its value from the run's registry, and deleting the attribute afterwards
+    // does not release the claim, so a variable declared missing on every
+    // entity could exhaust a small value space and refuse a network whose
+    // declared final state holds no such values at all. The conditions are
+    // `applyMissingness`'s own, via `groupMissingProbability`, so the
+    // exclusion and the deletion cannot disagree about which groups these are.
+    const certainlyMissingFor = (
+      ref: Parameters<typeof constraintsFor>[1],
+      fixed: Record<string, VariableValue>,
+    ): Set<string> => {
+      const scope =
+        ref.entity === 'ego'
+          ? scopeKeyFor('ego')
+          : scopeKeyFor(ref.entity, ref.type);
+      const probabilities = missingProbabilitiesFor(missingByScope, scope);
+      const required = requiredVariablesFor(requiredByScope, scope);
+      const certain = new Set<string>();
+      for (const members of equalityGroups(constraintsFor(ctx, ref))) {
+        if (members.some((id) => id in fixed)) continue;
+        if (groupMissingProbability(members, probabilities, required) !== 1) {
+          continue;
+        }
+        for (const id of members) certain.add(id);
+      }
+      return certain;
+    };
+
     const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
       this.explicitValuesOf(
         this.nodeTypes.get(nodeEntry.type)?.variables,
@@ -1732,21 +1929,28 @@ export class SyntheticInterview {
         // the values the node actually holds — the caller's own among them.
         // Manually-seeded nodes keep unset attributes neutral so the caller's
         // scenario isn't corrupted by random data.
-        const drawn = nodeEntry.manual
-          ? undefined
-          : generateAttributesForEntity(
-              ctx,
-              { entity: 'node', type: nodeEntry.type },
-              index,
-              {
-                existing: explicit,
-                only: new Set(
-                  [...nodeType.variables.keys()].filter(
-                    (varId) => !(varId in nodeEntry.explicitAttributes),
-                  ),
+        let drawn: Record<string, VariableValue> | undefined;
+        if (!nodeEntry.manual) {
+          const certain = certainlyMissingFor(
+            { entity: 'node', type: nodeEntry.type },
+            explicit,
+          );
+          drawn = generateAttributesForEntity(
+            ctx,
+            { entity: 'node', type: nodeEntry.type },
+            index,
+            {
+              existing: explicit,
+              only: new Set(
+                [...nodeType.variables.keys()].filter(
+                  (varId) =>
+                    !(varId in nodeEntry.explicitAttributes) &&
+                    !certain.has(varId),
                 ),
-              },
-            );
+              ),
+            },
+          );
+        }
 
         if (drawn) {
           this.refuseUndrawableValues(
@@ -1765,6 +1969,19 @@ export class SyntheticInterview {
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
           if (stored !== undefined) attributes[varId] = stored;
+        }
+
+        // Drawn entities only. A manually-seeded node deliberately keeps its
+        // unset attributes neutral rather than distributed — the caller's
+        // scenario is not corrupted by random data — and nulling them would be
+        // that same corruption by another name. What the caller wrote is
+        // protected either way: a settled value is never made missing.
+        if (drawn) {
+          applyMissing(
+            { entity: 'node', type: nodeEntry.type },
+            attributes,
+            explicit,
+          );
         }
       }
 
@@ -1800,21 +2017,27 @@ export class SyntheticInterview {
         // the interview would have collected answers for. Copying its empty
         // attribute store left every rule unsatisfied — a required variable
         // absent rather than answered.
-        const drawn = edgeEntry.manual
-          ? undefined
-          : generateAttributesForEntity(
-              ctx,
-              { entity: 'edge', type: edgeEntry.type },
-              index,
-              {
-                existing: explicit,
-                only: new Set(
-                  [...edgeType.variables.keys()].filter(
-                    (varId) => !(varId in edgeEntry.attributes),
-                  ),
+        let drawn: Record<string, VariableValue> | undefined;
+        if (!edgeEntry.manual) {
+          const certain = certainlyMissingFor(
+            { entity: 'edge', type: edgeEntry.type },
+            explicit,
+          );
+          drawn = generateAttributesForEntity(
+            ctx,
+            { entity: 'edge', type: edgeEntry.type },
+            index,
+            {
+              existing: explicit,
+              only: new Set(
+                [...edgeType.variables.keys()].filter(
+                  (varId) =>
+                    !(varId in edgeEntry.attributes) && !certain.has(varId),
                 ),
-              },
-            );
+              ),
+            },
+          );
+        }
 
         if (drawn) {
           this.refuseUndrawableValues(
@@ -1833,6 +2056,15 @@ export class SyntheticInterview {
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
           if (stored !== undefined) attributes[varId] = stored;
+        }
+
+        // The node treatment, for the node's reasons.
+        if (drawn) {
+          applyMissing(
+            { entity: 'edge', type: edgeEntry.type },
+            attributes,
+            explicit,
+          );
         }
       }
 
@@ -1861,8 +2093,24 @@ export class SyntheticInterview {
     this.refuseContradictoryFixedValues(ctx, { entity: 'ego' }, egoExplicit);
     this.refuseUnsupportedEgoConstraints(ctx);
 
+    // Ego takes the certainly-missing bypass too. `unique` never reaches ego
+    // (refused above), so no registry claim is at stake, but drawing a value
+    // `applyMissing` is certain to delete would leave the two entry points
+    // disagreeing about what an always-unanswered question consumes. `only` is
+    // passed only when something must be excluded, so a builder declaring no
+    // certain missingness keeps the exact draw it had.
+    const egoCertain = certainlyMissingFor({ entity: 'ego' }, egoExplicit);
     const drawnEgo = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
       existing: egoExplicit,
+      ...(egoCertain.size > 0
+        ? {
+            only: new Set(
+              [...this.egoVariables.keys()].filter(
+                (varId) => !egoCertain.has(varId),
+              ),
+            ),
+          }
+        : {}),
     });
     this.refuseUndrawableValues(ctx, { entity: 'ego' }, drawnEgo, egoExplicit);
 
@@ -1871,6 +2119,9 @@ export class SyntheticInterview {
       const value = drawnEgo[varId];
       if (value !== undefined) egoAttributes[varId] = value;
     }
+    // Ego is always drawn — there is one of it and the builder offers no way
+    // to write an attribute onto it — so there is no manual case to exempt.
+    applyMissing({ entity: 'ego' }, egoAttributes, egoExplicit);
 
     const network: NcNetwork = {
       ego: {
@@ -1932,8 +2183,113 @@ export class SyntheticInterview {
    * which this builder's stage configs only satisfy at runtime, and honouring
    * a rule nothing enforces yields a value that is valid either way.
    */
+  /**
+   * Holds the builder's declared metadata to the same record-level rule the
+   * protocol schema applies: a rendering the composer supplies is what the
+   * generated values actually obey.
+   *
+   * A variable parsed on its own looks valid — its window is a window, its
+   * probability a probability — and only the pair says otherwise. A datetime
+   * range of 1950-1960 beside a Composer DatePicker pinned to 2000-2001 was
+   * accepted here and then silently clamped into the picker's window, while
+   * the protocol record refinement rejected exactly that combination. The
+   * check is `@codaco/protocol-validation`'s own, called rather than
+   * re-derived, so the two surfaces cannot disagree again.
+   *
+   * Read from the NetworkComposer stages' own fields, which is the only thing
+   * the record refinement reads. The resolved rendering map beside this is a
+   * different object: `mergedRendering` closes each contributing window
+   * through `buildVariableConstraints`, so an open full-resolution picker
+   * arrives back carrying `max: today` — a stand-in ceiling the drawer is
+   * meant to REPLACE (`ceilingIsStandIn` in {@link ValueGenerator}), re-emitted
+   * as an explicit bound with its `maxDerived` flag gone. Judged against that,
+   * a window declared entirely in the future read as unreachable, and a
+   * builder with no NetworkComposer in it at all — the map is fed by every
+   * ordinary form too — was refused for a ceiling nobody wrote, on a verdict
+   * that changed as the wall clock passed the declared floor.
+   */
+  private assertRenderedSyntheticIsReachable() {
+    for (const stage of this.stages) {
+      if (stage.type !== 'NetworkComposer') continue;
+
+      const nodeType = stage.subject?.type;
+      if (nodeType !== undefined) {
+        this.assertComposerFormIsReachable(
+          'node',
+          nodeType,
+          stage.nodeForm?.fields,
+        );
+      }
+
+      for (const edge of stage.networkComposerEdges ?? []) {
+        this.assertComposerFormIsReachable(
+          'edge',
+          edge.subject.type,
+          edge.form?.fields,
+        );
+      }
+    }
+  }
+
+  /**
+   * One NetworkComposer form's fields, against the synthetic metadata of the
+   * type they write onto.
+   *
+   * Each form is judged on its own, exactly as the record refinement judges
+   * `nodeForm` and every `edges[].form` separately: a field's `component` and
+   * `parameters` are what that stage puts in front of the participant, and the
+   * check's own parameter fallback reads the codebook's window through a field
+   * that re-declares only the control.
+   */
+  private assertComposerFormIsReachable(
+    entity: 'node' | 'edge',
+    typeId: string,
+    fields: NetworkComposerFormFieldEntry[] | undefined,
+  ) {
+    if (fields === undefined || fields.length === 0) return;
+    const variables = (entity === 'node' ? this.nodeTypes : this.edgeTypes).get(
+      typeId,
+    )?.variables;
+    if (variables === undefined) return;
+
+    const codebookVariables: Record<string, Variable> = {};
+    for (const [varId, declared] of variables) {
+      if (declared.synthetic === undefined) continue;
+      codebookVariables[varId] = {
+        name: declared.name,
+        type: declared.type,
+        ...(declared.options !== undefined
+          ? { options: declared.options }
+          : {}),
+        ...(declared.validation !== undefined
+          ? { validation: declared.validation }
+          : {}),
+        ...(declared.parameters !== undefined
+          ? { parameters: declared.parameters }
+          : {}),
+        synthetic: declared.synthetic,
+      } as unknown as Variable;
+    }
+
+    const issues: string[] = [];
+    validateComposerRenderedSynthetic(
+      codebookVariables,
+      fields as never,
+      [],
+      (issue) => {
+        if (issue.message !== undefined) issues.push(issue.message);
+      },
+    );
+    if (issues.length > 0) {
+      throw new Error(
+        `Synthetic metadata on ${entity} type "${typeId}" cannot be reached through the NetworkComposer field that renders it: ${issues.join('; ')}`,
+      );
+    }
+  }
+
   private generationContext(today: string): GenerationContext {
     const rendered = this.composerRenderings(today);
+    this.assertRenderedSyntheticIsReachable();
 
     const constraintsOf = (
       variables: Map<string, VariableEntry>,
@@ -2337,6 +2693,7 @@ export class SyntheticInterview {
         if (varEntry.validation) variable.validation = varEntry.validation;
         if (varEntry.parameters) variable.parameters = varEntry.parameters;
         if (varEntry.encrypted) variable.encrypted = varEntry.encrypted;
+        if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
         variables[varId] = variable;
       }
       node[id] = {
@@ -2366,6 +2723,7 @@ export class SyntheticInterview {
           if (varEntry.options) variable.options = varEntry.options;
           if (varEntry.validation) variable.validation = varEntry.validation;
           if (varEntry.parameters) variable.parameters = varEntry.parameters;
+          if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
           variables[varId] = variable;
         }
         edgeEntry.variables = variables;
@@ -2386,6 +2744,7 @@ export class SyntheticInterview {
         if (varEntry.options) variable.options = varEntry.options;
         if (varEntry.validation) variable.validation = varEntry.validation;
         if (varEntry.parameters) variable.parameters = varEntry.parameters;
+        if (varEntry.synthetic) variable.synthetic = varEntry.synthetic;
         variables[varId] = variable;
       }
       ego = { variables };

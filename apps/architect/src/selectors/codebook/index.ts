@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { find, get, isObject } from 'es-toolkit/compat';
+import { get, isObject } from 'es-toolkit/compat';
 
 import type {
   Codebook,
@@ -137,68 +137,6 @@ export const getAllVariablesByUUID = (codebook: Codebook): Variables => {
   return flattenedVariables;
 };
 
-// Memoized selector for getting all variables with entity information
-const getAllVariablesByEntitySelector = createSelector(
-  [getCodebook],
-  (codebook): VariableWithEntity[] => {
-    if (!codebook) return [];
-
-    const variables: VariableWithEntity[] = [];
-    const { node: nodeTypes = {}, edge: edgeTypes = {}, ego } = codebook;
-
-    // Process nodes
-    for (const [nodeType, typeData] of Object.entries(nodeTypes) as [
-      string,
-      NodeDefinition,
-    ][]) {
-      const nodeVariables = typeData.variables || {};
-      for (const [uuid, variable] of Object.entries(nodeVariables)) {
-        if (!variable || typeof variable !== 'object') continue;
-        variables.push({
-          uuid,
-          name: variable.name,
-          entity: 'node',
-          entityType: nodeType,
-          type: variable.type,
-        });
-      }
-    }
-
-    // Process edges
-    for (const [edgeType, typeData] of Object.entries(edgeTypes) as [
-      string,
-      EdgeDefinition,
-    ][]) {
-      const edgeVariables = typeData.variables || {};
-      for (const [uuid, variable] of Object.entries(edgeVariables)) {
-        if (!variable || typeof variable !== 'object') continue;
-        variables.push({
-          uuid,
-          name: variable.name,
-          entity: 'edge',
-          entityType: edgeType,
-          type: variable.type,
-        });
-      }
-    }
-
-    // Process ego
-    const egoVariables = ego?.variables || {};
-    for (const [uuid, variable] of Object.entries(egoVariables)) {
-      if (!variable || typeof variable !== 'object') continue;
-      variables.push({
-        uuid,
-        name: variable.name,
-        entity: 'ego',
-        entityType: null,
-        type: variable.type,
-      });
-    }
-
-    return variables;
-  },
-);
-
 // Legacy function for backward compatibility
 export const getAllVariableUUIDsByEntity = (
   codebook: Codebook,
@@ -260,18 +198,12 @@ export const getAllVariableUUIDsByEntity = (
   return variables;
 };
 
-// Factory for creating a memoized selector for a specific variable
-export const makeGetVariableWithEntity = (uuid: string) =>
-  createSelector([getAllVariablesByEntitySelector], (variables) =>
-    find(variables, { uuid }),
-  );
-
 // Legacy function for backward compatibility
 export const makeGetVariable = (uuid: string) => (state: RootState) => {
   const codebook = getCodebook(state);
   if (!codebook) return null;
   const variables = getAllVariablesByUUID(codebook);
-  return get(variables, uuid, null);
+  return variables[uuid] ?? null;
 };
 
 // Main selector for getting variable options. Its inputs are chosen for

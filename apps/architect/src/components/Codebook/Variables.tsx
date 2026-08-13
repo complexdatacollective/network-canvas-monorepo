@@ -11,7 +11,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { ConnectedVariablePill } from '~/components/VariablePill';
+import type { Variable as ProtocolVariable } from '@codaco/protocol-validation';
+import ConnectedVariablePill from '~/components/ConnectedVariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
@@ -23,10 +24,8 @@ type UsageItem = {
   id?: string;
 };
 
-type Variable = {
+type Variable = ProtocolVariable & {
   id: string;
-  name: string;
-  component: string;
   inUse: boolean;
   usage: UsageItem[];
   usageString?: string;
@@ -76,10 +75,9 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         sortingFn: caseInsensitiveSort,
         cell: ({ row }) => (
           <ConnectedVariablePill
-            animated
-            editable
+            entity={entity}
+            type={type}
             uuid={row.original.id}
-            width="25rem"
           />
         ),
       },
@@ -112,7 +110,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
       },
     ],
-    [handleDelete],
+    [entity, handleDelete, type],
   );
 
   const table = useReactTable({

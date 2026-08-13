@@ -1,61 +1,34 @@
 import { todayYmd } from './constraints/dateWindow';
 
 /**
- * A closed `[min, max]` numeric range a random draw is sampled from.
+ * A closed `[min, max]` numeric range.
  */
 type Range = { min: number; max: number };
 
 /**
- * Tuning constants for synthetic network generation. Every value is an
- * assumption about how much data a stage should fabricate; exposing them as
- * config (resolved over {@link DEFAULT_GENERATION_CONFIG}) keeps them visible
- * and overridable instead of buried as literals. Callers pass a `Partial` of
- * this and the defaults fill the rest.
+ * Run-level controls for synthetic session generation. Everything that used
+ * to tune per-stage fabrication (node-count windows, edge probabilities,
+ * roster ratios) is gone: those quantities now come from the codebook's
+ * `synthetic` metadata and its documented defaults. What remains configures
+ * the SESSION being simulated, not the network being described.
  */
 export type GenerationConfig = {
   /**
-   * Probability that a node on a mixed name-generator stage (one that can both
-   * draw from a roster and fabricate) is drawn from the roster rather than
-   * fabricated, while roster rows remain.
-   */
-  rosterDrawRatio: number;
-  /** Node-count window used when a name-generator stage omits `behaviours`. */
-  nodeCount: Range;
-  /**
-   * Scales the per-stage drop-out probability, which grows across the protocol
-   * as `((stageIndex + 1) / stageCount) * dropOutFactor`.
+   * Scales the per-stage drop-out probability, which grows across the
+   * protocol as `((stageIndex + 1) / stageCount) * dropOutFactor`.
    */
   dropOutFactor: number;
-  /** Per-pair edge probability for Sociogram prompts. */
-  sociogramEdgeProbability: Range;
-  /** {x, y} position range for Sociogram layout variables (unit-square inset). */
-  sociogramLayoutRange: Range;
   /**
-   * Chance a node is highlighted on a Sociogram prompt collecting one. Optional
-   * on the public type so adding this tuning knob does not break consumers that
-   * annotate a complete config object; it is always present after resolution.
-   */
-  sociogramHighlightProbability?: number;
-  /** Per-pair edge probability for DyadCensus and TieStrengthCensus prompts. */
-  censusEdgeProbability: Range;
-  /** Per-pair edge probability for NetworkComposer edge types. */
-  networkComposerEdgeProbability: Range;
-  /**
-   * Legacy display budget for a FamilyPedigree stage. The family-specific
-   * generator uses the larger endpoint as its optional-branch cap; topology is
-   * sampled from its population profile rather than uniformly from this range.
-   */
-  familyPedigreeNodeCount: Range;
-  /**
-   * Fraction of an in-progress stage's subject nodes left unplaced (always at
-   * least one node), so the stage presents as partially complete.
+   * Fraction of an in-progress stage's subject nodes left unanswered (always
+   * at least one node), so the stage presents as partially complete.
    */
   inProgressClearRatio: number;
   /**
    * The date RelativeDatePicker bounds are resolved against, as YYYY-MM-DD.
    * Omit it and the clock is read once per run; supply it to pin the run's
    * date. Optional so that adding it did not break consumers who annotate a
-   * whole config — internally it is always present, as ResolvedGenerationConfig.
+   * whole config — internally it is always present, as
+   * ResolvedGenerationConfig.
    */
   today?: string;
 };
@@ -68,25 +41,10 @@ export type GenerationConfig = {
  */
 export type ResolvedGenerationConfig = GenerationConfig & {
   today: string;
-  sociogramHighlightProbability: number;
 };
 
-const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> &
-  Pick<ResolvedGenerationConfig, 'sociogramHighlightProbability'> = {
-  rosterDrawRatio: 0.7,
-  nodeCount: { min: 1, max: 8 },
+const DEFAULT_GENERATION_CONFIG: Omit<GenerationConfig, 'today'> = {
   dropOutFactor: 0.15,
-  // A per-pair probability compounds quadratically as a network grows. The
-  // former 0.3–0.5 range made medium-sized preview networks look almost
-  // complete and obscured the distinction between synthetic structure and the
-  // participant's own ties. Keep the default sparse while retaining the public
-  // override for deliberately dense protocols.
-  sociogramEdgeProbability: { min: 0.08, max: 0.15 },
-  sociogramLayoutRange: { min: 0.1, max: 0.9 },
-  sociogramHighlightProbability: 0.35,
-  censusEdgeProbability: { min: 0.4, max: 0.6 },
-  networkComposerEdgeProbability: { min: 0.05, max: 0.1 },
-  familyPedigreeNodeCount: { min: 7, max: 32 },
   inProgressClearRatio: 0.5,
 };
 
@@ -103,3 +61,54 @@ export function resolveGenerationConfig(
     today: today ?? todayYmd(),
   };
 }
+
+/**
+ * Worst-case bounds the up-front feasibility analysis counts with. These are
+ * no longer generation tuning: the planner draws real quantities from the
+ * codebook metadata. Feasibility only needs CEILINGS that provably cover
+ * whatever the planner could draw, so `unique` value-space refusals stay
+ * seed-independent and conservative — the counting half of feasibility's
+ * plan-vs-capacity adaptation. Node ceilings are derived per run from the
+ * codebook's declared counts (see `generateNetwork`); the edge probabilities
+ * are pinned at 1 because a declared density may reach every pair.
+ */
+export type FeasibilityTuning = {
+  /** Fallback ceiling for a node type the codebook gives no count. */
+  nodeCount: Range;
+  /**
+   * Per-type ceilings from the codebook's declared counts. Counting a stage
+   * against the largest population in the protocol would refuse protocols
+   * whose own subject type is far smaller, so each type is counted against
+   * its own declaration.
+   */
+  nodeCountByType?: Record<string, Range>;
+  /**
+   * Per stage, per node type, the most nodes that stage can contribute.
+   *
+   * A type's ceiling is a ceiling on its whole population, not on each stage
+   * that builds it: the planner draws one total and apportions it across the
+   * creating stages. Counting every stage at the type ceiling and summing
+   * therefore multiplies the population by the number of generators, and a
+   * `unique` variable with exactly enough values for the declared population
+   * is refused before a plan that would have satisfied it ever runs.
+   */
+  nodeCapByStage?: Record<string, Record<string, number>>;
+  /**
+   * Per edge type, the most edges the planner can select for it.
+   *
+   * The old counter reads a per-pair probability and so counts every eligible
+   * pair. The planner does not work that way: it draws one target from the
+   * declared topology and selects exactly that many, so a twenty-node graph at
+   * density 0.1 holds about nineteen edges rather than all one hundred and
+   * ninety. Counting the pairs instead refuses `unique` edge variables whose
+   * value space covers the actual plan comfortably.
+   */
+  edgeCountByType?: Record<string, number>;
+  rosterDrawRatio: number;
+  sociogramEdgeProbability: Range;
+  censusEdgeProbability: Range;
+  networkComposerEdgeProbability: Range;
+  familyPedigreeNodeCount: Range;
+};
+
+export type FeasibilityConfig = FeasibilityTuning & { today: string };

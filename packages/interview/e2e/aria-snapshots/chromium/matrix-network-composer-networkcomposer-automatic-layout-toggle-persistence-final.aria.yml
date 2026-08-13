@@ -10,10 +10,10 @@
     - button "Redo" [disabled]
   - application:
     - img
-    - button "Lurline Schuster"
-    - button "Joesph Hartmann"
-    - button "Vernice Rath"
-    - button "Tony Dietrich"
+    - button "Toni Collier"
+    - button "Vernie Jerde"
+    - button "Odell Schmitt"
+    - button "Tami Stoltenberg"
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

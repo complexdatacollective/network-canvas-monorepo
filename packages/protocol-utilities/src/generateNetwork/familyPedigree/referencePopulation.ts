@@ -1,3 +1,5 @@
+import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
+
 import type {
   FamilyPedigreeGenerationOptions,
   FamilyPedigreePopulationProfile,
@@ -61,8 +63,16 @@ export function resolveFamilyPedigreeGenerationOptions(
     population: options?.population ?? US_FAMILY_PEDIGREE_POPULATION,
     scenario: options?.scenario ?? 'population',
     diseaseMode: options?.diseaseMode ?? 'visualization',
-    // Seven is ego + two genetic parents + four genetic grandparents, the
-    // smallest complete multi-generational pedigree this generator emits.
-    maxNodes: Math.max(maxNodes, 7),
+    // Bounded at both ends. Seven is ego + two genetic parents + four genetic
+    // grandparents, the smallest complete multi-generational pedigree this
+    // generator emits. The upper bound is the run-wide population cap every
+    // other creation site already honours (`withinPopulationCeiling` trims the
+    // planner's stages against it; the stage schema caps declared counts at
+    // the same figure because generation is synchronous): a caller-raised
+    // ceiling above it would let one pedigree materialise more people on the
+    // main thread than the whole run is allowed to hold. Clamped rather than
+    // refused, exactly as the planner clamps — a large ceiling is not wrong,
+    // the preview simply cannot build that many people.
+    maxNodes: Math.max(Math.min(maxNodes, MAX_SYNTHETIC_POPULATION), 7),
   };
 }

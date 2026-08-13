@@ -233,6 +233,12 @@ function reserveHeadroom(
             resolution: window.resolution,
             ...(window.min !== undefined ? { min: window.min } : {}),
             ...(windowMax !== undefined ? { max: windowMax } : {}),
+            // Reserving headroom produces a ceiling of this function's own,
+            // which is a rule the draw must respect; an untouched ceiling
+            // stays whatever the window said it was.
+            ...(window.maxDerived === true && windowMax === window.max
+              ? { maxDerived: true }
+              : {}),
           },
         }
       : {}),
@@ -449,6 +455,11 @@ function applyComparatorBounds(
           resolution,
           ...(windowMin !== undefined ? { min: windowMin } : {}),
           ...(windowMax !== undefined ? { max: windowMax } : {}),
+          // A comparator that moved the ceiling stated a rule of its own; a
+          // ceiling still sitting where the window left it did not.
+          ...(window?.maxDerived === true && windowMax === window.max
+            ? { maxDerived: true }
+            : {}),
         },
       },
       crossed,
@@ -516,6 +527,29 @@ export function comparatorFoldEmptied(
  */
 const NUMBER_OPEN_RANGE = { floor: 18, span: 62 };
 
+/**
+ * The floor a number given a ceiling but no floor of its own draws above, or
+ * nothing where the declared bounds already leave the draw somewhere sensible.
+ *
+ * Exported because more than the draw needs it: deciding whether a declared
+ * constant survives its own clamp is the same question, and answering it
+ * separately would be a second opinion about where an open-below window
+ * starts.
+ */
+export function numberFallbackFloor(
+  minValue: number | undefined,
+  maxValue: number | undefined,
+): number | undefined {
+  if (
+    minValue !== undefined ||
+    maxValue === undefined ||
+    maxValue >= NUMBER_OPEN_RANGE.floor
+  ) {
+    return undefined;
+  }
+  return maxValue - NUMBER_OPEN_RANGE.span;
+}
+
 /** A floor for a group given a ceiling but left without one. */
 function withFallbackFloor(
   entry: VariableEntry,
@@ -523,16 +557,10 @@ function withFallbackFloor(
 ): VariableConstraints {
   if (entry.type !== 'number') return constraints;
 
-  const { minValue, maxValue } = constraints;
-  if (
-    minValue !== undefined ||
-    maxValue === undefined ||
-    maxValue >= NUMBER_OPEN_RANGE.floor
-  ) {
-    return constraints;
-  }
+  const floor = numberFallbackFloor(constraints.minValue, constraints.maxValue);
+  if (floor === undefined) return constraints;
 
-  return { ...constraints, minValue: maxValue - NUMBER_OPEN_RANGE.span };
+  return { ...constraints, minValue: floor };
 }
 
 /**
@@ -614,12 +642,60 @@ function forbiddenKeys(
 }
 
 /**
+ * One slot-key member id, made safe to join on NUL.
+ *
+ * The join alone is not injective: a variable id is an arbitrary codebook key
+ * and may itself contain NUL, so the member lists [a, b␀c] and [a␀b, c] joined
+ * to the same slot. Two independent equality groups then shared one used-value
+ * registry slot — each group's draw was refused values the OTHER group had
+ * issued, exhausting domains the live interview (which validates each
+ * variable's `unique` rule independently) accepts, and `uniqueSlotMembers`
+ * silently overwrote one group's membership with the other's.
+ *
+ * Escaped rather than re-encoded (length-prefixing, say) so that an id
+ * containing neither NUL nor SOH is left BYTE-IDENTICAL — the same scheme, for
+ * the same reason, as `escapeSegment` in plan/random.ts: ordinary protocols
+ * keep the slot keys (and thus the registry state) they have always had.
+ */
+const escapeSlotMember = (id: string): string =>
+  id.includes('\u0000') || id.includes('\u0001')
+    ? id
+        .replaceAll('\u0001', '\u0001\u0002')
+        .replaceAll('\u0000', '\u0001\u0001')
+    : id;
+
+/**
  * The registry slot a group's `unique` values are issued from. Built from the
  * sorted member ids rather than the group's representative, whose identity
- * depends on the order the codebook's keys happen to be in.
+ * depends on the order the codebook's keys happen to be in. Every site that
+ * needs a slot key builds it here, so the escaping cannot drift between the
+ * draw, the registry release, and the fixed-value claimants.
  */
 function slotOf(memberIds: readonly string[]): string {
-  return memberIds.toSorted().join(KEY_SEPARATOR);
+  return memberIds.toSorted().map(escapeSlotMember).join(KEY_SEPARATOR);
+}
+
+/**
+ * A list of ids collapsed to one key segment, injectively.
+ *
+ * A bare `join(',')` is not: an id may itself contain a comma, so the group
+ * lists [a, b,c] and [a,b, c] named the same component-solver stream (aliasing
+ * two components onto one shuffle sequence, where adding or removing one moved
+ * the other's solved assignment under the same root seed) and the same
+ * broken-fixed-value dedup key (swallowing a distinct feasibility conflict).
+ *
+ * Escaped only when an id actually contains a comma or backslash, so the
+ * segment is byte-identical for ordinary ids — stream paths are seeds, and any
+ * broader re-encoding would move every solved assignment in every protocol.
+ */
+export function joinIdsInjectively(ids: readonly string[]): string {
+  return ids
+    .map((id) =>
+      id.includes(',') || id.includes('\\')
+        ? id.replaceAll('\\', '\\\\').replaceAll(',', '\\,')
+        : id,
+    )
+    .join(',');
 }
 
 /**
@@ -777,6 +853,7 @@ export function generateEntityAttributes(
     only?: Set<string>;
     /** Text variables that represent person labels even when not named `name`. */
     preferRealisticNameVariables?: ReadonlySet<string>;
+    highlightVariables?: ReadonlySet<string>;
   },
 ): Record<string, VariableValue> {
   const { order, membersOf, groupOf } = resolveGenerationOrder(entity);
@@ -827,6 +904,7 @@ export function generateEntityAttributes(
     only,
     existing,
     preferRealisticNameVariables: options?.preferRealisticNameVariables,
+    highlightVariables: options?.highlightVariables,
   };
   const solved = new Map<string, VariableValue>();
   const attempted = new Set<SolvableComponent>();
@@ -922,8 +1000,9 @@ function solveTractableComponent(
   tractable: TractableComponent,
   plan: Plan,
   ctx: GenerationContext,
-  { scope, resolved, only, existing }: DrawState,
+  state: DrawState,
 ): Map<string, VariableValue> | undefined {
+  const { scope, resolved, only, existing } = state;
   const registry = scopeKey(scope);
   const pins = new Map<string, VariableValue>();
   const exclude = new Set<string>();
@@ -984,11 +1063,29 @@ function solveTractableComponent(
     }
   }
 
-  // One draw from the run's stream seeds a local shuffle, so the stream
-  // advances by exactly one step per solve whatever the search does — a
-  // capped or unsatisfiable solve cannot shift the draws that follow it, and
-  // a domain's size never shows through as extra consumption.
-  const shuffleSeed = ctx.valueGen.randomInt(0, 2 ** 31 - 1);
+  // One draw seeds a local shuffle, so the stream advances by exactly one step
+  // per solve whatever the search does — a capped or unsatisfiable solve
+  // cannot shift the draws that follow it, and a domain's size never shows
+  // through as extra consumption.
+  //
+  // Addressed by scope, component and entity rather than taken from the run's
+  // shared stream. Taken from that stream, adding an unrelated solvable
+  // component earlier consumed a step and moved this one's assignment under
+  // the same root seed — exactly the coupling between unrelated variables the
+  // semantic substreams exist to remove. The component is named by its own
+  // groups, sorted and joined injectively, so the address depends neither on
+  // the order the planner happens to visit them in nor on a comma inside a
+  // group id making two distinct components spell the same name.
+  const shuffleSeed = ctx.valueGen.scopedInt(
+    [
+      'solve',
+      registry,
+      joinIdsInjectively([...tractable.groups].toSorted()),
+      String(state.index),
+    ],
+    0,
+    2 ** 31 - 1,
+  );
 
   const solveWith = (
     allowReserved: boolean,
@@ -1101,6 +1198,7 @@ type DrawState = {
   only: Set<string> | undefined;
   existing: Record<string, VariableValue> | undefined;
   preferRealisticNameVariables: ReadonlySet<string> | undefined;
+  highlightVariables: ReadonlySet<string> | undefined;
 };
 
 /**
@@ -1168,6 +1266,7 @@ function drawGroup(
     only,
     existing,
     preferRealisticNameVariables,
+    highlightVariables,
   }: DrawState,
   solved?: VariableValue,
 ): VariableValue | undefined {
@@ -1249,8 +1348,11 @@ function drawGroup(
           ? attempt
           : undefined;
 
-      const value = ctx.valueGen.generateConstrained(bounded, index, {
+      const value = ctx.valueGen.generateConstrained(bounded, index, registry, {
         ...(seq !== undefined ? { distinctSeq: seq } : {}),
+        ...(highlightVariables?.has(variable.entry.id) === true
+          ? { sociogramHighlight: true }
+          : {}),
         ...(attempt === 0
           ? {
               preferRealisticName:
