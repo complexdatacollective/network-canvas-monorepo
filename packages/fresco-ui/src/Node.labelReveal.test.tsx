@@ -176,13 +176,22 @@ describe('Node label reveal', () => {
     expect(getPopup()).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('renders the popup transparent to the pointer', async () => {
+  it('keeps the popup within the viewport and lets the participant scroll it', async () => {
     await renderNode(<Node label={CLIPPED_LABEL} onClick={vi.fn()} />);
 
     await pressAndHold(node(CLIPPED_LABEL));
     await waitFor(() => expect(getPopup()).not.toBeNull());
 
-    expect(getPopup()!.closest('[data-base-ui-portal] > *')).toHaveClass(
+    expect(getPopup()).toHaveClass(
+      'max-h-(--available-height)',
+      'flex',
+      'flex-col',
+    );
+    expect(getPopup()!.querySelector('[data-node-label-reveal]')).toHaveClass(
+      'overflow-y-auto',
+      'overscroll-contain',
+    );
+    expect(getPopup()!.closest('[data-base-ui-portal] > *')).not.toHaveClass(
       'pointer-events-none!',
     );
   });

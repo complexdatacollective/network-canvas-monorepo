@@ -38,6 +38,7 @@ type UseNodeInteractionsReturn = {
     onPointerLeave: (e: React.PointerEvent) => void;
     onKeyDown: (e: React.KeyboardEvent) => void;
     onKeyUp: (e: React.KeyboardEvent) => void;
+    onBlur: (e: React.FocusEvent) => void;
     style: CSSProperties;
   };
   /** Whether the node is currently being pressed */
@@ -75,6 +76,10 @@ export function useNodeInteractions(
 
   const [scope, animate] = useSafeAnimate<HTMLElement>();
   const [isPressed, setIsPressed] = useState(false);
+  // Event sequences can move focus before React commits the key-down render.
+  // Keep the live ownership synchronously as well as in render state so a
+  // blur in that same sequence can still settle the press.
+  const isPressedRef = useRef(false);
 
   // A key tap can be over in well under the time the press spring needs to
   // become visible, so the release is held back until the press has been on
@@ -103,6 +108,7 @@ export function useNodeInteractions(
       // A held-back key release must not pop a press the pointer now owns.
       cancelPendingKeyRelease();
       if (enablePressAnimation && scope.current) {
+        isPressedRef.current = true;
         setIsPressed(true);
         animate(scope.current, { scale: 0.92 });
       }
@@ -111,7 +117,8 @@ export function useNodeInteractions(
   );
 
   const resetPress = useCallback(() => {
-    if (!isPressed) return;
+    if (!isPressedRef.current) return;
+    isPressedRef.current = false;
     setIsPressed(false);
 
     if (scope.current) {
@@ -121,7 +128,7 @@ export function useNodeInteractions(
         { type: 'spring', stiffness: 700, damping: 20 },
       );
     }
-  }, [isPressed, animate, scope]);
+  }, [animate, scope]);
 
   // Losing the window ends the press without any of the events that normally
   // would: no pointerup, no pointercancel, no keyup. Left alone the node stays
@@ -135,6 +142,14 @@ export function useNodeInteractions(
     window.addEventListener('blur', handleWindowBlur);
     return () => window.removeEventListener('blur', handleWindowBlur);
   }, [cancelPendingKeyRelease, resetPress]);
+
+  const handleBlur = useCallback(
+    (_e: React.FocusEvent) => {
+      cancelPendingKeyRelease();
+      resetPress();
+    },
+    [cancelPendingKeyRelease, resetPress],
+  );
 
   const handlePointerUp = useCallback(
     (_e: React.PointerEvent) => {
@@ -168,6 +183,7 @@ export function useNodeInteractions(
       cancelPendingKeyRelease();
       keyPressedAtRef.current = performance.now();
       if (enablePressAnimation && scope.current) {
+        isPressedRef.current = true;
         setIsPressed(true);
         animate(
           scope.current,
@@ -206,6 +222,7 @@ export function useNodeInteractions(
       onPointerLeave: handlePointerLeave,
       onKeyDown: handleKeyDown,
       onKeyUp: handleKeyUp,
+      onBlur: handleBlur,
       style: {
         touchAction: 'manipulation',
         userSelect: 'none',

@@ -165,19 +165,26 @@ export function useFitText<T extends HTMLElement = HTMLElement>({
     // against the fallback font can fit — or stop fitting — once they load.
     void document.fonts?.ready.then(fit);
 
+    // ResizeObserver only notices the fixed box. Fluid type tokens can change
+    // with the viewport while that box stays the same size, so the text still
+    // needs measuring on a viewport resize.
+    window.addEventListener('resize', fit);
+
+    const cleanup = () => {
+      cancelled = true;
+      pending.delete(fitter);
+      window.removeEventListener('resize', fit);
+    };
+
     if (typeof ResizeObserver === 'undefined' || !container) {
-      return () => {
-        cancelled = true;
-        pending.delete(fitter);
-      };
+      return cleanup;
     }
 
     const observer = new ResizeObserver(fit);
     observer.observe(container);
 
     return () => {
-      cancelled = true;
-      pending.delete(fitter);
+      cleanup();
       observer.disconnect();
     };
   }, [steps, containerRef, watch, enabled]);
