@@ -42,5 +42,11 @@ if [[ -n "$newest" ]]; then
   fi
 fi
 
-echo "skip=false" >> "$GITHUB_OUTPUT"
+# `newest` feeds release-notes.mjs --since: a release queued behind others on
+# this app's concurrency group can be dropped while pending, so the body must
+# carry every CHANGELOG section released since the last tag, not just its own.
+{
+  echo "skip=false"
+  echo "newest=$newest"
+} >> "$GITHUB_OUTPUT"
 echo "$tag is clear to release (newest released: ${newest:-none})"

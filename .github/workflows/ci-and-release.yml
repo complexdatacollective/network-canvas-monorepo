@@ -2055,17 +2055,21 @@ jobs:
     if: needs.apps-release-detect.outputs.architect_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version. With per-commit push concurrency (see top of file)
-    # main pushes run in parallel, so two runs can both detect the same untagged
-    # version and race into a duplicate build/deploy/release. Serialise them on
-    # the tag so only one runs at a time; the guard step below turns the run that
+    # One release at a time for this app, whichever lane it comes from. With
+    # per-commit push concurrency (see top of file) main pushes run in parallel,
+    # so two runs can both detect the same untagged version and race into a
+    # duplicate build/deploy/release; the guard step below turns the run that
     # starts after the tag exists into a clean no-op (no redundant prod deploy).
-    # The version stays in the group on purpose: a versionless group would keep
-    # only one pending run, so a release queued behind another could be dropped
-    # and never tagged. Ordering against the hotfix lane is enforced by the guard
-    # step's newest-tag check instead of by a shared lock.
+    # The group omits the version so hotfix-release.yml shares it: both lanes
+    # deploy before they tag, so version checks alone leave a window where one
+    # lane reads a stale newest-tag and puts older code live. Only exclusion
+    # over the whole check → deploy → tag sequence closes it.
+    # A versionless group keeps just one pending run, so a release queued behind
+    # two others can be dropped before tagging. Its code ships in the next
+    # release, and its notes are not lost either: --since below carries every
+    # CHANGELOG section since the last released version.
     concurrency:
-      group: apps-release-@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}
+      group: apps-release-@codaco/architect
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2117,13 +2121,18 @@ jobs:
             --site="${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}"
       - name: architect release notes
         if: steps.guard.outputs.skip != 'true'
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release run was dropped
+        # while pending on this app's concurrency group.
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
+          SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
           node scripts/release-notes.mjs
           --app apps/architect
           --pkg @codaco/architect
           --version "$VERSION"
+          --since "$SINCE"
           --out "${RUNNER_TEMP}/architect-notes.md"
       - if: steps.guard.outputs.skip != 'true'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
@@ -2144,9 +2153,10 @@ jobs:
     if: needs.apps-release-detect.outputs.interviewer_released == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One release per version — see apps-release-architect for the rationale.
+    # One release at a time for this app, shared with the hotfix lane — see
+    # apps-release-architect for the rationale.
     concurrency:
-      group: apps-release-@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}
+      group: apps-release-@codaco/interviewer
       cancel-in-progress: false
     permissions:
       contents: write
@@ -2196,13 +2206,18 @@ jobs:
             --site="${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}"
       - name: interviewer release notes
         if: steps.guard.outputs.skip != 'true'
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release run was dropped
+        # while pending on this app's concurrency group.
         env:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
+          SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
           node scripts/release-notes.mjs
           --app apps/interviewer
           --pkg @codaco/interviewer
           --version "$VERSION"
+          --since "$SINCE"
           --out "${RUNNER_TEMP}/interviewer-notes.md"
       - if: steps.guard.outputs.skip != 'true'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2

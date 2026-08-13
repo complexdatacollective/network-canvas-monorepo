@@ -44,17 +44,20 @@ on:
 permissions:
   contents: read
 
-# Serialized per app rather than per ref: two branches carrying the same version
-# would each pass the tag check and race, leaving one SHA tagged while the other
-# build is what production actually serves. Ordering against the normal lane is
-# enforced by version, not by a shared lock — this job re-validates against the
-# newest tag immediately before deploying, and the normal lane's guard refuses
-# anything older than the newest tag — because a lock the two lanes could share
-# would have to drop the version from the normal lane's group, and a versionless
-# group keeps only one pending run: a release queued behind another could be
-# dropped and never tagged.
+# The same group the normal lane's apps-release-<app> job uses. Version checks
+# alone cannot order the two lanes: each job deploys before it tags, so a
+# re-check can read a stale newest-tag and put older code live in the window
+# before the other lane's tag appears. Only mutual exclusion over the whole
+# check → deploy → tag sequence closes that, which means one group per app,
+# without the version.
+#
+# The cost is that a versionless group keeps only one pending run, so a release
+# queued behind two others can be dropped before it ever tags. Its code is not
+# lost — the next release contains it — and its notes are not either: both lanes
+# pass `--since <newest released version>` to release-notes.mjs, so a release
+# body carries every CHANGELOG section skipped that way.
 concurrency:
-  group: hotfix-release-@codaco/${{ inputs.app }}
+  group: apps-release-@codaco/${{ inputs.app }}
   cancel-in-progress: false
 
 jobs:
@@ -108,7 +111,17 @@ jobs:
 
       - name: Resolve the released commit
         id: commit
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        # Compares commits, not strings: `refs/heads/main` and a raw SHA both
+        # slip past a literal 'main' check and would start a second release path
+        # for the very tree the normal lane owns. `.hotfix-lane` is checked out
+        # at the dispatching main commit, so its HEAD is main's tip.
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ "$sha" == "$(git -C .hotfix-lane rev-parse HEAD)" ]]; then
+            echo "::error::source_ref '$SOURCE_REF' resolves to main. main releases through apps-release-<app> in ci-and-release.yml." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Resolve and validate the version
         id: version
@@ -175,13 +188,18 @@ jobs:
             --site="$site"
 
       - name: Release notes
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release run was dropped
+        # while pending on the shared lock above.
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          SINCE: ${{ steps.version.outputs.newest }}
         run: >-
           node scripts/release-notes.mjs
           --app "apps/$APP"
           --pkg "@codaco/$APP"
           --version "$VERSION"
+          --since "$SINCE"
           --out "${RUNNER_TEMP}/hotfix-notes.md"
 
       # Always the newest line — resolve-hotfix-release.mjs refuses anything

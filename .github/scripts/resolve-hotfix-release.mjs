@@ -73,7 +73,9 @@ if (newest && compare(version, newest) < 0) {
 
 appendFileSync(
   process.env.GITHUB_OUTPUT,
-  `version=${version}\nlabel=${label}\n`,
+  // `newest` feeds release-notes.mjs --since, so the release body also carries
+  // any CHANGELOG section whose own release run was dropped while pending.
+  `version=${version}\nlabel=${label}\nnewest=${newest ?? ''}\n`,
 );
 console.log(
   `[hotfix] ${label} ${version} (newest released: ${newest ?? 'none'}) — clear to release`,
