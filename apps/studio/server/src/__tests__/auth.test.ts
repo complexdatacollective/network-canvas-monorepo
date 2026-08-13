@@ -8,10 +8,9 @@ import type { contract } from '@codaco/studio-rpc';
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/index.ts';
-import { createPool } from '../db/pool.ts';
-import { ensureSchema, staleSchemaMessage } from '../db/schema.ts';
+import { ensureSchema } from '../db/schema.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { reachableDb } from './support/postgres.ts';
+import { createScratchSchema, reachableDb } from './support/postgres.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -158,6 +157,11 @@ describe('unconfigured auth', () => {
 // from scripts/dev-pg.ts. Skips when no database is reachable (same pattern
 // as the asset and connectivity suites). The mailer interface is the test
 // seam: a capturing implementation stands in for email delivery.
+//
+// It runs in its own Postgres schema, like the fingerprint suite: this test
+// needs an empty rate-limit table to start from, and clearing that in the
+// shared database would delete durable security counters from whatever
+// DATABASE_URL happens to point at.
 
 const env = readEnv();
 
@@ -166,16 +170,15 @@ const db = await reachableDb();
 describe.skipIf(!db)('magic-link sign-in', () => {
   it('signs in end to end: send, verify, session, me', async () => {
     if (!db || !env.auth) throw new Error('dev env must configure auth');
-    const pool = createPool(db);
+    const scratch = await createScratchSchema(db);
+    const pool = scratch.pool;
     try {
-      const state = await ensureSchema(pool);
-      if (state.kind === 'stale') {
-        throw new Error(staleSchemaMessage(state));
-      }
-      // The magic-link send limit (5/60s per IP) is durable in Postgres and
-      // vitest always resolves to the same localhost key, so counters from
-      // earlier runs would 429 this one. Start the window fresh.
-      await pool.query('DELETE FROM "rateLimit"');
+      // A fresh schema, so this both builds the tables and guarantees the
+      // empty rate-limit window the send below needs: the magic-link limit
+      // (5/60s per IP) is durable in Postgres and vitest always resolves to
+      // the same localhost key, so counters left by an earlier run in a
+      // shared table would 429 this one.
+      await ensureSchema(pool);
 
       const sent: { email: string; url: string }[] = [];
       const auth = createBetterAuthService(env.auth, pool, {
@@ -217,7 +220,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       const { error } = await safe(createRpcClient(app).me());
       expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
     } finally {
-      await pool.end();
+      await scratch.dispose();
     }
   });
 });

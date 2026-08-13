@@ -27,14 +27,20 @@ export type {
  * failure surfaces at the call site that needed the value.
  */
 export function readEnv(): StudioEnv {
+  // An explicit opt-in, not a truthiness check: `Boolean('false')` is `true`,
+  // so coercing the raw string would let `SKIP_ENV_VALIDATION=false` disable
+  // validation and hand `resolve()` unparsed strings.
+  /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
+  const skip = process.env.SKIP_ENV_VALIDATION;
+  const skipValidation = skip === 'true' || skip === '1';
+
   const raw = createEnv({
     server: serverSchemas,
     /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
     runtimeEnv: process.env,
     // A variable left blank in an env file means unset, not empty string.
     emptyStringAsUndefined: true,
-    /* oxlint-disable-next-line node/no-process-env -- the boundary itself */
-    skipValidation: Boolean(process.env.SKIP_ENV_VALIDATION),
+    skipValidation,
   });
 
   return resolve(raw);

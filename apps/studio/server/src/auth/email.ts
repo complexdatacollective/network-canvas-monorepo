@@ -23,7 +23,15 @@ export function createConsoleMailer(): MagicLinkMailer {
 }
 
 function createSmtpMailer(smtpUrl: string, from: string): MagicLinkMailer {
-  const transport = nodemailer.createTransport(smtpUrl);
+  // The send happens inside the sign-in request, and nodemailer's defaults
+  // (2 minutes to connect, 10 minutes of socket inactivity) would hold that
+  // request open long past the point the person gave up.
+  const transport = nodemailer.createTransport({
+    url: smtpUrl,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
   return {
     sendMagicLink: async ({ email, url }) => {
       await transport.sendMail({

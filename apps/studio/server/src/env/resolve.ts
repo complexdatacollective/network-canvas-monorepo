@@ -52,9 +52,9 @@ export type AuthEnv = {
   mailer: MailerEnv;
   /**
    * Proxy addresses/CIDRs whose X-Forwarded-For may be trusted when
-   * resolving the client IP for rate limiting. Unset, a forwarded header is
-   * not trusted — safe, but a proxied deployment then shares one rate-limit
-   * bucket across all clients until this is configured.
+   * resolving the client IP for rate limiting. Unset, no forwarded header is
+   * read at all — safe, but every client then shares one rate-limit bucket
+   * until this is configured.
    */
   trustedProxies: string[] | undefined;
   socialProviders: SocialProvidersEnv;
@@ -219,12 +219,24 @@ export function resolve(raw: RawEnv): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
   // The marker only ever arrives from the committed `.env.development`, which
-  // the dev script loads and no deployment path does. Seeing it in production
+  // the dev script loads and no deployment path does. Seeing it anywhere else
   // means a deployment picked that file up somehow — refuse rather than serve
-  // with a publicly-known signing secret.
-  if (devDefaults && production) {
+  // with a publicly-known signing secret and a console mailer.
+  //
+  // The check is for an explicit development or test NODE_ENV rather than
+  // merely "not production", because the two mistakes travel together: an
+  // entrypoint that accidentally sources `.env.development` is exactly the one
+  // likely to have forgotten `NODE_ENV=production`, and a guard that only
+  // fires on the second would let that deployment through. `.env.development`
+  // sets NODE_ENV itself, so the supported development path always satisfies
+  // this.
+  if (
+    devDefaults &&
+    raw.NODE_ENV !== 'development' &&
+    raw.NODE_ENV !== 'test'
+  ) {
     throw new Error(
-      'STUDIO_DEV_DEFAULTS must not be set when NODE_ENV=production',
+      'STUDIO_DEV_DEFAULTS must not be set unless NODE_ENV is development or test',
     );
   }
 

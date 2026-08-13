@@ -59,15 +59,26 @@ if (pool) {
     // (image pull + initdb on a fresh volume); keep trying so sign-in
     // starts working without a manual restart. The listener is already up by
     // then, so a mismatch found here still takes the process down.
+    //
+    // One attempt at a time: an attempt against an unreachable host can
+    // outlive its tick, and stacking them would exhaust the pool and let two
+    // winners both report.
+    let attempting = false;
     const retry = setInterval(() => {
+      if (attempting) return;
+      attempting = true;
       void ensureSchema(pool)
         .then((state) => {
           clearInterval(retry);
           // oxlint-disable-next-line no-console -- boot diagnostics
           console.log('Database reachable.');
           handleSchemaState(state);
+          return undefined;
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => {
+          attempting = false;
+        });
     }, 3000);
     retry.unref();
   }

@@ -47,6 +47,14 @@ describe('the development marker', () => {
     expect(() => readEnv()).toThrow(/STUDIO_DEV_DEFAULTS must not be set/);
   });
 
+  it('is refused with no NODE_ENV at all, not only against production', () => {
+    // The deployment that accidentally sources `.env.development` is the same
+    // one likely to have forgotten `NODE_ENV=production`, so an absent
+    // NODE_ENV must not be a way past this guard.
+    vi.stubEnv('NODE_ENV', '');
+    expect(() => readEnv()).toThrow(/STUDIO_DEV_DEFAULTS must not be set/);
+  });
+
   it('is what enables the console mailer, not NODE_ENV', () => {
     // Without the marker and without SMTP, sends refuse — even though
     // NODE_ENV is not production. A deployment that forgot NODE_ENV still
@@ -87,6 +95,11 @@ describe('database and auth', () => {
   it('requires the browser-facing origin whenever auth is enabled', () => {
     vi.stubEnv('PUBLIC_URL', '');
     expect(() => readEnv()).toThrow(/PUBLIC_URL is required/);
+  });
+
+  it('refuses a signing secret too short to be a generated one', () => {
+    vi.stubEnv('BETTER_AUTH_SECRET', 'changeme');
+    expect(() => readEnv()).toThrow();
   });
 
   it('splits TRUSTED_PROXIES and drops blank entries', () => {
@@ -198,6 +211,14 @@ describe('process configuration', () => {
 
   it('rejects a PORT outside the valid range', () => {
     vi.stubEnv('PORT', '70000');
+    expect(() => readEnv()).toThrow();
+  });
+
+  it('keeps validating when SKIP_ENV_VALIDATION says not to skip', () => {
+    // `Boolean('false')` is true, so a coerced check would read this as an
+    // instruction to skip and hand the resolver unparsed strings.
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
+    vi.stubEnv('PORT', 'http');
     expect(() => readEnv()).toThrow();
   });
 });

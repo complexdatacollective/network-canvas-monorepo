@@ -71,6 +71,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Runtime mode. Anything other than `production` leaves development affordances available.',
     deployment: 'Set to `production` by the Docker image and by Netlify.',
+    devDefault: 'development',
     example: 'production',
   },
   STUDIO_DEV_DEFAULTS: {
@@ -78,7 +79,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Marks the process as running against the committed development defaults.',
     deployment:
-      'Never set. Combining it with `NODE_ENV=production` is refused at boot.',
+      'Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.',
     devDefault: '1',
   },
   PORT: {
@@ -214,7 +215,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP.',
     deployment:
-      'Unset ⇒ forwarded headers are not trusted, which is safe but shares one rate-limit bucket across every client behind a proxy.',
+      'Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value.',
     example: '10.0.0.0/8,192.168.0.0/16',
   },
 };

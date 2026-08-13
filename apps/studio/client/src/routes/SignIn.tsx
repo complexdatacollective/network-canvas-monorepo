@@ -46,29 +46,47 @@ export default function SignIn() {
     if (sentTo !== null) sentRef.current?.focus();
   }, [sentTo]);
 
-  // Only a definitive "auth is not configured" hides the form; not knowing
-  // (the status query failing) must not lock the door.
-  const unavailable = status.isSuccess && !status.data.auth.enabled;
+  // Only definitive status data closes anything off; not knowing (the status
+  // query failing) must not lock the door. Auth being enabled is not enough
+  // on its own: a server with no mailer and no provider reports `enabled`
+  // while having no way to actually start a sign-in.
+  const auth = status.isSuccess ? status.data.auth : undefined;
+  const unavailable = auth
+    ? !auth.enabled || (!auth.magicLink && auth.socialProviders.length === 0)
+    : false;
+
+  // The server sets `magicLink` false when no mail can leave the instance, in
+  // which case every send here would come back as a failure the person can do
+  // nothing about.
+  const magicLink = auth ? auth.magicLink : true;
 
   // Rendered only from definitive status data: starting a sign-in with an
   // unconfigured provider would fail at the server.
-  const socialProviders = status.data?.auth.socialProviders ?? [];
+  const socialProviders = auth?.socialProviders ?? [];
 
   const signInWith = async (provider: SocialProvider) => {
     setSocialFailed(false);
     setSocialPending(provider);
-    const result = await authClient.signIn.social({
-      provider,
-      callbackURL: '/',
-      // better-auth appends its own ?error=<code> on failure.
-      errorCallbackURL: '/sign-in',
-    });
-    if (result.error) {
+    try {
+      const result = await authClient.signIn.social({
+        provider,
+        callbackURL: '/',
+        // better-auth appends its own ?error=<code> on failure.
+        errorCallbackURL: '/sign-in',
+      });
+      if (result.error) {
+        setSocialPending(null);
+        setSocialFailed(true);
+      }
+      // On success the browser is navigating to the provider; the button stays
+      // busy until the page unloads.
+    } catch {
+      // A rejection rather than an `error` result — the connection dropping
+      // as the redirect starts. Unhandled, it would escape the click handler
+      // and leave every provider button disabled until a reload.
       setSocialPending(null);
       setSocialFailed(true);
     }
-    // On success the browser is navigating to the provider; the button stays
-    // busy until the page unloads.
   };
 
   return (
@@ -90,50 +108,57 @@ export default function SignIn() {
         )}
         {!unavailable && sentTo === null && (
           <>
-            <Paragraph>
-              Enter your email address and we will send you a sign-in link.
-            </Paragraph>
-            <Form
-              onSubmit={async (values) => {
-                const email = String(values.email ?? '');
-                const result = await authClient.signIn.magicLink({
-                  email,
-                  callbackURL: '/',
-                  // better-auth appends its own ?error=<code> on failure.
-                  errorCallbackURL: '/sign-in',
-                });
-                if (result.error) {
-                  return {
-                    success: false,
-                    formErrors: [
-                      'The sign-in email could not be sent. Wait a moment and try again.',
-                    ],
-                  };
-                }
-                setSentTo(email);
-                return { success: true };
-              }}
-            >
-              <Field
-                name="email"
-                label="Email address"
-                component={InputField}
-                type="email"
-                required
-                pattern={{
-                  regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
-                  hint: 'The address you use for Studio.',
-                  errorMessage: 'Enter a valid email address.',
-                }}
-                autoComplete="email"
-              />
-              <SubmitButton>Send sign-in link</SubmitButton>
-            </Form>
+            {magicLink && (
+              <>
+                <Paragraph>
+                  Enter your email address and we will send you a sign-in link.
+                </Paragraph>
+                <Form
+                  onSubmit={async (values) => {
+                    const email = String(values.email ?? '');
+                    const result = await authClient.signIn.magicLink({
+                      email,
+                      callbackURL: '/',
+                      // better-auth appends its own ?error=<code> on failure.
+                      errorCallbackURL: '/sign-in',
+                    });
+                    if (result.error) {
+                      return {
+                        success: false,
+                        formErrors: [
+                          'The sign-in email could not be sent. Wait a moment and try again.',
+                        ],
+                      };
+                    }
+                    setSentTo(email);
+                    return { success: true };
+                  }}
+                >
+                  <Field
+                    name="email"
+                    label="Email address"
+                    component={InputField}
+                    type="email"
+                    required
+                    pattern={{
+                      regex: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
+                      hint: 'The address you use for Studio.',
+                      errorMessage: 'Enter a valid email address.',
+                    }}
+                    autoComplete="email"
+                  />
+                  <SubmitButton>Send sign-in link</SubmitButton>
+                </Form>
+              </>
+            )}
             {socialProviders.length > 0 && (
               <>
-                <div className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20">
-                  or
-                </div>
+                {/* Only a divider when there are two things to divide. */}
+                {magicLink && (
+                  <div className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20">
+                    or
+                  </div>
+                )}
                 {socialFailed && (
                   <Alert variant="destructive">
                     Sign-in could not be started. Wait a moment and try again.

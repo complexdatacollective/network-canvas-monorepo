@@ -6,6 +6,16 @@
 # This is NOT the deployment topology decided in #1245/#1247. It exists to get
 # branch previews and a public URL; /ws is unserved here (Netlify cannot hold
 # persistent connections), and scheduled work has nowhere to run.
+#
+# Auth is therefore off here: PUBLIC_URL has to match the origin the browser
+# used, and a deploy preview's origin is per-PR. Netlify cannot supply it —
+# this file does not interpolate variables, and DEPLOY_PRIME_URL is a
+# build-only variable that functions cannot read at runtime (only URL,
+# SITE_NAME, and SITE_ID reach them). So setting DATABASE_URL on this site
+# would give previews a production-origin PUBLIC_URL, whose cookies and
+# magic-link URLs point at the wrong host and whose CSRF check refuses the
+# preview's own requests. Deriving the origin from the request is the way in,
+# and belongs with the real topology work.
 
 [build]
 command = "pnpm exec turbo run build --filter=@codaco/studio-client && pnpm --filter @codaco/studio-server build:netlify"

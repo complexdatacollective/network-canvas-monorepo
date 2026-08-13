@@ -25,6 +25,18 @@ export default async function handler(request: Request): Promise<Response> {
   return app.fetch(request);
 }
 
+// URLPattern, so `/api/*` matches `/api/` and below but not the bare `/api`.
+// The bare prefixes are listed too, otherwise they fall through to the SPA
+// redirect and a machine caller gets 200 and the app shell where src/app.ts
+// answers 404 problem JSON.
 export const config = {
-  path: ['/api/*', '/rpc/*', '/storage/*', '/healthz'],
+  path: [
+    '/api',
+    '/api/*',
+    '/rpc',
+    '/rpc/*',
+    '/storage',
+    '/storage/*',
+    '/healthz',
+  ],
 };

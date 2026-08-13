@@ -123,6 +123,26 @@ describe('route guard', () => {
     expect(router.state.location.pathname).toBe('/');
   });
 
+  it('sends a visitor to sign-in, not the error screen, when auth is switched off', async () => {
+    // A server with no database answers /api/auth/* with 503. That is the
+    // supported degradation, and the sign-in page is where it gets explained.
+    mocked.getSession.mockResolvedValue({
+      data: null,
+      error: { status: 503 },
+    } as unknown as GetSessionResult);
+    currentStatus = {
+      ...STATUS,
+      auth: { enabled: false, magicLink: false, socialProviders: [] },
+    };
+    const router = renderAt('/');
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in is not available on this server/),
+      ).toBeInTheDocument(),
+    );
+    expect(router.state.location.pathname).toBe('/sign-in');
+  });
+
   it('bounces an already-signed-in visitor off the sign-in page', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     mocked.useSession.mockReturnValue(sessionLive);
@@ -210,6 +230,35 @@ describe('sign-in page', () => {
     );
   });
 
+  it('offers no email form when the server cannot send mail', async () => {
+    // magicLink false means the mailer resolved to `refuse`; every send would
+    // come back as a failure the person can do nothing about.
+    currentStatus = {
+      ...STATUS,
+      auth: { ...STATUS.auth, magicLink: false, socialProviders: ['google'] },
+    };
+    renderAt('/sign-in');
+    expect(
+      await screen.findByRole('button', { name: 'Continue with Google' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+    expect(screen.queryByText('or')).not.toBeInTheDocument();
+  });
+
+  it('says so when no sign-in method is available at all', async () => {
+    currentStatus = {
+      ...STATUS,
+      auth: { enabled: true, magicLink: false, socialProviders: [] },
+    };
+    renderAt('/sign-in');
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in is not available on this server/),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByLabelText(/Email address/)).not.toBeInTheDocument();
+  });
+
   it('explains an expired link when the verify redirect carries an error', async () => {
     renderAt('/sign-in?error=EXPIRED_TOKEN');
     await waitFor(() =>
@@ -278,6 +327,25 @@ describe('OAuth sign-in', () => {
       data: null,
       error: { status: 500 },
     } as unknown as SocialResult);
+    renderAt('/sign-in');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue with Microsoft' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Sign-in could not be started/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Continue with Microsoft' }),
+    ).toBeEnabled();
+  });
+
+  it('re-enables the buttons when starting the round trip rejects outright', async () => {
+    // Not an `error` result but a thrown rejection — the connection dropping
+    // as the redirect starts. Unhandled, it leaves every button disabled.
+    currentStatus = withProviders;
+    mocked.signIn.social.mockRejectedValue(new Error('network down'));
     renderAt('/sign-in');
     fireEvent.click(
       await screen.findByRole('button', { name: 'Continue with Microsoft' }),

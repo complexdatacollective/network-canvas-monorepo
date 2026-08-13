@@ -9,7 +9,7 @@ import {
 
 import { authClient } from './lib/auth.ts';
 import AppLayout from './routes/AppLayout.tsx';
-import ErrorScreen from './routes/ErrorScreen.tsx';
+import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
 import SignIn from './routes/SignIn.tsx';
 
@@ -23,7 +23,11 @@ async function probeSession(): Promise<
 > {
   try {
     const { data, error } = await authClient.getSession();
-    if (error) return 'unreachable';
+    // A server with no database answers /api/auth/* with 503 — the supported
+    // degradation, not a failure. That is a reachable server saying nobody is
+    // signed in, so it belongs on the sign-in page, which reads the same
+    // capability from the status query and explains it.
+    if (error) return error.status === 503 ? 'signedOut' : 'unreachable';
     return data ? 'signedIn' : 'signedOut';
   } catch {
     return 'unreachable';
@@ -62,7 +66,7 @@ const authenticatedRoute = createRoute({
     if (session === 'unreachable') {
       // Renders the router's defaultErrorComponent rather than bouncing a
       // possibly-still-authenticated user to the sign-in page.
-      throw new Error('The server could not be reached.');
+      throw new ServerUnreachableError();
     }
   },
   component: AppLayout,

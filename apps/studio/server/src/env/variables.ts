@@ -37,7 +37,13 @@ export const serverSchemas = {
 
   DATABASE_URL: z.string().min(1).optional(),
 
-  BETTER_AUTH_SECRET: z.string().min(1).optional(),
+  /**
+   * 32 bytes of base64 is 44 characters, so the documented
+   * `openssl rand -base64 32` clears this comfortably. The floor exists to
+   * refuse a placeholder or truncated value at boot rather than let it
+   * quietly weaken session and magic-link token signing.
+   */
+  BETTER_AUTH_SECRET: z.string().min(32).optional(),
 
   /**
    * Named `PUBLIC_URL` to match Fresco's name for the same thing, and

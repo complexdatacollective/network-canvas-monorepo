@@ -138,7 +138,9 @@ export function renderReadmeSection(): string {
   for (const group of GROUPS) {
     const entries = entriesByGroup(group);
     if (entries.length === 0) continue;
-    lines.push('', `#### ${group}`, '');
+    // The section is spliced under the README's `## Environment`, so these are
+    // its direct children — skipping a level would break the outline.
+    lines.push('', `### ${group}`, '');
     lines.push(
       ...renderTable([
         ['Variable', 'What it is', 'Development default', 'Real deployment'],

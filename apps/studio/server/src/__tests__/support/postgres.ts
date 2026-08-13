@@ -15,17 +15,28 @@ export async function reachableDb(): Promise<DbEnv | null> {
   const { db } = readEnv();
   if (!db) return null;
   const pool = createPool(db);
+  let timer: NodeJS.Timeout | undefined;
   try {
+    const probe = pool.query('SELECT 1');
+    // When the timeout wins the race, this query is still in flight and
+    // `pool.end()` below rejects it. Promise.race has already settled by then,
+    // so nothing is listening — and an unhandled rejection fails the run.
+    probe.catch(() => undefined);
     await Promise.race([
-      pool.query('SELECT 1'),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('probe timeout')), PROBE_TIMEOUT_MS),
-      ),
+      probe,
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('probe timeout')),
+          PROBE_TIMEOUT_MS,
+        );
+      }),
     ]);
     return db;
   } catch {
     return null;
   } finally {
+    // Otherwise the timer keeps the suite alive for the rest of its window.
+    clearTimeout(timer);
     await pool.end();
   }
 }
