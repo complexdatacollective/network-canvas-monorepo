@@ -22,7 +22,8 @@ function stubAnchorDownload() {
 
 // The share rung is handheld-only, so every navigator stub has to declare
 // which kind of device it is. iPhone/Android are recognised by user agent;
-// iPadOS reports itself as a Mac with a touchscreen.
+// iPadOS in its default desktop mode reports itself as a Mac with a
+// touchscreen, and names itself in every other mode.
 const DEVICES = {
   iphone: {
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
@@ -32,6 +33,11 @@ const DEVICES = {
   ipad: {
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
     platform: 'MacIntel',
+    maxTouchPoints: 5,
+  },
+  ipadMobileMode: {
+    userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_6 like Mac OS X) Mobile/15E148',
+    platform: 'iPad',
     maxTouchPoints: 5,
   },
   mac: {
@@ -228,6 +234,16 @@ describe('the share rung is handheld-only', () => {
   it('shares on iPadOS, which reports the same platform string as a Mac', async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     stubNavigator({ device: 'ipad', share, canShare: () => true });
+
+    expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
+
+    await saveBlob(makeBlob(), 'export.zip');
+    expect(share).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares on an iPad that is not in desktop mode, where the platform is iPad', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    stubNavigator({ device: 'ipadMobileMode', share, canShare: () => true });
 
     expect(saveAction(makeBlob(), 'export.zip')).toBe('share');
 

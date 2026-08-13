@@ -7,9 +7,14 @@
 export function isHandheldPlatform(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = typeof navigator.userAgent === 'string' ? navigator.userAgent : '';
-  if (/Android|iPhone|iPod/i.test(ua)) return true;
-  // iPadOS 13+ presents itself as a Mac, and its default (desktop-mode) user
-  // agent says nothing about iPad. A real Mac has no touchscreen, so
+  // iPad is in this list because iPadOS still names itself whenever it is not
+  // in desktop mode: Safari's per-site "Request Mobile Website", the global
+  // Request Desktop Website toggle turned off, iPadOS 12 and earlier, and
+  // in-app web views. There the platform string is 'iPad', so the Mac check
+  // below would miss it.
+  if (/Android|iPhone|iPod|iPad/i.test(ua)) return true;
+  // In its default desktop mode, iPadOS 13+ presents itself as a Mac and its
+  // user agent says nothing about iPad. A real Mac has no touchscreen, so
   // maxTouchPoints is what separates them — the same idiom as
   // lib/pwa/passkeyWindowLimitation.ts, read in the opposite direction.
   return (
