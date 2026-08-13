@@ -8,7 +8,11 @@ import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
 import { createPool } from './db/pool.ts';
-import { applyAuthSchema } from './db/schema.ts';
+import {
+  ensureSchema,
+  type SchemaState,
+  staleSchemaMessage,
+} from './db/schema.ts';
 import { readEnv } from './env.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -22,14 +26,29 @@ import { STUDIO_VERSION } from './version.ts';
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
 
-// The auth schema is applied idempotently at every boot — there is no
+// A stale database is a resolved answer, not a transient failure: retrying it
+// re-reads the same wrong fingerprint every three seconds. So it exits in both
+// modes, while reachability keeps the existing production/development split.
+function handleSchemaState(state: SchemaState): void {
+  if (state.kind === 'stale') {
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.error(staleSchemaMessage(state));
+    process.exit(1);
+  }
+  if (state.kind === 'created') {
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.log('Database schema applied.');
+  }
+}
+
+// The schema is applied and fingerprinted at every boot — there is no
 // migration system yet, deliberately (pre-release; see src/db/schema.ts).
 // A configured production database that cannot be reached is a deployment
 // mistake and fails the boot; in development the server comes up and auth
 // surfaces fail until the dev Postgres is available.
 if (pool) {
   try {
-    await applyAuthSchema(pool);
+    handleSchemaState(await ensureSchema(pool));
   } catch (error) {
     if (env.production) throw error;
     // oxlint-disable-next-line no-console -- boot diagnostics
@@ -38,13 +57,15 @@ if (pool) {
     );
     // In dev the server may win the race against the dev-pg container
     // (image pull + initdb on a fresh volume); keep trying so sign-in
-    // starts working without a manual restart.
+    // starts working without a manual restart. The listener is already up by
+    // then, so a mismatch found here still takes the process down.
     const retry = setInterval(() => {
-      void applyAuthSchema(pool)
-        .then(() => {
+      void ensureSchema(pool)
+        .then((state) => {
           clearInterval(retry);
           // oxlint-disable-next-line no-console -- boot diagnostics
-          console.log('Database reachable; auth schema applied.');
+          console.log('Database reachable.');
+          handleSchemaState(state);
         })
         .catch(() => undefined);
     }, 3000);

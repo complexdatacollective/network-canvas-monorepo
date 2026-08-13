@@ -15,6 +15,8 @@
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "node --env-file-if-exists=.env scripts/apply-schema.ts",
+    "seed": "node --env-file-if-exists=.env scripts/seed.ts",
+    "db:reset": "node --env-file-if-exists=.env.development --env-file-if-exists=.env scripts/db-reset.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "start": "CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",

@@ -9,8 +9,9 @@ import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/index.ts';
 import { createPool } from '../db/pool.ts';
-import { applyAuthSchema } from '../db/schema.ts';
+import { ensureSchema, staleSchemaMessage } from '../db/schema.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
+import { reachableDb } from './support/postgres.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -160,32 +161,17 @@ describe('unconfigured auth', () => {
 
 const env = readEnv();
 
-async function dbReachable(): Promise<boolean> {
-  if (!env.db) return false;
-  const pool = createPool(env.db);
-  try {
-    await Promise.race([
-      pool.query('SELECT 1'),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('probe timeout')), 3000),
-      ),
-    ]);
-    return true;
-  } catch {
-    return false;
-  } finally {
-    await pool.end();
-  }
-}
+const db = await reachableDb();
 
-const reachable = await dbReachable();
-
-describe.skipIf(!reachable)('magic-link sign-in', () => {
+describe.skipIf(!db)('magic-link sign-in', () => {
   it('signs in end to end: send, verify, session, me', async () => {
-    if (!env.db || !env.auth) throw new Error('dev env must configure auth');
-    const pool = createPool(env.db);
+    if (!db || !env.auth) throw new Error('dev env must configure auth');
+    const pool = createPool(db);
     try {
-      await applyAuthSchema(pool);
+      const state = await ensureSchema(pool);
+      if (state.kind === 'stale') {
+        throw new Error(staleSchemaMessage(state));
+      }
       // The magic-link send limit (5/60s per IP) is durable in Postgres and
       // vitest always resolves to the same localhost key, so counters from
       // earlier runs would 429 this one. Start the window fresh.

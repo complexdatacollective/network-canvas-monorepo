@@ -10,9 +10,10 @@ import { readEnv } from './env.ts';
 //
 // Deliberately NOT ported from src/index.ts:
 //   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
-//   - applyAuthSchema — there is no boot in a serverless runtime; run it once
+//   - ensureSchema — there is no boot in a serverless runtime; run it once
 //     against the database out of band (`pnpm --filter @codaco/studio-server
-//     apply-schema`) rather than on every cold start
+//     apply-schema`) rather than on every cold start. That command is also the
+//     only place this lane ever detects a stale schema.
 //   - the WebSocket server and shutdown drain — /ws cannot be served here and
 //     is excluded from `config.path` below
 

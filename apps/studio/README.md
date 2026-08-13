@@ -100,6 +100,35 @@ server with `SMTP_URL=smtp://localhost:1025`; sent mail appears at
 Auth configuration follows the same all-or-nothing, fail-fast shape as S3;
 every variable is catalogued under [Environment](#environment) below.
 
+### Changing the schema
+
+There is deliberately no migration system yet. Pre-release, a schema change
+means recreating the database rather than migrating it — see the comment at the
+top of `server/src/db/schema.ts` for the reasoning and for when that stops being
+true.
+
+Because every statement in the schema is `create table if not exists`, applying
+it to a database that already has the tables changes nothing, so a stale
+database would otherwise boot clean and fail later inside better-auth. Boot
+therefore records a fingerprint — the hash of the SQL that built the database —
+and compares it on every subsequent start. A mismatch stops the server with the
+remedy:
+
+```bash
+pnpm --filter @codaco/studio-server db:reset
+```
+
+which drops the schema, rebuilds it, and seeds. It refuses to touch a
+non-loopback database unless you pass `--force`, and it is the command to run
+the first time you start the server after this check was introduced: databases
+created before it carry the tables but no fingerprint, and an unstamped
+database is indistinguishable from one built by older SQL, so it is refused
+rather than adopted.
+
+The fingerprint compares the database against `AUTH_SCHEMA_SQL`. It cannot tell
+you that a `better-auth` upgrade expects a shape that SQL no longer describes —
+the regeneration procedure in `schema.ts` remains the only control for that.
+
 ## Environment
 
 `apps/studio/server/src/env.ts` is the only module in the server that reads
@@ -204,6 +233,32 @@ contains the server bundle plus the built client assets:
 docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
+
+### Database schema and seeding
+
+Two steps, run **once per deployment** against `DATABASE_URL` — not once per
+replica, which is why they are commands rather than boot work:
+
+```bash
+pnpm --filter @codaco/studio-server apply-schema
+pnpm --filter @codaco/studio-server seed
+```
+
+Both are idempotent, both refuse against a database whose fingerprint does not
+match this build, and both are identical in every topology. Three things are
+worth knowing before you rely on them:
+
+- **The persistent Node process needs neither.** `src/index.ts` runs the same
+  schema check at boot, under an advisory lock so replicas starting together
+  cannot race. `apply-schema` exists for deployments that have no boot.
+- **The Netlify lane has no automation.** Its build command does not touch the
+  database and its function has no boot, so `apply-schema` is a manual step
+  there — and consequently the only place that lane ever detects a stale
+  schema.
+- **`seed` currently writes nothing.** Studio has no domain entities yet; the
+  first workspace owner and the default workspace land with workspace
+  invitations (#1256). The step is documented now so the procedure does not
+  change when it starts doing something.
 
 ## Deployment topologies
 
