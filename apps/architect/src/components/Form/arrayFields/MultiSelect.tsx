@@ -145,7 +145,7 @@ const MultiSelectRow = ({
       confirmLabel: 'Remove item',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: onDelete,
+      onConfirm: () => onDelete?.(),
     });
   };
 
@@ -161,7 +161,7 @@ const MultiSelectRow = ({
         .map(({ fieldName }) => [fieldName, null]),
     );
 
-    onUpdate({ ...reset, [property.fieldName]: value });
+    onUpdate?.({ ...reset, [property.fieldName]: value });
   };
 
   return (

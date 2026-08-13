@@ -72,7 +72,7 @@ const NodePanel = ({
       confirmLabel: 'Remove item',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: onDelete,
+      onConfirm: () => onDelete?.(),
     });
   };
 

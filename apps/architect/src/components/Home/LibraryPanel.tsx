@@ -87,13 +87,7 @@ type LibraryRowItem = Record<string, unknown> & {
   onDelete?: () => void;
   onShowInfo?: () => void;
 };
-type GalleryCardItem = Record<string, unknown> & {
-  kind: 'gallery-card';
-  id: string;
-  textValue: string;
-  onDismiss: () => void;
-};
-type LibraryPanelItem = LibraryRowItem | GalleryCardItem;
+type LibraryPanelItem = LibraryRowItem;
 type PanelRowProps = {
   itemProps: ItemProps;
   name: string;
@@ -233,18 +227,22 @@ const PanelRow = ({
   );
 };
 type GalleryCardProps = {
-  itemProps: ItemProps;
   onDismiss: () => void;
 };
-const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    itemProps.onKeyDown?.(event);
-  };
+// Rendered as a sibling of the templates Collection rather than as one of
+// its items. A `role="listbox"` is only permitted to own `role="option"`
+// elements — this card's real affordances are the Dismiss button and the
+// gallery link below, not an activatable option, so mixing it into the
+// listbox (however its own role were labelled) breaks the listbox/option
+// structure assistive tech expects and can confuse listbox navigation.
+// Living outside the collection, it needs none of the collection's roving-
+// focus item props: its own controls are already independently focusable.
+const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
   return (
     <div
-      {...itemProps}
-      onKeyDown={handleKeyDown}
-      className="border-outline bg-surface-2 focusable data-focused:bg-surface-3 relative mt-2.5 flex flex-col gap-1 rounded-sm border p-5"
+      role="group"
+      aria-label="Protocol gallery"
+      className="border-outline bg-surface-2 relative mt-2.5 flex shrink-0 flex-col gap-1 rounded-sm border p-5"
     >
       <IconButton
         variant="text"
@@ -269,9 +267,6 @@ const GalleryCard = ({ itemProps, onDismiss }: GalleryCardProps) => {
 const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
 const getLibraryItemTextValue = (item: LibraryPanelItem) => item.textValue;
 const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
-  if (item.kind === 'gallery-card') {
-    return <GalleryCard itemProps={itemProps} onDismiss={item.onDismiss} />;
-  }
   return (
     <PanelRow
       itemProps={itemProps}
@@ -576,18 +571,8 @@ const LibraryPanel = ({
         onShowInfo: () => handleShowTemplateInfo(template),
       })),
     );
-    if (!galleryDismissed) {
-      items.push({
-        kind: 'gallery-card',
-        id: 'protocol-gallery-card',
-        textValue: 'Protocol gallery',
-        onDismiss: dismissGalleryCard,
-      });
-    }
     return items;
   }, [
-    dismissGalleryCard,
-    galleryDismissed,
     handleShowTemplateInfo,
     onOpenDevProtocol,
     onOpenSample,
@@ -702,6 +687,7 @@ const LibraryPanel = ({
           >
             {(CollectionElements) => CollectionElements}
           </Collection>
+          {!galleryDismissed && <GalleryCard onDismiss={dismissGalleryCard} />}
         </TabsPanel>
       </Tabs>
 

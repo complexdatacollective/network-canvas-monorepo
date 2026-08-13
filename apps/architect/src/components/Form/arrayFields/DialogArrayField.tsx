@@ -293,7 +293,7 @@ const DialogItem = ({
       confirmLabel: `Remove ${itemLabel}`,
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => onDelete(),
+      onConfirm: () => onDelete?.(),
     });
   };
 
@@ -476,7 +476,7 @@ const DialogEditor = ({
         // the list's own save handles the commit — including a draft's
         // promotion to a confirmed row, and closing the editor.
         if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
-          onSave(rowToCommit);
+          onSave?.(rowToCommit);
           return { success: true };
         }
 

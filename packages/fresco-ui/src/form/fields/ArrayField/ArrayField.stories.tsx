@@ -694,7 +694,7 @@ function ContactDialogEditor({
               }
             }
 
-            onSave({
+            onSave?.({
               id: item?.id ?? crypto.randomUUID(),
               name: formData.name ?? '',
               email,
@@ -914,7 +914,7 @@ function AlwaysEditingItem({
       )}
       <InputField
         value={item.label ?? ''}
-        onChange={(label) => onUpdate({ label })}
+        onChange={(label) => onUpdate?.({ label })}
         placeholder="Enter a label..."
         className="flex-1"
       />

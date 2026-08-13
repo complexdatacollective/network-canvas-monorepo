@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -126,5 +132,56 @@ describe('<LibraryPanel /> download', () => {
         (config as { type?: string; intent?: string }).intent === 'warning',
     );
     expect(warningCall).toBeUndefined();
+  });
+});
+
+describe('<LibraryPanel /> gallery card', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useProtocolLibraryMock.mockReturnValue({
+      protocols: [],
+      isLoaded: true,
+    });
+  });
+
+  // Regression: the gallery card is rendered inside a Collection with
+  // selectionMode="none", so the Collection's built-in onClick is a no-op —
+  // it has no row-level action of its own (only the nested Dismiss button
+  // and gallery link do anything). It used to inherit the Collection's
+  // default `role="option"`, announcing itself to assistive technology as a
+  // selectable, actionable option wired to nothing.
+  it('does not announce itself as an inert selectable option', async () => {
+    renderPanel();
+    await screen.findByRole('tab', { name: 'Templates' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Templates' }));
+
+    const card = await screen.findByRole('group', { name: 'Protocol gallery' });
+    expect(
+      screen.queryByRole('option', { name: 'Protocol gallery' }),
+    ).not.toBeInTheDocument();
+
+    // Its own controls remain independently functional.
+    expect(
+      within(card).getByRole('button', { name: 'Dismiss' }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole('link', { name: 'protocol gallery' }),
+    ).toBeInTheDocument();
+  });
+
+  it('dismisses via its own Dismiss button, not the (withheld) card click', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('tab', { name: 'Templates' }));
+
+    const card = await screen.findByRole('group', { name: 'Protocol gallery' });
+    fireEvent.click(card);
+    expect(
+      screen.getByRole('group', { name: 'Protocol gallery' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Dismiss' }));
+    expect(
+      screen.queryByRole('group', { name: 'Protocol gallery' }),
+    ).not.toBeInTheDocument();
   });
 });
