@@ -250,7 +250,10 @@ export default function ConnectedVariablePill({
     }
   }, [cancelScheduledClose, editorOrigin, renaming]);
 
-  const openSummaryFromPointer = useCallback(() => {
+  // Hovering the pill, or activating it as the disclosure control it advertises
+  // itself to be, is a deliberate return to the summary: it clears the
+  // suppression that a previous dismissal left behind so the panel comes back.
+  const openSummaryDeliberately = useCallback(() => {
     summarySuppressedRef.current = false;
     openSummary();
   }, [openSummary]);
@@ -395,6 +398,9 @@ export default function ConnectedVariablePill({
   const validationNames = getActiveValidationNames(variable);
   const syntheticStatus = getVariableSyntheticStatus(variable);
   const configuring = editorOrigin !== null;
+  // One value drives both the popover and the state the pill announces, so
+  // aria-expanded cannot drift from what is actually on screen.
+  const summaryVisible = summaryOpen && !renaming && !configuring;
 
   return (
     <>
@@ -406,11 +412,15 @@ export default function ConnectedVariablePill({
         )}
         onBlur={handlePillBlur}
         onFocus={openSummary}
-        onMouseEnter={openSummaryFromPointer}
+        onMouseEnter={openSummaryDeliberately}
         onMouseLeave={scheduleSummaryClose}
       >
         <VariablePill
           active={summaryOpen || renaming}
+          disclosure={{
+            onActivate: openSummaryDeliberately,
+            open: summaryVisible,
+          }}
           interactive
           label={variable.name}
           type={variable.type}
@@ -418,10 +428,7 @@ export default function ConnectedVariablePill({
         />
       </span>
 
-      <Popover
-        onOpenChange={handleSummaryOpenChange}
-        open={summaryOpen && !renaming && !configuring}
-      >
+      <Popover onOpenChange={handleSummaryOpenChange} open={summaryVisible}>
         <PopoverContent
           anchor={pillAnchorRef}
           align="center"

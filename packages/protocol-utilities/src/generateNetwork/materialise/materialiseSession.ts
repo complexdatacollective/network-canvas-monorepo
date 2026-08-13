@@ -173,6 +173,18 @@ export function materialiseSession(params: {
   } = params;
   const source = ctx.valueGen.randomSource;
 
+  /**
+   * `reachableStages` narrowed to what the plan's own walk arrives at.
+   *
+   * The caller's list is feasibility's, drawn up before ego existed; the plan
+   * has since settled every all-ego guard against the ego it drew. Kept as a
+   * `Stage[]` because the pedigree generator reads stages, not indexes.
+   */
+  const walkedReachableStages = reachableStages.filter((stage) => {
+    const index = stages.indexOf(stage);
+    return index === -1 || plan.reachableStageIndexes.has(index);
+  });
+
   const draft: NetworkDraft = {
     egoUid: plan.ego.uid,
     egoAttributes: {},
@@ -514,7 +526,15 @@ export function materialiseSession(params: {
         stage,
         i,
         stages,
-        reachableStages,
+        // The PLAN's walked stages, not the pre-draw list. A narrative the
+        // planner settles as skipped for this seed is one this walk never
+        // arrives at, so its diseases must not be planted on the family an
+        // earlier pedigree builds — the flags, and the disease-only relatives
+        // carrying them, would describe a screen the participant never saw.
+        // Feasibility's list cannot make that distinction: it runs before ego
+        // is drawn, so it keeps every stage whose guard the seed still
+        // decides.
+        walkedReachableStages,
         familyPedigreeSeed(runSeed, stage.id),
         // One ceiling for every pedigree in the protocol. Nothing in the
         // protocol caps a family — the codebook describes what a family is,

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 
 import type { ValidationName, VariableType } from '@codaco/protocol-validation';
 
@@ -63,9 +64,15 @@ const meta = {
       control: { type: 'range', min: 240, max: 900, step: 10 },
       description: 'Width of the visible story container in pixels.',
     },
+    disclosure: {
+      control: false,
+      description:
+        'Supplied by a parent that owns a popover the pill discloses; it makes an interactive pill announce itself as a button with expanded state.',
+    },
     interactive: {
       control: 'boolean',
-      description: 'Applies the interactive visual treatment only.',
+      description:
+        'Applies the interactive visual treatment and places the pill in the tab order.',
     },
     label: {
       control: 'text',
@@ -97,3 +104,24 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/**
+ * A pill with no popover behind it stays purely presentational: it is not a
+ * control, so it takes no role, no popup semantics, and no place in the tab
+ * order — a variable mentioned in passing must never sound actionable.
+ */
+export const Static: Story = {
+  args: {
+    interactive: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('button')).toBeNull();
+
+    const pill = canvasElement.querySelector('data');
+    await expect(pill).not.toBeNull();
+    await expect(pill).not.toHaveAttribute('aria-expanded');
+    await expect(pill).not.toHaveAttribute('aria-haspopup');
+    await expect(pill).not.toHaveAttribute('tabindex');
+  },
+};

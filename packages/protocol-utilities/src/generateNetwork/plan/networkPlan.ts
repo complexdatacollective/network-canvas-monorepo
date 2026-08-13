@@ -45,6 +45,7 @@ import { SyntheticDataConstraintError } from '../constraints/error';
 import { completionCheckFor } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
 import type { GenerationContext } from '../context';
+import { MAX_REQUIRED_PEDIGREE_CORE } from '../familyPedigree/generateFamilyPedigree';
 import { ruleBrokenByFixedValues } from '../nodes';
 import { sampleContinuous, sampleCount } from './distributions';
 import { deterministicUuid, type RandomSource } from './random';
@@ -183,6 +184,16 @@ export type NetworkPlan = {
   };
   nodes: PlannedNode[];
   edges: PlannedEdge[];
+  /**
+   * The stages this plan's own walk arrives at, by index.
+   *
+   * Narrower than the set feasibility works from, which runs before ego is
+   * drawn and so keeps every stage whose guard the seed still decides. Once
+   * ego HAS been drawn those guards settle, and a stage settled as skipped is
+   * one materialisation never reaches — so anything reading "which stages does
+   * this run include" during the walk has to read this, not the pre-draw list.
+   */
+  reachableStageIndexes: ReadonlySet<number>;
   /**
    * The topology each edge-creating stage was drawn to, keyed by
    * {@link topologyKey}.
@@ -1415,11 +1426,30 @@ export function planNetwork(
     }
   }
 
-  // What the run has left to spend on people, across every type. The trim is
-  // applied within a type and then deducted, so the types the codebook lists
-  // first keep the people they asked for — the same 'earliest keeps its own'
-  // rule the per-stage trim follows.
+  // Every reachable pedigree's required core, set aside before anything else
+  // is allocated.
+  //
+  // A family's core is structural: its plan builder admits those people
+  // whatever `maxNodes` says, because a family missing one does not hold
+  // together. So the clamp applied where the family is BUILT cannot enforce
+  // the remainder — an ordinary generator that spent the whole budget left
+  // the core to be appended on top of it, and each further pedigree to be
+  // appended again, which is how a cap of 10,000 returned 10,007 and then
+  // 10,019. Reserved here instead, where the budget is divided, since this is
+  // the only place that can hold something back from a draw that ignores
+  // ceilings.
   let populationBudget = MAX_SYNTHETIC_POPULATION;
+  {
+    let pedigreeStages = 0;
+    for (const summary of walked.stages) {
+      if (settledAsSkipped(summary)) continue;
+      if (summary.pedigree !== undefined) pedigreeStages += 1;
+    }
+    populationBudget = Math.max(
+      0,
+      populationBudget - pedigreeStages * MAX_REQUIRED_PEDIGREE_CORE,
+    );
+  }
 
   // Declared stage minimums are floors trimming may not cross: the live
   // interface's `minNodes` gate will not let a participant leave the stage
@@ -2196,6 +2226,7 @@ export function planNetwork(
     },
     nodes,
     edges,
+    reachableStageIndexes: plannedReachable,
     topologyTargets,
     topologyDomains,
   };

@@ -43,7 +43,7 @@ import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigr
 import { DEFAULT_PEDIGREE_NODE_CEILING } from './generateNetwork/familyPedigree/stageCeiling';
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
-import { planNetwork } from './generateNetwork/plan/networkPlan';
+import { planNetwork, topologyKey } from './generateNetwork/plan/networkPlan';
 import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
@@ -458,7 +458,19 @@ function deriveFeasibilityConfig(
     // topology target independently, so taking only their largest declared
     // bound under-counts the edges those stages can build between them.
     const ceilingBySubject = new Map<string, number>();
+    // One bound per TARGET, not per creation. Prompts on one stage creating
+    // the same edge type share a topology — the stage declared it once — and
+    // `topologyKey` is what the plan draws that single target against, so
+    // counting each prompt separately reports edges no session can hold: two
+    // prompts over three subjects at density 0.5 can build two shared edges
+    // between them, counted as three, and a `unique` edge variable offering
+    // two values was refused for a protocol that always fits. Distinct stages
+    // still sum, since each declares its own.
+    const countedTargets = new Set<string>();
     for (const creation of topologyCreations) {
+      const target = topologyKey(creation);
+      if (countedTargets.has(target)) continue;
+      countedTargets.add(target);
       const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
       const most = topologyMax(topology);
       // The two populations ADD. A pedigree's people are absent from

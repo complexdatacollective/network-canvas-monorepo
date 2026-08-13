@@ -6,7 +6,7 @@ import {
   type AnimationPlaybackControlsWithThen,
   type MotionStyle,
 } from 'motion/react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 import type {
   ValidationName,
@@ -16,8 +16,28 @@ import type {
 import { getColorForType, getIconForType } from '~/config/variables';
 import { cx } from '~/utils/cva';
 
+/**
+ * The popover an interactive pill discloses. The pill never owns a popover
+ * itself, so whoever does hands back its open state and a way to open it.
+ * Without that the focus target is only a `<data>` element carrying a
+ * description: a screen reader user would hear the variable, receive no hint
+ * that anything is reachable from it, and never learn that arriving on the
+ * pill had revealed a panel of actions.
+ */
+export type VariablePillDisclosure = {
+  /** True while the disclosed popover is on screen. */
+  open: boolean;
+  /**
+   * Opens the popover. Only ever opens: focus already opens it, and assistive
+   * technology focuses a control before activating it, so a toggle here would
+   * close the popover that the very same keystroke had just revealed.
+   */
+  onActivate: () => void;
+};
+
 export type VariablePillProps = {
   active?: boolean;
+  disclosure?: VariablePillDisclosure;
   interactive: boolean;
   label: string;
   type: VariableType;
@@ -105,6 +125,7 @@ export const getActiveValidationNames = (
 /** A presentation-only variable reference. Interaction belongs to its parent. */
 export const VariablePill = ({
   active = false,
+  disclosure,
   interactive,
   label,
   type,
@@ -125,6 +146,9 @@ export const VariablePill = ({
   const labelWidth = useMotionValue(0);
   const shouldReduceMotion = useReducedMotion();
 
+  // Only an interactive pill sits in the tab order, so only an interactive
+  // pill is something a user can land on and need control semantics for.
+  const control = interactive ? disclosure : undefined;
   const accentColor = getRawColorToken(getColorForType(type));
   const accessibleLabel = `${label}, ${type} variable${validations.length > 0 ? `, ${validations.map((validation) => VALIDATION_LABELS[validation]).join(', ')}` : ''}`;
   const expanded =
@@ -133,6 +157,15 @@ export const VariablePill = ({
   const animatingLabel = expanded || labelWidths !== undefined;
   const style: VariablePillStyle = {
     '--variable-pill-accent': `oklch(var(--${accentColor}))`,
+  };
+
+  const handleControlKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    // A `<data>` element carrying role="button" gets none of a real button's
+    // key handling for free: Enter raises no click of its own, and Space would
+    // scroll the page instead of activating anything.
+    event.preventDefault();
+    control?.onActivate();
   };
 
   const measureLabelWidths = (): LabelWidths | undefined => {
@@ -262,6 +295,8 @@ export const VariablePill = ({
         <motion.data
           ref={pillRef}
           animate={{ scale: expanded ? INTERACTION_SCALE : 1 }}
+          aria-expanded={control ? control.open : undefined}
+          aria-haspopup={control ? 'dialog' : undefined}
           aria-label={interactive ? accessibleLabel : undefined}
           className={cx(
             'variable-pill font-monospace flex min-h-12 min-w-0 flex-nowrap rounded p-0.5 text-base',
@@ -282,6 +317,7 @@ export const VariablePill = ({
                 }
               : undefined
           }
+          onClick={control ? () => control.onActivate() : undefined}
           onFocus={
             interactive
               ? () => {
@@ -290,6 +326,7 @@ export const VariablePill = ({
                 }
               : undefined
           }
+          onKeyDown={control ? handleControlKeyDown : undefined}
           onMouseEnter={
             interactive
               ? () => {
@@ -308,6 +345,7 @@ export const VariablePill = ({
                 }
               : undefined
           }
+          role={control ? 'button' : undefined}
           style={style}
           tabIndex={interactive ? 0 : undefined}
           transition={shouldReduceMotion ? { duration: 0 } : WIDTH_SPRING}

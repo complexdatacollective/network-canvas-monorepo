@@ -40,7 +40,10 @@ import {
   requiredVariablesFor,
 } from '../plan/networkPlan';
 import { deterministicUuid } from '../plan/random';
-import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
+import {
+  generateFamilyPedigreePlan,
+  MAX_REQUIRED_PEDIGREE_CORE,
+} from './generateFamilyPedigree';
 import {
   readPedigreeOptionValue,
   storedPedigreeOptionValue,
@@ -639,9 +642,27 @@ export function materializeFamilyPedigree(
   // Architect's main thread. Clamped rather than refused, like the planner's
   // trim; the required seven-person core still stands under any clamp, as it
   // does under the caller's own floor.
+  // What is left, less what the families STILL AHEAD are required to hold.
+  //
+  // Their cores bypass every ceiling, so a pedigree that spent the remainder
+  // on optional branches would leave the next one to append its core past the
+  // cap — which is how three families turned a 10,000 budget into 10,019. The
+  // planner sets the same amount aside before it divides the budget; this is
+  // its walk-time half, since only here is the order of the families known.
+  // `diseaseStages` is the plan's own walked list, so a pedigree this seed
+  // never reaches reserves nothing.
+  const pedigreesAhead = diseaseStages.filter(
+    (candidate, index) =>
+      candidate.type === 'FamilyPedigree' &&
+      stages.indexOf(candidate) > stageIndex &&
+      // Guard against a duplicate object identity in the walked list.
+      diseaseStages.indexOf(candidate) === index,
+  ).length;
   const remainingPopulationBudget = Math.max(
     0,
-    MAX_SYNTHETIC_POPULATION - draft.nodes.length,
+    MAX_SYNTHETIC_POPULATION -
+      draft.nodes.length -
+      pedigreesAhead * MAX_REQUIRED_PEDIGREE_CORE,
   );
   const budgetedOptions =
     options.maxNodes > remainingPopulationBudget
@@ -715,7 +736,12 @@ export function materializeFamilyPedigree(
     // for ego either. The shared helper applies the same write set to this draw
     // and to the feasibility tally.
     const only = isPlannedEgo
-      ? pedigreeEgoNodeVariables(stage, stages, codebookNodeVariables)
+      ? // The walked stages, for the reason the diseases themselves use them:
+        // this set is derived from the narratives that read this pedigree, so
+        // a narrative the seed settles as skipped must not put its disease
+        // variable on ego either. Handed the whole protocol, it drew a flag
+        // belonging to a screen the session never reaches.
+        pedigreeEgoNodeVariables(stage, diseaseStages, codebookNodeVariables)
       : withRuleTiedVariables(
           codebookNodeVariables,
           new Set([...drawnVariables, ...Object.keys(fixed)]),
