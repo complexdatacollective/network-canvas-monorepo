@@ -1,6 +1,19 @@
-import { type CSSProperties, useCallback, useState } from 'react';
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useSafeAnimate } from './useSafeAnimate';
+
+/**
+ * The least time a keyboard-initiated press stays visibly depressed. A quick
+ * Enter or Space tap releases faster than the press spring can be seen at
+ * all, which reads as the activation giving no feedback.
+ */
+const MIN_KEY_PRESS_VISIBLE_MS = 150;
 
 type UseNodeInteractionsOptions = {
   /** Whether the node has a click handler (enables press animation) */
@@ -58,6 +71,22 @@ export function useNodeInteractions(
   const [scope, animate] = useSafeAnimate<HTMLElement>();
   const [isPressed, setIsPressed] = useState(false);
 
+  // A key tap can be over in well under the time the press spring needs to
+  // become visible, so the release is held back until the press has been on
+  // screen this long. A finger or mouse button provides its own physical
+  // feedback and dwells naturally, so pointer releases are never delayed.
+  const keyPressedAtRef = useRef(0);
+  const keyReleaseTimerRef = useRef<number | null>(null);
+
+  const cancelPendingKeyRelease = useCallback(() => {
+    if (keyReleaseTimerRef.current !== null) {
+      window.clearTimeout(keyReleaseTimerRef.current);
+      keyReleaseTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cancelPendingKeyRelease, [cancelPendingKeyRelease]);
+
   // Enable press animation when there's a click handler and not disabled
   const enablePressAnimation = hasClickHandler && !disabled;
 
@@ -66,12 +95,14 @@ export function useNodeInteractions(
       if (disabled) return;
       if (e.button !== 0) return; // Only respond to primary button
 
+      // A held-back key release must not pop a press the pointer now owns.
+      cancelPendingKeyRelease();
       if (enablePressAnimation && scope.current) {
         setIsPressed(true);
         animate(scope.current, { scale: 0.92 });
       }
     },
-    [disabled, enablePressAnimation, animate, scope],
+    [disabled, enablePressAnimation, animate, scope, cancelPendingKeyRelease],
   );
 
   const resetPress = useCallback(() => {
@@ -116,20 +147,32 @@ export function useNodeInteractions(
       if (e.key !== 'Enter' && e.key !== ' ') return;
       if (e.repeat) return; // Prevent repeated animation from key repeat
 
+      cancelPendingKeyRelease();
+      keyPressedAtRef.current = performance.now();
       if (enablePressAnimation && scope.current) {
         setIsPressed(true);
         animate(scope.current, { scale: 0.92 });
       }
     },
-    [disabled, enablePressAnimation, animate, scope],
+    [disabled, enablePressAnimation, animate, scope, cancelPendingKeyRelease],
   );
 
   const handleKeyUp = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      resetPress();
+      const shown = performance.now() - keyPressedAtRef.current;
+      const remaining = MIN_KEY_PRESS_VISIBLE_MS - shown;
+      if (remaining <= 0) {
+        resetPress();
+        return;
+      }
+      cancelPendingKeyRelease();
+      keyReleaseTimerRef.current = window.setTimeout(() => {
+        keyReleaseTimerRef.current = null;
+        resetPress();
+      }, remaining);
     },
-    [resetPress],
+    [resetPress, cancelPendingKeyRelease],
   );
 
   return {
