@@ -169,10 +169,8 @@ function renderInterface(stageToRender: typeof stage = stage) {
 }
 
 /**
- * Simulates a tap on a node element.
- * useCanvasDrag listens for pointerup on document (not the element), so we
- * fire pointerDown on the element to arm the handler, then fire pointerUp on
- * document to trigger it — mirroring the actual DOM event flow.
+ * Simulates a tap on a node element: press, release, and the click the
+ * browser synthesises from them.
  */
 function tapNode(nodeEl: HTMLElement) {
   fireEvent.pointerDown(nodeEl, {
@@ -181,12 +179,15 @@ function tapNode(nodeEl: HTMLElement) {
     clientY: 10,
     pointerId: 1,
   });
-  fireEvent.pointerUp(document, {
+  fireEvent.pointerUp(nodeEl, {
     button: 0,
     clientX: 10,
     clientY: 10,
     pointerId: 1,
   });
+  // A still release is a tap: the browser follows it with a click on the
+  // node, which Node's gesture recognizer lets through.
+  fireEvent.click(nodeEl, { detail: 1 });
 }
 
 // Edge types live behind a single "Draw edge" menu; open it and pick "Knows".

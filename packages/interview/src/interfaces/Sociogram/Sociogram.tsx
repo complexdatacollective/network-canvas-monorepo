@@ -390,6 +390,15 @@ const Sociogram = (stageProps: SociogramProps) => {
         selectedNodeId={selectedNodeId}
         highlightAttribute={highlightAttribute}
         onNodeSelect={handleNodeSelect}
+        // Mirrors handleNodeSelect's own branching, so what is announced as a
+        // toggle is exactly what activation operates on.
+        nodeToggle={
+          createEdge
+            ? 'edge'
+            : allowHighlighting && highlightAttribute
+              ? 'highlight'
+              : null
+        }
         onNodeDragEnd={handleNodeDragEnd}
         onDrop={handleDrop}
         simulation={simulationHandlers}

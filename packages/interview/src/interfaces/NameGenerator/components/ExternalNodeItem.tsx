@@ -49,7 +49,10 @@ export default function ExternalNodeItem({
       shape={shape}
       label={label}
       size={size}
-      onClick={onClick}
+      // Overriding only when this component was given a handler: assigning
+      // `onClick` unconditionally would write `undefined` over the one the
+      // collection supplies for selection, silently discarding the tap.
+      {...(onClick ? { onClick } : {})}
     />
   );
 }
