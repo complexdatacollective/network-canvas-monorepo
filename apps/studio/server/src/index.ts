@@ -7,8 +7,8 @@ import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
-import { runMigrations } from './db/migrate.ts';
 import { createPool } from './db/pool.ts';
+import { applyAuthSchema } from './db/schema.ts';
 import { readEnv } from './env.ts';
 import { STUDIO_VERSION } from './version.ts';
 
@@ -22,65 +22,33 @@ import { STUDIO_VERSION } from './version.ts';
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
 
-// Database migrations run at every boot (idempotent — applied ones are
-// journaled; see src/db/migrate.ts). Single-instance deploys, so no
-// cross-replica migration lock is needed yet. A configured production
-// database that cannot be reached or migrated is a deployment mistake and
-// fails the boot; in development the server comes up and auth surfaces
-// fail until the dev Postgres is available.
-//
-// The migrations folder is resolved here, in the entry file: the production
-// bundle collapses src/ into dist/index.js, so only this module's
-// import.meta.url lands next to the image's drizzle/ directory (the same
-// reasoning as clientRoot below).
-const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
-
+// The auth schema is applied idempotently at every boot — there is no
+// migration system yet, deliberately (pre-release; see src/db/schema.ts).
+// A configured production database that cannot be reached is a deployment
+// mistake and fails the boot; in development the server comes up and auth
+// surfaces fail until the dev Postgres is available.
 if (pool) {
-  const reportMigrationFailure = (error: unknown) => {
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.error(
-      `Database migrations failed — sign-in will not work: ${String(error)}\n` +
-        'If this database predates the migration system (or holds a stale pre-release schema), wipe the branch dev volume and restart:\n' +
-        '  docker rm -f studio-dev-pg-<branch> && docker volume rm studio-dev-pg-<branch>',
-    );
-  };
   try {
-    await runMigrations(pool, migrationsFolder);
+    await applyAuthSchema(pool);
   } catch (error) {
     if (env.production) throw error;
-    const reachable = await pool.query('SELECT 1').then(
-      () => true,
-      () => false,
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.warn(
+      `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
     );
-    if (reachable) {
-      // The database answered, so this is a real migration failure, not a
-      // race against the dev-pg container — retrying would fail identically.
-      reportMigrationFailure(error);
-    } else {
-      // oxlint-disable-next-line no-console -- boot diagnostics
-      console.warn(
-        `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
-      );
-      // In dev the server may win the race against the dev-pg container
-      // (image pull + initdb on a fresh volume); keep probing, and migrate
-      // once when the database appears so sign-in starts working without a
-      // manual restart.
-      const retry = setInterval(() => {
-        void pool.query('SELECT 1').then(
-          () => {
-            clearInterval(retry);
-            runMigrations(pool, migrationsFolder)
-              .then(() => {
-                // oxlint-disable-next-line no-console -- boot diagnostics
-                console.log('Database reachable; migrations applied.');
-              })
-              .catch(reportMigrationFailure);
-          },
-          () => undefined,
-        );
-      }, 3000);
-      retry.unref();
-    }
+    // In dev the server may win the race against the dev-pg container
+    // (image pull + initdb on a fresh volume); keep trying so sign-in
+    // starts working without a manual restart.
+    const retry = setInterval(() => {
+      void applyAuthSchema(pool)
+        .then(() => {
+          clearInterval(retry);
+          // oxlint-disable-next-line no-console -- boot diagnostics
+          console.log('Database reachable; auth schema applied.');
+        })
+        .catch(() => undefined);
+    }, 3000);
+    retry.unref();
   }
 }
 

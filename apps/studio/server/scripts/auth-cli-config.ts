@@ -1,9 +1,8 @@
 // Harness for `npx @better-auth/cli generate` — not part of the server
-// runtime. Builds the real instance from src/auth/better-auth.ts so the
-// emitted schema covers exactly the configured plugin set. Because that
-// instance uses the drizzle adapter, the CLI emits a Drizzle TS schema:
-// review its diff into src/db/schema.ts, then `pnpm db:generate` (see
-// src/db/schema.ts for the full regeneration procedure).
+// runtime. Builds the same instance shape as src/auth/better-auth.ts so the
+// emitted schema covers exactly the configured plugin set; the output is
+// reviewed into src/db/schema.ts (see that file for the regeneration
+// procedure).
 import pg from 'pg';
 
 import { createBetterAuthInstance } from '../src/auth/better-auth.ts';

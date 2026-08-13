@@ -13,9 +13,8 @@
   "scripts": {
     "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts\"",
     "build": "vite build",
-    "build:netlify": "node --env-file-if-exists=.env scripts/migrate.ts && vite build --config vite.netlify.config.ts",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.ts",
+    "build:netlify": "vite build --config vite.netlify.config.ts",
+    "apply-schema": "node --env-file-if-exists=.env scripts/apply-schema.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "start": "CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
@@ -32,7 +31,6 @@
     "@orpc/zod": "2.0.0-beta.26",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "1.6.27",
-    "drizzle-orm": "^0.45.2",
     "hono": "^4.13.0",
     "nodemailer": "9.0.5",
     "pg": "^8.22.0",
@@ -46,7 +44,6 @@
     "@types/pg": "^8.20.4",
     "@types/ws": "^8.18.1",
     "concurrently": "^10.0.4",
-    "drizzle-kit": "^0.31.10",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

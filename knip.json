@@ -148,6 +148,7 @@
     "apps/studio/server": {
       "entry": [
         "scripts/auth-cli-config.ts!",
+        "scripts/generate-env-docs.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
         // by an import — it is the Netlify Function entry.
         "src/netlify.ts!"

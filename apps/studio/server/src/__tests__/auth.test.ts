@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url';
-
 import { createORPCClient, safe } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { RouterContractClient } from '@orpc/contract';
@@ -10,8 +8,8 @@ import type { contract } from '@codaco/studio-rpc';
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/index.ts';
-import { runMigrations } from '../db/migrate.ts';
 import { createPool } from '../db/pool.ts';
+import { applyAuthSchema } from '../db/schema.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 
 const PRINCIPAL: SessionPrincipal = {
@@ -187,10 +185,7 @@ describe.skipIf(!reachable)('magic-link sign-in', () => {
     if (!env.db || !env.auth) throw new Error('dev env must configure auth');
     const pool = createPool(env.db);
     try {
-      await runMigrations(
-        pool,
-        fileURLToPath(new URL('../../drizzle', import.meta.url)),
-      );
+      await applyAuthSchema(pool);
       // The magic-link send limit (5/60s per IP) is durable in Postgres and
       // vitest always resolves to the same localhost key, so counters from
       // earlier runs would 429 this one. Start the window fresh.
