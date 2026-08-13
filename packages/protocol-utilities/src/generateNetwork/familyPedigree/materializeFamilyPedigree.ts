@@ -1,7 +1,6 @@
-import {
-  MAX_SYNTHETIC_POPULATION,
-  type Stage,
-} from '@codaco/protocol-validation';
+import { v4 as uuid } from 'uuid';
+
+import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_VALUES,
   entityAttributesProperty,
@@ -14,36 +13,21 @@ import {
 } from '@codaco/shared-consts';
 
 import { ValueGenerator } from '../../ValueGenerator';
-import { withRuleTiedVariables } from '../analyse/ruleTiedVariables';
-import {
-  pedigreeDrawnNodeVariables,
-  pedigreeEgoNodeVariables,
-  scopeKeyFor,
-} from '../analyse/stageEffects';
 import {
   claimFixedValues,
-  constraintsFor,
   generateAttributesForEntity,
   replaceFixedValues,
 } from '../attributes';
 import { SyntheticDataConstraintError } from '../constraints/error';
 import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
+import {
+  pedigreeDrawnNodeVariables,
+  pedigreeEgoNodeVariables,
+  withRuleTiedVariables,
+} from '../constraints/stageWrites';
 import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
 import { ruleBrokenByFixedValues } from '../nodes';
-import {
-  applyMissingness,
-  equalityGroups,
-  groupMissingProbability,
-  missingProbabilities,
-  missingProbabilitiesFor,
-  requiredVariables,
-  requiredVariablesFor,
-} from '../plan/networkPlan';
-import { deterministicUuid } from '../plan/random';
-import {
-  generateFamilyPedigreePlan,
-  MAX_REQUIRED_PEDIGREE_CORE,
-} from './generateFamilyPedigree';
+import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
   readPedigreeOptionValue,
   storedPedigreeOptionValue,
@@ -206,28 +190,6 @@ function biologicalSexFromValue(
   return BIOLOGICAL_SEX_VALUES.find((candidate) => candidate === stored);
 }
 
-/**
- * One node uid, made safe to embed in a NUL-delimited ancestry key.
- *
- * The keys below identify people and relationships across a mix of committed
- * node uids and freshly minted person keys, and a committed uid is an
- * arbitrary caller-chosen string — roster rows keep whatever `_uid` the
- * external data carried. Joining such uids on a printable separator is not
- * injective: `('a::b', 'c')` and `('a', 'b::c')` read alike, so an unrelated
- * existing edge could swallow a partner link the live interface would create,
- * and two distinct co-parents' minted ancestors could merge into one person.
- * `pairKey`/`topologyKey` length-prefix for the same reason; here the uids are
- * NUL-delimited instead, escaped exactly as `plan/random.ts` escapes stream
- * path segments, so a uid containing neither NUL nor SOH — every ordinary id —
- * stays byte-identical inside its key.
- */
-const escapeUidForKey = (uid: string): string =>
-  uid.includes('\u0000') || uid.includes('\u0001')
-    ? uid
-        .replaceAll('\u0001', '\u0001\u0002')
-        .replaceAll('\u0000', '\u0001\u0001')
-    : uid;
-
 type ContributorAncestryTopUp = {
   people: PedigreePerson[];
   relationships: PedigreeRelationship[];
@@ -304,17 +266,12 @@ function inheritedContributorAncestry(
     return key;
   };
   const relationshipKey = (type: string, from: string, to: string) => {
-    const resolvedFrom = escapeUidForKey(topUp.anchors.get(from) ?? from);
-    const resolvedTo = escapeUidForKey(topUp.anchors.get(to) ?? to);
-    // NUL-joined over escaped endpoints rather than '::' / '->' over raw ones.
-    // Endpoints are arbitrary uids, so no printable separator is injective:
-    // an existing partner edge ('a::b', 'c') keyed identically to a new one
-    // between parents 'a' and 'b::c', and the seeded entry made
-    // `addRelationship` silently drop a link the live interface would create.
+    const resolvedFrom = topUp.anchors.get(from) ?? from;
+    const resolvedTo = topUp.anchors.get(to) ?? to;
     const endpoints =
       type === 'partner'
-        ? [resolvedFrom, resolvedTo].toSorted().join('\u0000')
-        : `${resolvedFrom}\u0000${resolvedTo}`;
+        ? [resolvedFrom, resolvedTo].toSorted().join('::')
+        : `${resolvedFrom}->${resolvedTo}`;
     return `${type}:${endpoints}`;
   };
   const relationshipKeys = new Set(
@@ -428,23 +385,17 @@ function inheritedContributorAncestry(
 
   for (const coParentId of coParentIds) {
     const coParentKey = anchor(coParentId);
-    // The co-parent's uid is NUL-terminated inside the scope so the minted
-    // keys stay distinct per co-parent. Embedded raw, a co-parent whose
-    // caller-chosen uid was 'x-parent-0' produced the very keys reserved for
-    // co-parent 'x''s grandparents, and `addPerson` merged two distinct
-    // relatives into one node.
-    const contributorScope = `contributor-${escapeUidForKey(coParentId)}\u0000`;
     const parentRefs = ensureParents(
       coParentKey,
       coParentId,
-      contributorScope,
+      `contributor-${coParentId}`,
       -1,
     );
     for (const [index, parent] of parentRefs.entries()) {
       ensureParents(
         parent.key,
         parent.nodeId,
-        `${contributorScope}parent-${String(index)}`,
+        `contributor-${coParentId}-parent-${String(index)}`,
         -2,
       );
     }
@@ -478,74 +429,6 @@ export function materializeFamilyPedigree(
     valueGen: new ValueGenerator(familySeed, ctx.config.today),
   };
   const nodeScope: EntityScopeRef = { entity: 'node', type: nodeType };
-  // Built once for the family rather than per relative: `equalityGroups`
-  // resolves the whole type's generation order.
-  const nodeScopeKey = scopeKeyFor('node', nodeType);
-  const pedigreeMissing = missingProbabilities(familyCtx.codebook);
-  const pedigreeRequired = requiredVariables(familyCtx.codebook);
-  const pedigreeGroups = equalityGroups(constraintsFor(familyCtx, nodeScope));
-  const pedigreeMissingProbabilities = missingProbabilitiesFor(
-    pedigreeMissing,
-    nodeScopeKey,
-  );
-  const pedigreeRequiredVariables = requiredVariablesFor(
-    pedigreeRequired,
-    nodeScopeKey,
-  );
-  /**
-   * The variables of a relative whose value is certainly unanswered, judged
-   * exactly as the plan path judges them (`certainlyMissingVariables`): no
-   * required member, no member this pedigree fixes, and a group probability of
-   * exactly 1. Drawing one and then nulling it is not merely wasted work — a
-   * `unique` draw CLAIMS its value from the run's registry and the missingness
-   * pass deletes the attribute without releasing the claim, so a small value
-   * space was exhausted by a family whose final state holds no values at all.
-   */
-  const certainlyMissingFor = (fixedKeys: ReadonlySet<string>): Set<string> => {
-    const certain = new Set<string>();
-    for (const members of pedigreeGroups) {
-      if (members.some((id) => fixedKeys.has(id))) continue;
-      if (
-        groupMissingProbability(
-          members,
-          pedigreeMissingProbabilities,
-          pedigreeRequiredVariables,
-        ) !== 1
-      ) {
-        continue;
-      }
-      for (const id of members) certain.add(id);
-    }
-    return certain;
-  };
-  /**
-   * Every primary key the caller's rosters carry, drawn or not. A roster
-   * row's `_uid` is an arbitrary caller-chosen string, so nothing stops one
-   * matching a uid this stage's seeded stream mints — and a network holding
-   * two entities under one key conflates them in the committed metadata and
-   * silently halves them in any consumer keyed by `_uid`. `planNetwork`'s own
-   * `mintUid` guards its mints the same way; redrawing advances the same
-   * memoised stream, so a protocol containing no collision mints
-   * byte-identical ids to before the guard.
-   */
-  const suppliedRosterUids = new Set<string>();
-  for (const pool of Object.values(ctx.externalData ?? {})) {
-    for (const row of pool) {
-      suppliedRosterUids.add(row[entityPrimaryKeyProperty]);
-    }
-  }
-  const mintPedigreeUid = (entityType: string): string => {
-    // Seeded rather than random: a fixed seed has to reproduce a session
-    // byte for byte, and an entity's id is part of that.
-    const stream = familyCtx.valueGen.randomSource.stream(
-      'id',
-      'pedigree',
-      entityType,
-    );
-    let uid = deterministicUuid(stream);
-    while (suppliedRosterUids.has(uid)) uid = deterministicUuid(stream);
-    return uid;
-  };
   // The live interface seeds every existing node of its configured type into
   // the pedigree, then serializes that complete membership when committing.
   // Preserve the same membership boundary in synthetic interviews so a
@@ -633,44 +516,9 @@ export function materializeFamilyPedigree(
             )
           : undefined))
       : undefined;
-  // The pedigree's ceiling is spent against what remains of the RUN's
-  // population, exactly as `withinPopulationCeiling` trims the planner's
-  // stages against one shared budget. Each pedigree appends its family to the
-  // people already materialised, so several stages each inside their own
-  // ceiling reach an unbounded whole by another route — the accumulation the
-  // run-wide cap exists to prevent, since generation is synchronous on
-  // Architect's main thread. Clamped rather than refused, like the planner's
-  // trim; the required seven-person core still stands under any clamp, as it
-  // does under the caller's own floor.
-  // What is left, less what the families STILL AHEAD are required to hold.
-  //
-  // Their cores bypass every ceiling, so a pedigree that spent the remainder
-  // on optional branches would leave the next one to append its core past the
-  // cap — which is how three families turned a 10,000 budget into 10,019. The
-  // planner sets the same amount aside before it divides the budget; this is
-  // its walk-time half, since only here is the order of the families known.
-  // `diseaseStages` is the plan's own walked list, so a pedigree this seed
-  // never reaches reserves nothing.
-  const pedigreesAhead = diseaseStages.filter(
-    (candidate, index) =>
-      candidate.type === 'FamilyPedigree' &&
-      stages.indexOf(candidate) > stageIndex &&
-      // Guard against a duplicate object identity in the walked list.
-      diseaseStages.indexOf(candidate) === index,
-  ).length;
-  const remainingPopulationBudget = Math.max(
-    0,
-    MAX_SYNTHETIC_POPULATION -
-      draft.nodes.length -
-      pedigreesAhead * MAX_REQUIRED_PEDIGREE_CORE,
-  );
-  const budgetedOptions =
-    options.maxNodes > remainingPopulationBudget
-      ? { ...options, maxNodes: remainingPopulationBudget }
-      : options;
   const plan = generateFamilyPedigreePlan(
     familyCtx.valueGen,
-    budgetedOptions,
+    options,
     diseases,
     stage.boundaries?.requireChildrenContributors === 'required',
     inheritedEgoSex,
@@ -736,29 +584,12 @@ export function materializeFamilyPedigree(
     // for ego either. The shared helper applies the same write set to this draw
     // and to the feasibility tally.
     const only = isPlannedEgo
-      ? // The walked stages, for the reason the diseases themselves use them:
-        // this set is derived from the narratives that read this pedigree, so
-        // a narrative the seed settles as skipped must not put its disease
-        // variable on ego either. Handed the whole protocol, it drew a flag
-        // belonging to a screen the session never reaches.
-        pedigreeEgoNodeVariables(stage, diseaseStages, codebookNodeVariables)
+      ? pedigreeEgoNodeVariables(stage, stages, codebookNodeVariables)
       : withRuleTiedVariables(
           codebookNodeVariables,
           new Set([...drawnVariables, ...Object.keys(fixed)]),
         );
-    const fixedKeys = new Set(Object.keys(fixed));
-    for (const id of fixedKeys) only.delete(id);
-    // Certainly-missing groups are withheld from the draw rather than drawn
-    // and then nulled, as the plan path withholds them: a `unique` draw CLAIMS
-    // its value from the run's registry and the deletion below does not
-    // release it, so a >=7-person family could exhaust a small value space for
-    // a variable no relative ends up holding. Named to the missingness pass
-    // instead, so its group decision (and stream draw) is unchanged.
-    const certain = certainlyMissingFor(fixedKeys);
-    const reachedButUnanswered = new Set(
-      [...certain].filter((id) => only.has(id)),
-    );
-    for (const id of certain) only.delete(id);
+    for (const id of Object.keys(fixed)) only.delete(id);
     const attributes = generateAttributesForEntity(
       familyCtx,
       nodeScope,
@@ -773,25 +604,9 @@ export function materializeFamilyPedigree(
       },
     );
     Object.assign(attributes, fixed);
-    // A family's people are drawn by this specialist generator rather than by
-    // the plan, so neither the plan's missingness pass nor the walk's reaches
-    // them: a label or family-member form field declaring
-    // `missingProbability: 1` stayed populated on every relative. The plan's
-    // own pass, so one descriptor cannot mean two things — group-aware, and a
-    // value the pedigree fixes is never made missing.
-    applyMissingness(
-      attributes,
-      fixedKeys,
-      pedigreeMissingProbabilities,
-      pedigreeRequiredVariables,
-      pedigreeGroups,
-      familyCtx.valueGen.randomSource,
-      nodeScopeKey,
-      reachedButUnanswered,
-    );
     claimFixedValues(familyCtx, nodeScope, fixed);
 
-    const uid = mintPedigreeUid(nodeType);
+    const uid = uuid();
     nodeIds.set(person.key, uid);
     familyNodes.push({
       [entityPrimaryKeyProperty]: uid,
@@ -857,23 +672,12 @@ export function materializeFamilyPedigree(
       ...preserved,
       ...fixed,
     });
-    const fixedKeys = new Set(Object.keys(fixed));
-    const connected = withRuleTiedVariables(codebookNodeVariables, fixedKeys);
-    for (const id of fixedKeys) connected.delete(id);
-    for (const id of protectedVariables) connected.delete(id);
-    // The same missingness contract as the new-relative draw above: this
-    // normalisation is a draw over the rule-tied closure too, so a declared
-    // `missingProbability` must mean the same thing on a pre-existing family
-    // member as on a freshly created one. Without it, a certainly-missing
-    // rule-tied variable ended up POPULATED on every pre-existing member while
-    // staying absent on every generated relative — one descriptor, two
-    // behaviours inside a single stage. Certain groups are withheld from the
-    // draw, the rest pass through `applyMissingness` after it.
-    const certain = certainlyMissingFor(fixedKeys);
-    const reachedButUnanswered = new Set(
-      [...certain].filter((id) => connected.has(id)),
+    const connected = withRuleTiedVariables(
+      codebookNodeVariables,
+      new Set(Object.keys(fixed)),
     );
-    for (const id of certain) connected.delete(id);
+    for (const id of Object.keys(fixed)) connected.delete(id);
+    for (const id of protectedVariables) connected.delete(id);
 
     const previous = { ...node[entityAttributesProperty] };
     const regenerated = generateAttributesForEntity(
@@ -889,16 +693,6 @@ export function materializeFamilyPedigree(
       },
     );
     replaceFixedValues(familyCtx, nodeScope, previous, fixed);
-    applyMissingness(
-      regenerated,
-      fixedKeys,
-      pedigreeMissingProbabilities,
-      pedigreeRequiredVariables,
-      pedigreeGroups,
-      familyCtx.valueGen.randomSource,
-      nodeScopeKey,
-      reachedButUnanswered,
-    );
     Object.assign(node[entityAttributesProperty], regenerated, fixed);
   }
 
@@ -936,7 +730,7 @@ export function materializeFamilyPedigree(
     assertFixedValuesAccepted(familyCtx, edgeScope, attributes);
     claimFixedValues(familyCtx, edgeScope, attributes);
     familyEdges.push({
-      [entityPrimaryKeyProperty]: mintPedigreeUid(edgeType),
+      [entityPrimaryKeyProperty]: uuid(),
       type: edgeType,
       from,
       to,

@@ -169,12 +169,6 @@ function intersectConstraints(
   const resolution = representative.constraints.dateWindow?.resolution;
   let windowMin: string | undefined;
   let windowMax: string | undefined;
-  // Whether the ceiling the group settles on is a stand-in for an absent
-  // bound rather than a declared rule. Only the members that actually set it
-  // have a say, and one member declaring that same ceiling makes it a rule
-  // for the group — a stand-in may be moved to reach a synthetic window, and
-  // a rule may not.
-  let windowMaxDerived = false;
 
   for (const { constraints } of members) {
     required ||= constraints.required;
@@ -193,14 +187,7 @@ function intersectConstraints(
     const window = constraints.dateWindow;
     if (window !== undefined && window.resolution === resolution) {
       windowMin = tighten(windowMin, window.min, true);
-      if (window.max !== undefined) {
-        if (windowMax === undefined || window.max < windowMax) {
-          windowMax = window.max;
-          windowMaxDerived = window.maxDerived === true;
-        } else if (window.max === windowMax) {
-          windowMaxDerived &&= window.maxDerived === true;
-        }
-      }
+      windowMax = tighten(windowMax, window.max, false);
     }
   }
 
@@ -219,7 +206,6 @@ function intersectConstraints(
             resolution,
             ...(windowMin !== undefined ? { min: windowMin } : {}),
             ...(windowMax !== undefined ? { max: windowMax } : {}),
-            ...(windowMaxDerived ? { maxDerived: true } : {}),
           },
         }
       : {}),
@@ -841,11 +827,6 @@ function withRange(
             resolution: window.resolution,
             ...(windowMin !== undefined ? { min: windowMin } : {}),
             ...(windowMax !== undefined ? { max: windowMax } : {}),
-            // A comparator that moved the ceiling produced a bound of its own,
-            // which is a rule; an untouched ceiling is still whatever it was.
-            ...(window.maxDerived === true && windowMax === window.max
-              ? { maxDerived: true }
-              : {}),
           },
         }
       : {}),

@@ -23,25 +23,8 @@
  * Together these back each claim without 20 redundant per-interface e2e
  * navigation scenarios (which would only re-exercise the type-agnostic runtime
  * path once per interface).
- *
- * `synthetic` is claimed here for a different reason: it is authoring metadata
- * describing what GENERATED sample data should look like, and the interview
- * runtime never reads it. There is no participant-visible behaviour for a
- * scenario to exercise, and its own rules are covered by the schema tests in
- * protocol-validation and the generator tests in protocol-utilities. It is
- * inventoried so the schema walk stays exhaustive, and claimed here so that
- * exhaustiveness does not demand an e2e scenario for a key with nothing to
- * show.
  */
 export const sharedSuiteClaims: readonly string[] = [
-  'NameGenerator:synthetic',
-  'NameGeneratorQuickAdd:synthetic',
-  'NameGeneratorRoster:synthetic',
-  'NetworkComposer:synthetic',
-  'Sociogram:synthetic',
-  'DyadCensus:synthetic',
-  'OneToManyDyadCensus:synthetic',
-  'TieStrengthCensus:synthetic',
   'AlterEdgeForm:skipLogic',
   'AlterEdgeForm:filter',
   'Anonymisation:skipLogic',

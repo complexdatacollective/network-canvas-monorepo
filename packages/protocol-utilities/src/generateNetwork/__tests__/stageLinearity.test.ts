@@ -128,6 +128,7 @@ describe('stage-linear node writes', () => {
       codebook,
       stages: [people, sociogram],
       seed: 1,
+      config: { sociogramHighlightProbability: 1 },
     });
     const highlights = network.nodes.map(
       (node) => node[entityAttributesProperty].highlighted,

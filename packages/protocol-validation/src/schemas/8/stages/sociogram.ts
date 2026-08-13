@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
-import { StageEdgeSyntheticSchema } from '../codebook/synthetic.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import {
   imageOrCirclesBackgroundSchema,
@@ -13,7 +12,6 @@ import { baseStageSchema } from './base.ts';
 
 export const sociogramStage = baseStageSchema.extend({
   type: z.literal('Sociogram'),
-  synthetic: StageEdgeSyntheticSchema.optional(),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   background: imageOrCirclesBackgroundSchema,

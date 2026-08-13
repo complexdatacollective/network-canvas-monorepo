@@ -326,23 +326,7 @@ function mergedRendering(
   if (aWindow.resolution !== bWindow.resolution) return undefined;
 
   const min = laterBound(aWindow.min, bWindow.min);
-  // Only ENFORCED ceilings narrow the merged window. An open full-resolution
-  // picker has no submission validator above its window, so the ceiling this
-  // resolution gives it is a stand-in marking where an open window was cut off
-  // — `maxDerived` says exactly that, and `ValueGenerator` consults it before
-  // treating a ceiling as authored (its `ceilingIsStandIn`).
-  //
-  // Re-emitted here as a plain `parameters.max`, the flag had nowhere to live
-  // and the stand-in came back as a rule: the builder clamped every draw into
-  // today while `generateNetwork`, reading the same protocol through the
-  // variable's own control, honoured the declared window. Where neither side
-  // enforces a ceiling none is emitted, and the window is left open for
-  // `buildVariableConstraints` to derive again — and to flag again.
-  const enforcedCeiling = (window: DateWindow): string | undefined =>
-    window.maxDerived === true && window.resolution === 'full'
-      ? undefined
-      : window.max;
-  const max = earlierBound(enforcedCeiling(aWindow), enforcedCeiling(bWindow));
+  const max = earlierBound(aWindow.max, bWindow.max);
   if (min !== undefined && max !== undefined && min > max) return undefined;
 
   return {

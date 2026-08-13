@@ -210,12 +210,8 @@ describe('generateFamilyPedigreePlan', () => {
       { population, scenario: 'none', diseaseMode: 'none', maxNodes: 15 },
       15,
     );
-    // Re-pinned from seed 11 when generation moved to per-variable seeded
-    // substreams: which seed lands this family shape is arbitrary, and the
-    // shape itself — no siblings, one child, a full fifteen people — is what
-    // this exercises.
     const subject = generateFamilyPedigreePlan(
-      new ValueGenerator(12, '2026-08-05'),
+      new ValueGenerator(11, '2026-08-05'),
       options,
       [],
       true,

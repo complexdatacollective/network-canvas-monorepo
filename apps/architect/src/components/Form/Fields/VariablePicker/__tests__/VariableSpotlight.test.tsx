@@ -69,12 +69,8 @@ describe('VariableSpotlight', () => {
 
     // Rows are sorted by label: "Just a number" before "Name".
     expect(items[0]).toHaveTextContent('Just a number');
-    expect(
-      items[0]?.querySelector('img[aria-hidden="true"]'),
-    ).toBeInTheDocument();
+    expect(items[0]?.querySelector('.icon')).toBeInTheDocument();
     expect(items[1]).toHaveTextContent('Name');
-    expect(
-      items[1]?.querySelector('img[aria-hidden="true"]'),
-    ).toBeInTheDocument();
+    expect(items[1]?.querySelector('.icon')).toBeInTheDocument();
   });
 });

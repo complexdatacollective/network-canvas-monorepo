@@ -208,15 +208,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       ego: {
         variables: {
           screening: { name: 'Screening', type: 'boolean' },
-          // This protocol exists to exercise the route a refused consent
-          // takes, so the refusal is declared rather than left to whatever
-          // the seed happens to draw — a preview that consented would skip
-          // nothing and the routing assertions below would prove nothing.
-          consent: {
-            name: 'Consent',
-            type: 'boolean',
-            synthetic: { probabilityTrue: 0 },
-          },
+          consent: { name: 'Consent', type: 'boolean' },
         },
       },
     },

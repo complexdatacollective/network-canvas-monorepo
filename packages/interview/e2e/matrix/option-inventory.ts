@@ -148,7 +148,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   DyadCensus: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'filter',
@@ -227,7 +226,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGenerator: [
     'subject',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'form',
     'form.title',
     'form.fields[].variable',
@@ -257,7 +255,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NetworkComposer: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'subject',
@@ -311,7 +308,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   OneToManyDyadCensus: [
     'subject.type',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'behaviours.removeAfterConsideration',
     'prompts (array length > 1)',
     'prompts[].createEdge',
@@ -325,7 +321,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Sociogram: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'subject',
@@ -347,7 +342,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   TieStrengthCensus: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'filter',
@@ -369,7 +363,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGeneratorRoster: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'subject',
@@ -397,7 +390,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGeneratorQuickAdd: [
     'label',
-    'synthetic', // dead: authoring metadata for generated data, never read at runtime
     'interviewScript',
     'skipLogic',
     'subject.type',

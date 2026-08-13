@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
-import { StageEdgeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   IntroductionPanelSchema,
   NodeStageSubjectSchema,
@@ -12,7 +11,6 @@ import { baseStageSchema } from './base.ts';
 
 export const tieStrengthCensusStage = baseStageSchema.extend({
   type: z.literal('TieStrengthCensus'),
-  synthetic: StageEdgeSyntheticSchema.optional(),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z

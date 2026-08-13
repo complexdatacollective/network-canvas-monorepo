@@ -59,17 +59,6 @@ export type DateWindow = {
   min?: string;
   max?: string;
   resolution: DateResolution;
-  /**
-   * Set where `max` is the window's own derivation rather than a bound the
-   * protocol declared — today's date standing in for an absent ceiling.
-   *
-   * The two read alike once written down and mean opposite things to a draw:
-   * a declared ceiling is a rule a generated value must satisfy, while a
-   * stand-in only says where an open-ended window was cut off. Without the
-   * distinction a declared synthetic window above today looks disjoint from a
-   * rule and is discarded, and the draw lands in the recent past instead.
-   */
-  maxDerived?: boolean;
 };
 
 // A second, independent copy of the UTC arithmetic @codaco/shared-consts

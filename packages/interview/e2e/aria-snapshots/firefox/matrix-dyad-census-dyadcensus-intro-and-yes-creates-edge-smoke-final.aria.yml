@@ -1,13 +1,13 @@
 - main:
-  - text: Ansel Schneider and Monty Kirlin
-  - button "Ansel Schneider"
-  - button "Monty Kirlin"
+  - text: Mohammad Crist and Clinton Leffler
+  - button "Mohammad Crist"
+  - button "Clinton Leffler"
   - status:
     - heading "Do they know each other?" [level=2]:
       - text: ""
       - strong: know
       - text: ""
-  - radiogroup "Ansel Schneider and Monty Kirlin Do they know each other?":
+  - radiogroup "Mohammad Crist and Clinton Leffler Do they know each other?":
     - radio "Yes"
     - radio "No"
   - navigation:
