@@ -9,9 +9,9 @@
 > share sheet when they only wanted the archive in their Downloads folder
 > (community thread #258). `canShareFile` is now gated on
 > `isHandheldPlatform()` (iOS/iPadOS/Android), so desktop Safari and desktop
-> Firefox both take rung 3 and the file downloads directly. Rung 2's row in
-> "Behavior by platform" below therefore reads "iOS / iPadOS / Android", and
-> desktop Safari joins the "Download starts in browser UI" row.
+> Firefox both take rung 3 and the file downloads directly. Rung 2 and the
+> "Behavior by platform" table below have been rewritten to match; the rungs
+> themselves are otherwise unchanged from the approved design.
 
 ## Problem
 
@@ -46,13 +46,15 @@ picker (`suggestedName`, `.zip` / `application/zip` type hint), then
 - Write failure after a successful pick (disk full, permissions) → fall
   through to rung 3 so the export can still land somewhere.
 
-### Rung 2 — Web Share (iOS/Android, desktop Safari)
+### Rung 2 — Web Share (iOS / iPadOS / Android)
 
-Unchanged from PR #893: if `navigator.canShare?.({ files })`, share.
+If `isHandheldPlatform()` and `navigator.canShare?.({ files })`, share.
 Resolved → **saved**. Cancelled → **not saved**. Any other rejection
-(`NotAllowedError` etc.) → fall through to rung 3.
+(`NotAllowedError` etc.) → fall through to rung 3. The handheld gate is the
+2026-08-13 amendment: a desktop browser has a Downloads folder and a downloads
+UI, so its share sheet is a detour, not a destination.
 
-### Rung 3 — `<a download>` anchor (desktop Firefox, Brave)
+### Rung 3 — `<a download>` anchor (desktop Safari, Firefox, Brave)
 
 Fire the object-URL download and report **saved** optimistically. This rung
 is unobservable by definition; the false-positive risk is accepted and
@@ -89,8 +91,8 @@ lib. No type assertions.
 | Platform                       | "Save export" experience      | `exportedAt` signal            |
 | ------------------------------ | ----------------------------- | ------------------------------ |
 | Desktop Chrome/Edge            | Native Save-As picker         | Deterministic (write closed)   |
-| iOS / Android / desktop Safari | Share sheet                   | Deterministic (share resolved) |
-| Desktop Firefox, Brave         | Download starts in browser UI | Optimistic                     |
+| iOS / iPadOS / Android         | Share sheet                   | Deterministic (share resolved) |
+| Desktop Safari, Firefox, Brave | Download starts in browser UI | Optimistic                     |
 
 No platform asks the researcher to confirm anything after saving.
 
@@ -104,7 +106,10 @@ ladder surfaces through the existing catch in `handleShareReady`
 
 - `download.test.ts`: picker success / picker cancel / write-failure
   fallthrough; share success / cancel / failure fallthrough (picker absent);
-  anchor rung when neither API exists.
+  anchor rung when neither API exists; the handheld gate (desktop Safari
+  downloads despite `canShare` returning true, iPhone/Android/iPadOS share —
+  iPadOS in both its Mac-like desktop mode and its self-identifying mobile
+  mode).
 - `useSessionMutations.test.ts`: saved → marked exported; not saved → not
   marked, retry retained. The four dialog-flow tests are removed.
 - Live verification in Chromium (Playwright) by stubbing each rung, as the
