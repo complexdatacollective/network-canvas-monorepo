@@ -764,7 +764,7 @@ export function generateNetwork(
   // edge of the same type ends up with.
   reserveFamilyPedigreeFixedValues(ctx, feasibilityStages);
 
-  const plan = planNetwork(ctx, effects, resolvedFamilyPedigree.maxNodes);
+  const plan = planNetwork(ctx, effects);
 
   return materialiseSession({
     ctx,

@@ -137,6 +137,8 @@ function runSecondPedigree(nodes: NcNode[], edges: NcEdge[]): NetworkDraft {
     1,
     stages,
     stages,
+    // Nothing planned is outstanding: this test drives the pedigree directly.
+    0,
     7,
     resolveFamilyPedigreeGenerationOptions(undefined, 40),
   );

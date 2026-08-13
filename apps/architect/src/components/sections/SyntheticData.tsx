@@ -57,6 +57,23 @@ const FrescoSelect = NativeSelectField as ComponentType<
 >;
 const FrescoInput = InputField as ComponentType<Record<string, unknown>>;
 
+/**
+ * What a number field is currently holding, or nothing.
+ *
+ * `undefined` covers two states the section deliberately treats the same way,
+ * and both are reported by the field as the empty string: a parameter the
+ * author has cleared, and a value part-way through being typed. A number input
+ * reports "" for anything that is not yet a number — a lone "-" most of all —
+ * so a handler that read that as zero would write zero back into the controlled
+ * value, and React rewrites a number input whose committed value is 0 while the
+ * field looks empty. The minus sign would vanish before the digit arrived, and
+ * the negative normal mean the schema allows could never be typed.
+ *
+ * Nothing is therefore what the block holds until a number replaces it. That is
+ * also the honest reading of a cleared field: the block's own schema rule
+ * refuses a required parameter left blank, which is what an author who cleared
+ * one and walked away should see, rather than a zero they never typed.
+ */
 const toNumber = (raw: unknown): number | undefined => {
   if (raw === '' || raw === null || raw === undefined) return undefined;
   const parsed = Number(raw);
@@ -154,7 +171,7 @@ function NodeSyntheticControl({
             <NumberControl
               label="Count"
               value={count.value}
-              onChange={(next) => patch({ value: next ?? 0 })}
+              onChange={(next) => patch({ value: next })}
               min={0}
               step="1"
             />
@@ -164,14 +181,14 @@ function NodeSyntheticControl({
               <NumberControl
                 label="Minimum"
                 value={count.min}
-                onChange={(next) => patch({ min: next ?? 0 })}
+                onChange={(next) => patch({ min: next })}
                 min={0}
                 step="1"
               />
               <NumberControl
                 label="Maximum"
                 value={count.max}
-                onChange={(next) => patch({ max: next ?? 0 })}
+                onChange={(next) => patch({ max: next })}
                 min={0}
                 step="1"
               />
@@ -182,7 +199,7 @@ function NodeSyntheticControl({
             <NumberControl
               label="Mean"
               value={count.mean}
-              onChange={(next) => patch({ mean: next ?? 0 })}
+              onChange={(next) => patch({ mean: next })}
               min={count.distribution === 'poisson' ? 0 : undefined}
             />
           )}
@@ -190,7 +207,7 @@ function NodeSyntheticControl({
             <NumberControl
               label="Standard deviation"
               value={count.sd}
-              onChange={(next) => patch({ sd: next ?? 0 })}
+              onChange={(next) => patch({ sd: next })}
               min={0}
             />
           )}
@@ -362,7 +379,7 @@ function EdgeSyntheticControl({
             <NumberControl
               label={isDensity ? 'Density' : 'Mean degree'}
               value={distribution.value}
-              onChange={(next) => patch({ value: next ?? 0 })}
+              onChange={(next) => patch({ value: next })}
               min={0}
               {...(isDensity ? { max: 1, step: '0.01' } : {})}
             />
@@ -390,7 +407,7 @@ function EdgeSyntheticControl({
               <NumberControl
                 label="Mean"
                 value={distribution.mean}
-                onChange={(next) => patch({ mean: next ?? 0 })}
+                onChange={(next) => patch({ mean: next })}
                 min={0}
                 max={1}
                 step="0.01"
@@ -398,7 +415,7 @@ function EdgeSyntheticControl({
               <NumberControl
                 label="Standard deviation"
                 value={distribution.sd}
-                onChange={(next) => patch({ sd: next ?? 0 })}
+                onChange={(next) => patch({ sd: next })}
                 min={0}
                 max={1}
                 step="0.01"
@@ -410,14 +427,14 @@ function EdgeSyntheticControl({
               <NumberControl
                 label="Mean"
                 value={distribution.mean}
-                onChange={(next) => patch({ mean: next ?? 0 })}
+                onChange={(next) => patch({ mean: next })}
                 {...(isDensity ? { min: 0 } : {})}
                 {...(isDensity ? { max: 1, step: '0.01' } : {})}
               />
               <NumberControl
                 label="Standard deviation"
                 value={distribution.sd}
-                onChange={(next) => patch({ sd: next ?? 0 })}
+                onChange={(next) => patch({ sd: next })}
                 min={0}
               />
               {/*

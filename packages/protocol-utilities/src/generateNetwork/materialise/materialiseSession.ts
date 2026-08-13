@@ -535,6 +535,17 @@ export function materialiseSession(params: {
         // is drawn, so it keeps every stage whose guard the seed still
         // decides.
         walkedReachableStages,
+        // The people the plan still has to place, which is not the same as
+        // the people it has not placed. A creator an alter-dependent guard
+        // skipped keeps its planned nodes forever unmaterialised, and
+        // counting those as pending reserved room for a stage that has
+        // already gone by — squeezing a later family down to its core while
+        // the finished network had space to spare. Only stages still ahead
+        // can still spend.
+        plan.nodes.filter(
+          (node) =>
+            node.creationStageIndex > i && !materialisedNodes.has(node.uid),
+        ).length,
         familyPedigreeSeed(runSeed, stage.id),
         // One ceiling for every pedigree in the protocol. Nothing in the
         // protocol caps a family — the codebook describes what a family is,
@@ -630,7 +641,7 @@ export function materialiseSession(params: {
       // Who this interaction could actually join, for judging an edge planned
       // before it. Built lazily: only a retry consults it.
       let reach: Set<string> | undefined;
-      const canJoin = (from: string, to: string): boolean => {
+      const reachOf = (): Set<string> => {
         if (reach === undefined) {
           let candidates = filteredSubjects(
             creation.subjectNodeType,
@@ -643,7 +654,54 @@ export function materialiseSession(params: {
             candidates.map((node) => node[entityPrimaryKeyProperty]),
           );
         }
-        return reach.has(from) && reach.has(to);
+        return reach;
+      };
+      const canJoin = (from: string, to: string): boolean => {
+        const members = reachOf();
+        return members.has(from) && members.has(to);
+      };
+
+      /**
+       * How many edges this interaction may inherit from a creator the walk
+       * passed over.
+       *
+       * A skipped creator's edges are offered to the next stage that creates
+       * the type so the planned topology is not simply lost. But an offer is
+       * not an obligation: a density-1 Sociogram behind a guard the plan
+       * cannot settle, followed by an unguarded density-0.5 one, handed its
+       * whole edge set to a stage that had asked for half as many — and the
+       * later stage's own target could no longer take the excess away, since
+       * these edges arrive already planned. Bounded here by what this
+       * creation's own declared topology asks for over the domain it can
+       * actually see, less what that domain already holds.
+       *
+       * Only inherited edges are counted against it. An edge planned FOR this
+       * stage was drawn from this stage's own domain to this stage's own
+       * target, and is not the topology of somewhere else arriving.
+       */
+      let retryAllowance: number | undefined;
+      const mayInherit = (): boolean => {
+        if (retryAllowance === undefined) {
+          const target = plan.topologyTargets.get(topologyKey(creation));
+          if (target === undefined) {
+            retryAllowance = Number.POSITIVE_INFINITY;
+          } else {
+            const members = reachOf();
+            const pairs =
+              members.size < 2 ? 0 : (members.size * (members.size - 1)) / 2;
+            const held = draft.edges.filter(
+              (edge) =>
+                edge.type === creation.edgeType &&
+                members.has(edge.from) &&
+                members.has(edge.to),
+            ).length;
+            retryAllowance = Math.max(
+              0,
+              topologyTarget(target, pairs, members.size) - held,
+            );
+          }
+        }
+        return retryAllowance > 0;
       };
 
       for (const planned of plan.edges) {
@@ -667,11 +725,13 @@ export function materialiseSession(params: {
         // drawn from its domain, and re-testing the filter against a
         // half-written session rather than the planned network would drop
         // edges whose filter reads a value a later stage writes.
-        if (
-          planned.creationStageIndex < i &&
-          !canJoin(planned.from, planned.to)
-        )
-          continue;
+        if (planned.creationStageIndex < i) {
+          if (!canJoin(planned.from, planned.to)) continue;
+          // Inherited, so it counts against what this stage's own topology
+          // asks for — see `mayInherit`.
+          if (!mayInherit()) continue;
+          retryAllowance = (retryAllowance ?? 0) - 1;
+        }
 
         const attributes: Record<string, VariableValue> = {};
         for (const variableId of creation.writesAtCreation) {
