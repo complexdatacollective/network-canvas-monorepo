@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
-import Node, { NodeColors } from './Node';
+import { useFitText } from './hooks/useFitText';
+import Node, { labelVariants, NodeColors } from './Node';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -490,10 +491,11 @@ export const LongLabels: Story = {
 
       const accessibleLabel = node.getAttribute('aria-label');
       const visibleLabel = within(node).getByText(accessibleLabel ?? '');
-      await expect(visibleLabel).toHaveClass('hyphens-auto', 'wrap-anywhere');
 
-      // The line count varies with the rung the label was fitted to, but every
-      // rung clamps, and none may spill out of the node.
+      // Which rung the label fitted to — and whether that rung concedes to
+      // hyphenation or emergency breaking — varies by label and environment;
+      // the invariants are that every rung clamps and none may spill out of
+      // the node.
       await expect(visibleLabel.className).toMatch(/line-clamp-\d/);
       const labelBounds = visibleLabel.getBoundingClientRect();
       await expect(labelBounds.height).toBeLessThanOrEqual(bounds.height);
@@ -808,6 +810,31 @@ export const LabelFitting: Story = {
       ))}
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // These nodes have no onClick, so a tab stop exists only when the label
+    // is clipped and focus would reveal it. A name shown in full offering the
+    // reveal is the regression this guards: jsdom cannot reproduce it because
+    // the fitter's failure mode was real layout arithmetic — fractional
+    // line-height rounding read as truncation. 'Long' and 'Very long' are
+    // deliberately unasserted: whether they fit depends on the environment's
+    // hyphenation dictionary and the node size.
+    const shownInFull = ['Short', 'Eight-letter word', 'Typical'] as const;
+    for (const testCase of fittingLabelCases) {
+      const nodes = canvas.getAllByRole('button', { name: testCase.label });
+      for (const node of nodes) {
+        if (testCase.caption === 'Beyond any fit') {
+          // Focusable: the native button default, with no attribute written.
+          await waitFor(() => expect(node).not.toHaveAttribute('tabindex'));
+        } else if (
+          (shownInFull as readonly string[]).includes(testCase.caption)
+        ) {
+          await waitFor(() => expect(node).toHaveAttribute('tabindex', '-1'));
+        }
+      }
+    }
+  },
   parameters: {
     layout: 'padded',
     docs: {
@@ -834,6 +861,58 @@ at arm's length on a tablet, which is worse than clipping it.
 /**
  * A name too long to fit at any size can be read in full by pressing and holding.
  */
+function FractionalLeadingProbe() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { ref, isTruncated } = useFitText<HTMLSpanElement>({
+    // The ladder floor's rung with its font size pinned to a fractional
+    // pixel value, the way the interview app's fluid type actually resolves
+    // `text-xs` (12.64px measured in the field). On scaled displays — retina
+    // Macs, tablets, a zoomed page — the resulting fractional line boxes
+    // round scrollHeight a couple of pixels past clientHeight with both
+    // lines fully visible, which a too-tight height tolerance reads as a
+    // clipped label. CI browsers render unscaled and cannot reproduce that
+    // rounding, so this probe discriminates only where the bug lives: run it
+    // on the hardware participants use.
+    steps: [
+      labelVariants({
+        size: 'sm',
+        className: 'text-[12.8px] leading-[1.15]! line-clamp-4',
+      }),
+    ],
+    containerRef,
+  });
+  return (
+    <div
+      ref={containerRef}
+      className="bg-node-1 flex size-24 items-center justify-center overflow-hidden rounded-full text-white"
+    >
+      {/* Forced two-line label (whitespace-pre-line) so the probe does not
+          depend on any font's glyph widths. */}
+      <span ref={ref} data-truncated={isTruncated}>
+        {'Line one\nLine two'}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Regression probe for the fitter's height arithmetic, which only real layout
+ * can exercise: two fully visible lines on the floor rung measure a couple of
+ * pixels of scroll-height excess from fractional line-box rounding, and the
+ * fitter must read that as rounding — not report the label clipped and offer
+ * a reveal for a name already shown in full.
+ */
+export const LabelFitRounding: Story = {
+  render: () => <FractionalLeadingProbe />,
+  play: async ({ canvasElement }) => {
+    // Wait out the fit (a microtask) rather than racing the initial state.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const probe = canvasElement.querySelector('[data-truncated]');
+    await expect(probe).toHaveAttribute('data-truncated', 'false');
+  },
+  parameters: { chromatic: { disableSnapshot: true } },
+};
+
 export const LabelReveal: Story = {
   render: () => (
     <div className="flex flex-wrap gap-12 p-16">
