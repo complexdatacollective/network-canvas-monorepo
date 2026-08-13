@@ -227,7 +227,21 @@ const poissonCountSchema = z
     max: populationInt.optional(),
   })
   .superRefine(requireOrderedBounds)
-  .superRefine(rejectOversizedPopulation);
+  .superRefine(rejectOversizedPopulation)
+  // A Poisson mean of 0 has the single-point support a zero-deviation normal
+  // has — every draw is 0 — so its sole value is held to the window the same
+  // way: with a floor above 0 the draw is clamped to the floor every time and
+  // the authored "always zero" is discarded in silence.
+  .superRefine((value, ctx) => {
+    if (value.mean === 0 && (value.min ?? 0) > 0) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'A mean of 0 lies outside the values this distribution can return, and a Poisson with a mean of 0 can reach nothing else',
+        path: ['mean'],
+      });
+    }
+  });
 
 // A negative mean stays representable: truncation and rounding keep drawn
 // counts non-negative integers, so "usually zero, occasionally more" is a

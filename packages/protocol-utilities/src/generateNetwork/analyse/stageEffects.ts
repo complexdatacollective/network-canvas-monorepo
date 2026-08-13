@@ -268,6 +268,24 @@ export type StageEffects = {
    */
   firstUnconditionalWriteIndex: Map<string, Map<string, number>>;
   /**
+   * Per entity scope, EVERY stage index at which each variable is written, in
+   * ascending order.
+   *
+   * The first/last indexes above answer population-wide questions, but an
+   * entity is only reached by writes that run while it exists: a form that has
+   * already run cannot land on a person a later generator introduces. Judging
+   * a projection by the scope-global first writer showed such a person holding
+   * a value the live session never gave them, so per-entity questions need the
+   * whole list — is there any write between this entity's creation and the
+   * stage being judged?
+   */
+  writeStages: Map<string, Map<string, readonly number[]>>;
+  /**
+   * As {@link StageEffects.writeStages}, restricted to writes behind no stage
+   * filter — the ones certain to reach every entity alive when they run.
+   */
+  unconditionalWriteStages: Map<string, Map<string, readonly number[]>>;
+  /**
    * Variables written as a Sociogram HIGHLIGHT, per scope.
    *
    * A highlight is a mark on a minority of the people in front of the
@@ -312,11 +330,21 @@ export function attributesAsOf(
    * wrong ones.
    */
   respectFiltering = false,
+  /**
+   * The stage this entity was created at. A write that ran before the entity
+   * existed cannot have landed on it, so a value is only visible where some
+   * write falls between creation and `stageIndex` — without this, a form
+   * whose only run precedes a later generator projected its answer onto the
+   * people that generator introduces, people the live session leaves
+   * unanswered. Omitted, no lower bound applies, which is the reading for a
+   * caller with no per-entity creation to offer.
+   */
+  createdAt?: number,
 ): Record<string, unknown> {
-  const first = respectFiltering
-    ? effects.firstUnconditionalWriteIndex.get(scope)
-    : effects.firstWriteIndex.get(scope);
-  if (first === undefined) return {};
+  const writes = respectFiltering
+    ? effects.unconditionalWriteStages.get(scope)
+    : effects.writeStages.get(scope);
+  if (writes === undefined) return {};
   const projected: Record<string, unknown> = {};
   // The union of final and creation-time keys, not the final keys alone. A
   // final value planned MISSING is an absent key, but where the creating
@@ -329,15 +357,29 @@ export function attributesAsOf(
     ...Object.keys(fixedAtCreation ?? {}),
   ]);
   for (const variableId of keys) {
-    const at = first.get(variableId);
-    if (at === undefined || at > stageIndex) continue;
+    const stages = writes.get(variableId);
+    const first = stages?.[0];
+    if (first === undefined || first > stageIndex) continue;
+    const settledAtCreation =
+      fixedAtCreation !== undefined && variableId in fixedAtCreation;
+    // A creation-settled value was written by the interaction that made this
+    // entity, so it exists from `createdAt` by construction — a roster row's
+    // data, say, carries no write of its own in the scope's index. Everything
+    // else arrives through a population write, which reaches this entity only
+    // if it runs while the entity exists.
+    if (
+      !settledAtCreation &&
+      createdAt !== undefined &&
+      !stages!.some((at) => at >= createdAt && at <= stageIndex)
+    ) {
+      continue;
+    }
     const rewrite = effects.rewriteIndex.get(scope)?.get(variableId);
     // The fixed value stands until its rewrite has RUN; from then on the
     // final value — or, where the plan leaves it unanswered, nothing — is
     // what the session shows.
     if (
-      fixedAtCreation !== undefined &&
-      variableId in fixedAtCreation &&
+      settledAtCreation &&
       !(rewrite !== undefined && rewrite <= stageIndex)
     ) {
       projected[variableId] = fixedAtCreation[variableId];
@@ -1030,6 +1072,41 @@ export function analyseStageEffects(
 
   const firstUnconditionalWriteIndex = new Map<string, Map<string, number>>();
   const highlightVariables = new Map<string, Set<string>>();
+
+  // Accumulated as sets — one stage can write a variable through several
+  // interactions — and sorted into the exposed lists once the walk is done.
+  const writeStageSets = new Map<string, Map<string, Set<number>>>();
+  const unconditionalWriteStageSets = new Map<
+    string,
+    Map<string, Set<number>>
+  >();
+  const addWriteStage = (
+    sets: Map<string, Map<string, Set<number>>>,
+    scope: string,
+    variableId: string,
+    at: number,
+  ): void => {
+    const forScope = sets.get(scope) ?? new Map<string, Set<number>>();
+    const forVariable = forScope.get(variableId) ?? new Set<number>();
+    forVariable.add(at);
+    forScope.set(variableId, forVariable);
+    sets.set(scope, forScope);
+  };
+  const sortedWriteStages = (
+    sets: Map<string, Map<string, Set<number>>>,
+  ): Map<string, Map<string, readonly number[]>> =>
+    new Map(
+      [...sets].map(([scope, forScope]) => [
+        scope,
+        new Map(
+          [...forScope].map(([variableId, at]) => [
+            variableId,
+            [...at].toSorted((a, b) => a - b),
+          ]),
+        ),
+      ]),
+    );
+
   const recordUnconditional = (
     scope: string,
     variableId: string,
@@ -1042,6 +1119,7 @@ export function analyseStageEffects(
       firstUnconditionalWriteIndex.get(scope) ?? new Map<string, number>();
     firstFor.set(variableId, Math.min(firstFor.get(variableId) ?? at, at));
     firstUnconditionalWriteIndex.set(scope, firstFor);
+    addWriteStage(unconditionalWriteStageSets, scope, variableId, at);
   };
 
   const recordInto =
@@ -1058,6 +1136,7 @@ export function analyseStageEffects(
     const forScope = firstWriteIndex.get(scope) ?? new Map<string, number>();
     forScope.set(variableId, Math.min(forScope.get(variableId) ?? at, at));
     firstWriteIndex.set(scope, forScope);
+    addWriteStage(writeStageSets, scope, variableId, at);
   };
   const recordRewrite = recordInto(rewriteIndex);
 
@@ -1120,6 +1199,8 @@ export function analyseStageEffects(
     rewriteIndex,
     firstWriteIndex,
     firstUnconditionalWriteIndex,
+    writeStages: sortedWriteStages(writeStageSets),
+    unconditionalWriteStages: sortedWriteStages(unconditionalWriteStageSets),
     highlightVariables,
   };
 }

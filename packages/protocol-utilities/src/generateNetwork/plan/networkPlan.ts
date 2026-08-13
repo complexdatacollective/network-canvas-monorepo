@@ -112,10 +112,15 @@ export type EdgeTopologyTarget = {
  * SUM as well, since several stages each at the cap reach the same place by
  * another route.
  *
- * Clamped rather than refused: `minNodes` is an interview constraint rather
- * than a synthetic declaration, so a protocol carrying a large one is not
- * wrong — its preview simply cannot render that many people. Trimmed from the
- * last stage back, so the earliest stages keep the people they asked for.
+ * Trimmed from the last stage back, so the earliest stages keep the people
+ * they asked for — but only down to each stage's own `minimums` entry. A
+ * declared minimum is not discretionary: the live interface's `minNodes` gate
+ * will not let a participant leave the stage below it, so a "completed
+ * session" holding fewer is a state no participant could produce. As long as
+ * the minimums together fit the budget the trim consumes discretionary
+ * (above-minimum) shares only; `planNetwork` refuses outright before calling
+ * here when they do not, so the floor-breaking second pass below is reached
+ * only by callers that opted out of floors altogether.
  *
  * `budget` is what remains of the WHOLE RUN's population, defaulting to the
  * cap for a caller weighing one type alone. A preview freezes on the number of
@@ -123,13 +128,24 @@ export type EdgeTopologyTarget = {
  * schema-valid types with a constant-10,000 creator each planned a hundred
  * thousand people, every type inside a ceiling applied only to itself.
  */
-export function withinPopulationCeiling(
+function withinPopulationCeiling(
   assigned: number[],
   budget: number = MAX_SYNTHETIC_POPULATION,
+  minimums?: readonly number[],
 ): number[] {
   const ceiling = Math.max(0, Math.min(budget, MAX_SYNTHETIC_POPULATION));
   const capped = assigned.map((count) => Math.min(count, ceiling));
   let total = capped.reduce((sum, count) => sum + count, 0);
+  for (let index = capped.length - 1; index >= 0 && total > ceiling; index--) {
+    const current = capped[index]!;
+    const floor = Math.min(minimums?.[index] ?? 0, ceiling);
+    const drop = Math.min(Math.max(0, current - floor), total - ceiling);
+    capped[index] = current - drop;
+    total -= drop;
+  }
+  // The ceiling binds absolutely — a synchronous preview cannot build past it
+  // whatever was declared — so where the floors alone exceed it (a caller
+  // that skipped the refusal) they give way, again from the last stage back.
   for (let index = capped.length - 1; index >= 0 && total > ceiling; index--) {
     const current = capped[index]!;
     const drop = Math.min(current, total - ceiling);
@@ -411,6 +427,8 @@ function plannedNetwork(
       // planned, so the declared topology was never recovered and the census
       // came back all negatives. The inverse predicate plans edges for a
       // domain the real stage excludes.
+      // Ego exists from the session's first stage, so its writes are bounded
+      // below by stage 0 like any other entity's by its creation.
       [entityAttributesProperty]: attributesAsOf(
         effects,
         scopeKeyFor('ego'),
@@ -418,11 +436,16 @@ function plannedNetwork(
         asOf,
         undefined,
         respectFiltering,
+        0,
       ),
     } as NcNetwork['ego'],
     nodes: nodes.map((node) => ({
       [entityPrimaryKeyProperty]: node.uid,
       type: node.type,
+      // Projected from the entity's own creation stage: a write that ran
+      // before this node existed never landed on it, so a filter between
+      // that write and the node's creation must see it unanswered — as the
+      // live session does.
       [entityAttributesProperty]: attributesAsOf(
         effects,
         scopeKeyFor('node', node.type),
@@ -430,6 +453,7 @@ function plannedNetwork(
         asOf,
         node.fixedAtCreation,
         respectFiltering,
+        node.creationStageIndex,
       ),
     })) as NcNode[],
     edges: edges.map((edge) => ({
@@ -444,6 +468,7 @@ function plannedNetwork(
         asOf,
         edge.fixedAtCreation,
         respectFiltering,
+        edge.creationStageIndex,
       ),
     })) as NcEdge[],
   };
@@ -1247,6 +1272,7 @@ export function planNetwork(
           asOf,
           undefined,
           ctx.respectSkipLogicAndFiltering,
+          0,
         ),
       },
       nodes: [],
@@ -1364,8 +1390,60 @@ export function planNetwork(
   // rule the per-stage trim follows.
   let populationBudget = MAX_SYNTHETIC_POPULATION;
 
+  // Declared stage minimums are floors trimming may not cross: the live
+  // interface's `minNodes` gate will not let a participant leave the stage
+  // below its minimum, so a completed session holding fewer is a state no
+  // participant could produce — and where the budget forces trimming, it is
+  // the discretionary (above-minimum) shares that give way, across every
+  // stage and type, before any reachable minimum is touched. Reserving the
+  // floors of the types still to come is what keeps a codebook-earlier type's
+  // discretionary people from spending a later type's minimum. Where the
+  // minimums ALONE outgrow the run's cap no allocation can honour them, and
+  // that is refused rather than quietly under-built.
+  const typeFloors = new Map<string, number>();
+  {
+    let floorTotal = 0;
+    for (const [type, definition] of Object.entries(ctx.codebook.node ?? {})) {
+      const creations = creationsByType.get(type) ?? [];
+      const floors = creations.reduce(
+        (sum, creation) => sum + creation.capacity.min,
+        0,
+      );
+      typeFloors.set(type, floors);
+      floorTotal += floors;
+      if (floorTotal > MAX_SYNTHETIC_POPULATION) {
+        throw new SyntheticDataConstraintError(
+          [
+            {
+              entity: 'node',
+              entityType: type,
+              ...(definition.name === undefined
+                ? {}
+                : { entityTypeName: definition.name }),
+              variableIds: [],
+              variableNames: [],
+              rules: ['stage minimums'],
+              reason:
+                `the reachable creating stages declare minimums (behaviours.minNodes) totalling more than ` +
+                `${MAX_SYNTHETIC_POPULATION.toLocaleString('en')} people between them; a preview is generated ` +
+                `synchronously, so the whole run is capped there`,
+            },
+          ],
+          'declared stage minimums alone exceed the population a preview can build',
+        );
+      }
+    }
+  }
+  let floorsOutstanding = [...typeFloors.values()].reduce(
+    (sum, floors) => sum + floors,
+    0,
+  );
+
   for (const [type, definition] of Object.entries(ctx.codebook.node ?? {})) {
     const creations = creationsByType.get(type) ?? [];
+    // This type's own floors are no longer "outstanding" — they are handed to
+    // the trim below as its per-stage minimums instead.
+    floorsOutstanding -= typeFloors.get(type) ?? 0;
     if (creations.length === 0) continue;
 
     // Each creating stage declares its own population, so there is nothing to
@@ -1386,7 +1464,8 @@ export function planNetwork(
         const { min, max } = creation.capacity;
         return Math.max(min, max === null ? drawn : Math.min(max, drawn));
       }),
-      populationBudget,
+      populationBudget - floorsOutstanding,
+      creations.map((creation) => creation.capacity.min),
     );
     populationBudget -= assigned.reduce((sum, count) => sum + count, 0);
 
@@ -1423,9 +1502,27 @@ export function planNetwork(
       type,
       ctx.respectSkipLogicAndFiltering,
     );
+    // A population write reaches only the people alive when it runs, so a
+    // creation is judged against the variable's LAST writer: a form whose
+    // only run precedes this creator never asks its question of the people
+    // this creator introduces, and drawing the value anyway spent `unique`
+    // values the session never collects and showed later filters an answer
+    // the live interview leaves absent. Where filtering is respected the
+    // unconditional writes are the ones counted, matching what
+    // `populationWrittenVariables` admitted. Creation-time writes need no
+    // such test — `writesAtCreation` is the creating interaction's own.
+    const writeStagesForScope = (
+      ctx.respectSkipLogicAndFiltering
+        ? walked.unconditionalWriteStages
+        : walked.writeStages
+    ).get(scope);
     const writtenFor = (creation: NodeCreation): Set<string> =>
       new Set([
-        ...populationWritten,
+        ...[...populationWritten].filter((variableId) => {
+          const stages = writeStagesForScope?.get(variableId);
+          const last = stages?.[stages.length - 1];
+          return last !== undefined && last >= creation.stageIndex;
+        }),
         ...creation.writesAtCreation.filter((id) => typeWritten.has(id)),
       ]);
     const missingGroups = equalityGroups(constraintsFor(ctx, ref));
@@ -1719,11 +1816,17 @@ export function planNetwork(
 
   // --- Edges ---------------------------------------------------------------
   //
-  // Types are planned in the order their first edge can appear, so one whose
-  // edges a later type's filter reads is already in the shadow network by the
-  // time that filter runs. This is a planning order only: every type draws
-  // from its own keyed streams, and the plan's edges are emitted in codebook
-  // order once the walk is done, so no output depends on it.
+  // Creations are settled in ONE pass across every edge type, ordered by
+  // (stage, prompt) — the order the interview actually presents them — so a
+  // creation whose filter reads another type's edges sees exactly the ones
+  // that exist by the time it runs live. Settled a whole type at a time
+  // instead, a type whose FIRST creation came early carried its later-stage
+  // creations to the front too, where a filter on a type settled after it
+  // read an edgeless shadow — and the later type's filter read edges that did
+  // not exist yet. This is a settlement order only: every type draws from its
+  // own keyed streams and its creations keep their relative order, so a
+  // protocol without cross-type edge filters plans byte-identically — and the
+  // plan's edges are emitted in codebook order once the walk is done.
   const edgeTypes = Object.entries(ctx.codebook.edge ?? {});
   /**
    * Creations of one edge type whose owning stage the run really reaches.
@@ -1739,38 +1842,92 @@ export function planNetwork(
       const summary = walked.stages[creation.stageIndex];
       return summary === undefined || !settledAsSkipped(summary);
     });
-  /**
-   * Where a type's first edge can appear, as (stage, prompt).
-   *
-   * The prompt half decides ties WITHIN a stage, which the codebook's own key
-   * order was deciding before. One stage's prompts run in their own order and
-   * the interview re-reads its filter against the network as it changes, so a
-   * prompt creating type A can take away the endpoints the next prompt would
-   * have paired: with a `NOT_EXISTS` filter on A and prompts creating A then
-   * B, planning B first — because the codebook happened to list it first —
-   * planned it over subjects the interview would already have excluded.
-   */
-  const firstEdgeAt = (type: string): number => {
-    const positions = reachableCreations(type)
-      .filter((creation) => creation.structured === null)
-      // Stage dominates: no protocol has enough prompts on one stage for a
-      // prompt index to reach the next stage's place.
-      .map(
-        (creation) => creation.stageIndex * 1_000_000 + creation.promptIndex,
-      );
-    return positions.length > 0
-      ? Math.min(...positions)
-      : Number.MAX_SAFE_INTEGER;
-  };
-
-  const edgesByType = new Map<string, PlannedEdge[]>();
   const plannedEdges: PlannedEdge[] = [];
   const topologyTargets = new Map<string, EdgeTopologyTarget>();
-  for (const [type] of edgeTypes.toSorted(
-    ([a], [b]) => firstEdgeAt(a) - firstEdgeAt(b),
-  )) {
+
+  // Every type's topology-driven creations, gathered in codebook order so the
+  // settlement sort below can break (stage, prompt) ties by it.
+  const topologyCreationsByType = new Map<string, EdgeCreation[]>();
+  for (const [type] of edgeTypes) {
     const creations = reachableCreations(type);
     if (creations.length === 0) continue;
+
+    // Topology target over the eligible pair domain.
+    //
+    // Every planned edge is a topology edge. A pedigree's own parent/partner
+    // links are structural and come from the specialist generator alongside
+    // its people, so they are neither planned here nor counted against a
+    // target: they are not drawn from this domain, and subtracting them from
+    // it would suppress unrelated edges between pairs the pedigree never
+    // touched.
+    const topologyCreations = creations.filter(
+      (creation) => creation.structured === null,
+    );
+    if (topologyCreations.length === 0) continue;
+    topologyCreationsByType.set(type, topologyCreations);
+
+    // Drawn before any domain is consulted, so a stage whose endpoints all
+    // come from a pedigree still resolves its topology for the walk to apply.
+    // Each creation draws from its own keyed stream, so sampling one the plan
+    // then makes no use of perturbs nothing else.
+    for (const creation of topologyCreations) {
+      const key = topologyKey(creation);
+      // ONE draw per (stage, edge type), not per creation. A census whose
+      // prompts all create the same edge type has one creation per prompt and
+      // one topology between them — the stage declared it — and they share a
+      // key, so drawing per creation took a second value from the same stream
+      // and overwrote the first. Adding or removing a duplicate prompt then
+      // changed the density of the stage's whole graph, though neither its
+      // declared topology nor its eligible domain had moved.
+      if (topologyTargets.has(key)) continue;
+      const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
+      topologyTargets.set(key, {
+        metric: topology.metric,
+        value: sampleContinuous(
+          topology.distribution,
+          topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
+          source.stream('topology', creation.stageId, type),
+        ),
+      });
+    }
+  }
+
+  /**
+   * One edge type's accumulated planning state, created the first time a
+   * creation of the type is settled. Everything in it is the TYPE's own —
+   * its keyed streams, its draw counter, its domain and committed edges — so
+   * interleaving types in the settlement loop leaves each type's draw
+   * sequence exactly what a type-at-a-time walk produced.
+   *
+   * `bySubject` is kept per SUBJECT node type, not per edge type. A pair is
+   * two nodes of one type, so stages over different types reach disjoint
+   * pairs — and an accumulated domain spanning both let a stage over `place`
+   * select a pair of people and be stamped as having created it, an edge
+   * between endpoints outside its own subject domain. Feasibility already
+   * sums its ceilings per subject type for the same reason.
+   */
+  type EdgeTypeState = {
+    edgeStream: ReturnType<RandomSource['stream']>;
+    buildEdge: (
+      from: string,
+      to: string,
+      creationStageIndex: number,
+      fixed: Record<string, VariableValue>,
+    ) => PlannedEdge;
+    bySubject: Map<
+      string,
+      {
+        domain: Map<string, EligiblePair>;
+        edges: PlannedEdge[];
+        taken: Set<string>;
+      }
+    >;
+    typeEdges: PlannedEdge[];
+  };
+  const stateByType = new Map<string, EdgeTypeState>();
+  const stateFor = (type: string): EdgeTypeState => {
+    const existing = stateByType.get(type);
+    if (existing) return existing;
     const ref = { entity: 'edge' as const, type };
     const scope = scopeKeyFor('edge', type);
     const written = writtenVariables(
@@ -1837,165 +1994,134 @@ export function planNetwork(
       };
     };
 
-    // Topology target over the eligible pair domain.
-    //
-    // Every planned edge is a topology edge. A pedigree's own parent/partner
-    // links are structural and come from the specialist generator alongside
-    // its people, so they are neither planned here nor counted against a
-    // target: they are not drawn from this domain, and subtracting them from
-    // it would suppress unrelated edges between pairs the pedigree never
-    // touched.
-    const topologyCreations = creations.filter(
-      (creation) => creation.structured === null,
+    const created: EdgeTypeState = {
+      edgeStream,
+      buildEdge,
+      bySubject: new Map(),
+      typeEdges: [],
+    };
+    stateByType.set(type, created);
+    return created;
+  };
+
+  // Creations are settled one at a time, in interview order, each committing
+  // its edges before the next one's domain is built.
+  //
+  // A stage can filter on the very type it creates — "everyone who already
+  // has a friendship" — and the interview answers that against the edges its
+  // predecessors made. Computing the whole union domain first and selecting
+  // over it once could never show a creation the edges of its own type,
+  // because the selection that would produce them is what the domain is
+  // being computed for. Settling incrementally breaks that circle: by the
+  // time a later creation is judged, the earlier ones are real. And the order
+  // is GLOBAL across types for the same reason one type's creations are
+  // ordered: a filter can read any type's edges, and the interview re-reads
+  // it against the network as each prompt changes it, so what has to be real
+  // by the time a creation is judged is everything the session holds — not
+  // everything its own type does.
+  //
+  // Stage dominates prompt in the sort key: no protocol has enough prompts on
+  // one stage for a prompt index to reach the next stage's place. Ties — two
+  // types created by one prompt cannot happen, so ties are across stages'
+  // structural creations only — keep codebook order, the stable order the
+  // list was gathered in.
+  const settlementOrder = [...topologyCreationsByType.entries()]
+    .flatMap(([type, creations]) =>
+      creations.map((creation) => ({ type, creation })),
+    )
+    .toSorted(
+      (a, b) =>
+        a.creation.stageIndex * 1_000_000 +
+        a.creation.promptIndex -
+        (b.creation.stageIndex * 1_000_000 + b.creation.promptIndex),
     );
-    if (topologyCreations.length === 0) continue;
 
-    // Drawn before any domain is consulted, so a stage whose endpoints all
-    // come from a pedigree still resolves its topology for the walk to apply.
-    // Each creation draws from its own keyed stream, so sampling one the plan
-    // then makes no use of perturbs nothing else.
-    for (const creation of topologyCreations) {
-      const key = topologyKey(creation);
-      // ONE draw per (stage, edge type), not per creation. A census whose
-      // prompts all create the same edge type has one creation per prompt and
-      // one topology between them — the stage declared it — and they share a
-      // key, so drawing per creation took a second value from the same stream
-      // and overwrote the first. Adding or removing a duplicate prompt then
-      // changed the density of the stage's whole graph, though neither its
-      // declared topology nor its eligible domain had moved.
-      if (topologyTargets.has(key)) continue;
-      const topology = creation.topology ?? DEFAULT_EDGE_TOPOLOGY;
-      topologyTargets.set(key, {
-        metric: topology.metric,
-        value: sampleContinuous(
-          topology.distribution,
-          topology.metric === 'density' ? { min: 0, max: 1 } : { min: 0 },
-          source.stream('topology', creation.stageId, type),
-        ),
-      });
-    }
-
-    // Creations are settled one at a time, in interview order, each committing
-    // its edges before the next one's domain is built.
-    //
-    // A stage can filter on the very type it creates — "everyone who already
-    // has a friendship" — and the interview answers that against the edges its
-    // predecessors made. Computing the whole union domain first and selecting
-    // over it once could never show a creation the edges of its own type,
-    // because the selection that would produce them is what the domain is
-    // being computed for. Settling incrementally breaks that circle: by the
-    // time a later creation is judged, the earlier ones are real.
-    //
-    // The target is re-measured against the domain accumulated so far and
-    // reduced by what is already committed, so the total after the last
-    // creation is the target over the full union — what a single global
-    // selection would have produced, arrived at without the blind spot.
-    // Kept per SUBJECT node type, not per edge type. A pair is two nodes of
-    // one type, so stages over different types reach disjoint pairs — and an
-    // accumulated domain spanning both let a stage over `place` select a pair
-    // of people and be stamped as having created it, an edge between endpoints
-    // outside its own subject domain. Feasibility already sums its ceilings
-    // per subject type for the same reason.
-    const bySubject = new Map<
-      string,
-      {
-        domain: Map<string, EligiblePair>;
-        edges: PlannedEdge[];
-        taken: Set<string>;
-      }
-    >();
+  for (const { type, creation } of settlementOrder) {
+    const state = stateFor(type);
     const subjectState = (subjectType: string) => {
-      const existing = bySubject.get(subjectType);
+      const existing = state.bySubject.get(subjectType);
       if (existing) return existing;
       const created = {
         domain: new Map<string, EligiblePair>(),
         edges: [] as PlannedEdge[],
         taken: new Set<string>(),
       };
-      bySubject.set(subjectType, created);
+      state.bySubject.set(subjectType, created);
       return created;
     };
-    const typeEdges: PlannedEdge[] = [];
-
-    for (const creation of [...topologyCreations].toSorted(
-      (a, b) => a.stageIndex - b.stageIndex,
+    const {
+      domain,
+      edges: subjectEdges,
+      taken,
+    } = subjectState(creation.subjectNodeType);
+    for (const [key, pair] of eligiblePairsForCreation(
+      ctx,
+      creation,
+      nodes,
+      egoUid,
+      egoAttributes,
+      plannedEdges,
+      walked,
     )) {
-      const {
-        domain,
-        edges: subjectEdges,
-        taken,
-      } = subjectState(creation.subjectNodeType);
-      for (const [key, pair] of eligiblePairsForCreation(
-        ctx,
-        creation,
-        nodes,
-        egoUid,
-        egoAttributes,
-        [...plannedEdges, ...typeEdges],
-        walked,
-      )) {
-        if (!domain.has(key)) domain.set(key, pair);
-      }
-      // The ACCUMULATED domain, which the per-creation ceiling does not bound.
-      // Where filters are respected, each stage can expose a different subset
-      // of the same node type and stay well inside its own ceiling while the
-      // union outgrows it: twenty disjoint five-hundred-person subsets are
-      // 124,750 pairs each and roughly 2.5 million between them, which is the
-      // memory the per-creation check exists to refuse, reached by another
-      // route. Checked after the merge rather than on the sum, because
-      // overlapping subsets are the ordinary case and their union is smaller
-      // than their total.
-      if (domain.size > MAX_SYNTHETIC_PAIRS) {
-        refuseTooManyPairs(
-          ctx,
-          creation.edgeType,
-          `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
-        );
-      }
-      if (domain.size === 0) continue;
-
-      const target = topologyTargets.get(topologyKey(creation));
-      if (target === undefined) continue;
-
-      const eligibleNodeCount = new Set(
-        [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
-      ).size;
-      // Still measured over the domain accumulated so far and reduced by what
-      // this type already holds, not by this creation's own contribution
-      // alone: two stages declaring 0.5 over overlapping pairs describe one
-      // graph at 0.5, not 0.75.
-      const outstanding =
-        topologyTarget(target, domain.size, eligibleNodeCount) -
-        subjectEdges.length;
-      if (outstanding <= 0) continue;
-
-      const available = [...domain.entries()].filter(
-        ([key]) => !taken.has(key),
-      );
-      for (const [key, pair] of shuffled(available, edgeStream).slice(
-        0,
-        outstanding,
-      )) {
-        taken.add(key);
-        // The SELECTING creation, not the one that first admitted the pair to
-        // the domain. Topology is declared per stage now, so a density-0
-        // sociogram followed by a density-1 one selects at the later stage
-        // while the pair entered at the earlier: stamping where it entered
-        // materialised the edge before the stage that decided it, changing
-        // intermediate filters, skip logic and census answers. Creations are
-        // walked in ascending stage order, so this only ever moves an edge
-        // later — never before a stage that could reach its endpoints.
-        const edge = buildEdge(pair.a, pair.b, creation.stageIndex, {});
-        subjectEdges.push(edge);
-        typeEdges.push(edge);
-      }
+      if (!domain.has(key)) domain.set(key, pair);
     }
+    // The ACCUMULATED domain, which the per-creation ceiling does not bound.
+    // Where filters are respected, each stage can expose a different subset
+    // of the same node type and stay well inside its own ceiling while the
+    // union outgrows it: twenty disjoint five-hundred-person subsets are
+    // 124,750 pairs each and roughly 2.5 million between them, which is the
+    // memory the per-creation check exists to refuse, reached by another
+    // route. Checked after the merge rather than on the sum, because
+    // overlapping subsets are the ordinary case and their union is smaller
+    // than their total.
+    if (domain.size > MAX_SYNTHETIC_PAIRS) {
+      refuseTooManyPairs(
+        ctx,
+        creation.edgeType,
+        `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
+      );
+    }
+    if (domain.size === 0) continue;
 
-    edgesByType.set(type, typeEdges);
-    plannedEdges.push(...typeEdges);
+    const target = topologyTargets.get(topologyKey(creation));
+    if (target === undefined) continue;
+
+    const eligibleNodeCount = new Set(
+      [...domain.values()].flatMap((pair) => [pair.a, pair.b]),
+    ).size;
+    // Still measured over the domain accumulated so far and reduced by what
+    // this type already holds, not by this creation's own contribution
+    // alone: two stages declaring 0.5 over overlapping pairs describe one
+    // graph at 0.5, not 0.75.
+    const outstanding =
+      topologyTarget(target, domain.size, eligibleNodeCount) -
+      subjectEdges.length;
+    if (outstanding <= 0) continue;
+
+    const available = [...domain.entries()].filter(([key]) => !taken.has(key));
+    for (const [key, pair] of shuffled(available, state.edgeStream).slice(
+      0,
+      outstanding,
+    )) {
+      taken.add(key);
+      // The SELECTING creation, not the one that first admitted the pair to
+      // the domain. Topology is declared per stage now, so a density-0
+      // sociogram followed by a density-1 one selects at the later stage
+      // while the pair entered at the earlier: stamping where it entered
+      // materialised the edge before the stage that decided it, changing
+      // intermediate filters, skip logic and census answers. Creations are
+      // walked in ascending stage order, so this only ever moves an edge
+      // later — never before a stage that could reach its endpoints.
+      const edge = state.buildEdge(pair.a, pair.b, creation.stageIndex, {});
+      subjectEdges.push(edge);
+      state.typeEdges.push(edge);
+      plannedEdges.push(edge);
+    }
   }
 
-  const edges = edgeTypes.flatMap(([type]) => edgesByType.get(type) ?? []);
+  const edges = edgeTypes.flatMap(
+    ([type]) => stateByType.get(type)?.typeEdges ?? [],
+  );
 
   return {
     ego: {

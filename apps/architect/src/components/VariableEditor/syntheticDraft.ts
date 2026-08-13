@@ -3,8 +3,12 @@ import type * as z from 'zod/mini';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { resolveVariableSynthetic } from '@codaco/protocol-utilities';
 import {
+  ComponentTypes,
+  type CurrentProtocol,
+  type DatetimeSynthetic,
   DEFAULT_OPTION_WEIGHT,
   optionValueKey,
+  rejectInvalidDatetimeSynthetic,
   type Variable,
   VariableSchema,
   type VariableSynthetic,
@@ -22,6 +26,17 @@ import {
  * the result to the codebook schema before it can be saved.
  */
 
+/**
+ * One NetworkComposer field's rendering of the variable being edited: the
+ * control the stage puts in front of a participant, with the field's OWN
+ * parameters where it declares any (`undefined` means the variable's apply,
+ * mirroring the runtime's `fieldParameters ?? codebookParameters`).
+ */
+export type ComposerRendering = {
+  component: string;
+  parameters?: Record<string, unknown>;
+};
+
 export type SyntheticDraftContext = {
   variable: Variable;
   /**
@@ -32,7 +47,60 @@ export type SyntheticDraftContext = {
   options: readonly { label: string; value: string | number }[];
   /** The draft's required flag; missingness is unavailable when set. */
   required: boolean;
+  /**
+   * How NetworkComposer stage fields render this variable. The record schema
+   * superRefines these overlays (validateComposerFieldSyntheticWindows /
+   * validateComposerFieldBooleanProbabilities in schema.ts): a stage field's
+   * own component and parameters are authoritative for the values that stage
+   * generates, so a descriptor the lone variable accepts can still be one the
+   * protocol refuses. Without them the overlay is structurally invisible here
+   * and a save the editor reported safe fails whole-protocol validation with
+   * its error anchored at the stage, nowhere near this dialog.
+   */
+  composerRenderings?: readonly ComposerRendering[];
 };
+
+/**
+ * The NetworkComposer renderings of one codebook variable, read from the
+ * protocol's stages the way the record schema reads them: nodeForm fields
+ * against the stage's node subject, each edge entry's form against its own
+ * edge subject. Subject scoping matters — a field names its variable by key,
+ * and keys are only meaningful within the entity type the form writes.
+ */
+export function collectComposerRenderings(
+  stages: CurrentProtocol['stages'] | undefined,
+  variableId: string,
+  entity: 'node' | 'edge' | 'ego' | undefined,
+  entityType: string | null | undefined,
+): ComposerRendering[] {
+  const renderings: ComposerRendering[] = [];
+  if (!stages || !entity || entity === 'ego') return renderings;
+  for (const stage of stages) {
+    if (stage.type !== 'NetworkComposer') continue;
+    if (entity === 'node') {
+      if (stage.subject.type !== entityType) continue;
+      for (const field of stage.nodeForm?.fields ?? []) {
+        if (field.variable !== variableId) continue;
+        renderings.push({
+          component: field.component,
+          parameters: field.parameters,
+        });
+      }
+    } else {
+      for (const edge of stage.edges ?? []) {
+        if (edge.subject.type !== entityType) continue;
+        for (const field of edge.form?.fields ?? []) {
+          if (field.variable !== variableId) continue;
+          renderings.push({
+            component: field.component,
+            parameters: field.parameters,
+          });
+        }
+      }
+    }
+  }
+  return renderings;
+}
 
 export type SyntheticFieldValues = Record<string, FieldValue>;
 
@@ -601,6 +669,109 @@ const describeIssue = (issue: SchemaIssue): string => {
   return issue.message;
 };
 
+type OverlayIssue = { path: PropertyKey[]; message: string };
+
+/**
+ * The record-level Composer overlay rejections, applied to the draft. The
+ * variable schema can only judge the descriptor against the variable's OWN
+ * component and parameters; the protocol record additionally superRefines
+ * every NetworkComposer field's rendering of the variable
+ * (validateComposerFieldSyntheticWindows /
+ * validateComposerFieldBooleanProbabilities in schema.ts), because
+ * `applyComposerRenderings` makes the field's control authoritative for the
+ * values that stage generates. Run the same two checks here so a draft the
+ * record will refuse is refused where the author can fix it, instead of
+ * saving cleanly and surfacing later as a whole-protocol error anchored at
+ * the stage.
+ *
+ * The datetime half reuses the schema's own `rejectInvalidDatetimeSynthetic`
+ * with the same window resolution (the field's parameters where declared,
+ * the variable's otherwise). The Boolean half mirrors
+ * `validateComposerFieldBooleanProbabilities`, which is not exported: a
+ * componentless boolean whose sole offered option a Composer `Boolean` field
+ * renders leaves `probabilityTrue` at the opposite end undrawable.
+ */
+function composerOverlayIssues(
+  ctx: SyntheticDraftContext,
+  synthetic: VariableSynthetic | undefined,
+): OverlayIssue[] {
+  const issues: OverlayIssue[] = [];
+  if (!synthetic || !ctx.composerRenderings?.length) return issues;
+  const add = (issue: OverlayIssue) => {
+    if (
+      !issues.some(
+        (existing) =>
+          existing.message === issue.message &&
+          existing.path.join('.') === issue.path.join('.'),
+      )
+    ) {
+      issues.push(issue);
+    }
+  };
+
+  for (const rendering of ctx.composerRenderings) {
+    if (
+      ctx.variable.type === 'datetime' &&
+      rendering.component === ComponentTypes.DatePicker
+    ) {
+      const parameters =
+        rendering.parameters !== undefined
+          ? rendering.parameters
+          : 'parameters' in ctx.variable
+            ? ctx.variable.parameters
+            : undefined;
+      const window = parameters as
+        | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
+        | undefined;
+      rejectInvalidDatetimeSynthetic(
+        synthetic as DatetimeSynthetic,
+        window?.type ?? 'full',
+        window,
+        {
+          addIssue: (issue: { message?: string; path?: PropertyKey[] }) => {
+            add({
+              message: issue.message ?? 'Synthetic window is not valid here',
+              // Kept at the descriptor path the helper writes (`synthetic`,
+              // bound) — unlike the record, which re-anchors at the stage
+              // field, this editor owns the control the bound came from.
+              path: issue.path ?? ['synthetic'],
+            });
+          },
+        } as unknown as Parameters<typeof rejectInvalidDatetimeSynthetic>[3],
+      );
+    }
+
+    if (
+      ctx.variable.type === 'boolean' &&
+      rendering.component === ComponentTypes.Boolean &&
+      // A variable that declares the control already carries the rule itself
+      // (the variable schema rejects it), so only the componentless case is
+      // the overlay's to judge.
+      !('component' in ctx.variable && ctx.variable.component !== undefined)
+    ) {
+      const probabilityTrue = (synthetic as { probabilityTrue?: number })
+        .probabilityTrue;
+      const options =
+        'options' in ctx.variable && Array.isArray(ctx.variable.options)
+          ? (ctx.variable.options as { value: unknown }[])
+          : undefined;
+      if (probabilityTrue === undefined || !options) continue;
+      const offered = new Set(options.map((option) => option.value));
+      if (offered.size !== 1) continue;
+      if (
+        (offered.has(false) && probabilityTrue > 0) ||
+        (offered.has(true) && probabilityTrue < 1)
+      ) {
+        add({
+          message: `A stage renders this variable with the "Boolean" control, where the only option offered is ${String(offered.has(true))} — a probability of ${probabilityTrue} can never be drawn.`,
+          path: ['synthetic', 'probabilityTrue'],
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 /**
  * The errors saving this draft would introduce, or undefined when it is safe
  * to save.
@@ -610,7 +781,9 @@ const describeIssue = (issue: SchemaIssue): string => {
  * `minValue`/`maxValue` — so the codebook schema is the only thing standing
  * between a typo (a probability of 2, a negative standard deviation,
  * inverted bounds, weights that are all zero) and a protocol that no longer
- * validates.
+ * validates. The Composer overlay runs even when the variable parse
+ * succeeds: it is a rule about the RECORD, and the lone variable passing is
+ * exactly the case that used to save and fail downstream.
  *
  * Issues outside the `synthetic` subtree are deliberately left alone. They
  * describe a variable that was already invalid when the editor opened, and
@@ -628,21 +801,30 @@ export function validateAssembledVariable(
     delete candidate.synthetic;
   }
 
-  const result = VariableSchema.safeParse(candidate);
-  if (result.success) return undefined;
-
   const fieldErrors: Record<string, string[]> = {};
   const formErrors: string[] = [];
-  for (const located of closestIssues(result.error.issues)) {
-    if (located.path[0] !== 'synthetic') continue;
-    const message = describeIssue(located.issue);
-    const field = fieldForIssue(ctx, synthetic, located.path);
+  const report = (field: string | undefined, message: string) => {
     if (field === undefined) {
       if (!formErrors.includes(message)) formErrors.push(message);
-      continue;
+      return;
     }
     const existing = (fieldErrors[field] ??= []);
     if (!existing.includes(message)) existing.push(message);
+  };
+
+  const result = VariableSchema.safeParse(candidate);
+  if (!result.success) {
+    for (const located of closestIssues(result.error.issues)) {
+      if (located.path[0] !== 'synthetic') continue;
+      report(
+        fieldForIssue(ctx, synthetic, located.path),
+        describeIssue(located.issue),
+      );
+    }
+  }
+
+  for (const issue of composerOverlayIssues(ctx, synthetic)) {
+    report(fieldForIssue(ctx, synthetic, issue.path), issue.message);
   }
 
   return Object.keys(fieldErrors).length > 0 || formErrors.length > 0

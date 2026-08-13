@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 import {
   BIOLOGICAL_SEX_OPTIONS,
+  dateWithinPickerRange,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
+  RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+  RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
@@ -44,6 +47,7 @@ import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
   ComponentTypes,
+  isIsoDate,
   NON_RENDERABLE_VARIABLE_TYPES,
   rejectInvalidDatetimeSynthetic,
   type Variable,
@@ -282,10 +286,16 @@ const validateComposerFieldSyntheticWindows = (
     const variable = codebookVariables[field.variable];
     if (!variable || variable.type !== 'datetime') return;
     if (!('synthetic' in variable) || variable.synthetic === undefined) return;
-    // Only a fixed-window picker pins the dates a field accepts; a
-    // RelativeDatePicker's window moves with its anchor and is judged where
-    // the anchor is known.
-    if (field.component !== ComponentTypes.DatePicker) return;
+    // Only a picker with a KNOWN window pins the dates a field accepts: a
+    // DatePicker declares its window outright, and a RelativeDatePicker with
+    // a declared anchor fixes its own (anchor ± before/after). An anchorless
+    // RelativeDatePicker's window moves with the interview date, so it can
+    // never make a stored protocol invalid and is skipped below.
+    if (
+      field.component !== ComponentTypes.DatePicker &&
+      field.component !== ComponentTypes.RelativeDatePicker
+    )
+      return;
 
     const parameters =
       'parameters' in field && field.parameters !== undefined
@@ -293,6 +303,52 @@ const validateComposerFieldSyntheticWindows = (
         : 'parameters' in variable
           ? variable.parameters
           : undefined;
+
+    const fieldCtx = {
+      addIssue: (issue: { message?: string; path?: (string | number)[] }) => {
+        addIssue({
+          message: issue.message ?? 'Synthetic window is not valid here',
+          // Anchored at the FIELD, since it is the field's own rendering
+          // that makes the descriptor unreachable.
+          path: [...fieldsPath, fieldIndex, ...(issue.path ?? [])],
+        });
+      },
+    } as unknown as z.RefinementCtx;
+
+    if (field.component === ComponentTypes.RelativeDatePicker) {
+      // A declared anchor fixes the window this field accepts, exactly as it
+      // does on the variable's own component (see
+      // dateTimeRelativeDatePickerSchema's refinement) — and generation folds
+      // that fixed window in as the stage-effective bounds, dropping a
+      // disjoint descriptor in silence. Derived through the same shared
+      // helper the runtime and the generator both use, so there is no second
+      // reading of the window. Parameters that carry no valid anchor (either
+      // an anchorless relative window, or an inherited DatePicker-shaped
+      // window a re-declared control no longer reads) resolve against the
+      // interview date and are skipped.
+      const relative = parameters as
+        | { anchor?: string; before?: number; after?: number }
+        | undefined;
+      const anchor = relative?.anchor;
+      if (anchor === undefined || !isIsoDate(anchor)) return;
+      rejectInvalidDatetimeSynthetic(
+        variable.synthetic,
+        'full',
+        {
+          min: dateWithinPickerRange(
+            anchor,
+            -(relative?.before ?? RELATIVE_DATE_PICKER_DEFAULT_BEFORE),
+          ),
+          max: dateWithinPickerRange(
+            anchor,
+            relative?.after ?? RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+          ),
+        },
+        fieldCtx,
+      );
+      return;
+    }
+
     const window = parameters as
       | { type?: 'full' | 'month' | 'year'; min?: string; max?: string }
       | undefined;
@@ -301,16 +357,7 @@ const validateComposerFieldSyntheticWindows = (
       variable.synthetic,
       window?.type ?? 'full',
       window,
-      {
-        addIssue: (issue: { message?: string; path?: (string | number)[] }) => {
-          addIssue({
-            message: issue.message ?? 'Synthetic window is not valid here',
-            // Anchored at the FIELD, since it is the field's own rendering
-            // that makes the descriptor unreachable.
-            path: [...fieldsPath, fieldIndex, ...(issue.path ?? [])],
-          });
-        },
-      } as unknown as z.RefinementCtx,
+      fieldCtx,
     );
   });
 };

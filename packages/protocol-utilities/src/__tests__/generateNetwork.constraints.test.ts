@@ -3468,13 +3468,15 @@ describe('feasibility counting a plan-first run', () => {
     ).toThrow(SyntheticDataConstraintError);
   });
 
-  it('counts a demand past the population ceiling at the ceiling', () => {
-    // `behaviours.minNodes` is unbounded in the stage schema, and the planner
-    // trims a population to what a synchronous preview can build. Both readers
-    // have to agree on that trim: counting the raw minimum here demanded a
-    // billion distinct values of a `unique` variable — refusing a protocol
-    // whose plan then went on to build ten thousand nodes quite happily, from
-    // a domain of a million.
+  it('refuses a declared minimum past the population ceiling', () => {
+    // `behaviours.minNodes` is unbounded in the stage schema, and a declared
+    // minimum is a floor the live interface holds the participant to — its
+    // gate will not let anyone leave the stage below it. Trimming it to what
+    // a synchronous preview can build emitted a "completed session" of ten
+    // thousand people for a stage whose minimum is a billion, a state no
+    // participant could produce, and said nothing. A minimum the run-level
+    // cap cannot satisfy is refused instead, like any other declaration the
+    // generator cannot honour.
     const codebook = {
       node: {
         person: {
@@ -3501,6 +3503,6 @@ describe('feasibility counting a plan-first run', () => {
 
     expect(() =>
       generateNetwork({ seed: 1, codebook, stages: [insatiable] }),
-    ).not.toThrow();
+    ).toThrow(/stage minimums alone exceed the population/);
   });
 });

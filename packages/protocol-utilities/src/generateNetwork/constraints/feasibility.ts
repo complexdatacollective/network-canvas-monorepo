@@ -45,7 +45,10 @@ import {
   worstCaseEntityCounts,
 } from './entityCounts';
 import type { ConstraintConflict } from './error';
-import { comparatorFoldEmptied } from './generateEntityAttributes';
+import {
+  comparatorFoldEmptied,
+  joinIdsInjectively,
+} from './generateEntityAttributes';
 import {
   differentFromGroups,
   emptyGroupBounds,
@@ -1045,7 +1048,11 @@ function analyseEntity(
     const broken = ruleBrokenByFixedValues(entity, assignment);
     if (broken === undefined) continue;
 
-    const key = `${broken.rule}:${broken.variableIds.join(',')}`;
+    // Joined injectively rather than on a bare comma: a variable id may
+    // itself contain one, and two distinct broken pairs whose ids happened to
+    // spell the same joined string deduplicated to one report — hiding a
+    // contradiction the protocol genuinely contains from the author fixing it.
+    const key = `${broken.rule}:${joinIdsInjectively(broken.variableIds)}`;
     if (brokenReported.has(key)) continue;
     brokenReported.add(key);
 

@@ -633,8 +633,24 @@ export const rejectInvalidDatetimeSynthetic = (
     const mean = comparable(
       synthetic.mean.slice(0, DATE_RESOLUTION[resolution].length),
     );
-    const floor = syntheticMin ?? windowMin;
-    const ceiling = syntheticMax ?? windowMax;
+    // The generator draws from the INTERSECTION of the descriptor's window
+    // and the field's own — it narrows its floor to the later of the two and
+    // its ceiling to the earlier (exactly as `rejectDisjointNumberSynthetic`
+    // models with Math.max/Math.min for numbers) — so a descriptor bound
+    // WIDER than the field's must not shadow it: a mean below the field
+    // floor still clamps there however generous the descriptor floor is.
+    const floor =
+      syntheticMin !== undefined && windowMin !== undefined
+        ? syntheticMin > windowMin
+          ? syntheticMin
+          : windowMin
+        : (syntheticMin ?? windowMin);
+    const ceiling =
+      syntheticMax !== undefined && windowMax !== undefined
+        ? syntheticMax < windowMax
+          ? syntheticMax
+          : windowMax
+        : (syntheticMax ?? windowMax);
     if (
       mean !== undefined &&
       ((floor !== undefined && mean < floor) ||

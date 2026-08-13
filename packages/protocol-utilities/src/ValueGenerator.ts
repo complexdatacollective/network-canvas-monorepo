@@ -469,14 +469,48 @@ export class ValueGenerator {
           if (seq !== undefined) return decimalGridValueAt(grid, seq);
 
           if (upperBound <= lowerBound) return lowerBound;
+          const fractionalDraw = sampleContinuous(
+            descriptor,
+            { min: lowerBound, max: upperBound },
+            stream,
+          );
+          // A declared descriptor keeps the same three protections here that
+          // the integer-window path gives it below. This branch is only
+          // reachable from unvalidated input — the v8 schema keeps minValue
+          // and maxValue whole — but a hand-built codebook's declaration is
+          // no less the author's word: rounding turned a declared constant
+          // 10.567 into 10.57, and a declared uniform over 10.551–10.552
+          // never produced a value inside its own window, because the clamp
+          // knew only the validation bounds. Both are the exact defects the
+          // declared-descriptor path below already removed.
+          if (descriptorDeclared) {
+            if (descriptor.distribution === 'constant') {
+              return clamp(fractionalDraw, lowerBound, upperBound);
+            }
+            const descriptorMin =
+              'min' in descriptor ? descriptor.min : undefined;
+            const descriptorMax =
+              'max' in descriptor ? descriptor.max : undefined;
+            const drawnMin = Math.max(
+              lowerBound,
+              descriptorMin ?? Number.NEGATIVE_INFINITY,
+            );
+            const drawnMax = Math.min(
+              upperBound,
+              descriptorMax ?? Number.POSITIVE_INFINITY,
+            );
+            const step = 10 ** -SCALAR_DECIMAL_PLACES;
+            if (drawnMax - drawnMin < step) {
+              return clamp(fractionalDraw, drawnMin, drawnMax);
+            }
+            return clamp(
+              Number(fractionalDraw.toFixed(SCALAR_DECIMAL_PLACES)),
+              drawnMin,
+              drawnMax,
+            );
+          }
           return clamp(
-            Number(
-              sampleContinuous(
-                descriptor,
-                { min: lowerBound, max: upperBound },
-                stream,
-              ).toFixed(SCALAR_DECIMAL_PLACES),
-            ),
+            Number(fractionalDraw.toFixed(SCALAR_DECIMAL_PLACES)),
             lowerBound,
             upperBound,
           );
@@ -561,6 +595,17 @@ export class ValueGenerator {
           resolved.kind === 'scalar'
             ? resolved.descriptor
             : ({ distribution: 'uniform' } as const);
+        // A declared constant is returned as written, for the same reason the
+        // number branch returns its own: the two-decimal grid exists to keep
+        // a CONTINUOUS draw readable, and applied to a constant it silently
+        // changes the authored value — `0.555` came back as `0.56`, though
+        // the live VisualAnalogScale steps by 0.001 and collects it exactly.
+        // `unique` is not permitted on scalar, so no feasibility count leans
+        // on the grid here; and a constant descriptor is always the author's
+        // (the resolved default is uniform), so no `declared` check is needed.
+        if (descriptor.distribution === 'constant') {
+          return clamp(descriptor.value, min, max);
+        }
         // Round first: rounding a clamped value can push it back outside the
         // bound it was just brought inside.
         return clamp(
@@ -732,13 +777,28 @@ export class ValueGenerator {
         // centre or the draw is clamped to an end of it. `{ mean:
         // '2030-01-01', sdDays: 0 }` came back as today, and an old mean came
         // back as the fallback floor, on a field with no real bound at all.
-        // A DECLARED bound is a rule and still wins.
+        // A DECLARED bound is a rule and still wins — and so does the
+        // descriptor's OWN min/max, which are truncation bounds ("truncation
+        // clamps a drawn value into the effective window", distributions.ts):
+        // an end may only move when it is a stand-in, not when it is the
+        // author's word. A mean placed beyond the descriptor's own ceiling
+        // extended the window a decade past it, when truncation semantics pin
+        // the draw AT that ceiling instead.
         if (descriptor.distribution === 'normal') {
           const centre = truncateToResolution(descriptor.mean, resolution);
-          if (ceilingIsStandIn && declaredMax === undefined && centre > max) {
+          if (
+            ceilingIsStandIn &&
+            declaredMax === undefined &&
+            descriptorMax === undefined &&
+            centre > max
+          ) {
             max = offsetWithinOfferedDates(centre, defaultSpan, resolution);
           }
-          if (declaredMin === undefined && centre < min) {
+          if (
+            declaredMin === undefined &&
+            descriptorMin === undefined &&
+            centre < min
+          ) {
             min = openDateFloor(centre, defaultSpan, resolution);
           }
         }

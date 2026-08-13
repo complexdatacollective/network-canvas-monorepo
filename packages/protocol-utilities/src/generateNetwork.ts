@@ -1,7 +1,9 @@
+import { resolveSkipLogicDestinationIndex } from '@codaco/network-query';
 import type {
   EdgeTopology,
   Stage,
   StructuralCodebook,
+  SyntheticCount,
 } from '@codaco/protocol-validation';
 import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
 import {
@@ -38,10 +40,7 @@ import { DEFAULT_PEDIGREE_NODE_CEILING } from './generateNetwork/familyPedigree/
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
 import { countCeiling } from './generateNetwork/plan/distributions';
-import {
-  planNetwork,
-  withinPopulationCeiling,
-} from './generateNetwork/plan/networkPlan';
+import { planNetwork } from './generateNetwork/plan/networkPlan';
 import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_NODE_COUNT,
@@ -172,15 +171,129 @@ function topologyMax(topology: EdgeTopology): number {
 }
 
 /**
+ * A floor no draw from the descriptor can go below, the counterpart of
+ * {@link countCeiling} at the other end of the window.
+ *
+ * `sampleCount` clamps every open family into `[min ?? 0, countCeiling()]`
+ * and a constant IS its own floor, so a declared minimum is the least any
+ * seed can return — except where the window is inverted, where the clamp
+ * settles on the ceiling, which is why the floor is held down to it.
+ * Under-stating a floor is the safe direction here: feasibility deducts
+ * floors from the shared population budget to bound what remains for LATER
+ * creations, so a floor too low only leaves a later cap looser than it had to
+ * be; a floor too high would let the planner hand a later stage more people
+ * than preflight counted.
+ */
+function countFloor(count: SyntheticCount): number {
+  const ceiling = countCeiling(count);
+  switch (count.distribution) {
+    case 'constant':
+      return count.value;
+    case 'uniform':
+      return Math.min(count.min, ceiling);
+    case 'poisson':
+    case 'normal':
+      return Math.min(count.min ?? 0, ceiling);
+  }
+}
+
+/**
+ * Indexes of stages the PLANNER might yet settle as skipped after ego is
+ * drawn.
+ *
+ * `reachableStagesForFeasibility` removes only stages proven unreachable
+ * before anything is drawn. `planNetwork` goes further: with ego in hand it
+ * settles every all-ego guard (its `guardSettlesSkip`) and follows skip
+ * destinations, and a creator it settles as skipped spends nothing from the
+ * shared population budget — exactly as the live session builds nobody at a
+ * stage it never reaches. Which way such a guard settles depends on the ego
+ * draw, so the only per-seed floor on that creator's spend is zero, and
+ * feasibility must not deduct its people when bounding what the budget leaves
+ * for later creations: doing so starved a later creator's cap below a
+ * population the plan then built in full, and its `unique` demand passed
+ * preflight only to exhaust the value space mid-plan.
+ *
+ * Mirrors the two ways the planner's walk removes a stage: its own all-ego
+ * guard, and standing inside a settled guard's forward jump to its
+ * destination. A guard counts as unsettled only where some rule reads an
+ * attribute an earlier reachable EgoForm can write — the same reading
+ * `reachableStagesForFeasibility` applies — because a guard over attributes
+ * nothing collects evaluates identically against the planner's drawn ego and
+ * the empty one, and so was already settled (or kept for every seed) before
+ * this is asked.
+ */
+function stagesThePlanMaySettleSkipped(
+  stages: Stage[],
+  reachableIndexes: ReadonlySet<number>,
+  respectSkipLogicAndFiltering: boolean,
+): Set<number> {
+  const maybeSkipped = new Set<number>();
+  if (!respectSkipLogicAndFiltering) return maybeSkipped;
+
+  const possibleEgoAttributes = new Set<string>();
+  for (let index = 0; index < stages.length; index++) {
+    // A stage already proven unreachable contributes no creations to the
+    // analysis, and `reachableStagesForFeasibility` has already followed its
+    // jump; neither its guard nor its form fields exist for the planner's ego.
+    if (!reachableIndexes.has(index)) continue;
+    const stage = stages[index]!;
+    const { skipLogic } = stage;
+    const undecided =
+      skipLogic !== undefined &&
+      skipLogic.filter.rules.every((rule) => rule.type === 'ego') &&
+      skipLogic.filter.rules.some((rule) => {
+        const attribute =
+          'attribute' in rule.options ? rule.options.attribute : undefined;
+        return attribute !== undefined && possibleEgoAttributes.has(attribute);
+      });
+    if (undecided) {
+      maybeSkipped.add(index);
+      // A settled guard does not only remove its own stage: a destination
+      // makes the walk jump, and every stage between the guard and its
+      // destination is planned for on one ego draw and never reached on
+      // another.
+      const { destination } = skipLogic;
+      if (destination !== undefined) {
+        const destinationIndex = resolveSkipLogicDestinationIndex(
+          destination,
+          stages,
+          index,
+        );
+        if (destinationIndex !== undefined) {
+          for (let jumped = index + 1; jumped < destinationIndex; jumped++) {
+            maybeSkipped.add(jumped);
+          }
+        }
+      }
+    }
+    // Collected AFTER the stage's own guard is judged, as the planner projects
+    // ego: a guard reads only the attributes written before its stage
+    // (`attributesAsOf`), so a form's own fields cannot decide the guard
+    // standing on that form.
+    if (stage.type === 'EgoForm') {
+      for (const field of stage.form?.fields ?? []) {
+        // Tolerated as a draft: Architect previews a form whose field has no
+        // variable chosen yet.
+        if (typeof field.variable === 'string') {
+          possibleEgoAttributes.add(field.variable);
+        }
+      }
+    }
+  }
+  return maybeSkipped;
+}
+
+/**
  * Worst-case bounds feasibility counts against, derived from the codebook's
  * declared populations and topologies.
  *
  * Both halves are ceilings the planner provably cannot exceed rather than
- * guesses: a node type's population is apportioned across its creating stages
- * exactly as the planner apportions it, and an edge type is bounded by the
- * most its declared topology can ask for. Counting a stage at its type's whole
- * ceiling, or a pair domain as if every pair could be linked, refuses
- * protocols whose plan would have fitted comfortably.
+ * guesses: a creating stage is capped at its own declared ceiling clamped to
+ * the most budget the planner can still hold when it reaches that stage on
+ * ANY seed, and an edge type is bounded by the most its declared topology can
+ * ask for. Counting a stage at its type's whole ceiling, or a pair domain as
+ * if every pair could be linked, refuses protocols whose plan would have
+ * fitted comfortably.
  */
 function deriveFeasibilityConfig(
   codebook: StructuralCodebook,
@@ -188,6 +301,7 @@ function deriveFeasibilityConfig(
   today: string,
   pedigreeCeiling: number,
   pedigreePopulation: Map<string, number>,
+  plannerMaySkip: ReadonlySet<number>,
 ): FeasibilityConfig {
   // --- Per-stage node ceilings ----------------------------------------------
   //
@@ -202,26 +316,61 @@ function deriveFeasibilityConfig(
   // out, exactly as the planner leaves them out.
   const nodeCapByStage: Record<string, Record<string, number>> = {};
   const effectivePopulation = new Map<string, number>();
-  // Gathered per type first, then trimmed through the SAME reckoning the
-  // planner applies. Counting the untrimmed figure here refused protocols the
-  // preview can build quite happily: `behaviours.minNodes` is unbounded in the
-  // schema, so a stage declaring a billion made preflight demand a billion
+  // Gathered per type first, then bounded against the run-level budget the
+  // planner spends from. Counting the unbounded figure here refused protocols
+  // the preview can build quite happily: `behaviours.minNodes` is unbounded in
+  // the schema, so a stage declaring a billion made preflight demand a billion
   // unique values while `planNetwork` went on to build ten thousand nodes.
+  //
+  // Each entry carries a CEILING and a FLOOR because the planner spends
+  // sampled draws rather than ceilings. What a later creation can be handed
+  // is the budget minus what its predecessors actually drew, and on the seed
+  // where every predecessor draws its minimum that remainder is largest — so
+  // a per-stage cap stays an upper bound only when predecessors are deducted
+  // at their floors. Deducting their ceilings instead sized a later stage's
+  // cap for the seed where predecessors drew biggest, while another seed left
+  // that stage thousands of people whose `unique` demand preflight never
+  // counted. A creation the planner may yet settle as skipped has a floor of
+  // zero for the same reason: on the seeds that skip it, it spends nothing.
   const ceilingsByType = new Map<
     string,
-    { stageId: string; ceiling: number }[]
+    { stageId: string; ceiling: number; floor: number; protectedMin: number }[]
   >();
   for (const summary of effects.stages) {
     for (const creation of summary.nodeCreations) {
       if (creation.source === 'pedigree') continue;
-      const declared = countCeiling(creation.count ?? DEFAULT_NODE_COUNT);
+      const count = creation.count ?? DEFAULT_NODE_COUNT;
+      const declaredCeiling = countCeiling(count);
+      const declaredFloor = countFloor(count);
       const { min, max } = creation.capacity;
+      // Both ends pass through the capacity clamp exactly as the planner's
+      // draw does (`max(min, min(max, drawn))`), so a `minNodes` the
+      // interface enforces raises the floor and a `maxNodes` lowers the
+      // ceiling in the same places the plan honours them.
       const ceiling = Math.max(
         min,
-        max === null ? declared : Math.min(max, declared),
+        max === null ? declaredCeiling : Math.min(max, declaredCeiling),
       );
+      const floor = plannerMaySkip.has(creation.stageIndex)
+        ? 0
+        : Math.max(
+            min,
+            max === null ? declaredFloor : Math.min(max, declaredFloor),
+          );
       const list = ceilingsByType.get(creation.nodeType) ?? [];
-      list.push({ stageId: creation.stageId, ceiling });
+      list.push({
+        stageId: creation.stageId,
+        ceiling,
+        floor,
+        // What the planner's minimum-respecting trim guarantees this creation
+        // even when earlier asks would have spent the whole budget — a
+        // declared minimum is a floor the live interface holds the
+        // participant to, so `planNetwork` reserves it across types and
+        // trims discretionary shares first. Clamped to the run cap because
+        // the reservation itself lives inside it; past that, `planNetwork`
+        // refuses the protocol outright before any draw.
+        protectedMin: Math.min(min, MAX_SYNTHETIC_POPULATION),
+      });
       ceilingsByType.set(creation.nodeType, list);
     }
   }
@@ -231,7 +380,16 @@ function deriveFeasibilityConfig(
   // first-appearance order, or per type, the two would disagree about which
   // type keeps its people and preflight would size a population the plan does
   // not build.
-  let populationBudget = MAX_SYNTHETIC_POPULATION;
+  //
+  // Deducted at the FLOOR of each predecessor's spend, not its ceiling. The
+  // planner's greedy trim gives a creation `min(its draw, what is left)`, and
+  // what is left is largest on the seed where every predecessor drew its
+  // minimum, so that seed is the one a later stage's cap has to survive. For
+  // the constant counts ordinary protocols declare, floor and ceiling
+  // coincide and this reckoning is byte-identical to trimming ceilings; the
+  // two part only where a draw genuinely varies, which is exactly where the
+  // old reckoning let preflight approve a population the plan then exceeded.
+  let floorSpend = 0;
   const trimOrder = [
     ...Object.keys(codebook.node ?? {}).filter((type) =>
       ceilingsByType.has(type),
@@ -244,23 +402,45 @@ function deriveFeasibilityConfig(
   ];
   for (const nodeType of trimOrder) {
     const entries = ceilingsByType.get(nodeType) ?? [];
-    const trimmed = withinPopulationCeiling(
-      entries.map((entry) => entry.ceiling),
-      populationBudget,
-    );
-    populationBudget -= trimmed.reduce((sum, count) => sum + count, 0);
-    entries.forEach((entry, index) => {
-      const ceiling = trimmed[index]!;
+    const typeBudget = Math.max(0, MAX_SYNTHETIC_POPULATION - floorSpend);
+    let ceilingSum = 0;
+    let protectedMinSum = 0;
+    for (const entry of entries) {
+      // Never below the protected minimum: the planner's trim spends
+      // discretionary shares before it touches a reachable minimum, so a
+      // creation standing after budget-hungry predecessors is still handed
+      // its `minNodes` — and a cap below that would count fewer holders of a
+      // `unique` value than the plan then builds.
+      const ceiling = Math.max(
+        entry.protectedMin,
+        Math.min(
+          entry.ceiling,
+          Math.max(0, MAX_SYNTHETIC_POPULATION - floorSpend),
+        ),
+      );
+      floorSpend += entry.floor;
+      ceilingSum += entry.ceiling;
+      protectedMinSum += entry.protectedMin;
       const forStage = nodeCapByStage[entry.stageId] ?? {};
       // A stage creating one type through two interactions gets both.
       forStage[nodeType] = (forStage[nodeType] ?? 0) + ceiling;
       nodeCapByStage[entry.stageId] = forStage;
-
-      effectivePopulation.set(
-        nodeType,
-        (effectivePopulation.get(nodeType) ?? 0) + ceiling,
-      );
-    });
+    }
+    // The type's whole population is still one budget's worth: per-stage caps
+    // are each reachable on SOME seed but not together, so their sum can
+    // exceed what any single plan builds. What every seed's total respects is
+    // the budget standing when the planner reaches the type — plus the
+    // minimums the planner reserved for this type's own creations out of
+    // EARLIER types' shares, which arrive here however hungry those types
+    // were — and never more than the summed ceilings or the run cap itself.
+    effectivePopulation.set(
+      nodeType,
+      Math.min(
+        ceilingSum,
+        MAX_SYNTHETIC_POPULATION,
+        typeBudget + protectedMinSum,
+      ),
+    );
   }
 
   let nodeCap = 1;
@@ -450,6 +630,14 @@ export function generateNetwork(
         // Resolved exactly as the materialiser resolves it, so what is counted
         // and what is built cannot disagree.
         Math.max(resolvedFamilyPedigree.maxNodes, MINIMUM_PEDIGREE_CORE),
+      ),
+      // The creators whose skip only the planner's drawn ego can settle, so
+      // the budget reckoning above can refuse to count spend the plan may
+      // never make.
+      stagesThePlanMaySettleSkipped(
+        stages,
+        reachableIndexes,
+        respectSkipLogicAndFiltering,
       ),
     ),
     externalData,

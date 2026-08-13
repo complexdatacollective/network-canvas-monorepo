@@ -625,12 +625,60 @@ function forbiddenKeys(
 }
 
 /**
+ * One slot-key member id, made safe to join on NUL.
+ *
+ * The join alone is not injective: a variable id is an arbitrary codebook key
+ * and may itself contain NUL, so the member lists [a, b␀c] and [a␀b, c] joined
+ * to the same slot. Two independent equality groups then shared one used-value
+ * registry slot — each group's draw was refused values the OTHER group had
+ * issued, exhausting domains the live interview (which validates each
+ * variable's `unique` rule independently) accepts, and `uniqueSlotMembers`
+ * silently overwrote one group's membership with the other's.
+ *
+ * Escaped rather than re-encoded (length-prefixing, say) so that an id
+ * containing neither NUL nor SOH is left BYTE-IDENTICAL — the same scheme, for
+ * the same reason, as `escapeSegment` in plan/random.ts: ordinary protocols
+ * keep the slot keys (and thus the registry state) they have always had.
+ */
+const escapeSlotMember = (id: string): string =>
+  id.includes('\u0000') || id.includes('\u0001')
+    ? id
+        .replaceAll('\u0001', '\u0001\u0002')
+        .replaceAll('\u0000', '\u0001\u0001')
+    : id;
+
+/**
  * The registry slot a group's `unique` values are issued from. Built from the
  * sorted member ids rather than the group's representative, whose identity
- * depends on the order the codebook's keys happen to be in.
+ * depends on the order the codebook's keys happen to be in. Every site that
+ * needs a slot key builds it here, so the escaping cannot drift between the
+ * draw, the registry release, and the fixed-value claimants.
  */
 function slotOf(memberIds: readonly string[]): string {
-  return memberIds.toSorted().join(KEY_SEPARATOR);
+  return memberIds.toSorted().map(escapeSlotMember).join(KEY_SEPARATOR);
+}
+
+/**
+ * A list of ids collapsed to one key segment, injectively.
+ *
+ * A bare `join(',')` is not: an id may itself contain a comma, so the group
+ * lists [a, b,c] and [a,b, c] named the same component-solver stream (aliasing
+ * two components onto one shuffle sequence, where adding or removing one moved
+ * the other's solved assignment under the same root seed) and the same
+ * broken-fixed-value dedup key (swallowing a distinct feasibility conflict).
+ *
+ * Escaped only when an id actually contains a comma or backslash, so the
+ * segment is byte-identical for ordinary ids — stream paths are seeds, and any
+ * broader re-encoding would move every solved assignment in every protocol.
+ */
+export function joinIdsInjectively(ids: readonly string[]): string {
+  return ids
+    .map((id) =>
+      id.includes(',') || id.includes('\\')
+        ? id.replaceAll('\\', '\\\\').replaceAll(',', '\\,')
+        : id,
+    )
+    .join(',');
 }
 
 /**
@@ -1008,13 +1056,14 @@ function solveTractableComponent(
   // component earlier consumed a step and moved this one's assignment under
   // the same root seed — exactly the coupling between unrelated variables the
   // semantic substreams exist to remove. The component is named by its own
-  // groups, sorted, so the address does not depend on the order the planner
-  // happens to visit them in.
+  // groups, sorted and joined injectively, so the address depends neither on
+  // the order the planner happens to visit them in nor on a comma inside a
+  // group id making two distinct components spell the same name.
   const shuffleSeed = ctx.valueGen.scopedInt(
     [
       'solve',
       registry,
-      [...tractable.groups].toSorted().join(','),
+      joinIdsInjectively([...tractable.groups].toSorted()),
       String(state.index),
     ],
     0,

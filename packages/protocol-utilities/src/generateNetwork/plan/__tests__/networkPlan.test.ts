@@ -216,28 +216,45 @@ describe('planNetwork populations', () => {
 });
 
 describe('planNetwork against the population ceiling', () => {
-  // `behaviours.minNodes` is a floor the planner must honour and the stage
-  // schema puts no ceiling on it, so a schema-valid minimum walks straight
-  // past the cap that keeps a synchronous preview from freezing the renderer.
-  it('trims a stage minimum that would exceed it', () => {
-    const result = plan(baseCodebook(), [
-      nameGenerator({ behaviours: { minNodes: 9_000_000 } }, 1),
-    ]);
-    expect(result.nodes).toHaveLength(10_000);
+  // `behaviours.minNodes` is a floor the live interface holds the participant
+  // to — its gate will not let anyone leave the stage below it — and the
+  // stage schema puts no ceiling on it, so a schema-valid minimum walks
+  // straight past the cap that keeps a synchronous preview from freezing the
+  // renderer. Trimming it emitted a completed session no participant could
+  // produce and said nothing; a minimum the run cannot satisfy is refused
+  // like any other declaration the generator cannot honour.
+  it('refuses a stage minimum that would exceed it', () => {
+    expect(() =>
+      plan(baseCodebook(), [
+        nameGenerator({ behaviours: { minNodes: 9_000_000 } }, 1),
+      ]),
+    ).toThrow(/stage minimums alone exceed the population/);
   });
 
-  it('trims the SUM when several stages each sit inside it', () => {
+  it('refuses the SUM when several stages each sit inside it', () => {
     // Each is legal alone; together they are not.
+    expect(() =>
+      plan(baseCodebook(), [
+        nameGenerator({ id: 'ng-a', behaviours: { minNodes: 9_000 } }, 1),
+        nameGenerator({ id: 'ng-b', behaviours: { minNodes: 9_000 } }, 1),
+      ]),
+    ).toThrow(/stage minimums alone exceed the population/);
+  });
+
+  it('trims discretionary counts before touching a reachable minimum', () => {
+    // Stage 1's 9,998 people are all discretionary; stage 2 declares a floor
+    // of 5 and asks for exactly 5. A valid allocation inside the cap exists
+    // (9,995 + 5), so the trim consumes the discretionary share and leaves
+    // the declared minimum whole — never the other way round.
     const result = plan(baseCodebook(), [
-      nameGenerator({ id: 'ng-a', behaviours: { minNodes: 9_000 } }, 1),
-      nameGenerator({ id: 'ng-b', behaviours: { minNodes: 9_000 } }, 1),
+      nameGenerator({ id: 'ng-a' }, 9_998),
+      nameGenerator({ id: 'ng-b', behaviours: { minNodes: 5 } }, 5),
     ]);
     expect(result.nodes).toHaveLength(10_000);
-    // Trimmed from the last stage back, so the first keeps what it asked for.
-    const first = result.nodes.filter(
-      (node) => node.creationStageIndex === 0,
+    const second = result.nodes.filter(
+      (node) => node.creationStageIndex === 1,
     ).length;
-    expect(first).toBe(9_000);
+    expect(second).toBe(5);
   });
 
   it('leaves minimums inside the ceiling exactly as they were', () => {

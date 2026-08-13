@@ -335,24 +335,39 @@ export function materialiseSession(params: {
    * populated on exactly those entities, which is the declaration inverted.
    */
   /**
-   * Whether the plan already answers some member of this equality group.
+   * Whether some member of this equality group already holds an answer.
    *
    * A group holding an answered value is ANSWERED — the plan's own rule
    * (`certainlyMissingVariables`) exempts it for exactly this reason, and both
    * walk-time paths have to agree. Nulling such a group emits a session that
    * contradicts the `sameAs` it was built to satisfy: one member holding the
    * value its creating interaction fixed, the rest null beside it.
+   *
+   * The plan is not the only place an answer lives. A FamilyPedigree fixes
+   * values — a relative's biological sex — on entities the plan never held,
+   * so for them `planned` is undefined and the fixed value exists only on the
+   * walk's own attribute record. That record is therefore read alongside the
+   * plan: a sibling already present on the entity is as answered as a planned
+   * one, and deleting it with the group would strip a value the creating
+   * interaction settled and no stage ever rewrites. The member being written
+   * is excluded from that reading, because `landWrite` draws it onto the
+   * record before missingness is decided — counting it would declare every
+   * group answered by its own pending draw and unplanned missingness would
+   * never fire at all.
    */
-  const groupHasPlannedAnswer = (
+  const groupHasSettledAnswer = (
     members: readonly string[],
     planned: Planned | undefined,
+    attributes: Record<string, VariableValue>,
+    variableId: string,
   ): boolean =>
-    planned !== undefined &&
-    members.some(
-      (id) =>
-        id in planned.fixedAtCreation ||
-        (id in planned.attributes && !planned.missing.has(id)),
-    );
+    (planned !== undefined &&
+      members.some(
+        (id) =>
+          id in planned.fixedAtCreation ||
+          (id in planned.attributes && !planned.missing.has(id)),
+      )) ||
+    members.some((id) => id !== variableId && id in attributes);
 
   const applyUnplannedMissingness = (
     ref: EntityScopeRef,
@@ -363,7 +378,7 @@ export function materialiseSession(params: {
   ): void => {
     const members = groupsFor(ref).find((group) => group.includes(variableId));
     if (members === undefined) return;
-    if (groupHasPlannedAnswer(members, planned)) return;
+    if (groupHasSettledAnswer(members, planned, attributes, variableId)) return;
     // Per scope: one variable key can name separate definitions under two
     // entity types, and each declares its own missingness.
     const scope = scopeKey(ref);
@@ -400,6 +415,7 @@ export function materialiseSession(params: {
    */
   const certainlyMissing = (
     ref: EntityScopeRef,
+    attributes: Record<string, VariableValue>,
     variableId: string,
     planned: Planned | undefined,
   ): boolean => {
@@ -410,8 +426,13 @@ export function materialiseSession(params: {
     // (`certainlyMissingVariables`) exempts it for exactly this reason. The
     // walk skipped that check, so a variable written only behind a filter and
     // declared certainly-missing was nulled beside a fixed `sameAs` sibling,
-    // emitting a finished session that contradicts its own rule.
-    if (groupHasPlannedAnswer(members, planned)) return false;
+    // emitting a finished session that contradicts its own rule. The check
+    // reads the entity's own attribute record too: a pedigree person's fixed
+    // sex lives only there, and treating its group as certainly missing would
+    // leave the sibling absent beside a populated value — the very
+    // contradiction this exemption exists to prevent.
+    if (groupHasSettledAnswer(members, planned, attributes, variableId))
+      return false;
     const scope = scopeKey(ref);
     return (
       groupMissingProbability(
@@ -446,7 +467,7 @@ export function materialiseSession(params: {
       }
       return;
     }
-    if (certainlyMissing(ref, variableId, planned)) {
+    if (certainlyMissing(ref, attributes, variableId, planned)) {
       // Left absent rather than written as null.
       return;
     }
@@ -782,6 +803,17 @@ export function materialiseSession(params: {
         } as NcEdge);
         finalPairs.add(pairKey(pair.a, pair.b));
         for (const variableId of creation.writesAtCreation) {
+          // `landWrite`'s bypass, mirrored here for its reason: a `unique`
+          // draw claims its value from the registry, and deleting the
+          // attribute afterwards does not release the claim. Drawing a
+          // certainly-missing variable onto each fallback edge only to null
+          // it therefore exhausts a small value space and fails a session
+          // whose final state holds nothing — feasibility exempts the group
+          // for exactly this shape, so preflight cannot catch it, and a live
+          // interview simply records no answer.
+          if (certainlyMissing(ref, attributes, variableId, undefined)) {
+            continue;
+          }
           drawVariableOnto(ctx, ref, attributes, variableId, unplannedDraw++);
           // Every variable written at an edge's creation currently also has a
           // population write that would apply this later, so no protocol shape
@@ -809,6 +841,36 @@ export function materialiseSession(params: {
     // normalises them across the families an earlier stage committed. Replaying
     // them here would overwrite that with an independent draw.
     const writes = stage.type === 'FamilyPedigree' ? [] : summary.writes;
+
+    /**
+     * A form's audience, resolved once at stage entry.
+     *
+     * The live AlterForm (and its edge and composer counterparts) derives its
+     * subject set from the filtered network when the stage is presented, then
+     * commits ALL of a card's fields in one atomic attribute patch — a
+     * participant who answered every question on a card has every answer
+     * recorded, even where an early answer would now fail the stage filter.
+     * Re-running `filteredSubjects` per field read the draft as mutated by
+     * this same stage's earlier fields: landing one field's planned final
+     * value could empty the filter for the next, silently dropping answers
+     * the interview visibly collected. Non-form modes (bins, tie strength,
+     * layout, highlight) keep per-write evaluation, because their prompts are
+     * separate screens and the interview re-reads the network between them.
+     */
+    const formNodeAudience = new Map<(typeof writes)[number], NcNode[]>();
+    const formEdgeAudience = new Map<(typeof writes)[number], NcEdge[]>();
+    for (const write of writes) {
+      if (write.mode !== 'form') continue;
+      if (write.entity === 'node') {
+        formNodeAudience.set(
+          write,
+          filteredSubjects(write.entityType ?? '', write.filter),
+        );
+      } else if (write.entity === 'edge') {
+        formEdgeAudience.set(write, writtenEdges(write));
+      }
+    }
+
     for (const write of writes) {
       if (write.entity === 'ego') {
         const egoValue = valueFor(plan.ego, write.variableId);
@@ -821,10 +883,10 @@ export function materialiseSession(params: {
       }
       if (write.entity === 'node') {
         const ref = { entity: 'node' as const, type: write.entityType ?? '' };
-        for (const node of filteredSubjects(
-          write.entityType ?? '',
-          write.filter,
-        )) {
+        // Every form write was given its audience above, so the fallback is
+        // only ever taken by the per-screen modes.
+        for (const node of formNodeAudience.get(write) ??
+          filteredSubjects(write.entityType ?? '', write.filter)) {
           landWrite(
             ref,
             node[entityPrimaryKeyProperty],
@@ -836,7 +898,7 @@ export function materialiseSession(params: {
         continue;
       }
       const ref = { entity: 'edge' as const, type: write.entityType ?? '' };
-      for (const edge of writtenEdges(write)) {
+      for (const edge of formEdgeAudience.get(write) ?? writtenEdges(write)) {
         landWrite(
           ref,
           edge[entityPrimaryKeyProperty],

@@ -14,10 +14,15 @@ import type { Variable } from '@codaco/protocol-validation';
 import { Layout } from '~/components/EditorLayout';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
-import { makeGetVariable } from '~/selectors/codebook';
+import {
+  makeGetVariable,
+  makeGetVariableWithEntity,
+} from '~/selectors/codebook';
+import { getProtocol } from '~/selectors/protocol';
 
 import {
   assembleSynthetic,
+  collectComposerRenderings,
   SYNTHETIC_ENABLED_FIELD,
   type SyntheticDraftContext,
   validateAssembledVariable,
@@ -41,6 +46,25 @@ function SyntheticDataEditorInner({
   const variable = useAppSelector(
     useMemo(() => makeGetVariable(uuid), [uuid]),
   ) as Variable | null;
+  // Where in the codebook the variable lives, and every NetworkComposer
+  // rendering of it: the record schema judges the descriptor against those
+  // stage fields as well as the variable itself (see composerOverlayIssues in
+  // syntheticDraft.ts), so the draft context must carry them for the editor
+  // to reach the same verdict the saved protocol will.
+  const variableWithEntity = useAppSelector(
+    useMemo(() => makeGetVariableWithEntity(uuid), [uuid]),
+  );
+  const stages = useAppSelector((state) => getProtocol(state)?.stages);
+  const composerRenderings = useMemo(
+    () =>
+      collectComposerRenderings(
+        stages,
+        uuid,
+        variableWithEntity?.entity,
+        variableWithEntity?.entityType,
+      ),
+    [stages, uuid, variableWithEntity],
+  );
 
   const context: SyntheticDraftContext | null = useMemo(() => {
     if (!variable) return null;
@@ -53,8 +77,9 @@ function SyntheticDataEditorInner({
       required: Boolean(
         'validation' in variable && variable.validation?.required,
       ),
+      composerRenderings,
     };
-  }, [variable]);
+  }, [variable, composerRenderings]);
 
   const handleSubmit = useCallback(
     (values: Record<string, FieldValue>): FormSubmissionResult => {

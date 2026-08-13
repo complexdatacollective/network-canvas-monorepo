@@ -66,6 +66,7 @@ import {
 import {
   applyMissingness,
   equalityGroups,
+  groupMissingProbability,
   missingProbabilities,
   missingProbabilitiesFor,
   requiredVariables,
@@ -356,6 +357,16 @@ export class SyntheticInterview {
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
   private experiments: { encryptedVariables?: boolean } | null = null;
+  /**
+   * Ids the caller declared outright, which the mint must never re-issue.
+   *
+   * `addVariable` accepts an explicit `id`, and nothing stops that id spelling
+   * the mint pattern itself. `nextId` counts blindly, so the counter would
+   * eventually mint the same string and `Map.set` would silently replace the
+   * caller's variable with a later one — a codebook missing a declaration while
+   * every stage referencing its id resolves to somebody else's.
+   */
+  private suppliedIds = new Set<string>();
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -363,8 +374,20 @@ export class SyntheticInterview {
   }
 
   private nextId(prefix: string): string {
-    this.idCounter++;
-    return `${prefix}-${this.seed}-${this.idCounter}`;
+    // Redrawn from the same counter until clear of every caller-supplied id,
+    // so a builder that supplies none keeps byte-identical ids throughout.
+    let id: string;
+    do {
+      this.idCounter++;
+      id = `${prefix}-${this.seed}-${this.idCounter}`;
+    } while (this.suppliedIds.has(id));
+    return id;
+  }
+
+  /** Records an id the caller supplied so {@link nextId} steps over it. */
+  private reserveSuppliedId(id: string): string {
+    this.suppliedIds.add(id);
+    return id;
   }
 
   // --- Manual codebook API ---
@@ -472,7 +495,10 @@ export class SyntheticInterview {
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId =
+      opts?.id !== undefined
+        ? this.reserveSuppliedId(opts.id)
+        : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -524,7 +550,10 @@ export class SyntheticInterview {
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId =
+      opts?.id !== undefined
+        ? this.reserveSuppliedId(opts.id)
+        : this.nextId('var');
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -1771,6 +1800,38 @@ export class SyntheticInterview {
       );
     };
 
+    // The groups `applyMissing` is certain to null: probability exactly 1, no
+    // required member, no member the caller settled. These are excluded from
+    // the draw rather than drawn and deleted, mirroring the plan path's
+    // `certainlyMissingVariables` bypass (which cannot be called here — the
+    // fixed keys differ per entity) and for its reason: a `unique` draw CLAIMS
+    // its value from the run's registry, and deleting the attribute afterwards
+    // does not release the claim, so a variable declared missing on every
+    // entity could exhaust a small value space and refuse a network whose
+    // declared final state holds no such values at all. The conditions are
+    // `applyMissingness`'s own, via `groupMissingProbability`, so the
+    // exclusion and the deletion cannot disagree about which groups these are.
+    const certainlyMissingFor = (
+      ref: Parameters<typeof constraintsFor>[1],
+      fixed: Record<string, VariableValue>,
+    ): Set<string> => {
+      const scope =
+        ref.entity === 'ego'
+          ? scopeKeyFor('ego')
+          : scopeKeyFor(ref.entity, ref.type);
+      const probabilities = missingProbabilitiesFor(missingByScope, scope);
+      const required = requiredVariablesFor(requiredByScope, scope);
+      const certain = new Set<string>();
+      for (const members of equalityGroups(constraintsFor(ctx, ref))) {
+        if (members.some((id) => id in fixed)) continue;
+        if (groupMissingProbability(members, probabilities, required) !== 1) {
+          continue;
+        }
+        for (const id of members) certain.add(id);
+      }
+      return certain;
+    };
+
     const explicitOf = (nodeEntry: NodeEntry): Record<string, VariableValue> =>
       this.explicitValuesOf(
         this.nodeTypes.get(nodeEntry.type)?.variables,
@@ -1838,21 +1899,28 @@ export class SyntheticInterview {
         // the values the node actually holds — the caller's own among them.
         // Manually-seeded nodes keep unset attributes neutral so the caller's
         // scenario isn't corrupted by random data.
-        const drawn = nodeEntry.manual
-          ? undefined
-          : generateAttributesForEntity(
-              ctx,
-              { entity: 'node', type: nodeEntry.type },
-              index,
-              {
-                existing: explicit,
-                only: new Set(
-                  [...nodeType.variables.keys()].filter(
-                    (varId) => !(varId in nodeEntry.explicitAttributes),
-                  ),
+        let drawn: Record<string, VariableValue> | undefined;
+        if (!nodeEntry.manual) {
+          const certain = certainlyMissingFor(
+            { entity: 'node', type: nodeEntry.type },
+            explicit,
+          );
+          drawn = generateAttributesForEntity(
+            ctx,
+            { entity: 'node', type: nodeEntry.type },
+            index,
+            {
+              existing: explicit,
+              only: new Set(
+                [...nodeType.variables.keys()].filter(
+                  (varId) =>
+                    !(varId in nodeEntry.explicitAttributes) &&
+                    !certain.has(varId),
                 ),
-              },
-            );
+              ),
+            },
+          );
+        }
 
         if (drawn) {
           this.refuseUndrawableValues(
@@ -1919,21 +1987,27 @@ export class SyntheticInterview {
         // the interview would have collected answers for. Copying its empty
         // attribute store left every rule unsatisfied — a required variable
         // absent rather than answered.
-        const drawn = edgeEntry.manual
-          ? undefined
-          : generateAttributesForEntity(
-              ctx,
-              { entity: 'edge', type: edgeEntry.type },
-              index,
-              {
-                existing: explicit,
-                only: new Set(
-                  [...edgeType.variables.keys()].filter(
-                    (varId) => !(varId in edgeEntry.attributes),
-                  ),
+        let drawn: Record<string, VariableValue> | undefined;
+        if (!edgeEntry.manual) {
+          const certain = certainlyMissingFor(
+            { entity: 'edge', type: edgeEntry.type },
+            explicit,
+          );
+          drawn = generateAttributesForEntity(
+            ctx,
+            { entity: 'edge', type: edgeEntry.type },
+            index,
+            {
+              existing: explicit,
+              only: new Set(
+                [...edgeType.variables.keys()].filter(
+                  (varId) =>
+                    !(varId in edgeEntry.attributes) && !certain.has(varId),
                 ),
-              },
-            );
+              ),
+            },
+          );
+        }
 
         if (drawn) {
           this.refuseUndrawableValues(
@@ -1989,8 +2063,24 @@ export class SyntheticInterview {
     this.refuseContradictoryFixedValues(ctx, { entity: 'ego' }, egoExplicit);
     this.refuseUnsupportedEgoConstraints(ctx);
 
+    // Ego takes the certainly-missing bypass too. `unique` never reaches ego
+    // (refused above), so no registry claim is at stake, but drawing a value
+    // `applyMissing` is certain to delete would leave the two entry points
+    // disagreeing about what an always-unanswered question consumes. `only` is
+    // passed only when something must be excluded, so a builder declaring no
+    // certain missingness keeps the exact draw it had.
+    const egoCertain = certainlyMissingFor({ entity: 'ego' }, egoExplicit);
     const drawnEgo = generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
       existing: egoExplicit,
+      ...(egoCertain.size > 0
+        ? {
+            only: new Set(
+              [...this.egoVariables.keys()].filter(
+                (varId) => !egoCertain.has(varId),
+              ),
+            ),
+          }
+        : {}),
     });
     this.refuseUndrawableValues(ctx, { entity: 'ego' }, drawnEgo, egoExplicit);
 
