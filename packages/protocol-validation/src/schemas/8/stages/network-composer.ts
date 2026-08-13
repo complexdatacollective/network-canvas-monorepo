@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateName } from '../../../utils/validation-helpers.ts';
+import { StageNodeAndEdgeSyntheticSchema } from '../codebook/synthetic.ts';
 import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
@@ -124,6 +125,7 @@ export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
 export const networkComposerStage = baseStageSchema.extend({
   type: z.literal('NetworkComposer'),
+  synthetic: StageNodeAndEdgeSyntheticSchema.optional(),
   subject: NodeStageSubjectSchema,
   // The text variable populated by the inline quick-add name field when a node
   // is added from the tool palette. The quick-add field now runs the variable's

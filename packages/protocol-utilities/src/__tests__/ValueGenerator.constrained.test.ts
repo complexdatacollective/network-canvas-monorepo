@@ -61,6 +61,9 @@ function narrowed(
   };
 }
 
+/** Any stable scope key; these tests never cross entity scopes. */
+const SCOPE = 'node:person';
+
 describe('neutralForVariable', () => {
   it('keeps a missing Boolean attribute false when true is the first option', () => {
     const generator = new ValueGenerator(1);
@@ -100,6 +103,7 @@ describe('generateConstrained', () => {
       generator.generateConstrained(
         make({ id: 'v', name: 'V', type: 'ordinal', options: [] }),
         0,
+        SCOPE,
       ),
     ).toBeUndefined();
   });
@@ -114,7 +118,9 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      expect(String(gen.generateConstrained(variable, index))).toHaveLength(24);
+      expect(
+        String(gen.generateConstrained(variable, index, SCOPE)),
+      ).toHaveLength(24);
     }
   });
 
@@ -128,9 +134,11 @@ describe('generateConstrained', () => {
       validation: { minLength: length, maxLength: length },
     });
 
-    expect(String(gen.generateConstrained(variable, 0))).toHaveLength(length);
+    expect(String(gen.generateConstrained(variable, 0, SCOPE))).toHaveLength(
+      length,
+    );
     expect(
-      String(gen.generateConstrained(variable, 0, { distinctSeq: 3 })),
+      String(gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: 3 })),
     ).toHaveLength(length);
   });
 
@@ -149,7 +157,7 @@ describe('generateConstrained', () => {
     });
 
     const started = performance.now();
-    expect(() => gen.generateConstrained(variable, 0)).toThrow(
+    expect(() => gen.generateConstrained(variable, 0, SCOPE)).toThrow(
       `"Bio" declares minLength 1000000000, beyond the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold.`,
     );
     expect(performance.now() - started).toBeLessThan(1000);
@@ -166,7 +174,7 @@ describe('generateConstrained', () => {
 
     for (let index = 0; index < 25; index++) {
       expect(
-        String(gen.generateConstrained(variable, index)).length,
+        String(gen.generateConstrained(variable, index, SCOPE)).length,
       ).toBeLessThanOrEqual(3);
     }
   });
@@ -177,6 +185,7 @@ describe('generateConstrained', () => {
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'Name', type: 'text' }),
         0,
+        SCOPE,
       ),
     );
     // Unconstrained, a name variable draws a full "First Last" name.
@@ -193,6 +202,7 @@ describe('generateConstrained', () => {
           validation: { maxLength: fullName.length - 1 },
         }),
         0,
+        SCOPE,
       ),
     ).toBe(firstName);
 
@@ -206,6 +216,7 @@ describe('generateConstrained', () => {
           validation: { minLength: fullName.length + 1 },
         }),
         0,
+        SCOPE,
       ),
     );
     expect(withMiddle.startsWith(`${firstName} `)).toBe(true);
@@ -218,6 +229,7 @@ describe('generateConstrained', () => {
     const expected = new ValueGenerator(seed).generateConstrained(
       make({ id: 'name', name: 'name', type: 'text' }),
       0,
+      SCOPE,
     );
     const actual = new ValueGenerator(seed).generateConstrained(
       make({
@@ -227,6 +239,7 @@ describe('generateConstrained', () => {
         validation: { unique: true },
       }),
       0,
+      SCOPE,
       { distinctSeq: 0, preferRealisticName: true },
     );
 
@@ -239,6 +252,7 @@ describe('generateConstrained', () => {
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
+        SCOPE,
       ),
     );
     const withMiddle = String(
@@ -250,6 +264,7 @@ describe('generateConstrained', () => {
           validation: { minLength: fullName.length + 1 },
         }),
         0,
+        SCOPE,
       ),
     );
     const minLength = withMiddle.length + 1;
@@ -263,6 +278,7 @@ describe('generateConstrained', () => {
           validation: { minLength },
         }),
         0,
+        SCOPE,
       ),
     ).toBe('a'.repeat(minLength));
   });
@@ -273,6 +289,7 @@ describe('generateConstrained', () => {
       new ValueGenerator(seed).generateConstrained(
         make({ id: 'name', name: 'name', type: 'text' }),
         0,
+        SCOPE,
       ),
     );
     const [firstName] = fullName.split(' ') as [string];
@@ -287,6 +304,7 @@ describe('generateConstrained', () => {
           validation: { maxLength },
         }),
         0,
+        SCOPE,
       ),
     ).toBe('a'.repeat(maxLength));
   });
@@ -304,6 +322,7 @@ describe('generateConstrained', () => {
         validation: { unique: true },
       }),
       0,
+      SCOPE,
       { distinctSeq: 0, preferRealisticName: true },
     );
 
@@ -326,12 +345,12 @@ describe('generateConstrained', () => {
     subject.randomInt(0, 1_000_000);
 
     expect(
-      subject.generateConstrained(nameVariable, 0, {
+      subject.generateConstrained(nameVariable, 0, SCOPE, {
         distinctSeq: 0,
         preferRealisticName: true,
       }),
     ).toBe(
-      control.generateConstrained(nameVariable, 0, {
+      control.generateConstrained(nameVariable, 0, SCOPE, {
         distinctSeq: 0,
         preferRealisticName: true,
       }),
@@ -350,7 +369,7 @@ describe('generateConstrained', () => {
     const values = new Set<string>();
     for (let seq = 0; seq < 200; seq++) {
       const value = String(
-        gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
       );
       expect(value).toHaveLength(24);
       values.add(value);
@@ -370,7 +389,7 @@ describe('generateConstrained', () => {
     const values = new Set<string>();
     for (let seq = 0; seq < 40; seq++) {
       const value = String(
-        gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
       );
       expect(value.length).toBeGreaterThanOrEqual(1);
       expect(value.length).toBeLessThanOrEqual(3);
@@ -389,7 +408,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = Number(gen.generateConstrained(variable, index));
+      const value = Number(gen.generateConstrained(variable, index, SCOPE));
       expect(value).toBeGreaterThanOrEqual(10);
       expect(value).toBeLessThanOrEqual(12);
     }
@@ -403,7 +422,7 @@ describe('generateConstrained', () => {
     );
 
     for (let index = 0; index < 25; index++) {
-      const value = Number(gen.generateConstrained(variable, index));
+      const value = Number(gen.generateConstrained(variable, index, SCOPE));
       expect(value).toBeGreaterThanOrEqual(0.25);
       expect(value).toBeLessThanOrEqual(0.5);
     }
@@ -424,7 +443,7 @@ describe('generateConstrained', () => {
     for (const bounds of ranges) {
       const variable = narrowed({ id: 'v', name: 'V', type: 'scalar' }, bounds);
       for (let index = 0; index < 100; index++) {
-        const value = Number(gen.generateConstrained(variable, index));
+        const value = Number(gen.generateConstrained(variable, index, SCOPE));
         expect(value).toBeGreaterThanOrEqual(0);
         expect(value).toBeLessThanOrEqual(1);
       }
@@ -437,7 +456,7 @@ describe('generateConstrained', () => {
     const drawn = new Set<number>();
 
     for (let index = 0; index < 200; index++) {
-      const value = Number(gen.generateConstrained(variable, index));
+      const value = Number(gen.generateConstrained(variable, index, SCOPE));
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(1);
       drawn.add(value);
@@ -457,7 +476,7 @@ describe('generateConstrained', () => {
     for (const validation of ranges) {
       const variable = make({ id: 'v', name: 'V', type: 'number', validation });
       for (let index = 0; index < 25; index++) {
-        const value = Number(gen.generateConstrained(variable, index));
+        const value = Number(gen.generateConstrained(variable, index, SCOPE));
         expect(value).toBeGreaterThanOrEqual(validation.minValue);
         expect(value).toBeLessThanOrEqual(validation.maxValue);
       }
@@ -485,7 +504,7 @@ describe('generateConstrained', () => {
       const drawn = new Set<string>();
       for (let seq = 0; seq < size; seq++) {
         const value = Number(
-          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+          gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
         );
         expect(value).toBeGreaterThanOrEqual(validation.minValue);
         expect(value).toBeLessThanOrEqual(validation.maxValue);
@@ -494,7 +513,7 @@ describe('generateConstrained', () => {
 
       expect(drawn.size).toBe(size);
       // One past the count wraps, so the space holds nothing further.
-      const repeated = gen.generateConstrained(variable, 0, {
+      const repeated = gen.generateConstrained(variable, 0, SCOPE, {
         distinctSeq: size,
       });
       if (repeated === undefined) throw new Error('Expected a number value');
@@ -519,7 +538,7 @@ describe('generateConstrained', () => {
       const drawn = new Set<string>();
       for (let seq = 0; seq < size; seq++) {
         const value = Number(
-          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+          gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
         );
         expect(value).toBeGreaterThanOrEqual(bounds.minValue);
         expect(value).toBeLessThanOrEqual(bounds.maxValue);
@@ -541,7 +560,7 @@ describe('generateConstrained', () => {
     for (const bounds of ranges) {
       const variable = narrowed({ id: 'v', name: 'V', type: 'scalar' }, bounds);
       for (let index = 0; index < 200; index++) {
-        const value = Number(gen.generateConstrained(variable, index));
+        const value = Number(gen.generateConstrained(variable, index, SCOPE));
         expect(value).toBeGreaterThanOrEqual(bounds.minValue);
         expect(value).toBeLessThanOrEqual(bounds.maxValue);
       }
@@ -564,7 +583,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = gen.generateConstrained(variable, index);
+      const value = gen.generateConstrained(variable, index, SCOPE);
       if (!Array.isArray(value)) {
         throw new Error(`expected an array, received ${typeof value}`);
       }
@@ -583,11 +602,31 @@ describe('generateConstrained', () => {
     const variable = categoricalWith(3, { maxSelected: 0 });
 
     for (let index = 0; index < 6; index++) {
-      expect(gen.generateConstrained(variable, index)).toEqual([]);
+      expect(gen.generateConstrained(variable, index, SCOPE)).toEqual([]);
       expect(
-        gen.generateConstrained(variable, index, { distinctSeq: index }),
+        gen.generateConstrained(variable, index, SCOPE, { distinctSeq: index }),
       ).toEqual([]);
     }
+  });
+
+  it('preserves a declared empty categorical selection', () => {
+    const gen = new ValueGenerator(1);
+    const variable = make({
+      id: 'v',
+      name: 'V',
+      type: 'categorical',
+      options: [
+        { label: 'A', value: 'a' },
+        { label: 'B', value: 'b' },
+      ],
+      synthetic: {
+        selectionCount: {
+          probabilities: [{ count: 0, probability: 1 }],
+        },
+      },
+    });
+
+    expect(gen.generateConstrained(variable, 0, SCOPE)).toEqual([]);
   });
 
   // The schema requires a categorical to offer two options but not two values,
@@ -616,7 +655,9 @@ describe('generateConstrained', () => {
 
     const drawn = new Set<string>();
     for (let seq = 0; seq < 3; seq++) {
-      const value = gen.generateConstrained(variable, 0, { distinctSeq: seq });
+      const value = gen.generateConstrained(variable, 0, SCOPE, {
+        distinctSeq: seq,
+      });
       if (!Array.isArray(value)) {
         throw new Error(`expected an array, received ${typeof value}`);
       }
@@ -626,7 +667,7 @@ describe('generateConstrained', () => {
     expect(drawn.size).toBe(3);
 
     for (let index = 0; index < 12; index++) {
-      const value = gen.generateConstrained(variable, index);
+      const value = gen.generateConstrained(variable, index, SCOPE);
       if (!Array.isArray(value)) {
         throw new Error(`expected an array, received ${typeof value}`);
       }
@@ -658,7 +699,7 @@ describe('generateConstrained', () => {
 
       const drawn = new Set<string>();
       for (let seq = 0; seq < size; seq++) {
-        const value = gen.generateConstrained(variable, 0, {
+        const value = gen.generateConstrained(variable, 0, SCOPE, {
           distinctSeq: seq,
         });
         if (!Array.isArray(value)) {
@@ -703,7 +744,7 @@ describe('generateConstrained', () => {
 
     const drawn = new Set<string>();
     for (let seq = 0; seq < 2; seq++) {
-      const value = gen.generateConstrained(variable, 0, {
+      const value = gen.generateConstrained(variable, 0, SCOPE, {
         distinctSeq: seq,
       });
       if (value === undefined) throw new Error('Expected an ordinal value');
@@ -716,7 +757,7 @@ describe('generateConstrained', () => {
     // sample of the option list's labels rather than of the data it records.
     const free = new Set<string>();
     for (let index = 0; index < 4; index++) {
-      const value = gen.generateConstrained(variable, index);
+      const value = gen.generateConstrained(variable, index, SCOPE);
       if (value === undefined) throw new Error('Expected an ordinal value');
       free.add(valueKey(value));
     }
@@ -727,7 +768,7 @@ describe('generateConstrained', () => {
   // distinct — every list a protocol is likely to declare — is walked exactly as
   // it always was, because deduplication keeps first occurrences in order. These
   // are the values the draw emitted before it read the list by value.
-  it('walks a distinct-valued ordinal list in declared order, free and sequenced', () => {
+  it('draws ordinal values from the distinct list, free and sequenced', () => {
     const gen = new ValueGenerator(1);
     const variable = make({
       id: 'v',
@@ -740,13 +781,20 @@ describe('generateConstrained', () => {
       ],
     });
 
-    const free = Array.from({ length: 7 }, (_, index) =>
-      gen.generateConstrained(variable, index),
+    // Free draws are weighted samples over the distinct values (equal weights
+    // by default), no longer an index-cycled walk.
+    const free = Array.from({ length: 30 }, (_, index) =>
+      gen.generateConstrained(variable, index, SCOPE),
     );
-    expect(free).toEqual([1, 2, 3, 1, 2, 3, 1]);
+    for (const value of free) {
+      expect([1, 2, 3]).toContain(value);
+    }
+    expect(new Set(free).size).toBe(3);
 
+    // The sequence walk stays exhaustive and ordered: `unique` slots depend
+    // on meeting every distinct value once per cycle.
     const sequenced = Array.from({ length: 7 }, (_, seq) =>
-      gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+      gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
     );
     expect(sequenced).toEqual([1, 2, 3, 1, 2, 3, 1]);
   });
@@ -766,11 +814,13 @@ describe('generateConstrained', () => {
 
     for (let index = 0; index < 25; index++) {
       expect(
-        Number(gen.generateConstrained(variable, index)),
+        Number(gen.generateConstrained(variable, index, SCOPE)),
       ).toBeLessThanOrEqual(5);
       expect(
         Number(
-          gen.generateConstrained(variable, index, { distinctSeq: index }),
+          gen.generateConstrained(variable, index, SCOPE, {
+            distinctSeq: index,
+          }),
         ),
       ).toBeLessThanOrEqual(5);
     }
@@ -787,7 +837,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = String(gen.generateConstrained(variable, index));
+      const value = String(gen.generateConstrained(variable, index, SCOPE));
       expect(value).toMatch(/^\d{4}-\d{2}$/);
       expect(value >= '2020-01').toBe(true);
       expect(value <= '2020-06').toBe(true);
@@ -805,7 +855,7 @@ describe('generateConstrained', () => {
     });
 
     for (let index = 0; index < 25; index++) {
-      const value = String(gen.generateConstrained(variable, index));
+      const value = String(gen.generateConstrained(variable, index, SCOPE));
       expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(value >= '2026-06-27').toBe(true);
       expect(value <= TODAY).toBe(true);
@@ -826,14 +876,20 @@ describe('generateConstrained', () => {
       },
     };
 
-    const first = new ValueGenerator(7, TODAY).generateConstrained(variable, 0);
+    const first = new ValueGenerator(7, TODAY).generateConstrained(
+      variable,
+      0,
+      SCOPE,
+    );
     const second = new ValueGenerator(7, TODAY).generateConstrained(
       variable,
       0,
+      SCOPE,
     );
     const later = new ValueGenerator(7, '2027-01-15').generateConstrained(
       variable,
       0,
+      SCOPE,
     );
 
     expect(first).toBe(second);
@@ -855,7 +911,7 @@ describe('generateConstrained', () => {
 
       for (let seq = 0; seq < 50; seq++) {
         const value = String(
-          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+          gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
         );
         expect(value >= '1000').toBe(true);
         expect(value <= TODAY_AT[type]).toBe(true);
@@ -881,7 +937,7 @@ describe('generateConstrained', () => {
 
       for (let seq = 0; seq < 60; seq++) {
         const value = String(
-          gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+          gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
         );
         expect(value >= '1920').toBe(true);
         expect(value <= TODAY_AT[type]).toBe(true);
@@ -905,7 +961,7 @@ describe('generateConstrained', () => {
     const drawn = new Set<string>();
     for (let seq = 0; seq < 51; seq++) {
       const value = String(
-        gen.generateConstrained(variable, 0, { distinctSeq: seq }),
+        gen.generateConstrained(variable, 0, SCOPE, { distinctSeq: seq }),
       );
       expect(value >= '1850').toBe(true);
       expect(value <= '1900').toBe(true);
@@ -917,8 +973,12 @@ describe('generateConstrained', () => {
 
   it('is deterministic for a given seed', () => {
     const variable = make({ id: 'v', name: 'V', type: 'text' });
-    const first = new ValueGenerator(7).generateConstrained(variable, 0);
-    const second = new ValueGenerator(7).generateConstrained(variable, 0);
+    const first = new ValueGenerator(7).generateConstrained(variable, 0, SCOPE);
+    const second = new ValueGenerator(7).generateConstrained(
+      variable,
+      0,
+      SCOPE,
+    );
     expect(first).toBe(second);
   });
 });

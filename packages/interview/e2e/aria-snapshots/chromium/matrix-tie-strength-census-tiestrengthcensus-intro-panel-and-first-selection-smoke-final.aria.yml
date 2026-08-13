@@ -1,10 +1,10 @@
 - main:
-  - text: Mohammad Crist and Clinton Leffler
-  - button "Mohammad Crist"
-  - button "Clinton Leffler"
+  - text: Ansel Schneider and Monty Kirlin
+  - button "Ansel Schneider"
+  - button "Monty Kirlin"
   - status:
     - heading "How close are these two people?" [level=2]
-  - listbox "Mohammad Crist and Clinton Leffler How close are these two people?":
+  - listbox "Ansel Schneider and Monty Kirlin How close are these two people?":
     - option "Weak"
     - option "Moderate"
     - option "Strong"

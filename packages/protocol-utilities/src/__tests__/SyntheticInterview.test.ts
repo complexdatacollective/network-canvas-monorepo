@@ -2042,11 +2042,17 @@ describe('validation rules on generated nodes', () => {
   it('draws a codebook carrying no cross-variable rule to the values it always has', () => {
     // Every Storybook story's fixture is a codebook of this shape, so a drift
     // in what it draws rewrites every visual baseline at once. These values are
-    // the ones the builder produces with personal names drawn from their own
-    // deterministic stream, pinned so that moving them has to be a deliberate
-    // act rather than a side effect of a change to the constraint machinery.
-    // Date variables are left out: an open date window ends at today, which no
+    // the ones the distribution-aware value layer produces from per-variable
+    // substreams — name-like variables draw person names, other text draws
+    // neutral words — pinned so that moving them has to be a deliberate act
+    // rather than a side effect of a change to the draw machinery. Date
+    // variables are left out: an open date window ends at today, which no
     // fixed expectation survives.
+    //
+    // Moved once, deliberately: a variable's stream is now addressed by its
+    // entity scope as well as its id, so that one key used under two entity
+    // types cannot make the two perturb each other. Every value below shifted
+    // with the stream paths.
     const si = new SyntheticInterview(42);
     const nt = si.addNodeType();
     nt.addVariable({ type: 'text', name: 'label' });
@@ -2094,48 +2100,60 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Mohammad Crist',
-        label: 'Mohammad',
-        age: 61,
-        small: -44,
+        name: 'Ansel Schneider',
+        label: 'lucky',
+        age: 64,
+        small: 5,
         active: true,
-        rating: 1,
-        interests: ['family'],
-        closeness: 0.06,
-        position: { x: 0.1, y: 0.1 },
-      },
-      {
-        name: 'Laury Wisozk',
-        label: 'Maybelle',
-        age: 19,
-        small: 8,
-        active: false,
         rating: 2,
-        interests: ['work', 'school'],
-        closeness: 0.21,
-        position: { x: 0.27, y: 0.33 },
+        interests: ['work'],
+        closeness: 0.53,
+        position: {
+          x: 0.1,
+          y: 0.1,
+        },
       },
       {
-        name: 'Clinton Leffler',
-        label: 'Esther',
-        age: 56,
-        small: -26,
-        active: true,
+        name: 'Alvina Heaney',
+        label: 'with slump',
+        age: 79,
+        small: 3,
+        active: false,
         rating: 3,
-        interests: ['school'],
-        closeness: 0.61,
-        position: { x: 0.44000000000000006, y: 0.56 },
+        interests: ['family'],
+        closeness: 0.69,
+        position: {
+          x: 0.27,
+          y: 0.33,
+        },
       },
       {
-        name: 'Lynette Hilll',
-        label: 'Hannah',
-        age: 51,
-        small: -4,
+        name: 'Monty Kirlin',
+        label: 'denitrify',
+        age: 48,
+        small: -19,
         active: true,
-        rating: 4,
-        interests: ['neighborhood', 'family'],
-        closeness: 0.51,
-        position: { x: 0.61, y: 0.79 },
+        rating: 5,
+        interests: ['neighborhood'],
+        closeness: 0.87,
+        position: {
+          x: 0.44000000000000006,
+          y: 0.56,
+        },
+      },
+      {
+        name: 'Elizabeth Christiansen-Littel',
+        label: 'round outlying',
+        age: 47,
+        small: -21,
+        active: false,
+        rating: 1,
+        interests: ['neighborhood'],
+        closeness: 0.83,
+        position: {
+          x: 0.61,
+          y: 0.79,
+        },
       },
     ]);
   });
@@ -2627,15 +2645,15 @@ describe('validation rules on the generated ego', () => {
   });
 
   it('draws without disturbing the values its nodes and edges were given', () => {
-    // Ego is drawn after the entities precisely so that adding an ego variable
-    // to a fixture cannot move the node and edge values a story or a snapshot
-    // was built around.
+    // Every variable draws from its own substream keyed by variable id, so
+    // appending ego variables to a fixture cannot move the node and edge
+    // values a story or a snapshot was built around: the existing variables
+    // keep their ids, and ego's draws consume no numbers from their streams.
+    // (Declared last — the builder's id counter is shared, so declaring ego
+    // first would renumber the node and edge variables and with them the
+    // substreams their values come from.)
     const build = (withEgo: boolean) => {
       const si = new SyntheticInterview(42);
-      if (withEgo) {
-        si.addEgoVariable({ type: 'text', name: 'nickname' });
-        si.addEgoVariable({ type: 'number', name: 'age' });
-      }
       const nt = si.addNodeType();
       nt.addVariable({ type: 'number', name: 'closeness' });
       const et = si.addEdgeType();
@@ -2652,12 +2670,13 @@ describe('validation rules on the generated ego', () => {
         ],
         et.id,
       );
+      if (withEgo) {
+        si.addEgoVariable({ type: 'text', name: 'nickname' });
+        si.addEgoVariable({ type: 'number', name: 'age' });
+      }
       return si.getNetwork();
     };
 
-    // Compared as values rather than whole entities: declaring an ego variable
-    // advances the builder's own id counter, so the variable ids the two
-    // networks key their attributes by differ while the drawn values do not.
     const drawnValues = (network: NcNetwork) => [
       ...network.nodes.map((node) =>
         Object.values(node[entityAttributesProperty]),
@@ -2719,5 +2738,158 @@ describe('validation rules on the generated ego', () => {
     const attrs = egoAttributesOf(si.getNetwork());
     expect(attrs).toHaveProperty(nickname.id);
     expect(typeof attrs[nickname.id]).toBe('string');
+  });
+});
+
+describe('redeclaring a variable the builder already seeded', () => {
+  // Every node type is seeded with a "name" text variable, so giving that name
+  // its own text generator IS a redeclaration — the deduplication branch is
+  // the only path such a call can take, and dropping the descriptor there
+  // silently ignores the one option the call exists to pass.
+  const variablesOf = (
+    definition: unknown,
+  ): Record<string, { synthetic?: unknown }> =>
+    (definition as { variables: Record<string, { synthetic?: unknown }> })
+      .variables;
+
+  it('keeps a synthetic descriptor passed to the existing entry', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+    const name = si.addVariableToNodeType(person.id, {
+      name: 'name',
+      type: 'text',
+      synthetic: { generator: 'occupation' },
+    });
+
+    const { codebook } = si.getProtocol();
+    expect(variablesOf(codebook.node[person.id])[name.id]?.synthetic).toEqual({
+      generator: 'occupation',
+    });
+  });
+
+  it('keeps one passed to an existing edge variable', () => {
+    const si = new SyntheticInterview();
+    const friend = si.addEdgeType({ name: 'Friend' });
+    si.addVariableToEdgeType(friend.id, { name: 'strength', type: 'number' });
+    const again = si.addVariableToEdgeType(friend.id, {
+      name: 'strength',
+      type: 'number',
+      synthetic: { distribution: 'constant', value: 3 },
+    });
+
+    const { codebook } = si.getProtocol();
+    expect(variablesOf(codebook.edge[friend.id])[again.id]?.synthetic).toEqual({
+      distribution: 'constant',
+      value: 3,
+    });
+  });
+});
+
+describe('synthetic metadata that does not match the variable type', () => {
+  // `AddVariableInput.synthetic` is the whole union, so nothing in the type
+  // system stops this. Stored unchecked it makes the builder emit two
+  // disagreeing artefacts: a protocol the schema rejects, and a network drawn
+  // from the type's default as though nothing had been declared.
+  it('is refused rather than stored', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+
+    expect(() =>
+      si.addVariableToNodeType(person.id, {
+        name: 'age',
+        type: 'number',
+        synthetic: { generator: 'personName' } as never,
+      }),
+    ).toThrow(/not valid for a "number" variable/);
+  });
+
+  it('is refused on an edge variable too', () => {
+    const si = new SyntheticInterview();
+    const friend = si.addEdgeType({ name: 'Friend' });
+
+    expect(() =>
+      si.addVariableToEdgeType(friend.id, {
+        name: 'note',
+        type: 'text',
+        synthetic: { probabilityTrue: 0.5 } as never,
+      }),
+    ).toThrow(/not valid for a "text" variable/);
+  });
+
+  it('leaves matching metadata alone', () => {
+    const si = new SyntheticInterview();
+    const person = si.addNodeType({ name: 'Person' });
+
+    expect(() =>
+      si.addVariableToNodeType(person.id, {
+        name: 'age',
+        type: 'number',
+        synthetic: { distribution: 'constant', value: 40 },
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe('declared missingness in a builder network', () => {
+  // `getProtocol()` emits the descriptor, so a network that ignores it makes
+  // `getInterviewPayload()` self-contradictory: a protocol saying the value is
+  // always missing beside a network holding it.
+  it('leaves an always-missing node variable unanswered', () => {
+    const si = new SyntheticInterview(7);
+    const nt = si.addNodeType();
+    const hobby = nt.addVariable({
+      type: 'text',
+      name: 'hobby',
+      synthetic: { generator: 'occupation', missingProbability: 1 },
+    });
+    const kept = nt.addVariable({ type: 'text', name: 'nickname' });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 6 },
+    });
+
+    const network = si.getNetwork();
+    expect(network.nodes).toHaveLength(6);
+    for (const node of network.nodes) {
+      const attrs = node[entityAttributesProperty];
+      // Unanswered is ABSENT under the sparse attribute contract.
+      expect(attrs).not.toHaveProperty(hobby.id);
+      // Only the variable that declared it: the pass is per group, not global.
+      expect(attrs[kept.id]).toBeDefined();
+    }
+  });
+
+  it('leaves an always-missing ego variable unanswered', () => {
+    const si = new SyntheticInterview(7);
+    si.addEgoVariable({
+      type: 'text',
+      name: 'note',
+      synthetic: { generator: 'sentence', missingProbability: 1 },
+    });
+
+    const ego = si.getNetwork().ego;
+    // Absent rather than null-valued.
+    expect(Object.keys(ego[entityAttributesProperty])).toEqual([]);
+  });
+
+  it('keeps a required variable answered whatever it declares', () => {
+    // The group rule the planner applies: a required member suppresses
+    // missingness for the whole group rather than emitting a null the
+    // protocol's own validation rejects.
+    const si = new SyntheticInterview(7);
+    const nt = si.addNodeType();
+    const needed = nt.addVariable({
+      type: 'text',
+      name: 'needed',
+      validation: { required: true },
+    });
+    si.addStage('Sociogram', {
+      subject: { entity: 'node', type: nt.id },
+      initialNodes: { count: 4 },
+    });
+
+    for (const node of si.getNetwork().nodes) {
+      expect(node[entityAttributesProperty][needed.id]).toBeDefined();
+    }
   });
 });

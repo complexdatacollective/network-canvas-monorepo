@@ -10,7 +10,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork';
-import { resolveGenerationConfig } from '../generateNetwork/config';
+import type { FeasibilityConfig } from '../generateNetwork/config';
 import { analyseFeasibility } from '../generateNetwork/constraints/feasibility';
 import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions';
 
@@ -51,13 +51,15 @@ import { delegatedValidationContradictions } from '../generateNetwork/constraint
 const TODAY = '2026-07-27';
 
 /**
- * A per-pair probability every pair clears, so the worst-case pair count the
- * analysis reasons about is also the count the run really builds — which is
- * what lets the generation half assert an exact edge count rather than a
- * bound. `createEdgesForPairs` draws `randomFloat(0, 1)`, whose faker stream
- * is half-open at the top, so `< 1` holds for every pair.
+ * A declared edge topology every eligible pair clears: density constant 1
+ * links the whole pair domain, so the worst-case pair count the analysis
+ * reasons about is also the count the run really builds — which is what lets
+ * the generation half assert an exact edge count rather than a bound.
  */
-const ALWAYS_PAIRED = { min: 1, max: 1 };
+const FULL_DENSITY_TOPOLOGY = {
+  metric: 'density',
+  distribution: { distribution: 'constant', value: 1 },
+} as const;
 
 /**
  * A malformed scale variable must fail loudly: `Number('abc')` is NaN, and a
@@ -88,10 +90,23 @@ if (
   throw new Error(`Invalid CORPUS_SHARD "${SHARD}", expected "i/n"`);
 }
 
-const config = resolveGenerationConfig({
+/**
+ * The worst-case bounds this corpus hands `analyseFeasibility` directly —
+ * exactly what `generateNetwork` derives internally for these codebooks
+ * (see deriveFeasibilityConfig): node ceilings from the default count window
+ * (nothing here declares one) and edge probabilities pinned at 1, because a
+ * declared density may reach every pair. Stage `behaviours` still outrank the
+ * node window, so each shape's fixed `nodeCount` is the operative bound.
+ */
+const config: FeasibilityConfig = {
+  nodeCount: { min: 0, max: 8 },
+  rosterDrawRatio: 0.7,
+  sociogramEdgeProbability: { min: 0, max: 1 },
+  censusEdgeProbability: { min: 0, max: 1 },
+  networkComposerEdgeProbability: { min: 0, max: 1 },
+  familyPedigreeNodeCount: { min: 0, max: 8 },
   today: TODAY,
-  censusEdgeProbability: ALWAYS_PAIRED,
-});
+};
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -628,17 +643,15 @@ function oracleSatisfiable(
  * - A census bounds its edge type by the pairs over that population —
  *   entityCounts.test.ts, "bounds an edge type by the pair count over its node
  *   type" (four people, C(4, 2) = 6).
- * - One edge per unordered pair, however many prompts and stages ask about it,
- *   because `createEdgesForPairs` looks the pair up before drawing —
- *   entityCounts.test.ts, "counts one census pair set however many prompts and
- *   stages ask for it", and edgeReuse.test.ts, "leaves one edge per pair when
- *   two census stages share an edge type". A TieStrengthCensus meeting an edge
- *   it did not create writes onto it rather than adding one — edgeReuse.test.ts,
- *   "writes its edge variable onto the reused edge instead of drawing another".
+ * - The planner selects one edge per unordered pair from the eligible pair
+ *   domain, however many prompts and stages ask about it — a second prompt or
+ *   census stage naming the same edge type widens nothing, and a
+ *   TieStrengthCensus meeting an edge it did not create writes onto it rather
+ *   than adding one.
  *
- * The corpus pins `censusEdgeProbability` to 1, so this bound is also the exact
- * count: nothing here has to reason about the pairs a lower probability leaves
- * unjoined.
+ * The corpus declares density 1 on the edge type, so this bound is also the
+ * exact count: nothing here has to reason about the pairs a lower density
+ * leaves unjoined.
  */
 function pairCount(nodeCount: number): number {
   return (nodeCount * (nodeCount - 1)) / 2;
@@ -649,10 +662,10 @@ function pairCount(nodeCount: number): number {
  * builds.
  *
  * A `unique` rule is the only thing that makes an entity COUNT part of
- * satisfiability, and it makes it part of it by pigeonhole alone: every edge a
- * census creates is born holding a value for every variable its type declares
- * (entityCounts.test.ts, "counts an unnamed variable on edges another stage
- * creates"), so N edges hold N values of the variable, and no two of them may
+ * satisfiability, and it makes it part of it by pigeonhole alone: the plan
+ * draws a value for every variable of every edge a census creates (and this
+ * corpus's AlterEdgeForm lands them all on the emitted network), so N edges
+ * hold N values of the variable, and no two of them may
  * be equal. Fewer than N reachable values therefore has no satisfying run —
  * a fact about the draw, not about how the analysis counts, which is what makes
  * disagreement here a report about the analysis rather than about this checker.
@@ -755,9 +768,16 @@ function codebookFor(shape: CorpusShape): Codebook {
 
 /**
  * The shape's stages, in the order `generateNetwork` runs them: a name
- * generator of a fixed size, a DyadCensus pairing everyone it built, and
- * sometimes a TieStrengthCensus answering the same edge type over the very
- * edges the census left.
+ * generator of a fixed size whose form collects every node variable, a
+ * DyadCensus pairing everyone it built, sometimes a TieStrengthCensus
+ * answering the same edge type over the very edges the census left, and an
+ * AlterEdgeForm naming every edge variable.
+ *
+ * The two forms matter under the plan-first engine: an entity carries only
+ * what some stage writes onto it, so the name generator's form is what lands
+ * every node variable and the AlterEdgeForm is what lands every edge variable
+ * — including the isolated `unique` one — making the drawn values observable
+ * on the emitted network. The plan draws (and rule-checks) them either way.
  *
  * Both censuses take the whole population — the pair set a stage reaches is the
  * people standing when it runs, so putting them after the name generator is
@@ -770,12 +790,22 @@ function stagesFor(shape: CorpusShape): Stage[] {
       type: 'NameGenerator',
       label: 'Name generator',
       subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add a person',
+        fields: shape.variables.map((variable) => ({
+          variable: variable.id,
+          prompt: variable.id.toUpperCase(),
+        })),
+      },
       prompts: [{ id: 'p1', text: 'Name people' }],
       behaviours: { minNodes: shape.nodeCount, maxNodes: shape.nodeCount },
     } as unknown as Stage,
     {
       id: 'stage-2',
       type: 'DyadCensus',
+      // Every eligible pair is linked, so the analysed worst case is the
+      // generated count; see FULL_DENSITY_TOPOLOGY.
+      synthetic: { topology: FULL_DENSITY_TOPOLOGY },
       label: 'Census',
       subject: { entity: 'node', type: 'person' },
       prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
@@ -790,6 +820,9 @@ function stagesFor(shape: CorpusShape): Stage[] {
     stages.push({
       id: 'stage-3',
       type: 'TieStrengthCensus',
+      // Every eligible pair is linked, so the analysed worst case is the
+      // generated count; see FULL_DENSITY_TOPOLOGY.
+      synthetic: { topology: FULL_DENSITY_TOPOLOGY },
       label: 'How close?',
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -803,6 +836,19 @@ function stagesFor(shape: CorpusShape): Stage[] {
       ],
     } as unknown as Stage);
   }
+
+  stages.push({
+    id: 'stage-4',
+    type: 'AlterEdgeForm',
+    label: 'About this link',
+    subject: { entity: 'edge', type: 'link' },
+    form: {
+      fields: shape.edgeVariables.map((variable) => ({
+        variable: variable.id,
+        prompt: variable.id.toUpperCase(),
+      })),
+    },
+  } as unknown as Stage);
 
   return stages;
 }
@@ -1006,7 +1052,7 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
               codebook,
               stages,
               seed,
-              config: { today: TODAY, censusEdgeProbability: ALWAYS_PAIRED },
+              config: { today: TODAY },
             });
             expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
             const elapsed = performance.now() - startedAt;

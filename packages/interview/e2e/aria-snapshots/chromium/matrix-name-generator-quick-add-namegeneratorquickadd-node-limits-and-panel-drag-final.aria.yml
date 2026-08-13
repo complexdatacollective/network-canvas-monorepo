@@ -4,7 +4,7 @@
   - button "Prior contacts":
     - heading "Prior contacts" [level=3]
   - listbox "Prior contacts":
-    - option "Mohammad Crist" [disabled]
+    - option "Ansel Schneider" [disabled]
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes":
     - option "Alice"

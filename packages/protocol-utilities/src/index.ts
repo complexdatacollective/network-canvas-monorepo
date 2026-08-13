@@ -23,3 +23,15 @@ export {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from './SyntheticInterview';
+// The single source of what absent `synthetic` metadata resolves to.
+// Architect's variable editor initialises its synthetic section from the
+// same resolution the generator draws with, so the UI's starting point is
+// exactly what an undeclared protocol produces.
+export {
+  DEFAULT_EDGE_TOPOLOGY,
+  defaultTopologyForStage,
+  DEFAULT_NODE_COUNT,
+  inferTextGenerator,
+  type ResolvedVariableSynthetic,
+  resolveVariableSynthetic,
+} from './generateNetwork/plan/resolveSynthetic';

@@ -36,8 +36,7 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@faker-js/faker": "catalog:",
-    "es-toolkit": "catalog:",
-    "uuid": "catalog:"
+    "es-toolkit": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",

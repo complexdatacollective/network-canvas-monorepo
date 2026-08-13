@@ -129,4 +129,39 @@ describe('codebook.updateVariable', () => {
 
     expect(next).toEqual(state);
   });
+
+  it('updates the declared entity scope when UUIDs are reused', () => {
+    const sharedUuid = 'shared-variable';
+    const nodeVariable = { name: 'node value', type: 'text' } as Variable;
+    const edgeVariable = { name: 'edge value', type: 'text' } as Variable;
+    const state = {
+      node: {
+        person: {
+          name: 'Person',
+          variables: { [sharedUuid]: nodeVariable },
+        },
+      },
+      edge: {
+        knows: {
+          name: 'Knows',
+          variables: { [sharedUuid]: edgeVariable },
+        },
+      },
+    } as unknown as Codebook;
+
+    const next = reducer(
+      state,
+      test.updateVariable({
+        entity: 'edge',
+        type: 'knows',
+        variable: sharedUuid,
+        configuration: { name: 'renamed edge value' },
+      }),
+    );
+
+    expect(next.node?.person?.variables?.[sharedUuid]?.name).toBe('node value');
+    expect(next.edge?.knows?.variables?.[sharedUuid]?.name).toBe(
+      'renamed edge value',
+    );
+  });
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -80,6 +80,7 @@ export function planChangedLint(paths, fileExists = existsSync) {
       reason: `${fullRunTrigger} can change lint or format results repository-wide`,
       oxlintFiles: [],
       oxfmtFiles: [],
+      scanFiles: [],
     };
   }
 
@@ -92,6 +93,12 @@ export function planChangedLint(paths, fileExists = existsSync) {
     ),
     oxfmtFiles: existing.filter((path) =>
       OXFMT_EXTENSIONS.has(extname(path).toLowerCase()),
+    ),
+    // Wider than either tool's set, because the NUL scan is not about what a
+    // tool can parse: a shell script or a Dockerfile loses its diff to a NUL
+    // exactly as a TypeScript file does.
+    scanFiles: existing.filter(
+      (path) => !BINARY_ASSET_EXTENSIONS.has(extname(path).toLowerCase()),
     ),
   };
 }
@@ -118,6 +125,109 @@ export function changedPaths(base, head = 'HEAD', cwd = process.cwd()) {
   return result.stdout.split('\0').filter(Boolean);
 }
 
+/**
+ * Source files that are text everywhere except for a stray NUL byte.
+ *
+ * Git classifies a file as binary on finding one, and from then on the file has
+ * no diff, no line-wise merge and nothing reviewable in a pull request; grep
+ * skips it silently too. A NUL is a legitimate thing to want in a string — as a
+ * separator no identifier can contain, say — but it belongs in the source as an
+ * escape, which reads identically at runtime and keeps the file text. Nothing
+ * else about the byte is wrong, which is exactly why it survives review: the
+ * code works, and the damage is to everyone's ability to see it.
+ */
+export function findNulBytes(paths, readFile = (path) => readFileSync(path)) {
+  const offenders = [];
+  for (const path of paths) {
+    let contents;
+    try {
+      contents = readFile(path);
+    } catch {
+      // A path that cannot be read is the concern of the tools that follow.
+      continue;
+    }
+    // The whole file, because the tools disagree about where to stop looking
+    // and the widest one decides what this check has to cover. Git sniffs only
+    // the first 8000 bytes, so a NUL past that keeps its diff; ripgrep finds
+    // one anywhere and then reports "binary file matches" for the whole file,
+    // suppressing every match in it — including matches that precede the byte.
+    // Scanning a prefix would license exactly the file that greps to nothing.
+    const index = contents.indexOf(0);
+    if (index === -1) continue;
+    offenders.push({
+      path,
+      line: contents.subarray(0, index).toString('utf8').split('\n').length,
+    });
+  }
+  return offenders;
+}
+
+/**
+ * Every tracked file that is meant to be text.
+ *
+ * Defined by excluding known binary assets rather than by listing the
+ * extensions a formatter happens to handle: a repository's source is wider
+ * than that — shell scripts, extensionless Dockerfiles, `.editorconfig` — and
+ * a NUL hides the diff of any of them just as thoroughly. The two ways of
+ * being wrong are not equal, either. An unlisted binary type reports a NUL and
+ * is fixed by one line here; an unlisted source type stays unwatched, and
+ * nothing about a file silently losing its diff announces itself.
+ */
+const BINARY_ASSET_EXTENSIONS = new Set([
+  '.avif',
+  '.dylib',
+  '.eot',
+  '.gif',
+  '.gz',
+  '.icns',
+  '.ico',
+  '.jar',
+  '.jpeg',
+  '.jpg',
+  '.mov',
+  '.mp3',
+  '.mp4',
+  '.msi',
+  // A protocol bundle: a zip archive under its own extension.
+  '.netcanvas',
+  '.node',
+  '.otf',
+  '.pdf',
+  '.png',
+  '.so',
+  '.svgz',
+  '.ttf',
+  '.wasm',
+  '.wav',
+  '.webm',
+  '.webp',
+  '.woff',
+  '.woff2',
+  '.zip',
+]);
+
+export function trackedTextFiles(cwd = process.cwd()) {
+  const result = spawnSync('git', ['ls-files', '-z'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) return [];
+  return result.stdout
+    .split('\0')
+    .filter(Boolean)
+    .filter(
+      (path) => !BINARY_ASSET_EXTENSIONS.has(extname(path).toLowerCase()),
+    );
+}
+
+function reportNulBytes(offenders) {
+  for (const { path, line } of offenders) {
+    console.error(
+      `${path}:${line} contains a NUL byte, which makes Git treat the whole file as binary (no diff, no review, no line-wise merge). Write it as the escape '\\u0000' instead.`,
+    );
+  }
+}
+
 function run(command, args) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { stdio: 'inherit' });
@@ -136,7 +246,14 @@ function run(command, args) {
   });
 }
 
-export async function runLint(plan) {
+export async function runLint(plan, listTracked = trackedTextFiles) {
+  // Ahead of the tools, because neither can see it: oxlint parses the file
+  // happily and oxfmt reformats around the byte, leaving the damage in place.
+  const offenders = findNulBytes(
+    plan.full ? listTracked() : (plan.scanFiles ?? plan.oxfmtFiles),
+  );
+  reportNulBytes(offenders);
+
   const jobs = [];
   if (plan.full || plan.oxlintFiles.length > 0) {
     const paths = plan.full
@@ -151,8 +268,10 @@ export async function runLint(plan) {
     jobs.push(['oxfmt', run('pnpm', ['exec', 'oxfmt', '--check', ...paths])]);
   }
   if (jobs.length === 0) {
-    console.log('No changed files require linting or formatting.');
-    return 0;
+    if (offenders.length === 0) {
+      console.log('No changed files require linting or formatting.');
+    }
+    return offenders.length === 0 ? 0 : 1;
   }
 
   const results = await Promise.all(
@@ -162,7 +281,7 @@ export async function runLint(plan) {
   for (const [name, status] of failures) {
     console.error(`${name} failed with exit code ${status}`);
   }
-  return failures.length === 0 ? 0 : 1;
+  return failures.length === 0 && offenders.length === 0 ? 0 : 1;
 }
 
 async function main() {
@@ -172,6 +291,7 @@ async function main() {
     reason: 'full lint requested',
     oxlintFiles: [],
     oxfmtFiles: [],
+    scanFiles: [],
   };
 
   if (changedFromIndex !== -1) {

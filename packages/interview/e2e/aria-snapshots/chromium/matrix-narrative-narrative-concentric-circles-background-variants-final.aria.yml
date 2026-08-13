@@ -6,7 +6,7 @@
   - button "Drag to reposition"
   - toolbar "Presets":
     - button "Previous preset" [disabled]
-    - button "why meh" [expanded]
+    - button "qua phew" [expanded]
     - button "Next preset" [disabled]
   - status
   - dialog

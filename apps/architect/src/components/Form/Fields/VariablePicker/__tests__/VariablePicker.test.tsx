@@ -8,9 +8,6 @@ import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('~/components/VariablePill', () => ({
-  ConnectedVariablePill: () => (
-    <div data-testid="connected-variable-pill">ConnectedVariablePill</div>
-  ),
   VariablePill: () => <div data-testid="variable-pill">VariablePill</div>,
 }));
 
@@ -154,10 +151,10 @@ describe('VariablePicker', () => {
     );
   });
 
-  it('renders the selected variable using the appropriate pill', () => {
+  it('renders a selected codebook variable using the static pill', () => {
     setup('age');
 
-    expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
+    expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Change variable' }),
     ).toBeInTheDocument();
