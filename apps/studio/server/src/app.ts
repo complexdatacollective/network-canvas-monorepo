@@ -21,6 +21,11 @@ import { createRpcRouter } from './rpc.ts';
 // origin in both topologies — the single-origin invariant from #1245.
 const WS_PATH = '/ws';
 
+// Hono matches `/storage/*` against the children of /storage but not the bare
+// prefix, so anything covering the whole surface has to name both.
+const STORAGE_PATHS = ['/storage', '/storage/*'];
+const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
 type CreateAppDeps = {
   /** Override the auth service — how tests inject fakes behind the seam. */
   auth?: AuthService;
@@ -66,6 +71,22 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // Content-addressed asset bytes over plain HTTP (#1278) — /storage, not
   // /assets, which the client build claims for its hashed chunks.
+  //
+  // Writing is on the cookie plane's protected side, gated exactly like /rpc:
+  // an upload is 100 MB of someone else's bucket, and the SPA is its only
+  // caller. Reading stays open — a content address is unguessable, assets are
+  // fetched from contexts that carry no cookie, and a session lookup per byte
+  // range would put the database on the delivery path. Mounting the gate on
+  // the unsafe methods alone is what keeps it off that path.
+  if (env.auth) {
+    app.on(UNSAFE_METHODS, STORAGE_PATHS, requireSameOrigin(env.auth.baseUrl));
+  }
+  app.on(
+    UNSAFE_METHODS,
+    STORAGE_PATHS,
+    createPrincipalMiddleware(auth),
+    requirePrincipal(),
+  );
   app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),

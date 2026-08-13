@@ -49,6 +49,12 @@ Objects are keyed by content hash, so `/storage/:hash` responses are
 immutable-cacheable by construction. Files ride plain HTTP rather than the
 RPC surface — uploads must stream, retrievals must cache.
 
+Uploading is session-gated and same-origin-gated exactly like `/rpc`: a write
+is 100 MB of someone else's bucket, and the SPA is its only caller.
+Retrieval is open — a content address is unguessable, interview stimuli are
+fetched from contexts that carry no cookie, and a session lookup per request
+would put the database on the delivery path.
+
 Uploaded bytes are untrusted and `/storage` is the app's own origin, so
 retrieval never reflects the uploaded `Content-Type` blindly: only media a
 browser cannot turn into script (the common image, audio, and video types) is

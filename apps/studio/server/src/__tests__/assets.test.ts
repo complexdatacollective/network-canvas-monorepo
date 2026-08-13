@@ -10,7 +10,8 @@ import {
   createAssetStore,
   deliveryFor,
 } from '../assets.ts';
-import { readEnv } from '../env.ts';
+import type { AuthService, SessionPrincipal } from '../auth/index.ts';
+import { readEnv, type StudioEnv } from '../env.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
 // from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object
@@ -46,6 +47,90 @@ async function storeReachable(): Promise<boolean> {
 
 const reachable = await storeReachable();
 
+// Uploads are session-gated and same-origin-gated (see src/app.ts), so every
+// write here goes through a signed-in caller. The auth seam is the injection
+// point; the storage routes themselves know nothing about principals.
+const PRINCIPAL: SessionPrincipal = {
+  kind: 'user',
+  userId: 'user-1',
+  email: 'researcher@example.com',
+  emailVerified: true,
+  name: 'Researcher',
+  sessionId: 'session-1',
+};
+
+function signedInApp(override?: StudioEnv) {
+  const auth: AuthService = {
+    handler: () => Promise.resolve(Response.json({})),
+    getSession: () => Promise.resolve(PRINCIPAL),
+  };
+  return createApp(override ?? readEnv(), { auth });
+}
+
+/** What the SPA's own upload looks like to the CSRF check. */
+const spaUpload = (
+  body?: RequestInit['body'],
+  mediaType?: string,
+): RequestInit => ({
+  method: 'POST',
+  body,
+  headers: {
+    'sec-fetch-site': 'same-origin',
+    ...(mediaType ? { 'Content-Type': mediaType } : {}),
+  },
+});
+
+describe.skipIf(!reachable)('asset upload authorisation', () => {
+  it('refuses an unauthenticated upload', async () => {
+    const auth: AuthService = {
+      handler: () => Promise.resolve(Response.json({})),
+      getSession: () => Promise.resolve(null),
+    };
+    const app = createApp(readEnv(), { auth });
+    const res = await app.request('/storage', spaUpload('bytes', 'text/plain'));
+    expect(res.status).toBe(401);
+    expect(res.headers.get('Content-Type')).toContain(
+      'application/problem+json',
+    );
+  });
+
+  it('refuses a cross-origin upload before any session lookup', async () => {
+    let lookups = 0;
+    const auth: AuthService = {
+      handler: () => Promise.resolve(Response.json({})),
+      getSession: () => {
+        lookups += 1;
+        return Promise.resolve(PRINCIPAL);
+      },
+    };
+    const app = createApp(readEnv(), { auth });
+    const res = await app.request('/storage', {
+      method: 'POST',
+      body: 'bytes',
+      headers: { origin: 'https://evil.example' },
+    });
+    expect(res.status).toBe(403);
+    expect(lookups).toBe(0);
+  });
+
+  it('leaves retrieval public', async () => {
+    // Assets are fetched from contexts that carry no cookie, and the content
+    // address is the capability. A GET must not consult the session at all.
+    let lookups = 0;
+    const auth: AuthService = {
+      handler: () => Promise.resolve(Response.json({})),
+      getSession: () => {
+        lookups += 1;
+        return Promise.resolve(null);
+      },
+    };
+    const app = createApp(readEnv(), { auth });
+    const res = await app.request(`/storage/${'a'.repeat(64)}`);
+    expect(res.status).toBe(404);
+    expect(lookups).toBe(0);
+  });
+});
+
 describe.skipIf(!reachable)('asset storage', () => {
   const bytes = new TextEncoder().encode(
     `studio asset round-trip ${Math.trunc(Date.now() / 86_400_000)}`,
@@ -53,12 +138,8 @@ describe.skipIf(!reachable)('asset storage', () => {
   const expectedHash = createHash('sha256').update(bytes).digest('hex');
 
   it('stores bytes content-addressed and returns the hash', async () => {
-    const app = createApp();
-    const res = await app.request('/storage', {
-      method: 'POST',
-      body: bytes,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const app = signedInApp();
+    const res = await app.request('/storage', spaUpload(bytes, 'text/plain'));
     expect(res.status).toBe(201);
     const stored = (await res.json()) as {
       hash: string;
@@ -71,12 +152,8 @@ describe.skipIf(!reachable)('asset storage', () => {
   });
 
   it('retrieves stored bytes with immutable cache headers', async () => {
-    const app = createApp();
-    await app.request('/storage', {
-      method: 'POST',
-      body: bytes,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const app = signedInApp();
+    await app.request('/storage', spaUpload(bytes, 'text/plain'));
     const res = await app.request(`/storage/${expectedHash}`);
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toBe(
@@ -87,7 +164,7 @@ describe.skipIf(!reachable)('asset storage', () => {
   });
 
   it('404s as problem JSON for an absent asset', async () => {
-    const app = createApp();
+    const app = signedInApp();
     const missing = 'a'.repeat(64);
     const res = await app.request(`/storage/${missing}`);
     expect(res.status).toBe(404);
@@ -97,38 +174,36 @@ describe.skipIf(!reachable)('asset storage', () => {
   });
 
   it('404s for a malformed hash without touching the store', async () => {
-    const app = createApp();
+    const app = signedInApp();
     const res = await app.request('/storage/not-a-hash');
     expect(res.status).toBe(404);
   });
 
   it('rejects an empty upload', async () => {
-    const app = createApp();
-    const res = await app.request('/storage', { method: 'POST' });
+    const app = signedInApp();
+    const res = await app.request('/storage', spaUpload());
     expect(res.status).toBe(400);
   });
 
   it("preserves the first write's media type for an existing hash", async () => {
-    const app = createApp();
+    const app = signedInApp();
     const payload = new TextEncoder().encode(
       `mime immutability ${expectedHash}`,
     );
-    const first = await app.request('/storage', {
-      method: 'POST',
-      body: payload,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const first = await app.request(
+      '/storage',
+      spaUpload(payload, 'text/plain'),
+    );
     const stored = (await first.json()) as { hash: string; mediaType: string };
     expect(stored.mediaType).toBe('text/plain');
 
     // Identical bytes, different declared type: the stored representation is
     // immutable, so the response reports the canonical (first) metadata and
     // the object keeps it.
-    const second = await app.request('/storage', {
-      method: 'POST',
-      body: payload,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const second = await app.request(
+      '/storage',
+      spaUpload(payload, 'application/json'),
+    );
     const again = (await second.json()) as { hash: string; mediaType: string };
     expect(again.hash).toBe(stored.hash);
     expect(again.mediaType).toBe('text/plain');
@@ -239,12 +314,11 @@ describe('asset delivery policy', () => {
 
 describe('asset storage when unconfigured', () => {
   it('refuses with 503 problem JSON', async () => {
-    const app = createApp({ ...env, s3: undefined });
-    const res = await app.request('/storage', {
-      method: 'POST',
-      body: bytesOf('x'),
-      headers: { 'Content-Type': 'text/plain' },
-    });
+    const app = signedInApp({ ...env, s3: undefined });
+    const res = await app.request(
+      '/storage',
+      spaUpload(bytesOf('x'), 'text/plain'),
+    );
     expect(res.status).toBe(503);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
