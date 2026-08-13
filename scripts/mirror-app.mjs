@@ -50,6 +50,7 @@ function requireCatalogVersion(name) {
 }
 
 const effectVersion = requireCatalogVersion('effect');
+const postcssVersion = requireCatalogVersion('postcss');
 
 const GITIGNORE = `node_modules/
 dist/
@@ -200,7 +201,8 @@ overrides:
   'effect@3.17.7': '${effectVersion}'
   fast-uri: '^3.1.4'
   find-my-way: '^9.7.0'
-  postcss: '^8.5.23'
+  # Next pins an exact PostCSS version; this is resolved from the root catalog.
+  postcss: '${postcssVersion}'
   sharp: '^0.35.3'
   valibot: '^1.4.2'
 `;
