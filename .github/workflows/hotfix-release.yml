@@ -1,0 +1,251 @@
+name: Hotfix Release
+
+# Releases Architect or Interviewer from a branch that is NOT main.
+#
+# The normal lane (`apps-release-detect` + `apps-release-<app>` in
+# ci-and-release.yml) builds whatever is on main, so it can only ship a patch
+# together with everything else merged since the last release. When main
+# carries work that is not ready to go out, the only way to ship a fix alone is
+# a branch cut from the released tag — and nothing on such a branch can trigger
+# the normal lane, which fires exclusively on push-to-main. This workflow is
+# that missing trigger: the same build → deploy → tag → release steps, run
+# against a ref named at dispatch time.
+#
+# The workflow is dispatched FROM main and takes the branch to release as an
+# input, so the job definition — which steps run, which secrets they see, which
+# guards they pass — is reviewed code from the protected branch. Only the tree
+# that gets built comes from the hotfix branch.
+#
+# NOTE(human-setup-required): that separation is a convention this file cannot
+# enforce. GitHub runs whichever copy of a workflow lives on the ref a dispatch
+# selects, so a writer who selects their own branch runs their own definition —
+# including one with the guard below and the `environment:` line deleted. No
+# check written here survives that, because the attacker edits the check. The
+# same is already true of any workflow in this repository that a branch can
+# trigger, so this lane widens nothing; what closes it is configuration:
+# `<app>-hotfix-production` needs required reviewers AND its deployment branches
+# restricted to main, with the deploy credentials held as environment secrets
+# rather than repository secrets. See each app's RELEASING.md.
+#
+# Procedure (see each app's RELEASING.md):
+#   1. Cut `hotfix/<app>-<version>` from the released tag, cherry-pick the fix,
+#      bump package.json and CHANGELOG.md, push the branch.
+#   2. Run this workflow from main with `source_ref` set to that branch.
+#   3. Record the released version on main afterwards, or the normal lane's tag
+#      guard will silently swallow main's next release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App to release
+        required: true
+        type: choice
+        options:
+          - interviewer
+          - architect
+      source_ref:
+        description: Branch or tag to release (e.g. hotfix/interviewer-8.1.3)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# The same group the normal lane's apps-release-<app> job uses. Version checks
+# alone cannot order the two lanes: each job deploys before it tags, so a
+# re-check can read a stale newest-tag and put older code live in the window
+# before the other lane's tag appears. Only mutual exclusion over the whole
+# check → deploy → tag sequence closes that, which means one group per app,
+# without the version.
+#
+# The cost is that a versionless group keeps only one pending run, so a release
+# queued behind two others can be dropped before it ever tags. Its code is not
+# lost — the next release contains it — and its notes are not either: both lanes
+# pass `--since <newest released version>` to release-notes.mjs, so a release
+# body carries every CHANGELOG section skipped that way.
+concurrency:
+  group: apps-release-@codaco/${{ inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  hotfix-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.app }}-hotfix-production
+    permissions:
+      contents: write
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      APP: ${{ inputs.app }}
+      SOURCE_REF: ${{ inputs.source_ref }}
+    steps:
+      - name: Validate the dispatch
+        # DISPATCH_REF comes through the environment, never interpolated into the
+        # script: `$(...)` is a legal git ref name, and an expression pasted
+        # straight into bash would execute it before this check could reject it —
+        # with the environment's deploy credentials already in scope.
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          if [[ "$DISPATCH_REF" != 'refs/heads/main' ]]; then
+            echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
+            exit 1
+          fi
+          if [[ "$SOURCE_REF" == 'main' ]]; then
+            echo "::error::main releases through apps-release-<app> in ci-and-release.yml. This lane exists for hotfix branches cut from a release tag." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-tags: true
+          # Full history: the validator checks that this tree descends from the
+          # newest release tag, which a shallow clone cannot answer.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The ref being released is a branch cut from a release tag, so its copy of
+      # this lane's tooling is whatever existed then — the validator did not
+      # exist at all, and release-notes.mjs predates `--since` and would ignore
+      # it silently. Both come from the dispatching main commit instead, which
+      # is also the only copy anyone has reviewed. Each reads its inputs
+      # (package.json, git tags, the app's CHANGELOG) relative to the working
+      # directory rather than to its own location, so they operate on the ref's
+      # tree while living outside it. One consequence: release-notes.mjs looks
+      # for a dedicated `release-*` changeset under `.hotfix-lane`, which the
+      # sparse checkout omits, so it always takes its CHANGELOG path here.
+      - name: Check out the lane's tooling from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .hotfix-lane
+          sparse-checkout: |
+            .github/scripts
+            scripts
+          persist-credentials: false
+
+      - name: Resolve the released commit
+        id: commit
+        # Compares commits, not strings: `refs/heads/main` and a raw SHA both
+        # slip past a literal 'main' check and would start a second release path
+        # for the very tree the normal lane owns. `.hotfix-lane` is checked out
+        # at the dispatching main commit, so its HEAD is main's tip.
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ "$sha" == "$(git -C .hotfix-lane rev-parse HEAD)" ]]; then
+            echo "::error::source_ref '$SOURCE_REF' resolves to main. main releases through apps-release-<app> in ci-and-release.yml." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve and validate the version
+        id: version
+        run: node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # A hotfix branch has no required `quality` gate behind it, and workspace
+      # packages are consumed as source — a fix cherry-picked into a dependency
+      # compiles straight into the app. The filter therefore covers the app's
+      # whole dependency closure (`...`), not just the app.
+      - name: Verify the app and its workspace dependencies
+        run: pnpm exec turbo run typecheck test --filter="@codaco/$APP..."
+
+      - name: Build ${{ inputs.app }}
+        # Scoped to this step alone, exactly as in the normal lane: only the
+        # build needs the PostHog credentials that switch source-map upload on,
+        # and keeping them off the job means the deploy step's dynamically
+        # fetched netlify-cli never sees them.
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: pnpm exec turbo run build --filter="@codaco/$APP"
+
+      # The build takes minutes, during which the normal lane can tag and deploy
+      # a newer version. Re-fetch tags and re-run the same validator, so a hotfix
+      # that has been overtaken aborts here instead of putting older code live.
+      - name: Re-check the version against the newest release
+        run: |
+          # Anonymous fetch over https (the checkout persists no credentials);
+          # a failure here fails the step rather than validating stale tags.
+          git fetch --tags --force origin
+          node .hotfix-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      # Claimed BEFORE the deploy, deliberately. Tagging afterwards fails
+      # unsafely: a deploy whose tag step then errors leaves production carrying
+      # a release that neither lane's guard can see, so the next normal release
+      # quietly overwrites it. This way the inconsistency points the other way —
+      # a tag with nothing live, which blocks later releases until someone
+      # reconciles it, and is visible on a run that has already gone red.
+      # Creating the ref through the API is atomic, so a duplicate run fails
+      # here rather than racing. If the deploy below fails, delete this tag
+      # before re-dispatching (see the app's RELEASING.md).
+      - name: Claim the release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$SHA"
+
+      - name: Deploy ${{ inputs.app }} to production
+        # Both site ids come in as environment variables and the app picks one in
+        # bash. A `inputs.app == 'x' && secrets.A || secrets.B` expression would
+        # silently fall through to the *other* app's site whenever the selected
+        # secret is unset — deploying, say, Interviewer over Architect's
+        # production site instead of failing for the missing setup.
+        env:
+          SITE_ID_INTERVIEWER: ${{ secrets.NETLIFY_SITE_ID_INTERVIEWER }}
+          SITE_ID_ARCHITECT: ${{ secrets.NETLIFY_SITE_ID_ARCHITECT }}
+        run: |
+          case "$APP" in
+            interviewer) site="$SITE_ID_INTERVIEWER"; secret=NETLIFY_SITE_ID_INTERVIEWER ;;
+            architect) site="$SITE_ID_ARCHITECT"; secret=NETLIFY_SITE_ID_ARCHITECT ;;
+            *) echo "::error::No production site is configured for '$APP'." >&2; exit 1 ;;
+          esac
+          if [[ -z "$site" ]]; then
+            echo "::error::$secret is unset. See apps/$APP/RELEASING.md for the one-time setup." >&2
+            exit 1
+          fi
+          npx --yes netlify-cli@22 deploy --no-build --prod \
+            --filter="@codaco/$APP" \
+            --dir="apps/$APP/dist" \
+            --site="$site"
+
+      - name: Release notes
+        # --since is the newest version released before this one, so the body
+        # also carries any CHANGELOG section whose own release run was dropped
+        # while pending on the shared lock above.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SINCE: ${{ steps.version.outputs.newest }}
+        run: >-
+          node .hotfix-lane/scripts/release-notes.mjs
+          --app "apps/$APP"
+          --pkg "@codaco/$APP"
+          --version "$VERSION"
+          --since "$SINCE"
+          --out "${RUNNER_TEMP}/hotfix-notes.md"
+
+      # The tag already exists from the claim step; this only attaches the
+      # release notes to it. Always the newest line — resolve-hotfix-release.mjs
+      # refuses anything older than the current release.
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
+          target_commitish: ${{ steps.commit.outputs.sha }}
+          name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/hotfix-notes.md
+          prerelease: false
+          make_latest: 'true'
