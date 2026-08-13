@@ -93,6 +93,9 @@ jobs:
         with:
           ref: ${{ inputs.source_ref }}
           fetch-tags: true
+          # Full history: the validator checks that this tree descends from the
+          # newest release tag, which a shallow clone cannot answer.
+          fetch-depth: 0
           persist-credentials: false
 
       # The ref being released is a branch cut from a release tag, so its copy of

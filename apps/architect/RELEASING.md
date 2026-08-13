@@ -64,6 +64,12 @@ is not ready to go out, release from the previous tag instead:
    the newest tag after building: a hotfix overtaken while it waited aborts
    instead of deploying, and needs re-cutting from the new tag.
 
+   Watch the run to completion. GitHub keeps only one pending run per
+   concurrency group, so if two hotfix dispatches for the same app queue behind
+   a release that is already deploying, the earlier pending one is cancelled.
+   Nothing silently ships in its place — a cancelled run is visible in Actions —
+   but it does need re-dispatching.
+
    The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
    refuses a version older than the current release, because each app has one
    production site and `netlify deploy --prod` always replaces what is live.

@@ -15,10 +15,15 @@
 //      always replaces what is live: publishing an older maintenance line would
 //      roll production back to older code. GitHub release metadata cannot
 //      soften that, so the lane refuses instead.
+//   4. The commit must descend from the newest released tag. A higher version
+//      number is not the same as a superset of what is live: a branch cut from
+//      8.1.2 and versioned 8.1.4 passes rule 3 after 8.1.3 ships, yet its tree
+//      has never seen the 8.1.3 fix, so deploying it would take that fix off
+//      production while the version number moved forward.
 //
 // Inputs (env): APP (interviewer | architect), GITHUB_OUTPUT.
 // Requires tags in the checkout (actions/checkout fetch-tags: true).
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 
 const LABELS = { interviewer: 'Interviewer', architect: 'Architect' };
@@ -69,6 +74,19 @@ if (newest && compare(version, newest) < 0) {
     `${version} is older than the released ${newest}. Deploying it would roll ${label} production back to older code; ` +
       `this lane only ships the newest line.`,
   );
+}
+
+if (newest) {
+  const newestTag = `@codaco/${app}@${newest}`;
+  const descends =
+    spawnSync('git', ['merge-base', '--is-ancestor', newestTag, 'HEAD'])
+      .status === 0;
+  if (!descends) {
+    fail(
+      `This tree does not contain ${newestTag}. Re-cut the hotfix from that tag and cherry-pick the fix: ` +
+        `releasing ${version} from here would take the changes in ${newest} off production.`,
+    );
+  }
 }
 
 appendFileSync(

@@ -23,7 +23,12 @@ function git(cwd, ...args) {
 // sparse checkout of main, because a hotfix branch cut from a release tag
 // predates it — so this also pins that it reads the working directory rather
 // than its own location. Returns { ok, output, stderr }.
-function resolve({ app = 'interviewer', version, tags = [] }) {
+function resolve({
+  app = 'interviewer',
+  version,
+  tags = [],
+  strandedTags = [],
+}) {
   const cwd = mkdtempSync(join(tmpdir(), 'rhr-'));
   mkdirSync(join(cwd, 'apps', app), { recursive: true });
   git(cwd, 'init', '-q');
@@ -36,6 +41,21 @@ function resolve({ app = 'interviewer', version, tags = [] }) {
   git(cwd, 'add', '.');
   git(cwd, 'commit', '-qm', 'first');
   for (const tag of tags) git(cwd, 'tag', tag);
+
+  // Tags on a commit the released tree never saw — the shape a hotfix branch
+  // has when another hotfix shipped after it was cut.
+  if (strandedTags.length) {
+    const released = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+    }).trim();
+    git(cwd, 'checkout', '-q', '-b', 'elsewhere');
+    writeFileSync(join(cwd, 'apps', app, 'other.txt'), 'shipped elsewhere\n');
+    git(cwd, 'add', '.');
+    git(cwd, 'commit', '-qm', 'a release this branch never saw');
+    for (const tag of strandedTags) git(cwd, 'tag', tag);
+    git(cwd, 'checkout', '-q', released);
+  }
 
   const outputPath = join(cwd, 'github-output');
   writeFileSync(outputPath, '');
@@ -108,4 +128,26 @@ test('fails on an app the lane does not release', () => {
   const { ok, stderr } = resolve({ app: 'fresco', version: '1.0.0' });
   assert.equal(ok, false);
   assert.match(stderr, /Unsupported app/);
+});
+
+// A higher version number is not a superset of what is live: this branch was
+// cut from 8.1.2 and never saw the 8.1.3 that shipped in the meantime, so
+// deploying it would take the 8.1.3 fix off production.
+test('fails when the tree does not descend from the newest release', () => {
+  const { ok, stderr } = resolve({
+    version: '8.1.4',
+    tags: ['@codaco/interviewer@8.1.2'],
+    strandedTags: ['@codaco/interviewer@8.1.3'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /does not contain @codaco\/interviewer@8\.1\.3/);
+});
+
+test('clears a hotfix re-cut from the newest release', () => {
+  const { ok, output } = resolve({
+    version: '8.1.4',
+    tags: ['@codaco/interviewer@8.1.2', '@codaco/interviewer@8.1.3'],
+  });
+  assert.ok(ok);
+  assert.equal(output.newest, '8.1.3');
 });
