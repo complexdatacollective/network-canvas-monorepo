@@ -89,6 +89,12 @@ function seedIndependentValue(
 ): VariableValue | undefined {
   switch (resolved.kind) {
     case 'boolean': {
+      const domain = booleanDomainValues(entry);
+      // A control offering ONE value has nothing to decide: the draw walks the
+      // domain positionally and lands there whatever rate is declared, or none
+      // is. This is settled before the declaration is even consulted, since
+      // the declaration cannot reach it.
+      if (domain.length === 1) return domain[0];
       // The fallback rate is nobody's declaration, and the highlight rate that
       // replaces it on a Sociogram is neither; only an authored 0 or 1 settles.
       if (!resolved.declared) return undefined;
@@ -96,10 +102,8 @@ function seedIndependentValue(
         return undefined;
       }
       // `stream.bool` decides a Bernoulli draw only where the variable offers
-      // both values. A Boolean control whose options narrow the domain is
-      // walked positionally instead, and the declared probability never
-      // reaches it.
-      const domain = booleanDomainValues(entry);
+      // both values; a wider domain is walked positionally and the declared
+      // probability never reaches it.
       if (!domain.includes(true) || !domain.includes(false)) return undefined;
       return resolved.probabilityTrue === 1;
     }

@@ -186,6 +186,90 @@ export function syntheticCountCeiling(count: {
   }
 }
 
+/**
+ * The counts a declaration can ACTUALLY land on, as an inclusive window.
+ *
+ * Distinct from {@link syntheticCountCeiling}, and the distinction is the
+ * point: that one is the bound `sampleCount` CLAMPS into, this one is the
+ * support the draw can reach. They differ exactly where a family is
+ * degenerate — a zero-mean Poisson has one outcome, and a zero-deviation
+ * normal always rounds its single mean — so a declared `max` there is a clamp
+ * that can never bind. Feasibility must count against the support: reading the
+ * clamp instead, `{ mean: 1, sd: 0, max: 20 }` always builds one node while
+ * preflight counted twenty, and a `unique` variable with a small value space
+ * was refused for entities the run never creates.
+ *
+ * One derivation, used by the stage schema that admits the count and by the
+ * generator that plans against it, so the two cannot drift.
+ */
+export function syntheticCountSupport(count: SyntheticCount): {
+  floor: number;
+  ceiling: number;
+} {
+  switch (count.distribution) {
+    case 'constant':
+      return { floor: count.value, ceiling: count.value };
+    case 'uniform':
+      return { floor: count.min, ceiling: count.max };
+    case 'poisson':
+      // A zero-mean Poisson has exactly one outcome. An explicit maximum is
+      // only a clamp and cannot make any positive count reachable.
+      if (count.mean === 0) return { floor: 0, ceiling: 0 };
+      return { floor: count.min ?? 0, ceiling: syntheticCountCeiling(count) };
+    case 'normal': {
+      // With no spread the sampler always rounds this one mean. Bounds are
+      // clamps, not extra support (the count schema has already proved the
+      // mean lies inside them).
+      if (count.sd === 0) {
+        const value = Math.round(count.mean);
+        return { floor: value, ceiling: value };
+      }
+      return { floor: count.min ?? 0, ceiling: syntheticCountCeiling(count) };
+    }
+  }
+}
+
+/**
+ * The values a topology distribution can actually draw, as an inclusive
+ * window; an absent side is one the metric's own domain supplies.
+ *
+ * The counterpart of {@link syntheticCountSupport}, and degenerate for the
+ * same reason: `sampleBeta` and the normal sampler each return the mean
+ * outright at `sd: 0`, so a bound declared beside it is a clamp that never
+ * binds. Counted as the whole domain instead, a density of
+ * `{ beta, mean: 0.1, sd: 0 }` — one edge between four people — was weighed as
+ * all six pairs, and an edge variable offering fewer than six unique values
+ * was refused for edges the run never draws.
+ */
+export function syntheticTopologySupport(distribution: {
+  distribution: string;
+  value?: number;
+  mean?: number;
+  sd?: number;
+  min?: number;
+  max?: number;
+}): { min?: number; max?: number } {
+  switch (distribution.distribution) {
+    case 'constant':
+      return { min: distribution.value, max: distribution.value };
+    case 'uniform':
+      return { min: distribution.min, max: distribution.max };
+    case 'normal':
+      if (distribution.sd === 0) {
+        return { min: distribution.mean, max: distribution.mean };
+      }
+      return { min: distribution.min, max: distribution.max };
+    case 'beta':
+      if (distribution.sd === 0) {
+        return { min: distribution.mean, max: distribution.mean };
+      }
+      // Beta lives on 0-1 by construction and carries no declared bounds.
+      return { min: 0, max: 1 };
+    default:
+      return {};
+  }
+}
+
 const rejectOversizedPopulation = (
   count: {
     distribution: string;

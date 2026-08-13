@@ -415,6 +415,39 @@ const validateComposerFieldBooleanProbabilities = (
   });
 };
 
+/**
+ * Every rule a NetworkComposer field's RENDERING imposes on the synthetic
+ * metadata of the variable it renders.
+ *
+ * Exported because three surfaces have to agree about it and none of them can
+ * see the others' reasoning: the protocol record refinement below, the
+ * `SyntheticInterview` builder, and Architect's variable editor. Derived
+ * separately they drifted — the builder accepted a 1950-1960 datetime range
+ * beside a Composer DatePicker pinned to 2000-2001, then silently clamped
+ * every draw into the picker's window, while the record refinement rejected
+ * the identical pair. One entry point, so a surface can only be wrong by not
+ * calling it.
+ */
+export const validateComposerRenderedSynthetic = (
+  codebookVariables: Record<string, Variable>,
+  fields: ComposerFormField[] | undefined,
+  fieldsPath: (string | number)[],
+  addIssue: IssueReporter,
+) => {
+  validateComposerFieldSyntheticWindows(
+    codebookVariables,
+    fields,
+    fieldsPath,
+    addIssue,
+  );
+  validateComposerFieldBooleanProbabilities(
+    codebookVariables,
+    fields,
+    fieldsPath,
+    addIssue,
+  );
+};
+
 const validateComposerFieldComponents = (
   codebookVariables: Record<string, Variable>,
   fields: ComposerFormField[] | undefined,
@@ -984,13 +1017,7 @@ const ProtocolSchema = z
           nodeFormPath,
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         );
-        validateComposerFieldSyntheticWindows(
-          nodeVariables,
-          stage.nodeForm?.fields,
-          nodeFormPath,
-          (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        );
-        validateComposerFieldBooleanProbabilities(
+        validateComposerRenderedSynthetic(
           nodeVariables,
           stage.nodeForm?.fields,
           nodeFormPath,
@@ -1026,13 +1053,7 @@ const ProtocolSchema = z
             edgeFormPath,
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
           );
-          validateComposerFieldSyntheticWindows(
-            edgeVariables,
-            edge.form?.fields,
-            edgeFormPath,
-            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          );
-          validateComposerFieldBooleanProbabilities(
+          validateComposerRenderedSynthetic(
             edgeVariables,
             edge.form?.fields,
             edgeFormPath,

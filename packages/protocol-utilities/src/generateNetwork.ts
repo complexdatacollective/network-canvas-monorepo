@@ -5,7 +5,11 @@ import type {
   StructuralCodebook,
   SyntheticCount,
 } from '@codaco/protocol-validation';
-import { MAX_SYNTHETIC_POPULATION } from '@codaco/protocol-validation';
+import {
+  MAX_SYNTHETIC_POPULATION,
+  syntheticCountSupport,
+  syntheticTopologySupport,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNetwork,
@@ -39,7 +43,6 @@ import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigr
 import { DEFAULT_PEDIGREE_NODE_CEILING } from './generateNetwork/familyPedigree/stageCeiling';
 import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types';
 import { materialiseSession } from './generateNetwork/materialise/materialiseSession';
-import { countCeiling } from './generateNetwork/plan/distributions';
 import { planNetwork } from './generateNetwork/plan/networkPlan';
 import {
   DEFAULT_EDGE_TOPOLOGY,
@@ -157,14 +160,11 @@ function topologyMax(topology: EdgeTopology): number {
   const { distribution } = topology;
   const unbounded =
     topology.metric === 'density' ? 1 : Number.POSITIVE_INFINITY;
-  const raw =
-    distribution.distribution === 'constant'
-      ? distribution.value
-      : distribution.distribution === 'beta'
-        ? // Beta lives on 0-1 by construction and is offered for density
-          // alone, so the domain is its ceiling and it carries no `max`.
-          1
-        : (distribution.max ?? unbounded);
+  // The support the draw can REACH, not the bound it is clamped into: a
+  // zero-deviation beta or normal returns its mean outright, so counting the
+  // whole domain there refused an edge variable for edges the run never makes.
+  // Derived once, beside the schema that admits the topology.
+  const raw = syntheticTopologySupport(distribution).max ?? unbounded;
   return topology.metric === 'density'
     ? Math.min(1, Math.max(0, raw))
     : Math.max(0, raw);
@@ -172,12 +172,7 @@ function topologyMax(topology: EdgeTopology): number {
 
 /**
  * A floor no draw from the descriptor can go below, the counterpart of
- * {@link countCeiling} at the other end of the window.
- *
- * `sampleCount` clamps every open family into `[min ?? 0, countCeiling()]`
- * and a constant IS its own floor, so a declared minimum is the least any
- * seed can return — except where the window is inverted, where the clamp
- * settles on the ceiling, which is why the floor is held down to it.
+ * {@link syntheticCountSupport}'s ceiling at the other end of the window.
  * Under-stating a floor is the safe direction here: feasibility deducts
  * floors from the shared population budget to bound what remains for LATER
  * creations, so a floor too low only leaves a later cap looser than it had to
@@ -185,16 +180,10 @@ function topologyMax(topology: EdgeTopology): number {
  * than preflight counted.
  */
 function countFloor(count: SyntheticCount): number {
-  const ceiling = countCeiling(count);
-  switch (count.distribution) {
-    case 'constant':
-      return count.value;
-    case 'uniform':
-      return Math.min(count.min, ceiling);
-    case 'poisson':
-    case 'normal':
-      return Math.min(count.min ?? 0, ceiling);
-  }
+  const { floor, ceiling } = syntheticCountSupport(count);
+  // Held down to the ceiling for an inverted window, where the sampler's own
+  // clamp settles on the ceiling too.
+  return Math.min(floor, ceiling);
 }
 
 /**
@@ -342,7 +331,7 @@ function deriveFeasibilityConfig(
     for (const creation of summary.nodeCreations) {
       if (creation.source === 'pedigree') continue;
       const count = creation.count ?? DEFAULT_NODE_COUNT;
-      const declaredCeiling = countCeiling(count);
+      const declaredCeiling = syntheticCountSupport(count).ceiling;
       const declaredFloor = countFloor(count);
       const { min, max } = creation.capacity;
       // Both ends pass through the capacity clamp exactly as the planner's

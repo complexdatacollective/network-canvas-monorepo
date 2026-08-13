@@ -4,7 +4,7 @@ import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   StageNodeSyntheticSchema,
   type SyntheticCount,
-  syntheticCountCeiling,
+  syntheticCountSupport,
 } from '../codebook/synthetic.ts';
 import {
   FormSchema,
@@ -38,44 +38,6 @@ export const nameGeneratorBehavioursSchema = z
   .optional();
 
 /**
- * The node counts a synthetic count declaration can actually land on, as an
- * inclusive [floor, ceiling] window. A constant names one value and uniform
- * declares both ends; for the clamped families an explicit bound pins its
- * side, while an unbounded side falls back to the same finite six-deviation
- * ceiling the sampler uses. Every family draws non-negative counts.
- */
-const syntheticCountRange = (
-  count: SyntheticCount,
-): { floor: number; ceiling: number } => {
-  switch (count.distribution) {
-    case 'constant':
-      return { floor: count.value, ceiling: count.value };
-    case 'uniform':
-      return { floor: count.min, ceiling: count.max };
-    case 'poisson':
-      // A zero-mean Poisson has exactly one outcome. An explicit maximum is
-      // only a clamp and cannot make any positive count reachable.
-      if (count.mean === 0) return { floor: 0, ceiling: 0 };
-      return {
-        floor: count.min ?? 0,
-        ceiling: syntheticCountCeiling(count),
-      };
-    case 'normal':
-      // With no spread the sampler always rounds this one mean. Bounds are
-      // clamps, not extra support (the count schema has already proved the
-      // mean lies inside them).
-      if (count.sd === 0) {
-        const value = Math.round(count.mean);
-        return { floor: value, ceiling: value };
-      }
-      return {
-        floor: count.min ?? 0,
-        ceiling: syntheticCountCeiling(count),
-      };
-  }
-};
-
-/**
  * Shared by every name generator that carries BOTH a behaviours window and a
  * declared synthetic count: the count must be reachable inside the window.
  *
@@ -97,7 +59,7 @@ export const requireCountReachableWithinBehaviours = (
   const count = stage.synthetic?.count;
   if (count === undefined) return;
   const { minNodes, maxNodes } = stage.behaviours ?? {};
-  const { floor, ceiling } = syntheticCountRange(count);
+  const { floor, ceiling } = syntheticCountSupport(count);
   if (maxNodes !== undefined && floor > maxNodes) {
     ctx.addIssue({
       code: 'custom' as const,

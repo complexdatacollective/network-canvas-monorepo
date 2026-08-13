@@ -6,8 +6,10 @@ import {
   type Stage,
   type StageType,
   type StructuralCodebook,
+  type Variable,
   VariableSchema,
   type VariableType,
+  validateComposerRenderedSynthetic,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -2153,8 +2155,83 @@ export class SyntheticInterview {
    * which this builder's stage configs only satisfy at runtime, and honouring
    * a rule nothing enforces yields a value that is valid either way.
    */
+  /**
+   * Holds the builder's declared metadata to the same record-level rule the
+   * protocol schema applies: a rendering the composer supplies is what the
+   * generated values actually obey.
+   *
+   * A variable parsed on its own looks valid — its window is a window, its
+   * probability a probability — and only the pair says otherwise. A datetime
+   * range of 1950-1960 beside a Composer DatePicker pinned to 2000-2001 was
+   * accepted here and then silently clamped into the picker's window, while
+   * the protocol record refinement rejected exactly that combination. The
+   * check is `@codaco/protocol-validation`'s own, called rather than
+   * re-derived, so the two surfaces cannot disagree again.
+   */
+  private assertRenderedSyntheticIsReachable(rendered: ComposerRenderings) {
+    const scopes: [string, Map<string, Map<string, ComposerRendering>>][] = [
+      ['node', rendered.node],
+      ['edge', rendered.edge],
+    ];
+    for (const [entity, byType] of scopes) {
+      for (const [typeId, renderings] of byType) {
+        const variables = (
+          entity === 'node' ? this.nodeTypes : this.edgeTypes
+        ).get(typeId)?.variables;
+        if (variables === undefined) continue;
+        const codebookVariables: Record<string, Variable> = {};
+        const fields: {
+          variable: string;
+          component: string;
+          parameters?: Record<string, unknown>;
+        }[] = [];
+        for (const [varId, rendering] of renderings) {
+          const declared = variables.get(varId);
+          if (declared?.synthetic === undefined) continue;
+          codebookVariables[varId] = {
+            name: declared.name,
+            type: declared.type,
+            ...(declared.options !== undefined
+              ? { options: declared.options }
+              : {}),
+            ...(declared.validation !== undefined
+              ? { validation: declared.validation }
+              : {}),
+            ...(declared.parameters !== undefined
+              ? { parameters: declared.parameters }
+              : {}),
+            synthetic: declared.synthetic,
+          } as unknown as Variable;
+          fields.push({
+            variable: varId,
+            component: rendering.component,
+            ...('parameters' in rendering
+              ? { parameters: rendering.parameters }
+              : {}),
+          });
+        }
+        if (fields.length === 0) continue;
+        const issues: string[] = [];
+        validateComposerRenderedSynthetic(
+          codebookVariables,
+          fields as never,
+          [],
+          (issue) => {
+            if (issue.message !== undefined) issues.push(issue.message);
+          },
+        );
+        if (issues.length > 0) {
+          throw new Error(
+            `Synthetic metadata on ${entity} type "${typeId}" cannot be reached through the NetworkComposer field that renders it: ${issues.join('; ')}`,
+          );
+        }
+      }
+    }
+  }
+
   private generationContext(today: string): GenerationContext {
     const rendered = this.composerRenderings(today);
+    this.assertRenderedSyntheticIsReachable(rendered);
 
     const constraintsOf = (
       variables: Map<string, VariableEntry>,
