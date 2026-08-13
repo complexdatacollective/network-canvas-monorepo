@@ -9,17 +9,22 @@ name: Hotfix Release
 # a branch cut from the released tag — and nothing on such a branch can trigger
 # the normal lane, which fires exclusively on push-to-main. This workflow is
 # that missing trigger: the same build → deploy → tag → release steps, run
-# against the dispatched ref.
+# against a ref named at dispatch time.
+#
+# The workflow is dispatched FROM main and takes the branch to release as an
+# input, so the job definition — which steps run, which secrets they see, which
+# guards they pass — is always reviewed code from the protected branch. Only the
+# tree that gets built comes from the hotfix branch. That tree still executes
+# its own build scripts, so this lane is gated on the `<app>-hotfix-production`
+# environment; give it required reviewers (see each app's RELEASING.md) or a
+# dispatch is only as trustworthy as write access to the repository.
 #
 # Procedure (see each app's RELEASING.md):
 #   1. Cut `hotfix/<app>-<version>` from the released tag, cherry-pick the fix,
 #      bump package.json and CHANGELOG.md, push the branch.
-#   2. Run this workflow with that branch selected under "Use workflow from".
+#   2. Run this workflow from main with `source_ref` set to that branch.
 #   3. Record the released version on main afterwards, or the normal lane's tag
 #      guard will silently swallow main's next release.
-#
-# The chosen ref supplies both the workflow file and the tree that is built, so
-# a hotfix branch cut from an old tag must carry this file too.
 
 on:
   workflow_dispatch:
@@ -31,62 +36,57 @@ on:
         options:
           - interviewer
           - architect
-      mark_latest:
-        description: Mark the GitHub release as "Latest" (turn off when patching an older line)
+      source_ref:
+        description: Branch or tag to release (e.g. hotfix/interviewer-8.1.3)
         required: true
-        type: boolean
-        default: true
+        type: string
 
 permissions:
   contents: read
 
-# One release per app+version, and never cancelled: a half-finished deploy is
-# worse than a queued one. Mirrors the normal lane's per-release group.
+# Serialized per app rather than per ref: two branches carrying the same version
+# would each pass the tag check and race, leaving one SHA tagged while the other
+# build is what production actually serves.
 concurrency:
-  group: hotfix-release-@codaco/${{ inputs.app }}-${{ github.ref }}
+  group: hotfix-release-@codaco/${{ inputs.app }}
   cancel-in-progress: false
 
 jobs:
   hotfix-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    environment: ${{ inputs.app }}-hotfix-production
     permissions:
       contents: write
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       APP: ${{ inputs.app }}
+      SOURCE_REF: ${{ inputs.source_ref }}
     steps:
-      - name: Refuse to run on main
-        if: github.ref_name == 'main'
+      - name: Validate the dispatch
         run: |
-          echo "::error::main releases through apps-release-<app> in ci-and-release.yml. This lane exists for hotfix branches cut from a release tag." >&2
-          exit 1
+          if [[ "${{ github.ref_name }}" != 'main' ]]; then
+            echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
+            exit 1
+          fi
+          if [[ "$SOURCE_REF" == 'main' ]]; then
+            echo "::error::main releases through apps-release-<app> in ci-and-release.yml. This lane exists for hotfix branches cut from a release tag." >&2
+            exit 1
+          fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ inputs.source_ref }}
           fetch-tags: true
           persist-credentials: false
 
-      # Unlike the normal lane — which is self-healing and silently skips an
-      # already-tagged version on every main push — a dispatch is a deliberate
-      # request, so an already-released version is an error, not a no-op.
+      - name: Resolve the released commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Resolve and validate the version
         id: version
-        run: |
-          version=$(node -p "require('./apps/$APP/package.json').version")
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::apps/$APP/package.json version '$version' is not a stable semver. Bump it on the hotfix branch first." >&2
-            exit 1
-          fi
-          if git rev-parse -q --verify "refs/tags/@codaco/$APP@$version" >/dev/null; then
-            echo "::error::@codaco/$APP@$version is already released. Bump the version on the hotfix branch." >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          case "$APP" in
-            interviewer) echo 'label=Interviewer' >> "$GITHUB_OUTPUT" ;;
-            architect) echo 'label=Architect' >> "$GITHUB_OUTPUT" ;;
-          esac
+        run: node .github/scripts/resolve-hotfix-release.mjs
 
       - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
         with:
@@ -97,12 +97,12 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
 
-      # A hotfix branch has no required `quality` gate behind it, so the app's
-      # own suites run here. Its workspace dependencies are whatever the release
-      # tag pinned, already verified by the release they shipped in; a hotfix
-      # that changes a dependency package belongs in a pull request, not here.
-      - name: Verify the app
-        run: pnpm exec turbo run typecheck test --filter=@codaco/${{ env.APP }}
+      # A hotfix branch has no required `quality` gate behind it, and workspace
+      # packages are consumed as source — a fix cherry-picked into a dependency
+      # compiles straight into the app. The filter therefore covers the app's
+      # whole dependency closure (`...`), not just the app.
+      - name: Verify the app and its workspace dependencies
+        run: pnpm exec turbo run typecheck test --filter=@codaco/${{ env.APP }}...
 
       - name: Build ${{ inputs.app }}
         # Scoped to this step alone, exactly as in the normal lane: only the
@@ -131,11 +131,13 @@ jobs:
           --version "$VERSION"
           --out "${RUNNER_TEMP}/hotfix-notes.md"
 
+      # Always the newest line — resolve-hotfix-release.mjs refuses anything
+      # older than the current release — so this is always the latest release.
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: '@codaco/${{ inputs.app }}@${{ steps.version.outputs.version }}'
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ steps.commit.outputs.sha }}
           name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
           body_path: ${{ runner.temp }}/hotfix-notes.md
           prerelease: false
-          make_latest: ${{ inputs.mark_latest }}
+          make_latest: 'true'

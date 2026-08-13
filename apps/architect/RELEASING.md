@@ -52,19 +52,37 @@ is not ready to go out, release from the previous tag instead:
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
-3. Make sure `.github/workflows/hotfix-release.yml` exists on the branch
-   (cherry-pick it if the branch predates it): a dispatch runs the workflow file
-   from the ref it targets.
-4. Push, then run the **Hotfix Release** workflow with _Use workflow from_ set
-   to the hotfix branch and `app: architect`. It runs the app's typecheck and
-   tests, builds with PostHog source maps, deploys to Netlify production, and
-   cuts `@codaco/architect@<version>`.
-5. **Record the released version on main** in a follow-up PR: bump
-   `package.json` and `CHANGELOG.md` to the hotfix version and delete the
-   changeset it consumed. This step is not optional. The lane is tag-driven and
+3. Push the branch, then run the **Hotfix Release** workflow **from main**,
+   with `app: architect` and `source_ref` set to the hotfix branch. It runs
+   typecheck and tests across the app's whole workspace dependency closure,
+   builds with PostHog source maps, deploys to Netlify production, and cuts
+   `@codaco/architect@<version>`.
+
+   The lane only ships the newest line: `.github/scripts/resolve-hotfix-release.mjs`
+   refuses a version older than the current release, because each app has one
+   production site and `netlify deploy --prod` always replaces what is live.
+   A branch that needs an older line published needs a separate channel, not
+   this lane.
+
+4. **Record the released version on main** in a follow-up PR, whenever the
+   hotfix version is higher than main's current one:
+   - bump `package.json` and `CHANGELOG.md` to the hotfix version;
+   - remove **only** `'@codaco/architect'` from the changeset the hotfix
+     consumed, deleting the file only if the app was its sole target. Normal-lane
+     changesets may also name libraries, the other app, and Fresco, and those
+     packages still need their bumps from main's next release.
+
+   Recording is what keeps main releasable: the lane is tag-driven and
    self-healing (`.github/scripts/detect-app-release.sh`), so if main later
-   versions itself to the same number the existing tag makes the guard skip
-   it — and main's release would never deploy.
+   versions itself to the number already tagged, the guard skips it and main's
+   release never deploys. If main is somehow already ahead of the hotfix
+   version, leave it alone — nothing needs recording, and downgrading main would
+   make its next changeset release calculate from the wrong baseline.
+
+**Setup:** the workflow is gated on the `architect-hotfix-production` GitHub
+environment. Give that environment required reviewers, or any dispatch deploys
+straight to production — the job definition comes from main, but the tree it
+builds (and the build scripts it runs) come from the branch being released.
 
 ## Developer site
 

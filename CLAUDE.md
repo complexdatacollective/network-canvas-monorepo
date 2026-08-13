@@ -159,11 +159,14 @@ Both apps' production jobs build `main`, so the normal lane cannot ship a patch
 without everything else merged since the last release. When `main` holds work
 that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
 cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
-**Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) against
-that branch. Afterwards, record the released version on `main` — the lane is
-tag-driven and self-healing, so a version whose tag already exists is skipped,
-and skipping it on `main` means `main` never deploys. Full procedure in each
-app's `RELEASING.md`.
+**Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
+`main`, naming that branch in `source_ref`. The lane only ships the newest
+line — one production site per app means a `--prod` deploy always replaces what
+is live. Afterwards, record the released version on `main` (and drop only that
+app's entry from the changeset the hotfix consumed): the lane is tag-driven and
+self-healing, so a version whose tag already exists is skipped, and skipping it
+on `main` means `main` never deploys. Full procedure in each app's
+`RELEASING.md`.
 
 #### Apps that release by mirroring
 
