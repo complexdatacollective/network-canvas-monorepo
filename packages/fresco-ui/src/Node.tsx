@@ -240,6 +240,14 @@ type UINodeProps = {
    * recognizer guarantees this never fires for a gesture that resolved as a
    * hold or a drag. `details.source` says how the node was activated, since a
    * keyboard press carries none of a pointer gesture's state.
+   *
+   * Passing this is what makes the node tappable: it earns a pointer cursor,
+   * press feedback, a tab stop, and a toggle role announced from `selected`.
+   * A function is a function, so the node cannot tell a real handler from one
+   * that returns immediately — pass it only when a tap will actually do
+   * something, and withhold it entirely otherwise (`onClick={canEdit ? edit :
+   * undefined}`, never `onClick={() => maybeEdit?.()}`). A node that offers a
+   * press and then does nothing reads as a broken control to a participant.
    */
   onClick?: (
     event: MouseEvent<HTMLButtonElement>,

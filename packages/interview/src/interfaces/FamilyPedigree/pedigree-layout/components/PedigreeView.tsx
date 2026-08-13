@@ -507,8 +507,14 @@ export default function PedigreeView({
                   node[entityAttributesProperty][activeNominationVariable] ===
                   true
                 }
-                onClick={() =>
-                  onToggleAttribute?.(node.id, activeNominationVariable)
+                // Wrapping an absent handler would still hand the node a
+                // function, which it reads as "this can be tapped" and
+                // answers with a pointer cursor, press feedback and a tab
+                // stop for a nomination nothing would record.
+                onClick={
+                  onToggleAttribute
+                    ? () => onToggleAttribute(node.id, activeNominationVariable)
+                    : undefined
                 }
               />
             ) : (
