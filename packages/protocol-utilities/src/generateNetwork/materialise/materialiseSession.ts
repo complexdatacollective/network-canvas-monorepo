@@ -196,6 +196,7 @@ export function materialiseSession(params: {
   const walkPairsByType = new Map<string, Set<string>>();
   const walkPairsByTopology = new Map<string, Set<string>>();
   const walkNodesByTopology = new Map<string, Set<string>>();
+  let walkedPairWork = 0;
 
   // Final pair membership per edge type, for the walk-time topology fallback.
   const finalPairsByType = new Map<string, Set<string>>();
@@ -718,6 +719,7 @@ export function materialiseSession(params: {
       const domainPairs =
         walkPairsByTopology.get(targetKey) ?? new Set<string>();
       walkPairsByTopology.set(targetKey, domainPairs);
+      const previousDomainSize = domainPairs.size;
       const domainNodes =
         walkNodesByTopology.get(targetKey) ?? new Set<string>();
       walkNodesByTopology.set(targetKey, domainNodes);
@@ -748,9 +750,13 @@ export function materialiseSession(params: {
           domainPairs.add(key);
           domainNodes.add(uidA);
           domainNodes.add(uidB);
-          // Only pairs the plan could not reach are this block's to add: one
-          // whose endpoints it both held was already decided.
-          if (nodeByUid.has(uidA) && nodeByUid.has(uidB)) continue;
+          // Only pairs this topology's plan domain did not consider are this
+          // block's to add. Owning both endpoints is not enough: a filter can
+          // depend on a filtered-only write the planner deliberately leaves
+          // undrawn, then admit those planned nodes during the live walk.
+          if (plan.topologyDomains.get(topologyKey(creation))?.has(key)) {
+            continue;
+          }
           reachable.push({
             a: uidA,
             b: uidB,
@@ -758,6 +764,7 @@ export function materialiseSession(params: {
           });
         }
       }
+      walkedPairWork += domainPairs.size - previousDomainSize;
       // And the ACCUMULATED domain, checked on the merged set rather than on
       // the sum of the two sizes. Creators over one subject type overlap by
       // construction — two duplicate prompts see the very same people — so
@@ -765,11 +772,16 @@ export function materialiseSession(params: {
       // preview whose union sat comfortably inside the cap. Checked after the
       // merge for the reason the plan checks after its own: the transient cost
       // is one creation's pairs, which the check above already bounds.
-      if (safetyPairs.size > MAX_SYNTHETIC_PAIRS) {
+      if (
+        safetyPairs.size > MAX_SYNTHETIC_PAIRS ||
+        walkedPairWork > MAX_SYNTHETIC_PAIRS
+      ) {
         refuseTooManyPairs(
           ctx,
           creation.edgeType,
-          `the stages linking this type reach ${safetyPairs.size.toLocaleString('en')} pairs between them`,
+          walkedPairWork > MAX_SYNTHETIC_PAIRS
+            ? `the topology stages reach ${walkedPairWork.toLocaleString('en')} pairs between them across their edge and subject domains`
+            : `the stages linking this type reach ${safetyPairs.size.toLocaleString('en')} pairs between them`,
         );
       }
       if (reachable.length === 0) return;

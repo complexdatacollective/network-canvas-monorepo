@@ -76,6 +76,20 @@ describe('the stage synthetic-data section', () => {
     await expect(getStoreApi().getState().validateForm()).resolves.toBe(true);
   });
 
+  it('refuses a count outside the stage behavior window', async () => {
+    const { getStoreApi } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'NameGenerator',
+        behaviours: { maxNodes: 5 },
+        synthetic: { count: { distribution: 'constant', value: 20 } },
+      }),
+      children: <SyntheticData {...sectionProps} />,
+    });
+
+    await expect(getStoreApi().getState().validateForm()).resolves.toBe(false);
+  });
+
   it('refuses a density outside its domain on a topology stage', async () => {
     const { getStoreApi } = renderStageForm({
       committedStage: asStage({

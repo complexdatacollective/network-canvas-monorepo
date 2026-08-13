@@ -51,6 +51,8 @@ storyStore.dispatch(setActiveProtocol(STORY_PROTOCOL));
 
 type StoryArgs = {
   containerWidth: number;
+  entity: 'node';
+  type: string;
   uuid: string;
 };
 
@@ -69,6 +71,8 @@ const meta = {
   },
   args: {
     containerWidth: 390,
+    entity: 'node',
+    type: 'person',
     uuid: VARIABLE_UUID,
   },
   argTypes: {
@@ -78,12 +82,12 @@ const meta = {
     },
     uuid: { control: false },
   },
-  render: ({ containerWidth, uuid }) => (
+  render: ({ containerWidth, entity, type, uuid }) => (
     <div
       className="bg-surface-2 flex max-w-full rounded p-8"
       style={{ width: `${containerWidth}px` }}
     >
-      <ConnectedVariablePill uuid={uuid} />
+      <ConnectedVariablePill entity={entity} type={type} uuid={uuid} />
     </div>
   ),
 } satisfies Meta<StoryArgs>;

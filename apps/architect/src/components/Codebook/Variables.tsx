@@ -73,7 +73,13 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
           <DataTableColumnHeader column={column} table={table} title="Name" />
         ),
         sortingFn: caseInsensitiveSort,
-        cell: ({ row }) => <ConnectedVariablePill uuid={row.original.id} />,
+        cell: ({ row }) => (
+          <ConnectedVariablePill
+            entity={entity}
+            type={type}
+            uuid={row.original.id}
+          />
+        ),
       },
       {
         accessorKey: 'usageString',
@@ -104,7 +110,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
       },
     ],
-    [handleDelete],
+    [entity, handleDelete, type],
   );
 
   const table = useReactTable({

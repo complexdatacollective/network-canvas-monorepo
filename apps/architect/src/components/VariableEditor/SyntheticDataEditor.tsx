@@ -14,10 +14,7 @@ import type { Variable } from '@codaco/protocol-validation';
 import { Layout } from '~/components/EditorLayout';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
-import {
-  makeGetVariable,
-  makeGetVariableWithEntity,
-} from '~/selectors/codebook';
+import { getVariablesForSubject } from '~/selectors/codebook';
 import { getProtocol } from '~/selectors/protocol';
 
 import {
@@ -30,6 +27,8 @@ import {
 import SyntheticSection from './SyntheticSection';
 
 type SyntheticDataEditorProps = {
+  entity: 'node' | 'edge' | 'ego';
+  type?: string;
   uuid: string;
   formId: string;
   onCancelled: () => void;
@@ -37,33 +36,27 @@ type SyntheticDataEditorProps = {
 };
 
 function SyntheticDataEditorInner({
+  entity,
+  type,
   uuid,
   formId,
   onCancelled,
   onSaved,
 }: SyntheticDataEditorProps) {
   const dispatch = useAppDispatch();
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const variable = useAppSelector(
-    useMemo(() => makeGetVariable(uuid), [uuid]),
+    (state) => getVariablesForSubject(state, subject)?.[uuid] ?? null,
   ) as Variable | null;
   // Where in the codebook the variable lives, and every NetworkComposer
   // rendering of it: the record schema judges the descriptor against those
   // stage fields as well as the variable itself (see composerOverlayIssues in
   // syntheticDraft.ts), so the draft context must carry them for the editor
   // to reach the same verdict the saved protocol will.
-  const variableWithEntity = useAppSelector(
-    useMemo(() => makeGetVariableWithEntity(uuid), [uuid]),
-  );
   const stages = useAppSelector((state) => getProtocol(state)?.stages);
   const composerRenderings = useMemo(
-    () =>
-      collectComposerRenderings(
-        stages,
-        uuid,
-        variableWithEntity?.entity,
-        variableWithEntity?.entityType,
-      ),
-    [stages, uuid, variableWithEntity],
+    () => collectComposerRenderings(stages, uuid, entity, type),
+    [entity, stages, type, uuid],
   );
 
   const context: SyntheticDraftContext | null = useMemo(() => {
@@ -105,14 +98,17 @@ function SyntheticDataEditorInner({
       }
 
       void dispatch(
-        updateVariableByUUID(uuid, synthetic ? { synthetic } : {}, [
-          'synthetic',
-        ]),
+        updateVariableByUUID(
+          uuid,
+          synthetic ? { synthetic } : {},
+          ['synthetic'],
+          subject,
+        ),
       );
       onSaved();
       return { success: true };
     },
-    [context, dispatch, onSaved, uuid],
+    [context, dispatch, onSaved, subject, uuid],
   );
 
   if (!variable || !context) return null;

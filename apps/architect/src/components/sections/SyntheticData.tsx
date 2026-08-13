@@ -11,6 +11,7 @@ import {
   defaultTopologyForStage,
 } from '@codaco/protocol-utilities';
 import {
+  requireCountReachableWithinBehaviours,
   StageEdgeSyntheticSchema,
   StageNodeAndEdgeSyntheticSchema,
   StageNodeSyntheticSchema,
@@ -25,7 +26,10 @@ import type {
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 
 /**
  * The optional "Synthetic data" section of a stage editor: how many people the
@@ -407,7 +411,7 @@ function EdgeSyntheticControl({
                 label="Mean"
                 value={distribution.mean}
                 onChange={(next) => patch({ mean: next ?? 0 })}
-                min={0}
+                {...(isDensity ? { min: 0 } : {})}
                 {...(isDensity ? { max: 1, step: '0.01' } : {})}
               />
               <NumberControl
@@ -480,7 +484,11 @@ const TOPOLOGY_STAGES = new Set([
  * a shell.
  */
 const validateSynthetic =
-  (showCount: boolean, showTopology: boolean) =>
+  (
+    showCount: boolean,
+    showTopology: boolean,
+    behaviours?: { minNodes?: number; maxNodes?: number },
+  ) =>
   (value: unknown): string | undefined => {
     if (value === undefined || value === null) return undefined;
     const schema =
@@ -490,7 +498,27 @@ const validateSynthetic =
           ? StageNodeSyntheticSchema
           : StageEdgeSyntheticSchema;
     const result = schema.safeParse(value);
-    if (result.success) return undefined;
+    if (result.success) {
+      const count = 'count' in result.data ? result.data.count : undefined;
+      if (showCount && count) {
+        const issues: { message: string }[] = [];
+        requireCountReachableWithinBehaviours(
+          {
+            behaviours,
+            synthetic: { count },
+          },
+          {
+            addIssue: (issue: { message: string }) => {
+              issues.push(issue);
+            },
+          } as unknown as Parameters<
+            typeof requireCountReachableWithinBehaviours
+          >[1],
+        );
+        if (issues[0]) return issues[0].message;
+      }
+      return undefined;
+    }
     // The first issue, with the path it belongs to, since one field stands for
     // the whole block and the author cannot otherwise tell which control the
     // complaint is about.
@@ -573,10 +601,15 @@ export default function SyntheticData({
 }: StageEditorSectionProps) {
   const showCount = COUNT_STAGES.has(interfaceType);
   const showTopology = TOPOLOGY_STAGES.has(interfaceType);
+  const behaviours = useStageFormValue<
+    { minNodes?: number; maxNodes?: number } | undefined
+  >('behaviours');
   // Memoised so the field is not handed a new validator identity every render.
   const validation = useMemo(
-    () => ({ synthetic: validateSynthetic(showCount, showTopology) }),
-    [showCount, showTopology],
+    () => ({
+      synthetic: validateSynthetic(showCount, showTopology, behaviours),
+    }),
+    [behaviours, showCount, showTopology],
   );
   const initialValue = useStageInitialValue('synthetic') as
     | StageNodeAndEdgeSynthetic

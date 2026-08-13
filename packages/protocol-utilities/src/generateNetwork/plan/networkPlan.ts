@@ -194,6 +194,8 @@ export type NetworkPlan = {
    * which is why the metric is drawn even where the planned domain is empty.
    */
   topologyTargets: Map<string, EdgeTopologyTarget>;
+  /** Pair keys the planner actually considered for each stage topology. */
+  topologyDomains: Map<string, Set<string>>;
 };
 
 /**
@@ -1965,6 +1967,8 @@ export function planNetwork(
     typeEdges: PlannedEdge[];
   };
   const stateByType = new Map<string, EdgeTypeState>();
+  let plannedPairWork = 0;
+  const topologyDomains = new Map<string, Set<string>>();
   const stateFor = (type: string): EdgeTypeState => {
     const existing = stateByType.get(type);
     if (existing) return existing;
@@ -2100,6 +2104,7 @@ export function planNetwork(
     const targetDomain =
       domainsByTopology.get(targetKey) ?? new Map<string, EligiblePair>();
     domainsByTopology.set(targetKey, targetDomain);
+    const previousTargetDomainSize = targetDomain.size;
     for (const [key, pair] of eligiblePairsForCreation(
       ctx,
       creation,
@@ -2112,6 +2117,8 @@ export function planNetwork(
       if (!domain.has(key)) domain.set(key, pair);
       if (!targetDomain.has(key)) targetDomain.set(key, pair);
     }
+    topologyDomains.set(targetKey, new Set(targetDomain.keys()));
+    plannedPairWork += targetDomain.size - previousTargetDomainSize;
     // The ACCUMULATED domain, which the per-creation ceiling does not bound.
     // Where filters are respected, each stage can expose a different subset
     // of the same node type and stay well inside its own ceiling while the
@@ -2121,11 +2128,16 @@ export function planNetwork(
     // route. Checked after the merge rather than on the sum, because
     // overlapping subsets are the ordinary case and their union is smaller
     // than their total.
-    if (domain.size > MAX_SYNTHETIC_PAIRS) {
+    if (
+      domain.size > MAX_SYNTHETIC_PAIRS ||
+      plannedPairWork > MAX_SYNTHETIC_PAIRS
+    ) {
       refuseTooManyPairs(
         ctx,
         creation.edgeType,
-        `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
+        plannedPairWork > MAX_SYNTHETIC_PAIRS
+          ? `the topology stages reach ${plannedPairWork.toLocaleString('en')} pairs between them across their edge and subject domains`
+          : `the stages linking this type reach ${domain.size.toLocaleString('en')} pairs between them`,
       );
     }
     if (targetDomain.size === 0) continue;
@@ -2185,5 +2197,6 @@ export function planNetwork(
     nodes,
     edges,
     topologyTargets,
+    topologyDomains,
   };
 }

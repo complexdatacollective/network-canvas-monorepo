@@ -26,11 +26,7 @@ import { getColorForType, getIconForType } from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
-import {
-  getVariablesForSubject,
-  makeGetVariable,
-  makeGetVariableWithEntity,
-} from '~/selectors/codebook';
+import { getVariablesForSubject } from '~/selectors/codebook';
 import { cx } from '~/utils/cva';
 import { validations } from '~/utils/validations';
 
@@ -195,10 +191,14 @@ function RenameVariablePill({
 }
 
 export type ConnectedVariablePillProps = {
+  entity: 'node' | 'edge' | 'ego';
+  type?: string;
   uuid: string;
 };
 
 export default function ConnectedVariablePill({
+  entity,
+  type,
   uuid,
 }: ConnectedVariablePillProps) {
   const dispatch = useAppDispatch();
@@ -217,22 +217,11 @@ export default function ConnectedVariablePill({
   const [editorSettled, setEditorSettled] = useState(false);
   const [editorClosing, setEditorClosing] = useState(false);
 
-  const variable = useAppSelector(
-    useMemo(() => makeGetVariable(uuid), [uuid]),
-  ) as Variable | null;
-  const entityInfo = useAppSelector(
-    useMemo(() => makeGetVariableWithEntity(uuid), [uuid]),
-  );
-  const subject = useMemo(
-    () => ({
-      entity: entityInfo?.entity ?? 'node',
-      type: entityInfo?.entityType ?? undefined,
-    }),
-    [entityInfo?.entity, entityInfo?.entityType],
-  );
+  const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const existingVariables = useAppSelector((state: RootState) =>
     getVariablesForSubject(state, subject),
   );
+  const variable = (existingVariables?.[uuid] ?? null) as Variable | null;
   const existingVariableNames = useMemo(
     () =>
       Object.entries(existingVariables ?? {})
@@ -366,7 +355,7 @@ export default function ConnectedVariablePill({
       return;
     }
 
-    void dispatch(updateVariableByUUID(uuid, { name }));
+    void dispatch(updateVariableByUUID(uuid, { name }, [], subject));
     cancelRename();
   };
 
@@ -401,7 +390,7 @@ export default function ConnectedVariablePill({
     setEditorSettled(true);
   };
 
-  if (!variable || !entityInfo) return null;
+  if (!variable) return null;
 
   const validationNames = getActiveValidationNames(variable);
   const syntheticStatus = getVariableSyntheticStatus(variable);
@@ -593,9 +582,11 @@ export default function ConnectedVariablePill({
               sideOffset={6}
             >
               <SyntheticDataEditor
+                entity={entity}
                 formId={editorFormId}
                 onCancelled={closeSyntheticConfiguration}
                 onSaved={closeSyntheticConfiguration}
+                type={type}
                 uuid={uuid}
               />
             </PopoverContent>

@@ -50,6 +50,8 @@ type CreateVariablePayload = {
 };
 
 type UpdateVariablePayload = {
+  entity?: Entity;
+  type?: string;
   variable: string;
   configuration: Partial<Variable>;
   replaceProperties?: readonly VariablePropertyKey[];
@@ -231,6 +233,8 @@ export const updateVariableAsync = createAppAsyncThunk(
     }
 
     const payload: UpdateVariablePayload = {
+      entity,
+      type,
       variable,
       configuration: prune(configuration),
       replaceProperties,
@@ -378,6 +382,8 @@ const codebookSlice = createSlice({
     },
     updateVariable: (state, action: PayloadAction<UpdateVariablePayload>) => {
       const {
+        entity: scopedEntity,
+        type: scopedType,
         variable,
         configuration,
         replaceProperties = [],
@@ -386,7 +392,14 @@ const codebookSlice = createSlice({
       // Use current() to get a non-draft version of state for the selector
       const currentState = current(state);
       const variables = getAllVariableUUIDsByEntity(currentState);
-      const variableInfo = find(variables, ['uuid', variable]);
+      const variableInfo =
+        scopedEntity === undefined
+          ? find(variables, ['uuid', variable])
+          : find(variables, {
+              uuid: variable,
+              entity: scopedEntity,
+              entityType: scopedType ?? null,
+            });
 
       if (!variableInfo) {
         return state;
@@ -435,8 +448,10 @@ export const updateVariableByUUID = (
   variable: string,
   properties: Partial<Variable>,
   replaceProperties: readonly VariablePropertyKey[] = [],
+  scope?: { entity: Entity; type?: string },
 ) =>
   updateVariableAsync({
+    ...scope,
     variable,
     configuration: properties,
     replaceProperties,
