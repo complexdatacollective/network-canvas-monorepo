@@ -29,20 +29,25 @@ type Handlers = {
 
 const acceptMove = () => true;
 
+// The `<li>` mirrors Timeline.tsx: the row is not the list item. Each stage
+// gets one `<li>` holding the insertion point above it and then this card, so
+// that the `<ul>`'s children are the protocol's stages and nothing else.
 const renderRow = (index: number, handlers: Handlers = {}) => {
   const stage = stages[index]!;
   return render(
     <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
-      <TimelineStageRow
-        stage={stage}
-        index={index}
-        stageCount={stages.length}
-        onOpen={handlers.onOpen ?? vi.fn()}
-        onMove={handlers.onMove ?? vi.fn(acceptMove)}
-        onDelete={handlers.onDelete ?? vi.fn()}
-        onDragCommit={vi.fn()}
-        registerOpenControl={vi.fn()}
-      />
+      <li>
+        <TimelineStageRow
+          stage={stage}
+          index={index}
+          stageCount={stages.length}
+          onOpen={handlers.onOpen ?? vi.fn()}
+          onMove={handlers.onMove ?? vi.fn(acceptMove)}
+          onDelete={handlers.onDelete ?? vi.fn()}
+          onDragCommit={vi.fn()}
+          registerOpenControl={vi.fn()}
+        />
+      </li>
     </Reorder.Group>,
   );
 };
@@ -146,16 +151,18 @@ describe('TimelineStageRow', () => {
   it('falls back to a readable name when a stage has no label', () => {
     render(
       <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
-        <TimelineStageRow
-          stage={{ ...stages[0]!, label: '' }}
-          index={0}
-          stageCount={1}
-          onOpen={vi.fn()}
-          onMove={vi.fn(acceptMove)}
-          onDelete={vi.fn()}
-          onDragCommit={vi.fn()}
-          registerOpenControl={vi.fn()}
-        />
+        <li>
+          <TimelineStageRow
+            stage={{ ...stages[0]!, label: '' }}
+            index={0}
+            stageCount={1}
+            onOpen={vi.fn()}
+            onMove={vi.fn(acceptMove)}
+            onDelete={vi.fn()}
+            onDragCommit={vi.fn()}
+            registerOpenControl={vi.fn()}
+          />
+        </li>
       </Reorder.Group>,
     );
 

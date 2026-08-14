@@ -25,6 +25,14 @@ hands focus to the neighbouring stage — or to "Add new stage" when the last on
 goes — and says what was deleted and how many stages are left, rather than
 dropping focus at the top of the page in silence.
 
+The timeline also describes itself honestly now. It is a list of stages, but
+every insertion point between the cards, and the "Add new stage" control at the
+end, counted as members of that list — so a screen reader announced a 32-stage
+protocol as a list of 65 things, and a researcher counting their way down it
+was told the wrong number every time. The list holds its stages and nothing
+else. Each insertion point now belongs to the stage it sits above, which is
+what its own wording already said, and nothing moved in the tab order.
+
 Widths. Timeline rows were a fixed 672px with the delete button parked 160px
 outside them, which put a horizontal scrollbar on the page at tablet width and
 worse on a phone. Rows are now fluid, the actions sit inside the row, and each

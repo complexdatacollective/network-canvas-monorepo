@@ -67,9 +67,10 @@ type TimelineStageRowProps = {
  *
  * The row itself stays a pointer drag surface that opens the stage editor when
  * clicked — that affordance predates this component and researchers rely on it.
- * What it grows is a keyboard path for each of those three actions, because an
- * `<li>` has no activation behaviour of its own and the row previously carried
- * nothing but `tabIndex={0}` and an `onClick`:
+ * What it grows is a keyboard path for each of those three actions, because the
+ * row element has no activation behaviour of its own — it was an `<li>` then
+ * and is a `<div>` now — and previously carried nothing but `tabIndex={0}` and
+ * an `onClick`:
  *
  * - the thumbnail is a real `<button>`, so Enter and Space open the editor;
  * - a grip handle moves the stage with ArrowUp/ArrowDown (and still starts a
@@ -122,7 +123,7 @@ const TimelineStageRow = ({
     [registerOpenControl, stage.id],
   );
 
-  const handleRowPointerDown = (event: PointerEvent<HTMLLIElement>) => {
+  const handleRowPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     pointerStart.current = { x: event.clientX, y: event.clientY };
     didDrag.current = false;
   };
@@ -142,6 +143,13 @@ const TimelineStageRow = ({
 
   return (
     <Reorder.Item
+      // A `<div>`, not the `<li>` this defaults to. The row is not the list
+      // item — `Timeline` renders one `<li>` per stage that holds this row and
+      // the insertion point above it, so that the list's children are its
+      // stages and nothing else. Reorder.Item reaches its group through React
+      // context and registers its own measured box, so it neither needs nor
+      // notices being one element further down the DOM.
+      as="div"
       key={stage.id}
       value={stage}
       layoutId={`timeline-stage-${stage.id}`}

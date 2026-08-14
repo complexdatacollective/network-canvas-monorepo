@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -28,12 +28,19 @@ import {
 } from './skipDestinationGuards';
 import TimelineStageRow from './TimelineStageRow';
 
+// The entrance orchestration, as two named numbers rather than two literals
+// buried in a variant: the trailing "Add new stage" control sits outside the
+// list now (see the render), so it has to work out for itself the step the
+// stagger would have handed it.
+const TIMELINE_ENTRANCE_DELAY = 0.6;
+const TIMELINE_ENTRANCE_STAGGER = 0.08;
+
 const timelineContainerVariants: Variants = {
   hidden: {},
   visible: {
     transition: {
-      delayChildren: 0.6,
-      staggerChildren: 0.08,
+      delayChildren: TIMELINE_ENTRANCE_DELAY,
+      staggerChildren: TIMELINE_ENTRANCE_STAGGER,
     },
   },
 };
@@ -120,6 +127,26 @@ const Timeline = () => {
     setInsertAtIndex(index);
     setShowNewStageDialog(true);
   }, []);
+
+  // The add control used to be the Reorder.Group's last staggered child. It is
+  // not in the list any more, so it carries the delay the orchestration would
+  // have given it: `delayChildren`, then one stagger step for each of the
+  // group's children — an insertion point and a row per stage.
+  const addStageVariants = useMemo<Variants>(
+    () => ({
+      hidden: { opacity: 0 },
+      visible: {
+        opacity: 1,
+        transition: {
+          duration: 0.3,
+          delay:
+            TIMELINE_ENTRANCE_DELAY +
+            TIMELINE_ENTRANCE_STAGGER * orderedStages.length * 2,
+        },
+      },
+    }),
+    [orderedStages.length],
+  );
 
   const handleDeleteStage = useCallback(
     (stageId: string) => {
@@ -274,7 +301,7 @@ const Timeline = () => {
                 `w-full` (the wrapper used to shrink-wrap the old fixed-width rows)
                 so rows can be fluid, and an `@container` so each row sizes itself
                 from the timeline's own width rather than the viewport's. */}
-      <div className="@container relative w-full pt-10">
+      <div className="@container relative flex w-full flex-col items-center gap-1 pt-10">
         {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
             clip-path doesn't share the transform property with Tailwind's
             -translate-x-1/2, so there's no positioning conflict. */}
@@ -289,23 +316,40 @@ const Timeline = () => {
           axis="y"
           onReorder={handleReorder}
           aria-label="Protocol stages"
-          className="relative grid grid-cols-1 justify-items-center gap-1"
+          className="relative grid w-full grid-cols-1 justify-items-center gap-1"
           values={orderedStages}
           initial={animate ? 'hidden' : false}
           animate="visible"
           variants={timelineContainerVariants}
         >
-          {orderedStages.flatMap((stage, index) => {
-            return [
+          {/* One `<li>` per stage and nothing else in the list. A `<ul>` whose
+              children are anything but `<li>` is invalid content, and every
+              insertion point and the trailing add control used to be direct
+              children of this one — so a 32-stage protocol reached assistive
+              technology as a list of 65 things, only half of which were stages.
+
+              The insertion point stays INSIDE the item it sits above rather
+              than beside it. It is the affordance for adding a stage before
+              this one — its accessible name already says exactly that — so it
+              reads as part of that stage's entry, and keeping it here leaves
+              DOM order, and therefore the tab order a researcher has learned,
+              exactly as it was. It stays a sibling of the row rather than a
+              child of it because the row is a drag surface with its own hover
+              group and click-to-open: inside it, pressing the insertion point
+              would start a stage drag and hovering it would light up the stage
+              below. */}
+          {orderedStages.map((stage, index) => (
+            <li
+              key={stage.id}
+              className="grid w-full grid-cols-1 justify-items-center gap-1"
+            >
               <InsertButton
-                key={`insert_${stage.id}`}
                 position={index + 1}
                 nextStageName={stage.label || 'Untitled stage'}
                 onClick={() => handleInsertStage(index)}
                 variants={timelineInsertVariants}
-              />,
+              />
               <TimelineStageRow
-                key={stage.id}
                 stage={stage}
                 index={index}
                 stageCount={orderedStages.length}
@@ -315,29 +359,35 @@ const Timeline = () => {
                 onDragCommit={handleReorderCommit}
                 registerOpenControl={registerOpenControl}
                 variants={timelineStageVariants}
-              />,
-            ];
-          })}
-
-          <motion.button
-            type="button"
-            ref={addStageRef}
-            className={cx(
-              timelineRowGrid,
-              'focusable group mt-3 cursor-pointer p-4',
-            )}
-            onClick={() => handleInsertStage(stages.length)}
-            variants={timelineInsertVariants}
-          >
-            <div />
-            <div className="bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
-              <Plus className="h-6 w-6" strokeWidth={2.5} />
-            </div>
-            <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
-              Add new stage
-            </span>
-          </motion.button>
+              />
+            </li>
+          ))}
         </Reorder.Group>
+
+        {/* Outside the list. Appending a stage is an action ON the timeline, not
+            one of its stages; inside the `<ul>` it would have to be an `<li>` to
+            be valid content, which would only trade invalid markup for a list
+            that claims one stage more than the protocol has. */}
+        <motion.button
+          type="button"
+          ref={addStageRef}
+          className={cx(
+            timelineRowGrid,
+            'focusable group mt-3 cursor-pointer p-4',
+          )}
+          onClick={() => handleInsertStage(stages.length)}
+          initial={animate ? 'hidden' : false}
+          animate="visible"
+          variants={addStageVariants}
+        >
+          <div />
+          <div className="bg-action text-primary-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          </div>
+          <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
+            Add new stage
+          </span>
+        </motion.button>
       </div>
       <NewStageScreen
         open={showNewStageDialog}

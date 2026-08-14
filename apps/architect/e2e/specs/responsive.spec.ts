@@ -102,7 +102,10 @@ for (const viewport of VIEWPORTS) {
     });
     await gotoProtocol(architectPage);
 
-    const row = new Timeline(architectPage).rows().first();
+    // The card, not its list item: the list item also spans the insertion
+    // point above the card, and it is the card's own grid that puts the badge
+    // on the spine.
+    const row = new Timeline(architectPage).stageCards().first();
     await expect(row).toBeVisible();
 
     // The spine is one absolutely-positioned line at `left-1/2` of the

@@ -63,6 +63,80 @@ test('shows the skip-logic icon without a destination note', async ({
   await expect(row.getByText(/^If skipped:/)).toHaveCount(0);
 });
 
+test('reports the list as exactly its stages', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  await expect(timeline.rows()).toHaveCount(protocol.stages.length);
+
+  // Every insertion point and the trailing add control were once direct
+  // children of the `<ul>`. That is invalid list content, and assistive
+  // technology counts a list by its children — so the list announced itself as
+  // twice its own length plus one. `toHaveCount` above cannot see it: the
+  // extra children are not `<li>`s, which is the whole problem.
+  const structure = await architectPage.evaluate(() => {
+    const list = document.querySelector('ul[aria-label="Protocol stages"]');
+    if (!list) throw new Error('stage list not found');
+    const addControl = [...document.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'Add new stage',
+    );
+    if (!addControl) throw new Error('add control not found');
+    return {
+      // Every direct child's tag name, de-duplicated: `['LI']` and nothing else.
+      childTags: [...new Set([...list.children].map((child) => child.tagName))],
+      insertionPointsInsideList: list.querySelectorAll(
+        'button[aria-label^="Add stage here"]',
+      ).length,
+      insertionPointsOutsideAnItem: [
+        ...list.querySelectorAll('button[aria-label^="Add stage here"]'),
+      ].filter((button) => button.parentElement?.tagName !== 'LI').length,
+      addControlIsInsideList: list.contains(addControl),
+    };
+  });
+
+  expect(structure.childTags).toEqual(['LI']);
+  // The insertion points are still there, still one per stage, each inside the
+  // item for the stage it sits above — reachable, not merely removed.
+  expect(structure.insertionPointsInsideList).toBe(protocol.stages.length);
+  expect(structure.insertionPointsOutsideAnItem).toBe(0);
+  expect(structure.addControlIsInsideList).toBe(false);
+});
+
+test('keeps the timeline tab order insertion-point-then-stage', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const [first, second] = protocol.stages;
+  if (!first || !second) throw new Error('fixture needs two stages');
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  // Grouping each insertion point into the list item below it moved elements in
+  // the DOM tree. Tab order is what a researcher actually learned, so it is
+  // asserted directly: the point that inserts before a stage comes immediately
+  // before that stage's own controls, for every stage.
+  await tabUntilFocused(architectPage, timeline.insertButtons().first());
+  for (const label of [first.label, second.label]) {
+    await architectPage.keyboard.press('Tab');
+    await expect(timeline.openControl(label)).toBeFocused();
+    await architectPage.keyboard.press('Tab');
+    await expect(timeline.reorderHandle(label)).toBeFocused();
+    await architectPage.keyboard.press('Tab');
+    await expect(timeline.deleteControl(label)).toBeFocused();
+    await architectPage.keyboard.press('Tab');
+  }
+  // Landed on the insertion point above the third stage, having passed nothing
+  // else in between.
+  await expect(timeline.insertButtons().nth(2)).toBeFocused();
+});
+
 test('reorders stages via drag and commits one moveStage', async ({
   architectPage,
   seed,

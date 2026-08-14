@@ -6,11 +6,15 @@ import { type Locator, type Page } from '@playwright/test';
 // Timeline.tsx / TimelineStageRow.tsx):
 // - `Reorder.Group` defaults its `as` prop to `"ul"` and Timeline.tsx doesn't
 //   override it, so the stage list renders as a `<ul>` carrying the
-//   `justify-items-center` class — unique in the app's source (grepped), so
+//   `justify-items-center` class — unique among the app's `ul`s (grepped), so
 //   it scopes to this list without an ancestor `div` false-matching.
-// - `Reorder.Item` likewise defaults to `"li"`; the `InsertButton` elements
-//   interleaved between stages render as `<button>` (InsertButton.tsx), so a
-//   bare `li` under the scoped root only ever matches stage rows.
+// - That `<ul>` holds exactly one `<li>` per stage and nothing else, so
+//   `rows()` is a stage count. Each `<li>` holds the insertion point that sits
+//   above the stage (a `<button>` — InsertButton.tsx) and then the stage's own
+//   card: the single `<div>` child, which is the `Reorder.Item`
+//   (`as="div"` in TimelineStageRow.tsx). The card is the drag surface, the
+//   hover group and the click-to-open target, so all pointer work goes through
+//   `stageCard`, never the list item that also spans the insertion point.
 // - Each row's stage label renders via fresco-ui's `Heading level="h4"`,
 //   which defaults to a real `<h4>` tag — matched here by accessible role.
 //   That heading is a SIBLING of the row's controls, never their content;
@@ -27,14 +31,30 @@ export class Timeline {
     return this.page.locator('ul.justify-items-center');
   }
 
+  /** The stage list's items — one per stage, and nothing else in the list. */
   rows() {
-    return this.container().locator('li');
+    return this.container().locator(':scope > li');
   }
 
   stageRowByLabel(label: string) {
     return this.rows().filter({
       has: this.page.getByRole('heading', { level: 4, name: label }),
     });
+  }
+
+  /**
+   * The stage's own card within its list item: the drag surface that carries
+   * the row grid, the hover group and click-to-open. Everything measured or
+   * pointed at wants this rather than the list item, which also spans the
+   * insertion point sitting above the card.
+   */
+  stageCard(label: string): Locator {
+    return this.stageRowByLabel(label).locator(':scope > div');
+  }
+
+  /** Every stage card, in timeline order. */
+  stageCards(): Locator {
+    return this.rows().locator(':scope > div');
   }
 
   /** The row's own "open the stage editor" control (the thumbnail). */
@@ -66,13 +86,13 @@ export class Timeline {
   }
 
   async openStage(label: string) {
-    await this.stageRowByLabel(label).click();
+    await this.stageCard(label).click();
     await this.page.waitForURL(/\/protocol\/stage\//);
   }
 
   async dragStage(fromLabel: string, toLabel: string) {
-    const from = this.stageRowByLabel(fromLabel);
-    const to = this.stageRowByLabel(toLabel);
+    const from = this.stageCard(fromLabel);
+    const to = this.stageCard(toLabel);
     // Raw `page.mouse.move` targets viewport-relative coordinates and never
     // triggers a mid-drag auto-scroll the way real pointer input would, so a
     // `to` row several rows below `from` (each ~200px tall) can sit off the
@@ -114,8 +134,9 @@ export class Timeline {
   }
 
   async deleteStage(label: string) {
-    const row = this.stageRowByLabel(label);
-    await row.hover(); // Delete control is opacity-0 until hover or focus.
+    // The card, not the list item: the reveal keys off `group-hover` on the
+    // card, and the list item's centre could fall on the insertion point.
+    await this.stageCard(label).hover();
     await this.deleteControl(label).click();
   }
 }
