@@ -30,27 +30,100 @@ const findFieldContainer = (
 };
 
 /**
- * The first candidate inside `container` that a person can actually operate.
+ * Where an invalid field wants focus sent, in priority order.
+ *
+ * The tiers exist because `querySelector` with a comma list answers in DOCUMENT
+ * ORDER, not selector order: widening one selector to include `button` would
+ * silently change which element wins in any field that renders a button ahead
+ * of its real control. Each tier is queried separately so the established
+ * behaviour (a native form control) always wins, and the wider matches are only
+ * consulted when a field has no native control at all.
+ *
+ * `data-field-focus-target` lets a composite field name its own control
+ * explicitly — the variable picker's "Select variable" button is the control
+ * that actually resolves its error, and it is not the first button in the
+ * field.
+ *
+ * The last tier is what reaches a Base UI Switch. Its real control is a bare
+ * `<button role="switch">` carrying no `tabindex` of its own, so the three
+ * tiers above it match only the `aria-hidden` proxy checkbox beside it — which
+ * `isOperable` then rejects, leaving nothing at all. A form that refuses to
+ * submit has to put focus somewhere the researcher can act.
+ */
+const FOCUS_TARGET_TIERS = [
+  '[data-field-focus-target]',
+  'input:not([type="hidden"]), textarea, select, [contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+  'button:not(:disabled), a[href]',
+];
+
+/**
+ * Rejects candidates that exist in the DOM but are not something a person can
+ * be handed.
  *
  * `input` has to be matched broadly (a control may carry no `tabindex` of its
  * own), which sweeps up the hidden proxy inputs several Base UI primitives
- * render alongside their real control — a Switch renders
- * `<button role="switch">` followed by an `aria-hidden`, `tabindex="-1"`
- * checkbox. Focusing that proxy leaves the person with no visible focus ring
- * and hands a screen reader a node marked as not existing.
+ * render alongside their real control — a Switch renders `<button role="switch">`
+ * followed by an `aria-hidden`, `tabindex="-1"` checkbox. Focusing that proxy
+ * leaves the researcher with no visible focus ring and hands a screen reader a
+ * node marked as not existing.
+ *
+ * `[inert]` is included for the same reason: an inert subtree cannot take focus
+ * at all, so calling `focus()` on something inside one silently leaves focus on
+ * `<body>`.
  */
-const findOperableControl = (container: HTMLElement): HTMLElement | undefined =>
-  [
-    ...container.querySelectorAll<HTMLElement>(
-      'input, textarea, select, [tabindex]:not([tabindex="-1"])',
-    ),
-  ].find(
-    (candidate) =>
-      candidate.getAttribute('aria-hidden') !== 'true' &&
-      candidate.getAttribute('tabindex') !== '-1' &&
-      !candidate.hasAttribute('disabled') &&
-      !candidate.closest('[aria-hidden="true"]'),
-  );
+const isOperable = (candidate: HTMLElement) =>
+  candidate.getAttribute('aria-hidden') !== 'true' &&
+  candidate.getAttribute('tabindex') !== '-1' &&
+  !candidate.hasAttribute('disabled') &&
+  !candidate.closest('[aria-hidden="true"]') &&
+  !candidate.closest('[inert]');
+
+/**
+ * The first control inside `container` that a person can actually operate,
+ * taking the tiers in priority order.
+ *
+ * Deliberately PURE — it is also used as a predicate to decide which errored
+ * field wins, and a predicate that mutated the DOM would stamp every errored
+ * container it merely inspected.
+ */
+const findOperableControl = (
+  container: HTMLElement,
+): HTMLElement | undefined => {
+  for (const selector of FOCUS_TARGET_TIERS) {
+    const match = [...container.querySelectorAll<HTMLElement>(selector)].find(
+      isOperable,
+    );
+    if (match) return match;
+  }
+
+  return undefined;
+};
+
+/**
+ * Last resort: make the field container itself take the focus.
+ *
+ * A field with nothing focusable in it at all still has to take focus, or the
+ * submit that produced the error leaves focus on `<body>` and the error is
+ * never announced. Making the container programmatically focusable is the
+ * standard fallback; `-1` keeps it out of the tab sequence.
+ *
+ * Returns undefined when the container cannot take focus either. Field
+ * containers are looked up across the whole document, so a background form's
+ * field can win while a dialog is open; focusing something inert is a silent
+ * no-op that would leave focus on `<body>` AND permanently mutate a background
+ * element.
+ */
+const makeContainerFocusable = (
+  container: HTMLElement,
+): HTMLElement | undefined => {
+  if (!isOperable(container)) return undefined;
+
+  if (!container.hasAttribute('tabindex')) {
+    container.setAttribute('tabindex', '-1');
+  }
+  return container;
+};
 
 /** The earliest of `containers` in document order. */
 const earliestInDocument = (
@@ -134,23 +207,47 @@ export const focusFirstError = (
   // actually act on. Architect's whole-editor contradiction alert is a
   // container with no control in it, and it renders above every field: without
   // this split it would win document order and swallow the focus for the whole
-  // submission, leaving nothing focused at all.
-  const focusTarget = earliestInDocument(
+  // submission, parking the researcher on a heading with every offending
+  // control still to be found by hand.
+  let focusTarget = earliestInDocument(
     containers.filter((candidate) => findOperableControl(candidate)),
   );
-  const focusableElement = focusTarget
+  let focusableElement = focusTarget
     ? findOperableControl(focusTarget)
     : undefined;
+
+  // Only when NO errored field owns a control does the container itself become
+  // the target. Ordered after the search above, never merged into it: a
+  // container fallback that competed on equal terms would let the contradiction
+  // alert win document order over the real fields below it, which is the case
+  // the split exists to prevent.
+  if (!focusableElement) {
+    focusTarget = earliestInDocument(containers.filter(isOperable));
+    focusableElement = focusTarget
+      ? makeContainerFocusable(focusTarget)
+      : undefined;
+  }
+
   const ownerDocument = scrollTarget.ownerDocument;
 
   // Focus that already sits inside this field is left alone: the person is
   // mid-correction, and re-taking it would reset an in-progress selection
   // (a date input's segment, a text caret) for no gain.
-  if (
-    focusableElement &&
-    focusTarget &&
-    !focusTarget.contains(ownerDocument.activeElement)
-  ) {
+  //
+  // Focus resting on `<body>` or the document element is not a person
+  // mid-correction — it is focus that has been LOST, which is exactly what
+  // happens when the submit button that held it is disabled for the submit and
+  // the browser blurs it. That must never read as "leave it alone"; it is the
+  // case this function exists for.
+  const active = ownerDocument.activeElement;
+  const focusWasLost =
+    active === null ||
+    active === ownerDocument.body ||
+    active === ownerDocument.documentElement;
+  const personIsMidCorrection =
+    !focusWasLost && focusTarget !== undefined && focusTarget.contains(active);
+
+  if (focusableElement && !personIsMidCorrection) {
     focusableElement.focus({ preventScroll: true });
   }
 

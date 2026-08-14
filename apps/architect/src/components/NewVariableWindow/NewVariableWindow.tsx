@@ -1,7 +1,6 @@
 import { values } from 'es-toolkit/compat';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type {
   CreateFormFieldProps,
   FieldValue,
@@ -11,7 +10,6 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { Variable, VariableOptions } from '@codaco/protocol-validation';
 import DialogForm from '~/components/DialogForm/DialogForm';
-import DirtyProbe from '~/components/DialogForm/DirtyProbe';
 import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -173,8 +171,6 @@ export default function NewVariableWindow({
   lockedOptions = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-  const dirtyRef = useRef(false);
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const existingVariables = useAppSelector((state) =>
@@ -234,31 +230,6 @@ export default function NewVariableWindow({
     [dispatch, entity, type, onComplete, lockedOptions, mergedInitialValues],
   );
 
-  const handleCancel = useCallback(async () => {
-    // An untouched form loses nothing, so close immediately. Once the author has
-    // started filling it in, confirm before discarding — so an accidental
-    // backdrop/outside click or Esc can't silently drop a partially-authored
-    // variable.
-    if (!dirtyRef.current) {
-      onCancel();
-      return;
-    }
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'Unsaved Changes',
-      description:
-        'You have unsaved changes. Are you sure you want to close without saving?',
-      actions: {
-        primary: { label: 'Close Without Saving', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
-    if (confirmed) {
-      onCancel();
-    }
-  }, [onCancel, openDialog]);
-
   /**
    * Every open of this window creates a DIFFERENT variable, so each one needs
    * its own field store — the `key` DialogForm documents for exactly this.
@@ -294,13 +265,12 @@ export default function NewVariableWindow({
     <DialogForm
       key={openCount}
       open={show}
-      onClose={() => void handleCancel()}
+      onClose={onCancel}
       title="Create New Variable"
       formId={FORM_ID}
       submitLabel="Save and Close"
       onSubmit={handleSubmit}
     >
-      <DirtyProbe dirtyRef={dirtyRef} />
       <NewVariableFields
         existingVariableNames={existingVariableNames}
         variableTypeOptions={filteredVariableOptions}

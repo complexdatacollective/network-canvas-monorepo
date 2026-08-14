@@ -6,6 +6,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  type ComponentProps,
 } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -35,6 +36,8 @@ const CREATE_NEW_CLASSES =
   'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
 
 const RESULTS_ID = 'variable-spotlight-results';
+
+type ModalPopupProps = ComponentProps<typeof ModalPopup>;
 
 type VariableOption = {
   value: string;
@@ -70,9 +73,15 @@ type VariableSpotlightProps = {
   onSelect: (value: string) => void;
   entity?: string;
   type?: string;
-  onCancel: () => void;
   onCreateOption: (value: string) => void;
   options: VariableOption[];
+  /**
+   * Where focus RETURNS when the picker closes — the control in the parent
+   * dialog that opened it. Without one, dismissing the picker left focus on
+   * `<body>`, from where Tab walked out of the still-open parent dialog
+   * entirely.
+   */
+  finalFocus?: ModalPopupProps['finalFocus'];
 };
 
 const renderEmptyMessage = (icon: ReactNode, children: ReactNode) => (
@@ -88,21 +97,16 @@ const VariableSpotlight = ({
   entity,
   type,
   onSelect,
-  onCancel,
   onCreateOption,
   options,
   disallowCreation = false,
+  finalFocus,
 }: VariableSpotlightProps) => {
   const [filterTerm, setFilterTerm] = useState('');
 
   const resetState = useCallback(() => {
     setFilterTerm('');
   }, []);
-
-  const handleClose = useCallback(() => {
-    resetState();
-    onCancel();
-  }, [onCancel, resetState]);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -251,11 +255,10 @@ const VariableSpotlight = ({
 
   const handleInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Escape') {
-        handleClose();
-        return;
-      }
-
+      // Escape is deliberately NOT handled here. Closing the picker directly
+      // bypassed Base UI's dismissal, so its focus manager never ran and focus
+      // was left on `<body>`; letting the event reach Base UI makes its own
+      // close path — and the focus return below — the single one.
       if (
         (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
         collectionItems.length > 0
@@ -290,7 +293,6 @@ const VariableSpotlight = ({
       collectionItems.length,
       disallowCreation,
       filterTerm,
-      handleClose,
       handleCreateOption,
       hasExactFilterMatch,
       hasFilterTerm,
@@ -345,6 +347,7 @@ const VariableSpotlight = ({
       />
       <ModalPopup
         key="variable-spotlight-popup"
+        finalFocus={finalFocus}
         className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
         <MotionSurface

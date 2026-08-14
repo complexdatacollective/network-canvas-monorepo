@@ -280,13 +280,20 @@ const DialogItem = ({
   onDelete,
   disabled,
   readOnly,
+  editTriggerRef,
 }: ArrayFieldItemProps<ArrayItem>) => {
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
   const { confirm } = useDialog();
+  const rowRef = useRef<HTMLDivElement>(null);
   const interactionDisabled = disabled || readOnly;
   const itemValue = stripManagedProperties(item);
 
   const handleDelete = () => {
+    // Resolved now, while the row is still in the document: after the confirm
+    // the row is gone, and `closest()` from a detached node walks a detached
+    // tree. The list element itself survives.
+    const list = rowRef.current?.closest('[role="list"]') ?? null;
+
     void confirm({
       title: `Remove this ${itemLabel}?`,
       description: `This ${itemLabel} will be removed from the list.`,
@@ -294,13 +301,29 @@ const DialogItem = ({
       cancelLabel: 'Cancel',
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
+      // Cancel returns focus to the Remove control, which is untouched. Confirm
+      // destroys it along with the row, so name a surviving target: whichever
+      // row has taken this one's place, else the list itself.
+      finalFocus: () => {
+        if (!list?.isConnected) return null;
+        // `itemLabel` is caller-supplied, and this runs inside Base UI's
+        // layout-effect cleanup — an unescaped quote would throw a SyntaxError
+        // out of an unmount.
+        const remaining = list.querySelectorAll<HTMLElement>(
+          `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
+        );
+        if (remaining.length === 0) return null;
+        // The row that has taken this one's place, or the last one if this was
+        // the last row.
+        return remaining[Math.min(index, remaining.length - 1)] ?? null;
+      },
     });
   };
 
   if (isBeingEdited || item._draft) return null;
 
   return (
-    <div className="flex w-full items-center gap-3">
+    <div ref={rowRef} className="flex w-full items-center gap-3">
       {isSortable && (
         <ArrayFieldDragHandle
           dragControls={dragControls}
@@ -319,6 +342,7 @@ const DialogItem = ({
         })}
       </div>
       <IconButton
+        ref={editTriggerRef}
         icon={<Pencil />}
         aria-label={`Edit ${itemLabel}`}
         color="dynamic"
@@ -351,6 +375,7 @@ const DialogEditor = ({
   isNewItem,
   onSave,
   onCancel,
+  getEditorTrigger,
 }: ArrayFieldEditorProps<ArrayItem>) => {
   const {
     addTitle,
@@ -553,6 +578,14 @@ const DialogEditor = ({
       onSubmit={handleSave}
       validate={validate}
       editIndex={editIndex}
+      /**
+       * A row hides its own controls while it is being edited, so the Edit
+       * button that opened this dialog is not the element that will be on
+       * screen when the dialog closes. `getEditorTrigger` is called at that
+       * moment and answers with the freshly mounted control — or, for a new
+       * item (which was never a row), with the list's add button.
+       */
+      finalFocus={getEditorTrigger}
       layoutId={
         !session.isNewItem && typeof session.item._internalId === 'string'
           ? session.item._internalId

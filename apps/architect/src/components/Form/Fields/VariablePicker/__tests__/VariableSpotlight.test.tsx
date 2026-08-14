@@ -24,7 +24,6 @@ describe('VariableSpotlight', () => {
           onSelect={noop}
           entity=""
           type=""
-          onCancel={noop}
           onCreateOption={noop}
           options={[]}
         />
@@ -45,7 +44,6 @@ describe('VariableSpotlight', () => {
           onSelect={noop}
           entity=""
           type=""
-          onCancel={noop}
           onCreateOption={noop}
           options={[
             {

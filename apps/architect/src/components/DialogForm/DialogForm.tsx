@@ -1,18 +1,24 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { Layout } from '~/components/EditorLayout';
 
+import { confirmDiscardNestedDraft } from './confirmDiscardNestedDraft';
 import {
   withFormLevelValidate,
   type FormLevelValidate,
   type LenientSubmitHandler,
 } from './formLevelValidate';
+import { isFormStoreDirty } from './formStoreDirty';
+import { useNestedDraft } from './nestedDraftRegistry';
 
 export type DialogFormProps = {
   /** Whether the dialog is open. */
@@ -55,6 +61,12 @@ export type DialogFormProps = {
    */
   layoutId?: string;
   style?: React.CSSProperties;
+  /**
+   * Where focus RETURNS when this dialog closes. Resolve lazily (a function) —
+   * it is read after the exit animation, by which time a control that unmounted
+   * while the dialog was open has been remounted as a different element.
+   */
+  finalFocus?: DialogProps['finalFocus'];
   children?: React.ReactNode;
 };
 
@@ -73,9 +85,25 @@ const DialogFormBody = ({
   editIndex,
   layoutId,
   style,
+  finalFocus,
   children,
 }: DialogFormProps) => {
   const { isSubmitting } = useFormMeta();
+  const storeApi = useContext(FormStoreContext);
+  const { openDialog } = useDialog();
+
+  /**
+   * Every dialog form is guarded by construction. The previous arrangement was
+   * opt-in per caller (`DirtyProbe` + a hand-written confirm in
+   * `NewVariableWindow` and `EntityTypeDialog`), and the array-row editor —
+   * the one in the bug report — simply never opted in.
+   */
+  const isDirty = useCallback(
+    () => (storeApi ? isFormStoreDirty(storeApi) : false),
+    [storeApi],
+  );
+
+  useNestedDraft(open, isDirty);
 
   /**
    * The footer's SubmitButton is not a descendant of the `<form>` — it sits in
@@ -101,9 +129,24 @@ const DialogFormBody = ({
     return `${formId}-${nextDialogFormInstance}`;
   });
 
+  /**
+   * Cancel, the close button, Escape and a backdrop click all arrive here —
+   * fresco-ui's `Dialog` routes every dismissal through the single
+   * `closeDialog` prop — so one gate covers all four. Before this, a dirty
+   * nested editor was discarded silently by every one of them.
+   */
   const handleClose = useCallback(() => {
-    if (!isSubmitting) onClose();
-  }, [isSubmitting, onClose]);
+    if (isSubmitting) return;
+
+    if (!isDirty()) {
+      onClose();
+      return;
+    }
+
+    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
+      if (confirmed) onClose();
+    });
+  }, [isDirty, isSubmitting, onClose, openDialog]);
 
   const handleSubmit = withFormLevelValidate(onSubmit, validate, {
     editIndex,
@@ -118,6 +161,7 @@ const DialogFormBody = ({
       size="editor"
       layoutId={layoutId}
       style={style}
+      finalFocus={finalFocus}
       footer={
         <>
           <Button color="default" onClick={handleClose} disabled={isSubmitting}>

@@ -106,7 +106,6 @@ task.
     disallowCreation: false,
     onOpenChange: fn().mockName('open-changed'),
     onSelect: fn().mockName('variable-selected'),
-    onCancel: fn().mockName('selection-cancelled'),
     onCreateOption: fn().mockName('variable-created'),
   },
   argTypes: {
@@ -142,11 +141,6 @@ task.
     onSelect: {
       control: false,
       description: 'Called with the selected variable UUID.',
-      table: { category: 'Events' },
-    },
-    onCancel: {
-      control: false,
-      description: 'Called when the author cancels the selection workflow.',
       table: { category: 'Events' },
     },
     onCreateOption: {

@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
 
@@ -34,6 +35,18 @@ type ScrollAreaProps = {
   'remeasureKey'?: unknown;
   /** Optional accessible label for the scroll region. */
   'aria-label'?: string;
+  /**
+   * Drop the accessible name while the viewport is not a tab stop.
+   *
+   * For a caller that names the region only so that the STOP announces
+   * something. A named `<section>` is a `region` landmark, so a name that is
+   * always applied adds a landmark whether or not there is anything to reach —
+   * which inside a dialog means a landmark repeating the dialog's own name. A
+   * caller that wants the landmark regardless should just pass a name and leave
+   * this alone.
+   * @default false
+   */
+  'nameWhenScrollableOnly'?: boolean;
 } & Omit<
   React.HTMLAttributes<HTMLElement>,
   | 'onDrag'
@@ -55,13 +68,17 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       snap,
       snapAxis = 'both',
       remeasureKey,
-      tabIndex = 0,
+      tabIndex,
+      nameWhenScrollableOnly = false,
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledBy,
       ...rest
     },
     ref,
   ) => {
     const viewportRef = useRef<HTMLElement>(null);
     const rafIdRef = useRef<number | null>(null);
+    const [overflows, setOverflows] = useState(false);
 
     const updateScrollVariables = useCallback(() => {
       const viewport = viewportRef.current;
@@ -122,6 +139,12 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
 
         // Horizontal overflow
         const hasHorizontalOverflow = scrollWidth > clientWidth;
+
+        // Drives the tab stop. Set from the same measurement that drives the
+        // fades, but deliberately OUTSIDE the `fade` gate below — a region with
+        // `fade={false}` still scrolls, and would otherwise never be reachable
+        // by keyboard.
+        setOverflows(hasVerticalOverflow || hasHorizontalOverflow);
         const overflowXStart = hasHorizontalOverflow
           ? Math.max(0, scrollLeft - padLeft)
           : 0;
@@ -147,9 +170,12 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       });
     }, []);
 
+    // Runs whether or not `fade` is on: it is the only source of the overflow
+    // measurement that decides the tab stop, and `fade={false}` regions
+    // (validation error lists, faceted filters) scroll like any other.
     useEffect(() => {
       const viewport = viewportRef.current;
-      if (!viewport || !fade) return;
+      if (!viewport) return;
 
       // Initial update
       updateScrollVariables();
@@ -163,14 +189,27 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       const resizeObserver = new ResizeObserver(updateScrollVariables);
       resizeObserver.observe(viewport);
 
+      // The viewport's own box is usually pinned by its layout, so content
+      // growing inside it — a tab panel swapped, validation errors appearing,
+      // an async asset arriving — changes `scrollHeight` and resizes nothing.
+      // That is exactly the fits-to-overflows transition the tab stop is
+      // derived from, so it has to be watched directly.
+      const mutationObserver = new MutationObserver(updateScrollVariables);
+      mutationObserver.observe(viewport, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
+
       return () => {
         viewport.removeEventListener('scroll', updateScrollVariables);
         resizeObserver.disconnect();
+        mutationObserver.disconnect();
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
         }
       };
-    }, [fade, updateScrollVariables]);
+    }, [updateScrollVariables]);
 
     useEffect(() => {
       updateScrollVariables();
@@ -187,12 +226,16 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
     };
 
     const isHorizontal = orientation === 'horizontal';
+    const resolvedTabIndex = tabIndex ?? (overflows ? 0 : -1);
+    const isNamed = !nameWhenScrollableOnly || resolvedTabIndex >= 0;
 
     return (
       <div className={cx('relative flex h-full min-h-0 flex-1', className)}>
         <section
           ref={useMergeRefs({ viewportRef, ref })}
-          tabIndex={tabIndex}
+          tabIndex={resolvedTabIndex}
+          aria-label={isNamed ? ariaLabel : undefined}
+          aria-labelledby={isNamed ? ariaLabelledBy : undefined}
           className={cx(
             'focusable',
             'py-2',

@@ -325,6 +325,14 @@ describe('DialogArrayField', () => {
     fireEvent.change(editorInput(), { target: { value: 'Abandoned' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
+    // Cancelling a DIRTY editor now asks first, so the row only comes back
+    // once the (auto-confirmed) discard dialog has resolved.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit item' }),
+      ).toBeInTheDocument(),
+    );
+
     // Re-opening the SAME row must start from its committed values, not from
     // the store the cancelled session left behind.
     fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
@@ -649,5 +657,75 @@ describe('DialogArrayField in the stage form', () => {
     act(() => getHistory().undo());
 
     expect(getFormValues().items as Item[]).toHaveLength(0);
+  });
+});
+
+/**
+ * Where focus goes when a row editor closes.
+ *
+ * The row hides its own controls while it is being edited, so the Edit button
+ * that opened the dialog is unmounted for the whole session and a FRESH one is
+ * mounted on the way back. Nothing captured at open time survives that, which is
+ * why the editor names its return target through `getEditorTrigger`, resolved
+ * when focus is actually returned.
+ */
+describe('DialogArrayField focus return', () => {
+  const settle = async () => {
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Item label' }),
+      ).not.toBeInTheDocument(),
+    );
+    // Base UI returns focus after the popup's exit animation.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  };
+
+  const openEditorFor = async (name: string) => {
+    const trigger = screen.getByRole('button', { name });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+  };
+
+  it('returns focus to the row’s Edit control after Cancel', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    await openEditorFor('Edit item');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Edit item' }),
+    );
+  });
+
+  it('returns focus to the add button after a new item is cancelled', async () => {
+    // A new item was never a row, so there is no Edit control to go back to —
+    // the control that opened the editor is the list's add button.
+    setup();
+
+    await openEditorFor('Create new');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Create new' }),
+    );
+  });
+
+  it('returns focus to the row’s Edit control after a save', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    await openEditorFor('Edit item');
+    fireEvent.change(editorInput(), { target: { value: 'After' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Edit item' }),
+    );
   });
 });

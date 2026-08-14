@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FlattenedErrors } from '../store/types';
 import { focusFirstError } from './focusFirstError';
@@ -222,5 +222,116 @@ describe('focusFirstError', () => {
     focusFirstError(errors);
 
     expect(document.activeElement).toBe(otherInput);
+  });
+});
+
+/**
+ * A field whose only operable control is not a native form control.
+ *
+ * The selector used to be `input, textarea, select, [tabindex]:not([tabindex="-1"])`,
+ * which matches nothing inside Architect's variable picker (a `<fieldset>` and a
+ * `<button>`) — so submitting an incomplete new field rendered its errors and
+ * then left focus on `<body>`.
+ */
+const setupComposite = (build: (field: HTMLElement) => void) => {
+  const scroller = document.createElement('div');
+  scroller.style.overflowY = 'auto';
+  scroller.scrollTo = vi.fn();
+
+  const field = document.createElement('div');
+  field.setAttribute('data-field-path', 'dob');
+  build(field);
+  scroller.appendChild(field);
+  document.body.appendChild(scroller);
+
+  return { field };
+};
+
+describe('focusFirstError target selection', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.replaceChildren();
+  });
+
+  it('focuses a button when the field has no native form control', () => {
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <fieldset><p>No variable selected</p></fieldset>
+        <button type="button">Select variable</button>
+      `;
+    });
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(900);
+
+    expect(document.activeElement).toBe(field.querySelector('button'));
+  });
+
+  it('prefers the control a field nominates over the first one in document order', () => {
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <fieldset><button type="button" id="pill">Edit variable name</button></fieldset>
+        <button type="button" id="picker" data-field-focus-target="">Change variable</button>
+      `;
+    });
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(900);
+
+    expect(document.activeElement).toBe(field.querySelector('#picker'));
+  });
+
+  it('skips a hidden proxy control in favour of the operable one', () => {
+    // Base UI's Switch renders `<button role="switch">` followed by an
+    // aria-hidden, tabindex="-1" proxy checkbox.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <button type="button" role="switch" id="real">Toggle</button>
+        <input type="checkbox" aria-hidden="true" tabindex="-1" id="proxy" />
+      `;
+    });
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(900);
+
+    expect(document.activeElement).toBe(field.querySelector('#real'));
+  });
+
+  it('falls back to the field container when nothing inside it can take focus', () => {
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `<p>Nothing focusable here</p>`;
+    });
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(900);
+
+    expect(document.activeElement).toBe(field);
+    expect(field).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('still moves focus when the submit button that had it was disabled', () => {
+    // Submitting disables the submit button, which the browser blurs — leaving
+    // `document.activeElement` on `<body>`. That is focus being LOST, not the
+    // user moving it, and it must not cancel the move to the invalid field.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `<input id="control" />`;
+    });
+
+    const submit = document.createElement('button');
+    document.body.appendChild(submit);
+    submit.focus();
+    expect(document.activeElement).toBe(submit);
+
+    focusFirstError(errors);
+    submit.disabled = true;
+    submit.blur();
+
+    vi.advanceTimersByTime(900);
+
+    expect(document.activeElement).toBe(field.querySelector('#control'));
   });
 });

@@ -84,7 +84,7 @@ test('discards an invalid stage draft before returning to the start screen', asy
     .getByRole('button', { name: 'Return to start screen', exact: true })
     .click();
   const dialog = architectPage.getByRole('dialog', {
-    name: 'Discard unsaved stage changes?',
+    name: 'Discard unsaved changes?',
   });
   await expect(dialog).toBeVisible();
   await expect(

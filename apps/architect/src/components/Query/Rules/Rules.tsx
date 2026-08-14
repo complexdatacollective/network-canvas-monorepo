@@ -1,5 +1,5 @@
-import { get } from 'es-toolkit/compat';
-import { useCallback, useId, type ComponentType } from 'react';
+import { get, isEqual } from 'es-toolkit/compat';
+import { useCallback, useId, useState, type ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { v4 as uuid } from 'uuid';
 
@@ -8,6 +8,8 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 
 import EditRule from './EditRule';
 import PreviewRules from './PreviewRules';
@@ -55,6 +57,34 @@ const Rules = ({
 }: RulesProps) => {
   const { confirm, openDialog } = useDialog();
   const errorId = useId();
+
+  /**
+   * The rule editor seeds a non-null draft the instant it opens (a type and its
+   * default options), so "a draft exists" says nothing about whether the
+   * researcher has entered anything. Dirtiness is a comparison against that
+   * seeded draft — or, when editing, against the rule as it already stood.
+   */
+  const [draftSession, setDraftSession] = useState<{ seed: Rule } | null>(null);
+  if (draftRule && !draftSession) setDraftSession({ seed: draftRule });
+  if (!draftRule && draftSession) setDraftSession(null);
+
+  const isDraftDirty = useCallback(
+    () =>
+      !!draftRule && !!draftSession && !isEqual(draftRule, draftSession.seed),
+    [draftRule, draftSession],
+  );
+
+  useNestedDraft(!!draftRule, isDraftDirty);
+
+  const handleRequestCancelDraft = useCallback(() => {
+    if (!isDraftDirty()) {
+      handleCancelDraft();
+      return;
+    }
+    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
+      if (confirmed) handleCancelDraft();
+    });
+  }, [handleCancelDraft, isDraftDirty, openDialog]);
   // Default to true: `meta` is optional for callers outside a form store.
   const isTouched = get(meta, 'touched', true) as boolean;
   const hasError = isTouched && !!error;
@@ -138,7 +168,7 @@ const Rules = ({
         codebook={codebook}
         rule={draftRule || undefined}
         onChange={(value) => handleChangeDraft(value as Rule)}
-        onCancel={handleCancelDraft}
+        onCancel={handleRequestCancelDraft}
         onSave={handleSaveDraft}
       />
 

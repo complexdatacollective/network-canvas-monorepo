@@ -2,7 +2,7 @@
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import type React from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
 
 import CloseButton from '../CloseButton';
 import { surfaceSpacingVariants } from '../layout/Surface';
@@ -11,6 +11,11 @@ import { ScrollArea } from '../ScrollArea';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
+import {
+  normaliseFinalFocus,
+  type FinalFocusCloseType,
+  type FinalFocusResult,
+} from '../utils/finalFocus';
 import DialogPopup, { type DialogSize } from './DialogPopup';
 
 // TODO: These seem like they belong in a shared location.
@@ -48,6 +53,18 @@ export type DialogProps = {
    * @default true
    */
   dismissible?: boolean;
+  /**
+   * Where focus goes when the dialog opens. Defaults to Base UI's behaviour
+   * (the popup itself, then its first tabbable child).
+   */
+  initialFocus?: React.ComponentProps<typeof BaseDialog.Popup>['initialFocus'];
+  /**
+   * Where focus RETURNS when the dialog closes. Prefer a function: it is
+   * resolved when focus is actually returned (after the exit animation), so it
+   * can name a control that is remounted by then. Resolve to `null` to keep
+   * Base UI's default; never resolve to `document.body`.
+   */
+  finalFocus?: React.ComponentProps<typeof BaseDialog.Popup>['finalFocus'];
 };
 
 /**
@@ -75,8 +92,64 @@ export default function Dialog({
   className,
   size = 'readable',
   dismissible = true,
+  finalFocus,
   ...rest
 }: DialogProps) {
+  const titleId = useId();
+
+  /**
+   * Remember the control that was focused when this dialog opened, and return
+   * focus to it on close unless the caller names somewhere better.
+   *
+   * Every dialog in the app is controlled — none uses `Dialog.Trigger` — so
+   * Base UI has no `domReference` to go back to, and its remaining fallbacks
+   * resolve to `<body>` or to an unrelated control focused earlier in the
+   * session. Making the opener the default here fixes every direct `Dialog`
+   * caller at once, rather than asking each one to remember.
+   *
+   * Captured during the render that flips `open` to true. A layout effect would
+   * be too late: Base UI's focus manager lives BELOW this component, and child
+   * effects run first, so by then focus is already inside the popup. Reading
+   * `document` is guarded by that transition, so it never runs during SSR.
+   */
+  // Starts `false` even when `open` is already true, so a dialog that MOUNTS
+  // open still captures. Two of Architect's own dialogs do exactly that: they
+  // bump a `key` in the same render that shows them, so the whole subtree
+  // remounts with `open` already true and a transition-only capture would never
+  // fire for them.
+  const [wasOpen, setWasOpen] = useState(false);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open && typeof document !== 'undefined') {
+      const active = document.activeElement;
+      openerRef.current =
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        active !== document.documentElement
+          ? active
+          : null;
+    }
+  }
+
+  const resolveFinalFocus = useCallback(
+    (closeType: FinalFocusCloseType): FinalFocusResult => {
+      const declared = normaliseFinalFocus(finalFocus, closeType);
+      // Anything the caller actually answered with wins; `null` means "no
+      // opinion", which is where the remembered opener comes in.
+      if (declared !== null) return declared;
+
+      const opener = openerRef.current;
+      // A disconnected opener (the row this dialog was editing has been
+      // deleted) must not be handed over: an explicit target bypasses Base UI's
+      // own connectivity check, and focusing a detached node leaves focus on
+      // `<body>`.
+      return opener?.isConnected ? opener : null;
+    },
+    [finalFocus],
+  );
+
   return (
     <Modal
       open={open}
@@ -89,6 +162,7 @@ export default function Dialog({
       <DialogPopup
         key="dialog-popup"
         size={size}
+        finalFocus={resolveFinalFocus}
         className={cx(
           // Accent overrides the primary hue so that nested primary buttons inherit color.
           // Override the primitives (--primary/--primary-contrast) because @theme inline
@@ -106,14 +180,17 @@ export default function Dialog({
       >
         <DialogHeader>
           <div className="min-w-0 flex-1">
-            <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
+            <BaseDialog.Title
+              id={titleId}
+              render={<Heading level="h2" margin="none" />}
+            >
               {title}
             </BaseDialog.Title>
             {header && <div className="mt-4">{header}</div>}
           </div>
           {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
-        <DialogContent>
+        <DialogContent labelledBy={title ? titleId : undefined}>
           {description && (
             <BaseDialog.Description
               render={<Paragraph margin="none" className="max-w-[75ch]" />}
@@ -144,9 +221,24 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const DialogContent = ({ children }: { children: React.ReactNode }) => {
+/**
+ * `labelledBy` names the scroll viewport after the dialog's own title. The
+ * viewport is a tab stop whenever the body overflows (so it can be scrolled by
+ * keyboard — WCAG 2.1.1), and an unnamed, roleless tab stop announces nothing:
+ * it was the "invisible stop after Close" reported in every dialog. A named
+ * `<section>` maps to `role="region"` implicitly, so no explicit role is needed.
+ */
+const DialogContent = ({
+  children,
+  labelledBy,
+}: {
+  children: React.ReactNode;
+  labelledBy?: string;
+}) => {
   return (
     <ScrollArea
+      aria-labelledby={labelledBy}
+      nameWhenScrollableOnly
       viewportClassName={surfaceSpacingVariants({
         section: 'content',
         className: 'py-2!',

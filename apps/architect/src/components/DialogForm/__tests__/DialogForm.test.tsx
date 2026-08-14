@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import DialogForm from '../DialogForm';
+import { hasDirtyNestedDraft } from '../nestedDraftRegistry';
 
 // `FormWithoutProvider` hardcodes `onSubmitInvalid: focusFirstError`
 // (fresco-ui's Form.tsx), so DialogForm relies on it rather than
@@ -333,5 +334,115 @@ describe('DialogForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     });
+  });
+});
+
+/**
+ * Cancel, the close button, Escape and a backdrop click all reach `DialogForm`
+ * through fresco-ui `Dialog`'s single `closeDialog` prop. Before this guard,
+ * every one of them discarded a half-typed nested editor with no warning, and
+ * the guard that did exist was opt-in per caller — which the array-row editor
+ * (the one in the bug report) never opted into.
+ */
+describe('DialogForm unsaved-changes guard', () => {
+  const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
+
+  const renderForm = (onClose: () => void) =>
+    render(
+      <DialogForm
+        open
+        onClose={onClose}
+        title="Edit Field"
+        formId="guard-form"
+        submitLabel="Save"
+        onSubmit={vi.fn()}
+      >
+        <Field
+          name="hint"
+          label="Hint"
+          component={InputField}
+          initialValue="Committed"
+        />
+      </DialogForm>,
+    );
+
+  const cancel = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  it('closes immediately when nothing has been changed', () => {
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    cancel();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(openDialogSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks before discarding an edit, and only closes on confirm', async () => {
+    let resolveDialog: ((value: boolean) => void) | undefined;
+    openDialogSpy.mockReturnValueOnce(
+      new Promise<boolean>((resolve) => {
+        resolveDialog = resolve;
+      }),
+    );
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hint' }), {
+      target: { value: 'DRAFT-HINT' },
+    });
+    cancel();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(openDialogSpy).toHaveBeenCalledTimes(1);
+
+    resolveDialog!(true);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the editor and its values when the discard is declined', async () => {
+    openDialogSpy.mockResolvedValueOnce(false);
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    const hint = screen.getByRole('textbox', { name: 'Hint' });
+    fireEvent.change(hint, { target: { value: 'DRAFT-HINT' } });
+    cancel();
+
+    await waitFor(() => expect(openDialogSpy).toHaveBeenCalledTimes(1));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(hint).toHaveValue('DRAFT-HINT');
+  });
+
+  it('does not nag once an edit has been undone by hand', async () => {
+    // The form store's own `isDirty` is sticky — set by any `setFieldValue` and
+    // cleared only by `reset` — so guarding on it would keep asking about a form
+    // the researcher had already put back. The stage editor's guard rejected it
+    // for the same reason.
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    const hint = screen.getByRole('textbox', { name: 'Hint' });
+    fireEvent.change(hint, { target: { value: 'Changed' } });
+    fireEvent.change(hint, { target: { value: 'Committed' } });
+    cancel();
+
+    expect(openDialogSpy).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers its draft with the navigation guards while it is dirty', async () => {
+    const { unmount } = renderForm(vi.fn());
+
+    expect(hasDirtyNestedDraft()).toBe(false);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hint' }), {
+      target: { value: 'DRAFT-HINT' },
+    });
+    expect(hasDirtyNestedDraft()).toBe(true);
+
+    unmount();
+    expect(hasDirtyNestedDraft()).toBe(false);
   });
 });

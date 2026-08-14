@@ -1,7 +1,7 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -55,15 +55,43 @@ export const VariablePickerControl = ({
   'aria-labelledby': ariaLabelledBy,
 }: VariablePickerProps) => {
   const [showPicker, setShowPicker] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const answeredRef = useRef(false);
+
+  /**
+   * The picker is a modal opened from INSIDE another modal, so leaving focus on
+   * `<body>` when it closes does not just lose the caret: Tab then restarts a
+   * document-order walk and steps straight out of the still-open parent dialog.
+   * Returning focus to the button that opened it keeps the whole interaction
+   * inside the field editor.
+   *
+   * DISMISSAL ONLY. When the picker is closed by actually choosing (or
+   * creating) a variable, the field changes underneath it — a new pill, and for
+   * a stage-level picker a whole validation section that mounts below — and
+   * focus belongs with that new content, not back on the trigger. Putting it on
+   * the trigger there also parks it inside this field's wrapper, whose `onBlur`
+   * fires on the researcher's NEXT click anywhere in the form; the re-render
+   * that follows swallows that click. An end-to-end run caught it exactly
+   * there: the first click on the validation toggle after creating a
+   * quick-add variable did nothing, and the variable kept a `required` rule the
+   * researcher had turned off. That swallowed-click fragility is not this
+   * change's to fix, so this change does not walk into it.
+   */
+  const finalFocus = useCallback(
+    () => (answeredRef.current ? false : triggerRef.current),
+    [],
+  );
 
   const handleSelectVariable = (variable: string) => {
     if (disabled || readOnly) return;
+    answeredRef.current = true;
     onChange?.(variable);
     setShowPicker(false);
   };
 
   const handleCreateOption = (variable: string) => {
     if (disabled || readOnly) return;
+    answeredRef.current = true;
     onChange?.('');
     setShowPicker(false);
     onCreateOption(variable);
@@ -132,11 +160,20 @@ export const VariablePickerControl = ({
           )}
         </fieldset>
         <Button
+          ref={triggerRef}
           type="button"
           icon={<Plus />}
-          onClick={() => setShowPicker(true)}
+          onClick={() => {
+            answeredRef.current = false;
+            setShowPicker(true);
+          }}
           color="primary"
           disabled={disabled || readOnly}
+          // Names this button as where `focusFirstError` should send focus for
+          // this field: it is the control that resolves a "variable is
+          // required" error, and it is not the first focusable element in the
+          // field once a variable has been picked.
+          data-field-focus-target=""
         >
           {value ? 'Change variable' : 'Select variable'}
         </Button>
@@ -149,7 +186,7 @@ export const VariablePickerControl = ({
         entity={entity ?? undefined}
         type={type ?? undefined}
         onSelect={handleSelectVariable}
-        onCancel={() => setShowPicker(false)}
+        finalFocus={finalFocus}
         options={options}
         onCreateOption={handleCreateOption}
         disallowCreation={disallowCreation}

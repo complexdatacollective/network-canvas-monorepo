@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -264,7 +265,7 @@ export const promptLeaveEditor = async (
     const action = draftDirty
       ? await openDialog({
           type: 'choice',
-          title: 'Discard unsaved stage changes?',
+          title: 'Discard unsaved changes?',
           description: discardDescriptions[persistence],
           intent: 'warning',
           size: 'readable',
@@ -330,6 +331,11 @@ const promptDiscardDraft = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void,
+  // Whether the STAGE editor's own draft is what is being discarded. A dirty
+  // editor elsewhere (the Codebook's type editor, a Resources editor) is just
+  // as lossy and must still prompt — but resetting the stage draft for it would
+  // throw away uncommitted stage work the researcher never navigated away from.
+  resetStageDraft = true,
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
@@ -360,7 +366,9 @@ const promptDiscardDraft = async (
 
     guardState.bypass = true;
     try {
-      dispatch(resetDraft(null));
+      if (resetStageDraft) {
+        dispatch(resetDraft(null));
+      }
       performLeave();
     } finally {
       guardState.bypass = false;
@@ -456,7 +464,18 @@ export const useProtocolNavGuard = () => {
         !isStageEditorPath(newPath) &&
         getLiveStageDraftDirty(store.getState());
 
-      if (!leavingProtocol && !leavingDirtyStageEditor) {
+      // A dirty nested editor is unsaved work wherever it is open, and any pop
+      // unmounts it. Deliberately NOT gated on the stage-editor path: the
+      // Codebook's type editor and the Resources editors are just as lossy, and
+      // the path gates above would never reach them.
+      const leavingWithDirtyNestedDraft =
+        !leavingProtocol && hasDirtyNestedDraft();
+
+      if (
+        !leavingProtocol &&
+        !leavingDirtyStageEditor &&
+        !leavingWithDirtyNestedDraft
+      ) {
         syncProtocolHistoryMarker(newPath, destinationMarker);
         return;
       }
@@ -487,8 +506,9 @@ export const useProtocolNavGuard = () => {
         // takes this branch, but the uncommitted (unpersisted) draft would still
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
-          isStageEditorPath(oldPath) &&
-          getLiveStageDraftDirty(store.getState());
+          (isStageEditorPath(oldPath) &&
+            getLiveStageDraftDirty(store.getState())) ||
+          hasDirtyNestedDraft();
         void promptLeaveEditor(
           dispatch,
           openDialog,
@@ -502,7 +522,12 @@ export const useProtocolNavGuard = () => {
         return;
       }
 
-      void promptDiscardDraft(dispatch, openDialog, () => setLocation(newPath));
+      void promptDiscardDraft(
+        dispatch,
+        openDialog,
+        () => setLocation(newPath),
+        leavingDirtyStageEditor,
+      );
     };
 
     window.addEventListener('popstate', onPop);

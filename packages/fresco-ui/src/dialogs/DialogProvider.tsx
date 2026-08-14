@@ -20,6 +20,7 @@ import FormStoreProvider, {
 } from '../form/store/formStoreProvider';
 import SubmitButton from '../form/SubmitButton';
 import Paragraph from '../typography/Paragraph';
+import { resolveFinalFocus, type FinalFocusTarget } from '../utils/finalFocus';
 import { generatePublicId } from '../utils/generatePublicId';
 import Dialog from './Dialog';
 import type { DialogSize } from './DialogPopup';
@@ -33,6 +34,17 @@ type BaseDialog = {
   children?: React.ReactNode;
   className?: string;
   size?: DialogSize;
+  /**
+   * Where focus goes if the control that opened this dialog is gone by the time
+   * it closes — the normal outcome of a destructive confirm, because the action
+   * destroys the control that asked for it. The opener is preferred whenever it
+   * survives (the Cancel branch), so this only has to answer "and if the thing
+   * I was attached to no longer exists?".
+   *
+   * Prefer a function: it is resolved when focus is returned, not when the
+   * dialog opens, so it can name an element rendered in between.
+   */
+  finalFocus?: FinalFocusTarget;
 };
 
 export type AcknowledgeDialog = BaseDialog & {
@@ -139,6 +151,13 @@ type DialogState = AnyDialog & {
   abortController: AbortController | null;
   onConfirmHandler: (() => void | Promise<void>) | null;
   error: string | null;
+  /**
+   * The control that was focused when this dialog was requested. Captured
+   * synchronously at the call, BEFORE the microtask that renders the dialog —
+   * by the time that runs, an action that disabled or replaced the trigger has
+   * already moved focus, and the trail is cold.
+   */
+  opener: HTMLElement | null;
 };
 
 type ConfirmOptions = {
@@ -149,6 +168,11 @@ type ConfirmOptions = {
   cancelLabel?: string;
   intent?: 'default' | 'destructive' | 'warning';
   size?: DialogSize;
+  /**
+   * Where focus goes on the CONFIRM branch, where `onConfirm` has usually just
+   * destroyed the control that opened this dialog. See `BaseDialog.finalFocus`.
+   */
+  finalFocus?: FinalFocusTarget;
 };
 
 export type DialogContextType = {
@@ -164,6 +188,25 @@ export type DialogContextType = {
 };
 
 export const DialogContext = createContext<DialogContextType | null>(null);
+
+/**
+ * Where focus goes when `dialog` closes.
+ *
+ * Returned as a function so Base UI resolves it when focus is actually being
+ * returned (after the exit animation), not when the dialog was rendered.
+ *
+ * Order matters. The opener wins whenever it is still in the document, which
+ * covers Cancel, Escape, the backdrop and the close button. The caller's
+ * fallback answers the confirm branch, where the action has just removed the
+ * opener — an explicit `finalFocus` bypasses Base UI's own connectivity check,
+ * so a destroyed opener would otherwise be focused as a detached node and leave
+ * focus on `<body>`.
+ *
+ * `null` (never `undefined`) is what tells Base UI to fall back to its own
+ * default; `undefined` suppresses focus return altogether.
+ */
+const getDialogFinalFocus = (dialog: DialogState) => () =>
+  resolveFinalFocus(dialog.opener, dialog.finalFocus);
 
 function WizardDialogContent({
   dialog,
@@ -214,6 +257,7 @@ function WizardDialogContent({
       title={wizardProps.title}
       description={wizardProps.description}
       closeDialog={() => void guardedCloseDialog(dialogId, null)}
+      finalFocus={getDialogFinalFocus(dialog)}
       accent={dialog.intent}
       open={dialog.open}
       footer={wizardProps.footer}
@@ -303,6 +347,15 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const openDialog = useCallback(
     <D extends AnyDialog>(dialogProps: D): Promise<DialogReturnType<D>> => {
+      // Read BEFORE the deferral below — see DialogState.opener.
+      const activeElement = document.activeElement;
+      const opener =
+        activeElement instanceof HTMLElement &&
+        activeElement !== document.body &&
+        activeElement !== document.documentElement
+          ? activeElement
+          : null;
+
       return new Promise((resolveCallback) => {
         // Defer to a microtask so callers in React lifecycle methods (e.g.
         // useEffect mount handlers) don't trigger "flushSync was called from
@@ -325,6 +378,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                 open: true,
                 abortController: null,
                 error: null,
+                opener,
               } as DialogState,
             ]),
           );
@@ -482,6 +536,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         description: options.description ?? 'This action cannot be undone.',
         intent: options.intent ?? 'destructive',
         size: options.size,
+        finalFocus: options.finalFocus,
         actions: {
           primary: { label: options.confirmLabel, value: true },
           cancel: {
@@ -603,6 +658,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             title={dialog.title}
             description={dialog.description}
             closeDialog={() => closeDialog(dialog.id)}
+            finalFocus={getDialogFinalFocus(dialog)}
             accent={dialog.intent}
             open={dialog.open}
             footer={
@@ -644,6 +700,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         title={dialog.title}
         description={dialog.description}
         closeDialog={() => closeDialog(dialog.id)}
+        finalFocus={getDialogFinalFocus(dialog)}
         accent={dialog.intent}
         open={dialog.open}
         footer={footer}

@@ -1,10 +1,9 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import DialogForm from '~/components/DialogForm/DialogForm';
-import DirtyProbe from '~/components/DialogForm/DirtyProbe';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor, {
@@ -38,7 +37,6 @@ const EntityTypeDialog = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
-  const dirtyRef = useRef(false);
 
   const isNew = !type;
 
@@ -109,33 +107,6 @@ const EntityTypeDialog = ({
     [dispatch, initialValues, onClose, entity, type, isNew, openDialog],
   );
 
-  const handleCancel = useCallback(async () => {
-    // An untouched form loses nothing, so close immediately. Once the author has
-    // started filling it in, confirm before discarding — including brand-new
-    // types, so an accidental backdrop/outside click can't drop a
-    // partially-authored variable or type.
-    if (!dirtyRef.current) {
-      onClose();
-      return;
-    }
-
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'Unsaved Changes',
-      description:
-        'You have unsaved changes. Are you sure you want to close without saving?',
-      actions: {
-        primary: { label: 'Close Without Saving', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
-
-    if (confirmed) {
-      onClose();
-    }
-  }, [onClose, openDialog]);
-
   /**
    * Every open is a different editing session, so each one needs its own field
    * store — the `key` `DialogForm` documents for exactly this.
@@ -180,14 +151,13 @@ const EntityTypeDialog = ({
       // without closing still remounts, as before.
       key={`${entity}-${type ?? 'new'}-${openCount}`}
       open={show}
-      onClose={() => void handleCancel()}
+      onClose={() => onClose()}
       title={title}
       formId={FORM_ID}
       submitLabel="Save and Close"
       onSubmit={handleSubmit}
       validate={validateEntityType}
     >
-      <DirtyProbe dirtyRef={dirtyRef} />
       <TypeEditor
         entity={entity}
         type={type}

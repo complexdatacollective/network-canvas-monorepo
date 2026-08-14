@@ -89,7 +89,7 @@ describe('promptLeaveEditor', () => {
     if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
     expect(captured.intent).toBe('warning');
     expect(captured.size).toBe('readable');
-    expect(captured.title).toBe('Discard unsaved stage changes?');
+    expect(captured.title).toBe('Discard unsaved changes?');
     expect(captured.description).not.toMatch(/saved automatically/i);
     expect(captured.description).toMatch(
       /have not been saved to the protocol/i,

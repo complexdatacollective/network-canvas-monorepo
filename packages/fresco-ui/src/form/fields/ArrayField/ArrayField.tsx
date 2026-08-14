@@ -119,6 +119,16 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
   disabled: boolean;
   readOnly: boolean;
   dragControls: DragControls;
+  /**
+   * Attach to the control that invokes `onEdit`.
+   *
+   * When an external `editorComponent` closes, ArrayField returns focus here.
+   * It has to be a ref rather than an element captured when editing began,
+   * because a row that renders nothing while `isBeingEdited` unmounts this
+   * control and mounts a FRESH one on the way back — an element captured at
+   * open time is a detached node by the time focus is returned.
+   */
+  editTriggerRef?: (element: HTMLElement | null) => void;
 };
 
 export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
@@ -132,6 +142,14 @@ export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
   // then, rather than wiring a live-looking control to a no-op.
   onSave?: (value: T) => void;
   onCancel: () => void;
+  /**
+   * Resolves the control that opened the current editing session: the edited
+   * row's own `editTriggerRef`, or the add button for a new item.
+   *
+   * Call it when focus is being RETURNED (i.e. pass it as a dialog's
+   * `finalFocus`), not when the editor opens — see `editTriggerRef`.
+   */
+  getEditorTrigger: () => HTMLElement | null;
 };
 
 /**
@@ -300,6 +318,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onDragStartItem: (internalId: string) => void;
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
+  editTriggerRef: (element: HTMLElement | null) => void;
   disabled: boolean;
   readOnly: boolean;
   itemClasses?:
@@ -330,6 +349,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onChange,
     onUpdateItem,
     ItemComponent,
+    editTriggerRef,
     itemClasses,
     disabled,
     readOnly,
@@ -408,6 +428,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         disabled={disabled}
         readOnly={readOnly}
         dragControls={dragControls}
+        editTriggerRef={editTriggerRef}
       />
     </Surface>
   );
@@ -485,6 +506,62 @@ export default function ArrayField<T extends Record<string, unknown>>({
     ? items.findIndex((item) => item._internalId === editingItem._internalId)
     : null;
   const confirmedItemCount = items.filter((item) => !item._draft).length;
+
+  /**
+   * Focus return for an external editor.
+   *
+   * `editTriggerElements` is keyed by `_internalId` and refilled on every
+   * render, so it always holds the CURRENT element for a row — including the
+   * fresh one mounted after a row that hid its controls while being edited
+   * comes back. `lastEditingRef` remembers which session was open, because by
+   * the time focus is returned `editingItem` is already null.
+   */
+  const editTriggerElements = useRef(new Map<string, HTMLElement>());
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const lastEditingRef = useRef<{ internalId: string; isNew: boolean } | null>(
+    null,
+  );
+
+  if (editingItem) {
+    lastEditingRef.current = {
+      internalId: editingItem._internalId,
+      isNew: isAddingNew,
+    };
+  }
+
+  // Cached per row so the ref identity is stable across renders — a fresh
+  // callback each render would make React detach and reattach every row's
+  // trigger on every keystroke.
+  const editTriggerCallbacks = useRef(
+    new Map<string, (element: HTMLElement | null) => void>(),
+  );
+
+  const registerEditTrigger = useCallback((internalId: string) => {
+    const cached = editTriggerCallbacks.current.get(internalId);
+    if (cached) return cached;
+
+    const callback = (element: HTMLElement | null) => {
+      if (element) {
+        editTriggerElements.current.set(internalId, element);
+      } else {
+        editTriggerElements.current.delete(internalId);
+      }
+    };
+    editTriggerCallbacks.current.set(internalId, callback);
+    return callback;
+  }, []);
+
+  const getEditorTrigger = useCallback(() => {
+    const session = lastEditingRef.current;
+    if (session && !session.isNew) {
+      const trigger = editTriggerElements.current.get(session.internalId);
+      // A row deleted while its editor was open has no trigger to go back to.
+      if (trigger?.isConnected) return trigger;
+    }
+    // A new item was never a row, so its opener is the add button — which is
+    // also the best remaining answer for an edited row that has since gone.
+    return addButtonRef.current;
+  }, []);
 
   const latestItemsRef = useRef(items);
   latestItemsRef.current = items;
@@ -617,6 +694,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
         await confirm({
           confirmLabel: 'Delete',
           onConfirm: removeAndAnnounce,
+          // On confirm the row — and the Delete control that opened this — is
+          // gone, so focus has nowhere to return to. The add button is the
+          // surviving control for this list. (Cancel still returns to the row's
+          // own Delete control, which is untouched.)
+          finalFocus: () => addButtonRef.current,
         });
       } else {
         removeAndAnnounce();
@@ -730,6 +812,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   isBeingEdited={editingItem?._internalId === item._internalId}
                   onCancel={cancelEditing}
                   ItemComponent={ItemComponent}
+                  editTriggerRef={registerEditTrigger(item._internalId)}
                   itemClasses={itemClasses}
                   disabled={disabled ?? false}
                   readOnly={readOnly ?? false}
@@ -740,6 +823,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
         </Reorder.Group>
         {!isAtCapacity && (
           <MotionButton
+            ref={addButtonRef}
             layout
             key="add-button"
             color="primary"
@@ -766,6 +850,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
             isNewItem={isAddingNew}
             onSave={isInteractionDisabled ? undefined : commitEditing}
             onCancel={cancelEditing}
+            getEditorTrigger={getEditorTrigger}
           />
         )}
       </motion.div>
