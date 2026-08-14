@@ -28,6 +28,17 @@ import ActionToolbar from './ActionToolbar';
 
 type ProjectActionsProps = {
   additionalItems?: ToolbarSegment[];
+  /**
+   * The page presents the protocol rather than authoring it (the Summary
+   * report), so the authoring affordance is hidden. That affordance is
+   * save-to-source, which overwrites the canonical protocol source files and
+   * exists only in source-authoring dev builds — so in a shipped build this
+   * changes nothing.
+   *
+   * It does NOT gate undo and redo. Those are history recovery, not authoring —
+   * how a researcher takes back a mistake — and #1389 requires them to work
+   * identically on every page carrying this toolbar, Summary included.
+   */
   readOnly?: boolean;
 };
 
@@ -190,29 +201,26 @@ const ProjectActions = ({
         onClick: handleReturnToStart,
       },
       ...additionalItems,
+      // History recovery is available on every page carrying this toolbar,
+      // including read-only ones — see `readOnly` above.
+      { type: 'separator', id: 'project-history-separator' },
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo />,
+        disabled: !canUndo,
+        onClick: handleUndo,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo />,
+        disabled: !canRedo,
+        onClick: handleRedo,
+      },
     ];
-
-    if (!readOnly) {
-      items.push(
-        { type: 'separator', id: 'project-history-separator' },
-        {
-          type: 'button',
-          id: 'undo',
-          label: 'Undo',
-          icon: <Undo />,
-          disabled: !canUndo,
-          onClick: handleUndo,
-        },
-        {
-          type: 'button',
-          id: 'redo',
-          label: 'Redo',
-          icon: <Redo />,
-          disabled: !canRedo,
-          onClick: handleRedo,
-        },
-      );
-    }
 
     items.push(
       { type: 'separator', id: 'project-download-separator' },
@@ -266,7 +274,6 @@ const ProjectActions = ({
     handleUndo,
     isExporting,
     isSavingSource,
-    readOnly,
     sourceSaveSuccess,
   ]);
 

@@ -11,6 +11,7 @@ import type { AppDispatch, RootState } from '~/ducks/store';
 import {
   getCanRedo,
   getCanUndo,
+  getProtocol,
   getRedoTargetPath,
   getUndoTargetPath,
 } from '~/selectors/protocol';
@@ -137,51 +138,87 @@ export const actionCreators = {
 // Export the reducer as default
 export default activeProtocolSlice.reducer;
 
-// Raw timeline operations. These apply silently; do not navigate from here.
-// Only used internally below by undoWithNavigation/redoWithNavigation.
-const undo = () => (dispatch: AppDispatch) => {
-  dispatch(timelineActions.undo());
-};
-
-const redo = () => (dispatch: AppDispatch) => {
-  dispatch(timelineActions.redo());
-};
-
 const currentPath = () =>
   typeof window !== 'undefined' && window.location
     ? window.location.pathname
     : '';
 
-// User-facing undo/redo. Navigation is a discrete, visible step: when the
-// change to be undone/redone was committed on another page, the first press
-// just navigates there (so the change is reverted in view, never off-screen)
-// and the next press applies it. Committed stage edits resolve to the stage
-// list rather than re-opening the editor (see resolveTimelineNavTarget). Same-
-// page and legacy (path-less) entries apply in place.
-export const undoWithNavigation =
-  () => (dispatch: AppDispatch, getState: () => RootState) => {
-    const state = getState();
-    if (!getCanUndo(state)) return;
+/**
+ * What one activation of the history controls actually did, so the caller can
+ * describe it without re-deriving state that has already moved.
+ */
+export type TimelineOperationOutcome = {
+  applied: boolean;
+  /** The page the researcher was moved to, or null if they stayed put. */
+  navigatedTo: string | null;
+};
 
-    const targetPage = resolveTimelineNavTarget(getUndoTargetPath(state));
-    if (targetPage && targetPage !== currentPath()) {
-      navigate(targetPage);
-      return;
+const NOT_APPLIED: TimelineOperationOutcome = {
+  applied: false,
+  navigatedTo: null,
+};
+
+// User-facing undo/redo. One activation always performs one history operation,
+// from whichever page the controls are on (#1389). The route only changes when
+// it is needed to reveal the result — `resolveTimelineNavTarget` owns that
+// decision — so a change recorded on another page that hosts the controls is
+// applied AND brought into view in the same activation, while same-page,
+// experiments, Summary and legacy (path-less) entries apply in place without
+// moving the researcher.
+export const undoWithNavigation =
+  () =>
+  (
+    dispatch: AppDispatch,
+    getState: () => RootState,
+  ): TimelineOperationOutcome => {
+    const state = getState();
+    if (!getCanUndo(state)) return NOT_APPLIED;
+
+    // Resolve the destination before dispatching — undo pops the very entry
+    // whose recorded page we need.
+    const targetPage = resolveTimelineNavTarget(
+      getUndoTargetPath(state),
+      currentPath(),
+    );
+    const previousProtocol = getProtocol(state);
+
+    dispatch(timelineActions.undo());
+
+    // Confirm from state rather than trusting the pre-flight check, so a
+    // reducer that refuses can never be reported (or announced) as applied.
+    if (getProtocol(getState()) === previousProtocol) {
+      return NOT_APPLIED;
     }
 
-    dispatch(undo());
+    const navigatedTo = targetPage || null;
+    if (navigatedTo) navigate(navigatedTo);
+
+    return { applied: true, navigatedTo };
   };
 
 export const redoWithNavigation =
-  () => (dispatch: AppDispatch, getState: () => RootState) => {
+  () =>
+  (
+    dispatch: AppDispatch,
+    getState: () => RootState,
+  ): TimelineOperationOutcome => {
     const state = getState();
-    if (!getCanRedo(state)) return;
+    if (!getCanRedo(state)) return NOT_APPLIED;
 
-    const targetPage = resolveTimelineNavTarget(getRedoTargetPath(state));
-    if (targetPage && targetPage !== currentPath()) {
-      navigate(targetPage);
-      return;
+    const targetPage = resolveTimelineNavTarget(
+      getRedoTargetPath(state),
+      currentPath(),
+    );
+    const previousProtocol = getProtocol(state);
+
+    dispatch(timelineActions.redo());
+
+    if (getProtocol(getState()) === previousProtocol) {
+      return NOT_APPLIED;
     }
 
-    dispatch(redo());
+    const navigatedTo = targetPage || null;
+    if (navigatedTo) navigate(navigatedTo);
+
+    return { applied: true, navigatedTo };
   };

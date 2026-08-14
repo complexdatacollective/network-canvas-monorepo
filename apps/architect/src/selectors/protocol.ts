@@ -150,6 +150,12 @@ export const getCanUndo = (state: RootState): boolean => {
   const past = state.activeProtocol?.past || [];
   if (past.length === 0) return false;
 
+  // The undo reducer refuses without a `present` too (see the timeline
+  // middleware). Mirror its guards here so the control never advertises — and
+  // `undoWithNavigation` never announces — an operation the reducer would
+  // silently drop.
+  if (!state.activeProtocol?.present) return false;
+
   // Don't allow undo if it would take us back to a null state
   const wouldBePresent = past[past.length - 1];
   return wouldBePresent !== null && wouldBePresent !== undefined;

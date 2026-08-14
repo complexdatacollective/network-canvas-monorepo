@@ -256,3 +256,152 @@ test('undoes and redoes a protocol-name edit', async ({
     (current) => current.name === 'Undo Redo Final',
   );
 });
+
+// #1389: activating Undo from a page other than the one the change was made on
+// used to navigate and stop, leaving the change in place until the researcher
+// pressed the same control a second time. Every assertion below reads the
+// canonical IndexedDB row, so a route change alone can never satisfy it.
+//
+// In-app links, never page.goto: the undo timeline is session-local (see
+// ducks/store.ts), so a reload would throw away the history under test.
+test('applies one history operation per activation from Resources', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Cross Page Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await expect(nameField).toHaveValue('Cross Page Seed');
+
+  await nameField.fill('Cross Page Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Renamed',
+  );
+
+  await architectPage.getByRole('link', { name: 'Resources' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+
+  // ONE activation: the change is reverted in the canonical row AND the
+  // researcher is brought to the page that shows it.
+  await toolbar.undo();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Seed',
+  );
+
+  // Redo becomes available from that same activation, and reapplies in one
+  // press without a further route change (we are already on its page).
+  await toolbar.redo();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Cross Page Renamed',
+  );
+});
+
+test('applies one history operation per activation for a codebook change', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Codebook History Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  await architectPage.getByRole('link', { name: 'Codebook' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+
+  // Rename a variable through the codebook's own editor, so the timeline
+  // records the locus at /protocol/codebook (VariablePill.tsx).
+  await architectPage
+    .getByRole('button', {
+      name: 'Edit variable name: biologicalSex',
+      exact: true,
+    })
+    .click();
+  // VariablePill.tsx labels the editor dialog "Edit variable name" and its
+  // input "Variable name".
+  const variableEditor = architectPage.getByRole('dialog', {
+    name: 'Edit variable name',
+  });
+  await variableEditor
+    .getByRole('textbox', { name: 'Variable name' })
+    .fill('biologicalSexRenamed');
+  await variableEditor.getByRole('button', { name: 'Save Changes' }).click();
+  await readProtocolJson(architectPage, (current) =>
+    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+
+  await architectPage.getByRole('link', { name: 'Resources' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/assets$/);
+
+  await toolbar.undo();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+  await readProtocolJson(
+    architectPage,
+    (current) =>
+      !JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+
+  // Same-page redo: reapplies without moving the researcher.
+  await toolbar.redo();
+  await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
+  await readProtocolJson(architectPage, (current) =>
+    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+  );
+});
+
+// Acceptance criterion 1: the history controls behave identically on Summary,
+// which is a read-only report — the authoring affordance (save-to-source) stays
+// hidden there, but recovery does not.
+test('applies one history operation per activation from Summary', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Summary History Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await nameField.fill('Summary History Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Renamed',
+  );
+
+  await architectPage.getByRole('link', { name: 'Summary' }).click();
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
+  await expect(toolbar.button('undo')).toBeVisible();
+  // The authoring affordance stays hidden on the report.
+  await expect(
+    architectPage.getByRole('button', { name: 'Save to source' }),
+  ).toHaveCount(0);
+
+  // The report renders the whole protocol, so the revert is visible in place
+  // and the researcher keeps their position in it.
+  await toolbar.undo();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Seed',
+  );
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
+
+  await toolbar.redo();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'Summary History Renamed',
+  );
+  await expect(architectPage).toHaveURL(/\/protocol\/summary$/);
+});

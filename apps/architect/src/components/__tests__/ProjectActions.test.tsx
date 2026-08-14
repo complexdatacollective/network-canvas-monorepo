@@ -21,18 +21,19 @@ vi.mock('wouter', async () => {
 
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
-const undoMock = vi.fn(() => ({ type: 'activeProtocol/undo' }));
-const redoMock = vi.fn(() => ({ type: 'activeProtocol/redo' }));
+// The real thunks return what the activation did, which useProtocolUndoRedo
+// turns into its polite announcement — so the mocks are thunks returning an
+// outcome, not plain actions.
+const undoMock = vi.fn(() => ({ applied: true, navigatedTo: null }));
+const redoMock = vi.fn(() => ({ applied: true, navigatedTo: null }));
 const clearActiveProtocolMock = vi.fn(() => ({
   type: 'activeProtocol/clearActiveProtocol',
 }));
 
 vi.mock('~/ducks/modules/activeProtocol', () => ({
   // useProtocolUndoRedo dispatches the navigation-aware variants on the main timeline.
-  undoWithNavigation: () => undoMock(),
-  redoWithNavigation: () => redoMock(),
-  undo: () => undoMock(),
-  redo: () => redoMock(),
+  undoWithNavigation: () => () => undoMock(),
+  redoWithNavigation: () => () => redoMock(),
   clearActiveProtocol: () => clearActiveProtocolMock(),
   updateProtocolName: vi.fn((args: unknown) => ({
     type: 'activeProtocol/updateProtocolName',
@@ -173,12 +174,62 @@ describe('<ProjectActions />', () => {
     );
   });
 
-  it('hides undo/redo when readOnly is set', () => {
+  // `readOnly` gates authoring only. History recovery is not authoring, and
+  // #1389 requires undo/redo to work identically on every page carrying the
+  // toolbar — Summary included.
+  it('keeps undo/redo available on a read-only page', () => {
     const store = createTestStore();
     render(<ProjectActions readOnly />, { wrapper: wrap(store) });
 
-    expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+    expect(undoMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /redo/i }));
+    expect(redoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides save-to-source on a read-only page', async () => {
+    sourceAuthoringMock.enabled = true;
+    protocolLibraryMock.getStoredProtocol.mockResolvedValueOnce({
+      id: 'protocol-1',
+      name: 'Test',
+      protocol,
+      schemaVersion: 8,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      sourceRef: { kind: 'sample', id: 'sample' },
+    });
+    const store = createTestStore();
+
+    render(<ProjectActions readOnly />, { wrapper: wrap(store) });
+
+    // The source ref resolves asynchronously; wait for the point at which a
+    // writable page would have shown the action.
+    await waitFor(() => {
+      expect(protocolLibraryMock.getStoredProtocol).toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByRole('button', { name: /save to source/i }),
+    ).toBeNull();
+  });
+
+  it('announces an applied undo in a live region', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Change undone.');
+  });
+
+  it('says nothing when the timeline refused the operation', () => {
+    undoMock.mockReturnValueOnce({ applied: false, navigatedTo: null });
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    fireEvent.click(screen.getByRole('button', { name: /undo/i }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('');
   });
 
   it('renders additional items between Return-to-start and Undo/Redo', () => {
