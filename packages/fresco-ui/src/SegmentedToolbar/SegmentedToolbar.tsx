@@ -180,8 +180,14 @@ export type SegmentedToolbarProps = {
 
 // Layout only — the pill's surface colour and contrast come from `Surface`.
 // A medium effect shadow keeps floating chrome elevated without a heavy halo.
+// `min-w-0 max-w-full` so the pill can shrink: as a flex item its automatic
+// minimum size is its content's, which is what pushed a toolbar wider than its
+// container off the edge of a phone screen instead of letting it fit. The
+// overflow lane lives on the inner `Toolbar.Root`, not here — a non-`visible`
+// `overflow-x` forces `overflow-y` to `auto` on the same box, and this box is
+// the layout-animated `rounded-full` pill that carries the effect shadow.
 const rootLayoutVariants = cva({
-  base: 'effect-shadow-md flex w-fit items-center gap-1 rounded-full p-1.5',
+  base: 'effect-shadow-md flex w-fit max-w-full min-w-0 items-center gap-1 rounded-full p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -732,9 +738,27 @@ export function SegmentedToolbar({
     <Toolbar.Root
       orientation={orientation}
       aria-label={label}
+      // The scroll lane, horizontal only. A toolbar with more segments than its
+      // container can hold scrolls inside itself rather than clipping
+      // off-screen, and every segment stays reachable — moving between segments
+      // with the arrow keys scrolls the focused one into view, and the
+      // scrollbar is left drawn so a pointer user can see there is more.
+      //
+      // `p-[5px] -m-[5px]` is not decoration. A non-`visible` `overflow-x`
+      // computes `overflow-y` to `auto` on the same box, so this lane clips
+      // vertically too — and `.focusable` draws its ring at `outline-offset: 3px`
+      // plus `outline-width: 2px`, i.e. 5px OUTSIDE each segment. Without that
+      // headroom every focused toolbar segment in every app gets its ring
+      // sliced flat. The negative margin gives the space back, so the pill is
+      // exactly the size it was.
+      //
+      // A vertical toolbar overflows on the other axis and would gain nothing
+      // but the clipping, so it keeps `overflow: visible`.
       className={cx(
-        'flex items-center gap-1',
-        orientation === 'vertical' && 'flex-col',
+        'flex min-w-0 items-center gap-1',
+        orientation === 'vertical'
+          ? 'flex-col'
+          : 'm-[-5px] overflow-x-auto overscroll-x-contain p-[5px]',
       )}
     >
       {segments}

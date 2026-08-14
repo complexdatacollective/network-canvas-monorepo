@@ -1,9 +1,9 @@
-import { type Page } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 
 // No `data-testid` seam is added to Timeline.tsx for this — `data-field-name`
 // is the suite's sole deliberately-added app-source seam. Instead this locks
 // onto the real, framer-motion-driven DOM structure (verified from
-// Timeline.tsx):
+// Timeline.tsx / TimelineStageRow.tsx):
 // - `Reorder.Group` defaults its `as` prop to `"ul"` and Timeline.tsx doesn't
 //   override it, so the stage list renders as a `<ul>` carrying the
 //   `justify-items-center` class — unique in the app's source (grepped), so
@@ -13,6 +13,9 @@ import { type Page } from '@playwright/test';
 //   bare `li` under the scoped root only ever matches stage rows.
 // - Each row's stage label renders via fresco-ui's `Heading level="h4"`,
 //   which defaults to a real `<h4>` tag — matched here by accessible role.
+//   That heading is a SIBLING of the row's controls, never their content;
+//   `TimelineStageRow.test.tsx` pins that structurally, because Playwright's
+//   role engine would keep matching an `<h4>` nested inside a button.
 export class Timeline {
   private readonly page: Page;
 
@@ -32,6 +35,34 @@ export class Timeline {
     return this.rows().filter({
       has: this.page.getByRole('heading', { level: 4, name: label }),
     });
+  }
+
+  /** The row's own "open the stage editor" control (the thumbnail). */
+  openControl(label: string): Locator {
+    return this.stageRowByLabel(label).getByRole('button', {
+      name: 'Edit stage',
+    });
+  }
+
+  /** The row's keyboard/pointer reorder handle. */
+  reorderHandle(label: string): Locator {
+    return this.stageRowByLabel(label).getByRole('button', {
+      name: 'Reorder stage',
+    });
+  }
+
+  deleteControl(label: string): Locator {
+    return this.stageRowByLabel(label).getByRole('button', {
+      name: 'Delete stage',
+    });
+  }
+
+  addNewStageButton(): Locator {
+    return this.page.getByRole('button', { name: 'Add new stage' });
+  }
+
+  insertButtons(): Locator {
+    return this.page.getByRole('button', { name: 'Add stage here' });
   }
 
   async openStage(label: string) {
@@ -71,24 +102,20 @@ export class Timeline {
   // Inserts a new stage at `index`. Stage-list positions 0..rows().count()-1
   // are each backed by an "Add stage here" InsertButton (aria-label, one per
   // existing stage, rendered before it); the position past the last stage is
-  // a separate trailing "Add new stage" affordance (a plain `motion.div` with
-  // an onClick, not a `<button>` — matched here by its visible text instead
-  // of role).
+  // the trailing "Add new stage" button.
   async insertAt(index: number) {
-    const insertButtons = this.page.getByRole('button', {
-      name: 'Add stage here',
-    });
+    const insertButtons = this.insertButtons();
     const count = await insertButtons.count();
     if (index < count) {
       await insertButtons.nth(index).click();
       return;
     }
-    await this.page.getByText('Add new stage', { exact: true }).click();
+    await this.addNewStageButton().click();
   }
 
   async deleteStage(label: string) {
     const row = this.stageRowByLabel(label);
-    await row.hover(); // Delete button is opacity-0 until hover.
-    await row.getByRole('button', { name: 'Delete stage' }).click();
+    await row.hover(); // Delete control is opacity-0 until hover or focus.
+    await this.deleteControl(label).click();
   }
 }

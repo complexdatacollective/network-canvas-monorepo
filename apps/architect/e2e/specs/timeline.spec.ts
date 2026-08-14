@@ -1,4 +1,10 @@
+import { type Locator, type Page } from '@playwright/test';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import {
+  readAnnouncements,
+  recordAnnouncements,
+} from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -233,4 +239,385 @@ test('deletes a leaf stage after confirming the destructive dialog', async ({
       ),
     )
     .toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// Keyboard operability (#1388)
+// ---------------------------------------------------------------------------
+
+/**
+ * Presses Tab until `target` holds focus, and fails if it never does. Real Tab
+ * presses, not `locator.focus()`: the defect these guard against is an element
+ * that is not in the tab order at all — and `:focus-visible`, which the
+ * timeline's reveal-on-focus styling keys off, only matches after a genuine
+ * keyboard interaction.
+ */
+async function tabUntilFocused(
+  page: Page,
+  target: Locator,
+  limit = 40,
+): Promise<void> {
+  for (let index = 0; index < limit; index += 1) {
+    await page.keyboard.press('Tab');
+    if (
+      await target.evaluate((element) => element === document.activeElement)
+    ) {
+      return;
+    }
+  }
+  throw new Error(
+    `Tab never reached the expected control within ${limit} stops`,
+  );
+}
+
+test('an empty protocol can gain its first stage from the keyboard', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed({ ...protocol, stages: [] }, { name: 'Empty', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  // The trailing add control used to be a `motion.div` with an onClick: visible,
+  // clickable, and completely absent from the tab order, which left a protocol
+  // with no stages unreachable by keyboard.
+  await tabUntilFocused(architectPage, timeline.addNewStageButton());
+  await architectPage.keyboard.press('Enter');
+
+  await expect(
+    architectPage.getByRole('dialog', { name: 'Select an Interface Type' }),
+  ).toBeVisible();
+
+  await architectPage
+    .getByRole('searchbox', { name: 'Search interfaces' })
+    .fill('Information');
+  await architectPage
+    .getByRole('button')
+    .filter({
+      has: architectPage.getByRole('heading', {
+        level: 4,
+        name: 'Information',
+        exact: true,
+      }),
+    })
+    .click();
+
+  await architectPage.waitForURL(
+    /\/protocol\/stage\/new\?type=Information&insertAtIndex=0$/,
+  );
+});
+
+test('opens a stage with Enter and with Space', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const [first] = stagesOf(await readProtocolJson(architectPage));
+  if (!first) throw new Error('fixture has no stages');
+
+  await timeline.openControl(first.label).press('Enter');
+  await architectPage.waitForURL(new RegExp(`/protocol/stage/${first.id}$`));
+
+  await gotoProtocol(architectPage);
+  // Space specifically: it is the activation a native <button> gives free and
+  // the `<li tabIndex={0}>` this replaced never had.
+  await timeline.openControl(first.label).press('Space');
+  await architectPage.waitForURL(new RegExp(`/protocol/stage/${first.id}$`));
+});
+
+test('still opens a stage from the keyboard after a pointer drag', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const [first, , third] = before;
+  if (!first || !third) throw new Error('fixture must have at least 3 stages');
+
+  const timeline = new Timeline(architectPage);
+  await timeline.dragStage(first.label, third.label);
+  await expect
+    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0]?.id)
+    .not.toBe(first.id);
+
+  // The drag flag that suppresses "a drag that ended where it started" must not
+  // also suppress a later keyboard activation, which carries no pointer
+  // coordinates and no fresh pointerdown to reset it.
+  await timeline.openControl(first.label).press('Enter');
+  await architectPage.waitForURL(new RegExp(`/protocol/stage/${first.id}$`));
+});
+
+test('reorders stages with the arrow keys, announcing where the stage landed', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+  await recordAnnouncements(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const [first, second] = before;
+  if (!first || !second) throw new Error('fixture must have at least 2 stages');
+
+  const timeline = new Timeline(architectPage);
+  const handle = timeline.reorderHandle(first.label);
+  await handle.focus();
+  await handle.press('ArrowDown');
+
+  await expect
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).map((stage) => stage.id),
+    )
+    .toEqual([second.id, first.id, ...before.slice(2).map((s) => s.id)]);
+
+  await expect
+    .poll(() => readAnnouncements(architectPage))
+    .toContain(`Moved stage 1 to position 2 of ${before.length}.`);
+
+  // Focus follows the stage, so a second press keeps moving the same stage
+  // instead of stranding the researcher on <body>.
+  await expect(timeline.reorderHandle(first.label)).toBeFocused();
+});
+
+test('blocks a keyboard reorder that would strand a skip destination', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const [source, destination] = protocol.stages;
+  if (!source || !destination) throw new Error('fixture needs two stages');
+  source.skipLogic = {
+    action: 'SKIP',
+    filter: { join: 'AND', rules: [] },
+    destination: { type: 'stage', stageId: destination.id },
+  };
+
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+  await recordAnnouncements(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const timeline = new Timeline(architectPage);
+  const handle = timeline.reorderHandle(destination.label);
+  await handle.focus();
+  await handle.press('ArrowUp');
+
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot move stage',
+  });
+  await expect(guardDialog).toBeVisible();
+  await guardDialog.getByRole('button', { name: 'OK' }).click();
+
+  // The refused move dispatches nothing, so there is no store change to wait
+  // for; give an erroneously-accepted one time to reach IndexedDB before
+  // asserting it did not, closing the "dialog shown but the move lands anyway"
+  // gap.
+  await architectPage.waitForTimeout(1000);
+  expect(
+    stagesOf(await readProtocolJson(architectPage)).map((stage) => stage.id),
+  ).toEqual(before.map((stage) => stage.id));
+  // The dialog carries the reason, so nothing at all is announced — not merely
+  // "not the announcement a successful move would have made".
+  expect(
+    (await readAnnouncements(architectPage)).filter((message) =>
+      message.startsWith('Moved stage'),
+    ),
+  ).toEqual([]);
+
+  // A refused move must also release the handle's claim on focus. Left armed,
+  // it fires on the NEXT index change from any cause — so delete the stage
+  // above this one, which shifts it up, and assert focus stays where the delete
+  // put it instead of being yanked onto this handle a frame later.
+  const deleteControl = timeline.deleteControl(source.label);
+  await deleteControl.focus();
+  await deleteControl.press('Enter');
+  await architectPage
+    .getByRole('dialog', { name: 'Delete stage' })
+    .getByRole('button', { name: 'Delete stage' })
+    .click();
+  await expect(timeline.rows()).toHaveCount(before.length - 1);
+
+  await expect(timeline.openControl(destination.label)).toBeFocused();
+  await expect(handle).not.toBeFocused();
+});
+
+test('reveals the reorder and delete controls when they take focus', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const [first] = stagesOf(await readProtocolJson(architectPage));
+  if (!first) throw new Error('fixture has no stages');
+
+  // `toBeVisible()` would pass here against the unfixed build: Playwright
+  // considers only the bounding box and `visibility`, and these controls are
+  // `opacity: 0` at full layout size. Opacity is the whole defect, so opacity
+  // is what gets asserted.
+  const deleteControl = timeline.deleteControl(first.label);
+  const reorderHandle = timeline.reorderHandle(first.label);
+  await expect(deleteControl).toHaveCSS('opacity', '0');
+  await expect(reorderHandle).toHaveCSS('opacity', '0');
+
+  await deleteControl.focus();
+  await expect(deleteControl).toHaveCSS('opacity', '1');
+  await expect(reorderHandle).toHaveCSS('opacity', '1');
+});
+
+test('reveals a focused insertion point', async ({ architectPage, seed }) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const insertButton = timeline.insertButtons().first();
+  const insertLabel = insertButton.getByText('Add stage here');
+  await expect(insertLabel).toHaveCSS('opacity', '0');
+
+  await tabUntilFocused(architectPage, insertButton);
+  await expect(insertLabel).toHaveCSS('opacity', '1');
+});
+
+test('returns focus to the insertion point that opened the interface selector', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const insertButton = timeline.insertButtons().nth(1);
+  await insertButton.focus();
+  await insertButton.press('Enter');
+
+  const selector = architectPage.getByRole('dialog', {
+    name: 'Select an Interface Type',
+  });
+  await expect(selector).toBeVisible();
+  await architectPage.keyboard.press('Escape');
+  await expect(selector).toBeHidden();
+
+  await expect(insertButton).toBeFocused();
+});
+
+test('hands focus to a surviving stage after a delete, and says what happened', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+  await recordAnnouncements(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const target = before.find((stage) => stage.label === 'Information');
+  if (!target) throw new Error('fixture is missing an "Information" stage');
+  const deletedPosition = before.indexOf(target) + 1;
+  const successor = before[deletedPosition];
+  if (!successor) throw new Error('"Information" must not be the last stage');
+
+  const timeline = new Timeline(architectPage);
+  const deleteControl = timeline.deleteControl(target.label);
+  await deleteControl.focus();
+  await deleteControl.press('Enter');
+
+  await architectPage
+    .getByRole('dialog', { name: 'Delete stage' })
+    .getByRole('button', { name: 'Delete stage' })
+    .click();
+
+  await expect
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).some(
+        (stage) => stage.id === target.id,
+      ),
+    )
+    .toBe(false);
+
+  // Without an explicit answer for the confirm branch, focus lands on <body>:
+  // the control that opened the dialog is destroyed by the action it confirmed.
+  // Located by the successor's own accessible name rather than through
+  // `openControl`, whose row filter matches by heading text — and this
+  // fixture's "Name Generator" is a prefix of two other stage labels.
+  await expect(
+    // The trailing comma is load-bearing: the control's name continues with the
+    // interface's own title, and this fixture's "Name Generator" is a prefix of
+    // two other stage labels.
+    architectPage.getByRole('button', {
+      name: `Edit stage ${deletedPosition}: ${successor.label},`,
+    }),
+  ).toBeFocused();
+  await expect
+    .poll(() => readAnnouncements(architectPage))
+    .toContain(
+      `Deleted stage ${deletedPosition}. ${before.length - 1} stages remain.`,
+    );
+});
+
+test('returns focus to the delete control when the confirm is cancelled', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const [first] = stagesOf(await readProtocolJson(architectPage));
+  if (!first) throw new Error('fixture has no stages');
+
+  const deleteControl = timeline.deleteControl(first.label);
+  await deleteControl.focus();
+  await deleteControl.press('Enter');
+
+  const confirmDialog = architectPage.getByRole('dialog', {
+    name: 'Delete stage',
+  });
+  await expect(confirmDialog).toBeVisible();
+  await confirmDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirmDialog).toBeHidden();
+
+  await expect(deleteControl).toBeFocused();
+});
+
+test('falls back to the add control when the last stage is deleted', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const [only] = protocol.stages;
+  if (!only) throw new Error('fixture has no stages');
+  await seed({ ...protocol, stages: [only] }, { name: 'Single stage', assets });
+  await gotoProtocol(architectPage);
+  await recordAnnouncements(architectPage);
+
+  const timeline = new Timeline(architectPage);
+  const deleteControl = timeline.deleteControl(only.label);
+  await deleteControl.focus();
+  await deleteControl.press('Enter');
+  await architectPage
+    .getByRole('dialog', { name: 'Delete stage' })
+    .getByRole('button', { name: 'Delete stage' })
+    .click();
+
+  await expect(timeline.rows()).toHaveCount(0);
+  // No neighbouring stage survives, so the list's own add control is the only
+  // place left to put focus.
+  await expect(timeline.addNewStageButton()).toBeFocused();
+  await expect
+    .poll(() => readAnnouncements(architectPage))
+    .toContain('Deleted stage 1. No stages remain.');
 });

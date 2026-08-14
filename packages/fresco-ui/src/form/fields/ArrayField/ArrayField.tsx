@@ -229,7 +229,16 @@ export type ArrayFieldDragHandleProps = {
   dragControls: DragControls;
   index: number;
   itemCount: number;
-  onMove: (targetIndex: number) => void;
+  /**
+   * Move the item to `targetIndex`.
+   *
+   * Return `false` when the move is REFUSED — a list with ordering rules of its
+   * own (Architect's timeline refuses a reorder that would strand a skip
+   * destination) leaves the item where it was, and the handle must then not go
+   * on waiting to reclaim focus. Returning nothing means the move happened,
+   * which is what every caller without ordering rules does.
+   */
+  onMove: (targetIndex: number) => void | boolean;
   disabled?: boolean;
   label?: string;
   className?: string;
@@ -274,8 +283,16 @@ export function ArrayFieldDragHandle({
     // is never lost and no refocus should be scheduled.
     if (targetIndex < 0 || targetIndex > itemCount - 1) return;
 
+    // Armed BEFORE the call, because `onMove` may commit synchronously and the
+    // effect above has to see the flag; disarmed again the moment the list says
+    // it refused. Leaving it armed after a refusal is not harmless: `index`
+    // never changes, so the flag survives until some UNRELATED reorder or
+    // deletion shifts this item — and focus is then yanked onto this handle out
+    // of nowhere, long after the arrow press that armed it.
     refocusAfterMoveRef.current = true;
-    onMove(targetIndex);
+    if (onMove(targetIndex) === false) {
+      refocusAfterMoveRef.current = false;
+    }
   };
 
   return (
@@ -749,9 +766,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
 
   return (
     <LayoutGroup id={id}>
+      {/* `min-w-0`, never a fixed floor. The 24rem `min-w-sm` this carried
+          overflowed every container narrower than itself — measurably the sole
+          source of the horizontal scroll on Architect's stage editor at phone
+          widths — and a field cannot know how much room its host has. */}
       <motion.div
         layoutRoot
-        className="flex w-full min-w-sm flex-col items-start gap-4"
+        className="flex w-full min-w-0 flex-col items-start gap-4"
       >
         <Reorder.Group
           axis="y"

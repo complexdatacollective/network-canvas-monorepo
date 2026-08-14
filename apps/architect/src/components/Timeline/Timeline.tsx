@@ -4,27 +4,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
   getFamilyPedigreeDependentStages,
 } from '~/ducks/modules/protocol/stages';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import filterIcon from '~/images/timeline/filter-icon.svg';
-import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import NewStageScreen from '../Screens/NewStageScreen';
-import StageTypeImage from '../StageTypeImage';
+import {
+  getStageDeletedAnnouncement,
+  getStageMovedAnnouncement,
+} from './announcements';
 import InsertButton from './InsertButton';
+import { timelineRowGrid } from './rowLayout';
 import {
   getSkipDestinationDeleteWarning,
   getSkipDestinationReorderGuard,
 } from './skipDestinationGuards';
+import TimelineStageRow from './TimelineStageRow';
+
 const timelineContainerVariants: Variants = {
   hidden: {},
   visible: {
@@ -64,11 +67,10 @@ const Timeline = () => {
   const protocol = useSelector(getProtocol);
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
-  const pointerStart = useRef({ x: 0, y: 0 });
-  const didDrag = useRef(false);
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('timeline-entrance');
   const animate = !shouldReduceMotion && isFirstMount;
+  const { announce } = useAccessibilityAnnouncements();
 
   // Local order the Reorder list renders from. motion's onReorder fires per
   // row-crossing during a drag; we track the visual order here and only commit a
@@ -79,6 +81,24 @@ const Timeline = () => {
   useEffect(() => {
     setOrderedStages(stages);
   }, [stages]);
+
+  // Every row's "open" control, so a deleted row can hand focus to a surviving
+  // neighbour. Resolved lazily, when focus is actually returned: the list
+  // re-renders between the confirm and the return, so an element captured
+  // earlier would be a dead node.
+  const openControlsRef = useRef(new Map<string, HTMLButtonElement>());
+  const addStageRef = useRef<HTMLButtonElement>(null);
+
+  const registerOpenControl = useCallback(
+    (stageId: string, element: HTMLButtonElement | null) => {
+      if (element) {
+        openControlsRef.current.set(stageId, element);
+      } else {
+        openControlsRef.current.delete(stageId);
+      }
+    },
+    [],
+  );
 
   const deleteStage = useCallback(
     (stageId: string) => {
@@ -100,7 +120,10 @@ const Timeline = () => {
 
   const handleDeleteStage = useCallback(
     (stageId: string) => {
-      const stage = stages.find((candidate) => candidate.id === stageId);
+      const stageIndex = stages.findIndex(
+        (candidate) => candidate.id === stageId,
+      );
+      const stage = stages[stageIndex];
       const skipDestinationWarning = getSkipDestinationDeleteWarning(
         stages,
         stageId,
@@ -122,7 +145,7 @@ const Timeline = () => {
         );
         if (dependents.length > 0) {
           const names = dependents
-            .map((dependent) => `"${dependent.label || 'Untitled'}"`)
+            .map((dependent) => `"${dependent.label || 'Untitled stage'}"`)
             .join(', ');
           void openDialog({
             type: 'acknowledge',
@@ -135,6 +158,11 @@ const Timeline = () => {
         }
       }
 
+      // The row that will occupy this position once the stage is gone — the
+      // next stage, or the previous one when deleting the last row.
+      const successor = stages[stageIndex + 1] ?? stages[stageIndex - 1];
+      const remaining = stages.length - 1;
+
       void confirm({
         title: 'Delete stage',
         description:
@@ -142,10 +170,19 @@ const Timeline = () => {
         confirmLabel: 'Delete stage',
         cancelLabel: 'Cancel',
         intent: 'destructive',
-        onConfirm: () => deleteStage(stageId),
+        onConfirm: () => {
+          deleteStage(stageId);
+          announce(getStageDeletedAnnouncement(stageIndex + 1, remaining));
+        },
+        // Cancel returns to the row's own Delete control, which survives.
+        // Confirm destroys it, and without an answer here focus would land on
+        // `<body>` — silently, in the middle of a destructive action.
+        finalFocus: () =>
+          (successor ? openControlsRef.current.get(successor.id) : undefined) ??
+          addStageRef.current,
       });
     },
-    [confirm, deleteStage, openDialog, stages, protocol],
+    [announce, confirm, deleteStage, openDialog, stages, protocol],
   );
 
   const handleEditStage = useCallback(
@@ -161,47 +198,80 @@ const Timeline = () => {
     setOrderedStages(newOrder);
   }, []);
 
+  // Returns whether the move was committed. The keyboard path passes that
+  // answer back to the drag handle, which is otherwise left waiting to reclaim
+  // focus for a move that never happened.
+  const commitReorder = useCallback(
+    (stageId: string, proposedStages: typeof stages) => {
+      const oldIndex = stages.findIndex((s) => s.id === stageId);
+      const newIndex = proposedStages.findIndex((s) => s.id === stageId);
+
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+        return false;
+      }
+
+      const reorderGuard = getSkipDestinationReorderGuard(
+        stages,
+        proposedStages,
+      );
+
+      if (!reorderGuard.allowed) {
+        setOrderedStages(reorderGuard.restoredStages);
+        void openDialog({
+          type: 'acknowledge',
+          intent: 'warning',
+          ...reorderGuard.warning,
+          actions: { primary: { label: 'OK', value: true } },
+        });
+        return false;
+      }
+
+      setOrderedStages(proposedStages);
+      dispatch(stageActions.moveStage(oldIndex, newIndex));
+      announce(
+        getStageMovedAnnouncement(oldIndex + 1, newIndex + 1, stages.length),
+      );
+      return true;
+    },
+    [announce, dispatch, openDialog, stages],
+  );
+
   // Commit the whole reorder as a single moveStage once the drag ends, using the
   // dragged stage's final position relative to the committed list.
   const handleReorderCommit = useCallback(
     (stageId: string) => {
-      const oldIndex = stages.findIndex((s) => s.id === stageId);
-      const newIndex = orderedStages.findIndex((s) => s.id === stageId);
-
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-        const reorderGuard = getSkipDestinationReorderGuard(
-          stages,
-          orderedStages,
-        );
-
-        if (!reorderGuard.allowed) {
-          setOrderedStages(reorderGuard.restoredStages);
-          void openDialog({
-            type: 'acknowledge',
-            intent: 'warning',
-            ...reorderGuard.warning,
-            actions: { primary: { label: 'OK', value: true } },
-          });
-          return;
-        }
-
-        dispatch(stageActions.moveStage(oldIndex, newIndex));
-      }
+      commitReorder(stageId, orderedStages);
     },
-    [stages, orderedStages, dispatch, openDialog],
+    [commitReorder, orderedStages],
   );
 
-  const itemClasses = cx(
-    'group relative grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4',
-    // Focus state for accessibility
-    'focus:ring-selected focus:ring-2 focus:ring-offset-2 focus:outline-none',
+  // One arrow press is one moveStage, matching the drag contract's one-drag-one-
+  // undo-entry. Runs the proposed order through the same skip-destination guard
+  // the drag path uses, so the keyboard cannot reach an order the pointer can't.
+  const handleKeyboardMove = useCallback(
+    (stageId: string, targetIndex: number) => {
+      const currentIndex = stages.findIndex((s) => s.id === stageId);
+      if (currentIndex === -1) return false;
+      if (targetIndex < 0 || targetIndex > stages.length - 1) return false;
+
+      const proposedStages = [...stages];
+      const [moved] = proposedStages.splice(currentIndex, 1);
+      if (!moved) return false;
+      proposedStages.splice(targetIndex, 0, moved);
+
+      return commitReorder(stageId, proposedStages);
+    },
+    [commitReorder, stages],
   );
 
   return (
     <>
       {/* Wrapper with timeline line. Top padding leaves a stretch of line below
-			    the protocol overview card so the timeline visually connects to it. */}
-      <div className="relative pt-10">
+                the protocol overview card so the timeline visually connects to it.
+                `w-full` (the wrapper used to shrink-wrap the old fixed-width rows)
+                so rows can be fluid, and an `@container` so each row sizes itself
+                from the timeline's own width rather than the viewport's. */}
+      <div className="@container relative w-full pt-10">
         {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
             clip-path doesn't share the transform property with Tailwind's
             -translate-x-1/2, so there's no positioning conflict. */}
@@ -215,6 +285,7 @@ const Timeline = () => {
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
+          aria-label="Protocol stages"
           className="relative grid grid-cols-1 justify-items-center gap-1"
           values={orderedStages}
           initial={animate ? 'hidden' : false}
@@ -225,97 +296,33 @@ const Timeline = () => {
             return [
               <InsertButton
                 key={`insert_${stage.id}`}
+                position={index + 1}
+                nextStageName={stage.label || 'Untitled stage'}
                 onClick={() => handleInsertStage(index)}
                 variants={timelineInsertVariants}
               />,
-              <Reorder.Item
-                tabIndex={0}
+              <TimelineStageRow
                 key={stage.id}
-                value={stage}
-                layoutId={`timeline-stage-${stage.id}`}
-                className={itemClasses}
+                stage={stage}
+                index={index}
+                stageCount={orderedStages.length}
+                onOpen={handleEditStage}
+                onMove={handleKeyboardMove}
+                onDelete={handleDeleteStage}
+                onDragCommit={handleReorderCommit}
+                registerOpenControl={registerOpenControl}
                 variants={timelineStageVariants}
-                onPointerDown={(e) => {
-                  pointerStart.current = { x: e.clientX, y: e.clientY };
-                  didDrag.current = false;
-                }}
-                onDragStart={() => {
-                  didDrag.current = true;
-                }}
-                onDragEnd={() => {
-                  handleReorderCommit(stage.id);
-                }}
-                onClick={(e) => {
-                  // A drag that returns to its origin ends near the pointer's
-                  // start, so the distance check alone can't tell it from a
-                  // click — the drag flag suppresses opening the editor.
-                  if (didDrag.current) {
-                    return;
-                  }
-                  const dx = e.clientX - pointerStart.current.x;
-                  const dy = e.clientY - pointerStart.current.y;
-                  if (dx * dx + dy * dy < 25) {
-                    handleEditStage(stage.id);
-                  }
-                }}
-              >
-                <div className="justify-self-end">
-                  <StageTypeImage
-                    type={stage.type}
-                    ratio="4:3"
-                    sizes="14rem"
-                    className="pointer-events-none w-56 rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
-                  />
-                </div>
-                <div className="bg-timeline text-timeline-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
-                  {index + 1}
-                </div>
-                <div className="justify-self-start">
-                  <Heading
-                    level="h4"
-                    margin="none"
-                    className="my-2 transition-all group-hover:font-bold"
-                  >
-                    {stage.label || '\u00A0'}
-                  </Heading>
-                  {(stage.hasFilter || stage.hasSkipLogic) && (
-                    <div className="mt-1 flex items-center gap-1">
-                      {stage.hasFilter && (
-                        <img
-                          src={filterIcon}
-                          alt="Has filter"
-                          title="Has filter"
-                          className="h-5 w-5"
-                        />
-                      )}
-                      {stage.hasSkipLogic && (
-                        <img
-                          src={skipLogicIcon}
-                          alt="Has skip logic"
-                          title="Has skip logic"
-                          className="h-5 w-5"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="absolute top-1/2 -right-40 -translate-y-1/2 opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteStage(stage.id);
-                    }}
-                    color="destructive"
-                  >
-                    Delete stage
-                  </Button>
-                </div>
-              </Reorder.Item>,
+              />,
             ];
           })}
 
-          <motion.div
-            className="group mt-3 grid w-2xl cursor-pointer grid-cols-[1fr_auto_1fr] items-center gap-10 p-4"
+          <motion.button
+            type="button"
+            ref={addStageRef}
+            className={cx(
+              timelineRowGrid,
+              'focusable group mt-3 cursor-pointer p-4',
+            )}
             onClick={() => handleInsertStage(stages.length)}
             variants={timelineInsertVariants}
           >
@@ -326,7 +333,7 @@ const Timeline = () => {
             <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
               Add new stage
             </span>
-          </motion.div>
+          </motion.button>
         </Reorder.Group>
       </div>
       <NewStageScreen
