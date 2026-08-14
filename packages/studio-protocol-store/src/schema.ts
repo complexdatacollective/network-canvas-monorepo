@@ -68,6 +68,27 @@ CREATE TRIGGER protocol_versions_immutable
 CREATE TRIGGER version_sections_immutable
   BEFORE UPDATE OR DELETE ON version_sections
   FOR EACH ROW EXECUTE FUNCTION protocol_versions_are_immutable();
+
+-- Pins may only be written by the transaction that created the version row
+-- itself (xmin equals the current transaction): inserting a pin later would
+-- change what the version assembles to while its frozen manifest and hash
+-- stay unchanged.
+CREATE FUNCTION version_sections_pins_are_frozen() RETURNS trigger AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM protocol_versions v
+    WHERE v.id = NEW.version_id
+      AND v.xmin = pg_current_xact_id()::xid
+  ) THEN
+    RAISE EXCEPTION 'published protocol versions are immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER version_sections_insert_frozen
+  BEFORE INSERT ON version_sections
+  FOR EACH ROW EXECUTE FUNCTION version_sections_pins_are_frozen();
 `;
 
 /**

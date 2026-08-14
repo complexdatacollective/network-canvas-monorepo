@@ -84,6 +84,28 @@ function stageOrderOf(doc: SectionDoc): string[] {
   return order as string[];
 }
 
+/**
+ * Structural edits rewrite or remove sections outside the lease/command
+ * protocol, so any lease on an affected section must be fenced in the same
+ * transaction: expire in place AND bump the epoch (expiry alone would let
+ * the holder's already-queued commits race the expiry check; the epoch bump
+ * rejects them outright, and epochs stay monotonic per #1247's release
+ * semantics). Without this, a pending moveItem would apply against a
+ * rewritten stage order, and a section removed and re-added while leased
+ * would accept the old owner's stale edits (ABA).
+ */
+async function fenceLeases(
+  client: pg.PoolClient,
+  draftId: string,
+  sectionIds: string[],
+): Promise<void> {
+  await client.query(
+    `UPDATE leases SET epoch = epoch + 1, expires_at = clock_timestamp()
+     WHERE draft_id = $1 AND section_id = ANY($2)`,
+    [draftId, sectionIds],
+  );
+}
+
 /** Writes the changed sections and advances the manifest by one. */
 async function advanceManifest(
   client: pg.PoolClient,
@@ -187,6 +209,7 @@ export async function addStage(
     }
     const newOrder = [...order];
     newOrder.splice(index, 0, stageId);
+    await fenceLeases(client, params.draftId, [orderId, id]);
     return advanceManifest(
       client,
       params.draftId,
@@ -216,6 +239,7 @@ export async function removeStage(
     }
     const order = stageOrderOf(await loadDoc(client, orderHash));
     const newOrder = order.filter((entry) => entry !== params.stageId);
+    await fenceLeases(client, params.draftId, [orderId, id]);
     return advanceManifest(
       client,
       params.draftId,
@@ -252,6 +276,7 @@ export async function addCodebookEntity(
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`codebook section ${id} already exists`);
     }
+    await fenceLeases(client, params.draftId, [id]);
     return advanceManifest(
       client,
       params.draftId,
@@ -272,6 +297,7 @@ export async function removeCodebookEntity(
     if (head.sectionHashes[id] === undefined) {
       throw new DraftStructureError(`no codebook section ${id} in draft`);
     }
+    await fenceLeases(client, params.draftId, [id]);
     return advanceManifest(client, params.draftId, head, {}, [id]);
   });
 }

@@ -44,6 +44,26 @@ describe('sectionize/assemble round trip', () => {
     const assembled = assembleProtocol(sectionizeProtocol(protocol));
     expect(assembled).toEqual(protocol);
   });
+
+  it('round-trips a __proto__ entity type id without losing it', () => {
+    // JSON-parsed documents carry __proto__ as an own property; a plain
+    // object assignment in assembly would invoke the prototype setter and
+    // silently drop the entity.
+    const protocol = JSON.parse(
+      JSON.stringify(baseProtocol()).replaceAll('"person"', '"__proto__"'),
+    ) as ReturnType<typeof baseProtocol>;
+    const assembled = assembleProtocol(sectionizeProtocol(protocol)) as {
+      codebook: { node: Record<string, unknown> };
+    };
+    expect(Object.hasOwn(assembled.codebook.node, '__proto__')).toBe(true);
+    expect(assembled).toEqual(protocol);
+  });
+
+  it('rejects an empty stage id instead of emitting an unaddressable section', () => {
+    const protocol = baseProtocol();
+    (protocol.stages[0] as { id: string }).id = '';
+    expect(() => sectionizeProtocol(protocol)).toThrow(/non-empty/);
+  });
 });
 
 describe('golden hashes', () => {
@@ -57,6 +77,7 @@ describe('golden hashes', () => {
     );
     expect(sectionHashes).toMatchInlineSnapshot(`
       {
+        "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
         "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
         "settings": "33bcea42c6ed2254d837ad0b27e16e5fc5d2f796315a6428b8cd83afe987e191",
@@ -66,7 +87,7 @@ describe('golden hashes', () => {
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"e31d7f8aa3ddf64f44068358772d8284725d2b21b4a4e121a66bfbb54a1ab054"`,
+      `"d9436b37cd02263b026e25ac357fe89f0ebef0a9da97e9e1812511a46e1ea056"`,
     );
   });
 });

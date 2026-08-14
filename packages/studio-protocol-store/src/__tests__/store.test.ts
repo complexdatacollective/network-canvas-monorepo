@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer } from '@codaco/studio-sync/server';
+import { LeaseRejectedError, SyncServer } from '@codaco/studio-sync/server';
 
 import {
   DraftStructureError,
@@ -190,6 +190,75 @@ describe.skipIf(!dbAvailable)('ProtocolStore drafts', () => {
       codebook: { node: Record<string, unknown> };
     };
     expect(Object.keys(document.codebook.node)).toEqual(['person']);
+  });
+
+  it('structural ops fence the stageOrder lease, rejecting stale positional commits', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(draftId, 'stageOrder', 'editor-tab');
+    expect(lease).not.toBeNull();
+
+    await addStage(db, {
+      draftId,
+      stage: {
+        id: 'infoFence',
+        type: 'Information',
+        label: 'Fence',
+        title: 'Fence',
+        items: [{ id: 'item1', type: 'text', content: 'Z.' }],
+      },
+      index: 0,
+    });
+
+    // The pending moveItem described indices of the pre-insertion list; the
+    // fence (epoch bump + expiry) must reject it rather than apply it to the
+    // rewritten order.
+    await expect(
+      sync.commit({
+        draftId,
+        sectionId: 'stageOrder',
+        owner: 'editor-tab',
+        epoch: lease!.epoch,
+        clientSeq: 1n,
+        commands: [{ op: 'moveItem', key: 'stages', from: 0, to: 1 }],
+      }),
+    ).rejects.toThrow(LeaseRejectedError);
+  });
+
+  it('removal fences the section lease, so a re-added section rejects stale edits (ABA)', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(
+      draftId,
+      'codebook:edge:knows',
+      'editor-tab',
+    );
+    expect(lease).not.toBeNull();
+
+    await removeCodebookEntity(db, {
+      draftId,
+      ref: { entity: 'edge', typeId: 'knows' },
+    });
+    await addCodebookEntity(db, {
+      draftId,
+      ref: { entity: 'edge', typeId: 'knows' },
+      definition: { name: 'Knows', color: 'edge-color-seq-2' },
+    });
+
+    await expect(
+      sync.commit({
+        draftId,
+        sectionId: 'codebook:edge:knows',
+        owner: 'editor-tab',
+        epoch: lease!.epoch,
+        clientSeq: 1n,
+        commands: [{ op: 'set', key: 'name', value: 'Stale' }],
+      }),
+    ).rejects.toThrow(LeaseRejectedError);
   });
 
   it('discardDraft removes every draft row', async () => {

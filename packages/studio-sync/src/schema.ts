@@ -43,7 +43,11 @@ CREATE TABLE leases (
   PRIMARY KEY (draft_id, section_id)
 );
 
--- Command log: unique constraint delivers write-path idempotency.
+-- Command log: unique constraint delivers write-path idempotency. created_at
+-- bounds garbage collection (#1276): a row may be pruned only after the
+-- client-retry horizon has passed AND its (owner, epoch) lease is no longer
+-- live, because a retransmitted client_seq must keep finding its recorded
+-- result for as long as retransmission is possible.
 CREATE TABLE command_log (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   draft_id uuid NOT NULL,
@@ -53,6 +57,7 @@ CREATE TABLE command_log (
   client_seq bigint NOT NULL,
   commands jsonb NOT NULL,
   manifest_seq bigint NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (draft_id, section_id, owner, epoch, client_seq)
 );
 `;

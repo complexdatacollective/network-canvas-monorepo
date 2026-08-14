@@ -1,7 +1,7 @@
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SyncServer } from '@codaco/studio-sync/server';
+import { SyncServer, forceExpire } from '@codaco/studio-sync/server';
 
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
@@ -60,9 +60,14 @@ describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
     await commitDescription(db, draftId, 'final', 2n);
     const head = await store.getDraftSections(draftId);
 
+    // The settings lease is still live, which would (correctly) retain the
+    // idempotency records; this test is about the manifest/section window,
+    // so expire it and use a zero retry horizon.
+    await forceExpire(db, draftId, 'settings');
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
       sectionGraceMs: 0,
+      commandRetryHorizonMs: 0,
     });
 
     // Manifests seq 0 and 1 pruned, their command_log rows with them.
@@ -87,19 +92,93 @@ describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
     );
   });
 
-  it('rejects a negative or non-finite grace window', async () => {
+  it('rejects negative or non-finite bounds', async () => {
     await expect(
-      gcProtocolStore(db, { retainManifestsPerDraft: 0, sectionGraceMs: -1 }),
+      gcProtocolStore(db, {
+        retainManifestsPerDraft: 0,
+        sectionGraceMs: -1,
+        commandRetryHorizonMs: 0,
+      }),
     ).rejects.toThrow(/sectionGraceMs/);
     await expect(
       gcProtocolStore(db, {
         retainManifestsPerDraft: 0,
         sectionGraceMs: Number.NaN,
+        commandRetryHorizonMs: 0,
       }),
     ).rejects.toThrow(/sectionGraceMs/);
     await expect(
-      gcProtocolStore(db, { retainManifestsPerDraft: 0.5, sectionGraceMs: 0 }),
+      gcProtocolStore(db, {
+        retainManifestsPerDraft: 0,
+        sectionGraceMs: 0,
+        commandRetryHorizonMs: -1,
+      }),
+    ).rejects.toThrow(/commandRetryHorizonMs/);
+    await expect(
+      gcProtocolStore(db, {
+        retainManifestsPerDraft: 0.5,
+        sectionGraceMs: 0,
+        commandRetryHorizonMs: 0,
+      }),
     ).rejects.toThrow(/retainManifestsPerDraft/);
+  });
+
+  it('a live lease retains idempotency records, and dedup replay still works after GC', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(draftId, 'settings', 'retry-tab');
+    await sync.commit({
+      draftId,
+      sectionId: 'settings',
+      owner: 'retry-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'description', value: 'first' }],
+    });
+    await sync.commit({
+      draftId,
+      sectionId: 'settings',
+      owner: 'retry-tab',
+      epoch: lease!.epoch,
+      clientSeq: 2n,
+      commands: [{ op: 'set', key: 'description', value: 'second' }],
+    });
+
+    const result = await gcProtocolStore(db, {
+      retainManifestsPerDraft: 0,
+      sectionGraceMs: 0,
+      commandRetryHorizonMs: 0,
+    });
+    expect(result.commandLogDeleted).toBe(0);
+
+    // A lost-acknowledgement retransmission must find its recorded result —
+    // including the manifest it points at, which GC must not have pruned.
+    const replay = await sync.commit({
+      draftId,
+      sectionId: 'settings',
+      owner: 'retry-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'description', value: 'first' }],
+    });
+    expect(replay.deduped).toBe(true);
+    expect(replay.manifestSeq).toBe(1n);
+  });
+
+  it('the retry horizon retains idempotency records after lease expiry', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    await commitDescription(db, draftId, 'kept', 30n);
+    await forceExpire(db, draftId, 'settings');
+    const result = await gcProtocolStore(db, {
+      retainManifestsPerDraft: 0,
+      sectionGraceMs: 0,
+      commandRetryHorizonMs: 60_000,
+    });
+    expect(result.commandLogDeleted).toBe(0);
   });
 
   it('re-adopting an existing section refreshes created_at, restarting the grace window', async () => {
@@ -135,6 +214,7 @@ describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
       sectionGraceMs: 60_000,
+      commandRetryHorizonMs: 0,
     });
     expect(result.sectionsDeleted).toBe(0);
   });
@@ -151,6 +231,7 @@ describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
     await gcProtocolStore(db, {
       retainManifestsPerDraft: 1,
       sectionGraceMs: 0,
+      commandRetryHorizonMs: 0,
     });
     // seq cutoff keeps the head and one predecessor; the superseded settings
     // doc is still referenced by the retained predecessor manifest.

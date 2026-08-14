@@ -34,8 +34,18 @@ export function assembleProtocol(
   let ego: SectionDoc | undefined;
   let assets: SectionDoc | undefined;
   const stageDocs = new Map<string, SectionDoc>();
-  const node: Record<string, SectionDoc> = {};
-  const edge: Record<string, SectionDoc> = {};
+  // Null prototypes: type ids are schema-valid identifiers that may collide
+  // with Object.prototype members ('__proto__' passes VariableNameSchema),
+  // and assigning that key into an ordinary object invokes the prototype
+  // setter instead of creating an entry.
+  const node: Record<string, SectionDoc> = Object.create(null) as Record<
+    string,
+    SectionDoc
+  >;
+  const edge: Record<string, SectionDoc> = Object.create(null) as Record<
+    string,
+    SectionDoc
+  >;
 
   for (const [id, doc] of Object.entries(sections)) {
     const ref = parseSectionId(id);
@@ -90,6 +100,10 @@ export function assembleProtocol(
   if (ego !== undefined) codebook.ego = ego;
 
   const protocol: Record<string, unknown> = { ...settings, codebook, stages };
-  if (assets !== undefined) protocol.assetManifest = assets;
+  // Every draft carries an assets section so the sync engine can lease and
+  // edit it; an empty manifest normalizes back to the absent field.
+  if (assets !== undefined && Object.keys(assets).length > 0) {
+    protocol.assetManifest = assets;
+  }
   return protocol;
 }

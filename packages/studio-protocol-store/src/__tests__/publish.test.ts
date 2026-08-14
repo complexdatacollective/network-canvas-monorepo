@@ -93,6 +93,34 @@ describe.skipIf(!dbAvailable)('publishDraft', () => {
     expect(await store.listVersions(protocolId)).toHaveLength(0);
   });
 
+  it('rejects a stage whose document id was edited out from under its section key', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(
+      draftId,
+      'stage:nameGenerator1',
+      'rename-tab',
+    );
+    await sync.commit({
+      draftId,
+      sectionId: 'stage:nameGenerator1',
+      owner: 'rename-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'id', value: 'renamed' }],
+    });
+
+    const result = await store.publishDraft({ draftId });
+    expect(result.status).toBe('invalid');
+    if (result.status !== 'invalid') throw new Error('unreachable');
+    expect(JSON.stringify(result.issues)).toContain('stage:nameGenerator1');
+
+    const validation = await store.validateDraft(draftId);
+    expect(validation.valid).toBe(false);
+  });
+
   it('republishing identical content is an idempotent no-op', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
@@ -197,10 +225,19 @@ describe.skipIf(!dbAvailable)('publishDraft', () => {
       `SELECT section_hash FROM version_sections WHERE version_id = $1 LIMIT 1`,
       [result.versionId],
     );
+    const pinnedHash = (pin.rows[0] as { section_hash: string }).section_hash;
     await expect(
-      db.query(`DELETE FROM sections WHERE hash = $1`, [
-        (pin.rows[0] as { section_hash: string }).section_hash,
-      ]),
+      db.query(`DELETE FROM sections WHERE hash = $1`, [pinnedHash]),
     ).rejects.toThrow(/violates foreign key/);
+
+    // Nor may a pin be ADDED after publication: that would change what the
+    // version assembles to while its frozen manifest and hash stay unchanged.
+    await expect(
+      db.query(
+        `INSERT INTO version_sections (version_id, section_id, section_hash)
+         VALUES ($1, 'stage:smuggled', $2)`,
+        [result.versionId, pinnedHash],
+      ),
+    ).rejects.toThrow(/immutable/);
   });
 });

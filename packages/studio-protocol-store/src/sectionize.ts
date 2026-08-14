@@ -38,6 +38,12 @@ export function sectionizeProtocol(
 
   const stageIds: string[] = [];
   for (const stage of protocol.stages) {
+    // The canonical stage schema tolerates an empty id, but the taxonomy
+    // cannot address it (and neither could skip logic or diffs) — reject it
+    // here rather than emit an unparseable section id.
+    if (stage.id === '') {
+      throw new SectionizeError('stage id must be non-empty');
+    }
     const id = sectionId({ kind: 'stage', stageId: stage.id });
     if (id in sections) {
       throw new SectionizeError(`duplicate stage id ${stage.id}`);
@@ -61,12 +67,12 @@ export function sectionizeProtocol(
     sections[sectionId({ kind: 'codebookEgo' })] = protocol.codebook.ego;
   }
 
-  if (
-    protocol.assetManifest !== undefined &&
-    Object.keys(protocol.assetManifest).length > 0
-  ) {
-    sections[sectionId({ kind: 'assets' })] = protocol.assetManifest;
-  }
+  // Always present, even when empty: the sync engine refuses leases and
+  // commits for section ids absent from the head manifest, so a protocol
+  // created without assets must still be able to gain its first one through
+  // an ordinary section edit. Assembly normalizes an empty record back to
+  // the absent field.
+  sections[sectionId({ kind: 'assets' })] = protocol.assetManifest ?? {};
 
   return sections;
 }

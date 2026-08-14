@@ -60,6 +60,33 @@ export type DraftSections = {
   sections: Record<string, SectionDoc>;
 };
 
+/**
+ * A lease-scoped sync command can rewrite any field of a section document —
+ * including a stage's id, which assembly and the canonical validator cannot
+ * see is out of step with the section's key. The publish gate (and
+ * validateDraft) therefore re-checks key/document identity over the head.
+ */
+function sectionIdentityIssues(
+  sections: Record<string, SectionDoc>,
+): ProtocolValidationIssue[] {
+  const issues: ProtocolValidationIssue[] = [];
+  for (const [id, doc] of Object.entries(sections)) {
+    const ref = parseSectionId(id);
+    if (ref.kind !== 'stage') continue;
+    const identity = validateStageSectionIdentity(ref.stageId, doc);
+    if (!identity.success) {
+      for (const issue of identity.issues) {
+        issues.push({
+          code: 'custom',
+          path: [id, ...issue.path],
+          message: issue.message,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 function assertNoValidationFailures(sections: Record<string, SectionDoc>) {
   const failures: { sectionId: string; issues: SectionIssue[] }[] = [];
   for (const [id, doc] of Object.entries(sections)) {
@@ -224,7 +251,12 @@ export class ProtocolStore {
   ): Promise<
     { valid: true } | { valid: false; issues: ProtocolValidationIssue[] }
   > {
-    const document = await this.getDraftDocument(draftId);
+    const { sections } = await this.getDraftSections(draftId);
+    const identityIssues = sectionIdentityIssues(sections);
+    if (identityIssues.length > 0) {
+      return { valid: false, issues: identityIssues };
+    }
+    const document = assembleProtocol(sections);
     const result = await validateProtocol(document as VersionedProtocol);
     return result.success
       ? { valid: true }
@@ -250,6 +282,10 @@ export class ProtocolStore {
       params.expectedManifestHash !== head.headManifestHash
     ) {
       return { status: 'conflict', headManifestHash: head.headManifestHash };
+    }
+    const identityIssues = sectionIdentityIssues(head.sections);
+    if (identityIssues.length > 0) {
+      return { status: 'invalid', issues: identityIssues };
     }
     const document = assembleProtocol(head.sections);
     const validation = await validateProtocol(document as VersionedProtocol);
