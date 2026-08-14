@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   Bold,
+  Download,
   Eye,
   Grid3x3,
   Italic,
@@ -21,6 +22,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import SplitButton from '../SplitButton';
 import { withTooltipProvider } from '../storybook-support/withTooltipProvider';
@@ -339,6 +341,130 @@ export const Colours: Story = {
         onClick: noop,
       },
     ],
+  },
+};
+
+/**
+ * Disabled segments dim but stay focusable, so a keyboard user can still reach
+ * one and hear that it is unavailable — the APG toolbar behaviour. They keep
+ * their tooltip too, which for an icon-only segment is its only visible label.
+ */
+export const Disabled: Story = {
+  args: {
+    label: 'Drawing tools',
+    items: [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        disabled: true,
+        onClick: noop,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo2 />,
+        onClick: noop,
+      },
+      { type: 'separator', id: 'sep-1' },
+      {
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze layout',
+        icon: <Snowflake />,
+        disabled: true,
+        defaultPressed: false,
+      },
+      {
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        disabled: true,
+        options: [{ value: 'friendship', label: 'Friendship' }],
+        onSelect: noop,
+      },
+      { type: 'separator', id: 'sep-2' },
+      // A segment that paints its own colours keeps them, dimmed.
+      {
+        type: 'button',
+        id: 'download',
+        label: 'Downloading…',
+        icon: <Download />,
+        showLabel: true,
+        variant: 'default',
+        className: 'bg-sea-green text-white',
+        disabled: true,
+        onClick: noop,
+      },
+    ],
+  },
+};
+
+/**
+ * Disabling the segment you are standing on must not move focus. Exhausting an
+ * action this way — pressing Undo until there is nothing left to undo — is the
+ * ordinary case, and losing focus to `<body>` would drop a keyboard or screen
+ * reader user at the start of the document.
+ *
+ * This has to run in a real browser: the failure mode was a native `disabled`
+ * attribute applied for a single commit, and only a browser blurs on it.
+ */
+export const KeepsFocusWhenDisabled: Story = {
+  args: { label: 'Drawing tools', items: [] },
+  render: function KeepsFocusRender(args) {
+    const [steps, setSteps] = useState(2);
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        disabled: steps === 0,
+        onClick: () => setSteps((remaining) => Math.max(0, remaining - 1)),
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo2 />,
+        onClick: noop,
+      },
+    ];
+    return <SegmentedToolbar {...args} items={items} />;
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const undo = await canvas.findByRole('button', { name: 'Undo' });
+
+    await step('activating an enabled segment keeps focus', async () => {
+      undo.focus();
+      await userEvent.keyboard('{Enter}');
+      expect(undo).toHaveFocus();
+      expect(undo).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    await step('exhausting it disables it without taking focus', async () => {
+      await userEvent.keyboard('{Enter}');
+      await waitFor(() =>
+        expect(undo).toHaveAttribute('aria-disabled', 'true'),
+      );
+      // The regression: `document.activeElement` became <body> here.
+      expect(undo).toHaveFocus();
+      // Focusable-when-disabled, so it stays in the roving tab order rather
+      // than being skipped over by the browser.
+      expect(undo).not.toBeDisabled();
+      expect(undo).toHaveAttribute('tabindex', '0');
+    });
+
+    await step('and it is inert, without becoming invisible', async () => {
+      await userEvent.keyboard('{Enter}');
+      expect(undo).toHaveAttribute('aria-disabled', 'true');
+      expect(undo).toHaveFocus();
+      expect(getComputedStyle(undo).opacity).toBe('0.5');
+    });
   },
 };
 
