@@ -83,11 +83,16 @@ async function leaveWithoutSaving(
   architectPage: Parameters<typeof readProtocolJson>[0],
 ): Promise<void> {
   await architectPage.getByRole('button', { name: 'Cancel' }).first().click();
+  // The stage editor's leave prompt names the stage specifically, so it cannot
+  // be confused with the nested-editor prompt (`confirmDiscardNestedDraft`,
+  // still titled "Unsaved Changes") that can be raised from inside it.
   await expect(
-    architectPage.getByRole('heading', { name: 'Unsaved Changes' }),
+    architectPage.getByRole('heading', {
+      name: 'Discard unsaved stage changes?',
+    }),
   ).toBeVisible();
   await architectPage
-    .getByRole('button', { name: 'Leave Without Saving' })
+    .getByRole('button', { name: 'Discard Changes and Leave' })
     .click();
   await architectPage.waitForURL(/\/protocol$/);
 }
