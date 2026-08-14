@@ -76,6 +76,9 @@ CREATE TRIGGER version_sections_immutable
  * instance — never point it at a real one.
  */
 export async function createStoreDatabase(port: number, name: string) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`unsafe scratch database name: ${name}`);
+  }
   const admin = new pg.Client({
     host: '127.0.0.1',
     port,

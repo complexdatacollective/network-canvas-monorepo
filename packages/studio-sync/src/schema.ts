@@ -8,9 +8,11 @@ CREATE TABLE drafts (
 );
 
 -- Immutable content-addressed section documents (#1276). created_at is not
--- part of a section's identity — it exists so garbage collection (#1276) can
--- give freshly written rows a grace window against a concurrent
--- ON CONFLICT DO NOTHING re-adoption.
+-- part of a section's identity — it is the write-liveness timestamp garbage
+-- collection (#1276) reads: every section write refreshes it on conflict
+-- (never DO NOTHING), so re-adopting an existing row both restarts the GC
+-- grace window and takes a row lock that forces a concurrent GC DELETE to
+-- re-check the refreshed timestamp before removing the row.
 CREATE TABLE sections (
   hash text PRIMARY KEY,
   doc jsonb NOT NULL,

@@ -100,7 +100,8 @@ async function advanceManifest(
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (hash, doc) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      `INSERT INTO sections (hash, doc) VALUES ($1, $2)
+       ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
       [hash, doc],
     );
   }

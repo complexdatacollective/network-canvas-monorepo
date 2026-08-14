@@ -87,6 +87,44 @@ describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
     );
   });
 
+  it('rejects a negative or non-finite grace window', async () => {
+    await expect(
+      gcProtocolStore(db, { retainManifestsPerDraft: 0, sectionGraceMs: -1 }),
+    ).rejects.toThrow(/sectionGraceMs/);
+    await expect(
+      gcProtocolStore(db, {
+        retainManifestsPerDraft: 0,
+        sectionGraceMs: Number.NaN,
+      }),
+    ).rejects.toThrow(/sectionGraceMs/);
+    await expect(
+      gcProtocolStore(db, { retainManifestsPerDraft: 0.5, sectionGraceMs: 0 }),
+    ).rejects.toThrow(/retainManifestsPerDraft/);
+  });
+
+  it('re-adopting an existing section refreshes created_at, restarting the grace window', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const hash = (await store.getDraftSections(draftId)).sectionHashes
+      .settings!;
+    await db.query(
+      `UPDATE sections SET created_at = now() - interval '1 hour' WHERE hash = $1`,
+      [hash],
+    );
+
+    // A second protocol with identical settings content re-adopts the row via
+    // the upsert; the refresh is what keeps an old-but-just-reused row out of
+    // reach of a concurrent GC's grace predicate.
+    await store.createProtocol({ protocol: baseProtocol() });
+    const age = await db.query(
+      `SELECT (now() - created_at) < interval '1 minute' AS fresh
+       FROM sections WHERE hash = $1`,
+      [hash],
+    );
+    expect((age.rows[0] as { fresh: boolean }).fresh).toBe(true);
+  });
+
   it('the grace window protects freshly written sections', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),

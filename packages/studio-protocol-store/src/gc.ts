@@ -3,11 +3,13 @@
 // Version-pinned sections are FK-protected regardless — the predicate here
 // only decides what is ELIGIBLE; the schema guarantees pins survive.
 //
-// The grace window closes a race: a concurrent createDraft/commit can
-// re-adopt an existing section row via ON CONFLICT DO NOTHING and then
-// reference it from a new manifest; sweeping only rows older than the window
-// keeps such freshly re-adopted rows out of reach. Scheduling is the
-// caller's concern — this is a plain callable.
+// The grace window closes a race with concurrent writers. Every section
+// write is an upsert that refreshes created_at on conflict (see the sections
+// DDL in @codaco/studio-sync/schema): re-adopting an existing row restarts
+// the window AND takes a row lock, so a GC DELETE that blocks behind it
+// re-checks the refreshed timestamp and keeps the row — while a writer that
+// blocks behind GC's delete simply re-inserts the row after GC commits.
+// Scheduling is the caller's concern — this is a plain callable.
 import type pg from 'pg';
 
 export type GcResult = {
@@ -21,8 +23,16 @@ export async function gcProtocolStore(
   opts: { retainManifestsPerDraft: number; sectionGraceMs: number },
 ): Promise<GcResult> {
   const { retainManifestsPerDraft, sectionGraceMs } = opts;
-  if (retainManifestsPerDraft < 0) {
-    throw new Error('retainManifestsPerDraft must be >= 0');
+  if (
+    !Number.isInteger(retainManifestsPerDraft) ||
+    retainManifestsPerDraft < 0
+  ) {
+    throw new Error('retainManifestsPerDraft must be a non-negative integer');
+  }
+  // A negative or non-finite grace would move the cutoff into the future and
+  // make every unpinned section eligible regardless of age.
+  if (!Number.isFinite(sectionGraceMs) || sectionGraceMs < 0) {
+    throw new Error('sectionGraceMs must be a non-negative finite number');
   }
   const client = await db.connect();
   try {

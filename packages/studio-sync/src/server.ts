@@ -62,7 +62,8 @@ export class SyncServer {
         const hash = contentHash(doc);
         sectionHashes[sectionId] = hash;
         await client.query(
-          `INSERT INTO sections (hash, doc) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          `INSERT INTO sections (hash, doc) VALUES ($1, $2)
+           ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
           [hash, doc],
         );
       }
@@ -312,7 +313,8 @@ export class SyncServer {
       );
       const newSectionHash = contentHash(newDoc);
       await client.query(
-        `INSERT INTO sections (hash, doc) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        `INSERT INTO sections (hash, doc) VALUES ($1, $2)
+         ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
         [newSectionHash, newDoc],
       );
 
