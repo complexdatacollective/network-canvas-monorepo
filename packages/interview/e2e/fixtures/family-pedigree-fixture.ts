@@ -58,6 +58,13 @@ export class FamilyPedigreeFixture {
     await this.dialog.getByTestId('dialog-submit').click();
   }
 
+  /** Dismiss a form-type dialog without submitting (the AddPerson/Edit
+   * "Cancel"). Source: fresco-ui/src/dialogs/DialogProvider.tsx:610
+   * (`data-testid="dialog-cancel"`). */
+  async clickDialogCancel(): Promise<void> {
+    await this.dialog.getByTestId('dialog-cancel').click();
+  }
+
   /** Confirm an acknowledge dialog (e.g. "Return to editing" / "OK" on
    * "Pedigree is incomplete"). Source: fresco-ui/src/dialogs/DialogProvider.tsx:485,544
    * (`data-testid="dialog-primary"`). */
