@@ -41,6 +41,19 @@ function formatVasValue(value: number, min: number, max: number) {
   return value.toFixed(decimals);
 }
 
+/**
+ * What the scale announces before anything has been chosen.
+ *
+ * A native `input[type=range]` always carries an `aria-valuenow`, and the
+ * thumb has to rest somewhere, so an unanswered scale would otherwise announce
+ * its resting midpoint as though the participant had chosen it — leaving a
+ * required scale sounding answered while validation still blocks the
+ * participant. Assistive technology announces `aria-valuetext` in preference
+ * to `aria-valuenow`, so this is what actually reaches a screen reader, and it
+ * matches the muted resting thumb a sighted participant sees.
+ */
+const UNANSWERED_VALUE_TEXT = 'No value chosen yet';
+
 export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
@@ -130,7 +143,14 @@ export default function VisualAnalogScaleField(
   };
 
   return (
-    <div className={cx('w-full', className)} {...rest}>
+    <div
+      className={cx('w-full', className)}
+      // A structural marker for the unanswered state, which the ARIA value
+      // text and the muted thumb otherwise only express in ways a test cannot
+      // read together. Also the styling seam if this state ever needs more.
+      data-unanswered={hasValue ? undefined : 'true'}
+      {...rest}
+    >
       <div className="relative">
         <Slider.Root
           value={sliderValue}
@@ -177,7 +197,9 @@ export default function VisualAnalogScaleField(
                 aria-labelledby={ariaLabelledBy}
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={(_, currentValue) =>
-                  formatVasValue(currentValue, min, max)
+                  hasValue
+                    ? formatVasValue(currentValue, min, max)
+                    : UNANSWERED_VALUE_TEXT
                 }
               >
                 <motion.div

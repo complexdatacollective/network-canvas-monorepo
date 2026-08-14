@@ -91,6 +91,10 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
   const id = useId();
   const required = Boolean(componentProps.required);
 
+  // Names exactly the elements BaseField renders. Unlike a connected field,
+  // this one is handed its `errors` as a prop by a caller that already knows
+  // them, so the error region can be named only when it holds a message —
+  // there is no asynchronous arrival to have already described.
   const describedBy = [
     required && `${id}-required`,
     hint && `${id}-hint`,

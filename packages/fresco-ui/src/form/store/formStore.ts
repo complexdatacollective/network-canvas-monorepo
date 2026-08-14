@@ -259,12 +259,23 @@ type FormStoreState = {
   isValid: boolean;
   submitHandler: FormSubmitHandler | null;
   submitInvalidHandler: ((errors: FlattenedErrors) => void) | null;
+  /**
+   * Ticks once per blocked submission attempt. `useForm` watches it from a
+   * LAYOUT effect, so the invalid-submit handler runs after React has
+   * committed the render that shows the errors — the only point at which the
+   * first invalid control is both in the DOM and safe from the commit's own
+   * focus restoration. Hosts that validate outside the form element (the
+   * interview's Next button) tick it instead of scheduling their own timer,
+   * so every host orders focus against the commit the same way.
+   */
+  errorFocusRequest: number;
 
   // Form management
   registerForm: (config: FormConfig) => void;
   reset: () => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
+  requestErrorFocus: () => void;
 
   // Getters with selective subscription
   getFormValues: () => Record<string, FieldValue>;
@@ -337,6 +348,7 @@ export const createFormStore = (): FormStoreApi => {
       isValidating: false,
       isDirty: false,
       isValid: true,
+      errorFocusRequest: 0,
 
       submitHandler: null,
       submitInvalidHandler: null,
@@ -386,6 +398,15 @@ export const createFormStore = (): FormStoreApi => {
           state.isValid = true;
           state.submitHandler = null;
           state.submitInvalidHandler = null;
+          // Deliberately monotonic: rewinding the counter here would read as a
+          // fresh request to the watching layout effect and focus a field the
+          // person never tried to submit.
+        });
+      },
+
+      requestErrorFocus: () => {
+        set((state) => {
+          state.errorFocusRequest += 1;
         });
       },
 

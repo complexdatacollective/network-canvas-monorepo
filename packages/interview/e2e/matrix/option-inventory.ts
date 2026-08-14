@@ -206,6 +206,11 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'backwards-nav-discard-and-autosubmit',
     'ready-for-next-pulse',
     'scroll-nudge-15s-inactivity',
+    'scroll-nudge-never-obscures-content',
+    'scroll-nudge-suppressed-by-errors',
+    'invalid-submit-focuses-first-invalid-control',
+    'required-boolean-renders-as-unselected-choice',
+    'comparison-copy-uses-authored-prompt',
     'label', // dead: author-facing only, never rendered
     'interviewScript', // dead: author-facing only, never rendered
     'skipLogic',

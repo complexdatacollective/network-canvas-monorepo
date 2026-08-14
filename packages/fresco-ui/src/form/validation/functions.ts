@@ -9,6 +9,7 @@ import compareVariables from './utils/compareVariables';
 import { getComparisonValue } from './utils/getComparisonValue';
 import { getVariableDefinition } from './utils/getVariableDefinition';
 import isMatchingValue from './utils/isMatchingValue';
+import isUnanswered from './utils/isUnanswered';
 // Type-only side-effect import (erased entirely, so it never reaches Vite's
 // runtime resolver) so the `GlobalMeta` module augmentation below reaches
 // every consumer of this file's `z.meta({ hint })` calls (and `helpers.tsx`,
@@ -54,40 +55,17 @@ export const required = (parameter?: boolean | string) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      const isEmptyString =
-        typeof value === 'string' && value.trim().length === 0;
-
-      if (value === null || value === undefined || isEmptyString) {
+      // `isUnanswered` is the shared definition of emptiness: nullish,
+      // whitespace-only text, `NaN`, or an empty multi-select array. Every
+      // optional rule short-circuits on the same predicate, so `required` and
+      // the rules it fronts can never disagree about what "empty" means.
+      if (isUnanswered(value)) {
         ctx.addIssue({
           code: 'custom',
           input: value,
           message: message,
           path: [],
         });
-      }
-
-      // Handle number fields
-      if (typeof value === 'number') {
-        if (Number.isNaN(value)) {
-          ctx.addIssue({
-            code: 'custom',
-            input: value,
-            message: message,
-            path: [],
-          });
-        }
-      }
-
-      // Handle array fields
-      if (Array.isArray(value)) {
-        if (value.length === 0) {
-          ctx.addIssue({
-            code: 'custom',
-            input: value,
-            message: message,
-            path: [],
-          });
-        }
       }
     }),
   ); // No hint for required because we use the asterisk in the UI
@@ -565,12 +543,7 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
 
       // Optional fields may be left unanswered more than once. `required`
       // owns emptiness; uniqueness begins only once a value is supplied.
-      if (
-        value === undefined ||
-        value === null ||
-        (typeof value === 'string' && value.trim().length === 0) ||
-        (Array.isArray(value) && value.length === 0)
-      ) {
+      if (isUnanswered(value)) {
         return;
       }
 
@@ -597,12 +570,40 @@ const unique: ValidationFunction<string> = (attribute, context) => () => {
 };
 
 /**
+ * The participant-facing name of a comparison rule's target, or `undefined`
+ * when this form has none to offer.
+ *
+ * The codebook variable's `name` is the researcher's identifier for a column
+ * of data — never something a participant should be shown — so it is
+ * deliberately not a fallback here. The only participant-facing string for a
+ * variable is the prompt/label the researcher authored on the stage field,
+ * which the interview layer supplies as `variableLabels`. When the target is
+ * answered somewhere the participant cannot see (an earlier stage), there is
+ * no such string, and each rule falls back to a complete label-free sentence.
+ *
+ * The codebook lookup is retained for its existence invariant: a rule that
+ * references a variable the subject does not have is an authoring error.
+ */
+const comparisonLabel = (
+  attribute: string,
+  context: ValidationContext | undefined,
+): string | undefined => {
+  if (!context) return undefined;
+
+  const { stageSubject, codebook, variableLabels } = context;
+  invariant(
+    getVariableDefinition(codebook, stageSubject, attribute),
+    'Comparison variable not found in codebook',
+  );
+
+  return variableLabels?.[attribute];
+};
+
+/**
  * Require that a value is different from another variable in the same form
  *
- * Note: although we are comparing with the *current form only*, we can
- * optionally get the comparison variable name from the codebook when context
- * is provided. When context is not available, the attribute string is used
- * as the display name.
+ * Short-circuits when either side is unanswered: `required` owns emptiness,
+ * and two blanks are not a participant's answers being "the same".
  */
 const differentFrom: ValidationFunction<string> =
   (attribute, context) => (formValues) => {
@@ -611,40 +612,37 @@ const differentFrom: ValidationFunction<string> =
       'Attribute must be specified for differentFrom validation',
     );
 
-    // Resolve the display name - use codebook name if context available, otherwise use attribute
-    let displayName = attribute;
-    if (context) {
-      const { stageSubject, codebook } = context;
-      const comparisonVariable = getVariableDefinition(
-        codebook,
-        stageSubject,
-        attribute,
-      );
-      invariant(
-        comparisonVariable,
-        'Comparison variable not found in codebook',
-      );
-      displayName = comparisonVariable.name;
-    }
+    const label = comparisonLabel(attribute, context);
+    const message =
+      label === undefined
+        ? 'Your answer must be different from your earlier answer.'
+        : `Your answer must be different from your answer to '${label}'.`;
+    const hint =
+      label === undefined
+        ? 'Must be different from your earlier answer.'
+        : `Must be different from your answer to '${label}'.`;
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
         // Source the comparison value from the current form, falling back to
         // the persisted entity attributes (shared graph). No-op when the
-        // variable has no value in either.
+        // variable has no value in either, or holds an empty one.
         const comparison = getComparisonValue(formValues, attribute, context);
-        if (!comparison.present) {
+        if (!comparison.present || isUnanswered(comparison.value)) {
           return;
         }
         if (isMatchingValue(value, comparison.value)) {
           ctx.addIssue({
             code: 'custom',
-            message: `Your answer must be different from '${displayName}'.`,
+            message,
             path: [],
           });
         }
       }),
-      z.meta({ hint: `Must be different from '${displayName}'.` }),
+      z.meta({ hint }),
     );
   };
 
@@ -660,40 +658,37 @@ const sameAs: ValidationFunction<string> =
       'Attribute must be specified for sameAs validation',
     );
 
-    // Resolve the display name - use codebook name if context available, otherwise use attribute
-    let displayName = attribute;
-    if (context) {
-      const { stageSubject, codebook } = context;
-      const comparisonVariable = getVariableDefinition(
-        codebook,
-        stageSubject,
-        attribute,
-      );
-      invariant(
-        comparisonVariable,
-        'Comparison variable not found in codebook',
-      );
-      displayName = comparisonVariable.name;
-    }
+    const label = comparisonLabel(attribute, context);
+    const message =
+      label === undefined
+        ? 'Your answer must be the same as your earlier answer.'
+        : `Your answer must be the same as your answer to '${label}'.`;
+    const hint =
+      label === undefined
+        ? 'Must be the same as your earlier answer.'
+        : `Must be the same as your answer to '${label}'.`;
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) {
+          return;
+        }
         // Source the comparison value from the current form, falling back to
         // the persisted entity attributes (shared graph). No-op when the
-        // variable has no value in either.
+        // variable has no value in either, or holds an empty one.
         const comparison = getComparisonValue(formValues, attribute, context);
-        if (!comparison.present) {
+        if (!comparison.present || isUnanswered(comparison.value)) {
           return;
         }
         if (!isMatchingValue(value, comparison.value)) {
           ctx.addIssue({
             code: 'custom',
-            message: `Your answer must be the same as '${displayName}'.`,
+            message,
             path: [],
           });
         }
       }),
-      z.meta({ hint: `Must match the value of '${displayName}'.` }),
+      z.meta({ hint }),
     );
   };
 
@@ -716,26 +711,26 @@ const greaterThanVariable: ValidationFunction<{
     'Type must be specified for greaterThanVariable validation',
   );
 
-  // Resolve the display name - use codebook name if context available, otherwise use attribute
-  let displayName = attribute;
-  if (context) {
-    const { stageSubject, codebook } = context;
-    const comparisonVariable = getVariableDefinition(
-      codebook,
-      stageSubject,
-      attribute,
-    );
-    invariant(comparisonVariable, 'Comparison variable not found in codebook');
-    displayName = comparisonVariable.name;
-  }
+  const label = comparisonLabel(attribute, context);
+  const message =
+    label === undefined
+      ? 'Your answer must be greater than your earlier answer.'
+      : `Your answer must be greater than your answer to '${label}'.`;
+  const hint =
+    label === undefined
+      ? 'Must be greater than your earlier answer.'
+      : `Must be greater than your answer to '${label}'.`;
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) {
+        return;
+      }
       // Source the comparison value from the current form, falling back to the
       // persisted entity attributes (shared graph). No-op when the variable
-      // has no value in either.
+      // has no value in either, or holds an empty one.
       const comparison = getComparisonValue(formValues, attribute, context);
-      if (!comparison.present) {
+      if (!comparison.present || isUnanswered(comparison.value)) {
         return;
       }
       // Strict comparison: value must be greater than (not equal to) the comparison
@@ -745,14 +740,12 @@ const greaterThanVariable: ValidationFunction<{
           minimum: Number(comparison.value),
           inclusive: false,
           origin: type === 'datetime' ? 'date' : 'number',
-          message: `Your answer must be greater than the value of '${displayName}'.`,
+          message,
           path: [],
         });
       }
     }),
-    z.meta({
-      hint: `Must be greater than the value of '${displayName}'.`,
-    }),
+    z.meta({ hint }),
   );
 };
 
@@ -794,26 +787,26 @@ const lessThanVariable: ValidationFunction<{
     'Type must be specified for lessThanVariable validation',
   );
 
-  // Resolve the display name - use codebook name if context available, otherwise use attribute
-  let displayName = attribute;
-  if (context) {
-    const { stageSubject, codebook } = context;
-    const comparisonVariable = getVariableDefinition(
-      codebook,
-      stageSubject,
-      attribute,
-    );
-    invariant(comparisonVariable, 'Comparison variable not found in codebook');
-    displayName = comparisonVariable.name;
-  }
+  const label = comparisonLabel(attribute, context);
+  const message =
+    label === undefined
+      ? 'Your answer must be less than your earlier answer.'
+      : `Your answer must be less than your answer to '${label}'.`;
+  const hint =
+    label === undefined
+      ? 'Must be less than your earlier answer.'
+      : `Must be less than your answer to '${label}'.`;
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) {
+        return;
+      }
       // Source the comparison value from the current form, falling back to the
       // persisted entity attributes (shared graph). No-op when the variable
-      // has no value in either.
+      // has no value in either, or holds an empty one.
       const comparison = getComparisonValue(formValues, attribute, context);
-      if (!comparison.present) {
+      if (!comparison.present || isUnanswered(comparison.value)) {
         return;
       }
 
@@ -824,14 +817,12 @@ const lessThanVariable: ValidationFunction<{
           maximum: Number(comparison.value),
           inclusive: false,
           origin: type === 'datetime' ? 'date' : 'number',
-          message: `Your answer must be less than the value of '${displayName}'.`,
+          message,
           path: [],
         });
       }
     }),
-    z.meta({
-      hint: `Must be less than the value of '${displayName}'.`,
-    }),
+    z.meta({ hint }),
   );
 };
 
@@ -854,26 +845,26 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
     'Type must be specified for greaterThanOrEqualToVariable validation',
   );
 
-  // Resolve the display name - use codebook name if context available, otherwise use attribute
-  let displayName = attribute;
-  if (context) {
-    const { stageSubject, codebook } = context;
-    const comparisonVariable = getVariableDefinition(
-      codebook,
-      stageSubject,
-      attribute,
-    );
-    invariant(comparisonVariable, 'Comparison variable not found in codebook');
-    displayName = comparisonVariable.name;
-  }
+  const label = comparisonLabel(attribute, context);
+  const message =
+    label === undefined
+      ? 'Your answer must be the same as or greater than your earlier answer.'
+      : `Your answer must be the same as or greater than your answer to '${label}'.`;
+  const hint =
+    label === undefined
+      ? 'Must be the same as or greater than your earlier answer.'
+      : `Must be the same as or greater than your answer to '${label}'.`;
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) {
+        return;
+      }
       // Source the comparison value from the current form, falling back to the
       // persisted entity attributes (shared graph). No-op when the variable
-      // has no value in either.
+      // has no value in either, or holds an empty one.
       const comparison = getComparisonValue(formValues, attribute, context);
-      if (!comparison.present) {
+      if (!comparison.present || isUnanswered(comparison.value)) {
         return;
       }
       if (compareVariables(value, comparison.value, type) < 0) {
@@ -882,14 +873,12 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
           minimum: Number(comparison.value),
           inclusive: true,
           origin: type === 'datetime' ? 'date' : 'number',
-          message: `Your answer must be greater than or equal to the value of '${displayName}'.`,
+          message,
           path: [],
         });
       }
     }),
-    z.meta({
-      hint: `Must be greater than or equal to the value of '${displayName}'.`,
-    }),
+    z.meta({ hint }),
   );
 };
 
@@ -912,26 +901,26 @@ const lessThanOrEqualToVariable: ValidationFunction<{
     'Type must be specified for lessThanOrEqualToVariable validation',
   );
 
-  // Resolve the display name - use codebook name if context available, otherwise use attribute
-  let displayName = attribute;
-  if (context) {
-    const { stageSubject, codebook } = context;
-    const comparisonVariable = getVariableDefinition(
-      codebook,
-      stageSubject,
-      attribute,
-    );
-    invariant(comparisonVariable, 'Comparison variable not found in codebook');
-    displayName = comparisonVariable.name;
-  }
+  const label = comparisonLabel(attribute, context);
+  const message =
+    label === undefined
+      ? 'Your answer must be the same as or less than your earlier answer.'
+      : `Your answer must be the same as or less than your answer to '${label}'.`;
+  const hint =
+    label === undefined
+      ? 'Must be the same as or less than your earlier answer.'
+      : `Must be the same as or less than your answer to '${label}'.`;
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) {
+        return;
+      }
       // Source the comparison value from the current form, falling back to the
       // persisted entity attributes (shared graph). No-op when the variable
-      // has no value in either.
+      // has no value in either, or holds an empty one.
       const comparison = getComparisonValue(formValues, attribute, context);
-      if (!comparison.present) {
+      if (!comparison.present || isUnanswered(comparison.value)) {
         return;
       }
 
@@ -941,14 +930,12 @@ const lessThanOrEqualToVariable: ValidationFunction<{
           maximum: Number(comparison.value),
           inclusive: true,
           origin: type === 'datetime' ? 'date' : 'number',
-          message: `Your answer must be less than or equal to the value of '${displayName}'.`,
+          message,
           path: [],
         });
       }
     }),
-    z.meta({
-      hint: `Must be less than or equal to the value of '${displayName}'.`,
-    }),
+    z.meta({ hint }),
   );
 };
 

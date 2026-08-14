@@ -78,6 +78,40 @@ const getCodebookEntry = (
 ): Variable | undefined => variables[variable];
 
 /**
+ * The control a field actually renders with, given the one the protocol
+ * authored (a NetworkComposer field's own choice, otherwise the codebook
+ * variable's).
+ *
+ * A REQUIRED boolean never renders as a `Toggle`. A toggle is a
+ * `role="switch"`, and ARIA gives a switch only `true`/`false` — there is no
+ * "unset" — so an unanswered required boolean both looks and announces like a
+ * definite "No" while `required` still refuses to let the participant
+ * continue. The visible state, the stored value and the validation verdict
+ * disagree, and the only way past it is to switch the control on and then off
+ * again. `Boolean` asks the same two-valued question as a pair of radio cards
+ * that genuinely start unselected, so every required boolean resolves to it
+ * whatever the protocol authored.
+ *
+ * This is a rendering correction, not a protocol change: it applies to
+ * protocols already in the field the moment they are loaded, with no schema
+ * change, no migration and no revalidation. It also leaves the set of values
+ * the question can produce exactly as it was — see `createFieldMetadata`,
+ * which drops the codebook's boolean `options` for a swapped field so the
+ * rendered choice stays the unconditional {Yes, No} a `Toggle` offers, and
+ * nothing that reasons about a boolean's domain has to learn a new rule.
+ */
+const resolveRenderedComponent = (
+  codebookEntry: Variable,
+  authoredComponent: ComponentType,
+): ComponentType => {
+  if (codebookEntry.type !== 'boolean') return authoredComponent;
+  if (authoredComponent !== 'Toggle') return authoredComponent;
+  return codebookEntry.validation?.required === true
+    ? 'Boolean'
+    : authoredComponent;
+};
+
+/**
  * Creates field metadata from form fields and codebook variables.
  * Used by useProtocolForm to convert protocol form definitions to Field components.
  *
@@ -118,8 +152,15 @@ const createFieldMetadata = (
     const fieldComponent = 'component' in field ? field.component : undefined;
     const codebookComponent =
       'component' in codebookEntry ? codebookEntry.component : undefined;
-    const component = fieldComponent ?? codebookComponent;
-    invariant(component !== undefined, 'Missing component for form field');
+    const authoredComponent = fieldComponent ?? codebookComponent;
+    invariant(
+      authoredComponent !== undefined,
+      'Missing component for form field',
+    );
+    const component = resolveRenderedComponent(
+      codebookEntry,
+      authoredComponent,
+    );
 
     const fieldParameters =
       'parameters' in field ? field.parameters : undefined;
@@ -127,8 +168,24 @@ const createFieldMetadata = (
       'parameters' in codebookEntry ? codebookEntry.parameters : undefined;
     const parameters = fieldParameters ?? codebookParameters;
 
+    // A required boolean swapped off `Toggle` renders `Boolean`'s own Yes/No
+    // pair rather than the codebook's `options`. A toggle never rendered those
+    // options — it is unconditionally two-valued — so carrying them into the
+    // swapped control would silently change the question: a variable whose
+    // options list only `{label: 'Yes', value: true}` would become a required
+    // question the participant can only answer one way. Dropping them keeps
+    // the rendered domain identical to the toggle's, which is what every other
+    // layer (protocol-validation's satisfiability analyser included) already
+    // assumes for a `Toggle`.
+    const renderedEntry =
+      component === authoredComponent ||
+      codebookEntry.type !== 'boolean' ||
+      !('options' in codebookEntry)
+        ? codebookEntry
+        : { ...codebookEntry, options: undefined };
+
     return {
-      ...codebookEntry,
+      ...renderedEntry,
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,

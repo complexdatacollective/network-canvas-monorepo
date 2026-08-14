@@ -186,6 +186,8 @@ describe('DialogForm', () => {
         expect.objectContaining({
           fieldErrors: { label: ['Name already used'] },
         }),
+        // The form element the search is scoped to.
+        expect.anything(),
       );
     });
   });

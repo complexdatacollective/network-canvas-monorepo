@@ -44,6 +44,14 @@ let equalityNicknameVarId: string;
 let comparisonStartVarId: string;
 let comparisonEndVarId: string;
 
+let focusFamilyVarIds: Record<string, string> = {};
+let unansweredBooleanVarId: string;
+let unansweredVasVarId: string;
+let leakTargetVarId: string;
+let leakDependentVarId: string;
+
+let nudgeRequiredVarId: string;
+
 let relativeDateVarId: string;
 let prePopNameVarId: string;
 let prePopSeededName: string;
@@ -909,6 +917,344 @@ export const egoFormScenarios: InterfaceScenarios = {
       },
     },
 
+    /**
+     * Issue #1385: a blocked submission moved focus to `document.body` and
+     * only sometimes recovered. The issue reported NumberInput as a working
+     * exception; it was not — every family behaved the same way. Driving each
+     * family in turn as the FIRST invalid control pins that, so neither the
+     * regression nor the "one family is different" story can come back.
+     */
+    {
+      id: 'required-error-focus',
+      covers: ['invalid-submit-focuses-first-invalid-control'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        focusFamilyVarIds = {};
+
+        const families: {
+          key: string;
+          name: string;
+          component: ComponentType;
+          type:
+            | 'text'
+            | 'number'
+            | 'boolean'
+            | 'scalar'
+            | 'ordinal'
+            | 'datetime';
+          prompt: string;
+          options?: { label: string; value: number }[];
+        }[] = [
+          {
+            key: 'text',
+            name: 'textAnswer',
+            component: 'Text',
+            type: 'text',
+            prompt: 'Text question',
+          },
+          {
+            key: 'textarea',
+            name: 'textAreaAnswer',
+            component: 'TextArea',
+            type: 'text',
+            prompt: 'Long text question',
+          },
+          {
+            key: 'number',
+            name: 'numberAnswer',
+            component: 'Number',
+            type: 'number',
+            prompt: 'Number question',
+          },
+          {
+            key: 'radio',
+            name: 'radioAnswer',
+            component: 'RadioGroup',
+            type: 'ordinal',
+            prompt: 'Radio question',
+            options: [
+              { label: 'Alpha', value: 1 },
+              { label: 'Beta', value: 2 },
+            ],
+          },
+          {
+            key: 'boolean',
+            name: 'booleanAnswer',
+            component: 'Toggle',
+            type: 'boolean',
+            prompt: 'Boolean question',
+          },
+          {
+            key: 'vas',
+            name: 'vasAnswer',
+            component: 'VisualAnalogScale',
+            type: 'scalar',
+            prompt: 'Scale question',
+          },
+          {
+            key: 'date',
+            name: 'dateAnswer',
+            component: 'DatePicker',
+            type: 'datetime',
+            prompt: 'Date question',
+          },
+          {
+            key: 'relativeDate',
+            name: 'relativeDateAnswer',
+            component: 'RelativeDatePicker',
+            type: 'datetime',
+            prompt: 'Relative date question',
+          },
+        ];
+
+        for (const family of families) {
+          const variable = synth.addEgoVariable({
+            type: family.type,
+            component: family.component,
+            name: family.name,
+            validation: { required: true },
+            ...(family.options ? { options: family.options } : {}),
+          });
+          focusFamilyVarIds[family.key] = variable.id;
+          stage.addFormField({
+            variable: variable.id,
+            component: family.component,
+            prompt: family.prompt,
+          });
+        }
+
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        const focusIsInside = (fieldName: string) =>
+          page.evaluate(
+            (name) =>
+              !!document.activeElement?.closest(`[data-field-name="${name}"]`),
+            fieldName,
+          );
+
+        // Each pass answers the topmost unanswered question, so the NEXT
+        // family becomes the first invalid control on the following submit.
+        const order = [
+          'text',
+          'textarea',
+          'number',
+          'radio',
+          'boolean',
+          'vas',
+          'date',
+          'relativeDate',
+        ] as const;
+
+        for (const key of order) {
+          const fieldName = focusFamilyVarIds[key]!;
+          await interview.nextButton.click();
+          await expect(stage.form.getFieldError(fieldName)).toBeVisible();
+          // Read focus immediately: an `expect(locator).toBeFocused()` would
+          // retry for seconds and pass on the deferred focus this fixes.
+          expect(await focusIsInside(fieldName)).toBe(true);
+
+          const field = page.locator(`[data-field-name="${fieldName}"]`);
+          switch (key) {
+            case 'text':
+            case 'textarea':
+              await stage.form.fillText(fieldName, 'An answer');
+              break;
+            case 'number':
+              await stage.form.fillNumber(fieldName, '7');
+              break;
+            case 'radio':
+              await stage.form.selectRadio(fieldName, 'Alpha');
+              break;
+            case 'boolean':
+              await stage.form.selectRadio(fieldName, 'Yes');
+              break;
+            case 'vas':
+              await field.getByRole('slider').press('ArrowRight');
+              break;
+            case 'date':
+            case 'relativeDate':
+              // Today: a RelativeDatePicker's default window is anchored on
+              // the interview date, so a fixed past date falls outside it.
+              await field
+                .locator('input[type="date"]')
+                .fill(new Date().toISOString().slice(0, 10));
+              break;
+          }
+          await expect(stage.form.getFieldError(fieldName)).toBeHidden();
+        }
+
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+      },
+    },
+
+    /**
+     * Issue #1385: a required Toggle rendered a definite "off" and a required
+     * VAS announced its resting midpoint, so both looked answered while
+     * `required` refused to let the participant continue.
+     */
+    {
+      id: 'required-unanswered-state',
+      covers: ['required-boolean-renders-as-unselected-choice'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+
+        const booleanVar = synth.addEgoVariable({
+          type: 'boolean',
+          component: 'Toggle',
+          name: 'livesAlone',
+          validation: { required: true },
+        });
+        unansweredBooleanVarId = booleanVar.id;
+        stage.addFormField({
+          variable: booleanVar.id,
+          component: 'Toggle',
+          prompt: 'Do you live alone?',
+        });
+
+        const vasVar = synth.addEgoVariable({
+          type: 'scalar',
+          component: 'VisualAnalogScale',
+          name: 'happiness',
+          validation: { required: true },
+        });
+        unansweredVasVarId = vasVar.id;
+        stage.addFormField({
+          variable: vasVar.id,
+          component: 'VisualAnalogScale',
+          prompt: 'How happy are you right now?',
+        });
+
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
+      },
+      run: async ({ page, interview, stage, protocol }) => {
+        const booleanField = page.locator(
+          `[data-field-name="${unansweredBooleanVarId}"]`,
+        );
+        const vasField = page.locator(
+          `[data-field-name="${unansweredVasVarId}"]`,
+        );
+
+        // A required boolean is a choice with a genuine unselected state, not
+        // a switch that can only say true or false.
+        await expect(booleanField.getByRole('switch')).toHaveCount(0);
+        const choices = booleanField.getByRole('radio');
+        await expect(choices).toHaveCount(2);
+        for (const choice of await choices.all()) {
+          await expect(choice).toHaveAttribute('aria-checked', 'false');
+        }
+
+        // The scale says so out loud rather than announcing its resting point.
+        await expect(vasField.getByRole('slider')).toHaveAttribute(
+          'aria-valuetext',
+          'No value chosen yet',
+        );
+        await expect(vasField.locator('[data-unanswered]')).toHaveCount(1);
+
+        // What is shown, what is stored, and what validation says all agree.
+        await interview.nextButton.click();
+        await expect(
+          stage.form.getFieldError(unansweredBooleanVarId),
+        ).toBeVisible();
+        await expect(
+          stage.form.getFieldError(unansweredVasVarId),
+        ).toBeVisible();
+        await expect(page).toHaveURL(/step=0/);
+
+        await stage.form.selectRadio(unansweredBooleanVarId, 'No');
+        await vasField.getByRole('slider').press('Enter');
+        await expect(vasField.getByRole('slider')).not.toHaveAttribute(
+          'aria-valuetext',
+          'No value chosen yet',
+        );
+
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+        // A deliberate "No" is recorded as false — distinguishable from the
+        // silence that blocked the participant a moment ago.
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          unansweredBooleanVarId,
+          false,
+        );
+      },
+    },
+
+    /**
+     * Issue #1385: comparison copy named the codebook variable, and an
+     * unanswered field collected both the required error and a comparison
+     * error about a value it did not have.
+     */
+    {
+      id: 'comparison-error-copy',
+      covers: ['comparison-copy-uses-authored-prompt'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+
+        const targetVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'runtimeNumber',
+        });
+        leakTargetVarId = targetVar.id;
+        stage.addFormField({
+          variable: targetVar.id,
+          component: 'Number',
+          prompt: 'How many years have you lived here?',
+        });
+
+        const dependentVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'runtimeNumberHigher',
+          validation: {
+            required: true,
+            greaterThanVariable: targetVar.id,
+          },
+        });
+        leakDependentVarId = dependentVar.id;
+        stage.addFormField({
+          variable: dependentVar.id,
+          component: 'Number',
+          prompt: 'How many years do you expect to stay?',
+        });
+
+        synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        const dependentError = stage.form.getFieldError(leakDependentVarId);
+
+        // Unanswered: exactly one message, the required one.
+        await stage.form.fillNumber(leakTargetVarId, '5');
+        await interview.nextButton.click();
+        await expect(dependentError).toBeVisible();
+        await expect(dependentError.locator('li')).toHaveCount(0);
+        await expect(dependentError).toHaveText(
+          'You must answer this question before continuing.',
+        );
+
+        // Answered but too small: the comparison message names the question
+        // the participant was asked, never the codebook variable.
+        await stage.form.fillNumber(leakDependentVarId, '2');
+        await interview.nextButton.click();
+        await expect(dependentError).toHaveText(
+          "Your answer must be greater than your answer to 'How many years have you lived here?'.",
+        );
+        await expect(dependentError).not.toContainText('runtimeNumber');
+
+        await stage.form.fillNumber(leakDependentVarId, '9');
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+      },
+    },
+
     {
       id: 'validation-hints-summary',
       covers: [
@@ -1169,9 +1515,79 @@ export const egoFormScenarios: InterfaceScenarios = {
       },
     },
 
+    /**
+     * Issue #1385: the guidance callout competed with the errors it was
+     * covering. Errors now suppress it outright, for as long as they stand.
+     */
+    {
+      id: 'scroll-nudge-yields-to-errors',
+      covers: ['scroll-nudge-suppressed-by-errors'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: {
+            title: 'About You',
+            text: 'This form has enough fields to overflow the viewport.',
+          },
+        });
+        // Enough fields to overflow the viewport, so the nudge is armed at all
+        // (useScrolledToBottom latches immediately on a form that fits).
+        for (let index = 0; index < 9; index += 1) {
+          const variable = synth.addEgoVariable({
+            type: 'text',
+            component: 'TextArea',
+            name: `answer${index}`,
+            ...(index === 0 ? { validation: { required: true } } : {}),
+          });
+          if (index === 0) nudgeRequiredVarId = variable.id;
+          stage.addFormField({
+            variable: variable.id,
+            component: 'TextArea',
+            prompt: `Question ${index + 1}`,
+          });
+        }
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+        await page.reload();
+        await page.waitForFunction(() => typeof window.__test !== 'undefined');
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'About You' }),
+        ).toBeVisible();
+
+        const nudge = page.getByRole('button', {
+          name: 'Scroll to see more questions',
+        });
+        await page.clock.fastForward('00:15');
+        await expect(nudge).toBeVisible();
+
+        // A blocked submission replaces the guidance with the error.
+        await interview.nextButton.click();
+        await expect(
+          stage.form.getFieldError(nudgeRequiredVarId),
+        ).toBeVisible();
+        await expect(nudge).toBeHidden();
+
+        // And it stays away while the error stands, however long the
+        // participant sits with it.
+        await page.clock.fastForward('00:30');
+        await expect(nudge).toBeHidden();
+
+        // Once the question is answered, guidance can return.
+        await stage.form.fillText(nudgeRequiredVarId, 'An answer');
+        await expect(stage.form.getFieldError(nudgeRequiredVarId)).toBeHidden();
+        await page.clock.fastForward('00:15');
+        await expect(nudge).toBeVisible();
+      },
+    },
+
     {
       id: 'scroll-nudge-inactivity',
-      covers: ['scroll-nudge-15s-inactivity'],
+      covers: [
+        'scroll-nudge-15s-inactivity',
+        'scroll-nudge-never-obscures-content',
+      ],
       slow: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -1258,6 +1674,36 @@ export const egoFormScenarios: InterfaceScenarios = {
 
         await page.clock.fastForward('00:15'); // 15s — EgoForm.tsx:83
         await expect(nudge).toBeVisible();
+
+        // Issue #1385: the callout used to float over the bottom of the scroll
+        // region and covered whatever happened to be there. It now takes its
+        // own row below the scroller, so nothing can be underneath it — at the
+        // top of the form or part-way down it.
+        const overlappedText = async () => {
+          const box = await nudge.boundingBox();
+          if (!box) throw new Error('Scroll guidance has no box to measure');
+          const candidates = await page
+            .locator('main label, main [data-testid$="-field-error"]')
+            .all();
+          const hits: string[] = [];
+          for (const candidate of candidates) {
+            if (!(await candidate.isVisible())) continue;
+            const rect = await candidate.boundingBox();
+            if (!rect) continue;
+            const overlaps =
+              rect.x < box.x + box.width &&
+              rect.x + rect.width > box.x &&
+              rect.y < box.y + box.height &&
+              rect.y + rect.height > box.y;
+            if (overlaps) hits.push((await candidate.textContent()) ?? '');
+          }
+          return hits;
+        };
+
+        expect(await overlappedText()).toEqual([]);
+        await page.mouse.wheel(0, 400);
+        expect(await overlappedText()).toEqual([]);
+        await page.mouse.wheel(0, -400);
 
         // Clicking scrolls to the bottom; the sentinel intersects and
         // hasScrolledToBottom latches permanently (useScrolledToBottom.ts:21-48),

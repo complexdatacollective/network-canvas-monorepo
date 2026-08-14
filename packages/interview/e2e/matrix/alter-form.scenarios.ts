@@ -238,17 +238,16 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('fullName')).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
         await expect(slides.getCurrentItemLabel()).resolves.toBe(labelBefore);
-        // focusFirstError moves focus into the required field (deferred).
-        await expect
-          .poll(() =>
-            page.evaluate(
-              () =>
-                !!document.activeElement?.closest(
-                  '[data-field-name="fullName"]',
-                ),
-            ),
-          )
-          .toBe(true);
+        // focusFirstError moves focus into the required field on the commit
+        // that renders the error (#1385) — read it immediately, since a
+        // polling assertion would also pass on the deferred focus that used to
+        // leave the participant on `document.body` for up to two seconds.
+        expect(
+          await page.evaluate(
+            () =>
+              !!document.activeElement?.closest('[data-field-name="fullName"]'),
+          ),
+        ).toBe(true);
 
         await stage.form.fillText('fullName', 'Ada Lovelace');
         await slides.nextSlide(labelBefore);

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FlattenedErrors } from '../store/types';
 import { focusFirstError } from './focusFirstError';
@@ -10,11 +10,14 @@ const errors: FlattenedErrors = {
 };
 
 /**
- * Build a scroll container holding the errored field plus an unrelated
- * input outside it. jsdom doesn't implement scrolling, so scrollTo is
- * stubbed and scrollend is dispatched manually where needed.
+ * Build a scroll container holding the errored field plus an unrelated input
+ * outside it. jsdom doesn't implement scrolling, so scrollTo is stubbed.
  */
-const setup = (fieldName = 'dob', fieldPath?: string) => {
+const setup = (
+  fieldName = 'dob',
+  fieldPath?: string,
+  { focusable = true }: { focusable?: boolean } = {},
+) => {
   const scroller = document.createElement('div');
   scroller.style.overflowY = 'auto';
 
@@ -22,7 +25,7 @@ const setup = (fieldName = 'dob', fieldPath?: string) => {
   field.setAttribute('data-field-name', fieldName);
   if (fieldPath) field.setAttribute('data-field-path', fieldPath);
   const input = document.createElement('input');
-  field.appendChild(input);
+  if (focusable) field.appendChild(input);
   scroller.appendChild(field);
 
   const otherInput = document.createElement('input');
@@ -32,134 +35,91 @@ const setup = (fieldName = 'dob', fieldPath?: string) => {
 
   scroller.scrollTo = vi.fn();
 
-  return { scroller, input, otherInput };
+  return { scroller, field, input, otherInput };
 };
 
 describe('focusFirstError', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
     vi.unstubAllGlobals();
-    vi.useRealTimers();
     document.body.replaceChildren();
   });
 
-  it('focuses the first errored field via the timeout fallback when no scrollend fires', () => {
+  it('focuses the errored field synchronously, in the calling task', () => {
     const { input } = setup();
 
     focusFirstError(errors);
-    vi.advanceTimersByTime(800);
 
+    // No timers advanced, no events dispatched: the whole point of the
+    // rewrite is that focus never waits, so it can never rest on `body`.
     expect(document.activeElement).toBe(input);
   });
 
-  // Several Base UI primitives render a hidden proxy input beside their real
-  // control — a Switch renders `<button role="switch">` followed by an
-  // `aria-hidden`, `tabindex="-1"` checkbox. Focusing the proxy leaves no
-  // visible focus ring and hands a screen reader a node marked as not
-  // existing, so the first genuinely operable candidate is taken instead.
-  it('skips a hidden proxy input in favour of the control it stands for', () => {
-    const { scroller } = setup();
-    const field = scroller.firstElementChild;
-    field?.replaceChildren();
+  it('focuses the field that comes first in the document, not first in the error map', () => {
+    // Registration order (and so the error map's key order) is deliberately
+    // the reverse of the render order here.
+    const second = setup('dob', '["dob"]');
+    const first = setup('name', '["name"]');
+    // Put `name` above `dob` in the document.
+    document.body.insertBefore(first.scroller, second.scroller);
 
-    const proxy = document.createElement('input');
-    proxy.setAttribute('aria-hidden', 'true');
-    proxy.setAttribute('tabindex', '-1');
-    const control = document.createElement('button');
-    control.setAttribute('role', 'switch');
-    control.setAttribute('tabindex', '0');
-    field?.append(proxy, control);
+    focusFirstError({
+      formErrors: [],
+      fieldErrors: { '["dob"]': ['Required'], '["name"]': ['Required'] },
+    });
 
-    focusFirstError(errors);
-    vi.advanceTimersByTime(800);
-
-    expect(document.activeElement).toBe(control);
+    expect(document.activeElement).toBe(first.input);
   });
 
-  it('skips a disabled control', () => {
-    const { scroller } = setup();
-    const field = scroller.firstElementChild;
-    field?.replaceChildren();
+  it('scrolls to a matched container that has no focusable child', () => {
+    // Architect's whole-editor contradiction alert: `data-field-name` only,
+    // no control inside it. It must still be scrolled into view.
+    const { scroller } = setup('_contradiction', undefined, {
+      focusable: false,
+    });
 
-    const disabled = document.createElement('input');
-    disabled.setAttribute('disabled', '');
-    const enabled = document.createElement('input');
-    field?.append(disabled, enabled);
+    focusFirstError({
+      formErrors: [],
+      fieldErrors: { _contradiction: ['Contradictory rules'] },
+    });
 
-    focusFirstError(errors);
-    vi.advanceTimersByTime(800);
-
-    expect(document.activeElement).toBe(enabled);
+    expect(scroller.scrollTo).toHaveBeenCalled();
   });
 
-  it('leaves focus alone when every candidate is hidden', () => {
-    const { scroller, otherInput } = setup();
-    const field = scroller.firstElementChild;
-    field?.replaceChildren();
-
-    const proxy = document.createElement('input');
-    proxy.setAttribute('aria-hidden', 'true');
-    field?.append(proxy);
-    otherInput.focus();
-
-    focusFirstError(errors);
-    vi.advanceTimersByTime(800);
-
-    expect(document.activeElement).toBe(otherInput);
-  });
-
-  it('focuses exactly once when scrollend fires before the fallback', () => {
-    const { scroller, input } = setup();
+  it('leaves focus alone when it already sits inside the errored field', () => {
+    const { input } = setup();
     const focusSpy = vi.spyOn(input, 'focus');
+    input.focus();
+    focusSpy.mockClear();
 
     focusFirstError(errors);
-    scroller.dispatchEvent(new Event('scrollend'));
 
-    expect(focusSpy).toHaveBeenCalledTimes(1);
+    // Re-taking focus would reset an in-progress selection (a date segment,
+    // a text caret) for no gain.
+    expect(focusSpy).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(input);
-
-    vi.advanceTimersByTime(800);
-    expect(focusSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('does not steal focus when focus has moved since invocation', () => {
+  it('takes focus from an unrelated control when submission is blocked', () => {
     const { input, otherInput } = setup();
-    const focusSpy = vi.spyOn(input, 'focus');
-
-    focusFirstError(errors);
-    // Simulate the user clicking into another control before the
-    // deferred focus fires.
     otherInput.focus();
-    vi.advanceTimersByTime(800);
-
-    expect(focusSpy).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(otherInput);
-  });
-
-  it('does not rely on the global document when the fallback fires', () => {
-    const { input } = setup();
 
     focusFirstError(errors);
-    vi.stubGlobal('document', undefined);
 
-    expect(() => vi.advanceTimersByTime(800)).not.toThrow();
-
-    vi.unstubAllGlobals();
     expect(document.activeElement).toBe(input);
   });
 
-  it('does not focus a field that detaches before the fallback fires', () => {
-    const { input } = setup();
-    const focusSpy = vi.spyOn(input, 'focus');
+  it('does not throw when no errored field is in the DOM', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    focusFirstError(errors);
-    input.remove();
-    vi.advanceTimersByTime(800);
+    expect(() =>
+      focusFirstError({
+        formErrors: [],
+        fieldErrors: { missing: ['Required'] },
+      }),
+    ).not.toThrow();
+    expect(warn).toHaveBeenCalled();
 
-    expect(focusSpy).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('matches an opaque dotted field name without interpolating a selector', () => {
@@ -171,7 +131,6 @@ describe('focusFirstError', () => {
       formErrors: [],
       fieldErrors: { [fieldPath]: ['Required'] },
     });
-    vi.advanceTimersByTime(800);
 
     expect(document.activeElement).toBe(input);
   });
@@ -184,7 +143,6 @@ describe('focusFirstError', () => {
       formErrors: [],
       fieldErrors: { [fieldName]: ['Required'] },
     });
-    vi.advanceTimersByTime(800);
 
     expect(document.activeElement).toBe(input);
   });
@@ -197,9 +155,72 @@ describe('focusFirstError', () => {
       formErrors: [],
       fieldErrors: { 'favorite.color': ['Required'] },
     });
-    vi.advanceTimersByTime(800);
 
     expect(document.activeElement).not.toBe(first.input);
     expect(document.activeElement).not.toBe(second.input);
+  });
+
+  it('scrolls without animation when reduced motion is requested', () => {
+    const { scroller } = setup();
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({ matches: true, media: '' }),
+    );
+
+    focusFirstError(errors);
+
+    expect(scroller.scrollTo).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'auto' }),
+    );
+  });
+
+  // Ported from #1383, which introduced operable-candidate selection. Several
+  // Base UI primitives render a hidden proxy input beside their real control —
+  // a Switch renders `<button role="switch">` followed by an `aria-hidden`,
+  // `tabindex="-1"` checkbox. Focusing the proxy leaves no visible focus ring
+  // and hands a screen reader a node marked as not existing.
+  it('skips a hidden proxy input in favour of the control it stands for', () => {
+    const { field } = setup();
+    field.replaceChildren();
+
+    const proxy = document.createElement('input');
+    proxy.setAttribute('aria-hidden', 'true');
+    proxy.setAttribute('tabindex', '-1');
+    const control = document.createElement('button');
+    control.setAttribute('role', 'switch');
+    control.setAttribute('tabindex', '0');
+    field.append(proxy, control);
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(control);
+  });
+
+  it('skips a disabled control', () => {
+    const { field } = setup();
+    field.replaceChildren();
+
+    const disabled = document.createElement('input');
+    disabled.setAttribute('disabled', '');
+    const enabled = document.createElement('input');
+    field.append(disabled, enabled);
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(enabled);
+  });
+
+  it('leaves focus alone when every candidate is hidden', () => {
+    const { field, otherInput } = setup();
+    field.replaceChildren();
+
+    const proxy = document.createElement('input');
+    proxy.setAttribute('aria-hidden', 'true');
+    field.append(proxy);
+    otherInput.focus();
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(otherInput);
   });
 });

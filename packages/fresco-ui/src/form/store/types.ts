@@ -75,6 +75,17 @@ export type ValidationContext = {
    * The original ID remains authoritative for codebook and entity lookups.
    */
   formValueAliases?: Readonly<Record<string, string>>;
+  /**
+   * Map a codebook variable ID to the participant-facing text that introduces
+   * it on this screen — the prompt or label the researcher authored. The
+   * variable-comparison validators name their target with it.
+   *
+   * Only AUTHORED text belongs here: a codebook variable's `name` is a
+   * researcher-facing identifier and must never reach a participant, so a
+   * variable with nothing authored is simply absent from this map and the
+   * validators use a complete label-free sentence instead.
+   */
+  variableLabels?: Readonly<Record<string, string>>;
 };
 
 // ═══════════════════════════════════════════════════════════════

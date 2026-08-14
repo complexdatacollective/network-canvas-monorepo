@@ -30,8 +30,14 @@ import useFormStore from './useFormStore';
  *
  * For fields without validateOnChange: shows errors after the field has been
  * blurred, is dirty, and validation has completed.
+ *
+ * Exported because the store's `errors.fieldErrors` map is NOT the set of
+ * errors on screen: every focus-out validates the field it leaves, so a
+ * question the participant tabbed through without answering holds an error
+ * that nothing renders. Anything reacting to "this form is showing an error"
+ * has to ask this, not the map.
  */
-function shouldShowFieldError(
+export function shouldShowFieldError(
   fieldState: FieldState | undefined,
   fieldErrors: string[] | null,
   validateOnChange: boolean,
@@ -128,6 +134,12 @@ type UseFieldConfig = {
    * field. Off by default — the field is the unit of focus.
    */
   validateOnControlBlur?: boolean;
+  /**
+   * The caller's own hint content, if any. Only its presence matters here:
+   * it shares the `${id}-hint` element with the validation summary, and
+   * `aria-describedby` must not name an element that was never rendered.
+   */
+  hint?: ReactNode;
 } & Partial<ValidationPropsCatalogue>;
 
 export function useField(config: UseFieldConfig): UseFieldResult {
@@ -137,6 +149,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     initialValue,
     showValidationHints = false,
     validationContext,
+    hint,
     ...validationProps
   } = config;
 
@@ -420,14 +433,31 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       'aria-disabled': isDisabled ?? false,
       'aria-readonly': isReadOnly ?? false,
       /**
-       * Set this so that screen readers can properly announce the hint and error messages.
-       * If either the hint or error ID is not present, it will be ignored by the screen reader.
-       * The alternative would require us to check if the hint prop exists and if the error state
-       * is set, which doesn't seem worth it.
+       * Name only the elements the field actually renders. A dangling IDREF
+       * is not merely ignored — the whole `aria-describedby` list is a common
+       * point of failure for screen readers, and every hintless or optional
+       * field used to ship one. The two conditions mirror BaseField's own
+       * render conditions exactly; `${id}-error` is unconditional because
+       * BaseField always renders FieldErrors' live region, message or not, and
+       * a connected field's errors arrive asynchronously — the control has to
+       * already describe the region that is about to hold the message.
+       * (`UnconnectedField` names it conditionally for the opposite reason:
+       * its caller hands it the errors it already knows about.)
+       *
+       * A caller that spreads `fieldProps` onto its own markup instead of
+       * rendering through BaseField (interview's QuickAddField) owes that
+       * error region itself, or it reintroduces the dangling reference.
        *
        * Note: we cannot use aria-description yet, as it is not widely supported.
        */
-      'aria-describedby': `${id}-required ${id}-hint ${id}-error`.trim(),
+      'aria-describedby': [
+        validationProps.required && `${id}-required`,
+        // The same condition BaseField uses to render the Hint element.
+        Boolean(hint ?? validationSummary) && `${id}-hint`,
+        `${id}-error`,
+      ]
+        .filter(Boolean)
+        .join(' '),
     },
     controller,
     validationSummary,

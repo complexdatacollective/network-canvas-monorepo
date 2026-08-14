@@ -124,6 +124,46 @@ export default function useProtocolForm({
     [subjectEntity, subjectType],
   );
 
+  /**
+   * The participant-facing text for each variable this form asks about, for
+   * the variable-comparison validators to name their target with.
+   *
+   * Built from the AUTHORED prompt/label only. A codebook variable's `name` is
+   * the researcher's identifier for a column of data and must never reach a
+   * participant, so a field with nothing authored is simply left out and the
+   * validator falls back to a complete label-free sentence — which is also
+   * what a comparison against a variable answered on an earlier stage gets,
+   * since it has no prompt on this screen.
+   *
+   * Memoised on the map's CONTENT rather than on `fields`: callers routinely
+   * pass `form.fields ?? []`, a fresh array on every render whenever the form
+   * has no fields, and giving `validationContext` a new identity every render
+   * re-registers every field — the loop described on `stableSubject` above.
+   */
+  const authoredLabelPairs = fields.map((field) => {
+    const authored =
+      ('label' in field ? field.label : undefined) ??
+      ('prompt' in field ? field.prompt : undefined);
+    return [
+      field.variable,
+      typeof authored === 'string' ? authored.trim() : '',
+    ] as const;
+  });
+  const variableLabelsKey = JSON.stringify(authoredLabelPairs);
+  const variableLabels = useMemo<Readonly<Record<string, string>>>(() => {
+    const labels: Record<string, string> = {};
+    for (const [variable, label] of JSON.parse(variableLabelsKey) as [
+      string,
+      string,
+    ][]) {
+      if (label.length > 0) labels[variable] = label;
+    }
+    return labels;
+    // Deliberately keyed on the serialised pairs alone: including `fields`
+    // would restore the unstable identity this exists to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variableLabelsKey]);
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -138,10 +178,17 @@ export default function useProtocolForm({
     return {
       ...baseValidationContext,
       stageSubject,
+      variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
-  }, [baseValidationContext, currentEntityId, formValueAliases, stableSubject]);
+  }, [
+    baseValidationContext,
+    currentEntityId,
+    formValueAliases,
+    stableSubject,
+    variableLabels,
+  ]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>

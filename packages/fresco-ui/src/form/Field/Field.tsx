@@ -49,6 +49,9 @@ export default function Field<C extends ValidFieldComponent>({
     initialValue: initialValue as FieldValue,
     showValidationHints,
     validationContext,
+    // Presence only: it decides whether `aria-describedby` may name the hint
+    // element, which BaseField renders from `hint ?? validationSummary`.
+    hint,
     validateOnChange,
     validateOnChangeDelay,
     validateOnControlBlur,

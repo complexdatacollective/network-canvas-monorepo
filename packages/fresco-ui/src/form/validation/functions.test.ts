@@ -7,8 +7,9 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import type { ValidationContext } from '../store/types';
+import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
+import { makeValidationFunction } from './helpers';
 
 describe('Validation Functions', () => {
   const createMockContext = (
@@ -733,7 +734,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be different from 'Test Attribute'.",
+          'Your answer must be different from your earlier answer.',
         );
       }
     });
@@ -796,7 +797,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be the same as 'Test Attribute'.",
+          'Your answer must be the same as your earlier answer.',
         );
       }
     });
@@ -886,7 +887,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be greater than the value of 'Number Attribute'.",
+          'Your answer must be greater than your earlier answer.',
         );
       }
     });
@@ -978,7 +979,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be less than the value of 'Number Attribute'.",
+          'Your answer must be less than your earlier answer.',
         );
       }
     });
@@ -1068,7 +1069,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be greater than or equal to the value of 'Number Attribute'.",
+          'Your answer must be the same as or greater than your earlier answer.',
         );
       }
     });
@@ -1161,7 +1162,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be less than or equal to the value of 'Number Attribute'.",
+          'Your answer must be the same as or less than your earlier answer.',
         );
       }
     });
@@ -1413,5 +1414,145 @@ describe('Validation Functions', () => {
 
       expect(validator.safeParse(5).success).toBe(true);
     });
+  });
+
+  /**
+   * Regression cover for issue #1385: an unanswered field collected BOTH the
+   * required error and a nonsensical comparison error about a value it did
+   * not have, and the comparison copy named the codebook variable — the
+   * researcher's identifier for a column of data — to the participant.
+   */
+  describe('comparison rules and unanswered values (#1385)', () => {
+    const comparisonCases = [
+      {
+        name: 'differentFrom',
+        build: (context: ValidationContext) =>
+          validations.differentFrom('numberAttribute', context),
+      },
+      {
+        name: 'sameAs',
+        build: (context: ValidationContext) =>
+          validations.sameAs('numberAttribute', context),
+      },
+      {
+        name: 'greaterThanVariable',
+        build: (context: ValidationContext) =>
+          validations.greaterThanVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'lessThanVariable',
+        build: (context: ValidationContext) =>
+          validations.lessThanVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'greaterThanOrEqualToVariable',
+        build: (context: ValidationContext) =>
+          validations.greaterThanOrEqualToVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'lessThanOrEqualToVariable',
+        build: (context: ValidationContext) =>
+          validations.lessThanOrEqualToVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+    ] as const;
+
+    it.each(comparisonCases)(
+      '$name does not fire on an unanswered field whose target IS answered',
+      ({ build }) => {
+        const validator = build(createMockContext())({ numberAttribute: 5 });
+
+        expect(validator.safeParse(undefined).success).toBe(true);
+        expect(validator.safeParse(null).success).toBe(true);
+        expect(validator.safeParse('').success).toBe(true);
+        expect(validator.safeParse('   ').success).toBe(true);
+        expect(validator.safeParse(Number.NaN).success).toBe(true);
+        expect(validator.safeParse([]).success).toBe(true);
+      },
+    );
+
+    it.each(comparisonCases)(
+      '$name does not fire when the target is present but empty',
+      ({ build }) => {
+        // A form value the participant has cleared: the key is present, so
+        // `getComparisonValue` reports it, but there is nothing to compare to.
+        const emptyTargets: FieldValue[] = [undefined, '', '   '];
+        for (const emptyTarget of emptyTargets) {
+          const validator = build(createMockContext())({
+            numberAttribute: emptyTarget,
+          });
+
+          expect(validator.safeParse(5).success).toBe(true);
+        }
+      },
+    );
+
+    it('leaves an unanswered required field with exactly one error', async () => {
+      // Through the same combiner a real Field uses, so the two rules meet
+      // exactly as they do on screen.
+      const validate = makeValidationFunction({
+        required: true,
+        greaterThanVariable: { attribute: 'numberAttribute', type: 'number' },
+        validationContext: createMockContext(),
+      });
+
+      const result = await validate({ numberAttribute: 5 }).safeParseAsync(
+        undefined,
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'You must answer this question before continuing.',
+        ]);
+      }
+    });
+
+    it('names the comparison target with the authored prompt, never the variable', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'numberAttribute', type: 'number' },
+        createMockContext({
+          variableLabels: {
+            numberAttribute: 'How many years have you lived here?',
+          },
+        }),
+      )({ numberAttribute: 5 });
+
+      const result = validator.safeParse(1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          "Your answer must be greater than your answer to 'How many years have you lived here?'.",
+        );
+      }
+    });
+
+    it.each(comparisonCases)(
+      '$name never leaks the codebook variable name or id without an authored label',
+      ({ build }) => {
+        const validator = build(createMockContext())({ numberAttribute: 5 });
+
+        // 5 fails every one of the six rules against a target of 5 except the
+        // inclusive ones, so drive each with a value that cannot satisfy it.
+        for (const value of [5, 1, 9]) {
+          const result = validator.safeParse(value);
+          if (result.success) continue;
+          const message = result.error.issues[0]?.message ?? '';
+          expect(message).not.toContain('Number Attribute');
+          expect(message).not.toContain('numberAttribute');
+        }
+      },
+    );
   });
 });

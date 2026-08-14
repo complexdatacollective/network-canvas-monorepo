@@ -1,6 +1,6 @@
 import { render, waitFor } from '@testing-library/react';
 import { type ContextType, useContext, useEffect } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import FormStoreProvider, {
   FormStoreContext,
@@ -58,22 +58,22 @@ describe('submitRegisteredForm', () => {
     });
   });
 
-  it('blocks submission failures and routes their errors through the invalid handler', async () => {
+  it('blocks submission failures and asks the form to move to them', async () => {
     const storeApi = await captureFormStore();
-    const onSubmitInvalid = vi.fn();
     const submissionErrors = {
       formErrors: ['Unable to save this form.'],
       fieldErrors: {},
     };
+    const requestsBefore = storeApi.getState().errorFocusRequest;
     storeApi.getState().registerForm({
       onSubmit: async () => ({ success: false, ...submissionErrors }),
-      onSubmitInvalid,
     });
 
     await expect(submitRegisteredForm(storeApi)).resolves.toBe(false);
     expect(storeApi.getState().errors).toEqual(submissionErrors);
-    await waitFor(() => {
-      expect(onSubmitInvalid).toHaveBeenCalledWith(submissionErrors);
-    });
+    // The registered invalid handler is run by the mounted form, from a layout
+    // effect on the commit that renders these errors — not from a timer here,
+    // which would race that commit for focus (#1385).
+    expect(storeApi.getState().errorFocusRequest).toBe(requestsBefore + 1);
   });
 });
