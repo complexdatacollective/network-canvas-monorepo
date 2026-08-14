@@ -7,10 +7,14 @@ CREATE TABLE drafts (
   head_manifest_hash text NOT NULL
 );
 
--- Immutable content-addressed section documents (#1276).
+-- Immutable content-addressed section documents (#1276). created_at is not
+-- part of a section's identity — it exists so garbage collection (#1276) can
+-- give freshly written rows a grace window against a concurrent
+-- ON CONFLICT DO NOTHING re-adoption.
 CREATE TABLE sections (
   hash text PRIMARY KEY,
-  doc jsonb NOT NULL
+  doc jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 -- Manifests: ordered map of section id -> section hash, one row per commit.

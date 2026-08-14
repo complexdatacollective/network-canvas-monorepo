@@ -1,0 +1,44 @@
+{
+  "name": "@codaco/studio-protocol-store",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Studio's sectioned, content-addressed protocol store: taxonomy, assembly, versioning/publishing lifecycle, structural diff, migration provenance, and garbage collection (#1276).",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/studio-protocol-store"
+  },
+  "type": "module",
+  "exports": {
+    "./taxonomy": "./src/taxonomy.ts",
+    "./sectionize": "./src/sectionize.ts",
+    "./assemble": "./src/assemble.ts",
+    "./validate": "./src/validate.ts",
+    "./version-hash": "./src/version-hash.ts",
+    "./diff": "./src/diff.ts",
+    "./schema": "./src/schema.ts",
+    "./store": "./src/store.ts",
+    "./draft-structure": "./src/draft-structure.ts",
+    "./gc": "./src/gc.ts",
+    "./migrate": "./src/migrate.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
+    "@noble/hashes": "^2.3.0",
+    "pg": "^8.22.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@types/pg": "^8.20.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
