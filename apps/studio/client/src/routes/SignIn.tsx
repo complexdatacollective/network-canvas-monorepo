@@ -116,20 +116,28 @@ export default function SignIn() {
                 <Form
                   onSubmit={async (values) => {
                     const email = String(values.email ?? '');
-                    const result = await authClient.signIn.magicLink({
-                      email,
-                      callbackURL: '/',
-                      // better-auth appends its own ?error=<code> on failure.
-                      errorCallbackURL: '/sign-in',
-                    });
-                    if (result.error) {
-                      return {
-                        success: false,
-                        formErrors: [
-                          'The sign-in email could not be sent. Wait a moment and try again.',
-                        ],
-                      };
+                    // A rejection rather than an `error` result — the
+                    // connection dropping mid-send — reads the same to the
+                    // person waiting, and unhandled would leave the form stuck
+                    // submitting.
+                    const failed = {
+                      success: false,
+                      formErrors: [
+                        'The sign-in email could not be sent. Wait a moment and try again.',
+                      ],
+                    };
+                    let result;
+                    try {
+                      result = await authClient.signIn.magicLink({
+                        email,
+                        callbackURL: '/',
+                        // better-auth appends its own ?error=<code> on failure.
+                        errorCallbackURL: '/sign-in',
+                      });
+                    } catch {
+                      return failed;
                     }
+                    if (result.error) return failed;
                     setSentTo(email);
                     return { success: true };
                   }}

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ensureSchema,
+  SCHEMA_TABLES,
   type StaleSchema,
   staleSchemaMessage,
 } from '../db/schema.ts';
@@ -45,6 +46,14 @@ describe.skipIf(!db)('schema fingerprint', () => {
         'user',
         'verification',
       ]);
+      // The unstamped probe asks about SCHEMA_TABLES by name; a table added to
+      // the SQL and not to that list would be invisible to it.
+      expect([...SCHEMA_TABLES].toSorted()).toEqual(
+        tables.rows
+          .map((r) => r.table_name)
+          .filter((name) => name !== 'schemaFingerprint')
+          .toSorted(),
+      );
 
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
@@ -92,6 +101,21 @@ describe.skipIf(!db)('schema fingerprint', () => {
         kind: 'stale',
         reason: 'unstamped',
         found: null,
+      });
+    });
+  });
+
+  it('refuses an unstamped database that kept only some of the tables', async () => {
+    await withScratch(async (pool) => {
+      await ensureSchema(pool);
+      await pool.query('drop table "schemaFingerprint"');
+      // Leaves "verification" and "rateLimit" behind: a database no longer
+      // recognisable by the "user" table alone, but still not ours to stamp.
+      await pool.query('drop table "user" cascade');
+
+      expect(await ensureSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unstamped',
       });
     });
   });

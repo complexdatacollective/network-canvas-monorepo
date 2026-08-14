@@ -230,6 +230,23 @@ describe('sign-in page', () => {
     );
   });
 
+  it('reports a failed send when the request never completes', async () => {
+    mocked.signIn.magicLink.mockRejectedValue(new Error('network down'));
+    renderAt('/sign-in');
+    const email = await screen.findByLabelText(/Email address/);
+    fireEvent.change(email, { target: { value: 'researcher@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/The sign-in email could not be sent/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText(/We sent a sign-in link/),
+    ).not.toBeInTheDocument();
+  });
+
   it('offers no email form when the server cannot send mail', async () => {
     // magicLink false means the mailer resolved to `refuse`; every send would
     // come back as a failure the person can do nothing about.

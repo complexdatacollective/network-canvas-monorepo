@@ -34,6 +34,17 @@ create index if not exists "account_userId_idx" on "account" ("userId");
 create index if not exists "verification_identifier_idx" on "verification" ("identifier");
 `;
 
+// Every table the SQL above owns. Kept beside it because the unstamped probe
+// below has to ask about all of them: finding any one is enough to know the
+// database was built by something other than this build.
+export const SCHEMA_TABLES = [
+  'user',
+  'session',
+  'account',
+  'verification',
+  'rateLimit',
+] as const;
+
 // Every statement above is `if not exists`, so applying it to a database that
 // already has the tables succeeds while changing nothing — a stale schema
 // would boot clean and fail later inside better-auth. The fingerprint is the
@@ -113,7 +124,9 @@ export async function ensureSchema(pool: pg.Pool): Promise<SchemaState> {
     // so it refuses — the one-time wipe is what the no-migrations posture
     // already asks for.
     const probe = await client.query<{ present: boolean }>(
-      `select to_regclass('"user"') is not null as present`,
+      `select ${SCHEMA_TABLES.map(
+        (table) => `to_regclass('"${table}"') is not null`,
+      ).join(' or ')} as present`,
     );
     if (probe.rows[0]?.present) {
       await client.query('rollback');
