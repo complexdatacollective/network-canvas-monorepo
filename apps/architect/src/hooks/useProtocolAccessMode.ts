@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 
+import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppSelector } from '~/ducks/hooks';
 import { getProtocolOwnedHere } from '~/ducks/modules/app';
 import { getProtocol } from '~/selectors/protocol';
@@ -30,23 +31,34 @@ import { isStageEditorPath } from './useProtocolNavGuard';
  *   offers the real ways out. Keyed on the route, not on whether the draft is
  *   currently dirty: a dirty check flips back to clean the moment the user
  *   undoes to the committed values, which would tear the editor away mid-edit.
+ * - `held-nested-editor`: the same situation somewhere else in the protocol —
+ *   a variable, entity-type, resource or rule editor open over the Codebook or
+ *   the timeline. Its draft lives in its own form store and reaches neither the
+ *   protocol nor the stage draft (#1387), and it is rendered from the route
+ *   tree, so swapping in the read-only view unmounts it without its own
+ *   close confirmation ever running. Keyed on an editor being OPEN rather than
+ *   dirty, for the same stability reason as above.
  */
 export type ProtocolAccessMode =
   | 'no-protocol'
   | 'editable'
   | 'read-only'
-  | 'held-stage-editor';
+  | 'held-stage-editor'
+  | 'held-nested-editor';
 
 export const useProtocolAccessMode = (): ProtocolAccessMode => {
   const [location] = useLocation();
   const hasProtocol = useAppSelector((state) => getProtocol(state) !== null);
   const ownedHere = useAppSelector(getProtocolOwnedHere);
+  const nestedEditorOpen = useNestedEditorOpen();
 
   if (!hasProtocol) return 'no-protocol';
   if (ownedHere) return 'editable';
-  // Only the stage editor holds work that lives outside the protocol itself.
-  // Everywhere else an accepted edit is already in the canonical row, so there
-  // is nothing to lose by switching to the read-only view.
+  // Two editors hold work that lives outside the protocol itself, and neither
+  // may be replaced by the read-only view while it does. Everywhere else an
+  // accepted edit is already in the canonical row, so there is nothing to lose
+  // by switching.
   if (isStageEditorPath(location)) return 'held-stage-editor';
+  if (nestedEditorOpen) return 'held-nested-editor';
   return 'read-only';
 };

@@ -9,9 +9,9 @@ import { navigate } from 'wouter/use-browser-location';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
+  getCanonicalProtocol,
   getCanRedo,
   getCanUndo,
-  getProtocol,
   getRedoTargetPath,
   getUndoTargetPath,
 } from '~/selectors/protocol';
@@ -188,13 +188,23 @@ export const undoWithNavigation =
       getUndoTargetPath(state),
       currentPath(),
     );
-    const previousProtocol = getProtocol(state);
+    // The CANONICAL protocol, deliberately: the question this probe asks is
+    // "did the SAVED protocol change?", and `getProtocol` answers a different
+    // one. Since #1382 it is a memoised selector that SYNTHESISES an object
+    // while a stage editor's codebook transaction is open, so its answer to
+    // `===` is only as good as its cache: reselect 5's `weakMapMemoize` holds
+    // every argument it has seen, but a selector reached through a different
+    // memoizer — or one whose overlay ever comes to depend on something outside
+    // the timeline — would hand back a fresh object for an unchanged protocol,
+    // and a refused undo would be reported, and announced, as "Change undone."
+    // Reading the raw present has no cache to depend on.
+    const previousProtocol = getCanonicalProtocol(state);
 
     dispatch(timelineActions.undo());
 
     // Confirm from state rather than trusting the pre-flight check, so a
     // reducer that refuses can never be reported (or announced) as applied.
-    if (getProtocol(getState()) === previousProtocol) {
+    if (getCanonicalProtocol(getState()) === previousProtocol) {
       return NOT_APPLIED;
     }
 
@@ -218,11 +228,12 @@ export const redoWithNavigation =
       getRedoTargetPath(state),
       currentPath(),
     );
-    const previousProtocol = getProtocol(state);
+    // The canonical protocol, for the reason given on `undoWithNavigation`.
+    const previousProtocol = getCanonicalProtocol(state);
 
     dispatch(timelineActions.redo());
 
-    if (getProtocol(getState()) === previousProtocol) {
+    if (getCanonicalProtocol(getState()) === previousProtocol) {
       return NOT_APPLIED;
     }
 

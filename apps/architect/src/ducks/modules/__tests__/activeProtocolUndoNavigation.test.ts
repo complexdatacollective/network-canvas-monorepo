@@ -12,6 +12,10 @@ import activeProtocolReducer, {
   undoWithNavigation,
 } from '../activeProtocol';
 import appReducer, { setProtocolLockState } from '../app';
+import { timelineOptions } from '../root';
+import stageEditorDraftReducer, {
+  draftTimelineActions,
+} from '../stageEditorDraft';
 
 vi.mock('wouter/use-browser-location', () => ({ navigate: vi.fn() }));
 
@@ -354,5 +358,93 @@ describe('history operations in a tab that does not own the saved copy', () => {
     expect((store.dispatch as AppDispatch)(undoWithNavigation()).applied).toBe(
       true,
     );
+  });
+});
+
+// The outcome is confirmed by comparing the protocol before and after — and
+// while a stage editor holds a codebook transaction open (#1382) the editor's
+// view of the protocol is a SYNTHESISED object, whose identity is only as
+// trustworthy as the selector's cache. The probe asks about the saved protocol,
+// so it reads the raw present and depends on no cache at all.
+describe('history operations while a stage editor codebook transaction is open', () => {
+  const draftCodebook = { node: {}, edge: {}, ego: {} };
+
+  const makeTransactionStore = () => {
+    const store = configureStore({
+      reducer: combineReducers({
+        stageEditorDraft: stageEditorDraftReducer,
+        // The app's own exclusions, because this store dispatches actions from
+        // another slice: without them opening the stage editor would itself
+        // record a protocol history entry, which the app never does.
+        activeProtocol: createTimelineReducer(
+          activeProtocolReducer,
+          timelineOptions,
+        ),
+      }),
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    // The editor opens: a draft stage and a private copy of the codebook, which
+    // `getProtocol` overlays onto the protocol from here on.
+    store.dispatch(
+      draftTimelineActions.reset({
+        stage: { id: 's1', type: 'Information', label: 'A' },
+        codebook: draftCodebook,
+      }),
+    );
+    return store;
+  };
+
+  beforeEach(() => {
+    vi.mocked(navigate).mockClear();
+    setPath('/protocol/codebook');
+  });
+
+  it('reports nothing applied for an undo the timeline refuses', () => {
+    const store = makeTransactionStore();
+    // Nothing has been done to the protocol since it was loaded, so there is
+    // nothing to undo and the reducer will refuse.
+    const before = store.getState().activeProtocol.present;
+
+    const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('reports an undo that really did change the saved protocol', () => {
+    const store = makeTransactionStore();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+
+    const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    expect(outcome.applied).toBe(true);
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
+    // The transaction is untouched by the protocol's own history.
+    expect(store.getState().stageEditorDraft.history.present?.codebook).toBe(
+      draftCodebook,
+    );
+  });
+
+  it('reports nothing applied for a redo the timeline refuses', () => {
+    const store = makeTransactionStore();
+    const before = store.getState().activeProtocol.present;
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+  });
+
+  it('reports a redo that really did change the saved protocol', () => {
+    const store = makeTransactionStore();
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    (store.dispatch as AppDispatch)(undoWithNavigation());
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome.applied).toBe(true);
+    expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
   });
 });

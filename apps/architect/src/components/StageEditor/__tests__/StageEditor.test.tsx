@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { guardState } from '~/hooks/useProtocolNavGuard';
 
 const mocks = vi.hoisted(() => ({
   openDialog: vi.fn(),
@@ -220,6 +221,9 @@ const renderEditor = (
 describe('StageEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Module state shared with the navigation guards; a test that leaves a
+    // confirmation pending would otherwise gag the next one.
+    guardState.prompting = false;
     mocks.openDialog.mockResolvedValue(false);
     mocks.launchPreview.mockResolvedValue({ kind: 'delivered' });
     // Most interfaces render the SkipLogic section; the Anonymisation-shaped
@@ -282,6 +286,60 @@ describe('StageEditor', () => {
       );
     });
     expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  // One decision, one prompt. Back already refuses to stack a second
+  // confirmation on a first (`guardState.prompting`), and since the wording
+  // converged the two dialogs are byte-identical — so a researcher who cancels
+  // and then presses Back was being asked to answer the same question twice,
+  // about the same draft, in the same words.
+  it('never stacks a second discard confirmation on the first', async () => {
+    // A confirmation that stays on screen, as a real one does until answered.
+    mocks.openDialog.mockReturnValue(new Promise(() => undefined));
+    renderEditor();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+    });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+      target: { value: 'Renamed stage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await Promise.resolve();
+
+    expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    // The interlock Back reads, so the two exits cannot each open their own.
+    expect(guardState.prompting).toBe(true);
+  });
+
+  it('releases the interlock once the confirmation is answered', async () => {
+    renderEditor();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+    });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+      target: { value: 'Renamed stage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    });
+
+    // Declining leaves the researcher in the editor, and the next Cancel or
+    // Back must be able to ask again.
+    await waitFor(() => {
+      expect(guardState.prompting).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('browser unload guard', () => {

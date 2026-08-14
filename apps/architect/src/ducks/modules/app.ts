@@ -81,11 +81,13 @@ const PROTOCOL_LOCK_STATE_KEY = 'protocolLockState';
  * - `open-elsewhere`: another tab holds it. This tab may show the protocol but
  *   every write it makes is dropped.
  * - `reclaim-blocked`: the other tab released the protocol, but this tab holds
- *   an open stage editor draft. Loading the saved copy would close that
- *   transaction and take the draft with it (#1382), while committing the draft
- *   would replace the codebook wholesale from a snapshot taken before the other
- *   tab's edits. Neither may happen silently, so the reclaim stops here until
- *   the researcher chooses — and until then nothing is written, exactly as in
+ *   unsaved work that loading the saved copy would take with it. For a stage
+ *   editor draft, loading closes that transaction and takes the draft (#1382)
+ *   while committing it would replace the codebook wholesale from a snapshot
+ *   taken before the other tab's edits; for a nested editor (#1387) the values
+ *   live in that editor's own form store, which the reload unmounts. Neither
+ *   may happen silently, so the reclaim stops here until the researcher
+ *   resolves it — and until then nothing is written, exactly as in
  *   `open-elsewhere`.
  */
 export type ProtocolLockState = 'owned' | 'open-elsewhere' | 'reclaim-blocked';

@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { Stage } from '@codaco/protocol-validation';
+import { useNestedDraftDirty } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolLockState,
@@ -63,9 +64,17 @@ const StageDraftConflictDialog = ({
   const reduxStore = useStore<RootState>();
   const { openDialog, closeDialog } = useDialog();
   const [, setLocation] = useLocation();
+  // A nested editor still holding unsaved work is asked about first
+  // (NestedDraftReclaimDialog): the download offered below builds its file from
+  // the stage draft, which does not contain that editor's in-progress values,
+  // so offering it here would hand the researcher a copy silently missing them.
+  // Once the inner editor is finished its values ARE in the draft, and this
+  // choice becomes the right one to ask.
+  const nestedDraftDirty = useNestedDraftDirty();
   const conflictPending = useAppSelector(
     (state) => getProtocolLockState(state) === 'reclaim-blocked',
   );
+  const stageConflictPending = conflictPending && !nestedDraftDirty;
   // Bumped by ProtocolLockBanner when the researcher asks to see the choice
   // again after dismissing it. A change re-runs the effect below, which closes
   // anything still open and asks afresh.
@@ -98,7 +107,7 @@ const StageDraftConflictDialog = ({
   const openDialogId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!conflictPending) return;
+    if (!stageConflictPending) return;
     let cancelled = false;
 
     // The protocol as it stands in this tab, with the draft applied: the
@@ -201,7 +210,7 @@ const StageDraftConflictDialog = ({
       // dialog away rather than leave a stale choice on screen.
       if (id) void latest.current.closeDialog(id, null);
     };
-  }, [conflictPending, choiceRequest]);
+  }, [stageConflictPending, choiceRequest]);
 
   return null;
 };

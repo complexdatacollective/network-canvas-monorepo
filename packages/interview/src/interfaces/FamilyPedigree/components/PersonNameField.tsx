@@ -11,6 +11,10 @@ import type {
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 
+import {
+  buildVariableLabels,
+  useVariableLabels,
+} from '../../../forms/buildVariableLabels';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -19,7 +23,11 @@ import {
 } from '../../../selectors/forms';
 import { getCodebook } from '../../../store/modules/protocol';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
-import { getNodeLabelVariable, getNodeType } from '../utils/nodeUtils';
+import {
+  getNodeForm,
+  getNodeLabelVariable,
+  getNodeType,
+} from '../utils/nodeUtils';
 
 type PersonNameFieldProps = {
   autoFocus?: boolean;
@@ -61,6 +69,7 @@ export default function PersonNameField({
 }: PersonNameFieldProps) {
   const nodeType = useStageSelector(getNodeType);
   const nodeLabelVariable = useStageSelector(getNodeLabelVariable);
+  const nodeForm = useStageSelector(getNodeForm);
   const codebook = useSelector(getCodebook);
   const pedigreeNodes = useFamilyPedigreeStore((state) => state.network.nodes);
   const baseValidationContext = useStageSelector(getValidationContext);
@@ -110,11 +119,26 @@ export default function PersonNameField({
   // such as `unique` see the in-progress family as well as nodes already in
   // the interview network. currentEntityId prevents an edit from conflicting
   // with the node's own existing value.
+  // The rest of the person's attributes are collected by the wizard's protocol
+  // form, whose captions the participant has read; the label variable is
+  // deliberately stripped from that form (`getNodeForm`) and asked here
+  // instead, so its own caption can only come from `label`. Every caller passes
+  // a fixed string for it ("Name", "What is their name?") — this must stay a
+  // researcher/author-written caption for the field, never a person's name.
+  // Participant-entered names are in scope in this component (`initialValue`,
+  // `pedigreeNodes`, the wizard's collected values) and none of them belongs in
+  // an error message.
+  const formVariableLabels = useVariableLabels(nodeForm ?? []);
+
   const validationContext = useMemo<ValidationContext>(() => {
     const localIds = new Set(pedigreeNodes.keys());
     return {
       ...baseValidationContext,
       stageSubject: { entity: 'node', type: nodeType },
+      variableLabels: {
+        ...formVariableLabels,
+        ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
+      },
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       network: {
         ...baseValidationContext.network,
@@ -126,7 +150,15 @@ export default function PersonNameField({
         ],
       },
     };
-  }, [baseValidationContext, currentEntityId, nodeType, pedigreeNodes]);
+  }, [
+    baseValidationContext,
+    currentEntityId,
+    formVariableLabels,
+    label,
+    nodeLabelVariable,
+    nodeType,
+    pedigreeNodes,
+  ]);
 
   return (
     <Field

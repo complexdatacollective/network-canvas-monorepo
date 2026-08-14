@@ -29,6 +29,7 @@ import {
 import type { RootState } from '~/ducks/store';
 import {
   getLeavePersistence,
+  guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
@@ -38,6 +39,7 @@ import {
   getLiveStageValues,
 } from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
@@ -245,16 +247,12 @@ const StageEditor = (props: StageEditorProps) => {
       // and the banner above names the ways forward. (The commit button is
       // disabled too; this covers a submit raised from the keyboard, and says
       // why rather than failing silently.)
-      const lockState = getProtocolLockState(reduxStore.getState());
-      if (lockState !== 'owned') {
-        return {
-          success: false,
-          formErrors: [
-            lockState === 'reclaim-blocked'
-              ? 'These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.'
-              : 'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
-          ],
-        };
+      const refusal = refusedCommitMessage(
+        getProtocolLockState(reduxStore.getState()),
+        'stage',
+      );
+      if (refusal) {
+        return { success: false, formErrors: [refusal] };
       }
 
       // A key the form no longer carries has been removed (a section toggled
@@ -287,32 +285,43 @@ const StageEditor = (props: StageEditorProps) => {
       return true;
     }
 
-    // What is lost differs with whether this tab can save at all, and a tab
-    // that cannot must not be told the last saved version of the stage is
-    // waiting for it here.
-    const persistence = getLeavePersistence(reduxStore.getState());
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      size: 'readable',
-      title: 'Discard unsaved stage changes?',
-      description:
-        stageDiscardDescriptions[
-          persistence === 'no-protocol' ? 'saved' : persistence
-        ],
-      actions: {
-        primary: { label: 'Discard Changes and Leave', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
+    // One decision, one prompt. Cancel and Back ask the researcher the very
+    // same question about the very same draft — since the wording converged,
+    // byte for byte — so Cancel joins the interlock the navigation guards
+    // already share rather than being the one exit that can stack a second
+    // identical dialog on top of the first.
+    if (guardState.prompting) return false;
+    guardState.prompting = true;
+    try {
+      // What is lost differs with whether this tab can save at all, and a tab
+      // that cannot must not be told the last saved version of the stage is
+      // waiting for it here.
+      const persistence = getLeavePersistence(reduxStore.getState());
+      const confirmed = await openDialog({
+        type: 'choice',
+        intent: 'warning',
+        size: 'readable',
+        title: 'Discard unsaved stage changes?',
+        description:
+          stageDiscardDescriptions[
+            persistence === 'no-protocol' ? 'saved' : persistence
+          ],
+        actions: {
+          primary: { label: 'Discard Changes and Leave', value: true },
+          cancel: { label: 'Cancel', value: false },
+        },
+      });
 
-    if (confirmed) {
-      dispatch(resetDraft(null));
-      setLocation('/protocol');
-      return true;
+      if (confirmed) {
+        dispatch(resetDraft(null));
+        setLocation('/protocol');
+        return true;
+      }
+
+      return false;
+    } finally {
+      guardState.prompting = false;
     }
-
-    return false;
   }, [openDialog, reduxStore, setLocation, dispatch]);
 
   // A browser-level exit (refresh, tab close, window close) is the one way out

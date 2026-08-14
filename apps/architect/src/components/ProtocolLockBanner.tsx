@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
+import { useNestedDraftDirty } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolLockState,
@@ -17,13 +18,15 @@ import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 // instead (see ProtocolRouteGuard). Non-blocking, so the protocol stays
 // readable, with the thing that actually resolves the situation spelled out.
 //
-// Three situations, three whole messages (never assembled fragments, so they
-// can be localised): another tab holds the protocol and this one is reading it;
+// Five situations, five whole messages (never assembled fragments, so they can
+// be localised): another tab holds the protocol and this one is reading it;
 // another tab holds it while a stage editor here still has the researcher's
-// work in it; and the other tab has since closed but this tab's stage changes
-// cannot be combined with what it saved, so a choice is outstanding
-// (StageDraftConflictDialog asks it — this banner is what remains on screen
-// while the answer is pending).
+// work in it; another tab holds it while some other editor here does; and, once
+// the other tab has closed, either an outstanding choice about stage changes
+// that cannot be combined with what it saved (StageDraftConflictDialog asks it)
+// or an editor still open that has to be resolved before anything else can be
+// (NestedDraftReclaimDialog). This banner is what remains on screen while
+// either answer is pending.
 //
 // No "return to start screen" action here: the toolbar on the same page already
 // carries one, and two controls with the same accessible name on one page is a
@@ -33,6 +36,7 @@ const ProtocolLockBanner = () => {
   const [, setLocation] = useLocation();
   const mode = useProtocolAccessMode();
   const lockState = useAppSelector(getProtocolLockState);
+  const nestedDraftDirty = useNestedDraftDirty();
   const bannerRef = useRef<HTMLDivElement>(null);
 
   // Entering the read-only view replaces whatever the user was looking at, so
@@ -46,21 +50,70 @@ const ProtocolLockBanner = () => {
     bannerRef.current?.focus();
   }, [mode]);
 
-  if (mode !== 'read-only' && mode !== 'held-stage-editor') {
+  if (
+    mode !== 'read-only' &&
+    mode !== 'held-stage-editor' &&
+    mode !== 'held-nested-editor'
+  ) {
     return null;
   }
 
   const readOnly = mode === 'read-only';
   const conflictPending = lockState === 'reclaim-blocked';
+  // A nested editor holding unsaved work is what has to be resolved first, so
+  // it decides both what this says and which action goes with it.
+  const nestedBlocking = conflictPending && nestedDraftDirty;
 
   // The conflict message leads, whatever the route: once the other tab has
   // closed, telling the researcher to close it would send them looking for a
   // tab that no longer exists.
-  const message = conflictPending
-    ? 'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.'
-    : readOnly
-      ? 'This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.'
-      : 'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.';
+  const message = nestedBlocking
+    ? 'The other tab has been closed, but an editor is still open here with unsaved changes in it. Nothing can be saved or loaded in this tab until you finish or cancel that editor.'
+    : conflictPending
+      ? 'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.'
+      : readOnly
+        ? 'This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.'
+        : mode === 'held-nested-editor'
+          ? 'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.'
+          : 'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.';
+
+  // What, if anything, belongs beside the message.
+  //
+  // Both outstanding questions can be dismissed without being answered — the
+  // stage choice because nothing is written until it is, the open-editor
+  // explanation because the editor it is about is on the screen behind it — so
+  // the banner has to be able to put either one back.
+  //
+  // A held stage editor offers the discard that is its way to the read-only
+  // view. A held NESTED editor offers nothing: what resolves it is finishing or
+  // cancelling the editor already on screen, and a discard here would clear the
+  // STAGE draft, which is not what the message is about. Read-only offers
+  // nothing either — the toolbar already carries the only way out, and two
+  // controls with one accessible name is worse for anyone navigating by name.
+  const action = readOnly
+    ? null
+    : nestedBlocking
+      ? {
+          label: 'Show Me What to Do',
+          onClick: () => dispatch(requestProtocolReclaimChoice()),
+        }
+      : conflictPending
+        ? {
+            label: 'Choose What to Keep',
+            onClick: () => dispatch(requestProtocolReclaimChoice()),
+          }
+        : mode === 'held-nested-editor'
+          ? null
+          : {
+              label: 'Discard Changes',
+              onClick: () => {
+                // Discarding leaves the stage editor as well as clearing the
+                // draft: staying would leave an editor whose every control is
+                // still live but whose writes can never be saved.
+                dispatch(resetDraft(null));
+                setLocation('/protocol');
+              },
+            };
 
   return (
     <Alert
@@ -72,34 +125,16 @@ const ProtocolLockBanner = () => {
     >
       <AlertDescription className="flex items-center justify-between gap-5 text-sm">
         <span>{message}</span>
-        {readOnly ? null : conflictPending ? (
-          // The choice can be dismissed without answering, so this is how the
-          // researcher gets back to it — including to the download that is the
-          // only way to keep the work.
+        {action ? (
           <Button
             size="sm"
             color="warning"
             className="bg-warning-contrast text-warning shrink-0"
-            onClick={() => dispatch(requestProtocolReclaimChoice())}
+            onClick={action.onClick}
           >
-            Choose What to Keep
+            {action.label}
           </Button>
-        ) : (
-          <Button
-            size="sm"
-            color="warning"
-            className="bg-warning-contrast text-warning shrink-0"
-            onClick={() => {
-              // Discarding leaves the stage editor as well as clearing the
-              // draft: staying would leave an editor whose every control is
-              // still live but whose writes can never be saved.
-              dispatch(resetDraft(null));
-              setLocation('/protocol');
-            }}
-          >
-            Discard Changes
-          </Button>
-        )}
+        ) : null}
       </AlertDescription>
     </Alert>
   );

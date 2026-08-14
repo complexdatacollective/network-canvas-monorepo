@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -89,6 +90,25 @@ const renderGuard = (store: TestStore) =>
     <Provider store={store}>
       <ProtocolRouteGuard>
         <div data-testid="editor">Editor</div>
+      </ProtocolRouteGuard>
+    </Provider>,
+  );
+
+// A nested editor dialog as the routes really render it: from INSIDE the route
+// tree. Its draft lives in its own form store, and its own discard confirmation
+// only ever runs through `closeDialog` — an unmount takes the values with no
+// question asked at all.
+const NestedEditor = ({ dirty }: { dirty: boolean }) => {
+  useNestedDraft(true, () => dirty);
+  return <div data-testid="nested-editor">Editor dialog</div>;
+};
+
+const renderGuardWithNestedEditor = (store: TestStore, dirty = true) =>
+  render(
+    <Provider store={store}>
+      <ProtocolRouteGuard>
+        <div data-testid="editor">Editor</div>
+        <NestedEditor dirty={dirty} />
       </ProtocolRouteGuard>
     </Provider>,
   );
@@ -238,6 +258,72 @@ describe('ProtocolRouteGuard', () => {
     renderGuard(store);
 
     expect(closeAllDialogs).not.toHaveBeenCalled();
+  });
+
+  // The demote path's own silent discard (#1387): a variable or entity-type
+  // editor open over the Codebook is rendered from the route tree, so replacing
+  // that tree unmounts it — `handleClose` never runs, and
+  // `confirmDiscardNestedDraft` never asks.
+  it('keeps a dirty nested editor mounted when the tab is demoted outside the stage editor', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuardWithNestedEditor(store);
+    expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
+
+    act(() => {
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+    });
+
+    expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('editor')).toBeInTheDocument();
+    expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
+  });
+
+  // Keyed on an editor being OPEN rather than on its draft being dirty, for the
+  // same reason `held-stage-editor` is keyed on the route: dirtiness is
+  // recomputed on every render, so an editor cleared back to empty would vanish
+  // from under the researcher at the next unrelated re-render. Being open only
+  // changes when they open or close one.
+  it('keeps a pristine nested editor mounted too, rather than deciding by dirtiness', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuardWithNestedEditor(store, false);
+
+    act(() => {
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+    });
+
+    expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
+    expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
+  });
+
+  // Once the researcher has dealt with the editor, there is nothing left that
+  // the read-only view would take — so the swap that was held finally happens.
+  it('shows the read-only view once the nested editor is closed', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    const { rerender } = renderGuardWithNestedEditor(store);
+    act(() => {
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+    });
+    expect(screen.getByTestId('nested-editor')).toBeInTheDocument();
+
+    // The researcher answers the editor's own discard confirmation, and it
+    // closes.
+    act(() => {
+      rerender(
+        <Provider store={store}>
+          <ProtocolRouteGuard>
+            <div data-testid="editor">Editor</div>
+          </ProtocolRouteGuard>
+        </Provider>,
+      );
+    });
+
+    expect(screen.getByTestId('read-only-summary')).toBeInTheDocument();
   });
 
   it('shows the read-only view everywhere outside the stage editor', () => {

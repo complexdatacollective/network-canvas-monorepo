@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { navigate } from 'wouter/use-browser-location';
 
+import {
+  hasDirtyNestedDraft,
+  useNestedDraftDirty,
+} from '~/components/DialogForm/nestedDraftRegistry';
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
@@ -128,6 +132,23 @@ export const useProtocolTabLock = (
         // debounced, so flush before asking whether there is one.
         flushStageLiveValues();
         const state = store.getState();
+
+        // A nested editor (a variable, an entity type, an array row, a rule)
+        // keeps its half-typed values in its own form store: they are in
+        // neither the editing buffer nor the stage draft, and the editor is
+        // rendered from the route tree, so BOTH ways out of here would take
+        // them — the refresh below by unmounting the route, and
+        // `closeEditorAndReclaim` by navigating away from it. The stage flow
+        // cannot answer for them either: its download builds a file from the
+        // stage draft, which would arrive missing the very work the researcher
+        // was trying to keep. Stop and ask instead
+        // (NestedDraftReclaimDialog); resolving the inner editor is what puts
+        // its values somewhere the rest of this can reason about.
+        if (hasDirtyNestedDraft()) {
+          dispatch(setProtocolLockState('reclaim-blocked'));
+          return;
+        }
+
         if (!getStageEditorDraftOpen(state)) {
           void finishReclaim();
           return;
@@ -156,20 +177,30 @@ export const useProtocolTabLock = (
   const lockState = useAppSelector(getProtocolLockState);
   const draftOpen = useAppSelector(getStageEditorDraftOpen);
   const draftDirty = useAppSelector(getLiveStageDraftDirty);
+  // Re-read whenever a nested editor opens or closes — the two transitions that
+  // can answer the question this blocks on.
+  const nestedDraftDirty = useNestedDraftDirty();
 
-  // A blocked reclaim must not outlive the thing that blocked it. The draft may
-  // simply go — the conflict dialog's discard, the banner's, a confirmed
-  // Cancel, the editor unmounting — or it may be undone back to the values the
-  // editor opened on, which leaves nothing to weigh against the saved copy
-  // either. Both must finish the reclaim, or the tab stays refusing every write
-  // with no other tab to blame and a banner describing changes that no longer
-  // exist.
+  // A blocked reclaim must not outlive the thing that blocked it. The stage
+  // draft may simply go — the conflict dialog's discard, the banner's, a
+  // confirmed Cancel, the editor unmounting — or it may be undone back to the
+  // values the editor opened on, which leaves nothing to weigh against the
+  // saved copy either; a nested editor's draft goes when that editor is
+  // finished or cancelled. All of them must finish the reclaim, or the tab
+  // stays refusing every write with no other tab to blame and a banner
+  // describing changes that no longer exist.
   const resolvingBlockedReclaim = useRef(false);
   useEffect(() => {
     if (lockState !== 'reclaim-blocked') {
       resolvingBlockedReclaim.current = false;
       return;
     }
+    // A nested editor still holding unsaved work blocks the reclaim on its own,
+    // whether or not a stage editor is open behind it. Finishing it moves its
+    // values into the stage draft (where the stage flow's three actions then
+    // apply unchanged); cancelling it takes them away by the researcher's own
+    // decision. Either way it is closing that answers this.
+    if (nestedDraftDirty) return;
     if (draftOpen && draftDirty) return;
     // Closing the editor below clears the draft, which re-runs this effect
     // while the reclaim it started is still in flight.
@@ -195,6 +226,7 @@ export const useProtocolTabLock = (
     lockState,
     draftOpen,
     draftDirty,
+    nestedDraftDirty,
     dispatch,
     finishReclaim,
     closeEditorAndReclaim,

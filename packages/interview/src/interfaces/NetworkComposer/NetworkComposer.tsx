@@ -25,6 +25,7 @@ import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useVariableLabels } from '../../forms/buildVariableLabels';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -135,6 +136,17 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // stage's subject — mirror useProtocolForm's ValidationContext. Quick-add
   // only ever creates a new node, so currentEntityId is omitted: there is no
   // entity yet to scope `unique` exclusions or sibling comparisons to.
+  // ...and a comparison rule on the quick-add variable names its TARGET, which
+  // is one of the node attributes the drawer collects. Those carry the
+  // researcher's authored captions, and the participant has read them there, so
+  // the popover words its errors exactly as the drawer does rather than falling
+  // back to a label-free sentence for the same rule on the same variable. The
+  // quick-add variable itself has nothing authored on this stage — no prompts
+  // array exists — and the codebook entity-type name is a researcher
+  // identifier, so it is deliberately absent.
+  const nodeFormVariableLabels = useVariableLabels(
+    stage.nodeForm?.fields ?? [],
+  );
   const baseValidationContext = useStageSelector(getValidationContext);
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
@@ -142,6 +154,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           codebook: baseValidationContext.codebook,
           network: baseValidationContext.network,
           stageSubject: baseValidationContext.stageSubject,
+          variableLabels: nodeFormVariableLabels,
         }
       : undefined;
 

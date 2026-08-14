@@ -6,6 +6,7 @@ import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
+import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
@@ -172,6 +173,11 @@ const AppContents = () => {
       <StartupProtocolFailureReporter />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
+      {/* Mounted app-wide, not inside the stage editor: a nested editor can be
+          open over the Codebook or Resources just as easily, and that is
+          precisely the case the stage editor's own conflict dialog cannot
+          answer. */}
+      <NestedDraftReclaimDialog />
       <ScrollToTop />
       {/* Viewport-tall column so the install banner reserves space in normal
           flow (rather than a fixed overlay that covered the sticky nav): the

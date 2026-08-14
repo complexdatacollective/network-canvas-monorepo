@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -69,6 +70,21 @@ type TestStore = ReturnType<typeof createTestStore>;
 const renderBanner = (store: TestStore) =>
   render(
     <Provider store={store}>
+      <ProtocolLockBanner />
+    </Provider>,
+  );
+
+// A variable, entity-type, resource or rule editor open somewhere in the
+// protocol, with unsaved values in its own form store.
+const NestedEditor = () => {
+  useNestedDraft(true, () => true);
+  return null;
+};
+
+const renderBannerWithNestedEditor = (store: TestStore) =>
+  render(
+    <Provider store={store}>
+      <NestedEditor />
       <ProtocolLockBanner />
     </Provider>,
   );
@@ -163,6 +179,51 @@ describe('ProtocolLockBanner', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Choose What to Keep' }),
     );
+    expect(getProtocolReclaimChoiceRequest(store.getState())).toBeGreaterThan(
+      0,
+    );
+  });
+
+  // The nested editor's work is not in the stage draft, so "Discard Changes"
+  // here would clear a draft the message is not even about, and the download
+  // behind "Choose What to Keep" would produce a file missing the very values
+  // the researcher is trying to save.
+  it('names the open editor, not the stage, when one is holding the tab back', () => {
+    mockLocation.mockReturnValue('/protocol/codebook');
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+
+    renderBannerWithNestedEditor(store);
+
+    const banner = screen.getByRole('status');
+    expect(banner).toHaveTextContent(
+      /unsaved changes in the editor you have open/i,
+    );
+    expect(banner).toHaveTextContent(
+      /close that editor to switch to a read-only view/i,
+    );
+    expect(banner).not.toHaveTextContent(/changes to this stage/i);
+    expect(
+      screen.queryByRole('button', { name: 'Discard Changes' }),
+    ).toBeNull();
+  });
+
+  it('explains a reclaim that an open editor is holding back, and can re-raise it', () => {
+    mockLocation.mockReturnValue('/protocol/codebook');
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+    renderBannerWithNestedEditor(store);
+
+    const banner = screen.getByRole('status');
+    expect(banner).toHaveTextContent(/The other tab has been closed/i);
+    expect(banner).toHaveTextContent(
+      /an editor is still open here with unsaved changes/i,
+    );
+    expect(banner).not.toHaveTextContent(/decide which to keep/i);
+    expect(
+      screen.queryByRole('button', { name: 'Choose What to Keep' }),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Me What to Do' }));
     expect(getProtocolReclaimChoiceRequest(store.getState())).toBeGreaterThan(
       0,
     );

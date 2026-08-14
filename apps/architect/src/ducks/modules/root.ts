@@ -18,7 +18,11 @@ const thunkLifecyclePattern = /\/(pending|fulfilled|rejected)$/;
 
 type ActionWithMeta = UnknownAction & { meta?: { skipTimeline?: boolean } };
 
-const timelineOptions = {
+// Exported so a test store can be built with the SAME exclusions the app
+// applies. Without them every unrelated action in the store records a
+// content-identical protocol snapshot, and a test store missing them measures
+// a timeline the app never has.
+export const timelineOptions = {
   exclude: (action: UnknownAction) => {
     const type = action.type;
     return (

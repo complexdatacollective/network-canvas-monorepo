@@ -1,10 +1,11 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -134,6 +135,18 @@ const openDirtyStageDraft = (store: TestStore) => {
   store.dispatch(draftTimelineActions.reset(draftPresent));
   store.dispatch(setLiveValues(editedStage));
 };
+
+// A nested editor — a new-variable window, an entity-type dialog, an array-row
+// editor — registered with the real registry the app uses. Its values live in
+// its own form store, so nothing about it reaches the stage draft or the
+// editing buffer; `dirty` is what its own predicate would report.
+const NestedEditor = ({ dirty }: { dirty: boolean }) => {
+  useNestedDraft(true, () => dirty);
+  return null;
+};
+
+const openNestedEditor = (dirty = true) =>
+  render(<NestedEditor dirty={dirty} />);
 
 const renderTabLock = (
   fakeFactory: ReturnType<typeof makeFakeLock>['factory'],
@@ -507,6 +520,126 @@ describe('useProtocolTabLock', () => {
     });
 
     expect(getProtocolLockState(store.getState())).toBe('open-elsewhere');
+  });
+
+  // The dimension #1387 introduced: work that is in neither the editing buffer
+  // nor the stage draft. Re-reading the saved row unmounts the route the editor
+  // is rendered from and takes its values with it, and the stage flow's
+  // download cannot rescue them — it builds its file from the stage draft,
+  // which does not contain them.
+  it('does not discard a dirty nested editor when the other tab closes', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/codebook');
+    window.history.replaceState(null, '', '/protocol/codebook');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+    });
+    openNestedEditor();
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).not.toHaveBeenCalled();
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+    expect(store.getState().activeProtocol?.present?.name).toBe(
+      'Test Protocol',
+    );
+  });
+
+  // A pristine STAGE draft is closed and the row reloaded, which is right when
+  // the stage form is the only thing holding work — but a nested editor open
+  // over it holds work of its own that the navigation would take.
+  it('does not close a pristine stage editor out from under a dirty nested editor', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+      // Seeded, never typed into: the stage form itself has nothing to lose.
+      store.dispatch(draftTimelineActions.reset(draftPresent));
+    });
+    openNestedEditor();
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+    expect(getLiveStageDraftDirty(store.getState())).toBe(false);
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+    expect(store.getState().stageEditorDraft.history.present).not.toBeNull();
+    expect(mockBrowserNavigate).not.toHaveBeenCalled();
+    expect(refreshActiveProtocol).not.toHaveBeenCalled();
+  });
+
+  // Cancelling the inner editor takes its values away by the researcher's own
+  // decision, which is what releases the reclaim it was blocking.
+  it('finishes the reclaim once the nested editor that blocked it closes', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/codebook');
+    window.history.replaceState(null, '', '/protocol/codebook');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+    });
+    const editor = openNestedEditor();
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+
+    await act(async () => {
+      editor.unmount();
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
+    expect(getProtocolLockState(store.getState())).toBe('owned');
+    expect(store.getState().activeProtocol?.present?.name).toBe(
+      'Test Protocol, edited elsewhere',
+    );
+  });
+
+  // A pristine nested editor is not work; blocking on one would leave the tab
+  // refusing every write over an editor with nothing in it.
+  it('reclaims normally when the open nested editor has nothing in it', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/codebook');
+    window.history.replaceState(null, '', '/protocol/codebook');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+    });
+    openNestedEditor(false);
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
+    expect(getProtocolLockState(store.getState())).toBe('owned');
   });
 
   it('closes the lock on unmount', () => {

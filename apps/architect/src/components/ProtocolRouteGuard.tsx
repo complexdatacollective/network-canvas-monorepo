@@ -49,13 +49,17 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
   const onProtocolRoute = isProtocolPath(location);
   const blocked = onProtocolRoute && mode === 'no-protocol';
 
-  // An editor dialog (a new variable, an entity type, a field) can be open at
-  // the moment this tab loses the lock, and dialogs are portalled outside the
-  // route tree, so replacing the editor would leave it on screen with a confirm
-  // that writes into a protocol this tab no longer owns. Dismiss on the
-  // transition only: on a first render already in read-only mode there is
-  // nothing of this tab's to dismiss, and startup dialogs are not ours to
-  // close.
+  // Imperative dialogs (`useDialog`) are portalled outside the route tree, so
+  // replacing the editor would leave one on screen with a confirm that writes
+  // into a protocol this tab no longer owns. Dismiss on the transition only: on
+  // a first render already in read-only mode there is nothing of this tab's to
+  // dismiss, and startup dialogs are not ours to close.
+  //
+  // This does NOT cover the route-tree editor dialogs (a new variable, an
+  // entity type, an array row): those are rendered by the routes themselves,
+  // die by unmount rather than through `closeDialog`, and so never run their
+  // own discard confirmation. `held-nested-editor` is what keeps them mounted;
+  // by the time this transition to read-only runs, none is open.
   const previousMode = useRef(mode);
   useEffect(() => {
     const previous = previousMode.current;
@@ -79,11 +83,12 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
   if (!onProtocolRoute) return <>{children}</>;
   if (mode === 'no-protocol') return null;
   if (mode === 'read-only') return <ProtocolReadOnlyView />;
-  // 'held-stage-editor' keeps the editor mounted on purpose: a stage draft
-  // exists nowhere else, so replacing the editor underneath it would be the
-  // silent discard this guard exists to prevent. ProtocolLockBanner
-  // explains that changes cannot be saved here and offers the ways out, and
-  // the commit is refused (StageEditorNav, StageEditor.onSubmit).
+  // 'held-stage-editor' and 'held-nested-editor' keep the editor mounted on
+  // purpose: a stage draft, and a nested editor's half-typed values, exist
+  // nowhere else, so replacing the route underneath them would be the silent
+  // discard this guard exists to prevent. ProtocolLockBanner explains that
+  // changes cannot be saved here and names the ways out, and the commit is
+  // refused (StageEditorNav, StageEditor.onSubmit, DialogForm).
   return <>{children}</>;
 };
 

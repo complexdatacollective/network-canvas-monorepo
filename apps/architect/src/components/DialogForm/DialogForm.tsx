@@ -10,6 +10,7 @@ import FormStoreProvider, {
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { Layout } from '~/components/EditorLayout';
+import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
 import { confirmDiscardNestedDraft } from './confirmDiscardNestedDraft';
 import {
@@ -91,6 +92,7 @@ const DialogFormBody = ({
   const { isSubmitting } = useFormMeta();
   const storeApi = useContext(FormStoreContext);
   const { openDialog } = useDialog();
+  const refusedCommit = useRefusedNestedCommit();
 
   /**
    * Every dialog form is guarded by construction. The previous arrangement was
@@ -148,7 +150,20 @@ const DialogFormBody = ({
     });
   }, [isDirty, isSubmitting, onClose, openDialog]);
 
-  const handleSubmit = withFormLevelValidate(onSubmit, validate, {
+  /**
+   * A tab that cannot save must not accept a Finish that looks like it worked
+   * — see `useRefusedNestedCommit` for which commits that covers and why.
+   */
+  const guardedSubmit = useCallback<LenientSubmitHandler>(
+    async (values) => {
+      const refusal = refusedCommit();
+      if (refusal) return { success: false, formErrors: [refusal] };
+      return await onSubmit(values);
+    },
+    [onSubmit, refusedCommit],
+  );
+
+  const handleSubmit = withFormLevelValidate(guardedSubmit, validate, {
     editIndex,
   });
 

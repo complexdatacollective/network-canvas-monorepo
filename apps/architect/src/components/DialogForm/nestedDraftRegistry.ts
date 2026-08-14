@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 /**
  * The seam every "are you sure you want to leave?" guard consults for editors
@@ -26,6 +26,57 @@ export const hasDirtyNestedDraft = (): boolean => {
   }
   return false;
 };
+
+/**
+ * Whether ANY nested editor is open, dirty or not.
+ *
+ * The question the cross-tab lock's read-only swap asks. Deliberately not the
+ * dirty one: dirtiness flips back to clean the moment the researcher undoes
+ * their typing, and a guard keyed on it would tear the editor away mid-edit —
+ * the same reasoning that keys `held-stage-editor` on the route rather than on
+ * `getLiveStageDraftDirty`. An editor being open, by contrast, only changes
+ * when the researcher opens or closes one.
+ */
+const hasOpenNestedEditor = (): boolean => draftPredicates.size > 0;
+
+// Notified whenever an editor registers or unregisters — i.e. whenever one
+// opens or closes. Dirtiness itself is deliberately NOT observable: the
+// predicates are evaluated at ask time so they always reflect the live editor,
+// which means there is nothing to fire on when a keystroke changes the answer.
+// Opening and closing are the only transitions that can resolve a question
+// already on screen ("finish or cancel that editor"), and both pass through
+// here.
+const registrationListeners = new Set<() => void>();
+
+const subscribeNestedDrafts = (listener: () => void) => {
+  registrationListeners.add(listener);
+  return () => {
+    registrationListeners.delete(listener);
+  };
+};
+
+const notifyRegistrationChange = () => {
+  for (const listener of registrationListeners) listener();
+};
+
+/**
+ * Re-renders the caller whenever a nested editor opens or closes, reporting
+ * whether one is open now.
+ */
+export const useNestedEditorOpen = (): boolean =>
+  useSyncExternalStore(subscribeNestedDrafts, hasOpenNestedEditor);
+
+/**
+ * Re-renders the caller whenever a nested editor opens or closes, reporting
+ * whether any of them holds unsaved work now.
+ *
+ * The answer can change between notifications (a keystroke), so this is not a
+ * complete subscription and is not treated as one: every consumer uses it to
+ * decide whether to KEEP blocking, where a stale `true` costs nothing and is
+ * cleared by the close that follows.
+ */
+export const useNestedDraftDirty = (): boolean =>
+  useSyncExternalStore(subscribeNestedDrafts, hasDirtyNestedDraft);
 
 const handleBeforeUnload = (event: BeforeUnloadEvent) => {
   if (!hasDirtyNestedDraft()) return;
@@ -63,10 +114,12 @@ const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
   const key = Symbol('nested-draft');
   draftPredicates.set(key, isDirty);
   syncBeforeUnloadListener();
+  notifyRegistrationChange();
 
   return () => {
     draftPredicates.delete(key);
     syncBeforeUnloadListener();
+    notifyRegistrationChange();
   };
 };
 
