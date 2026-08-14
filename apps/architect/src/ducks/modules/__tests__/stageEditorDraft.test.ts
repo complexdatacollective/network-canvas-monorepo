@@ -54,12 +54,14 @@ describe('stageEditorDraft reducer', () => {
       const second = makeStage('two');
 
       const afterFirst = reducer(state, draftSnapshot(first));
-      expect(afterFirst.history.present).toEqual(first);
+      expect(afterFirst.history.present?.stage).toEqual(first);
 
       const next = reducer(afterFirst, draftSnapshot(second));
-      expect(next.history.present).toEqual(second);
+      expect(next.history.present?.stage).toEqual(second);
       expect(next.history.past.length).toBe(afterFirst.history.past.length + 1);
-      expect(next.history.past[next.history.past.length - 1]).toEqual(first);
+      expect(next.history.past[next.history.past.length - 1]?.stage).toEqual(
+        first,
+      );
       expect(next.history.timeline.length).toBe(
         afterFirst.history.timeline.length + 1,
       );
@@ -80,9 +82,12 @@ describe('stageEditorDraft reducer', () => {
       next = reducer(next, draftSnapshot(makeStage('b')));
       expect(next.history.past.length).toBe(1);
 
-      next = reducer(next, draftTimelineActions.reset(seeded));
+      next = reducer(
+        next,
+        draftTimelineActions.reset({ stage: seeded, codebook: null }),
+      );
 
-      expect(next.history.present).toEqual(seeded);
+      expect(next.history.present?.stage).toEqual(seeded);
       expect(next.history.past.length).toBe(0);
       expect(next.history.future.length).toBe(0);
       expect(next.history.timeline.length).toBe(1);

@@ -4,7 +4,6 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import type { Variable } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
 
@@ -152,7 +151,6 @@ export function useOnBeforeSavePrompt(
         };
       }
 
-      dispatch(markExternalEdit());
       await dispatch(
         updateVariableAsync({
           entity,

@@ -103,7 +103,7 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     // No existing rules: the section starts collapsed, so its toggle has to
     // be opened before the rule list is reachable. `Section`'s toggle
@@ -125,8 +125,6 @@ describe('CodebookVariableValidationSection', () => {
         }),
       );
     });
-
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
   });
 
   it('commits the removal when the section is turned off, so the old rules leave the codebook', async () => {
@@ -140,7 +138,7 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     // Existing rules: the section starts expanded, so this click turns it off.
     fireEvent.click(
@@ -156,8 +154,6 @@ describe('CodebookVariableValidationSection', () => {
         }),
       );
     });
-
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
   });
 
   it('writes nothing for a variable whose section is never opened', async () => {
@@ -168,7 +164,7 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     await waitFor(() => {
       expect(
@@ -177,6 +173,5 @@ describe('CodebookVariableValidationSection', () => {
     });
 
     expect(updateVariableAsync).not.toHaveBeenCalled();
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(0);
   });
 });

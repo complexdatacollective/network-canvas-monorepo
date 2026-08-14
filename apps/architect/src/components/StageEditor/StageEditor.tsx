@@ -21,8 +21,10 @@ import {
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
-import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
+import {
+  commitStageEditorDraftThunk,
+  resetDraft,
+} from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
@@ -96,8 +98,12 @@ const StageEditor = (props: StageEditorProps) => {
         'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
       actions: { primary: { label: 'OK', value: true } },
     });
+    // Abandons the draft along with the stage. Without this the editor's
+    // codebook transaction would stay open after the redirect, and codebook
+    // writes made elsewhere would land on a draft nothing will ever commit.
+    dispatch(resetDraft(null));
     setLocation('/protocol');
-  }, [stageMissing, openDialog, setLocation]);
+  }, [stageMissing, openDialog, setLocation, dispatch]);
 
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
@@ -234,18 +240,10 @@ const StageEditor = (props: StageEditorProps) => {
       // resurrect it on save.
       const normalizedStage = withStageIdentity(values as unknown as Stage);
 
-      if (id) {
-        dispatch(stageActions.updateStage(id, normalizedStage, true));
-      } else {
-        dispatch(
-          stageActions.createStage({
-            options: normalizedStage,
-            index: insertAtIndex,
-          }),
-        );
-      }
-
-      dispatch(resetDraft(null));
+      // The stage and every codebook edit its field editors made are promoted
+      // in one action, so the protocol timeline, validation and persistence
+      // each see exactly one snapshot — and a half-applied save cannot exist.
+      dispatch(commitStageEditorDraftThunk(id, normalizedStage, insertAtIndex));
       setLocation('/protocol');
 
       return { success: true };

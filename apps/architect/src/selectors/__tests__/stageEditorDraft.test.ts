@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import type { Codebook, Stage } from '@codaco/protocol-validation';
+import { test as codebookTest } from '~/ducks/modules/protocol/codebook';
+import { stageEditorCodebookMeta } from '~/ducks/modules/protocol/stageEditorCodebookMeta';
 import reducer, {
   draftTimelineActions,
-  markExternalEdit,
   setLiveValues,
 } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
@@ -17,11 +18,37 @@ const asStage = (values: Record<string, unknown>) => values as unknown as Stage;
 const asRootState = (stageEditorDraft: DraftState) =>
   ({ stageEditorDraft }) as unknown as RootState;
 
-const seeded = (baseline: Record<string, unknown>) =>
+const CODEBOOK: Codebook = {
+  node: {
+    person: {
+      name: 'person',
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: { v1: { name: 'age', type: 'number', component: 'Number' } },
+    },
+  },
+  edge: {},
+};
+
+const seeded = (
+  baseline: Record<string, unknown>,
+  codebook: Codebook | null = CODEBOOK,
+) =>
   reducer(
     reducer(undefined, { type: '@@INIT' }),
-    draftTimelineActions.reset(asStage(baseline)),
+    draftTimelineActions.reset({ stage: asStage(baseline), codebook }),
   );
+
+// The stamped shape a codebook write takes while a stage editor transaction is
+// open (see `routeCodebookAction`).
+const draftCodebookWrite = () => ({
+  ...codebookTest.updateVariable({
+    variable: 'v1',
+    configuration: { component: 'Text' },
+    replaceProperties: ['component'],
+  }),
+  meta: stageEditorCodebookMeta,
+});
 
 describe('getLiveStageDraftDirty', () => {
   it('is clean before a baseline is seeded', () => {
@@ -64,18 +91,32 @@ describe('getLiveStageDraftDirty', () => {
     expect(getLiveStageDraftDirty(asRootState(state))).toBe(true);
   });
 
-  it('is dirty after an edit made outside the form', () => {
-    const state = reducer(seeded({ label: 'One' }), markExternalEdit());
+  it('is dirty after a codebook edit made outside the form', () => {
+    const state = reducer(seeded({ label: 'One' }), draftCodebookWrite());
     expect(getLiveStageDraftDirty(asRootState(state))).toBe(true);
   });
 
-  it('clears the external edit count when the baseline is re-seeded', () => {
-    const edited = reducer(seeded({ label: 'One' }), markExternalEdit());
+  it('is clean again once a codebook edit is undone', () => {
+    const edited = reducer(seeded({ label: 'One' }), draftCodebookWrite());
+    const undone = reducer(edited, draftTimelineActions.undo());
+    expect(getLiveStageDraftDirty(asRootState(undone))).toBe(false);
+  });
+
+  it('clears codebook dirtiness when the baseline is re-seeded', () => {
+    const edited = reducer(seeded({ label: 'One' }), draftCodebookWrite());
     const reset = reducer(
       edited,
-      draftTimelineActions.reset(asStage({ label: 'One' })),
+      draftTimelineActions.reset({
+        stage: asStage({ label: 'One' }),
+        codebook: edited.history.present?.codebook ?? null,
+      }),
     );
     expect(getLiveStageDraftDirty(asRootState(reset))).toBe(false);
+  });
+
+  it('ignores codebook state when no transaction is open', () => {
+    const state = reducer(seeded({ label: 'One' }, null), setLiveValues(null));
+    expect(getLiveStageDraftDirty(asRootState(state))).toBe(false);
   });
 
   it('is clean once the mirror is torn down', () => {

@@ -19,6 +19,7 @@ import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 import { timelineActions } from '../middleware/timeline';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
+import { isStageEditorCodebookAction } from './protocol/stageEditorCodebookMeta';
 import stages from './protocol/stages';
 
 // Types
@@ -98,7 +99,10 @@ const activeProtocolSlice = createSlice({
         }
       }
 
-      if (state.codebook) {
+      // A codebook write made inside an open stage editor belongs to that
+      // editor's draft copy, not to the canonical protocol — it must not reach
+      // validation or persistence until the stage is committed (#1382).
+      if (state.codebook && !isStageEditorCodebookAction(action)) {
         const currentCodebook = current(state.codebook);
         const newCodebook = codebook(currentCodebook, action);
         if (newCodebook !== currentCodebook) {

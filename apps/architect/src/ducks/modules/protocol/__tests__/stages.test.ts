@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
+import { commitStageEditorDraft } from '../commitStageEditorDraft';
 import reducer, {
   actionCreators,
   getFamilyPedigreeNodeTypeChangeBlock,
@@ -45,19 +46,30 @@ const createTestStore = (initialStages: Stage[] = []) => {
 
 describe('protocol.stages', () => {
   describe('reducer', () => {
-    describe('createStage', () => {
+    // Stage creation happens only as half of the stage editor's atomic
+    // commit; there is no standalone create action to insert a stage.
+    describe('commitStageEditorDraft (create)', () => {
       it('Creates a stage', () => {
         const newStage = { id: 'new', type: 'Information', label: '' } as Stage;
 
         const appendStageToState = reducer(
           mockStages,
-          test.createStage(newStage),
+          commitStageEditorDraft({
+            stageId: null,
+            stage: newStage,
+            codebook: null,
+          }),
         );
         expect(appendStageToState[3]).toMatchObject({ ...newStage });
 
         const addStageToExistingState = reducer(
           mockStages,
-          test.createStage(newStage, 1),
+          commitStageEditorDraft({
+            stageId: null,
+            stage: newStage,
+            index: 1,
+            codebook: null,
+          }),
         );
         expect(addStageToExistingState[1]).toMatchObject({ ...newStage });
       });
@@ -276,8 +288,6 @@ describe('protocol.stages', () => {
   });
 
   describe('async action creators', () => {
-    it.todo('createStageAsync');
-
     const createThunkStore = (present: Record<string, unknown>) => {
       const dispatched: { type: string; payload?: unknown }[] = [];
       const recordDispatched = () => (next: (action: unknown) => unknown) => {

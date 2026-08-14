@@ -6,7 +6,6 @@ import type { Variable } from '@codaco/protocol-validation';
 import { useAppDispatch } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/modules/root';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { hasValidatedUse } from '~/selectors/roleFilters';
 
@@ -111,7 +110,6 @@ export function useOnBeforeSaveTieStrengthPrompt() {
         };
       }
 
-      dispatch(markExternalEdit());
       await dispatch(
         updateVariableAsync({
           entity: 'edge',

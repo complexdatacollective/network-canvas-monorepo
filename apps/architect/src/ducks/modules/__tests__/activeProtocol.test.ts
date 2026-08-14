@@ -300,15 +300,8 @@ describe('activeProtocol', () => {
     it('should not process sub-reducers when no protocol data', () => {
       // Try to dispatch an action that would normally be handled by sub-reducers
       store.dispatch(
-        stagesTest.createStage({
-          id: 'test',
-          type: 'NameGenerator',
+        stagesTest.updateStage('test', {
           label: 'Test Stage',
-          subject: {
-            entity: 'node',
-            type: 'person',
-          },
-          prompts: [],
         } as unknown as Stage),
       );
 

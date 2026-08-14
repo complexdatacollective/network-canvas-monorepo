@@ -8,7 +8,7 @@ import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
+import { getCanonicalProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
 import { ensureError } from '~/utils/ensureError';
@@ -79,7 +79,7 @@ const beginTrustedSession = (state: RootState): void => {
   activeSession += 1;
   closeInvalidDialog();
 
-  const protocol = getProtocol(state);
+  const protocol = getCanonicalProtocol(state);
   const locusId = getTimelineLocus(state);
   lastValidState =
     protocol && locusId
@@ -269,16 +269,19 @@ startAppListening({
       return false;
     }
 
-    const currentProtocol = getProtocol(currentState);
+    // Canonical, never the stage editor's draft overlay: a codebook edit made
+    // inside an open editor must not be validated or persisted until the stage
+    // is committed (#1382).
+    const currentProtocol = getCanonicalProtocol(currentState);
     return (
       currentProtocol !== null &&
-      currentProtocol !== getProtocol(previousState) &&
+      currentProtocol !== getCanonicalProtocol(previousState) &&
       getTimelineLocus(currentState) !== null
     );
   },
   effect: async (_action, listenerApi) => {
     const state = listenerApi.getState();
-    const protocol = getProtocol(state);
+    const protocol = getCanonicalProtocol(state);
     const locusId = getTimelineLocus(state);
     if (!protocol || !locusId) return;
 

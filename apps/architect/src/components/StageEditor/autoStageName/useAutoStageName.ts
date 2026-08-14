@@ -9,7 +9,7 @@ import type {
 } from '@codaco/protocol-validation';
 import { usePanelsForAutoName } from '~/components/sections/NodePanels/panelSlots';
 import { useAppDispatch } from '~/ducks/hooks';
-import { draftTimelineActions } from '~/ducks/modules/stageEditorDraft';
+import { rebaselineDraftStage } from '~/ducks/modules/stageEditorDraft';
 import {
   getAllVariablesByUUID,
   getEdgeTypes,
@@ -127,7 +127,11 @@ export function useAutoStageName(isNewStage: boolean): {
       if (isInitialFill) {
         draft.cancelPendingSnapshot();
         const fresh = storeApi.getState().getFormValues() as unknown as Stage;
-        dispatch(draftTimelineActions.reset(fresh));
+        // Re-baselines the STAGE only. The codebook half is left alone in
+        // both directions: a codebook edit cannot be laundered into the
+        // opening state, and a variable created so far cannot be reverted out
+        // from under the form that references it.
+        dispatch(rebaselineDraftStage(fresh));
       }
     },
     [dispatch, draft, setStageValue, storeApi],

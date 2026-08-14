@@ -14,7 +14,7 @@ import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
-import { getProtocol } from '~/selectors/protocol';
+import { getCanonicalProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   isProtocolSourceAuthoringEnabled,
@@ -37,7 +37,7 @@ const ProjectActions = ({
 }: ProjectActionsProps) => {
   const dispatch = useAppDispatch();
   const activeProtocolId = useAppSelector(getActiveProtocolId);
-  const protocol = useAppSelector(getProtocol);
+  const protocol = useAppSelector(getCanonicalProtocol);
   const { openDialog } = useDialog();
   const {
     canUndo,

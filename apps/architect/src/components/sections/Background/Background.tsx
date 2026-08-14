@@ -138,7 +138,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
     // `present` is the entry being restored: `useStageDraftHistory` dispatches
     // the timeline step before it applies the values, in the same batch.
     const restored = get(
-      reduxStore.getState().stageEditorDraft.history.present ?? {},
+      reduxStore.getState().stageEditorDraft.history.present?.stage ?? {},
       'background',
     ) as Record<string, unknown> | undefined;
 

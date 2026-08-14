@@ -9,7 +9,6 @@ import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { Variable } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import {
   EMPTY_VARIABLES,
   getVariablesForSubjectSelector,
@@ -172,7 +171,6 @@ const CodebookVariableValidationSection = ({
   const handleCommit = (validation: ValidationMap) => {
     if (!variableId) return;
 
-    dispatch(markExternalEdit());
     void dispatch(
       updateVariableAsync({
         variable: variableId,

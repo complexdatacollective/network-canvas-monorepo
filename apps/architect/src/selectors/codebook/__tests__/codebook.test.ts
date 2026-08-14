@@ -174,10 +174,12 @@ describe('codebook selectors', () => {
       expect(result).toBeNull();
     });
 
-    it('returns error if codebook is not found', () => {
-      expect(() =>
-        makeGetVariable('foo')({} as unknown as RootState),
-      ).toThrow();
+    // `makeGetVariable` returns null when there is no codebook; it used to
+    // throw only because reading the protocol off an empty state threw first.
+    // The protocol accessors tolerate an unpopulated store now, so the
+    // function's own contract is what shows through.
+    it('returns null if there is no codebook', () => {
+      expect(makeGetVariable('foo')({} as unknown as RootState)).toBeNull();
     });
   });
 });

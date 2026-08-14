@@ -9,7 +9,6 @@ import {
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/modules/root';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import { makeGetVariable } from '~/selectors/codebook';
 import { ensureError } from '~/utils/ensureError';
 
@@ -119,16 +118,10 @@ const useCodebookCommit = () => {
     [dispatch],
   );
 
-  // Editing the codebook from inside the stage editor is an external edit: it
-  // never passes through the stage form, so the draft has to be told directly.
-  // Call this only once a write has actually landed — nothing decrements
-  // `externalEditCount` for the life of the editor, so a failed save that
-  // marked one would leave the stage dirty (and prompting on discard) forever.
-  const markEdited = useCallback(() => {
-    dispatch(markExternalEdit());
-  }, [dispatch]);
-
-  return { createVariable, getVariable, markEdited, updateVariable };
+  // Dirtiness is not announced here: the editor's draft codebook is compared
+  // against the codebook it opened on, so a write that lands is dirty and a
+  // write that fails is not, with nothing to remember to call.
+  return { createVariable, getVariable, updateVariable };
 };
 
 /**
@@ -140,8 +133,7 @@ export const useFormFieldCommit = ({
   entity,
   type,
 }: FieldCommitScope): FieldCommit => {
-  const { createVariable, getVariable, markEdited, updateVariable } =
-    useCodebookCommit();
+  const { createVariable, getVariable, updateVariable } = useCodebookCommit();
 
   return useCallback(
     async (values) => {
@@ -169,8 +161,6 @@ export const useFormFieldCommit = ({
           CODEBOOK_PROPERTIES,
         );
 
-        markEdited();
-
         return { variable, ...rest };
       }
 
@@ -181,11 +171,9 @@ export const useFormFieldCommit = ({
 
       if (isSubmissionResult(created)) return created;
 
-      markEdited();
-
       return { variable: created, ...rest };
     },
-    [createVariable, entity, getVariable, markEdited, type, updateVariable],
+    [createVariable, entity, getVariable, type, updateVariable],
   );
 };
 
@@ -199,8 +187,7 @@ export const useComposerFieldCommit = ({
   entity,
   type,
 }: FieldCommitScope): FieldCommit => {
-  const { createVariable, getVariable, markEdited, updateVariable } =
-    useCodebookCommit();
+  const { createVariable, getVariable, updateVariable } = useCodebookCommit();
 
   return useCallback(
     async (values) => {
@@ -234,8 +221,6 @@ export const useComposerFieldCommit = ({
           COMPOSER_CODEBOOK_PROPERTIES,
         );
 
-        markEdited();
-
         // fieldValues retains component + parameters
         return { variable, ...fieldValues };
       }
@@ -249,10 +234,8 @@ export const useComposerFieldCommit = ({
 
       if (isSubmissionResult(created)) return created;
 
-      markEdited();
-
       return { variable: created, ...fieldValues };
     },
-    [createVariable, entity, getVariable, markEdited, type, updateVariable],
+    [createVariable, entity, getVariable, type, updateVariable],
   );
 };

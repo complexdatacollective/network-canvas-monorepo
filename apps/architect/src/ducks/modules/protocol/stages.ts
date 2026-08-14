@@ -1,21 +1,16 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 import { compact } from 'es-toolkit/compat';
-import { v1 as uuid } from 'uuid';
 
 import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
 
+import { commitStageEditorDraft } from './commitStageEditorDraft';
 import { deleteStage } from './deleteStage';
 
 type StagesState = Stage[];
-
-type CreateStagePayload = {
-  stage: Stage;
-  index?: number;
-};
 
 type UpdateStagePayload = {
   stageId: string;
@@ -37,6 +32,9 @@ type DeletePromptPayload = {
 // Initial state
 const initialState: StagesState = [];
 
+// The base every newly created stage is built on. Kept as a spread base rather
+// than a fallback so a created stage's key order stays `label, id, type, …`,
+// which the committed interface snapshots record.
 const initialStage = {
   label: '',
 };
@@ -114,20 +112,6 @@ export const getInvalidSkipDestinationReferences = <
   });
 
 // Async thunks
-const createStageAsync = createAppAsyncThunk(
-  'stages/createStageAsync',
-  async (
-    { options, index }: { options: Partial<Stage>; index?: number },
-    { dispatch },
-  ) => {
-    const stageId = uuid();
-    const stage = { ...initialStage, ...options, id: stageId } as Stage;
-
-    dispatch(stagesSlice.actions.createStage({ stage, index }));
-    return stage;
-  },
-);
-
 const deleteStageAsync = createAppAsyncThunk(
   'stages/deleteStageAsync',
   async (stageId: string, { dispatch, getState }) => {
@@ -164,13 +148,6 @@ const stagesSlice = createSlice({
   name: 'stages',
   initialState,
   reducers: {
-    createStage: (state, action: PayloadAction<CreateStagePayload>) => {
-      const { stage, index } = action.payload;
-      const insertAtIndex = index ?? state.length;
-
-      const prunedStage = prune(stage);
-      state.splice(insertAtIndex, 0, prunedStage);
-    },
     updateStage: (state, action: PayloadAction<UpdateStagePayload>) => {
       const { stageId, stage: stageUpdate, overwrite = false } = action.payload;
 
@@ -275,24 +252,43 @@ const stagesSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(deleteStage, (state, action) => {
-      const { stageId } = action.payload;
+    builder
+      .addCase(deleteStage, (state, action) => {
+        const { stageId } = action.payload;
 
-      if (isStageReferencedAsSkipDestination(state, stageId)) {
-        return;
-      }
+        if (isStageReferencedAsSkipDestination(state, stageId)) {
+          return;
+        }
 
-      return state.filter((stage) => stage.id !== stageId);
-    });
+        return state.filter((stage) => stage.id !== stageId);
+      })
+      // The stage half of the stage editor's atomic commit; `codebook` handles
+      // the other half of the very same action. This is the ONLY way a stage is
+      // created, and it always saves the whole stage (overwrite, not merge),
+      // because a key the form no longer carries has been removed rather than
+      // left untouched.
+      .addCase(commitStageEditorDraft, (state, action) => {
+        const { stageId, stage, index } = action.payload;
+
+        if (!stageId) {
+          state.splice(
+            index ?? state.length,
+            0,
+            prune({ ...initialStage, ...stage }),
+          );
+          return;
+        }
+
+        const stageIndex = state.findIndex(({ id }) => id === stageId);
+        if (stageIndex === -1) return;
+
+        state[stageIndex] = prune({ ...stage, id: stageId });
+      });
   },
 });
 
-// Export slice actions for middleware listeners
-export const createStage = stagesSlice.actions.createStage;
-
 // Export action creators (thunks)
 export const actionCreators = {
-  createStage: createStageAsync,
   updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
     stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
   deleteStage: deleteStageAsync,
@@ -308,8 +304,6 @@ export const actionCreators = {
 
 // Export for backwards compatibility and testing
 export const test = {
-  createStage: (stage: Stage, index?: number) =>
-    stagesSlice.actions.createStage({ stage, index }),
   updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
     stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
   deleteStage: (stageId: string) =>

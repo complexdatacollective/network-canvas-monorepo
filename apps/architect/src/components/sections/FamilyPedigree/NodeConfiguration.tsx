@@ -57,7 +57,6 @@ import {
   updateVariableAsync,
 } from '~/ducks/modules/protocol/codebook';
 import { getFamilyPedigreeNodeTypeChangeBlock } from '~/ducks/modules/protocol/stages';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
 import {
   EMPTY_VARIABLES,
@@ -525,10 +524,10 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
 
   // `handleChangeFields`'s replacement for the `withHandlers`/`connect`
   // composition: creates or updates the codebook variable a form field picks
-  // before the row is committed. `_modified` is retired — an external
-  // codebook edit now dispatches `markExternalEdit()` to force the stage
-  // dirty. Failures return `{success:false, ...}` instead of throwing
-  // `SubmissionError`.
+  // before the row is committed. The write lands on the stage editor's draft
+  // codebook, which is compared against the codebook the editor opened on to
+  // decide dirtiness — so nothing has to announce the edit. Failures return
+  // `{success:false, ...}` instead of throwing `SubmissionError`.
   const handleChangeFields = useCallback(
     async (values: unknown): Promise<unknown> => {
       const { variable, component, _createNewVariable, ...rest } = values as {
@@ -544,7 +543,6 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         component,
         ...codebookProperties,
       };
-      dispatch(markExternalEdit());
       if (!_createNewVariable) {
         // `allVariables` is this render's codebook snapshot for the node
         // type, already scoped by `nodeVariablesSubject` — reused here rather

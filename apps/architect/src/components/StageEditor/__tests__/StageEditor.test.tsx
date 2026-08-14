@@ -168,18 +168,19 @@ type RecordedAction = { type?: string; payload?: unknown };
 type UpdateStageAction = {
   type: string;
   payload: {
-    stageId: string;
+    stageId: string | null;
     stage: Record<string, unknown>;
-    overwrite?: boolean;
+    index?: number;
   };
 };
 
+// The editor promotes its stage and its draft codebook in one action.
 const findUpdateStage = (
   dispatched: RecordedAction[],
 ): UpdateStageAction | undefined =>
-  dispatched.find((action) => action.type === 'stages/updateStage') as
-    | UpdateStageAction
-    | undefined;
+  dispatched.find(
+    (action) => action.type === 'stages/commitStageEditorDraft',
+  ) as UpdateStageAction | undefined;
 
 const renderEditor = (
   options: { stageOverrides?: Record<string, unknown> } = {},
@@ -187,7 +188,7 @@ const renderEditor = (
   const protocol = makeProtocol(options.stageOverrides);
   const dispatched: RecordedAction[] = [];
   // Sits after the thunk middleware, so it records only resolved plain
-  // actions (the `stages/updateStage` dispatch the save produces).
+  // actions (the `stages/commitStageEditorDraft` dispatch the save produces).
   const recordDispatch: Middleware = () => (next) => (action) => {
     dispatched.push(action as RecordedAction);
     return next(action);
@@ -371,8 +372,9 @@ describe('StageEditor', () => {
         expect(findUpdateStage(dispatched)).toBeDefined();
       });
       const action = findUpdateStage(dispatched)!;
-      expect(action.payload.overwrite).toBe(true);
-      // The overwrite save must not silently delete the schema-valid,
+      // The commit always replaces the stage wholesale (a key the form no
+      // longer carries has been removed, not left untouched), so it must not
+      // silently delete the schema-valid,
       // runtime-honored key the editor never showed.
       expect(action.payload.stage.skipLogic).toEqual(SKIP_LOGIC);
     });

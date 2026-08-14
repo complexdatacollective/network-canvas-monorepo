@@ -347,7 +347,7 @@ describe('ExternalDataSource', () => {
       );
 
       // The only stop behind the switch is the untouched asset-1 stage.
-      expect(store.getState().stageEditorDraft.history.past[0]).toEqual(
+      expect(store.getState().stageEditorDraft.history.past[0]?.stage).toEqual(
         ASSET_1_VALUES,
       );
       expect(getHistory().canUndo).toBe(true);

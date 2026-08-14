@@ -97,7 +97,12 @@ export const useStageDraftHistory = (): StageDraftHistory => {
     if (formState.fields.size === 0) return;
 
     const values = formState.getFormValues() as unknown as Stage;
-    if (isEqual(values, reduxStore.getState().stageEditorDraft.history.present))
+    if (
+      isEqual(
+        values,
+        reduxStore.getState().stageEditorDraft.history.present?.stage,
+      )
+    )
       return;
 
     dispatch(draftSnapshot(values));
@@ -112,11 +117,14 @@ export const useStageDraftHistory = (): StageDraftHistory => {
       flushPendingEdit();
 
       const { past, future } = reduxStore.getState().stageEditorDraft.history;
-      const target = (
-        direction === 'undo' ? past[past.length - 1] : future[0]
-      ) as Record<string, unknown> | undefined;
+      const entry = direction === 'undo' ? past[past.length - 1] : future[0];
 
-      if (!target) return;
+      if (!entry) return;
+
+      // The entry's codebook rewinds with the timeline step below — every
+      // reader takes it from `history.present` — so only the stage half needs
+      // writing back into the form store.
+      const target = (entry.stage ?? {}) as Record<string, unknown>;
 
       const current = storeApi.getState().getFormValues() as Record<
         string,
