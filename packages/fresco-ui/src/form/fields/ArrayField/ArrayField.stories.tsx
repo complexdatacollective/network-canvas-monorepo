@@ -156,7 +156,10 @@ ArrayField manages arrays of items with support for:
 - **Dialog editing**: Separate editorComponent for complex forms in dialogs
 - **Drag-and-drop reordering**: Enable with \`sortable\` prop
 - **Keyboard reordering**: Use \`ArrayFieldDragHandle\` for arrow-key movement.
-  Focus stays on the handle after each move, so repeated presses keep working.
+  Focus follows the handle to its new position, so repeated presses keep
+  working. A list with ordering rules of its own may answer \`false\` from
+  \`onMove\` to refuse a move; focus is then left where it is, because nothing
+  moved.
 - **Draft items**: New items are drafts until saved
 - **Item limits**: Set \`maxItems\` to prevent additional items at a fixed cap
 
@@ -174,7 +177,11 @@ When editing, call \`onChange\` to save and exit edit mode.
 
 ### 2. Dialog Editing (With editorComponent)
 The \`itemComponent\` only displays items. A separate \`editorComponent\` receives
-\`item\`, \`isNewItem\`, \`onSave\`, and \`onCancel\` to handle editing in a dialog.
+\`item\`, \`index\`, \`isNewItem\`, \`onSave\`, \`onCancel\`, and \`getEditorTrigger\` to
+handle editing in a dialog. Pass \`getEditorTrigger\` to the dialog's
+\`finalFocus\`: it resolves lazily, at the moment focus is returned, to the row's
+own Edit control — which a row that hides its controls while being edited
+unmounts and remounts as a different element.
 ### 3. Always editing (always display editing UI)
 For simple cases, the \`itemComponent\` can always show editing UI without
 needing to call \`onEdit\`. Useful for lists where all items are edited
@@ -218,7 +225,7 @@ immediately upon creation.
     'editorComponent': {
       control: false,
       description:
-        'Optional component for dialog-based editing. Receives ArrayFieldEditorProps with onSave callback.',
+        "Optional component for dialog-based editing. Receives ArrayFieldEditorProps: onSave/onCancel, and getEditorTrigger for the dialog's finalFocus.",
     },
     'itemTemplate': {
       control: false,

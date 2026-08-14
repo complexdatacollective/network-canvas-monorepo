@@ -113,7 +113,20 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * then, rather than wiring a live-looking control to a no-op.
    */
   onEdit?: () => void;
-  onMove: (targetIndex: number) => void;
+  /**
+   * Move this item to `targetIndex` — see `ArrayFieldDragHandleProps.onMove`,
+   * which every item component forwards this straight into, for the refusal
+   * channel it carries.
+   *
+   * Declared BY REFERENCE rather than restated, deliberately. TypeScript
+   * assigns a function of any return type to a `void`-returning one, so a
+   * restatement that fell behind would typecheck across the whole repo while
+   * quietly making a refusal unsayable for every list — and the handle would
+   * then go on waiting to reclaim focus after a move that never happened,
+   * firing at the next unrelated reorder. This makes the two impossible to
+   * diverge.
+   */
+  onMove: ArrayFieldDragHandleProps['onMove'];
   isSortable: boolean;
   isBeingEdited: boolean;
   disabled: boolean;
@@ -246,7 +259,12 @@ export type ArrayFieldDragHandleProps = {
 };
 
 /**
- * Pointer drag handle with an arrow-key equivalent for sortable ArrayFields.
+ * Pointer drag handle with an arrow-key equivalent, for any reorderable list.
+ *
+ * Exported for lists that are not `ArrayField`s — Architect's stage timeline
+ * uses it so the app has one reorder vocabulary rather than two — which is why
+ * `onMove` carries a refusal channel a list with ordering rules of its own can
+ * answer on.
  */
 export function ArrayFieldDragHandle({
   dragControls,
@@ -331,7 +349,13 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onUpdateItem?: (internalId: string, value: Partial<T>) => void;
   onDeleteItem?: (internalId: string) => void;
   onEditItem?: (internalId: string) => void;
-  onMoveItem: (internalId: string, targetIndex: number) => void;
+  // Carries the refusal channel through the wrapper too, for the reason given
+  // on `ArrayFieldItemProps.onMove`: a `=> void` hop anywhere along the way
+  // type-erases the `false` before it reaches the handle, and still typechecks.
+  onMoveItem: (
+    internalId: string,
+    targetIndex: number,
+  ) => ReturnType<ArrayFieldDragHandleProps['onMove']>;
   onDragStartItem: (internalId: string) => void;
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
@@ -527,11 +551,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
   /**
    * Focus return for an external editor.
    *
-   * `editTriggerElements` is keyed by `_internalId` and refilled on every
-   * render, so it always holds the CURRENT element for a row — including the
-   * fresh one mounted after a row that hid its controls while being edited
-   * comes back. `lastEditingRef` remembers which session was open, because by
-   * the time focus is returned `editingItem` is already null.
+   * `editTriggerElements` is keyed by `_internalId` and written by React when
+   * a row's trigger MOUNTS or UNMOUNTS — not on every render, which is the
+   * whole point of the memoised ref callbacks below. It therefore always holds
+   * the CURRENT element for a row, including the fresh one mounted after a row
+   * that hid its controls while being edited comes back. `lastEditingRef`
+   * remembers which session was open, because by the time focus is returned
+   * `editingItem` is already null.
    */
   const editTriggerElements = useRef(new Map<string, HTMLElement>());
   const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -626,19 +652,23 @@ export default function ArrayField<T extends Record<string, unknown>>({
     );
   }, [announce, isInteractionDisabled, setItems]);
 
+  // Answers `false` on every path that leaves the item where it was, so the
+  // drag handle disarms rather than waiting to reclaim focus after a move that
+  // did not happen. `undefined` means it moved — the same contract every other
+  // `onMove` is written to.
   const moveItem = useCallback(
-    (internalId: string, targetIndex: number) => {
-      if (isInteractionDisabled) return;
+    (internalId: string, targetIndex: number): void | boolean => {
+      if (isInteractionDisabled) return false;
 
       const currentIndex = items.findIndex(
         (item) => item._internalId === internalId,
       );
       const boundedIndex = Math.max(0, Math.min(targetIndex, items.length - 1));
-      if (currentIndex === -1 || currentIndex === boundedIndex) return;
+      if (currentIndex === -1 || currentIndex === boundedIndex) return false;
 
       const reorderedItems = [...items];
       const [movedItem] = reorderedItems.splice(currentIndex, 1);
-      if (!movedItem) return;
+      if (!movedItem) return false;
       reorderedItems.splice(boundedIndex, 0, movedItem);
 
       const confirmedBefore = items.filter((item) => !item._draft);

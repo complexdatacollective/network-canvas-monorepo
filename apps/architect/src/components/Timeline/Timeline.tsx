@@ -58,12 +58,14 @@ const timelineInsertVariants: Variants = {
 const Timeline = () => {
   const stages = useSelector(getStageList);
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
-  // hasSkipLogic}` for cheap render diffing, dropping stage-type-specific
-  // fields like NarrativePedigree's `sourceStageId`. The FamilyPedigree
-  // delete guard below needs that field to find dependents, so it reads the
-  // full protocol separately (mirroring `deleteStageAsync`'s own dependents
-  // check in ducks/modules/protocol/stages.ts, which already does this
-  // correctly) rather than off the pruned list.
+  // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
+  // skip destination is on it because the reorder and delete guards below read
+  // it — while dropping stage-type-specific fields like NarrativePedigree's
+  // `sourceStageId`. The FamilyPedigree delete guard needs that one to find
+  // dependents, so it reads the full protocol separately (mirroring
+  // `deleteStageAsync`'s own dependents check in
+  // ducks/modules/protocol/stages.ts, which already does this correctly)
+  // rather than off the pruned list.
   const protocol = useSelector(getProtocol);
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
@@ -83,9 +85,10 @@ const Timeline = () => {
   }, [stages]);
 
   // Every row's "open" control, so a deleted row can hand focus to a surviving
-  // neighbour. Resolved lazily, when focus is actually returned: the list
-  // re-renders between the confirm and the return, so an element captured
-  // earlier would be a dead node.
+  // neighbour. Resolved lazily, when focus is actually returned, because WHICH
+  // neighbour survives is not known until the deletion has been applied — and
+  // on the last stage there is no neighbour at all and focus has to go to the
+  // add control instead.
   const openControlsRef = useRef(new Map<string, HTMLButtonElement>());
   const addStageRef = useRef<HTMLButtonElement>(null);
 

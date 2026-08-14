@@ -12,6 +12,7 @@ import {
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
+import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
@@ -85,7 +86,7 @@ const getImportAssetErrorInfo = (
 export const importAssetAsync = createAsyncThunk<
   ImportAssetCompletePayload,
   File,
-  { state: Pick<RootState, 'app'> }
+  { state: Pick<RootState, 'app' | 'stageEditorDraft'> }
 >(
   'assetManifest/importAssetAsync',
   async (file, { dispatch, getState, rejectWithValue }) => {
@@ -96,17 +97,24 @@ export const importAssetAsync = createAsyncThunk<
     // exclusivity check of its own, so a tab that no longer owns the protocol
     // could drop a file into the owning tab's scope — a durable write from a
     // tab whose manifest entry naming it can never be saved. Refuse before
-    // anything is written, and say why — one whole message per lock state,
+    // anything is written, and say why — one whole message per situation,
     // because what is true of the researcher's protocol, and the way out of
-    // it, are not the same in the two cases.
-    const lockState = getProtocolLockState(getState());
+    // it, are not the same in each.
+    //
+    // A blocked reclaim has two shapes since #1387: an unresolved stage-draft
+    // choice, and an editor still open with unsaved changes in it. Naming the
+    // wrong one sends the researcher looking for a question nobody asked.
+    const state = getState();
+    const lockState = getProtocolLockState(state);
     if (lockState !== 'owned') {
       return rejectWithValue({
         filename: name,
         code: 'PROTOCOL_NOT_OWNED_HERE',
         message:
           lockState === 'reclaim-blocked'
-            ? 'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then add the file again.'
+            ? getStageEditorCodebookTransactionOpen(state)
+              ? 'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then add the file again.'
+              : 'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then add the file again.'
             : 'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
       } satisfies ImportAssetErrorInfo);
     }

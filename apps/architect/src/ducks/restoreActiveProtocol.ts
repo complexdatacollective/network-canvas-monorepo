@@ -148,9 +148,12 @@ export const restoreActiveProtocolAfterStoreRehydration = async (
 > => {
   // The whole `app` slice is persisted to sessionStorage, so a reload restores
   // whatever cross-tab lock state this tab happened to be in — including
-  // `reclaim-blocked`, whose stage draft did NOT survive. That state is derived
-  // from the BroadcastChannel and belongs to a session, so a new one starts
-  // from "this tab owns it" and lets the first claim settle the truth.
+  // `reclaim-blocked`, whose blocker did NOT survive: neither a stage draft nor
+  // a nested editor's values are persisted, so the state would outlive the
+  // thing that justified it and refuse every write with nothing left to
+  // resolve. It is derived from the BroadcastChannel and belongs to a session,
+  // so a new one starts from "this tab owns it" and lets the first claim settle
+  // the truth.
   store.dispatch(setProtocolLockState('owned'));
 
   if (rehydrationResult === 'rehydrated') {

@@ -105,15 +105,16 @@ const TimelineStageRow = ({
     ? `Edit stage ${position}: ${stageName}, ${interfaceTitle}`
     : `Edit stage ${position}: ${stageName}`;
 
-  // Deliberately stable, and load-bearing. An inline
-  // `ref={(el) => register(...)}` is a new function on every render, so React
-  // unregisters it (calling it with `null`) and registers it again around each
-  // commit. Deleting a stage flushes the removal and the dialog's close in ONE
-  // commit, and the focus return runs inside it — with an inline ref the
-  // surviving neighbour is unregistered at exactly that moment, and focus falls
-  // through to the list's add control instead. Pinned by the
-  // "hands focus to a surviving stage after a delete" end-to-end test, which
-  // fails if this memoisation is removed.
+  // Deliberately stable. An inline `ref={(el) => register(...)}` is a new
+  // function on every render, so React unregisters it (calling it with `null`)
+  // and registers it again around EVERY commit — including the many that have
+  // nothing to do with this row. The registry would still hold the right
+  // element by the time focus is returned (Base UI returns it after the
+  // dialog's exit animation, well after any commit has settled — see
+  // `Modal`'s comment on why its isolation is released on the `open` flip
+  // rather than on unmount), so this is not what makes the focus return
+  // correct. It keeps the registry from churning every keystroke, which is
+  // reason enough on its own.
   const setOpenControl = useCallback(
     (element: HTMLButtonElement | null) => {
       registerOpenControl(stage.id, element);

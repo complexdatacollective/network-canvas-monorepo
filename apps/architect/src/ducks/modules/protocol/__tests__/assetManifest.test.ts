@@ -7,6 +7,9 @@ import appReducer, {
   setProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
+import stageEditorDraftReducer, {
+  draftTimelineActions,
+} from '~/ducks/modules/stageEditorDraft';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
 
@@ -32,6 +35,10 @@ const createTestStore = () =>
     reducer: {
       app: appReducer,
       assetManifest: reducer,
+      // The refusal below distinguishes a blocked reclaim waiting on a stage
+      // draft from one waiting on an open editor, and reads this slice to
+      // tell them apart.
+      stageEditorDraft: stageEditorDraftReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -141,6 +148,47 @@ describe('protocol/assetManifest', () => {
       expect(result.payload).toMatchObject({
         code: 'PROTOCOL_NOT_OWNED_HERE',
         filename: 'roster.csv',
+      });
+    });
+
+    // A blocked reclaim has two shapes: an unresolved stage-draft choice, and
+    // an editor still open with unsaved changes in it. Naming the wrong one
+    // sends the researcher looking for a question nobody asked.
+    it('names the stage-draft choice when that is what the reclaim is waiting on', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      store.dispatch(
+        draftTimelineActions.reset({
+          stage: { id: 'stage-1', type: 'Information', label: 'A' },
+          codebook: {},
+        }),
+      );
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      const result = await store.dispatch(
+        importAssetAsync(new File(['test'], 'roster.csv')),
+      );
+
+      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
+      expect(result.payload).toMatchObject({
+        message: expect.stringContaining(
+          'your unsaved changes to this stage',
+        ) as unknown as string,
+      });
+    });
+
+    it('names the open editor when there is no stage draft to choose about', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      const result = await store.dispatch(
+        importAssetAsync(new File(['test'], 'roster.csv')),
+      );
+
+      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
+      expect(result.payload).toMatchObject({
+        message: expect.stringContaining(
+          'finish or cancel the editor you still have open',
+        ) as unknown as string,
       });
     });
 

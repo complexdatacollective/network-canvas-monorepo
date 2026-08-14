@@ -33,11 +33,24 @@ import { isStageEditorPath } from './useProtocolNavGuard';
  *   undoes to the committed values, which would tear the editor away mid-edit.
  * - `held-nested-editor`: the same situation somewhere else in the protocol —
  *   a variable, entity-type, resource or rule editor open over the Codebook or
- *   the timeline. Its draft lives in its own form store and reaches neither the
- *   protocol nor the stage draft (#1387), and it is rendered from the route
- *   tree, so swapping in the read-only view unmounts it without its own
- *   close confirmation ever running. Keyed on an editor being OPEN rather than
- *   dirty, for the same stability reason as above.
+ *   the Resources page. Its draft lives in its own form store and reaches
+ *   neither the protocol nor the stage draft (#1387), and it is rendered from
+ *   the route tree, so swapping in the read-only view unmounts it without its
+ *   own close confirmation ever running. Keyed on an editor being OPEN rather
+ *   than dirty, for the same stability reason as above.
+ *
+ *   This mode keeps a whole page of live controls mounted in a tab whose
+ *   writes are dropped, which is safe on two counts that a later change could
+ *   quietly remove. Every editor that registers a nested draft is a modal
+ *   `Dialog`, and fresco-ui's `Modal` makes the rest of the document `inert`
+ *   while one is open, so nothing behind it is reachable by pointer, keyboard
+ *   or assistive technology; and the editor's own commit — the one control
+ *   that IS reachable — is refused (`useRefusedNestedCommit`). A nested editor
+ *   that is not modal would break the first, and would need the controls
+ *   behind it gated on `=== 'editable'` before it could register here. The
+ *   stage timeline is the one to check first: its reorder and delete both
+ *   write the protocol with no lock check of their own, relying entirely on
+ *   this hook having replaced the route.
  */
 export type ProtocolAccessMode =
   | 'no-protocol'

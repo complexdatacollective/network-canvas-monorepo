@@ -1,16 +1,19 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 /**
- * The seam every "are you sure you want to leave?" guard consults for editors
- * that are NOT the stage form.
+ * The seam every guard that could destroy unsaved work consults for editors
+ * that are NOT the stage form: the "are you sure you want to leave?"
+ * confirmations, and — since a nested draft can also be torn away by the
+ * cross-tab lock rather than by navigation — the read-only swap and the
+ * protocol reclaim (`useProtocolAccessMode`, `useProtocolTabLock`).
  *
  * A nested editor — a form field, a nomination prompt, an ordinal option, a
  * skip-logic rule — keeps its draft in its own store or in component state and
  * only reports it through `onSubmit`. None of it reaches
- * `getLiveStageDraftDirty`, which reads the stage form's Redux mirror and is
- * the single predicate all three navigation guards used. So an open, half-typed
- * nested editor left every guard reading "pristine", and Back or a refresh
- * discarded it with no warning at all.
+ * `getLiveStageDraftDirty`, which reads the stage form's Redux mirror and was
+ * the single predicate every one of those guards consulted. So an open,
+ * half-typed nested editor left them all reading "pristine", and Back, a
+ * refresh, a demotion or a reclaim discarded it with no warning at all.
  *
  * Module state rather than Redux, deliberately: this is per-mount UI state that
  * must never be persisted, undone or redone — the same reasoning as

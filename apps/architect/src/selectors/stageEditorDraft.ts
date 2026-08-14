@@ -41,8 +41,10 @@ export const getStageEditorDraftCodebook = (
  * written once when the editor opens and cleared once when it closes, so it
  * cannot be confused by an undo that rewinds the working copy to null.
  */
+// Narrowed to the one slice it reads, so a thunk whose `state` is narrowed to
+// the slices it touches can still ask the question (`importAssetAsync`).
 export const getStageEditorCodebookTransactionOpen = (
-  state: RootState,
+  state: Pick<RootState, 'stageEditorDraft'>,
 ): boolean => (state.stageEditorDraft?.ui?.initialCodebook ?? null) !== null;
 
 /**
