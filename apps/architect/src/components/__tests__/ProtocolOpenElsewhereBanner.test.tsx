@@ -13,7 +13,8 @@ import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft, {
   draftTimelineActions,
-  markExternalEdit,
+  setLiveValues,
+  type StageEditorDraftPresent,
 } from '~/ducks/modules/stageEditorDraft';
 import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
@@ -36,6 +37,18 @@ const protocol: CurrentProtocol = {
 };
 
 const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+
+// The draft as the stage editor opens it: the committed stage plus the editor's
+// private copy of the codebook it opened on (#1382).
+const draftPresent: StageEditorDraftPresent = {
+  stage,
+  codebook: protocol.codebook,
+};
+
+// What the form holds after the researcher has typed into it. Genuinely
+// different from the seeded baseline, so `getLiveStageDraftDirty` — a deep
+// comparison of the live mirror against that baseline — reports dirty.
+const editedStage = { ...stage, label: 'A, edited' } as Stage;
 
 const createTestStore = () =>
   configureStore({
@@ -98,9 +111,14 @@ describe('ProtocolOpenElsewhereBanner', () => {
 
   it('says nothing can be saved in a held stage editor, and offers to discard', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    store.dispatch(draftTimelineActions.reset(stage));
-    store.dispatch(markExternalEdit());
+    // Open the editor on the committed stage, then mirror a real edit into it
+    // the way the stage form bridge does, so there is genuinely something for
+    // "Discard Changes" to discard.
+    store.dispatch(draftTimelineActions.reset(draftPresent));
+    store.dispatch(setLiveValues(editedStage));
     store.dispatch(setProtocolOpenElsewhere(true));
+
+    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
     renderBanner(store);
 
@@ -113,7 +131,6 @@ describe('ProtocolOpenElsewhereBanner', () => {
     // mid-keystroke.
     expect(banner).not.toHaveFocus();
 
-    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Discard Changes' }));
     // Both halves matter: the draft is cleared AND the editor is left, because
     // staying would leave every control live with nowhere for its writes to go.

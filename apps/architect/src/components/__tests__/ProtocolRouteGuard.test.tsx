@@ -14,9 +14,11 @@ import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft, {
   draftTimelineActions,
-  markExternalEdit,
+  setLiveValues,
+  type StageEditorDraftPresent,
 } from '~/ducks/modules/stageEditorDraft';
 import { guardState } from '~/hooks/useProtocolNavGuard';
+import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
 import ProtocolRouteGuard from '../ProtocolRouteGuard';
 
@@ -50,6 +52,18 @@ const protocol: CurrentProtocol = {
 
 const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
 
+// The draft as the stage editor opens it: the committed stage plus the editor's
+// private copy of the codebook it opened on (#1382).
+const draftPresent: StageEditorDraftPresent = {
+  stage,
+  codebook: protocol.codebook,
+};
+
+// What the form holds after the researcher has typed into it. Genuinely
+// different from the seeded baseline, so `getLiveStageDraftDirty` — a deep
+// comparison of the live mirror against that baseline — reports dirty.
+const editedStage = { ...stage, label: 'A, edited' } as Stage;
+
 const createTestStore = () =>
   configureStore({
     reducer: combineReducers({
@@ -62,6 +76,13 @@ const createTestStore = () =>
   });
 
 type TestStore = ReturnType<typeof createTestStore>;
+
+// Opens a stage editor draft and puts a real edit into it, the way the stage
+// form bridge does: seed the baseline, then mirror changed form values.
+const openDirtyStageDraft = (store: TestStore) => {
+  store.dispatch(draftTimelineActions.reset(draftPresent));
+  store.dispatch(setLiveValues(editedStage));
+};
 
 const renderGuard = (store: TestStore) =>
   render(
@@ -148,10 +169,13 @@ describe('ProtocolRouteGuard', () => {
 
   it('keeps the stage editor mounted when the tab is demoted while editing a stage', () => {
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(draftTimelineActions.reset(stage));
-    store.dispatch(markExternalEdit());
+    openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     store.dispatch(setProtocolOpenElsewhere(true));
+
+    // The precondition this test exists to cover: there really is unsaved work
+    // in the editor at the moment the lock is lost.
+    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
     renderGuard(store);
 
@@ -161,23 +185,31 @@ describe('ProtocolRouteGuard', () => {
     expect(screen.queryByTestId('read-only-summary')).not.toBeInTheDocument();
   });
 
-  // Keyed on the route rather than on the draft being dirty: `dirty` flips back
-  // to clean the moment the user undoes to the committed values, which would
-  // tear the editor away (and its redo history with it) mid-edit.
+  // Keyed on the route rather than on the draft being dirty: dirtiness is a deep
+  // comparison of the live form values against the values the editor opened on
+  // (`getLiveStageDraftDirty`), so it flips back to clean the moment the user
+  // undoes to the committed values — which would tear the editor away (and its
+  // redo history with it) mid-edit.
   it('keeps the stage editor mounted after the draft is undone back to clean', () => {
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(draftTimelineActions.reset(stage));
-    store.dispatch(markExternalEdit());
+    openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     store.dispatch(setProtocolOpenElsewhere(true));
+
+    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
     renderGuard(store);
     expect(screen.getByTestId('editor')).toBeInTheDocument();
 
     act(() => {
-      store.dispatch(draftTimelineActions.reset(stage));
+      // The undo itself: the form is back at the values it opened on, so the
+      // bridge mirrors those. Deliberately not a second `reset` — that would
+      // move the baseline instead of moving the values back to it, and would
+      // report clean even if the form still held the edit.
+      store.dispatch(setLiveValues(stage));
     });
 
+    expect(getLiveStageDraftDirty(store.getState())).toBe(false);
     expect(screen.getByTestId('editor')).toBeInTheDocument();
   });
 
@@ -210,10 +242,13 @@ describe('ProtocolRouteGuard', () => {
 
   it('shows the read-only view everywhere outside the stage editor', () => {
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(draftTimelineActions.reset(stage));
-    store.dispatch(markExternalEdit());
+    openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol');
     store.dispatch(setProtocolOpenElsewhere(true));
+
+    // A dirty draft is not the exemption — the route is. Off the stage editor
+    // route, an unsaved draft does not hold the editor open.
+    expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
     renderGuard(store);
 
