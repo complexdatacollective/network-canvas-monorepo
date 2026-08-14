@@ -156,6 +156,131 @@ describe('CodebookVariableValidationSection', () => {
     });
   });
 
+  // Issue #1383. This surface has no submit to refuse — it writes straight to
+  // the codebook on every change — so an unanswered or contradictory map is
+  // simply not written. What it must never do is write the `null` a
+  // switched-on-but-unanswered rule carries, or a pair the protocol schema
+  // would then reject.
+  it('does not write a rule that is switched on but not yet answered', async () => {
+    codebookVariables.current = {
+      v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+        id: string;
+      },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('switch', {
+        name: 'Minimum value',
+        hidden: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('spinbutton', { name: 'Minimum value' }),
+      ).toBeInTheDocument();
+    });
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not write a contradictory pair, then writes it once corrected', async () => {
+    codebookVariables.current = {
+      v1: {
+        id: 'v1',
+        name: 'Age',
+        type: 'number',
+        validation: { maxValue: 6 },
+      } as Variable & { id: string },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    fireEvent.click(
+      await screen.findByRole('switch', {
+        name: 'Minimum value',
+        hidden: true,
+      }),
+    );
+    const input = screen.getByRole('spinbutton', { name: 'Minimum value' });
+    fireEvent.change(input, { target: { value: '10' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(/minValue \(10\) is greater than maxValue \(6\)/)
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: '2' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variable: 'v1',
+          configuration: { validation: { maxValue: 6, minValue: 2 } },
+          replaceProperties: ['validation'],
+        }),
+      );
+    });
+  });
+
+  // Adversarial review: this surface has no save to refuse, so a rule it is
+  // holding back has no later moment to be explained. Clearing a rule's value
+  // is "switched on, not answered yet" — it must SAY so, not just quietly
+  // stop writing.
+  it('says so, and writes nothing, when a rule’s value is cleared', async () => {
+    codebookVariables.current = {
+      v1: {
+        id: 'v1',
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 10, maxValue: 20 },
+      } as Variable & { id: string },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    const input = await screen.findByRole('spinbutton', {
+      name: 'Maximum value',
+    });
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(
+          'Enter a value for "Maximum value", or switch the rule off.',
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+
+    // Switching the rule off is the way to actually drop the bound, and that
+    // does reach the codebook.
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Maximum value', hidden: true }),
+    );
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: { validation: { minValue: 10 } },
+        }),
+      );
+    });
+  });
+
   it('writes nothing for a variable whose section is never opened', async () => {
     codebookVariables.current = {
       v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {

@@ -50,9 +50,25 @@ export const focusFirstError = (errors: FlattenedErrors | null) => {
   const scrollEnd = destinationOffset + scrollStart - scrollerOffset - 200;
   scroller.scrollTo({ top: scrollEnd, behavior: 'smooth' });
 
-  // Find the focusable form control within the field container
-  const focusableElement = container.querySelector<HTMLElement>(
-    'input, textarea, select, [tabindex]:not([tabindex="-1"])',
+  // Find the focusable form control within the field container.
+  //
+  // `input` has to be matched broadly (a control may carry no `tabindex` of
+  // its own), which sweeps up the hidden proxy inputs several Base UI
+  // primitives render alongside their real control — a Switch renders
+  // `<button role="switch">` followed by an `aria-hidden`, `tabindex="-1"`
+  // checkbox. Focusing that proxy leaves the researcher with no visible focus
+  // ring and hands a screen reader a node marked as not existing, so the
+  // first candidate that is actually operable is taken instead.
+  const focusableElement = [
+    ...container.querySelectorAll<HTMLElement>(
+      'input, textarea, select, [tabindex]:not([tabindex="-1"])',
+    ),
+  ].find(
+    (candidate) =>
+      candidate.getAttribute('aria-hidden') !== 'true' &&
+      candidate.getAttribute('tabindex') !== '-1' &&
+      !candidate.hasAttribute('disabled') &&
+      !candidate.closest('[aria-hidden="true"]'),
   );
 
   if (!focusableElement) return;

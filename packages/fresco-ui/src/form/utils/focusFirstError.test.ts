@@ -55,6 +55,62 @@ describe('focusFirstError', () => {
     expect(document.activeElement).toBe(input);
   });
 
+  // Several Base UI primitives render a hidden proxy input beside their real
+  // control — a Switch renders `<button role="switch">` followed by an
+  // `aria-hidden`, `tabindex="-1"` checkbox. Focusing the proxy leaves no
+  // visible focus ring and hands a screen reader a node marked as not
+  // existing, so the first genuinely operable candidate is taken instead.
+  it('skips a hidden proxy input in favour of the control it stands for', () => {
+    const { scroller } = setup();
+    const field = scroller.firstElementChild;
+    field?.replaceChildren();
+
+    const proxy = document.createElement('input');
+    proxy.setAttribute('aria-hidden', 'true');
+    proxy.setAttribute('tabindex', '-1');
+    const control = document.createElement('button');
+    control.setAttribute('role', 'switch');
+    control.setAttribute('tabindex', '0');
+    field?.append(proxy, control);
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(800);
+
+    expect(document.activeElement).toBe(control);
+  });
+
+  it('skips a disabled control', () => {
+    const { scroller } = setup();
+    const field = scroller.firstElementChild;
+    field?.replaceChildren();
+
+    const disabled = document.createElement('input');
+    disabled.setAttribute('disabled', '');
+    const enabled = document.createElement('input');
+    field?.append(disabled, enabled);
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(800);
+
+    expect(document.activeElement).toBe(enabled);
+  });
+
+  it('leaves focus alone when every candidate is hidden', () => {
+    const { scroller, otherInput } = setup();
+    const field = scroller.firstElementChild;
+    field?.replaceChildren();
+
+    const proxy = document.createElement('input');
+    proxy.setAttribute('aria-hidden', 'true');
+    field?.append(proxy);
+    otherInput.focus();
+
+    focusFirstError(errors);
+    vi.advanceTimersByTime(800);
+
+    expect(document.activeElement).toBe(otherInput);
+  });
+
   it('focuses exactly once when scrollend fires before the fallback', () => {
     const { scroller, input } = setup();
     const focusSpy = vi.spyOn(input, 'focus');

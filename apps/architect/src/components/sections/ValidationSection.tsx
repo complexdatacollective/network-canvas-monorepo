@@ -45,6 +45,12 @@ type ValidationSectionProps = {
    * validation.
    */
   initialValue?: ValidationMap | null;
+  /**
+   * Passed through to `Validations` — see its `commitsImmediately`. Set only
+   * by `CodebookVariableValidationSection`, whose isolated form has no submit
+   * to refuse a half-configured rule with.
+   */
+  commitsImmediately?: boolean;
 };
 const ValidationSection = ({
   disabled = false,
@@ -56,6 +62,7 @@ const ValidationSection = ({
   allVariables,
   currentVariableId,
   initialValue,
+  commitsImmediately = false,
 }: ValidationSectionProps) => {
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
@@ -167,6 +174,7 @@ const ValidationSection = ({
         draftComponent={draftComponent}
         draftParameters={draftParameters}
         draftVariableName={draftVariableName}
+        commitsImmediately={commitsImmediately}
       />
       <FieldErrors
         id={validationErrorsId}

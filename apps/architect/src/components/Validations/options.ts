@@ -49,8 +49,17 @@ const VALIDATION_LABELS: Partial<Record<ValidationName, string>> = {
   greaterThanOrEqualToVariable: 'Greater than or equal to',
 };
 
-const getValidationLabel = (validation: ValidationName): string =>
-  VALIDATION_LABELS[validation] ?? startCase(validation);
+/**
+ * Widened to `string` because callers that read a rule name out of a committed
+ * `validation` record (the rule-map validator, `validateRuleMap.ts`) hold an
+ * unnarrowed key. `VALIDATION_LABELS` is read through a widened alias rather
+ * than an assertion, so an unknown key falls through to the start-cased
+ * fallback instead of being asserted into `ValidationName`.
+ */
+const getValidationLabel = (validation: string): string => {
+  const labels: Record<string, string | undefined> = VALIDATION_LABELS;
+  return labels[validation] ?? startCase(validation);
+};
 
 const isValidationWithoutValue = (validation: string): boolean =>
   VALIDATIONS_WITHOUT_VALUES.includes(validation);
@@ -158,6 +167,7 @@ export type { ValidationGroup, ValidationOption };
 
 export {
   getGroupedValidationsForVariableType,
+  getValidationLabel,
   getValidationOptionsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,

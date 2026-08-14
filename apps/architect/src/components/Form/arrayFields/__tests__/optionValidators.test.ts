@@ -143,6 +143,74 @@ describe('Options validators', () => {
     ).toBeUndefined();
   });
 
+  // Issue #1383. `Café` written with the precomposed U+00E9 and `Café`
+  // written as `e` + U+0301 are the same text: they render identically, so
+  // they reach the participant as two choices nothing tells apart.
+  describe('canonically equivalent labels and values', () => {
+    const precomposed = 'Café';
+    const decomposed = 'Cafe\u0301';
+
+    it('are different strings that read identically', () => {
+      expect(precomposed).not.toBe(decomposed);
+      expect(precomposed.normalize('NFC')).toBe(decomposed.normalize('NFC'));
+    });
+
+    it('are rejected as duplicate labels', () => {
+      expect(
+        uniqueOptionLabels([
+          { label: precomposed, value: 'cafe_a' },
+          { label: decomposed, value: 'cafe_b' },
+        ]),
+      ).toMatch(/unique label/i);
+    });
+
+    it('are rejected as duplicate labels across case as well', () => {
+      expect(
+        uniqueOptionLabels([
+          { label: precomposed, value: 'cafe_a' },
+          { label: decomposed.toUpperCase(), value: 'cafe_b' },
+        ]),
+      ).toMatch(/unique label/i);
+    });
+
+    it('are rejected as duplicate values', () => {
+      expect(
+        uniqueOptionValues([
+          { label: 'One', value: precomposed },
+          { label: 'Two', value: decomposed },
+        ]),
+      ).toMatch(/unique value/i);
+    });
+
+    it('are rejected by the row-level rule too, so rows and array agree', () => {
+      const [validateUnique] = getValidations({ uniqueArrayAttribute: true });
+      expect(
+        validateUnique?.(
+          decomposed,
+          { options: [{ label: precomposed }, { label: decomposed }] },
+          undefined,
+          'options[1].label',
+        ),
+      ).toBe('Labels must be unique');
+    });
+
+    it('are stored in canonical composed form', () => {
+      expect(parseOptionValue(decomposed)).toBe(precomposed);
+    });
+
+    // NFC, not NFKC: compatibility folding would rewrite text the researcher
+    // deliberately typed into something else.
+    it('leaves compatibility characters alone', () => {
+      expect(parseOptionValue('ﬁve')).toBe('ﬁve');
+      expect(
+        uniqueOptionLabels([
+          { label: 'ﬁve', value: 'a' },
+          { label: 'five', value: 'b' },
+        ]),
+      ).toBeUndefined();
+    });
+  });
+
   // The rows show the same message through `allowedVariableName`, but a row is
   // not a registered field — and collapsing it hides the message entirely
   // while keeping the value, which then becomes an XML key and a CSV column

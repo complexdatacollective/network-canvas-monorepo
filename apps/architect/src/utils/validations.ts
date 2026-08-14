@@ -11,6 +11,8 @@ import {
 } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 
+import { normalizeForComparison } from './canonicalText';
+
 type ValidationValue = unknown;
 type ValidationMessage = string | undefined;
 type ValidationResult = string | undefined;
@@ -57,9 +59,12 @@ const hasValue = (value: ValidationValue) => {
   return !isNil(value);
 };
 
+// Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
+// spelling of the same text are the same answer to a participant, so they are
+// the same value here too. See `~/utils/canonicalText`.
 const isRoughlyEqual = (left: unknown, right: unknown) => {
   if (typeof left === 'string' && typeof right === 'string') {
-    return left.toLowerCase() === right.toLowerCase();
+    return normalizeForComparison(left) === normalizeForComparison(right);
   }
 
   return isEqual(left, right);

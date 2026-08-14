@@ -22,6 +22,7 @@ import {
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { toCanonicalText } from '~/utils/canonicalText';
 import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
@@ -45,8 +46,10 @@ const isNumberLike = (value: string) =>
  * A numeric-looking option value is stored as a number, matching the protocol
  * schema.
  */
-export const parseOptionValue = (value: string) =>
-  isNumberLike(value) ? toNumber(value) : value;
+export const parseOptionValue = (value: string) => {
+  const canonical = toCanonicalText(value);
+  return isNumberLike(canonical) ? toNumber(canonical) : canonical;
+};
 
 // Background and rounding live on the ArrayField item Surface (see Options.tsx
 // itemClasses); this inner wrapper only owns layout + the error-state border.
@@ -242,14 +245,20 @@ const Option = ({
         toolbarOptions={RICH_TEXT_TOOLBAR}
         value={labelContent}
         onChange={(value: unknown) => {
-          const label = richTextContentToMarkdown(
-            value as RichTextContent | undefined,
-            true,
+          // Stored canonically so two labels that read identically are also
+          // identical bytes on export — see `~/utils/canonicalText`.
+          const label = toCanonicalText(
+            richTextContentToMarkdown(
+              value as RichTextContent | undefined,
+              true,
+            ),
           );
           // The editor emits a change as it mounts; committing that would
           // rewrite the whole array — dirtying the stage and adding a draft
-          // timeline entry — merely by opening a row.
-          if (label === (item.label ?? '')) return;
+          // timeline entry — merely by opening a row. The comparison is
+          // canonical too, so opening a row whose stored label predates this
+          // normalization is not mistaken for an edit.
+          if (label === toCanonicalText(item.label ?? '')) return;
           onUpdate?.({ label } as Partial<OptionValue>);
         }}
         validation={{ required: true, uniqueArrayAttribute: true }}

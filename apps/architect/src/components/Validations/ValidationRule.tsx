@@ -1,4 +1,4 @@
-import { useId, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
 
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -29,7 +29,13 @@ type ValidationRuleProps = {
   onToggle: (ruleKey: string, nextState: boolean) => void;
   onTextChange: (ruleKey: string, text: string) => void;
   onCommit: (ruleKey: string, text: string) => void;
-  shouldFocusValue?: boolean;
+  /**
+   * Bumped by the list when this row is switched on, to put the cursor in the
+   * value it now needs. A token rather than a boolean so switching the same
+   * row off and on again re-triggers the effect, which a `true` that is
+   * already `true` would not.
+   */
+  focusValueToken?: number;
 };
 
 const ROW_BASE =
@@ -49,7 +55,7 @@ const ValidationRule = ({
   onToggle,
   onTextChange,
   onCommit,
-  shouldFocusValue = false,
+  focusValueToken,
 }: ValidationRuleProps) => {
   const rowId = useId();
   const labelId = `${rowId}-label`;
@@ -59,6 +65,19 @@ const ValidationRule = ({
   const hasIssues = issues.length > 0;
   const takesNumber = isValidationWithNumberValue(ruleKey);
   const takesTarget = isValidationWithListValue(ruleKey);
+
+  // `InputField`/`NativeSelectField` own their own element, so focus is taken
+  // through the wrapper rather than a forwarded ref. `display: contents` keeps
+  // the wrapper out of the row's layout entirely.
+  //
+  // An effect rather than `autoFocus` because the control is already mounted
+  // whenever a row is asked for focus a second time, and `autoFocus` only
+  // applies at mount.
+  const valueRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focusValueToken === undefined) return;
+    valueRef.current?.querySelector<HTMLElement>('input, select')?.focus();
+  }, [focusValueToken]);
 
   const describedBy =
     [hint ? hintId : null, hasIssues ? errorId : null]
@@ -93,31 +112,32 @@ const ValidationRule = ({
       </div>
 
       {isOn && takesNumber && (
-        <InputField
-          name={`validation-value-${ruleKey}`}
-          className="w-36"
-          aria-label={label}
-          aria-invalid={hasIssues || undefined}
-          aria-describedby={describedBy}
-          value={text}
-          onChange={(value: unknown) =>
-            onTextChange(ruleKey, typeof value === 'string' ? value : '')
-          }
-          onBlur={() => onCommit(ruleKey, text)}
-          onStep={(value: string) => onCommit(ruleKey, value)}
-          stepperLabels={{
-            increase: `Increase ${label}`,
-            decrease: `Decrease ${label}`,
-          }}
-          onKeyDown={handleValueKeyDown}
-          type="number"
-          step={1}
-          autoFocus={shouldFocusValue}
-        />
+        <div ref={valueRef} className="contents">
+          <InputField
+            name={`validation-value-${ruleKey}`}
+            className="w-36"
+            aria-label={label}
+            aria-invalid={hasIssues || undefined}
+            aria-describedby={describedBy}
+            value={text}
+            onChange={(value: unknown) =>
+              onTextChange(ruleKey, typeof value === 'string' ? value : '')
+            }
+            onBlur={() => onCommit(ruleKey, text)}
+            onStep={(value: string) => onCommit(ruleKey, value)}
+            stepperLabels={{
+              increase: `Increase ${label}`,
+              decrease: `Decrease ${label}`,
+            }}
+            onKeyDown={handleValueKeyDown}
+            type="number"
+            step={1}
+          />
+        </div>
       )}
 
       {isOn && takesTarget && (
-        <div className="w-72">
+        <div ref={valueRef} className="w-72">
           <NativeSelectField
             options={targetOptions ?? []}
             name={`validation-value-${ruleKey}`}
@@ -131,7 +151,6 @@ const ValidationRule = ({
               onCommit(ruleKey, next);
             }}
             placeholder="Select comparison variable"
-            autoFocus={shouldFocusValue}
           />
         </div>
       )}

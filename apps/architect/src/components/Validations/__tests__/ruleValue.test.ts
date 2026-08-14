@@ -1,28 +1,40 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCommitted, isDraftComplete, parseForRule } from '../ruleValue';
+import {
+  formatCommitted,
+  isRuleValueComplete,
+  parseForRule,
+} from '../ruleValue';
 
-describe('isDraftComplete', () => {
-  it('treats a value-less rule as complete once switched on', () => {
-    expect(isDraftComplete('required', true)).toBe(true);
-    expect(isDraftComplete('unique', true)).toBe(true);
+// `isRuleValueComplete` replaced a near-identical `isDraftComplete`, which
+// reported a value-less rule as complete whatever it held — including the
+// `null` that now means "switched on, not answered yet".
+describe('isRuleValueComplete', () => {
+  it('treats a value-less rule as complete however it is set', () => {
+    expect(isRuleValueComplete('required', true)).toBe(true);
+    expect(isRuleValueComplete('unique', true)).toBe(true);
+    expect(isRuleValueComplete('required', false)).toBe(true);
+    expect(isRuleValueComplete('required', null)).toBe(false);
   });
 
   it('requires a number for a limit rule', () => {
-    expect(isDraftComplete('minValue', 3)).toBe(true);
-    expect(isDraftComplete('minValue', 0)).toBe(true);
-    expect(isDraftComplete('minValue', null)).toBe(false);
-    expect(isDraftComplete('minValue', '3')).toBe(false);
+    expect(isRuleValueComplete('minValue', 3)).toBe(true);
+    expect(isRuleValueComplete('minValue', 0)).toBe(true);
+    expect(isRuleValueComplete('minValue', null)).toBe(false);
+    expect(isRuleValueComplete('minValue', '3')).toBe(false);
   });
 
   it('requires a non-empty target for a comparison rule', () => {
-    expect(isDraftComplete('sameAs', 'variable-1')).toBe(true);
-    expect(isDraftComplete('sameAs', '')).toBe(false);
-    expect(isDraftComplete('sameAs', null)).toBe(false);
+    expect(isRuleValueComplete('sameAs', 'variable-1')).toBe(true);
+    expect(isRuleValueComplete('sameAs', '')).toBe(false);
+    expect(isRuleValueComplete('sameAs', null)).toBe(false);
   });
 
-  it('is never complete without a rule key', () => {
-    expect(isDraftComplete('', true)).toBe(false);
+  // An unrecognised rule is the schema's business; naming it here would leave
+  // the researcher an error with no control to fix it.
+  it('leaves an unrecognised rule alone', () => {
+    expect(isRuleValueComplete('somethingElse', 'value')).toBe(true);
+    expect(isRuleValueComplete('somethingElse', null)).toBe(false);
   });
 });
 

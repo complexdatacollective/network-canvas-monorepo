@@ -5,6 +5,8 @@ import {
 } from '@codaco/protocol-validation';
 import { getTypeForComponent } from '~/config/variables';
 
+import { completeRuleValues, incompleteRuleIssue } from './ruleValue';
+
 type UnknownRecord = Record<string, unknown>;
 
 const DRAFT_VARIABLE_ID_BASE = '__draft-variable__';
@@ -947,7 +949,16 @@ export const makeFieldEditorValidate = (
         ? existingType
         : (getTypeForComponent(component) ?? '');
     if (!variableType) return {};
-    const floor = Object.entries(validation)
+    // A rule switched on but never answered carries `null` (see
+    // `Validations.tsx`'s `handleToggle`). It has to be reported — dropping it
+    // silently is the bug this gate exists to prevent — and it has to be kept
+    // away from the analyser, which would read the `null` as a bound. The same
+    // two steps run in the `validation` field's own validator; both call
+    // through here so they cannot drift.
+    const incomplete = incompleteRuleIssue(validation);
+    if (incomplete) return { validation: incomplete };
+    const completeValidation = completeRuleValues(validation);
+    const floor = Object.entries(completeValidation)
       .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
       .find((message): message is string => message !== undefined);
     if (floor) return { validation: floor };
@@ -970,7 +981,7 @@ export const makeFieldEditorValidate = (
       allVariables: visibleVariables,
       currentVariableId,
       variableType,
-      validation,
+      validation: completeValidation,
       component: values.component,
       options: values.options,
       parameters: values.parameters,
@@ -999,7 +1010,7 @@ export const makeFieldEditorValidate = (
         allVariables,
         currentVariableId,
         variableType,
-        validation,
+        validation: completeValidation,
         component: values.component,
         options: values.options,
         parameters: values.parameters,

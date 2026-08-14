@@ -7,6 +7,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { Variable } from '@codaco/protocol-validation';
+import { ruleMapIssue } from '~/components/Validations/validateRuleMap';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
 import {
@@ -92,9 +93,18 @@ const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
  */
 const ValidationCommitObserver = ({
   currentValidation,
+  isCommittable,
   onCommit,
 }: {
   currentValidation: ValidationMap;
+  /**
+   * Whether the rule map is finished and satisfiable. This surface has no
+   * submit to refuse — it writes straight to the codebook on every change —
+   * so an unanswered or contradictory map is simply not written, and the rule
+   * row's own inline error (plus the field error the section renders) is what
+   * explains the wait.
+   */
+  isCommittable: (validation: ValidationMap) => boolean;
   onCommit: (validation: ValidationMap) => void;
 }) => {
   const { validation } = useFormValue(['validation'] as const);
@@ -114,7 +124,7 @@ const ValidationCommitObserver = ({
     // field means every rule was removed.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const next = (validation ?? {}) as ValidationMap;
-    if (!isEqual(next, currentValidation)) {
+    if (!isEqual(next, currentValidation) && isCommittable(next)) {
       onCommit(next);
     }
     // `currentValidation`/`onCommit` intentionally excluded: this observer
@@ -168,6 +178,18 @@ const CodebookVariableValidationSection = ({
     [variable],
   );
 
+  const isCommittable = (validation: ValidationMap) =>
+    ruleMapIssue(validation, {
+      allVariables: variables,
+      currentVariableId: variableId ?? '',
+      variableType: variable?.type ?? '',
+      options: variable && 'options' in variable ? variable.options : undefined,
+      component:
+        variable && 'component' in variable ? variable.component : undefined,
+      parameters:
+        variable && 'parameters' in variable ? variable.parameters : undefined,
+    }) === undefined;
+
   const handleCommit = (validation: ValidationMap) => {
     if (!variableId) return;
 
@@ -191,6 +213,7 @@ const CodebookVariableValidationSection = ({
       <VariableSiblingFieldMirror variable={variable} />
       <ValidationCommitObserver
         currentValidation={currentValidation}
+        isCommittable={isCommittable}
         onCommit={handleCommit}
       />
       <ValidationSection
@@ -202,6 +225,7 @@ const CodebookVariableValidationSection = ({
         id={`codebook-validation-${variableId}`}
         summary="Choose which validation rules apply to the selected variable."
         initialValue={currentValidation}
+        commitsImmediately
       />
     </FormStoreProvider>
   );

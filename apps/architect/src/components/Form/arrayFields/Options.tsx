@@ -8,6 +8,7 @@ import {
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { normalizeForComparison } from '~/utils/canonicalText';
 import { validations } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
@@ -32,14 +33,16 @@ export const completeOptions = (value: unknown) =>
     : undefined;
 
 /**
- * Strings compare case-insensitively, matching `uniqueArrayAttribute` — the
- * rule the rows run — so the array and its rows never disagree about which
- * entries clash.
+ * Strings compare case-insensitively and under Unicode canonical equivalence,
+ * matching `uniqueArrayAttribute` — the rule the rows run — so the array and
+ * its rows never disagree about which entries clash. See
+ * `~/utils/canonicalText` for why canonical equivalence has to be part of it.
  */
 const hasDuplicates = (values: unknown[]) => {
   const seen = new Set<unknown>();
   for (const value of values) {
-    const key = typeof value === 'string' ? value.toLowerCase() : value;
+    const key =
+      typeof value === 'string' ? normalizeForComparison(value) : value;
     if (seen.has(key)) return true;
     seen.add(key);
   }
