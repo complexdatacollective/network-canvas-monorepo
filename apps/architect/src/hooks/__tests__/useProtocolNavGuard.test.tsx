@@ -1,13 +1,30 @@
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   AnyDialog,
   DialogContextType,
 } from '@codaco/fresco-ui/dialogs/DialogProvider';
-import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+import createTimeline from '~/ducks/middleware/timeline';
+import activeProtocol, {
+  clearActiveProtocol,
+  setActiveProtocol,
+} from '~/ducks/modules/activeProtocol';
+import app, {
+  setProtocolOpenElsewhere,
+  setStorageUnavailable,
+} from '~/ducks/modules/app';
+import protocols from '~/ducks/modules/protocols';
+import protocolValidation from '~/ducks/modules/protocolValidation';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 
-import { guardState, promptLeaveEditor } from '../useProtocolNavGuard';
+import {
+  getLeavePersistence,
+  guardState,
+  promptLeaveEditor,
+} from '../useProtocolNavGuard';
 
 // Intercepts the fresco dialog request so the test can read the config shown to
 // the user and auto-confirm it. Records every dispatched action (resetDraft is a
@@ -151,8 +168,121 @@ describe('promptLeaveEditor', () => {
     expect(getCapturedDialogs()[1]).toMatchObject({
       type: 'acknowledge',
       intent: 'destructive',
-      title: 'Failed to export protocol',
-      description: 'Export failed',
+      title: 'Your protocol could not be downloaded',
+      description:
+        'Something went wrong while preparing the file. Please try again.',
     });
+  });
+
+  // The reassuring copy is only true when this tab owns the saved copy. A tab
+  // whose writes are being dropped must not be told its work is safe.
+  it('tells a read-only tab that the other tab holds the saved copy', async () => {
+    const { dispatch, openDialog, getCaptured } = setup();
+
+    await promptLeaveEditor(
+      dispatch,
+      openDialog,
+      vi.fn(),
+      false,
+      'open-elsewhere',
+    );
+
+    const captured = getCaptured();
+    if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
+    expect(captured.description).not.toMatch(/saved automatically/i);
+    expect(captured.description).toMatch(/open in another tab/i);
+    expect(captured.description).toMatch(/holds the saved copy/i);
+  });
+
+  it('leads with downloading when nothing could be saved to this device', async () => {
+    const { dispatch, openDialog, getCaptured } = setup();
+
+    await promptLeaveEditor(
+      dispatch,
+      openDialog,
+      vi.fn(),
+      false,
+      'storage-unavailable',
+    );
+
+    const captured = getCaptured();
+    if (captured?.type !== 'choice') throw new Error('Expected choice dialog');
+    expect(captured.intent).toBe('warning');
+    expect(captured.description).not.toMatch(/saved automatically/i);
+    expect(captured.description).toMatch(/could not be saved on this device/i);
+    expect(captured.actions.primary).toEqual({
+      label: 'Return and download now',
+      value: 'download-and-leave',
+    });
+    expect(captured.actions.secondary).toEqual({
+      label: 'Return to Start Screen',
+      value: 'leave',
+    });
+  });
+
+  it('never puts a stack trace in a leave-editor dialog', async () => {
+    const { dispatch, openDialog, getCapturedDialogs } = setup(
+      'download-and-leave',
+      'failure',
+    );
+
+    await promptLeaveEditor(dispatch, openDialog, vi.fn(), false);
+
+    for (const dialog of getCapturedDialogs()) {
+      const description =
+        'description' in dialog && typeof dialog.description === 'string'
+          ? dialog.description
+          : '';
+      expect(description).not.toMatch(/at https?:\/\//);
+      expect(description).not.toMatch(/"stack"/);
+    }
+  });
+});
+
+describe('getLeavePersistence', () => {
+  const makeStore = () =>
+    configureStore({
+      reducer: combineReducers({
+        app,
+        protocols,
+        protocolValidation,
+        stageEditorDraft,
+        activeProtocol: createTimeline(activeProtocol),
+      }),
+    });
+
+  const protocol: CurrentProtocol = {
+    name: 'Test Protocol',
+    schemaVersion: 8,
+    stages: [],
+    codebook: {},
+  };
+
+  it('reports no protocol when the editing buffer is empty', () => {
+    expect(getLeavePersistence(makeStore().getState())).toBe('no-protocol');
+  });
+
+  it('reports a saved protocol when this tab owns it', () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocol(protocol));
+
+    expect(getLeavePersistence(store.getState())).toBe('saved');
+  });
+
+  it('reports the protocol as open elsewhere when another tab holds it', () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolOpenElsewhere(true));
+
+    expect(getLeavePersistence(store.getState())).toBe('open-elsewhere');
+  });
+
+  it('prefers unavailable storage, the more urgent of the two', () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setStorageUnavailable(true));
+
+    expect(getLeavePersistence(store.getState())).toBe('storage-unavailable');
   });
 });

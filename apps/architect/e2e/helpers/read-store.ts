@@ -102,6 +102,38 @@ export async function readProtocolJson(
   return protocol;
 }
 
+// Every key in the `assets` store, across all protocols (`${protocolId}::${assetId}`
+// — see `assetKey` in `~/utils/assetDB`). A tab that may not edit a protocol
+// must not be able to write a blob into that protocol's asset scope, and
+// `readProtocolJson` cannot see such a write: the manifest entry naming the
+// blob never reaches the protocol row, so only the asset store shows it.
+export async function readAssetKeys(page: Page): Promise<string[]> {
+  const keys: unknown = await page.evaluate(async (dbName) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    // A versionless open in a session where the app has not created its Dexie
+    // DB yet yields a store-less database, and a transaction on it throws.
+    if (!db.objectStoreNames.contains('assets')) {
+      db.close();
+      return [];
+    }
+    const result = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const req = db
+        .transaction('assets', 'readonly')
+        .objectStore('assets')
+        .getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return result.map(String);
+  }, DB_NAME);
+  return Array.isArray(keys) ? keys.map(String) : [];
+}
+
 type Stage = CurrentProtocol['stages'][number];
 
 // Poll until the accepted stage commit reaches the durable row. Existence alone

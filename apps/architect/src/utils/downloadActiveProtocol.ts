@@ -24,12 +24,16 @@ export const downloadActiveProtocol = async (
     }
     return true;
   } catch (error) {
-    const { message } = reportError(error);
+    // The normalized error goes to the reporter, never into the dialog: these
+    // messages are internal (RTK's `.unwrap()` rethrows a serialized error,
+    // stack trace and all) and mean nothing to a researcher.
+    reportError(error);
     void openDialog({
       type: 'acknowledge',
       intent: 'destructive',
-      title: 'Failed to export protocol',
-      description: message,
+      title: 'Your protocol could not be downloaded',
+      description:
+        'Something went wrong while preparing the file. Please try again.',
       actions: { primary: { label: 'OK', value: true } },
     });
     return false;

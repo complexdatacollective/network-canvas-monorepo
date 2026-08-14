@@ -62,13 +62,23 @@ const makeFakeLock = () => {
 
 const renderTabLock = (
   fakeFactory: ReturnType<typeof makeFakeLock>['factory'],
+  refreshActiveProtocol = vi.fn().mockResolvedValue('restored'),
 ) => {
   const store = configureStore({ reducer: { app } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   );
-  const view = renderHook(() => useProtocolTabLock(fakeFactory), { wrapper });
-  return { store, ...view };
+  const view = renderHook(
+    () =>
+      useProtocolTabLock(
+        fakeFactory,
+        refreshActiveProtocol as unknown as Parameters<
+          typeof useProtocolTabLock
+        >[1],
+      ),
+    { wrapper },
+  );
+  return { store, refreshActiveProtocol, ...view };
 };
 
 describe('useProtocolTabLock', () => {
@@ -161,10 +171,51 @@ describe('useProtocolTabLock', () => {
       fake.fireExclusivity(false);
     });
     expect(getProtocolOpenElsewhere(store.getState())).toBe(true);
+  });
 
+  // The demoted tab's buffer is a snapshot from before the other tab took over.
+  // Editing must not resume against it: the first commit would `put` the whole
+  // row and delete asset blobs the other tab added in the meantime.
+  it('re-reads the canonical row before editing resumes on a re-claim', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol');
+    window.history.replaceState(null, '', '/protocol');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
     act(() => {
-      fake.fireExclusivity(true);
+      store.dispatch(setActiveProtocolId('p1'));
     });
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
+    expect(getProtocolOpenElsewhere(store.getState())).toBe(false);
+  });
+
+  it('does not pull a protocol back in when the release came from leaving the editor', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol');
+    window.history.replaceState(null, '', '/protocol');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+    });
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+
+    window.history.replaceState(null, '', '/');
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).not.toHaveBeenCalled();
     expect(getProtocolOpenElsewhere(store.getState())).toBe(false);
   });
 

@@ -17,6 +17,7 @@ import SplitButton from '@codaco/fresco-ui/SplitButton';
 import { useIssuesToolbarSegment } from '~/components/Issues';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHistory';
+import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { getProtocolName } from '~/selectors/protocol';
 
 import ActionToolbar from './ActionToolbar';
@@ -108,6 +109,12 @@ const OpenIssuesContext = createContext<(() => void) | null>(null);
  */
 function FinishedEditingSegment({ size }: ComponentSegmentRenderProps) {
   const openIssues = useContext(OpenIssuesContext);
+  // A tab demoted while it was in the stage editor keeps that editor (see
+  // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
+  // able to commit: this is the one action that claims to make work durable,
+  // and the library write behind it would be dropped.
+  // ProtocolOpenElsewhereBanner sits directly above and names the ways forward.
+  const canCommit = useProtocolAccessMode() === 'editable';
 
   if (!openIssues) {
     throw new Error(
@@ -122,6 +129,11 @@ function FinishedEditingSegment({ size }: ComponentSegmentRenderProps) {
       variant="default"
       icon={<Check />}
       className="bg-sea-green rounded-full text-white"
+      // Spread rather than `disabled={!canCommit}`: SubmitButton sets its own
+      // `disabled={isSubmitting}` BEFORE spreading props, so passing the prop
+      // unconditionally would hand `false` back during an in-flight submit and
+      // re-open the double-submit that guard exists to stop.
+      {...(canCommit ? {} : { disabled: true })}
       onClick={openIssues}
     >
       Finished Editing

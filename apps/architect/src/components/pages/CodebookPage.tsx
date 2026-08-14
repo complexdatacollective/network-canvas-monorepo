@@ -5,7 +5,6 @@ import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
 import { Layout } from '~/components/EditorLayout';
 import PageHeading from '~/components/ProjectNav/PageHeading';
-import useProtocolLoader from '~/hooks/useProtocolLoader';
 
 type DialogState = {
   entity?: string;
@@ -15,9 +14,6 @@ type DialogState = {
 const CodebookPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogState, setDialogState] = useState<DialogState>({});
-
-  // Load the protocol based on URL parameters
-  useProtocolLoader();
 
   const handleOpenEntityDialog = useCallback(
     (entity: string, type?: string) => {

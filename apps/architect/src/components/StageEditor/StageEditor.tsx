@@ -18,6 +18,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import {
   getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
+  getProtocolOpenElsewhere,
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
@@ -234,6 +235,21 @@ const StageEditor = (props: StageEditorProps) => {
 
   const onSubmit = useCallback<FormSubmitHandler>(
     (values: Record<string, FieldValue>) => {
+      // Another tab holds the saved copy of this protocol, so the library write
+      // behind this commit would be dropped. Refuse rather than take it into
+      // memory and look saved: the editor stays mounted holding the work, and
+      // the banner above names the ways forward. (The commit button is disabled
+      // too; this covers a submit raised from the keyboard, and says why rather
+      // than failing silently.)
+      if (getProtocolOpenElsewhere(reduxStore.getState())) {
+        return {
+          success: false,
+          formErrors: [
+            'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
+          ],
+        };
+      }
+
       // A key the form no longer carries has been removed (a section toggled
       // off), which is why the update overwrites rather than merges: preview
       // already renders the stage without it, and a merge would silently
@@ -248,7 +264,7 @@ const StageEditor = (props: StageEditorProps) => {
 
       return { success: true };
     },
-    [withStageIdentity, id, insertAtIndex, setLocation, dispatch],
+    [withStageIdentity, id, insertAtIndex, setLocation, dispatch, reduxStore],
   );
 
   // Cancel handler with unsaved changes confirmation

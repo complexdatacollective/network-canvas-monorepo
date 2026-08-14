@@ -77,6 +77,22 @@ describe('restoreActiveProtocolFromLibrary', () => {
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
   });
 
+  // A bookmarked or typed /protocol URL in a session that has no protocol id at
+  // all: the same "no protocol behind this route" state as a missing row, and
+  // it must settle on Home the same way.
+  it('blocks a protocol route when there is no session to restore', async () => {
+    const store = makeStore();
+
+    const result = await restoreActiveProtocolFromLibrary(store, {
+      getStoredProtocol,
+      replaceProtocolRoute,
+    });
+
+    expect(result).toBe('none');
+    expect(getStoredProtocol).not.toHaveBeenCalled();
+    expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
+  });
+
   it('does not apply a stale read after the active protocol id changes', async () => {
     const store = makeStore();
     store.dispatch(setActiveProtocolId('p1'));

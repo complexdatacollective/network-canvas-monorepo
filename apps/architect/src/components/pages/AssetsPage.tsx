@@ -3,13 +3,9 @@ import UnusedAssetsAlert from '~/components/AssetBrowser/UnusedAssetsAlert';
 import { Layout } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
-import useProtocolLoader from '~/hooks/useProtocolLoader';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 const AssetsPage = () => {
-  // Load the protocol based on URL parameters
-  useProtocolLoader();
-
   return (
     <Layout>
       <PageHeading

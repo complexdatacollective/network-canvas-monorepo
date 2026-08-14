@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import appReducer, {
   getStorageUnavailable,
+  setProtocolOpenElsewhere,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 
@@ -122,6 +123,25 @@ describe('protocol/assetManifest', () => {
       const result = await store.dispatch(importAssetAsync(file)).unwrap();
 
       expect(result.duplicateCount).toBe(3);
+    });
+
+    // The asset store is keyed by protocol id and has no exclusivity check of
+    // its own, so a tab that no longer owns the protocol could otherwise drop a
+    // durable blob into the owning tab's scope — with a manifest entry naming
+    // it that can never be saved.
+    it('refuses to write anything when the protocol is open in another tab', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      store.dispatch(setProtocolOpenElsewhere(true));
+
+      const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
+      const result = await store.dispatch(importAssetAsync(file));
+
+      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
+      expect(Object.values(store.getState().assetManifest)).toHaveLength(0);
+      expect(result.payload).toMatchObject({
+        code: 'PROTOCOL_OPEN_ELSEWHERE',
+        filename: 'roster.csv',
+      });
     });
 
     it('returns zero duplicate rows when duplicateCount is 0', async () => {

@@ -7,7 +7,11 @@ import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
-import { setStorageUnavailable } from '~/ducks/modules/app';
+import {
+  getProtocolOpenElsewhere,
+  setStorageUnavailable,
+} from '~/ducks/modules/app';
+import type { RootState } from '~/ducks/modules/root';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
@@ -50,28 +54,57 @@ export type ImportAssetErrorInfo = {
   code?: string;
 };
 
+// Researcher-facing text for any import failure that is not one of the coded
+// validation errors. Those carry a `code` and a message already written for a
+// researcher; every other message is internal ("Cannot save asset: no active
+// protocol scope", "Unsupported asset type for file: …") and must not reach a
+// dialog verbatim.
+export const GENERIC_IMPORT_FAILURE_MESSAGE =
+  'Check that it is a supported file type, and try again.';
+
 const getImportAssetErrorInfo = (
   error: unknown,
   filename: string,
 ): ImportAssetErrorInfo => {
-  const normalized =
-    error instanceof Error
-      ? error
-      : new Error('The file could not be imported.');
-  const codedError = normalized as Error & { code?: string };
+  const codedError: (Error & { code?: unknown }) | null =
+    error instanceof Error ? error : null;
+  const rawCode = codedError?.code;
+  const code = typeof rawCode === 'string' ? rawCode : undefined;
   return {
     filename,
-    message: normalized.message,
-    code: codedError.code,
+    // A code is only ever set on errors whose message was written for a
+    // researcher; everything else is internal and is replaced.
+    message:
+      codedError && code ? codedError.message : GENERIC_IMPORT_FAILURE_MESSAGE,
+    code,
   };
 };
 
-// Async thunks
-export const importAssetAsync = createAsyncThunk(
+// Async thunks. `state` is narrowed to the slice this thunk actually reads, so
+// it stays dispatchable from a store built with only those reducers.
+export const importAssetAsync = createAsyncThunk<
+  ImportAssetCompletePayload,
+  File,
+  { state: Pick<RootState, 'app'> }
+>(
   'assetManifest/importAssetAsync',
-  async (file: File, { dispatch, rejectWithValue }) => {
+  async (file, { dispatch, getState, rejectWithValue }) => {
     const name = file.name;
     const assetId = uuid();
+
+    // The asset blob is written into a store keyed by protocol id, with no
+    // exclusivity check of its own, so a tab that no longer owns the protocol
+    // could drop a file into the owning tab's scope — a durable write from a
+    // tab whose manifest entry naming it can never be saved. Refuse before
+    // anything is written, and say why.
+    if (getProtocolOpenElsewhere(getState())) {
+      return rejectWithValue({
+        filename: name,
+        code: 'PROTOCOL_OPEN_ELSEWHERE',
+        message:
+          'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
+      } satisfies ImportAssetErrorInfo);
+    }
 
     try {
       // Validate asset

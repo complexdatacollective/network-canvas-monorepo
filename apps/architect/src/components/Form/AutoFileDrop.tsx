@@ -8,6 +8,7 @@ import ExternalLink from '~/components/ExternalLink';
 import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
+  GENERIC_IMPORT_FAILURE_MESSAGE,
   importAssetAsync,
   type ImportAssetErrorInfo,
 } from '~/ducks/modules/protocol/assetManifest';
@@ -34,13 +35,9 @@ const getImportAssetErrorInfo = (
   if (isImportAssetErrorInfo(value)) {
     return value;
   }
-  return {
-    filename,
-    message:
-      value instanceof Error
-        ? value.message
-        : 'The file could not be imported.',
-  };
+  // A throw that never became an ImportAssetErrorInfo carries an internal
+  // message, so it is replaced rather than shown.
+  return { filename, message: GENERIC_IMPORT_FAILURE_MESSAGE };
 };
 const documentationMessage = (
   <>
@@ -165,13 +162,15 @@ const AutoFileDrop = ({
             intent: 'destructive',
             title: isValidationError
               ? `Error: ${importError.filename} is not formatted correctly`
-              : 'Asset import error',
+              : 'That file could not be added',
             children: isValidationError ? (
               getValidationErrorContent(importError)
             ) : (
               <>
-                The file <strong>{importError.filename}</strong> could not be
-                imported.
+                <Paragraph>
+                  <strong>{importError.filename}</strong> could not be added to
+                  your resource library.
+                </Paragraph>
                 <Paragraph>{importError.message}</Paragraph>
               </>
             ),

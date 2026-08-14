@@ -2,7 +2,6 @@ import { ArrowLeft, FlaskConical } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -11,12 +10,11 @@ import { Layout } from '~/components/EditorLayout';
 import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
-import { getExperiments, getProtocol } from '~/selectors/protocol';
+import { getExperiments } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const ExperimentsPage = () => {
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
-  const protocol = useSelector(getProtocol);
   const experiments = useSelector(getExperiments) ?? {};
   const handleGoBack = () => {
     setLocation('/protocol');
@@ -28,20 +26,9 @@ const ExperimentsPage = () => {
       }),
     );
   };
-  if (!protocol) {
-    return (
-      <Layout>
-        <div className="flex h-full flex-col items-center justify-center gap-4">
-          <Paragraph>
-            No protocol loaded. Please open a protocol first.
-          </Paragraph>
-          <Button onClick={() => setLocation('/')} color="default">
-            Go Home
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
+  // No "no protocol loaded" branch: ProtocolRouteGuard sends a /protocol route
+  // with no protocol home before this page renders, so a second, weaker guard
+  // here would only be another place for the two to disagree.
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
   const toolbarItems: ToolbarSegment[] = [
     {

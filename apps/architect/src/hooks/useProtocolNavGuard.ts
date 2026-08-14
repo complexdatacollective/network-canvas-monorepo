@@ -6,9 +6,15 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
+import {
+  getProtocolOpenElsewhere,
+  getStorageUnavailable,
+} from '~/ducks/modules/app';
+import type { RootState } from '~/ducks/modules/root';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import type { AppDispatch } from '~/ducks/store';
 import { store } from '~/ducks/store';
+import { getProtocol } from '~/selectors/protocol';
 import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
@@ -145,7 +151,54 @@ export const collapseProtocolHistory = (
 
 // The stage editor lives under /protocol/stage/, so leaving it can be intra-
 // /protocol nav (e.g. Back to the overview) that isProtocolPath() alone misses.
-const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
+export const isStageEditorPath = (path: string) =>
+  path.startsWith('/protocol/stage/');
+
+// How much of what the user sees is actually persisted. This decides both the
+// leave-editor copy and whether leaving needs confirming at all, so it is
+// derived in one place rather than re-asked at each call site.
+export type LeavePersistence =
+  | 'no-protocol'
+  | 'storage-unavailable'
+  | 'open-elsewhere'
+  | 'saved';
+
+export const getLeavePersistence = (state: RootState): LeavePersistence => {
+  if (!getProtocol(state)) return 'no-protocol';
+  // Nothing reached disk at all, which is more urgent than another tab holding
+  // the saved copy, so it wins when both are true.
+  if (getStorageUnavailable(state)) return 'storage-unavailable';
+  if (getProtocolOpenElsewhere(state)) return 'open-elsewhere';
+  return 'saved';
+};
+
+// One whole string per persistence state: the dialog has to describe what is
+// actually true of the user's work, and sentence fragments cannot be localised.
+const leaveDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  string
+> = {
+  'saved':
+    "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
+  'open-elsewhere':
+    'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.',
+  'storage-unavailable':
+    'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
+};
+
+// The same, for leaving with uncommitted stage edits. The stage draft is never
+// persisted, so what differs between these is what remains AFTER discarding it.
+const discardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  string
+> = {
+  'saved':
+    'Changes made in this stage have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
+  'open-elsewhere':
+    'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
+  'storage-unavailable':
+    'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Returning to the start screen now discards all of it.',
+};
 
 // Opens the leave-editor confirmation. On confirm, clears the active protocol
 // and runs `performLeave` with the guard's bypass flag set so the navigation
@@ -155,23 +208,40 @@ const isStageEditorPath = (path: string) => path.startsWith('/protocol/stage/');
 // `draftDirty` reflects whether the stage editor holds uncommitted edits. The
 // stage draft is not persisted (see rememberedKeys in store.ts), so leaving with
 // a dirty draft uses a separate discard dialog and resets the draft on confirm.
-// A pristine editor keeps the reassuring "saved automatically" copy and offers
-// the download-and-leave action.
+//
+// `persistence` selects the pristine-editor copy. The reassuring "saved
+// automatically" wording is only true when this tab actually owns the saved
+// copy, so a tab whose writes are being dropped (storage unavailable, or the
+// protocol open in another tab) gets a description of its own situation
+// instead. Callers must resolve `no-protocol` themselves: there is nothing to
+// confirm, and every action this dialog offers would fail.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void | Promise<void>,
   draftDirty = false,
+  persistence: Exclude<LeavePersistence, 'no-protocol'> = 'saved',
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const leaveAction = {
+      label: 'Return to Start Screen',
+      value: 'leave' as const,
+    };
+    const downloadAction = {
+      label: 'Return and download now',
+      value: 'download-and-leave' as const,
+    };
+    // When nothing can be written to this device, downloading is the only way
+    // to keep the work, so it leads.
+    const unsaved = persistence === 'storage-unavailable';
+
     const action = draftDirty
       ? await openDialog({
           type: 'choice',
           title: 'Discard unsaved stage changes?',
-          description:
-            'Changes made in this stage have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
+          description: discardDescriptions[persistence],
           intent: 'warning',
           size: 'readable',
           actions: {
@@ -188,19 +258,12 @@ export const promptLeaveEditor = async (
       : await openDialog({
           type: 'choice',
           title: 'Return to start screen?',
-          description:
-            "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
-          intent: 'default',
+          description: leaveDescriptions[persistence],
+          intent: unsaved ? 'warning' : 'default',
           size: 'readable',
           actions: {
-            primary: {
-              label: 'Return to Start Screen',
-              value: 'leave' as const,
-            },
-            secondary: {
-              label: 'Return and download now',
-              value: 'download-and-leave' as const,
-            },
+            primary: unsaved ? downloadAction : leaveAction,
+            secondary: unsaved ? leaveAction : downloadAction,
             cancel: {
               label: 'Cancel',
               value: null,
@@ -371,6 +434,15 @@ export const useProtocolNavGuard = () => {
         return;
       }
 
+      // With no protocol in the editing buffer there is nothing to confirm and
+      // nothing to download, so Back must simply be allowed. (ProtocolRouteGuard
+      // sends such a route home anyway; this keeps the two from arguing.)
+      const persistence = getLeavePersistence(store.getState());
+      if (persistence === 'no-protocol') {
+        syncProtocolHistoryMarker(newPath, destinationMarker);
+        return;
+      }
+
       // Push the user back to where they were. pushState does not fire popstate,
       // so we don't re-enter this handler. (Our pushState listener will update
       // prevPath to oldPath, which is correct.)
@@ -398,6 +470,7 @@ export const useProtocolNavGuard = () => {
               setLocation('/', { replace: true }),
             ),
           draftDirty,
+          persistence,
         );
         return;
       }

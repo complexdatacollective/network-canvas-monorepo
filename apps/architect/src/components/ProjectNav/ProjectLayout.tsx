@@ -4,6 +4,7 @@ import { useLocation } from 'wouter';
 
 import ProjectNav from '~/components/ProjectNav/ProjectNav';
 import StorageUnavailableBanner from '~/components/StorageUnavailableBanner';
+import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
@@ -32,7 +33,12 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
     setScrollPosition(location, e.currentTarget.scrollTop);
   };
 
-  const isSummary = location === '/protocol/summary';
+  // A tab that has lost the editor lock renders the same whole-protocol
+  // read-only view the summary route does (see ProtocolRouteGuard), so it drops
+  // Undo/Redo and gains Print for exactly the same reason the summary does.
+  const accessMode = useProtocolAccessMode();
+  const readOnly =
+    location === '/protocol/summary' || accessMode === 'read-only';
   const printAction = usePrintProtocolAction();
 
   return (
@@ -48,8 +54,8 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       <StorageUnavailableBanner />
       {children}
       <ProjectActions
-        readOnly={isSummary}
-        additionalItems={isSummary ? [printAction] : undefined}
+        readOnly={readOnly}
+        additionalItems={readOnly ? [printAction] : undefined}
       />
     </div>
   );

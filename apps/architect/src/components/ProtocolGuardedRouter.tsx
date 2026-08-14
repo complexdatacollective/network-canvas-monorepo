@@ -9,6 +9,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { store } from '~/ducks/store';
 import {
   collapseProtocolHistory,
+  getLeavePersistence,
   guardState,
   isProtocolPath,
   promptLeaveEditor,
@@ -34,7 +35,13 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
       const leaving =
         isProtocolPath(window.location.pathname) && !isProtocolPath(to);
 
-      if (guardState.bypass || !leaving) {
+      // With no protocol in the editing buffer there is nothing to confirm and
+      // nothing to download: prompting would offer actions that cannot succeed
+      // and then strand the user on a route ProtocolRouteGuard is already
+      // sending home.
+      const persistence = getLeavePersistence(store.getState());
+
+      if (guardState.bypass || !leaving || persistence === 'no-protocol') {
         nav(to, opts);
         return;
       }
@@ -55,6 +62,7 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
             nav(to, { ...opts, replace: true }),
           ),
         getLiveStageDraftDirty(store.getState()),
+        persistence,
       );
     },
     [dispatch, openDialog],

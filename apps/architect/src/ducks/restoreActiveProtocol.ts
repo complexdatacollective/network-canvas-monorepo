@@ -60,13 +60,19 @@ export const restoreActiveProtocolFromLibrary = async (
   store: RestoreStore,
   dependencies: RestoreDependencies = {},
 ): Promise<RestoreActiveProtocolResult> => {
-  const protocolId = getActiveProtocolId(store.getState());
-  if (!protocolId) return 'none';
-
   const getStoredProtocol =
     dependencies.getStoredProtocol ?? readStoredProtocol;
   const blockProtocolRoute =
     dependencies.replaceProtocolRoute ?? replaceProtocolRoute;
+
+  const protocolId = getActiveProtocolId(store.getState());
+  if (!protocolId) {
+    // There is no session to restore, so a /protocol URL (bookmark, typed
+    // address, restored tab) has no protocol behind it. Settle on Home before
+    // React mounts, as every other unrestorable branch below does.
+    blockProtocolRoute();
+    return 'none';
+  }
 
   let row: Awaited<ReturnType<typeof getStoredProtocol>>;
   try {

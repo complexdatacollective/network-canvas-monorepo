@@ -1,11 +1,18 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import createTimeline from '~/ducks/middleware/timeline';
+import activeProtocol, {
+  setActiveProtocol,
+} from '~/ducks/modules/activeProtocol';
+import app from '~/ducks/modules/app';
 import protocolsReducer, { addProtocol } from '~/ducks/modules/protocols';
+import protocolValidation from '~/ducks/modules/protocolValidation';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import Routes from '../Routes';
 
@@ -36,6 +43,17 @@ vi.mock('wouter', () => ({
   Switch: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+// ProtocolRouteGuard sends a protocol route with no protocol home through the
+// raw browser-location navigate (not wouter's setter, which would raise the
+// leave-editor confirmation over a redirect the user never asked for).
+const { mockBrowserNavigate } = vi.hoisted(() => ({
+  mockBrowserNavigate: vi.fn(),
+}));
+
+vi.mock('wouter/use-browser-location', () => ({
+  navigate: mockBrowserNavigate,
+}));
+
 // Mock components to avoid complex rendering
 vi.mock('~/components/Home/Home', () => ({
   default: () => <div data-testid="home">Home Component</div>,
@@ -43,6 +61,10 @@ vi.mock('~/components/Home/Home', () => ({
 
 vi.mock('~/components/Protocol', () => ({
   default: () => <div data-testid="protocol">Protocol Component</div>,
+}));
+
+vi.mock('~/components/pages/SummaryPage', () => ({
+  default: () => <div data-testid="summary">Summary Component</div>,
 }));
 
 // Mock ProjectLayout so children render directly without needing the full nav setup
@@ -66,16 +88,16 @@ const mockProtocol: CurrentProtocol = {
   assetManifest: {},
 };
 
-const createTestStore = () => {
-  return configureStore({
-    reducer: {
+const createTestStore = () =>
+  configureStore({
+    reducer: combineReducers({
+      app,
       protocols: protocolsReducer,
-      activeProtocol: (state = { present: null, past: [], future: [] }) =>
-        state,
-    },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
+      protocolValidation,
+      stageEditorDraft,
+      activeProtocol: createTimeline(activeProtocol),
+    }),
   });
-};
 
 type TestStore = ReturnType<typeof createTestStore>;
 
@@ -92,6 +114,7 @@ describe('Routes', () => {
     store = createTestStore();
     mockLocation.mockClear();
     mockNavigate.mockClear();
+    mockBrowserNavigate.mockClear();
   });
 
   it('should render Home component on root path', () => {
@@ -113,6 +136,7 @@ describe('Routes', () => {
         description: mockProtocolDescription,
       }),
     );
+    store.dispatch(setActiveProtocol(mockProtocol));
 
     mockLocation.mockReturnValue('/protocol');
 
@@ -121,9 +145,26 @@ describe('Routes', () => {
     });
 
     expect(screen.getByTestId('protocol')).toBeInTheDocument();
+    expect(mockBrowserNavigate).not.toHaveBeenCalled();
+  });
+
+  // The phantom "Untitled protocol": every reducer under activeProtocol no-ops
+  // against a null present, so an editor rendered here accepts input and drops
+  // all of it.
+  it('renders no protocol route, and leaves for Home, when no protocol is open', () => {
+    mockLocation.mockReturnValue('/protocol');
+
+    const { container } = render(<Routes />, {
+      wrapper: createWrapper(store),
+    });
+
+    expect(screen.queryByTestId('protocol')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+    expect(mockBrowserNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('should handle invalid protocol routes gracefully', () => {
+    store.dispatch(setActiveProtocol(mockProtocol));
     mockLocation.mockReturnValue('/protocol/non-existent-id');
 
     render(<Routes />, {
