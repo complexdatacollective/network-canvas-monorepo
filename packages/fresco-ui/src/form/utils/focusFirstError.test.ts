@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FlattenedErrors } from '../store/types';
 import { focusFirstError } from './focusFirstError';
@@ -210,7 +210,39 @@ describe('focusFirstError', () => {
     expect(document.activeElement).toBe(enabled);
   });
 
-  it('leaves focus alone when every candidate is hidden', () => {
+  // The case a real Base UI Switch presents: its operable control is a BARE
+  // `<button role="switch">` carrying no tabindex of its own, so the native
+  // control and tabindex tiers see only the aria-hidden proxy beside it. #1383
+  // stopped at those tiers and therefore focused nothing at all; a form that
+  // refuses to submit has to put focus somewhere the researcher can act, so the
+  // button tier now reaches the real control.
+  it('focuses a bare role="switch" button that carries no tabindex', () => {
+    const { field } = setup();
+    field.replaceChildren();
+
+    const proxy = document.createElement('input');
+    proxy.setAttribute('type', 'checkbox');
+    proxy.setAttribute('aria-hidden', 'true');
+    proxy.setAttribute('tabindex', '-1');
+    const control = document.createElement('button');
+    control.setAttribute('role', 'switch');
+    field.append(proxy, control);
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(control);
+    // The two ways this can regress: back to the proxy a screen reader is told
+    // does not exist, or to nowhere at all.
+    expect(document.activeElement).not.toBe(proxy);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  // Replaces #1383's "leaves focus alone when every candidate is hidden".
+  // Leaving focus where it was is what this whole function exists to stop: the
+  // submission was refused, and the researcher has to be told where. With no
+  // operable control anywhere in the field, the container carrying the error
+  // message is the only honest destination.
+  it('falls back to the container when a field holds nothing but a hidden proxy', () => {
     const { field, otherInput } = setup();
     field.replaceChildren();
 
@@ -221,7 +253,45 @@ describe('focusFirstError', () => {
 
     focusFirstError(errors);
 
-    expect(document.activeElement).toBe(otherInput);
+    expect(document.activeElement).toBe(field);
+    expect(document.activeElement).not.toBe(proxy);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).not.toBe(otherInput);
+  });
+
+  // The container fallback must never outrank a real control. Architect's
+  // whole-editor contradiction alert is a `data-field-name` container with
+  // nothing focusable in it, and it renders ABOVE every field — so if the
+  // fallback competed on equal terms it would win document order and park the
+  // researcher on a heading with every offending control still to find by hand.
+  it('prefers a later field with a real control over an earlier control-less container', () => {
+    const alert = setup('_contradiction', undefined, { focusable: false });
+    const withControl = setup('dob', '["dob"]');
+    document.body.insertBefore(alert.scroller, withControl.scroller);
+
+    focusFirstError({
+      formErrors: [],
+      fieldErrors: {
+        '["dob"]': ['Required'],
+        '_contradiction': ['Contradictory rules'],
+      },
+    });
+
+    expect(document.activeElement).toBe(withControl.input);
+    // ...while the scroll still goes to the topmost problem.
+    expect(alert.scroller.scrollTo).toHaveBeenCalled();
+    // And the alert is left exactly as it was found — a predicate that made
+    // containers focusable while merely inspecting them would stamp this one.
+    expect(alert.field).not.toHaveAttribute('tabindex');
+  });
+
+  it('focuses exactly once per call', () => {
+    const { input } = setup();
+    const focusSpy = vi.spyOn(input, 'focus');
+
+    focusFirstError(errors);
+
+    expect(focusSpy).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -248,12 +318,7 @@ const setupComposite = (build: (field: HTMLElement) => void) => {
 };
 
 describe('focusFirstError target selection', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
-    vi.useRealTimers();
     document.body.replaceChildren();
   });
 
@@ -266,7 +331,6 @@ describe('focusFirstError target selection', () => {
     });
 
     focusFirstError(errors);
-    vi.advanceTimersByTime(900);
 
     expect(document.activeElement).toBe(field.querySelector('button'));
   });
@@ -280,9 +344,24 @@ describe('focusFirstError target selection', () => {
     });
 
     focusFirstError(errors);
-    vi.advanceTimersByTime(900);
 
     expect(document.activeElement).toBe(field.querySelector('#picker'));
+  });
+
+  it('prefers a native control over a button that precedes it', () => {
+    // The tiers are queried separately precisely so this stays true: a single
+    // comma-list selector answers in document order and would hand the error to
+    // the button.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <button type="button" id="helper">Explain this</button>
+        <input id="control" />
+      `;
+    });
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(field.querySelector('#control'));
   });
 
   it('skips a hidden proxy control in favour of the operable one', () => {
@@ -296,9 +375,9 @@ describe('focusFirstError target selection', () => {
     });
 
     focusFirstError(errors);
-    vi.advanceTimersByTime(900);
 
     expect(document.activeElement).toBe(field.querySelector('#real'));
+    expect(document.activeElement).not.toBe(field.querySelector('#proxy'));
   });
 
   it('falls back to the field container when nothing inside it can take focus', () => {
@@ -307,16 +386,36 @@ describe('focusFirstError target selection', () => {
     });
 
     focusFirstError(errors);
-    vi.advanceTimersByTime(900);
 
     expect(document.activeElement).toBe(field);
     expect(field).toHaveAttribute('tabindex', '-1');
   });
 
+  it('leaves focus alone rather than focusing an inert control', () => {
+    // An inert subtree cannot take focus, so `focus()` on something inside one
+    // is a silent no-op that would strand focus on `<body>`. Marking the
+    // container focusable instead would permanently mutate a background element
+    // a dialog has deliberately taken out of play.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `<input id="control" />`;
+    });
+    field.setAttribute('inert', '');
+
+    const outside = document.createElement('input');
+    document.body.appendChild(outside);
+    outside.focus();
+
+    focusFirstError(errors);
+
+    expect(document.activeElement).toBe(outside);
+    expect(field).not.toHaveAttribute('tabindex');
+  });
+
   it('still moves focus when the submit button that had it was disabled', () => {
     // Submitting disables the submit button, which the browser blurs — leaving
-    // `document.activeElement` on `<body>`. That is focus being LOST, not the
-    // user moving it, and it must not cancel the move to the invalid field.
+    // `document.activeElement` on `<body>` by the time the errors commit. That
+    // is focus being LOST, not the researcher moving it, and it must not read
+    // as "leave focus where it is".
     const { field } = setupComposite((container) => {
       container.innerHTML = `<input id="control" />`;
     });
@@ -324,13 +423,13 @@ describe('focusFirstError target selection', () => {
     const submit = document.createElement('button');
     document.body.appendChild(submit);
     submit.focus();
-    expect(document.activeElement).toBe(submit);
+    // The browser blurs the button BECAUSE it is being disabled; jsdom refuses
+    // to blur an already-disabled element, so the two steps go in this order.
+    submit.blur();
+    submit.disabled = true;
+    expect(document.activeElement).toBe(document.body);
 
     focusFirstError(errors);
-    submit.disabled = true;
-    submit.blur();
-
-    vi.advanceTimersByTime(900);
 
     expect(document.activeElement).toBe(field.querySelector('#control'));
   });

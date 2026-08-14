@@ -191,21 +191,37 @@ const leaveDescriptions: Record<
     'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
 };
 
-// The same, for leaving with uncommitted stage edits. The stage draft is never
-// persisted, so what differs between these is what remains AFTER discarding it.
+// The same, for leaving the PROTOCOL with uncommitted edits. Neither the stage
+// draft nor an open nested editor's draft is ever persisted, so what differs
+// between these is what remains AFTER discarding them.
+//
+// The subject is deliberately wider than "this stage": this dialog is also what
+// a researcher meets when the unsaved work is a half-typed variable in the
+// Codebook's type editor or a Resources editor, where no stage is involved at
+// all. One whole string per state, so none of this has to be assembled.
 const discardDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
   string
 > = {
   'saved':
-    'Changes made in this stage have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
+    'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
   'open-elsewhere':
-    'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
+    'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
   'reclaim-blocked':
-    'Changes made in this stage cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
+    'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
   'storage-unavailable':
-    'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Returning to the start screen now discards all of it.',
+    'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Returning to the start screen now discards all of it.',
 };
+
+// Leaving with unsaved work in a nested editor, without leaving the protocol —
+// navigating from the Codebook to the timeline with a half-typed variable
+// editor open, say. Not persistence-keyed, unlike everything above: this
+// navigation neither saves nor reloads the protocol, so the only thing at stake
+// is the editor's own draft, and the lock state cannot change that outcome.
+// Claiming anything about the protocol's saved state here would be inventing a
+// promise this navigation does not make.
+const NESTED_DRAFT_DISCARD_DESCRIPTION =
+  'You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.';
 
 // The same again for LEAVING THE STAGE EDITOR rather than the protocol: the
 // stage draft is discarded either way, but what remains behind it differs, and
@@ -323,10 +339,14 @@ export const promptLeaveEditor = async (
   }
 };
 
-// Opens the discard-draft confirmation when Back leaves the stage editor with an
-// uncommitted draft. On confirm, clears the draft and runs `performLeave` with
-// the bypass flag set so the navigation isn't re-guarded. Skips if a prompt is
-// already in flight.
+// Opens the discard-draft confirmation when Back leaves unsaved work behind
+// without leaving the protocol — either the stage editor's own uncommitted
+// draft, or a nested editor left open anywhere (the Codebook's type editor, a
+// Resources editor), which is not gated on the stage-editor path at all. On
+// confirm, runs `performLeave` with the bypass flag set so the navigation isn't
+// re-guarded, clearing the stage draft only when that draft is what is being
+// discarded. Skips if a prompt is already in flight, so a single Back can never
+// stack two confirmations.
 const promptDiscardDraft = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
@@ -341,13 +361,20 @@ const promptDiscardDraft = async (
   guardState.prompting = true;
   try {
     const persistence = getLeavePersistence(store.getState());
+    // `resetStageDraft` already distinguishes the two situations that reach
+    // here, so it also selects the copy. Naming the stage — and describing what
+    // will be reloaded into it — is only honest when the stage editor's own
+    // draft is what is being discarded.
     const confirmed = await openDialog({
       type: 'choice',
-      title: 'Discard unsaved stage changes?',
-      description:
-        stageDiscardDescriptions[
-          persistence === 'no-protocol' ? 'saved' : persistence
-        ],
+      title: resetStageDraft
+        ? 'Discard unsaved stage changes?'
+        : 'Discard unsaved changes?',
+      description: resetStageDraft
+        ? stageDiscardDescriptions[
+            persistence === 'no-protocol' ? 'saved' : persistence
+          ]
+        : NESTED_DRAFT_DISCARD_DESCRIPTION,
       intent: 'warning',
       size: 'readable',
       actions: {

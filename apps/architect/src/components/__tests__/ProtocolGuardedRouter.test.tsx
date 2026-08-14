@@ -11,7 +11,12 @@ vi.mock('~/components/StageEditor/StageFormBridge', () => ({
 }));
 
 let stageDraftDirty = false;
-vi.mock('~/selectors/stageEditorDraft', () => ({
+// Partial: `~/selectors/protocol` derives `getProtocol` from this module's
+// `getStageEditorDraftCodebook` (#1382's codebook transaction), and
+// `getLeavePersistence` reaches it on every guarded navigation. Replacing the
+// module wholesale would take that selector out with it.
+vi.mock('~/selectors/stageEditorDraft', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/selectors/stageEditorDraft')>()),
   getLiveStageDraftDirty: () => stageDraftDirty,
 }));
 
@@ -22,7 +27,17 @@ vi.mock('~/components/DialogForm/nestedDraftRegistry', () => ({
 }));
 
 vi.mock('~/ducks/hooks', () => ({ useAppDispatch: () => vi.fn() }));
-vi.mock('~/ducks/store', () => ({ store: { getState: () => ({}) } }));
+// A protocol has to be present, and this tab has to own its lock, or
+// `getLeavePersistence` (#1386 + the lock rework) resolves to 'no-protocol' and
+// `aroundNav` returns before it ever consults the dirty predicates.
+vi.mock('~/ducks/store', () => ({
+  store: {
+    getState: () => ({
+      activeProtocol: { present: { codebook: {} } },
+      app: {},
+    }),
+  },
+}));
 
 const useProtocolNavGuard = vi.fn();
 const promptLeaveEditor = vi.fn();
