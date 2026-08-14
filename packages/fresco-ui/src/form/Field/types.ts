@@ -24,6 +24,7 @@ export type FieldValue =
   | (string | number | boolean | Record<string, unknown>)[]
   | number
   | boolean
+  | Record<string, unknown>
   | JSONContent //
   | undefined;
 

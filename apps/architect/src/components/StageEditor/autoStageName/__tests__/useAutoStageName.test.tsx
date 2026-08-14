@@ -3,7 +3,11 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Stage, StageType } from '@codaco/protocol-validation';
+import type {
+  Stage,
+  StageSubject,
+  StageType,
+} from '@codaco/protocol-validation';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import StageForm from '../../StageForm';
@@ -49,7 +53,7 @@ function renderHeading(
       }),
   });
 
-  let setStageValue: ((path: string, value: unknown) => void) | null = null;
+  let setStageValue: ReturnType<typeof useSetStageValue> | null = null;
   let history: ReturnType<typeof useStageDraftHistory> | null = null;
   const Probe = () => {
     setStageValue = useSetStageValue();
@@ -80,7 +84,7 @@ function renderHeading(
   return {
     store,
     input,
-    setSubject: (subject: unknown) =>
+    setSubject: (subject: StageSubject) =>
       act(() => {
         setStageValue?.('subject', subject);
       }),

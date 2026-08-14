@@ -6,6 +6,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import type { RuleSetValue } from '~/components/sections/fields/RuleSetFields';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -42,9 +43,9 @@ const EMPTY_PANELS: NodePanelValue[] = [];
 
 const createNodePanel = (): NodePanelValue => ({
   id: uuid(),
-  title: null,
+  title: undefined,
   dataSource: 'existing',
-  filter: null,
+  filter: undefined,
 });
 
 /**
@@ -68,9 +69,9 @@ const createNodePanel = (): NodePanelValue => ({
  */
 const usePanelAt = (index: number): NodePanelValue | undefined => {
   const id = useStageFormValue<string>(`panels[${index}].id`);
-  const title = useStageFormValue<string | null>(`panels[${index}].title`);
+  const title = useStageFormValue<string>(`panels[${index}].title`);
   const dataSource = useStageFormValue<string>(`panels[${index}].dataSource`);
-  const filter = useStageFormValue(`panels[${index}].filter`);
+  const filter = useStageFormValue<RuleSetValue>(`panels[${index}].filter`);
 
   return useMemo(() => {
     if (typeof id !== 'string') return undefined;
@@ -80,9 +81,9 @@ const usePanelAt = (index: number): NodePanelValue | undefined => {
     // shut — into a hole in the panel it writes back.
     return {
       id,
-      title: title ?? null,
+      title,
       dataSource: dataSource ?? 'existing',
-      filter: filter ?? null,
+      filter,
     };
   }, [dataSource, filter, id, title]);
 };
@@ -196,12 +197,12 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
   const writePanelAt = useCallback(
     (index: number, panel: NodePanelValue | undefined) => {
       setStageValue(`panels[${index}].id`, panel?.id);
-      setStageValue(`panels[${index}].title`, panel?.title ?? null);
+      setStageValue(`panels[${index}].title`, panel?.title);
       setStageValue(
         `panels[${index}].dataSource`,
         panel?.dataSource ?? 'existing',
       );
-      setStageValue(`panels[${index}].filter`, panel?.filter ?? null);
+      setStageValue(`panels[${index}].filter`, panel?.filter);
     },
     [setStageValue],
   );

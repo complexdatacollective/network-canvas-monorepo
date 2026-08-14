@@ -21,13 +21,13 @@ import { handlePanelToggleChange, NodePanels } from '../NodePanels';
 
 const panel = (id: string): NodePanelValue => ({
   id,
-  title: null,
+  title: undefined,
   dataSource: 'existing',
-  filter: null,
+  filter: undefined,
 });
 
 describe('NodePanels', () => {
-  it('keeps null storage until add and creates at most two UUID-backed panels', async () => {
+  it('keeps fields unset until add and creates at most two UUID-backed panels', async () => {
     const { getFieldState } = renderStageForm({
       committedStage: asStage({ subject: { entity: 'node', type: 'person' } }),
       children: (
@@ -70,12 +70,12 @@ describe('NodePanels', () => {
     expect(typeof panel0Id).toBe('string');
     expect(typeof panel1Id).toBe('string');
     expect(panel0Id).not.toBe(panel1Id);
-    expect(getFieldState('panels[0].title')?.value).toBeNull();
+    expect(getFieldState('panels[0].title')?.value).toBeUndefined();
     expect(getFieldState('panels[0].dataSource')?.value).toBe('existing');
-    expect(getFieldState('panels[0].filter')?.value).toBeNull();
-    expect(getFieldState('panels[1].title')?.value).toBeNull();
+    expect(getFieldState('panels[0].filter')?.value).toBeUndefined();
+    expect(getFieldState('panels[1].title')?.value).toBeUndefined();
     expect(getFieldState('panels[1].dataSource')?.value).toBe('existing');
-    expect(getFieldState('panels[1].filter')?.value).toBeNull();
+    expect(getFieldState('panels[1].filter')?.value).toBeUndefined();
 
     expect(
       screen.queryByRole('button', { name: 'Add new panel' }),

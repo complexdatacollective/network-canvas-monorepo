@@ -41,7 +41,7 @@ const edgeRule = { type: 'edge', id: 'e1' };
 
 describe('hasEdgeRules', () => {
   it.each([
-    ['a null filter', null, false],
+    ['an unset filter', undefined, false],
     ['a filter with no rules', { rules: [] }, false],
     ['a filter with only alter rules', { rules: [alterRule] }, false],
     ['a filter with an edge rule', { rules: [alterRule, edgeRule] }, true],
@@ -58,7 +58,7 @@ describe('stripEdgeRules', () => {
   });
 
   it('clears the filter entirely when every rule was an edge rule', () => {
-    expect(stripEdgeRules({ join: 'AND', rules: [edgeRule] })).toBeNull();
+    expect(stripEdgeRules({ join: 'AND', rules: [edgeRule] })).toBeUndefined();
   });
 
   it('leaves a filter with no edge rules unchanged', () => {
@@ -66,10 +66,6 @@ describe('stripEdgeRules', () => {
       join: 'AND',
       rules: [alterRule],
     });
-  });
-
-  it('handles a null filter', () => {
-    expect(stripEdgeRules(null)).toBeNull();
   });
 });
 

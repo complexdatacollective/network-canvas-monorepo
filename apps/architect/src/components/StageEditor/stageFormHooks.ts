@@ -100,12 +100,12 @@ export function useStageFormValue<T = unknown>(path: string): T | undefined {
  * names are parked as a dormant pending write and re-attach when the field
  * next mounts, so this works for a collapsed or toggled-off section.
  */
-export function useSetStageValue(): (path: string, value: unknown) => void {
+export function useSetStageValue(): (path: string, value: FieldValue) => void {
   const { storeApi } = useStageFormContext();
 
   return useCallback(
-    (path: string, value: unknown) => {
-      storeApi.getState().setFieldValue(path, value as FieldValue);
+    (path: string, value: FieldValue) => {
+      storeApi.getState().setFieldValue(path, value);
     },
     [storeApi],
   );

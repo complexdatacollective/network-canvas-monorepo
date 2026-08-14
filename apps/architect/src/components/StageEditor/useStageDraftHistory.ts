@@ -2,7 +2,6 @@ import { get, isEqual } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 import { useStore } from 'react-redux';
 
-import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { Stage } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
@@ -12,6 +11,7 @@ import {
 import type { RootState } from '~/ducks/store';
 import { getCanRedoDraft, getCanUndoDraft } from '~/selectors/stageEditorDraft';
 
+import { requireStageFieldValue } from './requireStageFieldValue';
 import {
   type StageFormStoreApi,
   useStageFormContext,
@@ -52,7 +52,7 @@ const applyDiff = (
   const knownNames = [...fields.keys(), ...dormantValues.keys()];
 
   for (const name of knownNames) {
-    const targetValue = get(target, name) as FieldValue;
+    const targetValue = requireStageFieldValue(get(target, name));
     if (isEqual(getFieldState(name)?.value, targetValue)) continue;
     setFieldValue(name, targetValue);
   }
@@ -65,7 +65,7 @@ const applyDiff = (
   for (const key of topLevelKeys) {
     if (knownNames.some((name) => coversTopLevelKey(name, key))) continue;
     if (isEqual(current[key], target[key])) continue;
-    setFieldValue(key, target[key] as FieldValue);
+    setFieldValue(key, requireStageFieldValue(target[key]));
   }
 };
 

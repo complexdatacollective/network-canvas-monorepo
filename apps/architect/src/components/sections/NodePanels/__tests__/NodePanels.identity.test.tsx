@@ -22,12 +22,12 @@ const toggle = () =>
   screen.getByRole('switch', { name: 'Turn this feature on or off' });
 
 const ONE_PANEL = [
-  { id: 'panel-1', title: 'A', dataSource: 'existing', filter: null },
+  { id: 'panel-1', title: 'A', dataSource: 'existing', filter: undefined },
 ];
 
 const TWO_PANELS = [
   ...ONE_PANEL,
-  { id: 'panel-2', title: 'B', dataSource: 'existing', filter: null },
+  { id: 'panel-2', title: 'B', dataSource: 'existing', filter: undefined },
 ];
 
 const renderPanels = (panels: Record<string, unknown>[] = ONE_PANEL) =>

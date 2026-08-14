@@ -11,6 +11,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import DataSource from '~/components/Form/Fields/DataSource';
 import IssueAnchor from '~/components/IssueAnchor';
 import NetworkFilter from '~/components/sections/fields/NetworkFilter';
+import type { RuleSetValue } from '~/components/sections/fields/RuleSetFields';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
   useSetStageValue,
@@ -22,24 +23,26 @@ import { usePanelSlot } from './usePanelSlot';
 
 const EXISTING_DATA_SOURCE = 'existing';
 
-type PanelFilter = { join?: string; rules?: { type?: string }[] } | null;
+type PanelFilterInput = RuleSetValue | undefined;
 
-export const hasEdgeRules = (filter: PanelFilter): boolean =>
+export const hasEdgeRules = (filter: PanelFilterInput): boolean =>
   (filter?.rules ?? []).some((rule) => rule.type === 'edge');
 
-export const stripEdgeRules = (filter: PanelFilter): PanelFilter => {
+export const stripEdgeRules = (
+  filter: PanelFilterInput,
+): RuleSetValue | undefined => {
   const remaining = (filter?.rules ?? []).filter(
     (rule) => rule.type !== 'edge',
   );
-  if (remaining.length === 0) return null;
+  if (remaining.length === 0) return undefined;
   return { ...filter, rules: remaining };
 };
 
 export type NodePanelValue = Record<string, unknown> & {
   id: string;
-  title: string | null;
+  title: string | undefined;
   dataSource: string;
-  filter: unknown;
+  filter: RuleSetValue | undefined;
 };
 
 type NodePanelProps = ArrayFieldItemProps<NodePanelValue>;
@@ -80,10 +83,8 @@ const NodePanel = ({
   const dataSource = useStageFormValue<string | undefined>(
     `${fieldName}.dataSource`,
   );
-  const filter = useStageFormValue<PanelFilter>(`${fieldName}.filter`);
-  const initialTitle = useStageInitialValue<string | null>(
-    `${fieldName}.title`,
-  );
+  const filter = useStageFormValue<PanelFilterInput>(`${fieldName}.filter`);
+  const initialTitle = useStageInitialValue<string>(`${fieldName}.title`);
   const initialDataSource = useStageInitialValue<string | undefined>(
     `${fieldName}.dataSource`,
   );
@@ -105,7 +106,7 @@ const NodePanel = ({
       previousValue === undefined ||
       dataSource === previousValue ||
       dataSource === EXISTING_DATA_SOURCE ||
-      !hasEdgeRules(filter ?? null) ||
+      !hasEdgeRules(filter) ||
       // A superseded row reads the slot values of the panel that replaced it,
       // so its `dataSource` appears to change when the list is re-indexed.
       // Prompting there would ask about a panel that no longer exists.
@@ -133,7 +134,7 @@ const NodePanel = ({
       });
 
       if (confirmed) {
-        setStageValue(`${fieldName}.filter`, stripEdgeRules(filter ?? null));
+        setStageValue(`${fieldName}.filter`, stripEdgeRules(filter));
       } else {
         setStageValue(`${fieldName}.dataSource`, previousValue);
       }
