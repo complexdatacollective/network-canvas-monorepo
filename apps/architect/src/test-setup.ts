@@ -132,9 +132,11 @@ globalThis.ResizeObserver ??= ResizeObserverStub;
 globalThis.IntersectionObserver ??= IntersectionObserverStub;
 globalThis.Worker ??= WorkerStub;
 
-// jsdom implements neither scroll API. fresco-ui's default onSubmitInvalid
-// (focusFirstError) calls scrollIntoView/scrollTo when a submit is blocked, so
-// a missing shim surfaces as an unhandled error in any invalid-submit test.
+// jsdom implements neither scroll API, and a missing shim surfaces as an
+// unhandled error rather than a readable failure. `scrollTo` is what
+// fresco-ui's default onSubmitInvalid (focusFirstError) reaches for when a
+// submit is blocked; `scrollIntoView` is for everything else that scrolls a
+// selection into view (VariableSpotlight, the new-stage screens, useWizardState).
 Element.prototype.scrollTo ??= () => undefined;
 Element.prototype.scrollIntoView ??= () => undefined;
 

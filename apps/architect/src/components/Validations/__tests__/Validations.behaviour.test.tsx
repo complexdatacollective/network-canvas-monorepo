@@ -116,8 +116,11 @@ const setup = ({
    * would persist them never reaches the handler. (The store's own
    * `submitForm` deliberately skips validation, so it cannot be used here.)
    *
-   * The trailing macrotask drain lets fresco-ui's deferred `onSubmitInvalid`
-   * and the rule list's own focus handoff both run — see `ValidationRule`.
+   * The trailing macrotask drain is for the rule list's own focus handoff (see
+   * `ValidationRule`). It is NOT for `onSubmitInvalid`, which no longer defers:
+   * fresco-ui runs it from a layout effect keyed on the store's
+   * `errorFocusRequest`, and `focusFirstError` is synchronous. Don't take this
+   * drain as a pattern to copy around every invalid submit.
    */
   const submit = async (): Promise<{ reachedHandler: boolean }> => {
     const before = submitCount;
