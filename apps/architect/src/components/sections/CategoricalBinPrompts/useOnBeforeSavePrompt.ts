@@ -5,7 +5,13 @@ import type { Variable } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getExclusiveVariableSlotMap,
+  getInterfaceOwnedOptionMap,
+  getVariableRoleMap,
+  roleMapKey,
+} from '~/selectors/indexes';
+import { interfaceOwnedPickIssue } from '~/selectors/roleFilters';
 
 import {
   crossClassPickIssue,
@@ -44,6 +50,8 @@ export function useOnBeforeSavePrompt(
     getVariablesForSubjectSelector(state, subject),
   );
   const roleMap = useAppSelector(getVariableRoleMap);
+  const exclusiveSlotMap = useAppSelector(getExclusiveVariableSlotMap);
+  const interfaceOwnedOptions = useAppSelector(getInterfaceOwnedOptionMap);
 
   const hasValidatedUseForSubject = useCallback(
     (variableId: string) =>
@@ -112,6 +120,20 @@ export function useOnBeforeSavePrompt(
         }
       }
 
+      // A variable an interface derives structurally can never be a bin: the
+      // bin writes it through drag-and-drop. The picker already drops those,
+      // so this catches a stale draft or an imported protocol — and it has no
+      // unchanged-pick escape, because re-saving would keep overwriting the
+      // interface's own value.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        subject,
+        variableId,
+      );
+      if (ownedIssue) {
+        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+      }
+
       // Cross-class exclusivity gate: this bin is an UNVALIDATED writer, so
       // it may not save a variable a form elsewhere already collects (the
       // save-time backstop for a stale draft that bypassed the picker
@@ -151,6 +173,35 @@ export function useOnBeforeSavePrompt(
         };
       }
 
+      // An interface that both writes and branches on the variable's exact
+      // values owns its option list. The editor renders those read-only, so a
+      // draft can only differ if it is stale or came from an imported
+      // protocol; writing it would invalidate the whole protocol behind the
+      // researcher's back, and silently dropping it would leave the dialog
+      // claiming an edit it did not make. Refuse, and say why.
+      const isInterfaceOwned =
+        interfaceOwnedOptions[roleMapKey(subject, variableId)] !== undefined;
+      if (isInterfaceOwned) {
+        const existingOptions =
+          isRecord(existingVariable) && Array.isArray(existingVariable.options)
+            ? existingVariable.options
+            : [];
+        if (
+          Array.isArray(variableOptions) &&
+          JSON.stringify(variableOptions) !== JSON.stringify(existingOptions)
+        ) {
+          return {
+            success: false,
+            fieldErrors: {
+              variableOptions: [
+                'These options are set by the interface that uses this variable and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+              ],
+            },
+          };
+        }
+        return { variable: variableId, ...rest };
+      }
+
       await dispatch(
         updateVariableAsync({
           entity,
@@ -166,8 +217,11 @@ export function useOnBeforeSavePrompt(
       allVariables,
       dispatch,
       entity,
+      exclusiveSlotMap,
       hasUnvalidatedUseForSubject,
       hasValidatedUseForSubject,
+      interfaceOwnedOptions,
+      subject,
       type,
     ],
   );

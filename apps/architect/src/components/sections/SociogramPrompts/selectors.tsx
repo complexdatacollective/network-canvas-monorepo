@@ -4,7 +4,10 @@ import type { FilterRule } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/store';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { getCodebook } from '~/selectors/protocol';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { asOptions } from '~/selectors/utils';
 
 export const getLayoutVariablesForSubject = (
@@ -37,8 +40,15 @@ export const getHighlightVariablesForSubject = (
   );
 
   // The highlight-toggle picker is an UNVALIDATED writer: drop options a form
-  // elsewhere already validates.
-  return excludeValidatedUses(state, subject, highlightVariables, currentValue);
+  // elsewhere already validates, and drop any variable an interface derives
+  // from the structure a participant builds — highlighting writes the flag the
+  // Family Pedigree uses to mark the participant.
+  return excludeInterfaceOwned(
+    state,
+    subject,
+    excludeValidatedUses(state, subject, highlightVariables, currentValue),
+    currentValue,
+  );
 };
 
 export const getEdgesForSubject = createSelector([getCodebook], (codebook) => {

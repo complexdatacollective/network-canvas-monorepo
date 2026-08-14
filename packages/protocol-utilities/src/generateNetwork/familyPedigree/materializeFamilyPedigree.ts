@@ -568,7 +568,13 @@ export function materializeFamilyPedigree(
         person.biologicalSex,
       );
     }
+    // Structural values win. The schema now forbids a nomination prompt or a
+    // disease mapping from naming one of the pedigree's own structural
+    // variables, but an imported protocol authored before that rule can still
+    // reach this preview — and overwriting the ego flag with a pseudo-random
+    // affected flag produces a family with several participants in it.
     for (const disease of diseases) {
+      if (Object.hasOwn(fixed, disease.variable)) continue;
       fixed[disease.variable] = person.affectedVariables.has(disease.variable);
     }
 

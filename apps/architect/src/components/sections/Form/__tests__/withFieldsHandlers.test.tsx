@@ -61,8 +61,25 @@ vi.mock('~/selectors/codebook', () => {
 // sibling-field exclusion below, so the role-based exclusion is a passthrough
 // here. Its own behaviour is covered by
 // `src/components/sections/__tests__/pickerExclusions.test.ts`.
+// The interface-owned option map is derived from the whole protocol, which
+// this suite's minimal store does not carry. Its own behaviour is covered by
+// `src/selectors/__tests__` and the protocol-validation package; here it only
+// needs to report "nothing is interface-owned".
+vi.mock('~/selectors/indexes', () => ({
+  getInterfaceOwnedOptionMap: () => ({}),
+  roleMapKey: (
+    subject: { entity: string; type?: string },
+    variableId: string,
+  ) => JSON.stringify([subject.entity, subject.type ?? null, variableId]),
+}));
+
 vi.mock('~/selectors/roleFilters', () => ({
   excludeUnvalidatedUses: (
+    _state: unknown,
+    _subject: unknown,
+    options: unknown[],
+  ) => options,
+  excludeInterfaceOwned: (
     _state: unknown,
     _subject: unknown,
     options: unknown[],

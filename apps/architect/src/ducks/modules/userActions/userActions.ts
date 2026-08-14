@@ -2,6 +2,7 @@ import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
 import {
+  type ConfigurationProblem,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -25,6 +26,7 @@ import {
   disarmInMemoryUnloadGuard,
 } from '~/utils/beforeUnloadGuard';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import { assessConfigurationRepair } from '~/utils/configurationRepair';
 import {
   setExportInProgress,
   setImportInProgress,
@@ -63,6 +65,16 @@ export type ProtocolOpenResult =
   | {
       status: 'validation-error';
       message: string;
+    }
+  | {
+      /**
+       * The protocol does not open because of configuration Architect
+       * recognises and, when `repairable`, can fix. Never repaired silently:
+       * the researcher is shown what is wrong and chooses.
+       */
+      status: 'repair-required';
+      problems: ConfigurationProblem[];
+      repairable: boolean;
     }
   | {
       status: 'migration-required';
@@ -185,12 +197,17 @@ const instantiateProtocol = async (
 type OpenLocalNetcanvasParams = {
   file: File;
   migrationApproved?: boolean;
+  repairApproved?: boolean;
 };
 
 export const openLocalNetcanvas = createAppAsyncThunk(
   'protocol/openLocalNetcanvas',
   async (
-    { file, migrationApproved = false }: OpenLocalNetcanvasParams,
+    {
+      file,
+      migrationApproved = false,
+      repairApproved = false,
+    }: OpenLocalNetcanvasParams,
     { dispatch: storeDispatch },
   ): Promise<ProtocolOpenResult> => {
     // Signal an import is in flight so a fresh-load service-worker update won't
@@ -276,13 +293,29 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         migratedProtocol as CurrentProtocol,
       );
 
+      let admittedProtocol = migratedProtocol as CurrentProtocol;
       if (!validationResult.success) {
-        trackImportValidationFailure('local', validationResult.error);
-        const errorMessage = ensureError(validationResult.error).message;
-        return { status: 'validation-error', message: errorMessage };
+        // A protocol authored before the interface-ownership rules can fail
+        // here for reasons Architect knows how to fix. Offer the fix rather
+        // than the raw validation error — but only once the researcher has
+        // seen exactly what would change and agreed to it.
+        const assessment = await assessConfigurationRepair(admittedProtocol);
+        if (assessment.status === 'repairable' && repairApproved) {
+          admittedProtocol = assessment.protocol;
+        } else if (assessment.status !== 'clean') {
+          return {
+            status: 'repair-required',
+            problems: assessment.problems,
+            repairable: assessment.status === 'repairable',
+          };
+        } else {
+          trackImportValidationFailure('local', validationResult.error);
+          const errorMessage = ensureError(validationResult.error).message;
+          return { status: 'validation-error', message: errorMessage };
+        }
       }
 
-      const finalProtocol = migratedProtocol as CurrentProtocol;
+      const finalProtocol = admittedProtocol;
       await instantiateProtocol(
         {
           protocol: finalProtocol,
@@ -519,11 +552,19 @@ export const exportNetcanvas = createAppAsyncThunk(
   },
 );
 
+type OpenLibraryProtocolParams = {
+  id: string;
+  repairApproved?: boolean;
+};
+
 // Load a protocol already saved in the library into the editing buffer. Its
 // assets are already namespaced under this id in IndexedDB.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
-  async (id: string, { dispatch }): Promise<ProtocolOpenResult> => {
+  async (
+    { id, repairApproved = false }: OpenLibraryProtocolParams,
+    { dispatch },
+  ): Promise<ProtocolOpenResult> => {
     const row = await getStoredProtocol(id);
     if (!row) {
       return {
@@ -533,13 +574,34 @@ export const openLibraryProtocol = createAppAsyncThunk(
       };
     }
 
+    let protocol = row.protocol;
     try {
       const admission = await admitStoredProtocol(row);
       if (!admission.success) {
-        return {
-          status: 'validation-error',
-          message: ensureError(admission.error).message,
-        };
+        // A stored protocol authored before the interface-ownership rules can
+        // fail admission for reasons Architect knows how to fix. The repair is
+        // written back to the library so the researcher is not asked again.
+        const assessment = await assessConfigurationRepair(protocol);
+        if (assessment.status === 'repairable' && repairApproved) {
+          protocol = assessment.protocol;
+          await putStoredProtocol({
+            id,
+            protocol,
+            name: row.name,
+            description: row.description,
+          });
+        } else if (assessment.status !== 'clean') {
+          return {
+            status: 'repair-required',
+            problems: assessment.problems,
+            repairable: assessment.status === 'repairable',
+          };
+        } else {
+          return {
+            status: 'validation-error',
+            message: ensureError(admission.error).message,
+          };
+        }
       }
     } catch (error: unknown) {
       const normalized = reportError(error, {
@@ -557,7 +619,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
     dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
-    dispatch(setActiveProtocol(row.protocol));
+    dispatch(setActiveProtocol(protocol));
     navigate('/protocol');
     return openedResult;
   },

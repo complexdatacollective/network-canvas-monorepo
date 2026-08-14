@@ -28,6 +28,7 @@ import {
 import { draftAdditionalAttributeVariableIds } from '../../Validations/draftWriterRoles';
 import {
   composerValidationViews,
+  isVariableUsedBySibling,
   sharedFormValidationView,
 } from './composerHelpers';
 import { useFormFieldCommit } from './fieldCommit';
@@ -115,18 +116,6 @@ const Form = ({
     },
     [roleMap, subject, draftUnvalidatedVariables, allVariables],
   );
-  const editorValidate = useMemo(
-    () =>
-      makeFieldEditorValidate(
-        allVariables,
-        undefined,
-        undefined,
-        hasUnvalidatedUse,
-        resolvedFormViews,
-      ),
-    [allVariables, hasUnvalidatedUse, resolvedFormViews],
-  );
-
   const handleChangeFields = useFormFieldCommit({
     entity,
     type: type ?? '',
@@ -136,9 +125,39 @@ const Form = ({
     useStageInitialValue<Record<string, unknown>[]>('form.fields');
   const initialTitle = useStageInitialValue<string>('form.title');
 
+  const editorValidate = useMemo(() => {
+    const validateField = makeFieldEditorValidate(
+      allVariables,
+      undefined,
+      undefined,
+      hasUnvalidatedUse,
+      resolvedFormViews,
+    );
+    return (
+      values: Record<string, unknown>,
+      props?: { editIndex?: number; initialValues?: unknown },
+    ): Record<string, unknown> => {
+      const variable =
+        typeof values.variable === 'string' ? values.variable : '';
+      // One form may not collect a variable twice: every field renders under
+      // its variable's name, so two fields share one value while each still
+      // contributes its own control and rules. The picker already drops a
+      // sibling's variable; this is the backstop for a stale draft or an
+      // imported protocol that already repeats one. Same predicate as the
+      // composer editor's gate, so the two surfaces cannot drift.
+      if (isVariableUsedBySibling(initialFields, variable, props?.editIndex)) {
+        return {
+          variable:
+            'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+        };
+      }
+      return validateField(values, props);
+    };
+  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, initialFields]);
+
   const editorProps = useMemo(
-    () => ({ type, entity, currentStageIndex }),
-    [currentStageIndex, entity, type],
+    () => ({ type, entity, currentStageIndex, siblingFields: initialFields }),
+    [currentStageIndex, entity, type, initialFields],
   );
   const previewProps = useMemo(() => ({ entity, type }), [entity, type]);
   const rowItemSelector = useMemo(

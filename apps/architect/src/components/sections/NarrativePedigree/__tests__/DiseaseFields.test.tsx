@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
 
-import DiseaseFields from '../DiseaseFields';
+import DiseaseFields, {
+  isVariableUsedByAnotherDisease,
+} from '../DiseaseFields';
 
 const CODEBOOK = {
   node: {
@@ -100,5 +102,23 @@ describe('DiseaseFields', () => {
         screen.getByRole('option', { name: startCase(pattern) }),
       ).toBeInTheDocument();
     }
+  });
+});
+
+describe('isVariableUsedByAnotherDisease', () => {
+  const diseases = [{ variable: 'var-1' }, { variable: 'var-2' }];
+
+  it('reports a variable another row already maps', () => {
+    expect(isVariableUsedByAnotherDisease(diseases, 'var-2')).toBe(true);
+  });
+
+  it('excludes the row being edited, so its own pick stays available', () => {
+    expect(isVariableUsedByAnotherDisease(diseases, 'var-2', 1)).toBe(false);
+  });
+
+  it('reports nothing for an unmapped variable, an empty pick, or no list', () => {
+    expect(isVariableUsedByAnotherDisease(diseases, 'var-3')).toBe(false);
+    expect(isVariableUsedByAnotherDisease(diseases, '')).toBe(false);
+    expect(isVariableUsedByAnotherDisease(undefined, 'var-1')).toBe(false);
   });
 });

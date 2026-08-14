@@ -1,12 +1,10 @@
 import { z } from 'zod';
 
-import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
-
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
+import {
+  findExclusiveVariableConflicts,
+  findInterfaceOwnedOptionBindings,
+} from '../../utils/findExclusiveVariableConflicts.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
 import {
   entityExists,
@@ -23,7 +21,9 @@ import { OperatorsByVariableType } from './filters/index.ts';
 export * from './assets/index.ts';
 export * from './codebook/index.ts';
 export * from './common/index.ts';
+export * from './entity-attribute-reference.ts';
 export * from './filters/index.ts';
+export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
@@ -40,6 +40,10 @@ import {
   type StageSubject,
 } from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
+import {
+  INTERFACE_OWNED_OPTION_SETS,
+  optionsMatchInterfaceOwnedSet,
+} from './interface-owned-options.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
 import {
@@ -645,26 +649,6 @@ const unknownRenderingFor = (
   return new Set([...bucket].filter((id) => !written.has(id)));
 };
 
-type CanonicalOption = { value: string; label: string };
-
-// True when a variable's options are exactly the canonical set (same members
-// and labels, order-independent). Used to enforce the FamilyPedigree
-// locked-value-set variables against their interface-owned option sets.
-const optionsMatchCanonical = (
-  variableOptions: { value: unknown; label?: unknown }[] | undefined,
-  canonical: readonly CanonicalOption[],
-): boolean => {
-  if (!variableOptions || variableOptions.length !== canonical.length) {
-    return false;
-  }
-  return canonical.every((expected) =>
-    variableOptions.some(
-      (option) =>
-        option.value === expected.value && option.label === expected.label,
-    ),
-  );
-};
-
 const ProtocolSchema = z
   .strictObject({
     name: z.string().min(1),
@@ -697,6 +681,56 @@ const ProtocolSchema = z
     );
     for (const issue of validateReferences(protocol.codebook, hits)) {
       ctx.addIssue(issue);
+    }
+
+    // Interface-owned structural slots: an interface that DERIVES an
+    // attribute's values from the structure a participant builds cannot share
+    // that attribute with anything else, or the two writers overwrite each
+    // other. Declared on the schema reference (`exclusive`) and derived here,
+    // so a newly-tagged slot is enforced without a new hand-written check.
+    for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `Variable "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
+        path: conflict.path,
+      });
+    }
+
+    // Interface-owned value sets: the interview and the genetics engine branch
+    // on these exact values, so a variable bound to such a slot must still
+    // carry its canonical options. Only fires for a categorical or ordinal
+    // variable that exists and whose options have drifted, so a
+    // legitimately-authored protocol always passes.
+    for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
+      const { entity, type } = binding.subject;
+      // A node/edge reference with no resolvable type names no codebook at
+      // all; the reference validator above already reports that.
+      if (entity !== 'ego' && type === undefined) continue;
+      const subject: StageSubject =
+        entity === 'ego' ? { entity } : { entity, type: type ?? '' };
+      const variable = getVariablesForSubject(protocol.codebook, subject)[
+        binding.variableId
+      ];
+      if (
+        !variable ||
+        (variable.type !== 'categorical' && variable.type !== 'ordinal')
+      ) {
+        continue;
+      }
+      const optionSet = INTERFACE_OWNED_OPTION_SETS[binding.optionSet];
+      if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
+        continue;
+      }
+      const owningStageIndex = binding.path[1];
+      const owningStage =
+        typeof owningStageIndex === 'number'
+          ? protocol.stages[owningStageIndex]
+          : undefined;
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} variable "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
+        path: binding.path,
+      });
     }
 
     const composerFieldOverrides = collectComposerFieldOverrides(
@@ -1178,67 +1212,6 @@ const ProtocolSchema = z
             });
           }
         });
-      }
-
-      // 3e.iii.b-3. FamilyPedigree: the biological-sex, relationship-type, and
-      // gamete-role variables carry interface-owned value sets the interview and
-      // genetics engine depend on. Architect locks these options at creation, but
-      // nothing re-checks them afterwards; guard against a variable whose options
-      // were edited away from its canonical set. Only fires when the referenced
-      // variable exists and is a categorical or ordinal (both carry a locked
-      // options set) with a mismatched option set — so a legitimately-authored
-      // protocol (whose options already match) always passes.
-      if (stage.type === 'FamilyPedigree') {
-        const nodeVariables = getVariablesForSubject(protocol.codebook, {
-          entity: 'node',
-          type: stage.nodeConfig.type,
-        });
-        const edgeVariables = getVariablesForSubject(protocol.codebook, {
-          entity: 'edge',
-          type: stage.edgeConfig.type,
-        });
-
-        const checkLockedOptions = (
-          variableId: string,
-          variable: (typeof nodeVariables)[string] | undefined,
-          canonical: readonly CanonicalOption[],
-          label: string,
-          path: (string | number)[],
-        ) => {
-          if (
-            variable &&
-            (variable.type === 'categorical' || variable.type === 'ordinal') &&
-            !optionsMatchCanonical(variable.options, canonical)
-          ) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `FamilyPedigree ${label} variable "${variableId}" must use its fixed set of options and cannot be modified.`,
-              path,
-            });
-          }
-        };
-
-        checkLockedOptions(
-          stage.nodeConfig.biologicalSexVariable,
-          nodeVariables[stage.nodeConfig.biologicalSexVariable],
-          BIOLOGICAL_SEX_OPTIONS,
-          'biological sex',
-          ['stages', stageIndex, 'nodeConfig', 'biologicalSexVariable'],
-        );
-        checkLockedOptions(
-          stage.edgeConfig.relationshipTypeVariable,
-          edgeVariables[stage.edgeConfig.relationshipTypeVariable],
-          RELATIONSHIP_TYPE_OPTIONS,
-          'relationship type',
-          ['stages', stageIndex, 'edgeConfig', 'relationshipTypeVariable'],
-        );
-        checkLockedOptions(
-          stage.edgeConfig.gameteRoleVariable,
-          edgeVariables[stage.edgeConfig.gameteRoleVariable],
-          GAMETE_ROLE_OPTIONS,
-          'gamete role',
-          ['stages', stageIndex, 'edgeConfig', 'gameteRoleVariable'],
-        );
       }
 
       // 3e.iii.c. NarrativePedigree: sourceStageId must reference a FamilyPedigree

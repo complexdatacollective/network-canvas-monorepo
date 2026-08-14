@@ -3,7 +3,10 @@ import { useSelector } from 'react-redux';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { VariableOptions } from '@codaco/protocol-validation';
+import {
+  FAMILY_PEDIGREE_SLOTS,
+  type VariableOptions,
+} from '@codaco/protocol-validation';
 import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
@@ -36,8 +39,16 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  getExclusiveVariableSlotMap,
+  getVariableRoleMap,
+  roleMapKey,
+} from '~/selectors/indexes';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+  interfaceOwnedPickIssue,
+} from '~/selectors/roleFilters';
 import { optionsMatch } from '~/utils/variables';
 
 const edgeEntity: Entity = 'edge';
@@ -199,8 +210,9 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   // handles it non-destructively. Unlike NodeConfiguration's slots there is
   // no intra-draft sibling to check: FamilyPedigree has no validated writer
   // on its edge type.
+  const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   const makeSlotValidator =
-    (slotField: string) =>
+    (slotField: keyof typeof FAMILY_PEDIGREE_SLOTS) =>
     (value: unknown): string | undefined => {
       if (!edgeVariablesSubject) return undefined;
       const variableId = typeof value === 'string' ? value : '';
@@ -209,6 +221,16 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
         ? committedEdgeConfig[slotField]
         : undefined;
       const committed = typeof committedRaw === 'string' ? committedRaw : '';
+      if (variableId === committed) return undefined;
+      // A variable a DIFFERENT interface slot owns outright: the picker drops
+      // it, so this only catches a stale draft or an imported protocol.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        edgeVariablesSubject,
+        variableId,
+        FAMILY_PEDIGREE_SLOTS[slotField],
+      );
+      if (ownedIssue) return ownedIssue;
       return crossClassPickIssue({
         variableId,
         originalVariableId: committed,
@@ -238,44 +260,70 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   // Each slot is an UNVALIDATED writer: drop options a form elsewhere already
   // validates, keeping the slot's own current pick offered (the usual
   // currentValue escape). Per-slot pools because two slots share a type pool
-  // but each escapes only its own value.
+  // but each escapes only its own value. Each additionally drops a variable a
+  // DIFFERENT interface slot owns, passing its own slot so a second Family
+  // Pedigree over the same edge type may still share it.
   const relationshipTypeVariableOptions = useSelector((state: RootState) =>
     edgeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           edgeVariablesSubject,
-          relationshipTypeCompatible,
+          excludeValidatedUses(
+            state,
+            edgeVariablesSubject,
+            relationshipTypeCompatible,
+            relationshipTypeDraft,
+          ),
           relationshipTypeDraft,
+          FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable,
         )
       : [],
   );
   const isActiveVariableOptions = useSelector((state: RootState) =>
     edgeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           edgeVariablesSubject,
-          booleanEdgeVariables,
+          excludeValidatedUses(
+            state,
+            edgeVariablesSubject,
+            booleanEdgeVariables,
+            isActiveDraft,
+          ),
           isActiveDraft,
+          FAMILY_PEDIGREE_SLOTS.isActiveVariable,
         )
       : [],
   );
   const isGestationalCarrierVariableOptions = useSelector((state: RootState) =>
     edgeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           edgeVariablesSubject,
-          booleanEdgeVariables,
+          excludeValidatedUses(
+            state,
+            edgeVariablesSubject,
+            booleanEdgeVariables,
+            isGestationalCarrierDraft,
+          ),
           isGestationalCarrierDraft,
+          FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable,
         )
       : [],
   );
   const gameteRoleVariableOptions = useSelector((state: RootState) =>
     edgeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           edgeVariablesSubject,
-          gameteRoleCompatible,
+          excludeValidatedUses(
+            state,
+            edgeVariablesSubject,
+            gameteRoleCompatible,
+            gameteRoleDraft,
+          ),
           gameteRoleDraft,
+          FAMILY_PEDIGREE_SLOTS.gameteRoleVariable,
         )
       : [],
   );

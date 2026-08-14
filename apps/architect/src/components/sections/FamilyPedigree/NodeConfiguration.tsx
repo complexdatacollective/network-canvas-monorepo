@@ -10,7 +10,10 @@ import { useSelector } from 'react-redux';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { VariableOptions } from '@codaco/protocol-validation';
+import {
+  FAMILY_PEDIGREE_SLOTS,
+  type VariableOptions,
+} from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
@@ -26,6 +29,7 @@ import NewVariableWindow, {
 import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import {
   composerValidationViews,
+  isVariableUsedBySibling,
   sharedFormValidationView,
 } from '~/components/sections/Form/composerHelpers';
 import FieldFields from '~/components/sections/Form/FieldFields';
@@ -63,11 +67,17 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getExclusiveVariableSlotMap,
+  getVariableRoleMap,
+  roleMapKey,
+} from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 import {
+  excludeInterfaceOwned,
   excludeUnvalidatedUses,
   excludeValidatedUses,
+  interfaceOwnedPickIssue,
 } from '~/selectors/roleFilters';
 import { ensureError } from '~/utils/ensureError';
 import { optionsMatch } from '~/utils/variables';
@@ -181,6 +191,19 @@ const UNVALIDATED_NODE_SLOT_FIELDS = [
   'relationshipVariable',
   'biologicalSexVariable',
 ] as const;
+
+/**
+ * The interface-owned slot each picker fills, so it can exempt itself from the
+ * exclusivity gate. `biologicalSexVariable` is absent deliberately: the
+ * interface owns its OPTIONS, not the reference, so binning family members by
+ * sex stays available.
+ */
+const OWN_SLOT_BY_FIELD: Partial<
+  Record<(typeof UNVALIDATED_NODE_SLOT_FIELDS)[number], string>
+> = {
+  egoVariable: FAMILY_PEDIGREE_SLOTS.egoVariable,
+  relationshipVariable: FAMILY_PEDIGREE_SLOTS.relationshipVariable,
+};
 
 const NodeConfiguration = (_props: StageEditorSectionProps) => {
   const dispatch = useAppDispatch();
@@ -339,17 +362,43 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
           0) > 0),
     [roleMap, nodeVariablesSubject, draftUnvalidatedSlotVariables],
   );
-  const editorValidate = useMemo(
-    () =>
-      makeFieldEditorValidate(
-        allVariables,
-        undefined,
-        undefined,
-        hasUnvalidatedUse,
-        resolvedFormViews,
-      ),
-    [allVariables, hasUnvalidatedUse, resolvedFormViews],
-  );
+  const editorValidate = useMemo(() => {
+    const validateField = makeFieldEditorValidate(
+      allVariables,
+      undefined,
+      undefined,
+      hasUnvalidatedUse,
+      resolvedFormViews,
+    );
+    return (
+      values: Record<string, unknown>,
+      props?: { editIndex?: number; initialValues?: unknown },
+    ): Record<string, unknown> => {
+      const variable =
+        typeof values.variable === 'string' ? values.variable : '';
+      // One form may not collect a variable twice — same rule, message and
+      // predicate as the ordinary Form editor, so the two cannot drift.
+      if (
+        isVariableUsedBySibling(
+          nodeConfigFormInitial,
+          variable,
+          props?.editIndex,
+        )
+      ) {
+        return {
+          variable:
+            'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+        };
+      }
+      return validateField(values, props);
+    };
+  }, [
+    allVariables,
+    hasUnvalidatedUse,
+    resolvedFormViews,
+    nodeConfigFormInitial,
+  ]);
+  const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):
   // rejects a pick a form elsewhere in the saved document already collects,
   // OR one this stage's own still-unsaved nodeConfig.form draft collects
@@ -369,6 +418,15 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         : undefined;
       const committed = typeof committedRaw === 'string' ? committedRaw : '';
       if (variableId === committed) return undefined;
+      // A variable another interface slot owns outright: the picker already
+      // drops it, so this only catches a stale draft or an imported protocol.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        nodeVariablesSubject,
+        variableId,
+        OWN_SLOT_BY_FIELD[slotField],
+      );
+      if (ownedIssue) return ownedIssue;
       const draftFormFields: unknown = get(allValues, 'nodeConfig.form');
       if (
         Array.isArray(draftFormFields) &&
@@ -436,42 +494,70 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // The label is a VALIDATED writer, so it excludes variables claimed by an
   // unvalidated path. Structural slots do the opposite. Each picker keeps its
   // own current value offered as the usual escape for imported protocols.
+  //
+  // The two structural slots below additionally exclude a variable ANOTHER
+  // interface slot already owns, passing their own slot so a variable a second
+  // Family Pedigree binds in the SAME slot stays on offer — sharing structural
+  // variables between two pedigrees over one node type is legitimate authoring,
+  // and the protocol rule is slot-aware for exactly that reason.
   const nodeLabelVariableOptions = useSelector((state: RootState) =>
     nodeVariablesSubject
-      ? excludeUnvalidatedUses(
+      ? excludeInterfaceOwned(
           state,
           nodeVariablesSubject,
-          textNodeVariables,
+          excludeUnvalidatedUses(
+            state,
+            nodeVariablesSubject,
+            textNodeVariables,
+            nodeLabelDraft,
+          ),
           nodeLabelDraft,
         )
       : [],
   );
   const egoVariableOptions = useSelector((state: RootState) =>
     nodeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           nodeVariablesSubject,
-          booleanNodeVariables,
+          excludeValidatedUses(
+            state,
+            nodeVariablesSubject,
+            booleanNodeVariables,
+            egoDraft,
+          ),
           egoDraft,
+          FAMILY_PEDIGREE_SLOTS.egoVariable,
         )
       : [],
   );
   const relationshipVariableOptions = useSelector((state: RootState) =>
     nodeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           nodeVariablesSubject,
-          textNodeVariables,
+          excludeValidatedUses(
+            state,
+            nodeVariablesSubject,
+            textNodeVariables,
+            relationshipDraft,
+          ),
           relationshipDraft,
+          FAMILY_PEDIGREE_SLOTS.relationshipVariable,
         )
       : [],
   );
   const biologicalSexVariableOptions = useSelector((state: RootState) =>
     nodeVariablesSubject
-      ? excludeValidatedUses(
+      ? excludeInterfaceOwned(
           state,
           nodeVariablesSubject,
-          biologicalSexCompatible,
+          excludeValidatedUses(
+            state,
+            nodeVariablesSubject,
+            biologicalSexCompatible,
+            biologicalSexDraft,
+          ),
           biologicalSexDraft,
         )
       : [],
@@ -687,7 +773,11 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 initialValue={nodeConfigFormInitial ?? []}
                 addTitle="Edit Field"
                 editorFieldsComponent={FieldFields as unknown as Renderer}
-                editorProps={{ type: nodeType, entity: 'node' }}
+                editorProps={{
+                  type: nodeType,
+                  entity: 'node',
+                  siblingFields: nodeConfigFormInitial,
+                }}
                 previewComponent={NodeFormFieldPreview as unknown as Renderer}
                 editorTitle="Edit Field"
                 editorValidate={editorValidate}

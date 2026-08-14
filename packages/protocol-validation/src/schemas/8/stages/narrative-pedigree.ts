@@ -33,5 +33,37 @@ export const narrativePedigreeStage = baseStageSchema.extend({
           path: [],
         });
       }
+
+      // A disease row maps ONE node variable to a colour and an inheritance
+      // pattern. Two rows on one variable give the pedigree contradictory
+      // answers for a single affected set — the genetics engine resolves one
+      // inheritance pattern per variable, and the key rendered to the
+      // participant lists that variable twice under different colours.
+      const seenVariables = new Set<string>();
+      // Labels are the participant-facing key, so two rows sharing a label are
+      // indistinguishable on screen whatever they map to.
+      const seenLabels = new Set<string>();
+      for (const [index, disease] of diseases.entries()) {
+        if (seenVariables.has(disease.variable)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Diseases contain duplicate variable "${disease.variable}"`,
+            path: [index, 'variable'],
+          });
+        } else {
+          seenVariables.add(disease.variable);
+        }
+
+        const label = disease.label.trim().toLocaleLowerCase();
+        if (seenLabels.has(label)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Diseases contain duplicate label "${disease.label}"`,
+            path: [index, 'label'],
+          });
+        } else {
+          seenLabels.add(label);
+        }
+      }
     }),
 });

@@ -3546,6 +3546,39 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       ).toBe(nodes.length - fromGenerator.length);
     }
   });
+
+  // The schema now rejects a nomination prompt bound to the pedigree's own ego
+  // variable, but an imported protocol authored before that rule still reaches
+  // this preview. The disease loop used to run after the structural assignment
+  // and overwrite the ego flag with a pseudo-random affected flag, so several
+  // relatives came back marked as the participant.
+  it('keeps the ego flag when a nomination prompt names the ego variable', () => {
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      biologicalSex: {
+        name: 'Biological sex',
+        type: 'categorical',
+        options: BIOLOGICAL_SEX_OPTIONS,
+      },
+    });
+    const collidingStage = {
+      ...(pedigreeStage as unknown as Record<string, unknown>),
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+      nominationPrompts: [
+        { id: 'nom-ego', text: 'Who has this?', variable: 'isEgo' },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 100; seed++) {
+      const nodes = pedigreeNodes(seed, codebook, [collidingStage]);
+      expect(
+        attributesOf(nodes).filter((attributes) => attributes.isEgo === true),
+      ).toHaveLength(1);
+    }
+  });
 });
 
 /**

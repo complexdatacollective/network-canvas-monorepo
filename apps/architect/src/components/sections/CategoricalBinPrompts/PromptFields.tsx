@@ -6,6 +6,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -18,6 +19,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import LockedOptions from '~/components/Options/LockedOptions';
 import PromptText from '~/components/sections/PromptText';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import { useAppSelector } from '~/ducks/hooks';
@@ -25,7 +27,9 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
+import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
 import {
+  excludeInterfaceOwned,
   excludeUnvalidatedUses,
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
@@ -137,16 +141,38 @@ const PromptFields = ({
   // already-configured prompt never loses its variable from the list.
   const categoricalVariableOptions = useAppSelector(
     (state) =>
-      excludeValidatedUses(
+      // A variable an interface derives from the structure a participant
+      // builds is not a bin: the bin writes through drag-and-drop and would
+      // overwrite it. Binding a variable whose OPTIONS an interface owns stays
+      // available — sorting family members by sex is legitimate authoring —
+      // and the options editor below renders read-only for those.
+      excludeInterfaceOwned(
         state,
         subject,
-        rawVariableOptions.filter(
-          ({ type: variableType }) => variableType === 'categorical',
+        excludeValidatedUses(
+          state,
+          subject,
+          rawVariableOptions.filter(
+            ({ type: variableType }) => variableType === 'categorical',
+          ),
+          currentVariable,
         ),
         currentVariable,
       ),
     shallowEqual,
   );
+  // The interview and genetics engine branch on these exact values, so the
+  // list is fixed however the variable is reached.
+  const interfaceOwnedOptions = useAppSelector(getInterfaceOwnedOptionMap);
+  const ownedOptionSet =
+    currentVariable === undefined
+      ? undefined
+      : interfaceOwnedOptions[roleMapKey(subject, currentVariable)];
+  // The canonical set, not the variable's own: it is what the protocol rule
+  // enforces, so it is what the researcher must be shown.
+  const lockedOptions = ownedOptionSet
+    ? INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options
+    : undefined;
   const otherVariableTextOptions = useAppSelector(
     (state) =>
       excludeUnvalidatedUses(
@@ -228,30 +254,36 @@ const PromptFields = ({
             <Heading level="h4" id={getFieldId('options')}>
               Variable Options
             </Heading>
-            <Paragraph>
-              Create <strong>up to 8</strong> options for this variable.
-            </Paragraph>
-            {showVariableOptionsTip && (
-              <Alert variant="destructive" className="my-7">
-                <AlertTitle>Too many option values</AlertTitle>
-                <AlertDescription>
-                  The categorical bin interface is designed to use{' '}
-                  <strong>up to 8 option values</strong> (including an
-                  &quot;other&quot; variable). Using more will create a
-                  sub-optimal experience for participants, and might reduce data
-                  quality. Consider grouping your variable options and capturing
-                  further detail with follow-up questions.
-                </AlertDescription>
-              </Alert>
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <>
+                <Paragraph>
+                  Create <strong>up to 8</strong> options for this variable.
+                </Paragraph>
+                {showVariableOptionsTip && (
+                  <Alert variant="destructive" className="my-7">
+                    <AlertTitle>Too many option values</AlertTitle>
+                    <AlertDescription>
+                      The categorical bin interface is designed to use{' '}
+                      <strong>up to 8 option values</strong> (including an
+                      &quot;other&quot; variable). Using more will create a
+                      sub-optimal experience for participants, and might reduce
+                      data quality. Consider grouping your variable options and
+                      capturing further detail with follow-up questions.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <ArchitectArrayField
+                  name="variableOptions"
+                  label="Options"
+                  labelHidden
+                  component={Options}
+                  validation={optionsValidation}
+                  initialValue={variableOptions}
+                />
+              </>
             )}
-            <ArchitectArrayField
-              name="variableOptions"
-              label="Options"
-              labelHidden
-              component={Options}
-              validation={optionsValidation}
-              initialValue={variableOptions}
-            />
           </Row>
         )}
       </Section>

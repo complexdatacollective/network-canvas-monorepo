@@ -162,11 +162,29 @@ export function validatePedigreeCompleteness(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  const egoEntry = [...nodes.entries()].find(
+  const egoEntries = [...nodes.entries()].filter(
     ([, node]) =>
       node[entityAttributesProperty][variableConfig.egoVariable] === true,
   );
-  if (!egoEntry) return issues;
+
+  // A guard that reports "all clear" because it cannot find its subject is the
+  // bug, not the safeguard. Every check below is relative to the participant's
+  // own node, so with none — or with several, which a second writer on the ego
+  // variable used to be able to produce — there is nothing meaningful to
+  // check, and completion must be blocked rather than waved through.
+  const egoEntry = egoEntries.length === 1 ? egoEntries[0] : undefined;
+  if (!egoEntry) {
+    issues.push({
+      nodeId: '',
+      nodeName: 'You',
+      message:
+        egoEntries.length === 0
+          ? 'Your own place in this family tree could not be found. Please ask the person running this interview for help.'
+          : 'More than one person in this family tree is marked as you. Please ask the person running this interview for help.',
+      severity: 'required',
+    });
+    return issues;
+  }
 
   const [egoId] = egoEntry;
 

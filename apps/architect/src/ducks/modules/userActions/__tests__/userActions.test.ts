@@ -4,6 +4,11 @@ import {
   type CurrentProtocol,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
@@ -91,6 +96,88 @@ const runThunk = (
     | ReturnType<typeof openBundledTemplate>
     | ReturnType<typeof openLibraryProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
+
+// A FamilyPedigree whose second nomination prompt writes the stage's own ego
+// marker: rejected by the schema, and repairable by dropping that prompt.
+const makeConflictedProtocol = (): CurrentProtocol =>
+  ({
+    name: 'Pedigree study',
+    schemaVersion: 8,
+    codebook: {
+      node: {
+        family_member: {
+          name: 'Family member',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            fmName: { name: 'fm_name', type: 'text', component: 'Text' },
+            isEgo: { name: 'is_ego', type: 'boolean' },
+            relationshipToEgo: { name: 'fm_rel', type: 'text' },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: BIOLOGICAL_SEX_OPTIONS,
+            },
+            hasConditionX: { name: 'hasConditionX', type: 'boolean' },
+          },
+        },
+      },
+      edge: {
+        family_edge: {
+          name: 'Family edge',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'relationshipType',
+              type: 'categorical',
+              options: RELATIONSHIP_TYPE_OPTIONS,
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+            gameteRole: {
+              name: 'gameteRole',
+              type: 'categorical',
+              options: GAMETE_ROLE_OPTIONS,
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'fp1',
+        label: 'Family Pedigree',
+        type: 'FamilyPedigree',
+        nodeConfig: {
+          type: 'family_member',
+          nodeLabelVariable: 'fmName',
+          egoVariable: 'isEgo',
+          relationshipVariable: 'relationshipToEgo',
+          biologicalSexVariable: 'biologicalSex',
+        },
+        edgeConfig: {
+          type: 'family_edge',
+          relationshipTypeVariable: 'relationshipType',
+          isActiveVariable: 'isActive',
+          isGestationalCarrierVariable: 'isGestationalCarrier',
+          gameteRoleVariable: 'gameteRole',
+        },
+        censusPrompt: 'Build your family',
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
+        nominationPrompts: [
+          { id: 'np1', text: 'Who has this?', variable: 'hasConditionX' },
+          { id: 'np2', text: 'Who is you?', variable: 'isEgo' },
+        ],
+      },
+    ],
+  }) as unknown as CurrentProtocol;
 
 const makeProtocol = (): CurrentProtocol =>
   ({
@@ -211,7 +298,7 @@ describe('userActions', () => {
         updatedAt: 0,
       });
 
-      const result = await runThunk(openLibraryProtocol('p1'));
+      const result = await runThunk(openLibraryProtocol({ id: 'p1' }));
 
       expect(result.payload).toEqual({ status: 'opened' });
       expect(validateProtocol).not.toHaveBeenCalled();
@@ -233,7 +320,7 @@ describe('userActions', () => {
       ]);
       validateProtocol.mockResolvedValue({ success: false, error });
 
-      const result = await runThunk(openLibraryProtocol('legacy'));
+      const result = await runThunk(openLibraryProtocol({ id: 'legacy' }));
 
       expect(result.payload).toEqual({
         status: 'validation-error',
@@ -241,6 +328,51 @@ describe('userActions', () => {
       });
       expect(markStoredProtocolValidated).not.toHaveBeenCalled();
       expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
+    });
+
+    // Protocols authored before the interface-ownership rules can fail
+    // admission for reasons Architect knows how to fix. It offers the fix
+    // instead of the raw validation error — and never applies it unasked.
+    it('offers a repair instead of a dead end, and applies it only once approved', async () => {
+      const protocol = makeConflictedProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'legacy',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      // The repair path only means anything against the REAL validator: the
+      // point is that the repaired protocol is proven to open.
+      const { validateProtocol: realValidateProtocol } = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(async (candidate: unknown) =>
+        realValidateProtocol(candidate as CurrentProtocol),
+      );
+
+      const offered = await runThunk(openLibraryProtocol({ id: 'legacy' }));
+      expect(offered.payload).toMatchObject({
+        status: 'repair-required',
+        repairable: true,
+      });
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
+
+      const applied = await runThunk(
+        openLibraryProtocol({ id: 'legacy', repairApproved: true }),
+      );
+      expect(applied.payload).toEqual({ status: 'opened' });
+      // The repair is written back, so the researcher is not asked again.
+      expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+      const [saved] = putStoredProtocol.mock.calls[0] as [
+        { protocol: CurrentProtocol },
+      ];
+      const repairedStage = saved.protocol.stages[0] as {
+        nominationPrompts?: unknown[];
+      };
+      expect(repairedStage.nominationPrompts).toHaveLength(1);
     });
   });
 });

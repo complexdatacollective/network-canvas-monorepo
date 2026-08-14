@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -14,7 +14,7 @@ import {
 import type { RootState } from '~/ducks/store';
 import { getStage } from '~/selectors/protocol';
 
-import DiseaseFields from './DiseaseFields';
+import DiseaseFields, { isVariableUsedByAnotherDisease } from './DiseaseFields';
 import DiseasePreview from './DiseasePreview';
 
 // `DiseaseFields` declares `nodeType` as a required prop rather than the
@@ -55,6 +55,51 @@ const Diseases = (_props: StageEditorSectionProps) => {
     if (!stage || stage.type !== 'FamilyPedigree') return undefined;
     return (stage as FamilyPedigreeStage).nodeConfig?.type;
   });
+  // Two rows mapping one variable give the pedigree contradictory answers for
+  // a single affected set, and two rows sharing a label are indistinguishable
+  // in the key the participant reads. The pickers already drop an
+  // already-mapped variable; these are the backstops for a stale draft and for
+  // the label, which has no picker to filter.
+  const editorValidate = useCallback(
+    (
+      values: Record<string, unknown>,
+      props?: { editIndex?: number },
+    ): Record<string, unknown> => {
+      const variable =
+        typeof values.variable === 'string' ? values.variable : '';
+      if (
+        isVariableUsedByAnotherDisease(
+          diseasesInitial,
+          variable,
+          props?.editIndex,
+        )
+      ) {
+        return {
+          variable:
+            'This variable is already mapped by another disease. Choose a different variable, or edit the existing disease instead.',
+        };
+      }
+      const label = typeof values.label === 'string' ? values.label : '';
+      const normalized = label.trim().toLocaleLowerCase();
+      const duplicateLabel =
+        normalized !== '' &&
+        (diseasesInitial ?? []).some(
+          (row, index) =>
+            index !== props?.editIndex &&
+            typeof row.label === 'string' &&
+            row.label.trim().toLocaleLowerCase() === normalized,
+        );
+      if (duplicateLabel) {
+        return {
+          label:
+            'Another disease already uses this name. Give this one a name participants can tell apart.',
+        };
+      }
+      return {};
+    },
+    [diseasesInitial],
+  );
+
   return (
     <Section
       title="Diseases"
@@ -74,8 +119,9 @@ const Diseases = (_props: StageEditorSectionProps) => {
         initialValue={diseasesInitial ?? []}
         addTitle="Edit Disease"
         editorFieldsComponent={DiseaseFields as unknown as Renderer}
-        editorProps={{ nodeType }}
+        editorProps={{ nodeType, siblingDiseases: diseasesInitial }}
         editorTitle="Edit Disease"
+        editorValidate={editorValidate}
         itemLabel="disease"
         itemTemplate={diseaseTemplate}
         previewComponent={DiseasePreview}

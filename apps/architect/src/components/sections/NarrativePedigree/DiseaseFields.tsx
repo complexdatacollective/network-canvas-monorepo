@@ -10,6 +10,7 @@ import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/V
 import IssueAnchor from '~/components/IssueAnchor';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import { excludeInterfaceOwned } from '~/selectors/roleFilters';
 
 const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
   value,
@@ -18,6 +19,14 @@ const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
 
 type DiseaseFieldsProps = {
   nodeType: string | undefined;
+  /**
+   * The committed disease rows of the stage this editor edits a row of, and
+   * that row's array index. One Narrative Pedigree may not map two diseases to
+   * one variable, so a variable a sibling row already claims must not be
+   * offered.
+   */
+  siblingDiseases?: unknown;
+  editIndex?: number;
   /**
    * The row being edited, supplied by DialogArrayField's `item` spread. This
    * dialog mounts its own `FormStoreProvider` (a different store per row), so
@@ -30,14 +39,52 @@ type DiseaseFieldsProps = {
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-const DiseaseFields = ({ nodeType, item }: DiseaseFieldsProps) => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Whether another disease row already maps this variable. */
+export const isVariableUsedByAnotherDisease = (
+  diseases: unknown,
+  variable: string,
+  excludeIndex?: number,
+): boolean => {
+  if (!Array.isArray(diseases) || variable === '') return false;
+  return diseases.some(
+    (row, index) =>
+      index !== excludeIndex && isRecord(row) && row.variable === variable,
+  );
+};
+
+const DiseaseFields = ({
+  nodeType,
+  siblingDiseases,
+  editIndex,
+  item,
+}: DiseaseFieldsProps) => {
+  const currentVariable = asString(item?.variable);
   const booleanNodeVariables = useAppSelector((state) => {
     if (!nodeType) return [];
-    return getVariableOptionsForSubject(state, {
+    const booleans = getVariableOptionsForSubject(state, {
       entity: 'node',
       type: nodeType,
     }).filter((v) => v.type === 'boolean');
+    // A disease maps an affected/not-affected answer someone else collects.
+    // The pedigree's own structural variables are not answers — mapping the
+    // ego marker as a disease paints the participant as affected on every
+    // seed. The row's current value is always kept so an imported protocol's
+    // pick never renders blank.
+    return excludeInterfaceOwned(
+      state,
+      { entity: 'node', type: nodeType },
+      booleans,
+      currentVariable,
+    );
   });
+  const availableVariables = booleanNodeVariables.filter(
+    (option) =>
+      option.value === currentVariable ||
+      !isVariableUsedByAnotherDisease(siblingDiseases, option.value, editIndex),
+  );
 
   return (
     <>
@@ -80,7 +127,7 @@ const DiseaseFields = ({ nodeType, item }: DiseaseFieldsProps) => {
             initialValue={asString(item?.variable)}
             entity="node"
             type={nodeType ?? ''}
-            options={booleanNodeVariables}
+            options={availableVariables}
           />
         </Row>
       </Section>

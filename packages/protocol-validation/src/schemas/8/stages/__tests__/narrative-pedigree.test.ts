@@ -163,6 +163,85 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects two diseases mapped to the same variable', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'shared',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: '#0f0',
+          variable: 'shared',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'variable',
+    ]);
+  });
+
+  it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: '  condition x ',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'label',
+    ]);
+  });
+
+  it('accepts two diseases with distinct labels and variables', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects an empty disease label', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,

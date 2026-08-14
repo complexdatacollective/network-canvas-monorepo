@@ -10,7 +10,10 @@ import NewVariableWindow, {
 import PromptText from '~/components/sections/PromptText';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
 type NominationPromptFieldsProps = {
@@ -42,13 +45,21 @@ const NominationPromptFields = ({
   const booleanVariables = variableOptions.filter((v) => v.type === 'boolean');
 
   // The nomination-toggle picker is an UNVALIDATED writer: drop options a
-  // form elsewhere already validates.
+  // form elsewhere already validates. It also writes through a per-node toggle
+  // the participant operates, so it may never name a variable the pedigree
+  // itself derives — the ego marker above all, which every completeness check
+  // keys off. It fills no interface slot of its own, so no slot is exempt.
   const subject = { entity: 'node', type: nodeType };
   const availableVariables = useAppSelector((state) =>
-    excludeValidatedUses(
+    excludeInterfaceOwned(
       state,
       subject,
-      booleanVariables,
+      excludeValidatedUses(
+        state,
+        subject,
+        booleanVariables,
+        typeof variable === 'string' ? variable : undefined,
+      ),
       typeof variable === 'string' ? variable : undefined,
     ),
   );

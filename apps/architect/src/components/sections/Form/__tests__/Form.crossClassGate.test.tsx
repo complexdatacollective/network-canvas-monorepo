@@ -23,7 +23,7 @@ import type { Stage } from '@codaco/protocol-validation';
 let capturedEditorValidate:
   | ((
       values: Record<string, unknown>,
-      props?: { initialValues?: unknown },
+      props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>)
   | undefined;
 vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
@@ -32,7 +32,7 @@ vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   }: {
     editorValidate: (
       values: Record<string, unknown>,
-      props?: { initialValues?: unknown },
+      props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
   }) => {
     capturedEditorValidate = editorValidate;
@@ -170,7 +170,7 @@ const renderForm = (
   currentStageIndex = 0,
 ): ((
   values: Record<string, unknown>,
-  props?: { initialValues?: unknown },
+  props?: { editIndex?: number; initialValues?: unknown },
 ) => Record<string, unknown>) => {
   capturedEditorValidate = undefined;
   const store = configureStore({
@@ -269,14 +269,40 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     expect(errors).toEqual({});
   });
 
+  // One form may not collect a variable twice: every field renders under its
+  // variable's name, so two fields share one value while each still supplies
+  // its own control and rules.
+  it('rejects a new field that repeats a variable this form already collects', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    const errors = editorValidate({ variable: 'boolA', validation: {} });
+    expect(errors.variable).toBe(
+      'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+    );
+  });
+
+  it('lets the row being edited keep its own variable', () => {
+    const editorValidate = renderForm({ entity: 'node', type: 'person' });
+    const errors = editorValidate(
+      { variable: 'boolA', validation: {} },
+      { editIndex: 0 },
+    );
+    expect(errors.variable).toBeUndefined();
+  });
+
   it('checks the current shared form as a stage-effective view', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
-    const errors = editorValidate({
-      variable: 'boolA',
-      validation: { differentFrom: 'boolB' },
-      component: 'Boolean',
-      options: [{ label: 'Yes', value: true }],
-    });
+    // `editIndex` identifies the committed row being edited — boolA's own —
+    // so the duplicate-variable gate excludes it, exactly as
+    // `DialogArrayField` supplies it when a row's dialog is opened.
+    const errors = editorValidate(
+      {
+        variable: 'boolA',
+        validation: { differentFrom: 'boolB' },
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      },
+      { editIndex: 0 },
+    );
 
     expect(errors.validation).toContain('must differ');
   });

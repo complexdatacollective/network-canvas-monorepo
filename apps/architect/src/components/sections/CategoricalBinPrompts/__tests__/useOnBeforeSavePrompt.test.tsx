@@ -4,6 +4,12 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
+
 import { useOnBeforeSavePrompt } from '../useOnBeforeSavePrompt';
 
 // A categorical variable committed with minSelected: 3 and 3 options — the
@@ -300,5 +306,133 @@ describe('useOnBeforeSavePrompt otherVariable mirror gate', () => {
     const { otherVariable: _unused, ...withoutOther } = OTHER_PROMPT_VALUE;
     const result = await onBeforeSave(withoutOther);
     expect(result).not.toHaveProperty('otherVariable');
+  });
+});
+
+// A Family Pedigree derives its structural values from the tree the
+// participant draws and reads the exact option VALUES back in its genetics
+// engine. Binding the biological-sex variable to a bin is legitimate — sorting
+// family members by sex is a real research need — but rewriting its options is
+// not, and the bin used to do exactly that on every save.
+const PROTOCOL_WITH_PEDIGREE = {
+  schemaVersion: 8,
+  codebook: {
+    node: {
+      family_member: {
+        name: 'Family member',
+        color: 'c',
+        variables: {
+          fmName: { name: 'fm_name', type: 'text', component: 'Text' },
+          isEgo: { name: 'is_ego', type: 'boolean' },
+          relationshipToEgo: { name: 'fm_relationship_to_ego', type: 'text' },
+          biologicalSex: {
+            name: 'biologicalSex',
+            type: 'categorical',
+            options: BIOLOGICAL_SEX_OPTIONS,
+          },
+        },
+      },
+    },
+    edge: {
+      family_edge: {
+        name: 'Family edge',
+        color: 'c',
+        variables: {
+          relationshipType: {
+            name: 'relationshipType',
+            type: 'categorical',
+            options: RELATIONSHIP_TYPE_OPTIONS,
+          },
+          isActive: { name: 'isActive', type: 'boolean' },
+          isGestationalCarrier: {
+            name: 'isGestationalCarrier',
+            type: 'boolean',
+          },
+          gameteRole: {
+            name: 'gameteRole',
+            type: 'categorical',
+            options: GAMETE_ROLE_OPTIONS,
+          },
+        },
+      },
+    },
+  },
+  stages: [
+    {
+      id: 'fp1',
+      type: 'FamilyPedigree',
+      label: 'Family Pedigree',
+      nodeConfig: {
+        type: 'family_member',
+        nodeLabelVariable: 'fmName',
+        egoVariable: 'isEgo',
+        relationshipVariable: 'relationshipToEgo',
+        biologicalSexVariable: 'biologicalSex',
+      },
+      edgeConfig: {
+        type: 'family_edge',
+        relationshipTypeVariable: 'relationshipType',
+        isActiveVariable: 'isActive',
+        isGestationalCarrierVariable: 'isGestationalCarrier',
+        gameteRoleVariable: 'gameteRole',
+      },
+      censusPrompt: 'Build your family',
+      framing: { mode: 'fixed', value: 'gamete' },
+      boundaries: {
+        requireGrandparents: 'off',
+        requireChildrenContributors: 'off',
+      },
+    },
+  ],
+};
+
+const renderPedigreeOnBeforeSave = () => {
+  const store = configureStore({
+    reducer: {
+      activeProtocol: (state = { present: PROTOCOL_WITH_PEDIGREE }) => state,
+    },
+  });
+  const dispatched: unknown[] = [];
+  const originalDispatch = store.dispatch.bind(store);
+  store.dispatch = ((action: unknown) => {
+    dispatched.push(action);
+    return originalDispatch(action as never);
+  }) as typeof store.dispatch;
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <Provider store={store}>{children}</Provider>
+  );
+  const { result } = renderHook(
+    () => useOnBeforeSavePrompt('node', 'family_member'),
+    { wrapper },
+  );
+  return { onBeforeSave: result.current, dispatched };
+};
+
+describe('useOnBeforeSavePrompt interface-owned options', () => {
+  it('saves without writing the codebook when the options are unchanged', async () => {
+    const { onBeforeSave, dispatched } = renderPedigreeOnBeforeSave();
+    const result = await onBeforeSave({
+      variable: 'biologicalSex',
+      variableOptions: BIOLOGICAL_SEX_OPTIONS,
+    });
+    expect(result).toMatchObject({ variable: 'biologicalSex' });
+    expect(dispatched).toEqual([]);
+  });
+
+  it('refuses a stale draft that changed them, rather than invalidating the protocol', async () => {
+    const { onBeforeSave, dispatched } = renderPedigreeOnBeforeSave();
+    const result = await onBeforeSave({
+      variable: 'biologicalSex',
+      variableOptions: BIOLOGICAL_SEX_OPTIONS.map((option) =>
+        option.value === 'female' ? { ...option, label: 'Woman' } : option,
+      ),
+    });
+    expect(result).toMatchObject({
+      success: false,
+      fieldErrors: {
+        variableOptions: [expect.stringContaining('set by the interface')],
+      },
+    });
+    expect(dispatched).toEqual([]);
   });
 });

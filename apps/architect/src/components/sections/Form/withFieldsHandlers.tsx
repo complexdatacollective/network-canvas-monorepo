@@ -19,7 +19,11 @@ import {
   getVariableOptionsForSubjectSelector,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { excludeUnvalidatedUses } from '~/selectors/roleFilters';
+import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
+import {
+  excludeInterfaceOwned,
+  excludeUnvalidatedUses,
+} from '~/selectors/roleFilters';
 
 import { isVariableUsedBySibling } from './composerHelpers';
 
@@ -136,18 +140,35 @@ export const useFieldHandlers = ({
   // unvalidated hit. The currently-selected value is always kept.
   const roleFilteredOptions = useSelector(
     (state: RootState) =>
-      excludeUnvalidatedUses(
+      // A structural slot an interface owns is never a legal form field: the
+      // interface derives its values from the pedigree the participant draws,
+      // and a form field would overwrite them.
+      excludeInterfaceOwned(
         state,
         subject,
-        baseVariableOptions,
+        excludeUnvalidatedUses(
+          state,
+          subject,
+          baseVariableOptions,
+          variable,
+          currentStageIndex,
+        ),
         variable,
-        currentStageIndex,
       ),
     // excludeUnvalidatedUses allocates a fresh array each call; compare
     // elements (which baseVariableOptions already keeps stable) instead of
     // the wrapper reference so unrelated store updates don't force a re-render.
     shallowEqual,
   );
+
+  // An interface that both writes and branches on a variable's exact values
+  // fixes its option list, whoever else binds it. Derived from the protocol's
+  // stage graph rather than the codebook's `readOnly` flag, which authored and
+  // imported protocols do not carry.
+  const interfaceOwnedOptions = useSelector(getInterfaceOwnedOptionMap);
+  const hasInterfaceOwnedOptions =
+    variable !== undefined &&
+    interfaceOwnedOptions[roleMapKey(subject, variable)] !== undefined;
 
   // Memoize the filtered and concatenated variable options
   const variableOptions = useMemo(() => {
@@ -332,6 +353,7 @@ export const useFieldHandlers = ({
     metaForType,
     existingVariables,
     isNewVariable,
+    hasInterfaceOwnedOptions,
     handleNewVariable,
   };
 };

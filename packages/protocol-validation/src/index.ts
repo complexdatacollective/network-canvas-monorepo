@@ -55,6 +55,19 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// `findExclusiveVariableConflicts` stays internal: it exists to feed the
+// protocol schema's own refinement and the repair below, and a host that wants
+// to know whether a protocol is admissible should call `validateProtocol`.
+export {
+  type ExclusiveVariableSlot,
+  findExclusiveVariableSlots,
+  findInterfaceOwnedOptionBindings,
+  type InterfaceOwnedOptionBinding,
+} from './utils/findExclusiveVariableConflicts.ts';
+export {
+  type ConfigurationProblem,
+  repairConfigurationConflicts,
+} from './utils/repairConfigurationConflicts.ts';
 export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,

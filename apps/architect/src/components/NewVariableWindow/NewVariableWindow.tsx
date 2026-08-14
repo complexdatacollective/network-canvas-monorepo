@@ -133,13 +133,7 @@ const NewVariableFields = ({
       {isOrdinalOrCategoricalType(variableType) && (
         <Subsection id={getFieldId('options')} title="Options">
           {lockedOptions ? (
-            <>
-              <p className="text-sm text-current/70">
-                These options are automatically configured by the interface and
-                cannot be modified.
-              </p>
-              <LockedOptions options={lockedOptions} />
-            </>
+            <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"

@@ -4,7 +4,6 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -110,6 +109,7 @@ const ComposerAttributeFields = ({
     componentOptions,
     metaForType,
     existingVariables,
+    hasInterfaceOwnedOptions,
     handleNewVariable,
   } = useFieldHandlers({
     entity: entity ?? '',
@@ -117,7 +117,11 @@ const ComposerAttributeFields = ({
     siblingFields: composerFields,
     editIndex,
   });
-  const lockedOptions = getLockedOptions(existingVariables, variable);
+  const lockedOptions = getLockedOptions(
+    existingVariables,
+    variable,
+    hasInterfaceOwnedOptions,
+  );
 
   return (
     <>
@@ -240,13 +244,7 @@ const ComposerAttributeFields = ({
           title="Categorical/Ordinal options"
         >
           {lockedOptions ? (
-            <>
-              <Paragraph>
-                These options are automatically configured by the interface and
-                cannot be modified.
-              </Paragraph>
-              <LockedOptions options={lockedOptions} />
-            </>
+            <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"

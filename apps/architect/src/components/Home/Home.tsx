@@ -98,26 +98,32 @@ const Home = () => {
     },
     [dispatch, runAction],
   );
+  // A .netcanvas can need BOTH an upgrade and a configuration repair, and each
+  // approval has to carry the earlier one forward — re-opening the file with
+  // only the newest flag would ask for the upgrade all over again. Each
+  // approval callback is offered only while its own flag is still unset, so an
+  // approval always advances and can never re-present the dialog it came from.
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const result = await runAction(() =>
-        dispatch(openLocalNetcanvas({ file })).unwrap(),
-      );
-      await showProtocolOpenResultDialog({
-        result,
-        openDialog,
-        onApproveMigration: async () => {
-          const approvedResult = await runAction(() =>
-            dispatch(
-              openLocalNetcanvas({ file, migrationApproved: true }),
-            ).unwrap(),
-          );
-          await showProtocolOpenResultDialog({
-            result: approvedResult,
-            openDialog,
-          });
-        },
-      });
+      const open = async (approvals: {
+        migrationApproved?: boolean;
+        repairApproved?: boolean;
+      }): Promise<void> => {
+        const result = await runAction(() =>
+          dispatch(openLocalNetcanvas({ file, ...approvals })).unwrap(),
+        );
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+          onApproveMigration: approvals.migrationApproved
+            ? undefined
+            : () => open({ ...approvals, migrationApproved: true }),
+          onApproveRepair: approvals.repairApproved
+            ? undefined
+            : () => open({ ...approvals, repairApproved: true }),
+        });
+      };
+      await open({});
     },
     [dispatch, openDialog, runAction],
   );
@@ -216,9 +222,23 @@ const Home = () => {
     (id: string) => {
       void (async () => {
         const result = await runAction(() =>
-          dispatch(openLibraryProtocol(id)).unwrap(),
+          dispatch(openLibraryProtocol({ id })).unwrap(),
         );
-        await showProtocolOpenResultDialog({ result, openDialog });
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+          onApproveRepair: async () => {
+            const repairedResult = await runAction(() =>
+              dispatch(
+                openLibraryProtocol({ id, repairApproved: true }),
+              ).unwrap(),
+            );
+            await showProtocolOpenResultDialog({
+              result: repairedResult,
+              openDialog,
+            });
+          },
+        });
       })();
     },
     [dispatch, openDialog, runAction],

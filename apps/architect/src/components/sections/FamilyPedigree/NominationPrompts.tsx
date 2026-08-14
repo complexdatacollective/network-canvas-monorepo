@@ -18,7 +18,12 @@ import {
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/store';
 import { EMPTY_VARIABLES, getVariablesForSubject } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getExclusiveVariableSlotMap,
+  getVariableRoleMap,
+  roleMapKey,
+} from '~/selectors/indexes';
+import { interfaceOwnedPickIssue } from '~/selectors/roleFilters';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
@@ -55,6 +60,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
+  const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Cross-class exclusivity gate: the nomination toggle is an UNVALIDATED
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
@@ -72,6 +78,19 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       const originalVariable =
         committedNominationPrompts?.find((prompt) => prompt.id === id)
           ?.variable ?? '';
+      // A variable the pedigree derives structurally (its ego marker, its
+      // relationship variable) can never be a nomination toggle. The picker
+      // already drops those, so this catches a stale draft or an imported
+      // protocol — and unlike the cross-class gate it has no unchanged-pick
+      // escape: re-saving such a prompt would keep writing the ego flag.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        subject,
+        variable,
+      );
+      if (ownedIssue) {
+        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+      }
       const issue = crossClassPickIssue({
         variableId: variable,
         originalVariableId: originalVariable,
@@ -85,7 +104,13 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       }
       return value;
     },
-    [nodeType, roleMap, allVariables, committedNominationPrompts],
+    [
+      nodeType,
+      roleMap,
+      exclusiveSlotMap,
+      allVariables,
+      committedNominationPrompts,
+    ],
   );
   const isDisabled = !nodeType;
   const handleToggleChange = useCallback(

@@ -302,9 +302,35 @@ describe('getAdditionalAttributesOptionsForSubject (additionalAttributes pool, U
   });
 
   it('keeps a variable only an unvalidated writer elsewhere already claims', () => {
+    // `catUnvalidatedOnly`, not `qaUnvalidatedOnly`: two unvalidated writers
+    // may share a variable, which a bin's prompt shows. The pedigree fixture
+    // would prove the wrong thing here, because a structural pedigree slot is
+    // owned by that interface outright (see the next case).
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(catUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
+  });
+
+  // A Family Pedigree derives `relationshipVariable` from the tree the
+  // participant draws; an additionalAttributes rule writing it would overwrite
+  // that derived value with a fixed one on every node the prompt names.
+  it('drops a variable a Family Pedigree slot owns outright', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(qaUnvalidatedOnly),
       subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+  });
+
+  it('keeps an interface-owned variable a committed row already names', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+      ['qa'],
     );
 
     expect(result.map((o) => o.value)).toContain('qa');

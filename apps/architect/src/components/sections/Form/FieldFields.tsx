@@ -4,7 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -51,6 +50,15 @@ type FieldFieldsProps = {
   type?: string | null;
   currentStageIndex?: number;
   /**
+   * The committed fields of the form this editor edits a row of, and that
+   * row's array index. One form may not collect a variable twice, so a
+   * variable a sibling field already claims must not be offered.
+   * `DialogArrayField` supplies `editIndex` to both this component and
+   * `editorValidate`, so the picker and the save-time gate exclude the same row.
+   */
+  siblingFields?: unknown;
+  editIndex?: number;
+  /**
    * The row being edited, already merged with its codebook variable. Every
    * control seeds its `initialValue` from here — `getFormValues()` reports
    * registered fields only, so a field that registers empty would blank the
@@ -63,6 +71,8 @@ const FieldFields = ({
   entity = null,
   type = null,
   currentStageIndex,
+  siblingFields,
+  editIndex,
   item = {},
 }: FieldFieldsProps) => {
   const {
@@ -74,13 +84,20 @@ const FieldFields = ({
     componentOptions,
     metaForType,
     existingVariables,
+    hasInterfaceOwnedOptions,
     handleNewVariable,
   } = useFieldHandlers({
     entity: entity ?? '',
     type: type ?? '',
+    siblingFields,
+    editIndex,
     currentStageIndex,
   });
-  const lockedOptions = getLockedOptions(existingVariables, variable);
+  const lockedOptions = getLockedOptions(
+    existingVariables,
+    variable,
+    hasInterfaceOwnedOptions,
+  );
 
   return (
     <>
@@ -220,13 +237,7 @@ const FieldFields = ({
           title="Categorical/Ordinal options"
         >
           {lockedOptions ? (
-            <>
-              <Paragraph>
-                These options are automatically configured by the interface and
-                cannot be modified.
-              </Paragraph>
-              <LockedOptions options={lockedOptions} />
-            </>
+            <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"

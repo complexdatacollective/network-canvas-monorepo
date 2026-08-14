@@ -5,6 +5,9 @@ import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectVariableRoleHits,
+  findExclusiveVariableSlots,
+  findInterfaceOwnedOptionBindings,
+  type InterfaceOwnedOptionSetKey,
 } from '@codaco/protocol-validation';
 
 import collectPath, {
@@ -182,6 +185,51 @@ export const getVariableRoleMapOutsideStage = createSelector(
   ],
   (protocol, excludedStageIndex): VariableRoleMap =>
     buildVariableRoleMap(protocol, excludedStageIndex),
+);
+
+export type ExclusiveSlotClaim = { slot: string; owner: string };
+
+/**
+ * The interface-owned structural slot claiming each subject-scoped variable,
+ * keyed by `roleMapKey`. Derived from the schema's own `exclusive` tags (via
+ * `findExclusiveVariableSlots`), so a picker exclusion cannot drift from the
+ * protocol rule it exists to keep the researcher away from.
+ *
+ * SLOT-aware: the value records WHICH slot claims the variable, because the
+ * same slot on another stage may legitimately name it — two Family Pedigree
+ * stages over one node type share their structural variables.
+ */
+export const getExclusiveVariableSlotMap = createSelector(
+  [getEntityAttributeHits, getProtocol],
+  (hits, protocol): Record<string, ExclusiveSlotClaim> => {
+    if (!protocol) return {};
+    const map: Record<string, ExclusiveSlotClaim> = {};
+    for (const slot of findExclusiveVariableSlots(protocol, hits)) {
+      map[roleMapKey(slot.subject, slot.variableId)] = {
+        slot: slot.descriptor.slot,
+        owner: slot.descriptor.owner,
+      };
+    }
+    return map;
+  },
+);
+
+/**
+ * The interface-owned option set bound to each subject-scoped variable, keyed
+ * by `roleMapKey`. Backs the read-only option tables in the field and bin
+ * editors: an interface that both writes and reads these values fixes the
+ * option list, whoever else binds the variable.
+ */
+export const getInterfaceOwnedOptionMap = createSelector(
+  [getEntityAttributeHits, getProtocol],
+  (hits, protocol): Record<string, InterfaceOwnedOptionSetKey> => {
+    if (!protocol) return {};
+    const map: Record<string, InterfaceOwnedOptionSetKey> = {};
+    for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
+      map[roleMapKey(binding.subject, binding.variableId)] = binding.optionSet;
+    }
+    return map;
+  },
 );
 
 /**

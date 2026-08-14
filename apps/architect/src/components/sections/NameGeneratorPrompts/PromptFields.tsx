@@ -23,7 +23,10 @@ import {
   getVariableRoleMapOutsideStage,
   roleMapKey,
 } from '~/selectors/indexes';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 
 /**
  * Stable identities for the empty cases. `EMPTY_ATTRIBUTES` feeds
@@ -52,12 +55,20 @@ export const getAdditionalAttributesOptionsForSubject = (
   committedVariables?: readonly string[],
   excludedStageIndex?: number,
 ) =>
-  excludeValidatedUses(
+  // It also drops a variable an interface derives from the structure a
+  // participant builds — a Family Pedigree's participant marker is a boolean
+  // like any other, and setting it here would put several people in one family.
+  excludeInterfaceOwned(
     state,
     subject,
-    getVariableOptionsForSubject(state, subject),
+    excludeValidatedUses(
+      state,
+      subject,
+      getVariableOptionsForSubject(state, subject),
+      committedVariables,
+      excludedStageIndex,
+    ),
     committedVariables,
-    excludedStageIndex,
   );
 
 type PromptFieldsProps = {

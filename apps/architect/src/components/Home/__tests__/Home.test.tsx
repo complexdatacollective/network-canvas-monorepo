@@ -93,7 +93,61 @@ describe('<Home />', () => {
     );
   });
 
+  // A .netcanvas can need BOTH an upgrade and a configuration repair. The
+  // repair approval has to carry the upgrade approval forward, or reopening
+  // the file asks for the upgrade all over again and the researcher is stuck.
+  it('carries an approved migration forward into an approved repair', async () => {
+    const { openLocalNetcanvas } =
+      await import('~/ducks/modules/userActions/userActions');
+    vi.mocked(openLocalNetcanvas).mockClear();
+    const statuses = [
+      { status: 'migration-required' },
+      { status: 'repair-required', problems: [], repairable: true },
+      { status: 'opened' },
+    ];
+    dispatchMock.mockImplementation(() => ({
+      unwrap: () => Promise.resolve(statuses.shift()),
+    }));
+    // Approve exactly what the current result asks for, as a researcher would.
+    showProtocolOpenResultDialogMock.mockImplementation(
+      async ({
+        result,
+        onApproveMigration,
+        onApproveRepair,
+      }: {
+        result: { status: string };
+        onApproveMigration?: () => Promise<void>;
+        onApproveRepair?: () => Promise<void>;
+      }) => {
+        if (result.status === 'migration-required')
+          await onApproveMigration?.();
+        if (result.status === 'repair-required') await onApproveRepair?.();
+      },
+    );
+
+    render(<Home />);
+
+    await act(async () => {
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(
+      vi.mocked(openLocalNetcanvas).mock.calls.map(([arg]) => arg),
+    ).toEqual([
+      { file: expect.any(File) },
+      { file: expect.any(File), migrationApproved: true },
+      {
+        file: expect.any(File),
+        migrationApproved: true,
+        repairApproved: true,
+      },
+    ]);
+  });
+
   it('keeps the loading overlay off while a protocol-open dialog is awaited', async () => {
+    dispatchMock.mockReset();
+    showProtocolOpenResultDialogMock.mockReset();
     dispatchMock.mockReturnValue({
       unwrap: () => Promise.resolve({ status: 'migration-required' }),
     });

@@ -6,6 +6,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Row, Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -18,13 +19,18 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import LockedOptions from '~/components/Options/LockedOptions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
 import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -76,19 +82,36 @@ const PromptFields = ({
     type: currentCreateEdge ?? undefined,
   };
   // TSC's edge-variable picker is an UNVALIDATED writer: drop options a form
-  // elsewhere already validates.
+  // elsewhere already validates, and drop any variable an interface derives
+  // from the structure a participant builds — a Family Pedigree's edge slots
+  // above all, which its genetics engine reads back.
   const ordinalVariableOptions = useAppSelector((state) => {
     const ordinalOptions = getVariableOptionsForSubject(
       state,
       edgeSubject,
     ).filter(({ type: variableType }) => variableType === 'ordinal');
-    return excludeValidatedUses(
+    return excludeInterfaceOwned(
       state,
       edgeSubject,
-      ordinalOptions,
+      excludeValidatedUses(
+        state,
+        edgeSubject,
+        ordinalOptions,
+        currentEdgeVariable,
+      ),
       currentEdgeVariable,
     ) as SelectOption[];
   });
+
+  // An interface that branches on the variable's exact values owns its option
+  // list, so the editor renders it read-only.
+  const interfaceOwnedOptions = useAppSelector(getInterfaceOwnedOptionMap);
+  const ownedOptionSet = currentEdgeVariable
+    ? interfaceOwnedOptions[roleMapKey(edgeSubject, currentEdgeVariable)]
+    : undefined;
+  const lockedOptions = ownedOptionSet
+    ? INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options
+    : undefined;
   const optionsForCurrentEdgeVariable = useAppSelector((state) => {
     const variables = getVariablesForSubject(state, edgeSubject);
     const found = currentEdgeVariable
@@ -249,31 +272,37 @@ const PromptFields = ({
                 <Heading level="h4" id={getFieldId('variableOptions')}>
                   Variable Options
                 </Heading>
-                <Paragraph>
-                  The following choices or &apos;options&apos; are configured
-                  for this variable. We suggest no more than four options should
-                  be used on this interface.
-                </Paragraph>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong> including the
-                      negative label. Using more will create a sub-optimal
-                      experience for participants, and might reduce data
-                      quality.
-                    </AlertDescription>
-                  </Alert>
+                {lockedOptions ? (
+                  <LockedOptions options={lockedOptions} />
+                ) : (
+                  <>
+                    <Paragraph>
+                      The following choices or &apos;options&apos; are
+                      configured for this variable. We suggest no more than four
+                      options should be used on this interface.
+                    </Paragraph>
+                    {showVariableOptionsTip && (
+                      <Alert variant="destructive" className="my-7">
+                        <AlertTitle>Too many option values</AlertTitle>
+                        <AlertDescription>
+                          The ordinal bin interface is designed to use{' '}
+                          <strong>up to 5 option values</strong> including the
+                          negative label. Using more will create a sub-optimal
+                          experience for participants, and might reduce data
+                          quality.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <ArchitectArrayField
+                      name="variableOptions"
+                      label="Options"
+                      labelHidden
+                      component={Options}
+                      validation={optionsValidation}
+                      initialValue={variableOptions}
+                    />
+                  </>
                 )}
-                <ArchitectArrayField
-                  name="variableOptions"
-                  label="Options"
-                  labelHidden
-                  component={Options}
-                  validation={optionsValidation}
-                  initialValue={variableOptions}
-                />
               </Row>
             )}
           </Section>

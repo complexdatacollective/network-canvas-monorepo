@@ -4,11 +4,21 @@ import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
   type AttributeWriterUsage,
+  type ExclusiveSlotDescriptor,
+  type InterfaceOwnedOptionSetKey,
   type SubjectResolution,
 } from '../schemas/8/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-reference.ts';
+// The CURRENT protocol schema, imported from its own module rather than
+// through `../schemas/index.ts`. This module and the schema module are
+// mutually recursive, and `../schemas/index.ts` sits in the middle: it
+// evaluates `const CurrentProtocolSchema = ProtocolSchemaV8` at module scope,
+// which under that cycle runs before the schema module has finished
+// initialising. Importing the schema module directly gives a live binding
+// resolved at call time instead, so the walk works whichever module the
+// consumer entered through.
+import CurrentProtocolSchema from '../schemas/8/schema.ts';
 import type { VariableType } from '../schemas/8/variables/types.ts';
-import { CurrentProtocolSchema } from '../schemas/index.ts';
 
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];
@@ -16,6 +26,8 @@ export type EntityAttributeReferenceHit = {
   subject?: StageSubject;
   requireType?: readonly VariableType[];
   usage?: AttributeWriterUsage;
+  exclusive?: ExclusiveSlotDescriptor;
+  ownedOptions?: InterfaceOwnedOptionSetKey;
 };
 
 export type EntityTypeReferenceHit = {
@@ -229,6 +241,8 @@ const walk = (
           subject: resolveSubject(attributeDescriptor.subject, path, ctx),
           requireType: attributeDescriptor.requireType,
           usage: attributeDescriptor.usage,
+          exclusive: attributeDescriptor.exclusive,
+          ownedOptions: attributeDescriptor.ownedOptions,
         },
       ];
     }
