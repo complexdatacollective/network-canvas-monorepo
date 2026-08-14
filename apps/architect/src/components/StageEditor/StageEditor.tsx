@@ -18,7 +18,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import {
   getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
-  getProtocolOpenElsewhere,
+  getProtocolLockState,
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
@@ -27,9 +27,16 @@ import {
   resetDraft,
 } from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
+import {
+  getLeavePersistence,
+  stageDiscardDescriptions,
+} from '~/hooks/useProtocolNavGuard';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
+import {
+  getLiveStageDraftDirty,
+  getLiveStageValues,
+} from '~/selectors/stageEditorDraft';
 import { ensureError } from '~/utils/ensureError';
 import { reportError } from '~/utils/reportError';
 
@@ -37,6 +44,7 @@ import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
+import StageDraftConflictDialog from './StageDraftConflictDialog';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
@@ -46,12 +54,6 @@ type StageEditorProps = {
   insertAtIndex?: number;
   type?: string;
 };
-
-// The mirror the stage form bridge maintains. It is the only view of the live
-// form values available outside the form's provider, which is where the
-// preview payload and the wip-protocol validation are assembled.
-const getLiveStageValues = (state: RootState) =>
-  state.stageEditorDraft.ui.liveValues;
 
 /**
  * Undo/redo shortcuts write to the stage form store, so the hook has to run
@@ -235,17 +237,22 @@ const StageEditor = (props: StageEditorProps) => {
 
   const onSubmit = useCallback<FormSubmitHandler>(
     (values: Record<string, FieldValue>) => {
-      // Another tab holds the saved copy of this protocol, so the library write
-      // behind this commit would be dropped. Refuse rather than take it into
-      // memory and look saved: the editor stays mounted holding the work, and
-      // the banner above names the ways forward. (The commit button is disabled
-      // too; this covers a submit raised from the keyboard, and says why rather
-      // than failing silently.)
-      if (getProtocolOpenElsewhere(reduxStore.getState())) {
+      // This tab does not own the saved copy of this protocol, so the library
+      // write behind this commit would be dropped — and in `reclaim-blocked`
+      // the commit would additionally replace the codebook wholesale from a
+      // snapshot taken before the other tab's edits. Refuse rather than take it
+      // into memory and look saved: the editor stays mounted holding the work,
+      // and the banner above names the ways forward. (The commit button is
+      // disabled too; this covers a submit raised from the keyboard, and says
+      // why rather than failing silently.)
+      const lockState = getProtocolLockState(reduxStore.getState());
+      if (lockState !== 'owned') {
         return {
           success: false,
           formErrors: [
-            'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
+            lockState === 'reclaim-blocked'
+              ? 'These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.'
+              : 'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
           ],
         };
       }
@@ -280,14 +287,21 @@ const StageEditor = (props: StageEditorProps) => {
       return true;
     }
 
+    // What is lost differs with whether this tab can save at all, and a tab
+    // that cannot must not be told the last saved version of the stage is
+    // waiting for it here.
+    const persistence = getLeavePersistence(reduxStore.getState());
     const confirmed = await openDialog({
       type: 'choice',
       intent: 'warning',
-      title: 'Unsaved Changes',
+      size: 'readable',
+      title: 'Discard unsaved stage changes?',
       description:
-        'You have unsaved changes. Are you sure you want to leave without saving?',
+        stageDiscardDescriptions[
+          persistence === 'no-protocol' ? 'saved' : persistence
+        ],
       actions: {
-        primary: { label: 'Leave Without Saving', value: true },
+        primary: { label: 'Discard Changes and Leave', value: true },
         cancel: { label: 'Cancel', value: false },
       },
     });
@@ -490,6 +504,11 @@ const StageEditor = (props: StageEditorProps) => {
       onSubmit={onSubmit}
     >
       <StageEditorKeyboardShortcuts />
+      <StageDraftConflictDialog
+        stageId={id}
+        insertAtIndex={insertAtIndex}
+        withStageIdentity={withStageIdentity}
+      />
       <div className="relative h-full overflow-y-auto pb-32">
         <StageEditorNav
           stageName={stageName}

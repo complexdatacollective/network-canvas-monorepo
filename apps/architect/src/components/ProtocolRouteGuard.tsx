@@ -81,7 +81,7 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
   if (mode === 'read-only') return <ProtocolReadOnlyView />;
   // 'held-stage-editor' keeps the editor mounted on purpose: a stage draft
   // exists nowhere else, so replacing the editor underneath it would be the
-  // silent discard this guard exists to prevent. ProtocolOpenElsewhereBanner
+  // silent discard this guard exists to prevent. ProtocolLockBanner
   // explains that changes cannot be saved here and offers the ways out, and
   // the commit is refused (StageEditorNav, StageEditor.onSubmit).
   return <>{children}</>;

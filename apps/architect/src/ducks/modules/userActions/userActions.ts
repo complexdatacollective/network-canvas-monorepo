@@ -485,12 +485,18 @@ export const openBundledTemplate = createAppAsyncThunk(
   },
 );
 
-// Export protocol as .netcanvas file
+// Export protocol as .netcanvas file.
+//
+// `protocolOverride` exists for the one case where the file must NOT be the
+// canonical protocol: rescuing an uncommitted stage draft, whose stage and
+// codebook edits live outside `activeProtocol` and would otherwise be missing
+// from the very download offered to preserve them. It changes nothing on disk
+// or in the library — assets still resolve against the active protocol id.
 export const exportNetcanvas = createAppAsyncThunk(
   'webUserActions/exportNetcanvas',
-  async (_, { getState }) => {
+  async (protocolOverride: CurrentProtocol | undefined, { getState }) => {
     const state = getState();
-    const protocol = state.activeProtocol?.present;
+    const protocol = protocolOverride ?? state.activeProtocol?.present;
 
     if (!protocol) {
       throw new Error('No active protocol to export');

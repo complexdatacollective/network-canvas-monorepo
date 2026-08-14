@@ -8,7 +8,10 @@ import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
 } from '~/ducks/modules/activeProtocol';
-import app, { setProtocolOpenElsewhere } from '~/ducks/modules/app';
+import app, {
+  getProtocolReclaimChoiceRequest,
+  setProtocolLockState,
+} from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft, {
@@ -18,7 +21,7 @@ import stageEditorDraft, {
 } from '~/ducks/modules/stageEditorDraft';
 import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
-import ProtocolOpenElsewhereBanner from '../ProtocolOpenElsewhereBanner';
+import ProtocolLockBanner from '../ProtocolLockBanner';
 
 const { mockLocation, mockSetLocation } = vi.hoisted(() => ({
   mockLocation: vi.fn<() => string>(),
@@ -66,11 +69,11 @@ type TestStore = ReturnType<typeof createTestStore>;
 const renderBanner = (store: TestStore) =>
   render(
     <Provider store={store}>
-      <ProtocolOpenElsewhereBanner />
+      <ProtocolLockBanner />
     </Provider>,
   );
 
-describe('ProtocolOpenElsewhereBanner', () => {
+describe('ProtocolLockBanner', () => {
   let store: TestStore;
 
   beforeEach(() => {
@@ -87,7 +90,7 @@ describe('ProtocolOpenElsewhereBanner', () => {
   });
 
   it('describes the read-only view and how to get editing back', () => {
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderBanner(store);
 
@@ -102,7 +105,7 @@ describe('ProtocolOpenElsewhereBanner', () => {
   });
 
   it('takes focus when the read-only view replaces what the user was looking at', () => {
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderBanner(store);
 
@@ -116,7 +119,7 @@ describe('ProtocolOpenElsewhereBanner', () => {
     // "Discard Changes" to discard.
     store.dispatch(draftTimelineActions.reset(draftPresent));
     store.dispatch(setLiveValues(editedStage));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
@@ -136,5 +139,32 @@ describe('ProtocolOpenElsewhereBanner', () => {
     // staying would leave every control live with nowhere for its writes to go.
     expect(getLiveStageDraftDirty(store.getState())).toBe(false);
     expect(mockSetLocation).toHaveBeenCalledWith('/protocol');
+  });
+
+  // The other tab has gone, so telling the researcher to close it would send
+  // them looking for a tab that no longer exists.
+  it('stops blaming the other tab once it has closed and a choice is outstanding', () => {
+    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    store.dispatch(draftTimelineActions.reset(draftPresent));
+    store.dispatch(setLiveValues(editedStage));
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+    renderBanner(store);
+
+    const banner = screen.getByRole('status');
+    expect(banner).toHaveTextContent(/The other tab has been closed/i);
+    expect(banner).toHaveTextContent(/until you decide which to keep/i);
+    expect(banner).not.toHaveTextContent(/Close the other tab/i);
+    // Dismissing the choice must not strand the researcher: the banner can put
+    // the question — and with it the download that keeps the work — back.
+    expect(
+      screen.queryByRole('button', { name: 'Discard Changes' }),
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Choose What to Keep' }),
+    );
+    expect(getProtocolReclaimChoiceRequest(store.getState())).toBeGreaterThan(
+      0,
+    );
   });
 });

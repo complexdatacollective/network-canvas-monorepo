@@ -1,15 +1,27 @@
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
 import { reportError } from './reportError';
 
+/**
+ * Downloads the open protocol as a .netcanvas file, reporting both partial and
+ * total failure to the researcher.
+ *
+ * `protocol` overrides what is written into the file. Pass it only where the
+ * canonical protocol is not what the researcher is being offered — rescuing an
+ * uncommitted stage draft, which lives outside `activeProtocol`.
+ */
 export const downloadActiveProtocol = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
+  protocol?: CurrentProtocol,
 ): Promise<boolean> => {
   try {
-    const { skippedAssets } = await dispatch(exportNetcanvas()).unwrap();
+    const { skippedAssets } = await dispatch(
+      exportNetcanvas(protocol),
+    ).unwrap();
     if (skippedAssets.length > 0) {
       const assetList = skippedAssets.map((asset) => asset.name).join(', ');
       void openDialog({

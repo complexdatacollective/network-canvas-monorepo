@@ -113,7 +113,7 @@ function FinishedEditingSegment({ size }: ComponentSegmentRenderProps) {
   // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
   // able to commit: this is the one action that claims to make work durable,
   // and the library write behind it would be dropped.
-  // ProtocolOpenElsewhereBanner sits directly above and names the ways forward.
+  // ProtocolLockBanner sits directly above and names the ways forward.
   const canCommit = useProtocolAccessMode() === 'editable';
 
   if (!openIssues) {

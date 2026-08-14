@@ -8,7 +8,7 @@ import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
 import {
-  getProtocolOpenElsewhere,
+  getProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
@@ -96,13 +96,18 @@ export const importAssetAsync = createAsyncThunk<
     // exclusivity check of its own, so a tab that no longer owns the protocol
     // could drop a file into the owning tab's scope — a durable write from a
     // tab whose manifest entry naming it can never be saved. Refuse before
-    // anything is written, and say why.
-    if (getProtocolOpenElsewhere(getState())) {
+    // anything is written, and say why — one whole message per lock state,
+    // because what is true of the researcher's protocol, and the way out of
+    // it, are not the same in the two cases.
+    const lockState = getProtocolLockState(getState());
+    if (lockState !== 'owned') {
       return rejectWithValue({
         filename: name,
-        code: 'PROTOCOL_OPEN_ELSEWHERE',
+        code: 'PROTOCOL_NOT_OWNED_HERE',
         message:
-          'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
+          lockState === 'reclaim-blocked'
+            ? 'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then add the file again.'
+            : 'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
       } satisfies ImportAssetErrorInfo);
     }
 

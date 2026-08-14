@@ -9,7 +9,7 @@ import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
 import { usePrintProtocolAction } from './PrintProtocolAction';
-import ProjectActions from './ProjectActions';
+import ProjectActions, { type ProjectActionsMode } from './ProjectActions';
 
 type ProjectLayoutProps = {
   children: React.ReactNode;
@@ -34,11 +34,19 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
   };
 
   // A tab that has lost the editor lock renders the same whole-protocol
-  // read-only view the summary route does (see ProtocolRouteGuard), so it drops
-  // Undo/Redo and gains Print for exactly the same reason the summary does.
+  // read-only view the summary route does (see ProtocolRouteGuard) — but for a
+  // different reason, and the toolbar has to tell them apart. The summary is
+  // read-only because it is a report, and this tab still owns the saved copy,
+  // so its Undo reaches disk. A demoted tab owns nothing: its Undo would rewind
+  // the screen and be dropped. Both gain Print, because printing only reads.
   const accessMode = useProtocolAccessMode();
-  const readOnly =
-    location === '/protocol/summary' || accessMode === 'read-only';
+  const mode: ProjectActionsMode =
+    accessMode !== 'editable'
+      ? 'locked'
+      : location === '/protocol/summary'
+        ? 'report'
+        : 'authoring';
+  const presenting = mode !== 'authoring';
   const printAction = usePrintProtocolAction();
 
   return (
@@ -54,8 +62,8 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       <StorageUnavailableBanner />
       {children}
       <ProjectActions
-        readOnly={readOnly}
-        additionalItems={readOnly ? [printAction] : undefined}
+        mode={mode}
+        additionalItems={presenting ? [printAction] : undefined}
       />
     </div>
   );

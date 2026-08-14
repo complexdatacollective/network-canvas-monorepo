@@ -278,7 +278,7 @@ describe('StageEditor', () => {
 
     await waitFor(() => {
       expect(mocks.openDialog).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Unsaved Changes' }),
+        expect.objectContaining({ title: 'Discard unsaved stage changes?' }),
       );
     });
     expect(mocks.setLocation).not.toHaveBeenCalled();

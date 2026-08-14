@@ -7,8 +7,10 @@ import createTimeline from '../middleware/timeline';
 import activeProtocol, { setActiveProtocol } from '../modules/activeProtocol';
 import app, {
   getActiveProtocolId,
+  getProtocolLockState,
   getStorageUnavailable,
   setActiveProtocolId,
+  setProtocolLockState,
   setStorageUnavailable,
 } from '../modules/app';
 import {
@@ -245,4 +247,32 @@ describe('restoreActiveProtocolAfterStoreRehydration', () => {
     expect(store.getState().activeProtocol.present).toEqual(canonical);
     expect(replaceProtocolRoute).not.toHaveBeenCalled();
   });
+});
+
+// The whole `app` slice is persisted to sessionStorage, so a reload restores
+// whatever cross-tab lock state this tab was in — including `reclaim-blocked`,
+// whose stage draft did NOT survive. Left in place it would make the tab refuse
+// every write, and drive a reclaim off rehydrated state with no lock event
+// behind it.
+describe('restoreActiveProtocolAfterStoreRehydration — cross-tab lock state', () => {
+  it.each(['rehydrated', 'timed-out', 'failed'] as const)(
+    'starts a %s session owning the protocol',
+    async (rehydrationResult) => {
+      const store = makeStore();
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      await restoreActiveProtocolAfterStoreRehydration(
+        store,
+        rehydrationResult,
+        {
+          getStoredProtocol: vi.fn().mockResolvedValue(undefined),
+          replaceProtocolRoute: vi.fn(),
+          clearRememberedSession: vi.fn(),
+          onError: vi.fn(),
+        },
+      );
+
+      expect(getProtocolLockState(store.getState())).toBe('owned');
+    },
+  );
 });

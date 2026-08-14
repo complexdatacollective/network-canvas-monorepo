@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import appReducer, {
   getStorageUnavailable,
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 
@@ -131,7 +131,7 @@ describe('protocol/assetManifest', () => {
     // it that can never be saved.
     it('refuses to write anything when the protocol is open in another tab', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-      store.dispatch(setProtocolOpenElsewhere(true));
+      store.dispatch(setProtocolLockState('open-elsewhere'));
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
       const result = await store.dispatch(importAssetAsync(file));
@@ -139,7 +139,7 @@ describe('protocol/assetManifest', () => {
       expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
       expect(Object.values(store.getState().assetManifest)).toHaveLength(0);
       expect(result.payload).toMatchObject({
-        code: 'PROTOCOL_OPEN_ELSEWHERE',
+        code: 'PROTOCOL_NOT_OWNED_HERE',
         filename: 'roster.csv',
       });
     });

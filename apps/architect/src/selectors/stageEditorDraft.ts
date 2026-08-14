@@ -1,8 +1,20 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { isEqual } from 'es-toolkit/compat';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Stage } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
+
+/**
+ * The stage form's values as the bridge last mirrored them, or null when no
+ * stage form is mounted.
+ *
+ * The only view of the live form values available outside the form's provider,
+ * which is where the preview payload, the wip-protocol validation and the
+ * draft-rescue download are assembled. Debounced: flush with
+ * `flushStageLiveValues` first wherever missing the last keystroke matters.
+ */
+export const getLiveStageValues = (state: RootState): Stage | null =>
+  state.stageEditorDraft.ui.liveValues;
 
 export const getCanUndoDraft = (state: RootState): boolean =>
   (state.stageEditorDraft.history.past?.length ?? 0) > 0;
@@ -32,6 +44,19 @@ export const getStageEditorDraftCodebook = (
 export const getStageEditorCodebookTransactionOpen = (
   state: RootState,
 ): boolean => (state.stageEditorDraft?.ui?.initialCodebook ?? null) !== null;
+
+/**
+ * Whether a stage editor session is open at all — i.e. whether there is draft
+ * state that replacing the editing buffer would destroy.
+ *
+ * Both halves are checked because either alone can be the last thing standing:
+ * a protocol carrying no codebook opens a draft with a null baseline, and the
+ * timeline `present` survives actions the ui slice ignores. `resetDraft(null)`
+ * clears both, which is what makes this the signal that the editor has let go.
+ */
+export const getStageEditorDraftOpen = (state: RootState): boolean =>
+  (state.stageEditorDraft?.history?.present ?? null) !== null ||
+  getStageEditorCodebookTransactionOpen(state);
 
 // The mirror only holds values for fields that are currently registered, so a
 // collapsed section contributes nothing while the baseline it is compared

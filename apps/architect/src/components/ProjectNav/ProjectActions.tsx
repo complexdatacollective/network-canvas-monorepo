@@ -26,25 +26,34 @@ import { reportError } from '~/utils/reportError';
 
 import ActionToolbar from './ActionToolbar';
 
+/**
+ * What this page is doing with the protocol, which decides which actions are
+ * honest to offer. There are two unrelated reasons a page can be read-only, and
+ * they call for opposite answers on history recovery — so they are named
+ * separately rather than sharing one `readOnly` flag that the next change would
+ * conflate again.
+ *
+ * - `authoring`: the ordinary editor pages. Everything is offered.
+ * - `report`: the page presents the protocol rather than authoring it (the
+ *   Summary report). Save-to-source is hidden — it overwrites the canonical
+ *   protocol source files and exists only in source-authoring dev builds — but
+ *   undo and redo stay: this tab still owns the saved copy, so history recovery
+ *   reaches disk exactly as it does anywhere else (#1389).
+ * - `locked`: another tab owns the saved copy, so autosave is refused and the
+ *   library write behind any change here is dropped. Undo and redo go too: they
+ *   mutate the protocol, so offering them would rewind what is on screen and
+ *   never reach disk. Only actions that read the protocol are left.
+ */
+export type ProjectActionsMode = 'authoring' | 'report' | 'locked';
+
 type ProjectActionsProps = {
   additionalItems?: ToolbarSegment[];
-  /**
-   * The page presents the protocol rather than authoring it (the Summary
-   * report), so the authoring affordance is hidden. That affordance is
-   * save-to-source, which overwrites the canonical protocol source files and
-   * exists only in source-authoring dev builds — so in a shipped build this
-   * changes nothing.
-   *
-   * It does NOT gate undo and redo. Those are history recovery, not authoring —
-   * how a researcher takes back a mistake — and #1389 requires them to work
-   * identically on every page carrying this toolbar, Summary included.
-   */
-  readOnly?: boolean;
+  mode?: ProjectActionsMode;
 };
 
 const ProjectActions = ({
   additionalItems = [],
-  readOnly = false,
+  mode = 'authoring',
 }: ProjectActionsProps) => {
   const dispatch = useAppDispatch();
   const activeProtocolId = useAppSelector(getActiveProtocolId);
@@ -184,11 +193,15 @@ const ProjectActions = ({
   }, [sourceSaveSuccess]);
 
   const canSaveToSource =
-    !readOnly &&
+    mode === 'authoring' &&
     isProtocolSourceAuthoringEnabled &&
     activeProtocolId !== null &&
     protocol !== null &&
     sourceRef !== null;
+
+  // A history operation is a protocol mutation, so it belongs to the tab that
+  // owns the saved copy — and only to it. See `ProjectActionsMode`.
+  const canRecoverHistory = mode !== 'locked';
 
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {
     const items: ToolbarSegment[] = [
@@ -201,26 +214,29 @@ const ProjectActions = ({
         onClick: handleReturnToStart,
       },
       ...additionalItems,
-      // History recovery is available on every page carrying this toolbar,
-      // including read-only ones — see `readOnly` above.
-      { type: 'separator', id: 'project-history-separator' },
-      {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo />,
-        disabled: !canUndo,
-        onClick: handleUndo,
-      },
-      {
-        type: 'button',
-        id: 'redo',
-        label: 'Redo',
-        icon: <Redo />,
-        disabled: !canRedo,
-        onClick: handleRedo,
-      },
     ];
+
+    if (canRecoverHistory) {
+      items.push(
+        { type: 'separator', id: 'project-history-separator' },
+        {
+          type: 'button',
+          id: 'undo',
+          label: 'Undo',
+          icon: <Undo />,
+          disabled: !canUndo,
+          onClick: handleUndo,
+        },
+        {
+          type: 'button',
+          id: 'redo',
+          label: 'Redo',
+          icon: <Redo />,
+          disabled: !canRedo,
+          onClick: handleRedo,
+        },
+      );
+    }
 
     items.push(
       { type: 'separator', id: 'project-download-separator' },
@@ -263,6 +279,7 @@ const ProjectActions = ({
     return items;
   }, [
     additionalItems,
+    canRecoverHistory,
     canRedo,
     canSaveToSource,
     canUndo,

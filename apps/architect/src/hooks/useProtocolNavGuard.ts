@@ -7,7 +7,7 @@ import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
-  getProtocolOpenElsewhere,
+  getProtocolLockState,
   getStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
@@ -161,6 +161,7 @@ export type LeavePersistence =
   | 'no-protocol'
   | 'storage-unavailable'
   | 'open-elsewhere'
+  | 'reclaim-blocked'
   | 'saved';
 
 export const getLeavePersistence = (state: RootState): LeavePersistence => {
@@ -168,7 +169,8 @@ export const getLeavePersistence = (state: RootState): LeavePersistence => {
   // Nothing reached disk at all, which is more urgent than another tab holding
   // the saved copy, so it wins when both are true.
   if (getStorageUnavailable(state)) return 'storage-unavailable';
-  if (getProtocolOpenElsewhere(state)) return 'open-elsewhere';
+  const lockState = getProtocolLockState(state);
+  if (lockState !== 'owned') return lockState;
   return 'saved';
 };
 
@@ -182,6 +184,8 @@ const leaveDescriptions: Record<
     "Your work is saved automatically on this device, so you can return to the editor at any time. Don't forget to download your protocol when you are ready to collect data.",
   'open-elsewhere':
     'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so returning to the start screen will not change your protocol.',
+  'reclaim-blocked':
+    'Nothing has been saved in this tab since the protocol was opened in another one. Returning to the start screen now will leave your protocol exactly as that tab saved it.',
   'storage-unavailable':
     'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.',
 };
@@ -196,8 +200,28 @@ const discardDescriptions: Record<
     'Changes made in this stage have not been saved to the protocol. If you return to the start screen now, those changes will be discarded and the last saved version of the protocol will remain available.',
   'open-elsewhere':
     'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you return to the start screen now, those changes will be discarded.',
+  'reclaim-blocked':
+    'Changes made in this stage cannot be saved over the version the other tab saved. If you return to the start screen now, those changes will be discarded and that saved version will remain available.',
   'storage-unavailable':
     'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Returning to the start screen now discards all of it.',
+};
+
+// The same again for LEAVING THE STAGE EDITOR rather than the protocol: the
+// stage draft is discarded either way, but what remains behind it differs, and
+// a tab that cannot save must not be told its protocol is fine. One whole
+// string per state, so none of this has to be assembled.
+export const stageDiscardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  string
+> = {
+  'saved':
+    'Changes made in this stage have not been saved to the protocol. If you leave the stage editor now, those changes will be discarded and the last saved version of the stage will remain.',
+  'open-elsewhere':
+    'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.',
+  'reclaim-blocked':
+    'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any variables you added or edited while it was open, and that saved version will be loaded here.',
+  'storage-unavailable':
+    'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.',
 };
 
 // Opens the leave-editor confirmation. On confirm, clears the active protocol
@@ -310,16 +334,19 @@ const promptDiscardDraft = async (
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const persistence = getLeavePersistence(store.getState());
     const confirmed = await openDialog({
       type: 'choice',
-      title: 'Unsaved Changes',
+      title: 'Discard unsaved stage changes?',
       description:
-        'You have unsaved changes. Are you sure you want to leave without saving?',
+        stageDiscardDescriptions[
+          persistence === 'no-protocol' ? 'saved' : persistence
+        ],
       intent: 'warning',
       size: 'readable',
       actions: {
         primary: {
-          label: 'Leave Without Saving',
+          label: 'Discard Changes and Leave',
           value: true,
         },
         cancel: {

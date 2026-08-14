@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 import appReducer, {
   getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
-  getProtocolOpenElsewhere,
+  getProtocolLockState,
+  getProtocolOwnedHere,
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
 } from '../app';
 
 function createStore() {
@@ -71,22 +72,32 @@ describe('app slice — preview preferences', () => {
   });
 });
 
-describe('app slice — protocolOpenElsewhere', () => {
+describe('app slice — protocol lock state', () => {
   it('defaults to false when unset', () => {
     const store = createStore();
-    expect(getProtocolOpenElsewhere(store.getState())).toBe(false);
+    expect(getProtocolLockState(store.getState())).toBe('owned');
+    expect(getProtocolOwnedHere(store.getState())).toBe(true);
   });
 
-  it('setProtocolOpenElsewhere(true) flips the flag', () => {
+  it('records that another tab holds the saved copy', () => {
     const store = createStore();
-    store.dispatch(setProtocolOpenElsewhere(true));
-    expect(getProtocolOpenElsewhere(store.getState())).toBe(true);
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    expect(getProtocolLockState(store.getState())).toBe('open-elsewhere');
+    expect(getProtocolOwnedHere(store.getState())).toBe(false);
   });
 
-  it('setProtocolOpenElsewhere(false) clears the flag', () => {
+  // A blocked reclaim has no other tab to blame, and still must not write.
+  it('refuses writes while a reclaim is blocked on an unresolved draft', () => {
     const store = createStore();
-    store.dispatch(setProtocolOpenElsewhere(true));
-    store.dispatch(setProtocolOpenElsewhere(false));
-    expect(getProtocolOpenElsewhere(store.getState())).toBe(false);
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+    expect(getProtocolOwnedHere(store.getState())).toBe(false);
+  });
+
+  it('hands ownership back to this tab', () => {
+    const store = createStore();
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    store.dispatch(setProtocolLockState('owned'));
+    expect(getProtocolOwnedHere(store.getState())).toBe(true);
   });
 });

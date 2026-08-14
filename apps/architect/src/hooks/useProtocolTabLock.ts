@@ -1,14 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
+import { navigate } from 'wouter/use-browser-location';
 
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   getActiveProtocolId,
-  getProtocolOpenElsewhere,
-  setProtocolOpenElsewhere,
+  getProtocolLockState,
+  setProtocolLockState,
 } from '~/ducks/modules/app';
+import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { restoreActiveProtocolFromLibrary } from '~/ducks/restoreActiveProtocol';
+import { getCanonicalProtocol } from '~/selectors/protocol';
+import {
+  getLiveStageDraftDirty,
+  getStageEditorDraftOpen,
+} from '~/selectors/stageEditorDraft';
 import {
   createProtocolTabLock,
   type ProtocolTabLock,
@@ -42,12 +49,48 @@ export const useProtocolTabLock = (
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const lockRef = useRef<ProtocolTabLock | null>(null);
+  // Bumped on every exclusivity change. A refresh in flight compares it to
+  // decide whether the reclaim it is completing is still the current one — the
+  // lock STATE cannot answer that, because a demote/regain/demote round trip
+  // lands back on the value it started from.
+  const lockEpoch = useRef(0);
+
+  // Re-read the canonical row, then hand editing back to this tab. Used both on
+  // a plain re-claim and once a blocked one has been resolved, so the two can
+  // never drift.
+  const finishReclaim = useCallback(async () => {
+    // The read is asynchronous (IndexedDB plus validation), and a peer can
+    // claim the protocol while it is in flight — `onExclusivityChange(false)`
+    // demotes this tab correctly, and a blind promotion afterwards would put
+    // BOTH tabs back to autosaving one library row. Only hand editing back if
+    // no lock event has happened since this reclaim began.
+    const epoch = lockEpoch.current;
+    await refreshActiveProtocol(store);
+    if (lockEpoch.current !== epoch) return;
+    dispatch(setProtocolLockState('owned'));
+  }, [dispatch, refreshActiveProtocol, store]);
+
+  // Give up the editor session this tab is holding, then take the saved copy.
+  // The two pristine cases — never typed into, and typed into then undone all
+  // the way back — are the same situation: there is nothing to weigh against
+  // the saved copy, but the mounted form still cannot survive the buffer being
+  // replaced (that empties its baseline, leaving an editor that reports itself
+  // unchanged and can never be saved). Close it and return to the stage list,
+  // where the reloaded protocol renders. The raw browser-location navigate, so
+  // this does not raise the leave-editor confirmation over a move the
+  // researcher never asked for.
+  const closeEditorAndReclaim = useCallback(() => {
+    dispatch(resetDraft(null));
+    navigate('/protocol', { replace: true });
+    void finishReclaim();
+  }, [dispatch, finishReclaim]);
 
   // One lock (one BroadcastChannel) per tab, created on mount and closed on
   // unmount. lockFactory is stable; this runs once.
   useEffect(() => {
     const lock = lockFactory({
       onExclusivityChange: (exclusive) => {
+        lockEpoch.current += 1;
         if (!exclusive) {
           // Losing exclusivity mid-session (a bfcache restore reclaiming a
           // protocol a peer has taken over) decides, in the very next render,
@@ -55,14 +98,14 @@ export const useProtocolTabLock = (
           // Redux is debounced, so flush it first rather than reading a stale
           // "pristine" and taking the last few seconds of typing with it.
           flushStageLiveValues();
-          dispatch(setProtocolOpenElsewhere(true));
+          dispatch(setProtocolLockState('open-elsewhere'));
           return;
         }
 
         // Regaining exclusivity. The optimistic claim a tab makes on entering
         // the editor never reports a change (it starts exclusive), so this only
         // fires when a peer released a protocol this tab had been demoted from.
-        if (!getProtocolOpenElsewhere(store.getState())) return;
+        if (getProtocolLockState(store.getState()) === 'owned') return;
         // …but a release also fires when THIS tab leaves the editor. Refreshing
         // then would pull a protocol back into a tab that is on its way to the
         // start screen.
@@ -70,19 +113,37 @@ export const useProtocolTabLock = (
           !isProtocolPath(window.location.pathname) ||
           !getActiveProtocolId(store.getState())
         ) {
-          dispatch(setProtocolOpenElsewhere(false));
+          dispatch(setProtocolLockState('owned'));
           return;
         }
 
         // This tab's buffer is a snapshot from before the other tab took over,
         // and the row on disk has moved on if that tab edited. Re-read the
         // canonical row BEFORE editing is re-enabled, so the first commit here
-        // cannot overwrite work this tab never saw. (A stage draft lives in its
-        // own slice and survives, so it commits onto the refreshed protocol.)
-        void (async () => {
-          await refreshActiveProtocol(store);
-          dispatch(setProtocolOpenElsewhere(false));
-        })();
+        // cannot overwrite work this tab never saw.
+        //
+        // That re-read replaces the whole editing buffer, which closes any
+        // stage editor transaction taken from the previous one (#1382) — so it
+        // is not something that can be done quietly over a draft. The mirror is
+        // debounced, so flush before asking whether there is one.
+        flushStageLiveValues();
+        const state = store.getState();
+        if (!getStageEditorDraftOpen(state)) {
+          void finishReclaim();
+          return;
+        }
+
+        if (getLiveStageDraftDirty(state)) {
+          // In-progress work that exists nowhere else, and no honest way to
+          // combine it with what the other tab saved: the draft carries a whole
+          // replacement codebook snapshotted before those edits. Stop here and
+          // let the researcher decide (StageDraftConflictDialog). Nothing is
+          // written, reloaded or discarded until they do.
+          dispatch(setProtocolLockState('reclaim-blocked'));
+          return;
+        }
+
+        closeEditorAndReclaim();
       },
     });
     lockRef.current = lock;
@@ -90,7 +151,55 @@ export const useProtocolTabLock = (
       lock.close();
       lockRef.current = null;
     };
-  }, [lockFactory, dispatch, store, refreshActiveProtocol]);
+  }, [lockFactory, dispatch, store, finishReclaim, closeEditorAndReclaim]);
+
+  const lockState = useAppSelector(getProtocolLockState);
+  const draftOpen = useAppSelector(getStageEditorDraftOpen);
+  const draftDirty = useAppSelector(getLiveStageDraftDirty);
+
+  // A blocked reclaim must not outlive the thing that blocked it. The draft may
+  // simply go — the conflict dialog's discard, the banner's, a confirmed
+  // Cancel, the editor unmounting — or it may be undone back to the values the
+  // editor opened on, which leaves nothing to weigh against the saved copy
+  // either. Both must finish the reclaim, or the tab stays refusing every write
+  // with no other tab to blame and a banner describing changes that no longer
+  // exist.
+  const resolvingBlockedReclaim = useRef(false);
+  useEffect(() => {
+    if (lockState !== 'reclaim-blocked') {
+      resolvingBlockedReclaim.current = false;
+      return;
+    }
+    if (draftOpen && draftDirty) return;
+    // Closing the editor below clears the draft, which re-runs this effect
+    // while the reclaim it started is still in flight.
+    if (resolvingBlockedReclaim.current) return;
+    resolvingBlockedReclaim.current = true;
+    if (
+      !isProtocolPath(window.location.pathname) ||
+      !getActiveProtocolId(store.getState()) ||
+      // A confirmed leave clears the editing buffer before it navigates, so
+      // there is nothing to refresh into and pulling the row back would fight
+      // the exit for it.
+      !getCanonicalProtocol(store.getState())
+    ) {
+      dispatch(setProtocolLockState('owned'));
+      return;
+    }
+    if (draftOpen) {
+      closeEditorAndReclaim();
+      return;
+    }
+    void finishReclaim();
+  }, [
+    lockState,
+    draftOpen,
+    draftDirty,
+    dispatch,
+    finishReclaim,
+    closeEditorAndReclaim,
+    store,
+  ]);
 
   const editing = isProtocolPath(location) && activeProtocolId !== null;
 
@@ -103,11 +212,11 @@ export const useProtocolTabLock = (
       // Optimistically treat this tab as the sole editor; a "held" reply from a
       // tab already holding this protocol re-flags it read-only via the
       // exclusivity callback.
-      dispatch(setProtocolOpenElsewhere(false));
+      dispatch(setProtocolLockState('owned'));
       lock.claimProtocol(activeProtocolId);
     } else {
       lock.releaseProtocol();
-      dispatch(setProtocolOpenElsewhere(false));
+      dispatch(setProtocolLockState('owned'));
     }
   }, [editing, activeProtocolId, dispatch]);
 };

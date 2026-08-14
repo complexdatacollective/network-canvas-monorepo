@@ -39,6 +39,12 @@ const revealingPageFor = (path: string): string => {
   return '';
 };
 
+// Only ever consulted for an operation that was actually applied. A tab that
+// does not own the saved copy never gets that far — `undoWithNavigation`
+// refuses outright — which is what keeps this a pure question about pages:
+// the read-only report renders at ANY /protocol URL, so a target resolved from
+// the recorded page would move the researcher, and announce the move, while
+// the same report stayed in front of them.
 export const resolveTimelineNavTarget = (
   recordedPath: string,
   currentPath: string,

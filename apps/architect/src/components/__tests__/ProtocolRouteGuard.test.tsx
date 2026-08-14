@@ -9,7 +9,7 @@ import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
 } from '~/ducks/modules/activeProtocol';
-import app, { setProtocolOpenElsewhere } from '~/ducks/modules/app';
+import app, { setProtocolLockState } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft, {
@@ -156,7 +156,7 @@ describe('ProtocolRouteGuard', () => {
 
   it('replaces the editor with the read-only view when the protocol is open in another tab', () => {
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
     mockLocation.mockReturnValue('/protocol/codebook');
 
     renderGuard(store);
@@ -171,7 +171,7 @@ describe('ProtocolRouteGuard', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     // The precondition this test exists to cover: there really is unsaved work
     // in the editor at the moment the lock is lost.
@@ -194,7 +194,7 @@ describe('ProtocolRouteGuard', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(getLiveStageDraftDirty(store.getState())).toBe(true);
 
@@ -224,7 +224,7 @@ describe('ProtocolRouteGuard', () => {
     expect(closeAllDialogs).not.toHaveBeenCalled();
 
     act(() => {
-      store.dispatch(setProtocolOpenElsewhere(true));
+      store.dispatch(setProtocolLockState('open-elsewhere'));
     });
 
     expect(closeAllDialogs).toHaveBeenCalledTimes(1);
@@ -233,7 +233,7 @@ describe('ProtocolRouteGuard', () => {
   it('leaves dialogs alone on a first render that is already read-only', () => {
     const closeAllDialogs = globalThis.__architectDialogMocks.closeAllDialogs;
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderGuard(store);
 
@@ -244,7 +244,7 @@ describe('ProtocolRouteGuard', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft(store);
     mockLocation.mockReturnValue('/protocol');
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     // A dirty draft is not the exemption — the route is. Off the stage editor
     // route, an unsaved draft does not hold the editor open.

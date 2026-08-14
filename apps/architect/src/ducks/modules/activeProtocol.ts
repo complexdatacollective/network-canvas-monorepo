@@ -18,6 +18,7 @@ import {
 import { resolveTimelineNavTarget } from '~/utils/timelineNavigation';
 
 import { timelineActions } from '../middleware/timeline';
+import { getProtocolOwnedHere } from './app';
 import assetManifest from './protocol/assetManifest';
 import codebook from './protocol/codebook';
 import { isStageEditorCodebookAction } from './protocol/stageEditorCodebookMeta';
@@ -173,6 +174,13 @@ export const undoWithNavigation =
   ): TimelineOperationOutcome => {
     const state = getState();
     if (!getCanUndo(state)) return NOT_APPLIED;
+    // A tab that does not own the saved copy cannot persist a history
+    // operation: the protocol would visibly rewind and the library write behind
+    // it would be dropped (see `protocolValidationListener`). Refuse the whole
+    // operation rather than only the move that follows it, so nothing changes
+    // on screen and nothing is announced. The controls are not offered there
+    // either (`ProjectActions`); this is the enforcement point.
+    if (!getProtocolOwnedHere(state)) return NOT_APPLIED;
 
     // Resolve the destination before dispatching — undo pops the very entry
     // whose recorded page we need.
@@ -204,6 +212,7 @@ export const redoWithNavigation =
   ): TimelineOperationOutcome => {
     const state = getState();
     if (!getCanRedo(state)) return NOT_APPLIED;
+    if (!getProtocolOwnedHere(state)) return NOT_APPLIED;
 
     const targetPage = resolveTimelineNavTarget(
       getRedoTargetPath(state),

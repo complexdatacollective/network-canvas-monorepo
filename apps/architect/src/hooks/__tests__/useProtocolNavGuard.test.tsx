@@ -12,7 +12,7 @@ import activeProtocol, {
   setActiveProtocol,
 } from '~/ducks/modules/activeProtocol';
 import app, {
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
@@ -272,7 +272,7 @@ describe('getLeavePersistence', () => {
   it('reports the protocol as open elsewhere when another tab holds it', () => {
     const store = makeStore();
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(getLeavePersistence(store.getState())).toBe('open-elsewhere');
   });
@@ -280,7 +280,7 @@ describe('getLeavePersistence', () => {
   it('prefers unavailable storage, the more urgent of the two', () => {
     const store = makeStore();
     store.dispatch(setActiveProtocol(protocol));
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
     store.dispatch(setStorageUnavailable(true));
 
     expect(getLeavePersistence(store.getState())).toBe('storage-unavailable');

@@ -7,8 +7,8 @@ import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
+import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
-import ProtocolOpenElsewhereBanner from '~/components/ProtocolOpenElsewhereBanner';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
@@ -174,7 +174,7 @@ const AppContents = () => {
         <InstallBanner />
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
-        <ProtocolOpenElsewhereBanner />
+        <ProtocolLockBanner />
         <div className="min-h-0 flex-1">
           <Routes />
         </div>

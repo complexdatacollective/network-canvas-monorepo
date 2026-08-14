@@ -21,10 +21,10 @@ import {
 } from '../modules/activeProtocol';
 import {
   getActiveProtocolId,
-  getProtocolOpenElsewhere,
+  getProtocolOwnedHere,
   getStorageUnavailable,
   setActiveProtocolId,
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
 } from '../modules/app';
 import {
   clearValidation,
@@ -101,7 +101,7 @@ const resetInvalidProtocolSession = (listenerApi: AppListenerApi): void => {
   disarmInMemoryUnloadGuard();
   listenerApi.dispatch(resetDraft(null));
   listenerApi.dispatch(clearValidation());
-  listenerApi.dispatch(setProtocolOpenElsewhere(false));
+  listenerApi.dispatch(setProtocolLockState('owned'));
   listenerApi.dispatch(setActiveProtocolId(null));
   listenerApi.dispatch(clearActiveProtocol());
   // clearActiveProtocol changes `present`, while reset removes every past and
@@ -292,7 +292,7 @@ startAppListening({
       locusId,
       protocol,
       persistenceAllowed:
-        !getStorageUnavailable(state) && !getProtocolOpenElsewhere(state),
+        !getStorageUnavailable(state) && getProtocolOwnedHere(state),
     };
 
     const run = validationQueue.then(() =>

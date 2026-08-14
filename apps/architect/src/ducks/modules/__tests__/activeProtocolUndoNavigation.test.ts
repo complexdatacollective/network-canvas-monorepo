@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate } from 'wouter/use-browser-location';
 
@@ -11,6 +11,7 @@ import activeProtocolReducer, {
   redoWithNavigation,
   undoWithNavigation,
 } from '../activeProtocol';
+import appReducer, { setProtocolLockState } from '../app';
 
 vi.mock('wouter/use-browser-location', () => ({ navigate: vi.fn() }));
 
@@ -285,5 +286,73 @@ describe('redoWithNavigation', () => {
     store.dispatch(undoWithNavigation());
 
     expect(store.getState().activeProtocol.future).toHaveLength(1);
+  });
+});
+
+// A tab that does not own the saved copy has its library writes dropped
+// (`protocolValidationListener`), so a history operation there would rewind the
+// protocol on screen and reach nothing. The controls are not offered on such a
+// page (`ProjectActions`); this is the enforcement point behind them.
+describe('history operations in a tab that does not own the saved copy', () => {
+  const makeLockAwareStore = () => {
+    const store = configureStore({
+      reducer: combineReducers({
+        app: appReducer,
+        activeProtocol: createTimelineReducer(activeProtocolReducer, {}),
+      }),
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+    store.dispatch(actionCreators.setActiveProtocol(baseProtocol));
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
+    return store;
+  };
+
+  beforeEach(() => {
+    vi.mocked(navigate).mockClear();
+    setPath('/protocol/codebook');
+  });
+
+  it.each(['open-elsewhere', 'reclaim-blocked'] as const)(
+    'refuses undo while the lock state is %s',
+    (lockState) => {
+      const store = makeLockAwareStore();
+      const before = store.getState().activeProtocol.present;
+      store.dispatch(setProtocolLockState(lockState));
+
+      const outcome = (store.dispatch as AppDispatch)(undoWithNavigation());
+
+      // Nothing applied, nothing announced, nowhere moved.
+      expect(outcome).toEqual({ applied: false, navigatedTo: null });
+      expect(store.getState().activeProtocol.present).toBe(before);
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses redo while another tab holds the saved copy', () => {
+    const store = makeLockAwareStore();
+    (store.dispatch as AppDispatch)(undoWithNavigation());
+    const before = store.getState().activeProtocol.present;
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    vi.mocked(navigate).mockClear();
+
+    const outcome = (store.dispatch as AppDispatch)(redoWithNavigation());
+
+    expect(outcome).toEqual({ applied: false, navigatedTo: null });
+    expect(store.getState().activeProtocol.present).toBe(before);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('applies normally once this tab owns the saved copy again', () => {
+    const store = makeLockAwareStore();
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    expect((store.dispatch as AppDispatch)(undoWithNavigation()).applied).toBe(
+      false,
+    );
+
+    store.dispatch(setProtocolLockState('owned'));
+
+    expect((store.dispatch as AppDispatch)(undoWithNavigation()).applied).toBe(
+      true,
+    );
   });
 });

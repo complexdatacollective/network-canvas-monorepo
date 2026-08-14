@@ -174,12 +174,12 @@ describe('<ProjectActions />', () => {
     );
   });
 
-  // `readOnly` gates authoring only. History recovery is not authoring, and
-  // #1389 requires undo/redo to work identically on every page carrying the
+  // The `report` mode gates authoring only. History recovery is not authoring,
+  // and #1389 requires undo/redo to work identically on every page carrying the
   // toolbar — Summary included.
-  it('keeps undo/redo available on a read-only page', () => {
+  it('keeps undo/redo available on a report page', () => {
     const store = createTestStore();
-    render(<ProjectActions readOnly />, { wrapper: wrap(store) });
+    render(<ProjectActions mode="report" />, { wrapper: wrap(store) });
 
     fireEvent.click(screen.getByRole('button', { name: /undo/i }));
     expect(undoMock).toHaveBeenCalledTimes(1);
@@ -188,7 +188,7 @@ describe('<ProjectActions />', () => {
     expect(redoMock).toHaveBeenCalledTimes(1);
   });
 
-  it('hides save-to-source on a read-only page', async () => {
+  it('hides save-to-source on a report page', async () => {
     sourceAuthoringMock.enabled = true;
     protocolLibraryMock.getStoredProtocol.mockResolvedValueOnce({
       id: 'protocol-1',
@@ -201,7 +201,7 @@ describe('<ProjectActions />', () => {
     });
     const store = createTestStore();
 
-    render(<ProjectActions readOnly />, { wrapper: wrap(store) });
+    render(<ProjectActions mode="report" />, { wrapper: wrap(store) });
 
     // The source ref resolves asynchronously; wait for the point at which a
     // writable page would have shown the action.
@@ -211,6 +211,19 @@ describe('<ProjectActions />', () => {
     expect(
       screen.queryByRole('button', { name: /save to source/i }),
     ).toBeNull();
+  });
+
+  // The other kind of read-only: another tab owns the saved copy, so a history
+  // operation would rewind the screen and be dropped on the way to disk.
+  it('offers no undo or redo when the protocol cannot be saved from here', () => {
+    const store = createTestStore();
+    render(<ProjectActions mode="locked" />, { wrapper: wrap(store) });
+
+    expect(screen.queryByRole('button', { name: /undo/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /redo/i })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /^download$/i }),
+    ).toBeInTheDocument();
   });
 
   it('announces an applied undo in a live region', () => {
