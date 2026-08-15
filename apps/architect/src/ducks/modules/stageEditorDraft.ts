@@ -96,13 +96,21 @@ const draftPresentReducer = (
   return state;
 };
 
-// `exclude` is essential: the timeline reducer's `present === newPresent`
-// short-circuit never fires (an Immer draft proxy is never reference-equal to
-// the `current()` snapshot the wrapped reducer returns), so without a filter
-// EVERY action dispatched anywhere in the app would push a draft snapshot.
-// Recording only `draftSnapshot` actions and the editor's own codebook writes
-// makes one undo step == one logical change. The scoped undo/redo/reset/jump
-// actions are handled separately.
+// `exclude` no longer carries the whole load, and the reason it used to is
+// gone. It was written when the timeline reducer's no-op short-circuit
+// compared against an Immer draft proxy, which is never reference-equal to the
+// `current()` snapshot the wrapped reducer returns — so the guard never fired
+// and, without this filter, EVERY action dispatched anywhere in the app would
+// have pushed a draft snapshot. #1396 changed that comparison to the snapshot
+// the reducer was actually handed, so the guard fires and
+// `draftPresentReducer`'s "return the same reference" contract above now works
+// as written.
+//
+// It is still needed, for the narrower job it names: `rebaselineDraftStage`
+// replaces `present` in place and must not add a point, and recording only
+// `draftSnapshot` actions and the editor's own codebook writes is what makes
+// one undo step == one logical change. The scoped undo/redo/reset/jump actions
+// are handled separately.
 const historyReducer = createTimelineReducer<StageEditorDraftPresent | null>(
   draftPresentReducer,
   {

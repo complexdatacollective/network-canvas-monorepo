@@ -92,11 +92,16 @@ type UsageMeta = {
  *
  * See `getUsage()` for how the usage array is generated.
  *
- * TOTAL by construction: a key this parser does not recognise — or one naming a
- * stage index with no meta — still contributes a generic entry rather than
- * being dropped. An empty result beside a disabled "In use — cannot be deleted"
- * button is the exact disagreement #1392 was filed for, and it must not be
- * possible to reintroduce by adding a reference site somewhere new.
+ * NEVER EMPTY by construction — which is the guarantee that matters, and is
+ * narrower than "every key contributes". A key this parser does not recognise
+ * (or one naming a stage index with no meta) contributes the generic entry
+ * ONLY when nothing else resolved: the fallback below is gated on all three
+ * resolved buckets being empty, so an unrecognised key sitting alongside a
+ * recognised one is dropped. That is harmless, because the row is non-empty
+ * either way — and non-empty is the whole claim. An empty result beside a
+ * disabled "In use — cannot be deleted" button is the exact disagreement #1392
+ * was filed for, and it must not be possible to reintroduce by adding a
+ * reference site somewhere new.
  *
  * @param {Object[]} stageMetaByIndex Stage meta by index (as created by `getStageMetaByIndex()`)
  * @param {Object[]} variableMetaByIndex Variable meta by index (as created by

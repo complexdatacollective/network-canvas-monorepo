@@ -51,8 +51,14 @@ const ProtocolCard = ({
           full value on `title`.
 
           Applied only ABOVE the cap, so every name Architect will now let a
-          researcher write renders in full and unchanged — which is also what
-          keeps `summary-print.png` pixel-identical. */}
+          researcher write renders in full and unchanged — which is what keeps
+          THIS clamp off `summary-print.png` (its fixture name is 14
+          characters). That is no longer the whole story for that baseline:
+          #1392 landed `wrap-break-word` on the shared `Heading`/`Paragraph`
+          bases and dropped `shrink-0` from `Button`, all of which reach this
+          cover. Both are no-ops for text that already fits and for buttons
+          with room to sit in, so no movement is expected — but the guarantee
+          now belongs to the branch's baseline check, not to this comment. */}
       <Heading
         level="h2"
         margin="none"
