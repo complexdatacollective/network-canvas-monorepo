@@ -363,6 +363,51 @@ describe('indexes selectors', () => {
 
       expect(Object.values(getAssetIndex(state))).toContain(assetId);
     });
+
+    // #1393's acceptance criterion "Resource usage remains correct through
+    // Save/Cancel/Undo" needed no code change: an item that becomes text stops
+    // referencing its asset, so the asset is honestly reported as unused
+    // rather than deleted or still counted. Pinned here so the filed
+    // description cannot silently become true — a change that made
+    // `mapAssetItems` read a text item's content would leave a researcher
+    // believing an orphaned resource is still in use.
+    it.each([
+      ['an Information', 'items'],
+      ['a FamilyPedigree intro-screen', 'introScreen'],
+    ])(
+      'stops counting the asset once %s item becomes text',
+      (_label: string, location: string) => {
+        const assetId = 'converted-asset-id';
+        const items = [{ id: 'i1', type: 'text', content: assetId }];
+        const stage =
+          location === 'items'
+            ? {
+                id: 's1',
+                type: 'Information',
+                label: 'Info',
+                title: 'Welcome',
+                items,
+              }
+            : {
+                id: 's1',
+                type: 'FamilyPedigree',
+                label: 'Pedigree',
+                introScreen: { items },
+              };
+        const state = getMockState({
+          activeProtocol: {
+            present: {
+              schemaVersion: 8,
+              name: 'test',
+              codebook: { node: {} },
+              stages: [stage],
+            },
+          },
+        }) as unknown as RootState;
+
+        expect(Object.values(getAssetIndex(state))).not.toContain(assetId);
+      },
+    );
   });
 
   describe('getNodeIndex()', () => {

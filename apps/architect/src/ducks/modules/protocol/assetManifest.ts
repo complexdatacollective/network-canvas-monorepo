@@ -18,7 +18,13 @@ import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 
 // Types
-type AssetType = 'video' | 'audio' | 'image' | 'network' | 'geojson' | 'apikey';
+export type AssetType =
+  | 'video'
+  | 'audio'
+  | 'image'
+  | 'network'
+  | 'geojson'
+  | 'apikey';
 
 type Asset = {
   id: string;

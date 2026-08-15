@@ -70,10 +70,12 @@ export async function addAssetItem(
 ): Promise<void> {
   const dialog = await openFreshItemDialog(editor, page);
   await dialog.getByRole('radio', { name: opts.kind, exact: true }).click();
-  await dialog
-    .locator('[data-field-name="content"]')
-    .getByRole('button', { name: 'Select resource' })
-    .click();
+  // Scoped by the Content section, not by the content field's NAME: the item
+  // editor keeps a separate draft field per content type
+  // (ContentGrid/itemTypes.ts `CONTENT_SLOT_NAMES`), so `data-field-name`
+  // varies with the chosen type. The section is the stable handle.
+  const contentSection = dialog.locator('section[data-name="Content"]');
+  await contentSection.getByRole('button', { name: 'Select resource' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Resource Browser' }),
   ).toBeVisible();
@@ -85,9 +87,7 @@ export async function addAssetItem(
   // The browser closes on selection; the picker button flips once the field
   // value commits.
   await expect(
-    dialog
-      .locator('[data-field-name="content"]')
-      .getByRole('button', { name: 'Update resource' }),
+    contentSection.getByRole('button', { name: 'Update resource' }),
   ).toBeVisible();
   if (opts.size) {
     await dialog.getByRole('radio', { name: opts.size, exact: true }).click();

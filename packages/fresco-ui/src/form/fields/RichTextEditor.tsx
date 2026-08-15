@@ -31,7 +31,7 @@ import {
   Trash2,
   Undo,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import Button, { iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
@@ -310,7 +310,6 @@ export default function RichTextEditorField({
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
-  const skipNextContentSyncRef = useRef(false);
   const onChangeRef = useRef(onChange);
   const changeModeRef = useRef(changeMode);
   const linkSelectionRef = useRef<EditorSelectionRange | null>(null);
@@ -442,13 +441,11 @@ export default function RichTextEditorField({
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
         if (changeModeRef.current === 'input') {
-          skipNextContentSyncRef.current = true;
           onChangeRef.current?.(updateEditor.getJSON());
         }
       },
       onBlur: ({ editor: blurEditor }) => {
         if (changeModeRef.current === 'blur') {
-          skipNextContentSyncRef.current = true;
           onChangeRef.current?.(blurEditor.getJSON());
         }
       },
@@ -478,15 +475,9 @@ export default function RichTextEditorField({
     if (!editor) return;
 
     if (value === undefined) {
-      skipNextContentSyncRef.current = false;
       if (!editor.isEmpty) {
         editor.commands.clearContent(false);
       }
-      return;
-    }
-
-    if (skipNextContentSyncRef.current) {
-      skipNextContentSyncRef.current = false;
       return;
     }
 
@@ -494,6 +485,15 @@ export default function RichTextEditorField({
     // (isFocused is a dependency) to apply any value change deferred here.
     if (isFocused) return;
 
+    // The document comparison is the ONLY guard. A one-shot "ignore the next
+    // sync" flag used to sit here as well, meant to swallow the echo of this
+    // editor's own emission — but the echo is already a no-op below, and the
+    // flag swallowed whichever sync happened to arrive next, which need not be
+    // that echo. A host clearing or replacing the value from outside was
+    // silently discarded, and the editor went on showing a document the form
+    // store no longer held (#1393). Keying the flag on the emitted document
+    // instead is no better: it then refuses a host that legitimately sends the
+    // same document back, which is exactly what undo-then-redo does.
     const currentContent = JSON.stringify(editor.getJSON());
     const newContent = JSON.stringify(value);
     if (currentContent !== newContent) {
@@ -501,9 +501,22 @@ export default function RichTextEditorField({
     }
   }, [editor, value, isFocused]);
 
-  useEffect(() => {
+  // A LAYOUT effect: the editable flag lives in the DOM as `contenteditable`,
+  // and a non-editable ProseMirror node carries no tabindex, so it cannot take
+  // focus at all. `useForm` sends focus to the first errored control from a
+  // layout effect of its own; a passive effect here would still be holding
+  // `contenteditable="false"` from the submitting render at that moment, and
+  // the focus call would silently land on `<body>`. Child layout effects run
+  // before the form's, so this puts the DOM back in step first.
+  useLayoutEffect(() => {
     if (editor) {
-      editor.setEditable(!disabled && !readOnly);
+      // `emitUpdate: false` — becoming disabled or read-only is not an edit.
+      // TipTap's `setEditable` emits an update by default, which reported the
+      // editor's current document back to the host as a change. Every form
+      // disables its fields while submitting, so that turned a submit into a
+      // write of whatever the editor happened to be showing — resurrecting a
+      // value the host had already replaced.
+      editor.setEditable(!disabled && !readOnly, false);
     }
   }, [editor, disabled, readOnly]);
 
