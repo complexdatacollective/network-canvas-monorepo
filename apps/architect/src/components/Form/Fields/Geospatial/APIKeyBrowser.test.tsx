@@ -63,9 +63,17 @@ type ProtocolState = {
   assetManifest: Record<string, Asset>;
 };
 
-type TestState = { activeProtocol: { present: ProtocolState } };
+type TestState = {
+  activeProtocol: { present: ProtocolState };
+  // `getProtocolLockState` reads `app.protocolLockState` and treats anything
+  // unrecognised as 'owned', so the default here is the ordinary case.
+  app: { protocolLockState: string };
+};
 
-const makeStore = (assetManifest: Record<string, Asset> = {}) => {
+const makeStore = (
+  assetManifest: Record<string, Asset> = {},
+  protocolLockState = 'owned',
+) => {
   const initial: TestState = {
     activeProtocol: {
       present: {
@@ -75,6 +83,7 @@ const makeStore = (assetManifest: Record<string, Asset> = {}) => {
         assetManifest,
       },
     },
+    app: { protocolLockState },
   };
 
   // The real asset-manifest reducer, mounted where the protocol selectors look
@@ -111,8 +120,11 @@ const apiKeyAssets = (store: ReturnType<typeof makeStore>) =>
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
-const setup = (assetManifest: Record<string, Asset> = {}) => {
-  const store = makeStore(assetManifest);
+const setup = (
+  assetManifest: Record<string, Asset> = {},
+  protocolLockState = 'owned',
+) => {
+  const store = makeStore(assetManifest, protocolLockState);
   library.ids = Object.keys(assetManifest);
   let formStore: StoreApi | null = null;
   const CaptureStore = () => {
@@ -247,6 +259,49 @@ describe('API key creation', () => {
     expect(nameInput).toHaveFocus();
     expect(apiKeyAssets(store)).toHaveLength(1);
     expect(dialog).toBeInTheDocument();
+  });
+
+  it('refuses to create a key in a tab that cannot save, and says why', async () => {
+    // #1396 gave the sibling write — dropping a resource file — this refusal;
+    // this path was rewritten by #1394 from a base that predated it and never
+    // gained one. A tab holding no lock was told "API key X created and
+    // selected." and then lost the key on reclaim: a write announced as a
+    // success and silently discarded.
+    const { store, openBrowser } = setup({}, 'open-elsewhere');
+    const dialog = await openBrowser();
+
+    fillAndSubmit(dialog, { name: 'Mapbox', value: 'pk.blocked' });
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText(
+          'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.',
+        ),
+      ).toBeInTheDocument(),
+    );
+    // Nothing written, and the dialog stays open holding the typed values so
+    // the researcher can deal with the other tab and submit again.
+    expect(apiKeyAssets(store)).toHaveLength(0);
+    expect(dialog).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('textbox', { name: /API Key Name/ }),
+    ).toHaveFocus();
+  });
+
+  it('names the unresolved stage draft when that is what blocks the reclaim', async () => {
+    const { store, openBrowser } = setup({}, 'reclaim-blocked');
+    const dialog = await openBrowser();
+
+    fillAndSubmit(dialog, { name: 'Mapbox', value: 'pk.blocked' });
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText(
+          'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then create the key again.',
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(apiKeyAssets(store)).toHaveLength(0);
   });
 
   it('creates the key, selects it, closes the dialog and announces it', async () => {

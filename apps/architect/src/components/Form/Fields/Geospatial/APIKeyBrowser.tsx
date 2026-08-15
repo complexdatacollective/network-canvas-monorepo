@@ -16,7 +16,9 @@ import { Layout, Section } from '~/components/EditorLayout';
 import AppForm from '~/components/Form/AppForm';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
+import { getProtocolLockState } from '~/ducks/modules/app';
 import { getAssetManifest } from '~/selectors/protocol';
+import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 
@@ -25,6 +27,22 @@ const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
 const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
 const DUPLICATE_NAME_MESSAGE =
   'A key with this name already exists. Choose a different name.';
+
+// Creating a key writes the protocol's own `assetManifest`, so it is a
+// persistence gate and has to ask the question every other one asks
+// (`getProtocolOwnedHere`). #1396 gave the sibling write — dropping a resource
+// file — exactly this refusal; this path was rewritten by #1394 from a base
+// that predated it and never gained one, so a tab that cannot save was still
+// told "API key X created and selected." before the key was discarded on
+// reclaim. Whole sentences per situation rather than one assembled from
+// clauses: what is true of the researcher's protocol, and the way out of it,
+// differ in each, and each has to be localisable on its own.
+const NOT_OWNED_ELSEWHERE_MESSAGE =
+  'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.';
+const NOT_OWNED_STAGE_DRAFT_MESSAGE =
+  'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then create the key again.';
+const NOT_OWNED_EDITOR_OPEN_MESSAGE =
+  'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then create the key again.';
 
 /**
  * What leaving this dialog with a key actually did, so the caller can say so
@@ -115,6 +133,28 @@ const APIKeyBrowser = ({
 
       if (Object.keys(fieldErrors).length > 0) {
         return { success: false, fieldErrors };
+      }
+
+      // Asked after the shape checks, so a blank form still reports what is
+      // blank, and before the dispatch, so nothing is written that can never
+      // be saved. Reported on `keyName` because that is the error channel this
+      // dialog actually renders and `focusFirstError` can reach — a form-level
+      // error would be refused in silence here, which is the defect, not the
+      // fix.
+      const lockState = getProtocolLockState(store.getState());
+      if (lockState !== 'owned') {
+        return {
+          success: false,
+          fieldErrors: {
+            keyName: [
+              lockState === 'reclaim-blocked'
+                ? getStageEditorCodebookTransactionOpen(store.getState())
+                  ? NOT_OWNED_STAGE_DRAFT_MESSAGE
+                  : NOT_OWNED_EDITOR_OPEN_MESSAGE
+                : NOT_OWNED_ELSEWHERE_MESSAGE,
+            ],
+          },
+        };
       }
 
       const action = addApiKeyAsset(name, value);
