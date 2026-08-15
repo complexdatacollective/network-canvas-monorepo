@@ -58,14 +58,17 @@ const VIEWPORTS = [
 ] as const;
 
 /**
- * Stage editors whose horizontal overflow at phone width came from
- * `ArrayField`'s 24rem `min-width` floor — every one of these measured 432px of
- * content inside a 390px box before it was removed.
+ * Every stage type the all-interfaces fixture carries.
  *
- * The last six were listed here as known gaps while that floor was fixed, and
- * are asserted now that the fixed widths behind them are gone. Measured before,
- * at 390: Name Generator Roster 484, Geospatial 484, Family Pedigree 550, Alter
- * Form 400, Alter Edge Form 400, Narrative Pedigree 410. Four distinct causes
+ * Eleven of them earned their place by overflowing. Five — Information, Ego
+ * Form, Name Generator, Ordinal Bin and Narrative — overflowed at phone width
+ * from `ArrayField`'s 24rem `min-width` floor, each measuring 432px of content
+ * inside a 390px box before it was removed.
+ *
+ * The remaining six were listed here as known gaps while that floor was fixed,
+ * and are asserted now that the fixed widths behind them are gone. Measured
+ * before, at 390: Name Generator Roster 484, Geospatial 484, Family Pedigree
+ * 550, Alter Form 400, Alter Edge Form 400, Narrative Pedigree 410. Four causes
  * between them, so each is worth its own assertion rather than one
  * representative: the asset thumbnail's flat `w-[25rem]` (roster, geospatial);
  * `ArrayField`'s remaining `min-w-fit`, inherited from `controlVariants` and
@@ -75,21 +78,39 @@ const VIEWPORTS = [
  * which no `min-w-0` can restrain because a variable name renders `nowrap` and
  * so has no min-content smaller than itself.
  *
- * Still not the whole set of 19: the eight types not named here have never been
- * reported overflowing, and each entry costs a navigation per viewport.
+ * The other eight were never reported overflowing, and measuring them bore that
+ * out — every one sits exactly at 390/390 and 768/768, with the app scroll
+ * container's width identical from the first frame after the stage-name field
+ * appears to thirty frames later. They are asserted anyway, because they are
+ * where the next regression in a shared control would surface: they exercise
+ * the same `ArrayField`, variable pill, thumbnail and two-column row that
+ * produced all four causes above, and nothing but an assertion distinguishes
+ * "measured clean" from "not measured".
+ *
+ * This is now the fixture's whole set, in its stage order, and the test below
+ * asserts that it still is — a twentieth interface added to all-interfaces
+ * fails here until it is named, rather than quietly going uncovered.
  */
 const EDITOR_TYPES_UNDER_TEST = [
-  'Information',
+  'Anonymisation',
   'EgoForm',
+  'Information',
   'NameGenerator',
-  'OrdinalBin',
-  'Narrative',
+  'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
-  'Geospatial',
-  'FamilyPedigree',
+  'Sociogram',
+  'DyadCensus',
+  'OneToManyDyadCensus',
+  'TieStrengthCensus',
+  'OrdinalBin',
+  'CategoricalBin',
   'AlterForm',
   'AlterEdgeForm',
+  'Narrative',
+  'FamilyPedigree',
   'NarrativePedigree',
+  'NetworkComposer',
+  'Geospatial',
 ] as const;
 
 for (const viewport of VIEWPORTS) {
@@ -166,6 +187,13 @@ for (const viewport of VIEWPORTS) {
     seed,
   }) => {
     const { protocol, assets } = loadAllInterfacesFixture();
+
+    // The guard on the guard: sorted, so the failure names the missing type
+    // rather than printing two unordered sets.
+    expect(
+      [...new Set(protocol.stages.map((stage) => stage.type))].toSorted(),
+    ).toEqual([...EDITOR_TYPES_UNDER_TEST].toSorted());
+
     await seed(protocol, { name: 'All Interfaces', assets });
     await architectPage.setViewportSize({
       width: viewport.width,

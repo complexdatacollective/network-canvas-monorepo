@@ -12,8 +12,6 @@ export const thumbnailBase =
 export const thumbnailInteractive =
   'cursor-pointer transition-opacity duration-150 ease-in-out hover:opacity-80';
 
-export const thumbnailFullWidth = 'flex w-full';
-
 export const thumbnailExisting = 'bg-info italic';
 
 export const thumbnailIcon = 'flex-none size-[25px] mr-5 [&_svg]:size-full';
