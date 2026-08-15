@@ -295,15 +295,21 @@ export const deleteVariableAsync = createAppAsyncThunk(
     const state = getState();
     const isUsed = getIsUsed(state);
 
+    // REJECT rather than resolve `false`. A resolved thunk reads as success to
+    // every caller — `useDialog().confirm` closes its dialog and reports done —
+    // so the researcher was told a variable had been deleted while it was still
+    // there (#1392). The message is researcher-facing: it is rendered verbatim
+    // in the confirm dialog's error paragraph.
     if (get(isUsed, variable, false)) {
-      return false;
+      throw new Error(
+        'This variable is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
+      );
     }
 
     const payload: DeleteVariablePayload = { entity, type, variable };
     dispatch(
       routeCodebookAction(codebookSlice.actions.deleteVariable(payload), state),
     );
-    return true;
   },
 );
 

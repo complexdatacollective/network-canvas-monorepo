@@ -740,3 +740,37 @@ export const AdaptiveToContext: Story = {
     </div>
   ),
 };
+
+export const LongUnbreakableLabel: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A button never widens its container past the space it was given. Its label may be a researcher-authored identifier hundreds of characters long with no break opportunity, so the button carries `min-w-0 max-w-full` and the default flex shrink, and clips what will not fit. Before that, `min-w-fit` + `shrink-0` sized the button to the whole token and pushed its siblings out of the row — in a dialog footer, clean off the viewport (#1392). `IconButton` opts back out with `shrink-0`: its width comes from its height, so shrinking it would shrink the target rather than a label.',
+      },
+    },
+  },
+  render: () => {
+    const identifier = `variable_${'x'.repeat(220)}`;
+    return (
+      <div className="flex flex-col gap-8">
+        <div className="w-[28rem] rounded border-2 border-dashed p-4">
+          <p className="mb-3 text-sm">
+            Alone in a 28rem box — clipped, never wider than the box.
+          </p>
+          <Button color="destructive">{identifier}</Button>
+        </div>
+
+        <div className="w-[28rem] rounded border-2 border-dashed p-4">
+          <p className="mb-3 text-sm">
+            Sharing a row: both actions stay inside the box and stay clickable.
+          </p>
+          <div className="flex gap-2">
+            <Button>Cancel</Button>
+            <Button color="primary">{identifier}</Button>
+          </div>
+        </div>
+      </div>
+    );
+  },
+};

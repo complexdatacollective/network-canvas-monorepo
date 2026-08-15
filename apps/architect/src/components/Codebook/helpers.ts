@@ -92,7 +92,11 @@ type UsageMeta = {
  *
  * See `getUsage()` for how the usage array is generated.
  *
- * Any stages that can't be found in the index are omitted.
+ * TOTAL by construction: a key this parser does not recognise — or one naming a
+ * stage index with no meta — still contributes a generic entry rather than
+ * being dropped. An empty result beside a disabled "In use — cannot be deleted"
+ * button is the exact disagreement #1392 was filed for, and it must not be
+ * possible to reintroduce by adding a reference site somewhere new.
  *
  * @param {Object[]} stageMetaByIndex Stage meta by index (as created by `getStageMetaByIndex()`)
  * @param {Object[]} variableMetaByIndex Variable meta by index (as created by
@@ -109,12 +113,15 @@ export const getUsageAsStageMeta = (
   const codebookVariableNames = new Set<string>();
   const shapeMappingTypeNames = new Set<string>();
   const stageIndexSet = new Set<number>();
+  let hasUnrecognisedKey = false;
 
   for (const key of usageArray) {
     const segments = key.split('.');
     if (segments[0] === 'stages') {
       const stageIndex = Number(segments[1]);
-      if (!Number.isNaN(stageIndex)) {
+      if (Number.isNaN(stageIndex)) {
+        hasUnrecognisedKey = true;
+      } else {
         stageIndexSet.add(stageIndex);
       }
     } else if (segments[0] === 'codebook') {
@@ -129,7 +136,11 @@ export const getUsageAsStageMeta = (
         const typeId = segments[2];
         const typeName = typeId ? typeMetaByIndex[typeId] : undefined;
         shapeMappingTypeNames.add(typeName || 'unknown');
+      } else {
+        hasUnrecognisedKey = true;
       }
+    } else {
+      hasUnrecognisedKey = true;
     }
   }
 
@@ -141,16 +152,27 @@ export const getUsageAsStageMeta = (
     (name) => ({ label: `Used in shape settings for "${name}"` }),
   );
 
-  const stageVariablesWithMeta = compact(
-    [...stageIndexSet].map((stageIndex) =>
-      get(stageMetaByIndex, stageIndex.toString()),
-    ),
+  const resolvedStages = [...stageIndexSet].map((stageIndex) =>
+    get(stageMetaByIndex, stageIndex.toString()),
   );
+  const stageVariablesWithMeta = compact(resolvedStages);
+  if (stageVariablesWithMeta.length !== resolvedStages.length) {
+    hasUnrecognisedKey = true;
+  }
+
+  const fallbackWithMeta: UsageMeta[] =
+    hasUnrecognisedKey &&
+    stageVariablesWithMeta.length === 0 &&
+    codebookVariablesWithMeta.length === 0 &&
+    shapeMappingsWithMeta.length === 0
+      ? [{ label: 'Used elsewhere in this protocol' }]
+      : [];
 
   return [
     ...stageVariablesWithMeta,
     ...codebookVariablesWithMeta,
     ...shapeMappingsWithMeta,
+    ...fallbackWithMeta,
   ];
 };
 

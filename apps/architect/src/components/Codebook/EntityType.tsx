@@ -85,7 +85,7 @@ const EntityType = ({
       void openDialog({
         type: 'acknowledge',
         intent: 'info',
-        title: `Cannot delete ${name} ${entity}`,
+        title: 'Cannot delete type',
         children: (
           <Paragraph>
             The {name} {entity} cannot be deleted as it is currently in use.
@@ -96,9 +96,12 @@ const EntityType = ({
       return;
     }
     void confirm({
-      title: `Delete ${name} ${entity}`,
-      description: `Are you sure you want to delete the ${name} ${entity}? This cannot be undone.`,
-      confirmLabel: `Delete ${name} ${entity}`,
+      // Fixed, localisable action strings — see the same change in
+      // Codebook/Variables.tsx. A type name interpolated into the heading and
+      // the confirm button overflowed the dialog at every width (#1392).
+      title: 'Delete type',
+      description: `Are you sure you want to delete the ${entity} type “${name}”? This cannot be undone.`,
+      confirmLabel: 'Delete type',
       cancelLabel: 'Cancel',
       intent: 'destructive',
       onConfirm: () => {

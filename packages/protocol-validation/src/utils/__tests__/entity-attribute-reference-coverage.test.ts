@@ -42,9 +42,14 @@ const countTagged = (
 // Merged total: main's NetworkComposer reference fields, plus this branch's
 // pedigree fields — biologicalSexVariable (NodeConfigSchema), gameteRoleVariable
 // (EdgeConfigSchema), and NarrativePedigree diseases[].variable — plus the two
-// node shape-mapping `variable` fields (discrete and breakpoints arms). The
-// value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 36;
+// node shape-mapping `variable` fields (discrete and breakpoints arms), plus
+// #1392's four existence-unchecked sites: the shared sort rule `property`
+// (SortRuleSchema, reached by every prompt-level sort order and the roster's
+// stage-level one) and the roster's three data-source column fields
+// (cardOptions.additionalProperties[].variable,
+// sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
+// The value is verified against the runtime count computed below.
+const EXPECTED_TAGGED_FIELD_COUNT = 40;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns. Both drive protocol-level rules and Architect's pickers/option
@@ -117,6 +122,25 @@ describe('entity-attribute reference coverage', () => {
       if (!descriptor.exclusive) continue;
       expect(descriptor.exclusive.owner.length).toBeGreaterThan(0);
     }
+  });
+
+  // `existence: 'unchecked'` buys usage detection at the price of validation:
+  // a reference tagged this way can name a variable that does not exist and
+  // nothing will say so. It is correct for exactly two things — a roster
+  // data-source column and a sort key — and downgrading a real reference to it
+  // would silently disable existence checking for that field.
+  it('leaves existence checking on for all but the known data-source sites', () => {
+    const unchecked = collectDescriptors(CurrentProtocolSchema).filter(
+      (descriptor) => descriptor.existence === 'unchecked',
+    );
+    // The shared sort rule `property`, and the roster's three column fields.
+    expect(unchecked).toHaveLength(4);
+    // Only the sort rule admits a magic key, and `'*'` is the only one.
+    expect(
+      unchecked
+        .map((descriptor) => descriptor.ignoreValues)
+        .filter((values) => values !== undefined),
+    ).toEqual([['*']]);
   });
 
   it('declares exactly the expected interface-owned option sets', () => {

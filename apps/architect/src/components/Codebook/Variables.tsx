@@ -14,6 +14,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ConnectedVariablePill } from '~/components/VariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { ensureError } from '~/utils/ensureError';
 
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
@@ -53,13 +54,34 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
       const { name } = variable || { name: 'Unknown' };
 
       void confirm({
-        title: `Delete ${name}`,
-        description: `Are you sure you want to delete the variable called ${name}? This cannot be undone.`,
-        confirmLabel: `Delete ${name}`,
+        // Fixed, localisable action strings. A variable name is a
+        // researcher-authored identifier that may run to hundreds of characters
+        // with no break opportunity; interpolated into the confirm button it
+        // pushed Cancel clean out of the dialog (#1392). The identifier belongs
+        // in the body text, which wraps.
+        title: 'Delete variable',
+        description: `Are you sure you want to delete the variable “${name}”? This cannot be undone.`,
+        confirmLabel: 'Delete variable',
         cancelLabel: 'Cancel',
         intent: 'destructive',
-        onConfirm: () => {
-          void dispatch(deleteVariableAsync({ entity, type, variable: id }));
+        // `.unwrap()` re-throws a rejected thunk so `confirm` can surface the
+        // refusal in the dialog's error paragraph and keep the dialog open.
+        // Without it the dispatch promise RESOLVES even when the thunk
+        // rejected, and the dialog closes reporting a deletion that never
+        // happened.
+        //
+        // `ensureError` because `.unwrap()` throws Redux Toolkit's plain
+        // `SerializedError`, not an `Error` — and the dialog only shows a
+        // caught value's `message` when it `instanceof Error`, so without this
+        // the researcher gets "An error occurred" instead of the reason.
+        onConfirm: async () => {
+          try {
+            await dispatch(
+              deleteVariableAsync({ entity, type, variable: id }),
+            ).unwrap();
+          } catch (error) {
+            throw ensureError(error);
+          }
         },
       });
     },

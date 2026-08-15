@@ -52,9 +52,31 @@ export type InterfaceOwnedOptionSetKey =
   | 'relationshipType'
   | 'gameteRole';
 
+/**
+ * Whether the value at this site is GUARANTEED to name a codebook attribute.
+ *
+ * `'unchecked'` marks a site whose value may legitimately not be one — a
+ * roster data-source column, a prompt sort key left behind by a codebook edit.
+ * The reference is still COLLECTED, so "where is this variable used?" and the
+ * deletion gate that reads the same index stay complete and cannot disagree;
+ * it is simply never existence- or type-validated, so a protocol that has
+ * always opened cannot newly fail to. The `filterRule` subject resolution
+ * already relies on the same collect-without-checking behaviour, by way of a
+ * subject the entity-attribute validator cannot resolve.
+ */
+export type AttributeExistence = 'unchecked';
+
 export type EntityAttributeReferenceDescriptor = {
   subject: SubjectResolution;
   requireType?: readonly VariableType[];
+  /** See `AttributeExistence`. Omitted means the attribute must exist. */
+  existence?: AttributeExistence;
+  /**
+   * Literal values at this site that are magic keys rather than attribute ids
+   * (the nomination-order sort key `'*'`). No hit is emitted for them, so a
+   * magic key never enters a usage index as a phantom variable.
+   */
+  ignoreValues?: readonly string[];
   /**
    * How the interview writes through this reference: via the form system
    * (codebook validation applies) or via a direct dispatch (it does not).

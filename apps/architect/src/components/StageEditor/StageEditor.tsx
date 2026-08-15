@@ -14,6 +14,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   type Stage,
   type StageType,
@@ -21,6 +22,7 @@ import {
 } from '@codaco/protocol-validation';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   getPreviewRespectSkipLogic,
@@ -550,6 +552,23 @@ const StageEditor = (props: StageEditorProps) => {
         />
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto w-full max-w-7xl">
+            {/*
+             * The editor's visible hero heading is the stage-name INPUT
+             * (StageHeading), which is a control, not a heading — so this route
+             * had no `<h1>` and nothing for a keyboard user arriving from a
+             * Codebook "Used In" link to land on. This is the real heading and
+             * RouteFocus's landing point; it is `sr-only` because the input
+             * already shows the same text at hero size.
+             *
+             * Focus lands HERE, never on the name input: opening an edit the
+             * researcher did not ask for is worse than a silent arrival. The
+             * new-stage flow is the deliberate exception — it autofocuses the
+             * input because naming the stage IS the next step, and RouteFocus
+             * leaves any destination that has already claimed focus alone.
+             */}
+            <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
+              {stageName}
+            </Heading>
             <StageHeading
               stageNumber={stageNumber}
               totalStages={totalStages}

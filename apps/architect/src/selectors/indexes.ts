@@ -27,28 +27,20 @@ const mapAssetItems = (
   return [content, `${path}.content`];
 };
 
-const mapSortProperty = (
-  value: unknown,
-  path: string,
-): [unknown, string] | undefined => {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  const { property } = value as { property?: unknown };
-  if (typeof property !== 'string') {
-    return undefined;
-  }
-  return [property, `${path}.property`];
-};
-
 // Node/edge TYPE usage and variable usage are both derived from the schema
 // (collectEntityTypeReferences / collectEntityAttributeReferences), so new
-// stage types are covered automatically. Assets and sort keys still need
-// hand-kept paths — the schema tags neither (sort `property` is a plain string
-// that may be a codebook variable, a roster column, or a magic key).
+// stage types are covered automatically. Assets are the only remaining
+// hand-kept path list, and the only consumer of `collectPaths`' BRACKETED key
+// format (`stages[0].dataSource`) — `getAssetIndex`'s keys are never parsed as
+// paths, only its values are read.
+//
+// Sort keys and roster columns used to be hand-kept here too, in that bracket
+// format, while `getUsageAsStageMeta` only understood the collector's dotted
+// format — so every such reference counted towards "in use" and vanished from
+// "Used In" (#1392). They are schema-tagged references now; do not reintroduce
+// a second variable-path list.
 const paths: {
   assets: CollectPathsEntry[];
-  sortVariables: CollectPathsEntry[];
 } = {
   assets: [
     'stages[].panels[].dataSource',
@@ -58,14 +50,6 @@ const paths: {
     'stages[].mapOptions.dataSourceAssetId',
     ['stages[].items[]', mapAssetItems],
     ['stages[].introScreen.items[]', mapAssetItems],
-  ],
-  // Prompt-level sort keys reference the stage's codebook variables. Roster
-  // sortOptions keys are data-source columns, not codebook variables, so they
-  // are deliberately excluded.
-  sortVariables: [
-    ['stages[].prompts[].sortOrder[]', mapSortProperty],
-    ['stages[].prompts[].bucketSortOrder[]', mapSortProperty],
-    ['stages[].prompts[].binSortOrder[]', mapSortProperty],
   ],
 };
 
@@ -109,8 +93,14 @@ const getEntityAttributeHits = createSelector(getProtocol, (protocol) =>
 
 /**
  * Returns index of used variables.
- * Keys use the dotted-array format produced by collectEntityAttributeReferences,
- * e.g. `stages.0.prompts.0.variable`. Values are the variable id strings.
+ *
+ * EVERY key uses the dotted-array format produced by
+ * collectEntityAttributeReferences, e.g. `stages.0.prompts.0.variable`. That is
+ * a load-bearing invariant, not an incidental detail: `getIsUsed` reads this
+ * index's VALUES to gate deletion while `getUsageAsStageMeta` parses its KEYS
+ * to say where the variable is used, so a key in any other shape shows up as
+ * "in use" with nothing to show for it. Values are the variable id strings.
+ *
  * @returns {object} in format: { [dotted-path]: variableId }
  */
 const getVariableIndex = createSelector(
@@ -121,10 +111,6 @@ const getVariableIndex = createSelector(
     for (const hit of hits) {
       index[hit.path.join('.')] = hit.variableId;
     }
-    // Sort keys are untagged plain strings in the schema, so a variable used
-    // only as a sort key would otherwise read "not in use" and be safely
-    // deletable.
-    Object.assign(index, collectPaths(paths.sortVariables, protocol));
     return index;
   },
 );

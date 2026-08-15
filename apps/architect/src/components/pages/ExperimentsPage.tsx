@@ -9,6 +9,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout } from '~/components/EditorLayout';
 import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
 import { getExperiments } from '~/selectors/protocol';
@@ -51,7 +52,9 @@ const ExperimentsPage = () => {
               <div className="bg-mustard/20 rounded-lg p-2">
                 <FlaskConical className="text-mustard h-6 w-6" />
               </div>
-              <Heading level="h1">Experimental Features</Heading>
+              <Heading level="h1" {...routeFocusTargetProps}>
+                Experimental Features
+              </Heading>
             </div>
             <Paragraph>
               These features are experimental and may not be fully supported.

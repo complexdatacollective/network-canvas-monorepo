@@ -10,8 +10,6 @@ import {
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { StageSubject, VariableType } from '@codaco/protocol-validation';
 import { useCreateVariable as useCreateVariableForSubject } from '~/components/Form/arrayFields/useCreateVariable';
-import { useAppDispatch } from '~/ducks/hooks';
-import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 import safeName from '~/utils/safeName';
 
 import { useStageFormContext } from './stageFormContext';
@@ -177,18 +175,22 @@ export type CreateStageVariable = (
 
 export type StageVariableHandlers = {
   createVariable: CreateStageVariable;
-  deleteVariable: (variableId: string) => void;
   normalizeKeyDown: (event: KeyboardEvent) => void;
 };
 
 /**
- * Codebook variable create/delete bound to the stage's subject — the
+ * Codebook variable creation bound to the stage's subject — the
  * `withCreateVariableHandler` enhancer's replacement. Creation itself is
  * `Form/arrayFields/useCreateVariable`; this adds the enhancer's optional
- * write-the-id-into-a-field step and its delete/keydown helpers.
+ * write-the-id-into-a-field step and its keydown helper.
+ *
+ * The enhancer's `deleteVariable` companion is deliberately gone: nothing ever
+ * called it, and it dispatched `deleteVariableAsync` without unwrapping it, so
+ * a refusal to delete an in-use variable would have been swallowed whole
+ * (#1392). The Codebook page is the only place a variable is deleted, and it
+ * surfaces the refusal.
  */
 export function useCreateVariable(): StageVariableHandlers {
-  const dispatch = useAppDispatch();
   const { entity, type } = useSubject();
   const setStageValue = useSetStageValue();
   const createForSubject = useCreateVariableForSubject(entity, type ?? '');
@@ -210,21 +212,8 @@ export function useCreateVariable(): StageVariableHandlers {
     [createForSubject, setStageValue],
   );
 
-  const deleteVariable = useCallback(
-    (variableId: string) => {
-      void dispatch(
-        deleteVariableAsync({
-          entity,
-          type: type ?? undefined,
-          variable: variableId,
-        }),
-      );
-    },
-    [dispatch, entity, type],
-  );
-
   return useMemo(
-    () => ({ createVariable, deleteVariable, normalizeKeyDown }),
-    [createVariable, deleteVariable],
+    () => ({ createVariable, normalizeKeyDown }),
+    [createVariable],
   );
 }

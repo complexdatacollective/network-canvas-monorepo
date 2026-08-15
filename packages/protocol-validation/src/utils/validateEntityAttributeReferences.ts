@@ -27,6 +27,11 @@ export const validateReferences = (
   const issues: ReferenceIssue[] = [];
   for (const hit of hits) {
     if (!hit.subject) continue;
+    // Collected for usage detection, never existence-checked — see
+    // `AttributeExistence`. A roster data-source column or a sort key left
+    // behind by a codebook edit must not make a protocol that has always
+    // opened newly fail to.
+    if (hit.existence === 'unchecked') continue;
     if (!variableExists(codebook, hit.subject, hit.variableId)) {
       issues.push({
         code: 'custom',

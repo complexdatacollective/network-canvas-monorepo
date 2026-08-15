@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { StageSubject } from '../schemas/8/common/index.ts';
 import {
   getEntityAttributeReferenceDescriptor,
+  type AttributeExistence,
   type AttributeWriterUsage,
   type ExclusiveSlotDescriptor,
   type InterfaceOwnedOptionSetKey,
@@ -25,6 +26,8 @@ export type EntityAttributeReferenceHit = {
   variableId: string;
   subject?: StageSubject;
   requireType?: readonly VariableType[];
+  /** See `AttributeExistence`; absent means the attribute must exist. */
+  existence?: AttributeExistence;
   usage?: AttributeWriterUsage;
   exclusive?: ExclusiveSlotDescriptor;
   ownedOptions?: InterfaceOwnedOptionSetKey;
@@ -233,6 +236,10 @@ const walk = (
     if (typeof value !== 'string') return [];
     const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
     if (attributeDescriptor) {
+      // A magic key (the `'*'` nomination-order sort property) occupies a
+      // reference site without being one. Emitting a hit would put it in every
+      // usage index as a variable id that no codebook can ever contain.
+      if (attributeDescriptor.ignoreValues?.includes(value)) return [];
       return [
         {
           kind: 'attribute',
@@ -240,6 +247,7 @@ const walk = (
           variableId: value,
           subject: resolveSubject(attributeDescriptor.subject, path, ctx),
           requireType: attributeDescriptor.requireType,
+          existence: attributeDescriptor.existence,
           usage: attributeDescriptor.usage,
           exclusive: attributeDescriptor.exclusive,
           ownedOptions: attributeDescriptor.ownedOptions,

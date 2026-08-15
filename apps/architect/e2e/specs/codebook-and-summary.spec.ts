@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { readProtocolJson } from '../helpers/read-store.js';
 import { makeCapture } from '../helpers/visual.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
@@ -109,3 +110,205 @@ test(
     await capture('codebook');
   },
 );
+
+// #1392: the Codebook's "Used In" column disagreed with its own delete gate.
+// The usage index it derives both from missed every reference that reaches a
+// variable through a data-source column or a sort key, so a variable could be
+// undeletable with nothing to show for it — or, worse, deletable while a stage
+// still read it.
+test('lists roster data-source references in Used In', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/codebook');
+
+  // The fixture's NameGeneratorRoster names `age` in cardOptions,
+  // sortOptions and searchOptions, and names it nowhere else — no prompt, no
+  // form field. Before the fix this cell listed every OTHER stage and omitted
+  // the roster entirely.
+  const ageRow = architectPage.locator('tr', {
+    has: architectPage.getByRole('button', {
+      name: 'Edit variable name: age',
+      exact: true,
+    }),
+  });
+  await expect(ageRow).toHaveCount(1);
+  await expect(
+    ageRow.getByRole('link', { name: 'Name Generator Roster' }),
+  ).toBeVisible();
+
+  // The invariant behind the two symptoms, asserted across the whole table:
+  // a row whose delete is disabled as in-use must say where.
+  const disabledWithNothingToShow = await architectPage.evaluate(() => {
+    const rows = [...document.querySelectorAll('table tbody tr')];
+    return rows
+      .filter((row) => {
+        const control = row.querySelector('button[aria-label^="In use"]');
+        const usage = row.querySelectorAll('td')[1];
+        return control !== null && (usage?.textContent ?? '').trim() === '';
+      })
+      .map((row) => row.textContent?.trim().slice(0, 60) ?? '');
+  });
+  expect(disabledWithNothingToShow).toEqual([]);
+});
+
+// The same references reach the printable Summary's own "Used In" column,
+// which is built from a separate index (lib/ProtocolSummary/helpers.ts) and
+// renders one link per collected reference. A stage that reads one variable
+// through several sites must still be named once — the fixture's roster names
+// `age` in cardOptions, sortOptions.sortOrder, sortOptions.sortableProperties
+// AND searchOptions, which is four references to one stage. This guards the
+// committed summary-print.png baseline as much as the page.
+test('names each stage once in the printable summary Used In column', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/summary');
+  await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+
+  const usage = await architectPage.evaluate(() =>
+    [...document.querySelectorAll('tbody tr[id^="variable-"]')].map((row) => {
+      const cells = row.querySelectorAll('td');
+      return {
+        id: row.id,
+        links: [...(cells[cells.length - 1]?.querySelectorAll('a') ?? [])].map(
+          (link) => link.getAttribute('href') ?? '',
+        ),
+      };
+    }),
+  );
+
+  // Guard the guard: an empty table, or a table whose roster references never
+  // arrived, would satisfy the de-duplication assertion vacuously.
+  expect(usage.length).toBeGreaterThan(0);
+  expect(usage.find((row) => row.id === 'variable-age')?.links).toEqual([
+    '#stage-name-generator-roster-1',
+  ]);
+
+  const repeated = usage.filter(
+    ({ links }) => new Set(links).size !== links.length,
+  );
+  expect(repeated).toEqual([]);
+});
+
+test('lands keyboard focus on the destination heading of a Used In link', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/codebook');
+
+  const link = architectPage
+    .locator('table tbody tr')
+    .getByRole('link')
+    .first();
+  const destination = await link.textContent();
+  await link.focus();
+  await architectPage.keyboard.press('Enter');
+
+  await expect(architectPage).toHaveURL(/\/protocol\/stage\//);
+
+  // The heading, not `<body>`: before the fix the next Tab restarted at the
+  // header's "Return to start screen" logo instead of continuing into the
+  // editor.
+  const focused = await architectPage.evaluate(() => {
+    const active = document.activeElement;
+    return {
+      tag: active?.tagName ?? null,
+      isRouteTarget:
+        active instanceof HTMLElement &&
+        active.hasAttribute('data-route-focus-target'),
+      text: active?.textContent?.trim() ?? '',
+    };
+  });
+  expect(focused.tag).toBe('H1');
+  expect(focused.isRouteTarget).toBe(true);
+  expect(focused.text).toBe(destination?.trim());
+
+  await architectPage.keyboard.press('Tab');
+  await expect(
+    architectPage.getByRole('textbox', { name: 'Stage name' }),
+  ).toBeFocused();
+});
+
+// #1392: a valid but very long variable name broke the delete confirmation.
+// The confirm button's label carried the identifier, `min-w-fit` + `shrink-0`
+// sized the button to the whole unbreakable token, and the flex footer pushed
+// the autofocused Cancel button off the viewport — so the dialog's default
+// action was invisible and Enter "silently" cancelled.
+test('deletes a very long variable from a dialog that stays inside its box', async ({
+  architectPage,
+  seed,
+}) => {
+  const LONG_NAME = `long_${'x'.repeat(240)}`;
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const withLongVariable = structuredClone(protocol);
+  const personType = withLongVariable.codebook.node?.person;
+  if (!personType?.variables) throw new Error('fixture lost its person type');
+  personType.variables['long-name-variable'] = {
+    name: LONG_NAME,
+    type: 'text',
+    component: 'Text',
+  };
+  await seed(withLongVariable, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/codebook');
+
+  const row = architectPage.locator('tr', {
+    has: architectPage.getByRole('button', {
+      name: `Edit variable name: ${LONG_NAME}`,
+      exact: true,
+    }),
+  });
+  await row.getByRole('button', { name: 'Delete variable' }).click();
+
+  const dialog = architectPage.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  // Nothing overflows, and every action is inside the dialog and hit-testable
+  // at its own centre — `toBeVisible()` alone would pass for a button parked
+  // at x = -1572.
+  const geometry = await dialog.evaluate((node: HTMLElement) => ({
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+    actions: [...node.querySelectorAll('button')].map((button) => {
+      const box = button.getBoundingClientRect();
+      const dialogBox = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        Math.round(box.x + box.width / 2),
+        Math.round(box.y + box.height / 2),
+      );
+      return {
+        label: button.getAttribute('data-testid') ?? 'close',
+        inside: box.x >= dialogBox.x - 1 && box.right <= dialogBox.right + 1,
+        hittable: hit !== null && node.contains(hit),
+      };
+    }),
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+  expect(geometry.actions.every((action) => action.inside)).toBe(true);
+  expect(geometry.actions.every((action) => action.hittable)).toBe(true);
+  // The identifier is in the body text, which wraps; the action label is fixed.
+  await expect(dialog.getByTestId('dialog-primary')).toHaveText(
+    'Delete variable',
+  );
+
+  await dialog.getByTestId('dialog-primary').click();
+  await expect(dialog).toBeHidden();
+
+  // The IndexedDB row, not the rendered table: the filed symptom was a
+  // deletion that looked done and had not happened.
+  const stored = await readProtocolJson(
+    architectPage,
+    (current) =>
+      current.codebook.node?.person?.variables?.['long-name-variable'] ===
+      undefined,
+  );
+  expect(
+    stored.codebook.node?.person?.variables?.['long-name-variable'],
+  ).toBeUndefined();
+});

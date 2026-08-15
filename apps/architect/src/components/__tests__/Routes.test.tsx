@@ -159,7 +159,13 @@ describe('Routes', () => {
     });
 
     expect(screen.queryByTestId('protocol')).not.toBeInTheDocument();
-    expect(container).toBeEmptyDOMElement();
+    // Nothing but RouteFocus's always-mounted (and empty) announcement region:
+    // a live region has to exist before its content changes to be announced at
+    // all, so it is deliberately outside the guard and outside the Switch.
+    expect(container.textContent).toBe('');
+    expect(
+      container.querySelector(':scope > *:not([role="status"])'),
+    ).toBeNull();
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 

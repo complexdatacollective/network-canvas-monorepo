@@ -21,6 +21,7 @@ import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
@@ -315,6 +316,7 @@ const Home = () => {
                     level="h1"
                     margin="none"
                     className="laptop:text-[clamp(3rem,9vh,6rem)] mb-3 text-[clamp(2.75rem,8vh,4.5rem)] leading-[0.95] tracking-tight"
+                    {...routeFocusTargetProps}
                   >
                     Welcome to <span className="text-action">Architect</span>
                   </Heading>

@@ -262,7 +262,11 @@ const DialogFooter = ({
   return (
     <footer
       className={cx(
-        'mt-4 flex shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
+        // `min-w-0` so the row is bounded by the popup and not by its widest
+        // action: without it an over-long label sized the footer, and the flex
+        // row pushed the cancel action out past the dialog's clipped edge and
+        // off the viewport entirely (#1392).
+        'mt-4 flex min-w-0 shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
         children && 'mt-6',
         surfaceSpacingVariants({ section: 'footer' }),
         className,

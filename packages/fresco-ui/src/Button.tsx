@@ -21,7 +21,17 @@ import { compose, cva, cx, type VariantProps } from './utils/cva';
 
 const buttonSpecificVariants = cva({
   base: cx(
-    'font-heading inline-flex shrink-0 cursor-pointer border-0 font-bold tracking-wide',
+    'font-heading inline-flex cursor-pointer border-0 font-bold tracking-wide',
+    // A button must never force its container to overflow. `controlVariants`
+    // floors every control at `min-w-fit`, which for an unbreakable label (a
+    // researcher-authored identifier hundreds of characters long) is the width
+    // of the whole token; combined with the old `shrink-0` that floor pushed
+    // sibling actions clean out of a dialog and off the viewport (#1392).
+    // `min-w-0` + the default shrink let the button give way and clip inside
+    // the box that owns the space; `max-w-full` caps it even where nothing
+    // shrinks it. Buttons that genuinely must hold their size — icon buttons
+    // (below), toolbar actions — say so with `shrink-0` at the call site.
+    'max-w-full min-w-0',
     'items-center justify-center',
     'disabled:cursor-not-allowed disabled:opacity-50',
     'focusable',
@@ -297,7 +307,10 @@ type IconButtonProps = Omit<
 const iconButtonVariants = compose(
   buttonVariants,
   cva({
-    base: 'aspect-square justify-center rounded-full p-0!',
+    // `shrink-0` restores the floor Button gives up: an icon button's width
+    // comes from its fixed height via `aspect-square`, so letting a crowded
+    // flex row squash it would squash the target itself, not a label.
+    base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
   }),
 );
 
