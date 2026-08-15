@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -138,6 +138,52 @@ describe('ProtocolInfoCard', () => {
     expect(name).toHaveValue('Original protocol');
     expect(store.getState().activeProtocol.present?.name).toBe(
       'Original protocol',
+    );
+  });
+
+  // Pinned because nothing pinned it: this guard lives in the same JSX block
+  // #1397 rewrote wholesale, so a textual merge that took either side intact
+  // would have dropped it in silence. The timeline's own structural no-op guard
+  // (#1396) means the lost history point would not have shown up in state
+  // either — only a dispatch-level assertion catches it, so that is what this
+  // makes. Clicking into the name to read it, or tabbing past it, is not an
+  // edit and must not be dispatched as one.
+  it('does not dispatch a rename when the field is entered and left unchanged', () => {
+    const dispatched: string[] = [];
+    const record: Middleware = () => (next) => (action) => {
+      dispatched.push((action as { type: string }).type);
+      return next(action);
+    };
+
+    const store = configureStore({
+      reducer: {
+        activeProtocol: createTimelineReducer(activeProtocolReducer),
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }).concat(record),
+    });
+    store.dispatch(setActiveProtocol(protocol));
+
+    render(
+      <Provider store={store}>
+        <ProtocolInfoCard />
+      </Provider>,
+    );
+
+    const name = nameControl();
+    name.focus();
+    fireEvent.blur(name);
+
+    expect(dispatched).not.toContain(updateProtocolName.type);
+
+    // The positive control: an edit that IS one still commits, so the guard
+    // cannot pass by refusing everything.
+    fireEvent.change(name, { target: { value: 'Actually renamed' } });
+    fireEvent.blur(name);
+
+    expect(dispatched).toContain(updateProtocolName.type);
+    expect(store.getState().activeProtocol.present?.name).toBe(
+      'Actually renamed',
     );
   });
 
