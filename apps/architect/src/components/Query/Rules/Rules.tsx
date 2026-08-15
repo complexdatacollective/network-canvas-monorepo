@@ -31,43 +31,92 @@ export type RuleSetGroupProps = {
   'aria-invalid'?: boolean;
 };
 
-type RulesProps = RuleSetGroupProps & {
-  type?: 'filter' | 'query';
-  allowEdgeRules?: boolean;
-  rules?: Rule[];
-  join?: string | null;
-  codebook: Record<string, unknown>;
-  draftRule?: Rule | null;
-  resetDraft: () => void;
-  handleChangeDraft: (value: Rule) => void;
-  handleCancelDraft: () => void;
-  handleClickRule: (id: string) => void;
-  handleCreateAlterRule: () => void;
-  handleCreateEdgeRule: () => void;
-  handleCreateEgoRule: () => void;
-  onChange?: (value: unknown) => void;
-};
-const Rules = ({
-  type = 'filter',
-  allowEdgeRules = true,
-  rules = [],
-  join = null,
-  codebook,
-  id,
-  'aria-labelledby': ariaLabelledBy,
-  'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
-  'aria-invalid': ariaInvalid,
-  draftRule = null,
-  resetDraft,
-  handleChangeDraft,
-  handleCancelDraft,
-  handleClickRule,
-  handleCreateAlterRule,
-  handleCreateEdgeRule,
-  handleCreateEgoRule,
-  onChange = () => {},
-}: RulesProps) => {
+/**
+ * Which rule set this builder is, and what its add buttons are called.
+ *
+ * The labels are REQUIRED and whole strings — not an `Add new ${entity} rule`
+ * template — so they can be localised and so no call site can fall back to a
+ * shared default. A shared default was the defect: `RuleSetFields` mounts this
+ * builder twice per stage editor, once for Skip Logic and once for Filter, so
+ * ten of the interfaces offered two buttons called "Add alter rule" and two
+ * called "Add edge rule". To anyone navigating by a list of controls — a
+ * screen reader's elements list, a voice-control "click Add alter rule" — they
+ * were one control (#1391).
+ *
+ * `type` stays an explicit declaration rather than being inferred from which
+ * labels turned up: the ego button is offered because a caller asked for skip
+ * logic, not because it happened to supply a third string. The two shapes
+ * differ so that the ego label is required exactly where the button renders
+ * and rejected where it cannot — a filter has no ego rules, and so has no name
+ * for one to write.
+ */
+type RuleSetVariantProps =
+  | {
+      type?: 'filter';
+      addAlterRuleLabel: string;
+      addEdgeRuleLabel: string;
+      addEgoRuleLabel?: never;
+    }
+  | {
+      type: 'query';
+      addAlterRuleLabel: string;
+      addEdgeRuleLabel: string;
+      addEgoRuleLabel: string;
+    };
+
+export type RulesOuterProps = RuleSetGroupProps &
+  RuleSetVariantProps & {
+    rules?: Rule[];
+    join?: string;
+    onChange?: (value: unknown) => void;
+    codebook?: Record<string, unknown>;
+    allowEdgeRules?: boolean;
+  };
+
+type RulesProps = RuleSetGroupProps &
+  RuleSetVariantProps & {
+    allowEdgeRules?: boolean;
+    rules?: Rule[];
+    join?: string | null;
+    codebook: Record<string, unknown>;
+    draftRule?: Rule | null;
+    resetDraft: () => void;
+    handleChangeDraft: (value: Rule) => void;
+    handleCancelDraft: () => void;
+    handleClickRule: (id: string) => void;
+    handleCreateAlterRule: () => void;
+    handleCreateEdgeRule: () => void;
+    handleCreateEgoRule: () => void;
+    onChange?: (value: unknown) => void;
+  };
+/**
+ * `type` and `addEgoRuleLabel` are read off `props` rather than destructured
+ * because destructuring flattens the variant union and loses the narrowing
+ * that makes the ego label guaranteed wherever the ego button renders.
+ */
+const Rules = (props: RulesProps) => {
+  const {
+    allowEdgeRules = true,
+    rules = [],
+    join = null,
+    codebook,
+    id,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    'aria-required': ariaRequired,
+    'aria-invalid': ariaInvalid,
+    addAlterRuleLabel,
+    addEdgeRuleLabel,
+    draftRule = null,
+    resetDraft,
+    handleChangeDraft,
+    handleCancelDraft,
+    handleClickRule,
+    handleCreateAlterRule,
+    handleCreateEdgeRule,
+    handleCreateEgoRule,
+    onChange = () => {},
+  } = props;
   const { confirm, openDialog } = useDialog();
 
   /**
@@ -213,7 +262,7 @@ const Rules = ({
 
       <div className="mt-5 [&_button]:mr-5">
         <Button type="button" color="info" onClick={handleCreateAlterRule}>
-          Add alter rule
+          {addAlterRuleLabel}
         </Button>
         {allowEdgeRules && (
           <Button
@@ -221,12 +270,12 @@ const Rules = ({
             color="destructive"
             onClick={handleCreateEdgeRule}
           >
-            Add edge rule
+            {addEdgeRuleLabel}
           </Button>
         )}
-        {type === 'query' && (
+        {props.type === 'query' && (
           <Button type="button" color="warning" onClick={handleCreateEgoRule}>
-            Add ego rule
+            {props.addEgoRuleLabel}
           </Button>
         )}
       </div>
@@ -250,14 +299,4 @@ const Rules = ({
     </div>
   );
 };
-export default compose<
-  RulesProps,
-  RuleSetGroupProps & {
-    rules?: Rule[];
-    join?: string;
-    onChange?: (value: unknown) => void;
-    codebook?: Record<string, unknown>;
-    type?: 'filter' | 'query';
-    allowEdgeRules?: boolean;
-  }
->(withDraftRule)(Rules);
+export default compose<RulesProps, RulesOuterProps>(withDraftRule)(Rules);

@@ -62,6 +62,15 @@ const toRuleSetGroupProps = ({
  * `BaseField` renders the field's errors, and showing one message twice is
  * worse than showing it once. `aria-invalid` is what marks the rule list
  * itself, in the same way it marks any other invalid control.
+ *
+ * Most stage editors mount BOTH of these — the Skip Logic section and the
+ * Filter section — so each names its add buttons after the rule set it builds.
+ * Sharing one set of names left ten interfaces offering two buttons called
+ * "Add alter rule" and two called "Add edge rule", which to anyone navigating
+ * by a list of controls is one control repeated (#1391). The names follow the
+ * convention the rest of Architect's list add buttons use: "Add new …" for a
+ * row assembled by choosing from material that already exists, which is what a
+ * rule is — a variable and an operator picked out of the codebook.
  */
 export const FilterField = (props: RuleSetFieldProps) => {
   const { value, onChange, allowEdgeRules } = props;
@@ -76,6 +85,8 @@ export const FilterField = (props: RuleSetFieldProps) => {
       codebook={codebook}
       onChange={(nextValue) => onChange?.(asRuleSetValue(nextValue))}
       allowEdgeRules={allowEdgeRules}
+      addAlterRuleLabel="Add new filter alter rule"
+      addEdgeRuleLabel="Add new filter edge rule"
     />
   );
 };
@@ -92,6 +103,9 @@ export const QueryField = (props: RuleSetFieldProps) => {
       join={value?.join}
       codebook={codebook}
       onChange={(nextValue) => onChange?.(asRuleSetValue(nextValue))}
+      addAlterRuleLabel="Add new skip logic alter rule"
+      addEdgeRuleLabel="Add new skip logic edge rule"
+      addEgoRuleLabel="Add new skip logic ego rule"
     />
   );
 };

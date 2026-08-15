@@ -2,7 +2,7 @@ import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import {
-  addRule,
+  addSkipLogicRule,
   assertJoinMatchesRules,
   chooseJoin,
   type RuleSpec,
@@ -42,7 +42,7 @@ export async function configureSkipLogic(
     .getByRole('radio', { name: opts.action, exact: true })
     .click();
   for (const rule of opts.rules) {
-    await addRule(section, rule);
+    await addSkipLogicRule(section, rule);
   }
   if (opts.join) {
     await chooseJoin(section, opts.join);

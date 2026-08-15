@@ -8,7 +8,7 @@ import {
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
-import { QueryField, type RuleSetValue } from '../RuleSetFields';
+import { FilterField, QueryField, type RuleSetValue } from '../RuleSetFields';
 
 const confirm = vi.fn();
 const openDialog = vi.fn();
@@ -73,6 +73,28 @@ const container = () =>
 const fieldLabel = () => container().querySelector<HTMLLabelElement>('label')!;
 const group = () => screen.getByRole('group', { name: 'Rules' });
 
+/**
+ * Every add button in the rendered surface, by ACCESSIBLE NAME. `getByRole`'s
+ * `name` matcher is handed the computed name, so this reports what assistive
+ * technology would announce rather than what `textContent` happens to hold;
+ * the matcher always returns false because the query is only a way to
+ * enumerate, and `queryAllByRole` tolerates the resulting empty result.
+ *
+ * The regex is `add-button-names.spec.ts`'s, deliberately — the same
+ * convention, asserted here in milliseconds and there across every editor.
+ */
+const addButtonNames = (): string[] => {
+  const names: string[] = [];
+  screen.queryAllByRole('button', {
+    name: (accessibleName: string) => {
+      if (/^(Add|Create) new\b/.test(accessibleName))
+        names.push(accessibleName);
+      return false;
+    },
+  });
+  return names;
+};
+
 describe('the rule-builder field', () => {
   beforeEach(() => {
     confirm.mockReset();
@@ -117,7 +139,9 @@ describe('the rule-builder field', () => {
 
     // Emptying the required rule set is what makes it invalid.
     fireEvent.click(screen.getByRole('button', { name: /^Delete rule:/ }));
-    fireEvent.blur(screen.getByRole('button', { name: 'Add alter rule' }));
+    fireEvent.blur(
+      screen.getByRole('button', { name: 'Add new skip logic alter rule' }),
+    );
 
     await waitFor(() => {
       expect(group()).toHaveAttribute('aria-invalid', 'true');
@@ -135,5 +159,46 @@ describe('the rule-builder field', () => {
 
     // The rule list shows the invalid state the way any other control does.
     expect(group().querySelector('.border-destructive')).not.toBeNull();
+  });
+
+  /**
+   * The defect these two adapters existed to reproduce: a stage editor mounts
+   * `QueryField` (Skip Logic) and `FilterField` (Filter) at once, and both
+   * used to hard-code "Add alter rule"/"Add edge rule". Ten interfaces
+   * therefore offered each of those names twice, which to anyone navigating by
+   * a list of controls is one control (#1391).
+   *
+   * Asserted over the accessible names of every add button in the surface, not
+   * over the two literals, so a future third mount is covered too.
+   */
+  it('names every add button distinctly when both rule sets are mounted', () => {
+    renderStageForm({
+      committedStage: asStage({ id: 'stage-1', type: 'Information' }),
+      extraReducers: {
+        activeProtocol: () => ({ present: { codebook, stages: [] } }),
+      },
+      children: (
+        <>
+          <ArchitectField
+            name="skipLogic.filter"
+            label="Rules"
+            component={QueryField}
+            validation={{ validator: ruleValidator }}
+          />
+          <ArchitectField
+            name="filter"
+            label="Filter"
+            component={FilterField}
+            validation={{ validator: ruleValidator }}
+          />
+        </>
+      ),
+    });
+
+    const names = addButtonNames();
+
+    // Five: alter/edge/ego for skip logic, alter/edge for the filter.
+    expect(names).toHaveLength(5);
+    expect(new Set(names).size).toBe(names.length);
   });
 });

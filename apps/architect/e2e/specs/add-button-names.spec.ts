@@ -15,32 +15,38 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * that way, because nothing else in the suite would notice a new call site
  * reusing an existing name.
  *
- * SCOPE — list add buttons, not every button. Two wider nets were measured
- * against the all-interfaces fixture and both were rejected:
+ * SCOPE — list add buttons, not every button. The wider net of EVERY button,
+ * page-wide, was measured against the all-interfaces fixture and rejected:
+ * per-row controls repeat by design. A five-prompt list renders five "Edit
+ * prompt" and five "Remove prompt" buttons, each named for what it does and
+ * disambiguated by the row it sits in. So does every drag handle. That net
+ * would fire on all of them and have to be suppressed back down to roughly
+ * the set below.
  *
- * - EVERY button, page-wide: per-row controls repeat by design. A five-prompt
- *   list renders five "Edit prompt" and five "Remove prompt" buttons, each
- *   named for what it does and disambiguated by the row it sits in. So does
- *   every drag handle. This would fire on all of them and have to be
- *   suppressed back down to roughly the set below.
+ * The line is therefore the convention every add button in Architect follows —
+ * "Add new …"/"Create new …" — which is what makes a one-per-list control
+ * identifiable without an allowlist. Two things follow from drawing it there.
  *
- * - `/^(Add|Create)\b/`, i.e. add buttons that may skip the word "new": run
- *   against this fixture it reports 29 duplicates, of two kinds.
- *   "Add link" is a RichTextEditor TOOLBAR button (`RichTextEditor.tsx`), one
- *   per editor, belonging to the editor it sits in exactly as a row's Edit
- *   button belongs to its row — legitimate repetition, and a stage with two
- *   rich-text fields has two of them. "Add alter rule"/"Add edge rule" are
- *   `Query/Rules/Rules.tsx`, and those ARE a real duplicate of this same
- *   class: `RuleSetFields` mounts that builder once for Skip Logic and once
- *   for Filter, so most stage editors show each name twice. It is a different
- *   component family with a different naming convention, tracked separately
- *   rather than folded into this change.
+ * The rule builders were brought INSIDE it. `RuleSetFields` mounts
+ * `Query/Rules/Rules.tsx` twice per stage editor, once for Skip Logic and once
+ * for Filter, and both used to hard-code "Add alter rule"/"Add edge rule" — a
+ * real duplicate of exactly this class in ten interfaces, and one this guard
+ * could not see, because those names sit outside the convention. Each rule set
+ * now names its own buttons ("Add new skip logic alter rule",
+ * "Add new filter alter rule", …), so they are covered here with no widening
+ * and no allowlist. The ego button was renamed along with them although it
+ * never duplicated: it is the third button of the same group, and leaving it
+ * as "Add ego rule" would have left one control of the three outside both the
+ * convention and this guard.
  *
- * The line is therefore the convention every list add button in Architect
- * already follows — "Add new …"/"Create new …" — which is what makes a
- * one-per-list control identifiable without an allowlist. A control that
- * appends to a list and is named outside that convention is a naming bug in
- * its own right; this guard does not try to detect it.
+ * What stays outside is `RichTextEditor.tsx`'s "Add link" — a toolbar button,
+ * one per editor, belonging to the editor it sits in exactly as a row's Edit
+ * button belongs to its row. A stage with two rich-text fields legitimately
+ * has two, which is why the regex requires the word "new" rather than
+ * carrying an exclusion for it.
+ *
+ * A control that appends to a list and is named outside the convention is a
+ * naming bug in its own right; this guard does not try to detect it.
  *
  * No `@visual` tag: this reads the accessibility tree, not pixels.
  */

@@ -4,9 +4,10 @@ import { type Locator } from '@playwright/test';
 // SkipLogic section (`type="query"` — ego rules available) and the
 // Filter/NetworkFilter sections (no ego rules). Facts verified against
 // source, not guessed:
-// - Add buttons: 'Add alter rule' / 'Add edge rule' / 'Add ego rule'
-//   (Rules.tsx). The rule editor dialog is titled 'Construct a Rule' for both
-//   new and edit; its submit reads 'Finish and Close' (EditRule.tsx).
+// - Add buttons: each rule set names its own, because most stage editors mount
+//   both at once (RuleSetFields.tsx — see ADD_RULE_BUTTONS below). The rule
+//   editor dialog is titled 'Construct a Rule' for both new and edit; its
+//   submit reads 'Finish and Close' (EditRule.tsx).
 // - Entity type selection inside the dialog reuses the EntitySelectField
 //   radio-pill pattern — accessible names 'Select node <Name>' /
 //   'Select edge <Name>' (PreviewNode.tsx / PreviewEdge.tsx), the exact
@@ -48,62 +49,124 @@ export type RuleSpec =
       value: true;
     };
 
-export async function addRule(host: Locator, spec: RuleSpec): Promise<void> {
-  const page = host.page();
-  const dialog = page.getByRole('dialog', { name: 'Construct a Rule' });
+/**
+ * The add buttons a filter offers. Ego rules are skip-logic only, so a filter
+ * has no ego button — and `FilterRuleSpec` makes asking for one a compile
+ * error rather than a locator that times out.
+ */
+export type FilterRuleSpec = Exclude<RuleSpec, { kind: 'egoBooleanExactly' }>;
 
+/**
+ * Verbatim from `RuleSetFields.tsx`. Both rule builders used to say
+ * 'Add alter rule'/'Add edge rule', so a stage editor showed each name twice
+ * and these locators resolved by luck of scoping; each set now names its own
+ * (#1391). The edge buttons — 'Add new filter edge rule' and
+ * 'Add new skip logic edge rule' — are absent here only because `RuleSpec`
+ * has no edge kind yet.
+ */
+const ADD_RULE_BUTTONS = {
+  filter: { alter: 'Add new filter alter rule' },
+  skipLogic: {
+    alter: 'Add new skip logic alter rule',
+    ego: 'Add new skip logic ego rule',
+  },
+} as const;
+
+const ruleDialog = (host: Locator) =>
+  host.page().getByRole('dialog', { name: 'Construct a Rule' });
+
+/** Authors one rule in the Filter section's builder. */
+export async function addFilterRule(
+  host: Locator,
+  spec: FilterRuleSpec,
+): Promise<void> {
+  await addEntityRule(host, ADD_RULE_BUTTONS.filter, spec);
+}
+
+/** Authors one rule in the Skip Logic section's builder. */
+export async function addSkipLogicRule(
+  host: Locator,
+  spec: RuleSpec,
+): Promise<void> {
   if (spec.kind === 'egoBooleanExactly') {
-    await host.getByRole('button', { name: 'Add ego rule' }).click();
+    await addEgoRule(host, spec);
+    return;
+  }
+  await addEntityRule(host, ADD_RULE_BUTTONS.skipLogic, spec);
+}
+
+async function addEgoRule(
+  host: Locator,
+  spec: Extract<RuleSpec, { kind: 'egoBooleanExactly' }>,
+): Promise<void> {
+  const dialog = ruleDialog(host);
+
+  await host
+    .getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic.ego })
+    .click();
+  await dialog
+    .getByRole('combobox', { name: 'Ego variable' })
+    .selectOption({ label: spec.variableName });
+  await dialog
+    .getByRole('combobox', { name: 'Operator' })
+    .selectOption({ label: 'is exactly' });
+  // The draft's `value` stays '' after the operator pick (the change
+  // handler misses the boolean default — verified live: the rendered
+  // toggle shows False while the draft holds ''), and '' fails
+  // validateRule. The toggle must be touched: once for true, twice
+  // (on→off) to write an explicit false.
+  const valueSwitch = dialog
+    .locator('[data-name="Attribute Value"]')
+    .getByRole('switch');
+  await valueSwitch.click();
+  if (!spec.value) {
+    await valueSwitch.click();
+  }
+
+  await finishRule(dialog);
+}
+
+async function addEntityRule(
+  host: Locator,
+  buttons: { readonly alter: string },
+  spec: FilterRuleSpec,
+): Promise<void> {
+  const dialog = ruleDialog(host);
+
+  await host.getByRole('button', { name: buttons.alter }).click();
+  await dialog
+    .getByRole('radio', {
+      name: `Select node ${spec.nodeTypeName}`,
+      exact: true,
+    })
+    .click();
+  if (spec.kind === 'alterPresence') {
+    // Long-markdown radio labels are sibling <label> elements — the radio
+    // button has no text content, so match on the accessible NAME (which
+    // does include the label) rather than .filter({hasText}).
+    await dialog.getByRole('radio', { name: /^Presence/ }).click();
     await dialog
-      .getByRole('combobox', { name: 'Ego variable' })
+      .locator('[data-name="Operator"]')
+      .getByRole('radio', { name: spec.operator, exact: true })
+      .click();
+  } else {
+    await dialog.getByRole('radio', { name: /^Attribute -/ }).click();
+    await dialog
+      .getByRole('combobox', { name: 'Variable' })
       .selectOption({ label: spec.variableName });
     await dialog
       .getByRole('combobox', { name: 'Operator' })
       .selectOption({ label: 'is exactly' });
-    // The draft's `value` stays '' after the operator pick (the change
-    // handler misses the boolean default — verified live: the rendered
-    // toggle shows False while the draft holds ''), and '' fails
-    // validateRule. The toggle must be touched: once for true, twice
-    // (on→off) to write an explicit false.
-    const valueSwitch = dialog
-      .locator('[data-name="Attribute Value"]')
-      .getByRole('switch');
-    await valueSwitch.click();
-    if (!spec.value) {
-      await valueSwitch.click();
-    }
-  } else {
-    await host.getByRole('button', { name: 'Add alter rule' }).click();
     await dialog
-      .getByRole('radio', {
-        name: `Select node ${spec.nodeTypeName}`,
-        exact: true,
-      })
+      .locator('[data-name="Attribute Value"]')
+      .getByRole('switch')
       .click();
-    if (spec.kind === 'alterPresence') {
-      // Long-markdown radio labels are sibling <label> elements — the radio
-      // button has no text content, so match on the accessible NAME (which
-      // does include the label) rather than .filter({hasText}).
-      await dialog.getByRole('radio', { name: /^Presence/ }).click();
-      await dialog
-        .locator('[data-name="Operator"]')
-        .getByRole('radio', { name: spec.operator, exact: true })
-        .click();
-    } else {
-      await dialog.getByRole('radio', { name: /^Attribute -/ }).click();
-      await dialog
-        .getByRole('combobox', { name: 'Variable' })
-        .selectOption({ label: spec.variableName });
-      await dialog
-        .getByRole('combobox', { name: 'Operator' })
-        .selectOption({ label: 'is exactly' });
-      await dialog
-        .locator('[data-name="Attribute Value"]')
-        .getByRole('switch')
-        .click();
-    }
   }
 
+  await finishRule(dialog);
+}
+
+async function finishRule(dialog: Locator): Promise<void> {
   await dialog.getByRole('button', { name: 'Finish and Close' }).click();
   // Wait out the exit animation before the caller adds the next rule or
   // touches controls behind the dialog (see prompts.ts for the pattern).

@@ -6,6 +6,10 @@ type QueryProps = RuleSetGroupProps & {
   rules?: Rule[];
   codebook: Record<string, unknown>;
   join?: string;
+  /** Whole strings, required — see `Rules.tsx`. */
+  addAlterRuleLabel: string;
+  addEdgeRuleLabel: string;
+  addEgoRuleLabel: string;
 };
 
 const Query = ({
@@ -13,6 +17,9 @@ const Query = ({
   join,
   codebook,
   onChange,
+  addAlterRuleLabel,
+  addEdgeRuleLabel,
+  addEgoRuleLabel,
   ...groupProps
 }: QueryProps) => (
   <Rules
@@ -22,6 +29,9 @@ const Query = ({
     onChange={onChange}
     codebook={codebook}
     type="query"
+    addAlterRuleLabel={addAlterRuleLabel}
+    addEdgeRuleLabel={addEdgeRuleLabel}
+    addEgoRuleLabel={addEgoRuleLabel}
   />
 );
 
