@@ -517,3 +517,50 @@ describe('SegmentedToolbar — draggable', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/moved/i);
   });
 });
+
+describe('SegmentedToolbar — segments hold their size', () => {
+  // jsdom performs no layout, so this cannot assert the geometry. It asserts
+  // the one class the geometry depends on. `Button` gave up `shrink-0` in
+  // #1392 and told toolbar call sites to ask for it back; this call site was
+  // written before that and did not, which left `Toolbar.Root`'s
+  // `overflow-x-auto` lane unable to overflow and so unable to scroll.
+  // Measured in a real browser at 240px with five icon segments: without
+  // `shrink-0`, scrollWidth === clientWidth (238) and each 48px target was
+  // squashed to 42.4px wide; with it, 266 > 238 and the targets stay square.
+  it('gives every segment button shrink-0 so the scroll lane can overflow', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'edit',
+        label: 'Edit',
+        icon: <Pencil />,
+        onClick: vi.fn(),
+      },
+      {
+        type: 'button',
+        id: 'delete',
+        label: 'Delete',
+        icon: <Trash2 />,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    for (const name of ['Edit', 'Delete']) {
+      expect(screen.getByRole('button', { name })).toHaveClass('shrink-0');
+    }
+  });
+
+  it('keeps the horizontal scroll lane on the toolbar itself', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'edit',
+        label: 'Edit',
+        icon: <Pencil />,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    expect(screen.getByRole('toolbar')).toHaveClass('overflow-x-auto');
+  });
+});

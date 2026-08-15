@@ -229,6 +229,17 @@ function segmentButton(
       aria-label={labelVisible ? undefined : content.label}
       className={cx(
         'rounded-full',
+        // A segment must hold its size. `Button` gave up `shrink-0` in #1392 so
+        // an unbreakable label could not push a dialog's actions off the
+        // viewport, and named toolbar actions as the call sites that must ask
+        // for it back — this is one, and it was written before that change.
+        // Without it every segment shrinks instead, so the `overflow-x-auto`
+        // lane on `Toolbar.Root` can never overflow and never scrolls: measured
+        // in a 240px box, five icon segments give scrollWidth === clientWidth
+        // (238) and a 42.4x48 target, against 266 > 238 and a square 48x48 with
+        // it. It is inert wherever the toolbar already fits — same geometry to
+        // the pixel — so it changes only the case that is currently broken.
+        'shrink-0',
         !labelVisible && 'aspect-square p-0',
         extraClassName,
         content.className,
