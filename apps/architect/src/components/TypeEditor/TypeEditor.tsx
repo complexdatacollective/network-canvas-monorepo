@@ -100,7 +100,12 @@ const TypeEditor = ({
           initialValue={initialValues.name}
           validation={{
             required: true,
-            allowedNMToken: true,
+            // Names the subject, so the message reads "Not a valid node type
+            // name" rather than the mapper's default "variable name" — this
+            // field is not a variable. Whole strings, one per branch, rather
+            // than an interpolated `${entity} type name`.
+            allowedNMToken:
+              entity === 'node' ? 'node type name' : 'edge type name',
             uniqueByList: existingTypes,
           }}
           placeholder={`Enter a name for this ${entity} type...`}

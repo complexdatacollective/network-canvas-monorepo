@@ -5,6 +5,7 @@ import type NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native'
 import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
 import type ValidationSection from '~/components/sections/ValidationSection';
+import type { InputControlGroup } from '~/config/variables';
 import {
   isBooleanWithOptions,
   isOrdinalOrCategoricalType,
@@ -67,11 +68,15 @@ export const clearInapplicableCodebookProperties = (
 
 type InputControlOption = {
   label: string;
-  value: string | null;
+  value: string;
   disabled?: boolean;
 };
 
-type SelectOption = ComponentProps<typeof NativeSelectField>['options'][number];
+type SelectOptionOrGroup = ComponentProps<
+  typeof NativeSelectField
+>['options'][number];
+type SelectGroup = Extract<SelectOptionOrGroup, { options: unknown }>;
+type SelectOption = Exclude<SelectOptionOrGroup, SelectGroup>;
 
 type ValidationMap = ComponentProps<typeof ValidationSection>['initialValue'];
 
@@ -89,19 +94,58 @@ export const asValidationMap = (value: unknown): ValidationMap =>
       (value as NonNullable<ValidationMap>)
     : undefined;
 
+const byLabel = (a: { label: string }, b: { label: string }) =>
+  a.label.localeCompare(b.label);
+
+const toSelectOption = ({
+  label,
+  value,
+  disabled,
+}: InputControlOption): SelectOption => ({ label, value, disabled });
+
+/** Either shape the input-control list arrives in — see `toSelectOptions`. */
+export type InputControlList = readonly (
+  | InputControlOption
+  | InputControlGroup
+)[];
+
+const isControlGroup = (
+  entry: InputControlOption | InputControlGroup,
+): entry is InputControlGroup => 'options' in entry;
+
 /**
- * The input-control list for a native select. Its group headers carry no
- * value; they are disabled, so the empty string the select needs is never
- * selectable.
+ * The input-control list for a native select.
+ *
+ * Takes the grouped list (offered while the variable's type is still open, so
+ * the researcher can see which type each control implies) or a flat one
+ * already narrowed to a single type, and answers in the shape the select
+ * renders: `<optgroup>`s, plain options, or a mix. Decided per ENTRY rather
+ * than from the first one, so a list that ever became mixed degrades into the
+ * right markup instead of reading `undefined.map`.
+ *
+ * `sorted` alphabetises WITHIN each group rather than across the whole list —
+ * flattening the groups to sort them would put the controls of different types
+ * back in one undifferentiated run, which is the problem the groups solve.
  */
 export const toSelectOptions = (
-  options: readonly InputControlOption[],
-): SelectOption[] =>
-  options.map(({ label, value, disabled }) => ({
-    label,
-    value: value ?? '',
-    disabled,
-  }));
+  options: InputControlList,
+  { sorted = false }: { sorted?: boolean } = {},
+): SelectOptionOrGroup[] => {
+  const mapped = options.map((entry) => {
+    if (!isControlGroup(entry)) return toSelectOption(entry);
+    const grouped = entry.options.map(toSelectOption);
+    return {
+      label: entry.label,
+      options: sorted ? grouped.toSorted(byLabel) : grouped,
+    };
+  });
+
+  // Only a flat list is sorted as a whole; group ORDER is authored (simplest
+  // type first), and sorting groups by their heading would scramble it.
+  return sorted && mapped.every((entry) => !('options' in entry))
+    ? mapped.toSorted(byLabel)
+    : mapped;
+};
 
 export const normalizeField = (field: Record<string, unknown>) => {
   // Keep `id` so DialogArrayField can retain the item's stable identity across

@@ -77,6 +77,7 @@ export type DialogArrayEditorValidate = (
 
 export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   ArrayFieldProps<T>,
+  | 'addButtonLabel'
   | 'confirmDelete'
   | 'editorComponent'
   | 'immediateAdd'
@@ -84,6 +85,18 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   | 'itemTemplate'
   | 'onOperation'
 > & {
+  /**
+   * Visible text and accessible name of the add button — REQUIRED, and a whole
+   * string rather than a `Create new ${itemLabel}` template, so it can be
+   * localised and so no call site can fall back to a generic default.
+   *
+   * A stage editor mounts several of these at once (a Name Generator has both
+   * a form-field list and a prompt list; a Network Composer has one attribute
+   * list per edge type). Named "Create new", every one of them is the same
+   * control to anyone navigating by a list of buttons, and Architect's own E2E
+   * specs had to scope by section to tell them apart.
+   */
+  addButtonLabel: string;
   /** Dialog title when adding. Defaults to `Add ${itemLabel}`. */
   addTitle?: string;
   /** Dialog title when editing an existing row. */
@@ -614,7 +627,7 @@ function DialogArrayField<T extends ArrayItem>({
   value,
   onChange,
   name = '',
-  addButtonLabel = 'Create new',
+  addButtonLabel,
   emptyStateMessage = 'No items have been created yet.',
   addTitle,
   editorTitle,

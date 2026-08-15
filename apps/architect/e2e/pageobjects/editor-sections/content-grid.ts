@@ -23,7 +23,7 @@ async function openFreshItemDialog(
   const dialog = page.getByRole('dialog', { name: 'Edit Item' });
   const create = editor
     .section('Items')
-    .getByRole('button', { name: 'Create new', exact: true });
+    .getByRole('button', { name: 'Create new content item', exact: true });
   await create.click();
   await expect(dialog).toBeVisible();
   // A fresh item has no `type`, so no Content section. On a stale reopen,

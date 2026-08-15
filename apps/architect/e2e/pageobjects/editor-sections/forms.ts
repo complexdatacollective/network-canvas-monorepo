@@ -48,7 +48,7 @@ export async function addFormField(
 ): Promise<void> {
   const page = section.page();
   await section
-    .getByRole('button', { name: 'Create new', exact: true })
+    .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: opts.variableName });
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });

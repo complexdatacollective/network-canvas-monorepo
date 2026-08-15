@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FlattenedErrors } from '../store/types';
-import { focusFirstError } from './focusFirstError';
+import { focusFirstError, resolveFieldErrorTarget } from './focusFirstError';
 
 const errors: FlattenedErrors = {
   formErrors: [],
@@ -432,5 +432,99 @@ describe('focusFirstError target selection', () => {
     focusFirstError(errors);
 
     expect(document.activeElement).toBe(field.querySelector('#control'));
+  });
+});
+
+/**
+ * Architect's Issues panel lists every message and lets the researcher pick
+ * one. It knows which field they picked, so it needs the same answer
+ * `focusFirstError` would give for that field alone — otherwise a click
+ * scrolls somewhere and leaves focus on the button that was clicked.
+ */
+describe('resolveFieldErrorTarget', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('resolves the field a name points at, not whichever field is first', () => {
+    const first = setupComposite((container) => {
+      container.innerHTML = `<input id="first" />`;
+    });
+    first.field.setAttribute('data-field-path', 'introductionPanel.title');
+
+    const second = setupComposite((container) => {
+      container.innerHTML = `<div contenteditable="true" id="second"></div>`;
+    });
+    second.field.setAttribute('data-field-path', 'introductionPanel.text');
+
+    expect(resolveFieldErrorTarget('introductionPanel.text')).toBe(
+      second.field.querySelector('#second'),
+    );
+  });
+
+  it('honours a field that nominates its own control', () => {
+    // The variable picker's "Select variable" button: the control that
+    // actually resolves the error, and not the first button in the field.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <button type="button">Remove</button>
+        <button type="button" data-field-focus-target>Select variable</button>
+      `;
+    });
+
+    expect(resolveFieldErrorTarget('dob')).toBe(
+      field.querySelector('[data-field-focus-target]'),
+    );
+  });
+
+  it('reaches a Base UI switch past its aria-hidden proxy input', () => {
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `
+        <button type="button" role="switch" aria-checked="false"></button>
+        <input type="checkbox" aria-hidden="true" tabindex="-1" />
+      `;
+    });
+
+    expect(resolveFieldErrorTarget('dob')).toBe(
+      field.querySelector('[role="switch"]'),
+    );
+  });
+
+  it('falls back to the field container when it owns no control', () => {
+    // Architect's whole-editor contradiction alert is a container with an
+    // error and nothing operable inside it. Focus still has to land on it,
+    // or the researcher is sent nowhere.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `<p>This attribute cannot be saved</p>`;
+    });
+
+    expect(resolveFieldErrorTarget('dob')).toBe(field);
+    expect(field.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('answers undefined for a field that is not in the DOM', () => {
+    setupComposite((container) => {
+      container.innerHTML = `<input />`;
+    });
+
+    expect(resolveFieldErrorTarget('nothing.here')).toBeUndefined();
+  });
+
+  it('prefers a field inside the given root over an identically named one outside it', () => {
+    const background = setupComposite((container) => {
+      container.innerHTML = `<input id="background" />`;
+    });
+    background.field.setAttribute('data-field-path', 'dob');
+
+    const dialog = document.createElement('div');
+    const dialogField = document.createElement('div');
+    dialogField.setAttribute('data-field-path', 'dob');
+    dialogField.innerHTML = `<input id="dialog" />`;
+    dialog.appendChild(dialogField);
+    document.body.appendChild(dialog);
+
+    expect(resolveFieldErrorTarget('dob', dialog)).toBe(
+      dialogField.querySelector('#dialog'),
+    );
   });
 });

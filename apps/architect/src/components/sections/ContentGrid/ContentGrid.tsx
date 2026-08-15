@@ -39,6 +39,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
           label="Content items"
           labelHidden
           component={DialogArrayField}
+          addButtonLabel="Create new content item"
           validation={{ notEmpty }}
           initialValue={initialItems}
           addTitle="Edit Item"
@@ -47,7 +48,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
           }
           editorProps={{ allowSize: true }}
           editorTitle="Edit Item"
-          emptyStateMessage='No items have been created yet. Click "Create new" to add text or media.'
+          emptyStateMessage='No items have been created yet. Click "Create new content item" to add text or media.'
           itemLabel="item"
           itemSelector={denormalizeType}
           normalizeItem={(value) =>

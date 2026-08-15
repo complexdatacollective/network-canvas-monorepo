@@ -318,9 +318,7 @@ describe('ValidationSection expansion latch', () => {
 
     // Section settles its own toggle asynchronously (handleToggleChange may
     // return a promise), so the collapse lands a tick after the click.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('group', { name: 'Requirements' }),
@@ -332,8 +330,6 @@ describe('ValidationSection expansion latch', () => {
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    ).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
   });
 });

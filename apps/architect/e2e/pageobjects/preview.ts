@@ -14,9 +14,12 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * - `StageEditorNav.tsx` renders the launch button (label 'Preview', or
  *   'Opening preview…' while a launch is in flight) and, beside it, a split
  *   control with `aria-label="Preview settings"` whose popover content is
- *   `StageEditor.tsx`'s `previewOptionsContent` — two `ToggleField`s labelled
- *   'Start preview with example data' and 'Respect skip logic', each rendering
- *   a native `role="switch"`.
+ *   `StageEditor.tsx`'s `previewOptionsContent` — two `ToggleField`s, each a
+ *   `role="switch"` NAMED by the text beside it through `aria-labelledby`.
+ *   Located by that name rather than by a wrapping element: `ToggleField`
+ *   renders a bare `<button>`, and a `<label>` around a button contributes
+ *   nothing to its accessible name (issue #1391), so a name-based locator is
+ *   also the assertion that these two switches are named at all.
  * - The preview window mounts the shared `@codaco/interview` Shell, so its
  *   stage chrome (dialogs, prompts, nav) is the interview runtime's, not
  *   Architect's.
@@ -43,9 +46,10 @@ export class StagePreview {
    */
   async setUseExampleData(enabled: boolean): Promise<void> {
     await this.settingsButton.click();
-    const toggle = this.page
-      .locator('label', { hasText: 'Start preview with example data' })
-      .getByRole('switch');
+    const toggle = this.page.getByRole('switch', {
+      name: 'Start preview with example data',
+      exact: true,
+    });
     await expect(toggle).toBeVisible();
     if (((await toggle.getAttribute('aria-checked')) === 'true') !== enabled) {
       await toggle.click();

@@ -115,6 +115,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
         label="Diseases"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new disease"
         validation={{ notEmpty }}
         initialValue={diseasesInitial ?? []}
         addTitle="Edit Disease"

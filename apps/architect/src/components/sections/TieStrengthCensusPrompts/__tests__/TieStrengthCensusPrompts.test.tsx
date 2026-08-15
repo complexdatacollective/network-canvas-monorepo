@@ -85,14 +85,14 @@ describe('TieStrengthCensusPrompts', () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
     expect(screen.getAllByText('Prompts').length).toBeGreaterThan(0);
     expect(
-      screen.getByRole('button', { name: 'Create new' }),
+      screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeInTheDocument();
   });
 
   it('shows the ordinal variable picker only once an edge type is chosen', async () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     expect(screen.queryByLabelText('edgeVariable')).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -105,7 +105,7 @@ describe('TieStrengthCensusPrompts', () => {
   it('cancels without saving a prompt', async () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => {

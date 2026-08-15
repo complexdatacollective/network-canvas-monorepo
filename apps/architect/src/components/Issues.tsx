@@ -4,6 +4,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
@@ -39,9 +40,26 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   const [open, setOpen] = useState(false);
   const issueRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  // Where the popover hands focus back on close. Base UI restores focus to the
+  // trigger by default, which is right for a panel the researcher dismissed
+  // and wrong for one whose entire purpose is to SEND them to a control: it
+  // left them on "Issues (2)" with the invalid field somewhere below, and —
+  // once the panel auto-opens on a failed save — on whatever control
+  // `focusFirstError` had already chosen, whichever issue they clicked.
+  const finalFocusRef = useRef<HTMLElement | null>(null);
+
+  // Every OPEN clears it, so a panel that is merely dismissed (Escape, a click
+  // outside) still returns focus to its trigger. Without this, the control
+  // chosen by the last row click would keep taking focus from every later
+  // dismissal.
+  const setPanelOpen = useCallback((next: boolean) => {
+    if (next) finalFocusRef.current = null;
+    setOpen(next);
+  }, []);
+
   const openIssues = useCallback(() => {
-    if (hasIssues) setOpen(true);
-  }, [hasIssues]);
+    if (hasIssues) setPanelOpen(true);
+  }, [hasIssues, setPanelOpen]);
 
   // Field display labels live in the DOM, so a row's own label is only
   // discoverable once that row's field anchor is mounted. Reads `data-name`
@@ -78,20 +96,30 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   const handleClickIssue = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, field: string) => {
       e.preventDefault();
-      const destination = resolveTarget(field);
-      if (destination) {
-        scrollTo(destination);
-        setOpen(false);
-      }
+      // The same resolution an invalid submit uses, so an issue row and a
+      // failed save agree about which control owns a field's error —
+      // including composite fields that name their own target and Base UI
+      // switches, which no plain selector reaches.
+      const control = resolveFieldErrorTarget(field);
+      const destination = control ?? resolveTarget(field);
+      if (!destination) return;
+
+      finalFocusRef.current = control ?? null;
+      // Focus first, then scroll, as `focusFirstError` does: a control that
+      // scrolls its own internals into view on focus cannot then leave the
+      // page somewhere other than where this put it.
+      control?.focus({ preventScroll: true });
+      scrollTo(destination);
+      setOpen(false);
     },
     [],
   );
 
   useEffect(() => {
     if (submitFailed && hasIssues) {
-      setOpen(true);
+      setPanelOpen(true);
     }
-  }, [submitFailed, hasIssues]);
+  }, [submitFailed, hasIssues, setPanelOpen]);
 
   useEffect(() => {
     if (!hasIssues) setOpen(false);
@@ -117,8 +145,9 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
       icon: <TriangleAlert />,
       showLabel: true,
       open,
-      onOpenChange: setOpen,
+      onOpenChange: setPanelOpen,
       side: 'top',
+      finalFocus: () => finalFocusRef.current ?? true,
       children: (
         <>
           <div className="border-outline flex items-center gap-5 border-b px-5 py-3">
@@ -163,6 +192,7 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     issueCount,
     open,
     setIssueRef,
+    setPanelOpen,
     submitFailed,
   ]);
 

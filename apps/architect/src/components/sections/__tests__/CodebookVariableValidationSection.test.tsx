@@ -109,9 +109,7 @@ describe('CodebookVariableValidationSection', () => {
     // be opened before the rule list is reachable. `Section`'s toggle
     // handler is async (it awaits `handleToggleChange`), so the resulting
     // `setInternalOpen` lands a microtask after the click.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     fireEvent.click(
       await screen.findByRole('switch', { name: 'Required', hidden: true }),
     );
@@ -141,9 +139,7 @@ describe('CodebookVariableValidationSection', () => {
     renderSection();
 
     // Existing rules: the section starts expanded, so this click turns it off.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
     await waitFor(() => {
       expect(updateVariableAsync).toHaveBeenCalledWith(
@@ -171,9 +167,7 @@ describe('CodebookVariableValidationSection', () => {
 
     renderSection();
 
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     fireEvent.click(
       await screen.findByRole('switch', {
         name: 'Minimum value',
@@ -293,7 +287,7 @@ describe('CodebookVariableValidationSection', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+        screen.getByRole('switch', { name: 'Validation' }),
       ).toBeInTheDocument();
     });
 

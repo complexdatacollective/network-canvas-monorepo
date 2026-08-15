@@ -1,8 +1,13 @@
 import { act, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import {
+  SegmentedToolbar,
+  type ToolbarSegment,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 
+import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';
 import { useIssuesToolbarSegment } from '../Issues';
 import { renderStageForm } from '../StageEditor/__tests__/stageFormTestHarness';
@@ -16,12 +21,39 @@ const fieldErrors = {
   'baz[0].beep': ['boop'],
 };
 
+// The live segment, so a test can read the contract the toolbar is handed
+// rather than reaching into Base UI's focus manager.
+let capturedSegment: ToolbarSegment | null = null;
+
 function IssuesHarness() {
   const { segment } = useIssuesToolbarSegment();
+  capturedSegment = segment;
   return segment ? (
     <SegmentedToolbar label="Stage editor actions" items={[segment]} />
   ) : null;
 }
+
+const popoverSegment = () => {
+  if (!capturedSegment || capturedSegment.type !== 'popover') {
+    throw new Error('the issues popover segment is not rendered');
+  }
+  return capturedSegment;
+};
+
+/**
+ * The segment's `finalFocus` as this hook always supplies it — a function, so
+ * the answer can follow the researcher's last row click. Narrowed here rather
+ * than at each call site: Base UI's prop also admits a boolean and a ref, and
+ * an implementation that switched to either would fail this cast rather than
+ * silently changing what the popover does on close.
+ */
+const resolveFinalFocus = (closeType: 'mouse' | 'keyboard') => {
+  const { finalFocus } = popoverSegment();
+  if (typeof finalFocus !== 'function') {
+    throw new Error('finalFocus is expected to be a function');
+  }
+  return finalFocus(closeType);
+};
 
 describe('<Issues />', () => {
   it('renders nothing while the form has no errors', () => {
@@ -166,6 +198,150 @@ describe('<Issues />', () => {
 
         expect(scrollTo).toHaveBeenCalledExactlyOnceWith(anchor);
       },
+    );
+  });
+});
+
+/**
+ * An issue row is a promise to take the researcher to the thing they have to
+ * correct. Before this it only scrolled: the scroll target is an `sr-only`
+ * anchor with no control in it, so Base UI's popover handed focus straight
+ * back to the "Issues (n)" button, and a keyboard or screen-reader user was
+ * left exactly where they started with the invalid control somewhere below.
+ */
+describe('<Issues /> focus', () => {
+  const TITLE = 'introductionPanel.title';
+  const TEXT = 'introductionPanel.text';
+
+  const renderTwoInvalidFields = async () => {
+    const view = renderStageForm({
+      children: (
+        <>
+          <ArchitectField
+            name={TITLE}
+            label="Introduction Panel Title"
+            component={InputField}
+            initialValue=""
+            validation={{ required: true }}
+          />
+          <ArchitectField
+            name={TEXT}
+            label="Introduction Panel Text"
+            component={InputField}
+            initialValue=""
+            validation={{ required: true }}
+          />
+          <IssuesHarness />
+        </>
+      ),
+    });
+
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({
+          formErrors: [],
+          fieldErrors: {
+            [TITLE]: ['This field is required.'],
+            [TEXT]: ['This field is required.'],
+          },
+        });
+      view.getContext().markSubmitFailed();
+    });
+    await screen.findAllByTestId('issue');
+    return view;
+  };
+
+  const controlFor = (fieldName: string) =>
+    document.querySelector(`[data-field-name="${fieldName}"] input`);
+
+  const clickRow = (index: number) => {
+    act(() => {
+      screen.getAllByTestId('issue')[index]!.querySelector('a')!.click();
+    });
+  };
+
+  it.each([
+    [0, TITLE],
+    [1, TEXT],
+  ])('focuses the control the row at index %i names', async (index, field) => {
+    await renderTwoInvalidFields();
+
+    clickRow(index);
+
+    expect(document.activeElement).toBe(controlFor(field));
+  });
+
+  it('focuses the row that was clicked, not the one an invalid submit chose', async () => {
+    // The panel auto-opens on a failed save, with focus already on whatever
+    // `focusFirstError` picked — the FIRST invalid control. Clicking the
+    // second issue used to restore that first control on close, so the
+    // researcher was silently sent to a different problem than the one they
+    // asked for.
+    await renderTwoInvalidFields();
+    act(() => {
+      (controlFor(TITLE) as HTMLElement).focus();
+    });
+
+    clickRow(1);
+
+    expect(document.activeElement).toBe(controlFor(TEXT));
+    expect(document.activeElement).not.toBe(controlFor(TITLE));
+  });
+
+  it('still scrolls, and to the field it focused', async () => {
+    scrollTo.mockClear();
+    await renderTwoInvalidFields();
+
+    clickRow(1);
+
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(controlFor(TEXT));
+  });
+
+  it('returns focus to the trigger when the panel is merely dismissed', async () => {
+    // `finalFocus` is a live ref, so a row click leaves it pointing at that
+    // row's control. Opening the panel again and dismissing it (Escape, a
+    // click outside) must NOT drop the researcher back on a control they did
+    // not ask for — every open clears the ref, and `true` is Base UI's own
+    // "restore the default", which is the trigger.
+    await renderTwoInvalidFields();
+
+    clickRow(1);
+    expect(resolveFinalFocus('mouse')).toBe(controlFor(TEXT));
+
+    act(() => {
+      popoverSegment().onOpenChange(true);
+    });
+
+    expect(resolveFinalFocus('keyboard')).toBe(true);
+  });
+
+  it('falls back to the anchor when the errored field has no control on screen', async () => {
+    // A field inside a collapsed section is not mounted, so there is nothing
+    // to focus — the row must still scroll rather than doing nothing at all.
+    const view = renderStageForm({
+      children: (
+        <>
+          <IssueAnchor fieldName="prompts" description="Prompts" />
+          <IssuesHarness />
+        </>
+      ),
+    });
+    act(() => {
+      view
+        .getStoreApi()
+        .getState()
+        .setErrors({ formErrors: [], fieldErrors: { prompts: ['Required'] } });
+      view.getContext().markSubmitFailed();
+    });
+    await screen.findAllByTestId('issue');
+    scrollTo.mockClear();
+
+    clickRow(0);
+
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(
+      document.getElementById('field_prompts'),
     );
   });
 });

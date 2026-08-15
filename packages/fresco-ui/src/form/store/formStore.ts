@@ -148,6 +148,60 @@ const clearFieldValidating = (fields: Map<string, FieldState>): void => {
   });
 };
 
+/**
+ * Drop the messages the store is holding about a field, because the value they
+ * were written about has just been replaced.
+ *
+ * An error message is a claim about one specific value. Once a new one is
+ * written, the claim cannot be true or false — it is about something that no
+ * longer exists — so keeping it on screen tells the researcher to correct a
+ * problem they have already corrected. `useField` renders straight from this
+ * map, and Architect's Issues panel reads it directly, so a survivor here is a
+ * survivor in both.
+ *
+ * MESSAGES ONLY: `meta.isValid` is deliberately left exactly as it was.
+ *
+ * Nothing is lost by that, because a message already implies a `false`
+ * verdict — `validateField` and `setErrors` are the only two writers of
+ * `errors.fieldErrors` and both set `isValid: false` in the same update — so
+ * clearing messages can never strand the pair in the "valid, yet complaining"
+ * state. And the field keeps whatever verdict it had: still `false` after a
+ * failed check, until something looks at the new value.
+ *
+ * Resetting the verdict here instead would be the single widest-reaching thing
+ * this store does. `setFieldValue` is not only a host entry point:
+ * `useField.handleChange` calls it on EVERY controlled change, in every
+ * fresco-ui form, including the participant-facing ones in `@codaco/interview`.
+ * `useField` always builds a validation function, so `!validation` is `false`
+ * for every field it registers — a "back to unchecked" reset would therefore
+ * mark the field, and through `calculateFormValidity` the whole form, invalid
+ * on every keystroke. `SlidesForm` and `EgoForm` gate "ready to continue" on
+ * the form flag and `QuickAddField` animates its add badge off the field's,
+ * so that shows up on screen as a flicker per character typed.
+ *
+ * The write also does NOT revalidate. `useField.handleChange` owns rescheduling
+ * its own (debounced) validate-on-change, and revalidating here would fight
+ * that debounce on every keystroke. The consequence is part of the contract: a
+ * write that introduces a NEW problem surfaces at the field's next blur or at
+ * submit — `validateForm` runs every field — never between the two.
+ */
+const discardFieldErrors = (
+  state: Pick<FormStoreState, 'errors' | 'isValid'>,
+  fieldName: string,
+  fields: Map<string, FieldState>,
+): void => {
+  if (Object.hasOwn(state.errors.fieldErrors, fieldName)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [fieldName]: _removed, ...remainingFieldErrors } =
+      state.errors.fieldErrors;
+    state.errors = {
+      formErrors: state.errors.formErrors,
+      fieldErrors: remainingFieldErrors,
+    };
+  }
+  state.isValid = calculateFormValidity(fields, state.errors.formErrors);
+};
+
 const normalizeSubmissionErrors = (
   errors: FlattenedErrors,
   fields: Map<string, FieldState>,
@@ -625,6 +679,12 @@ export const createFormStore = (): FormStoreApi => {
                 isValid: existing?.meta.isValid ?? true,
               },
             });
+            // A field can hold errors from a submit and then be unmounted (a
+            // collapsed section) before a host stages a new value for it. The
+            // messages outlive the mount, and Architect's Issues panel reads
+            // this map directly, so a row for a value that no longer exists
+            // would survive with nothing on screen to correct.
+            discardFieldErrors(state, fieldName, fieldRecords);
             state.isDirty = true;
             syncPublicFields(state.dormantValues, dormantRecords);
           });
@@ -656,6 +716,7 @@ export const createFormStore = (): FormStoreApi => {
               isTouched: true,
             },
           });
+          discardFieldErrors(state, fieldName, fieldRecords);
           state.isDirty = true;
           syncPublicFields(state.fields, fieldRecords);
         });

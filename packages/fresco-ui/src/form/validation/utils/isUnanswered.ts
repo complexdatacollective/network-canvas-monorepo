@@ -13,9 +13,10 @@
  * Sharing one predicate is what stops `required` and the optional rules from
  * drifting apart about what "empty" means.
  *
- * Deliberately NOT applied to `maxLength` or `pattern`: an empty string is a
- * present value for both (it trivially satisfies any maxLength, and `pattern`
- * prefaults to `''` so an absent value is checked against the regex).
+ * Deliberately NOT applied to `maxLength`: an empty string is a present value
+ * for it, and trivially satisfies any maximum. `pattern` DOES apply it, which
+ * is also what HTML5's `pattern` attribute does — an empty field is the
+ * `required` rule's business, not the expression's.
  *
  * `false` and `0` are answers, not emptiness.
  */

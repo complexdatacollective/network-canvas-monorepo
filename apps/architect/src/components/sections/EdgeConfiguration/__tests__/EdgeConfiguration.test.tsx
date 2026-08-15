@@ -43,8 +43,9 @@ vi.mock('../EdgeTypeMultiSelect', () => ({
   default: () => <div data-testid="edge-type-multiselect" />,
 }));
 
-// Surface the wiring (fieldName, entity, type, editFormName) as data-attributes
-// so the tests assert the real bindings rather than just "a mock rendered".
+// Surface the wiring (fieldName, entity, type, editFormName, addButtonLabel)
+// as data-attributes so the tests assert the real bindings rather than just
+// "a mock rendered".
 vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
   default: ({
     fieldName,
@@ -52,12 +53,14 @@ vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
     type,
     form,
     editFormName,
+    addButtonLabel,
   }: {
     fieldName: string;
     entity: string;
     type: string | null;
     form: string;
     editFormName: string;
+    addButtonLabel?: string;
     handleChangeFields: unknown;
   }) => (
     <div
@@ -67,6 +70,7 @@ vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
       data-type={type ?? ''}
       data-parentform={form}
       data-editformname={editFormName}
+      data-addbuttonlabel={addButtonLabel ?? ''}
     />
   ),
 }));
@@ -194,6 +198,31 @@ describe('EdgeConfiguration', () => {
     expect(
       screen.getByRole('heading', { name: /Edge Attributes — unknownType/ }),
     ).toBeInTheDocument();
+  });
+
+  it('names every add button after the edge type it adds to, so no two share a name', () => {
+    // The 1+N problem: this stage renders one attribute list per selected edge
+    // type, plus the node type's own, all on one screen. Any label belonging
+    // to the list component would repeat; only the edge type's name separates
+    // them. The unknown type is here because a fallback that resolved to an
+    // empty string would put two buttons back to "Create new attribute for ".
+    renderSection({
+      edges: [
+        { id: 'a', subject: { entity: 'edge', type: 'knows' } },
+        { id: 'b', subject: { entity: 'edge', type: 'likes' } },
+        { id: 'c', subject: { entity: 'edge', type: 'unknownType' } },
+      ],
+    });
+    const labels = screen
+      .getAllByTestId('attributes-list')
+      .map((list) => list.dataset.addbuttonlabel);
+
+    expect(labels).toEqual([
+      'Create new attribute for Knows',
+      'Create new attribute for Likes',
+      'Create new attribute for unknownType',
+    ]);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 
   it('wraps each edge attributes list in an "Editable attributes" subsection', () => {

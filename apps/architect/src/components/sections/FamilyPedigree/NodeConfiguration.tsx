@@ -769,6 +769,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 label="Form fields"
                 labelHidden
                 component={DialogArrayField}
+                addButtonLabel="Create new form field"
                 validation={{}}
                 initialValue={nodeConfigFormInitial ?? []}
                 addTitle="Edit Field"

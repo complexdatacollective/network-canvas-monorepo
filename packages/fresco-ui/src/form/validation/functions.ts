@@ -752,6 +752,14 @@ const greaterThanVariable: ValidationFunction<{
 /**
  * Require that a value matches a pattern. Designed to mirror the 'pattern'
  * attribute of HTML5 input elements.
+ *
+ * Short-circuits on an empty/unanswered field, exactly as HTML5 `pattern`
+ * does and as every other optional rule in this file does: `required` owns
+ * emptiness. The earlier implementation wrapped the regex in
+ * `z.prefault(…, '')`, which turned an absent value into an empty string and
+ * then tested THAT against the expression — so an empty required field
+ * reported "This field is required." AND "Not a valid …" at once, and an
+ * empty optional field was rejected outright for being empty.
  */
 const pattern: ValidationFunction<{
   regex: string;
@@ -763,9 +771,25 @@ const pattern: ValidationFunction<{
     invariant(regex, 'Regex must be specified');
     invariant(hint, 'Hint must be specified for pattern validation');
 
-    return z
-      .prefault(z.string().check(z.regex(new RegExp(regex), errorMessage)), '')
-      .check(z.meta({ hint }));
+    // Built once per schema, not per value: the expression carries no `g`
+    // flag, so `test` holds no cursor between calls.
+    const expression = new RegExp(regex);
+
+    return z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (isUnanswered(value)) return;
+        if (typeof value !== 'string') return;
+        if (!expression.test(value)) {
+          ctx.addIssue({
+            code: 'custom',
+            input: value,
+            message: errorMessage,
+            path: [],
+          });
+        }
+      }),
+      z.meta({ hint }),
+    );
   };
 
 /**

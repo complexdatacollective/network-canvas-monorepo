@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -46,6 +46,13 @@ const Section = ({
   required = true,
 }: SectionProps) => {
   const [internalOpen, setInternalOpen] = useState(startExpanded);
+  // The toggle is named BY the section heading rather than carrying a name of
+  // its own. Every stage editor stacks several of these, and a constant
+  // ("Turn this feature on or off") made them one indistinguishable control to
+  // anyone listing the page's switches. `role="switch"` plus `aria-checked`
+  // already say what the control does; the heading is the only part that says
+  // what it does it TO.
+  const sectionLabelId = useId();
   // Eleventh-wave Finding 3: a forced expansion wins over the internal toggle
   // state without destroying it, so releasing the force restores whatever the
   // user (or startExpanded) last chose.
@@ -72,6 +79,7 @@ const Section = ({
 
   const sectionLabel = (
     <span
+      id={sectionLabelId}
       className={cx(
         layout === 'vertical' &&
           headingVariants({
@@ -108,7 +116,7 @@ const Section = ({
         {sectionLabel}
         {toggleable && (
           <ToggleField
-            title="Turn this feature on or off"
+            aria-labelledby={sectionLabelId}
             value={isOpen}
             onChange={() => void changeToggleState()}
             disabled={disabled}

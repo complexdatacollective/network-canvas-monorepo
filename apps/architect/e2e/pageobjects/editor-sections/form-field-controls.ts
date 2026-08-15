@@ -106,7 +106,7 @@ export async function addConfiguredFormField(
   const dialog = page.getByRole('dialog', { name: 'Edit Field' });
 
   const create = section.getByRole('button', {
-    name: 'Create new',
+    name: 'Create new form field',
     exact: true,
   });
   await create.click();
@@ -164,9 +164,7 @@ export async function addConfiguredFormField(
 
   if (spec.required) {
     const validation = dialog.locator('[data-name="Validation"]');
-    await validation
-      .getByRole('switch', { name: 'Turn this feature on or off' })
-      .click();
+    await validation.getByRole('switch', { name: 'Validation' }).click();
     await validation
       .getByRole('switch', { name: 'Required', exact: true })
       .click();

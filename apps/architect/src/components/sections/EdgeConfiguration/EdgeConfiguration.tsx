@@ -58,6 +58,8 @@ type EdgeAttributeBlockProps = {
   fieldName: string;
   editFormName: string;
   title: string;
+  /** This edge type's own name, as the codebook holds it. */
+  edgeLabel: string;
   fields: Record<string, unknown>[];
   onFieldsChange: (edgeId: string, fields: Record<string, unknown>[]) => void;
 };
@@ -72,6 +74,7 @@ const EdgeAttributeBlock = ({
   fieldName,
   editFormName,
   title,
+  edgeLabel,
   fields,
   onFieldsChange,
 }: EdgeAttributeBlockProps) => {
@@ -99,6 +102,11 @@ const EdgeAttributeBlock = ({
           entity={entity}
           type={type}
           editFormName={editFormName}
+          // One list per selected edge type, all on one screen, so the edge
+          // type's own name is the only thing that tells its add button from
+          // the next one's. A placeholder for a name the researcher authored,
+          // not a sentence assembled from fragments.
+          addButtonLabel={`Create new attribute for ${edgeLabel}`}
           handleChangeFields={handleChangeFields}
           value={fields}
           onChange={handleChange}
@@ -188,6 +196,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           fieldName={`edges[${index}].form.fields`}
           editFormName={`edge-attr-edit-${edge.subject.type}`}
           title={`Edge Attributes — ${resolveEdgeLabel(codebook, edge.subject.type)}`}
+          edgeLabel={resolveEdgeLabel(codebook, edge.subject.type)}
           fields={toFields(edge.form)}
           onFieldsChange={handleFieldsChange}
         />

@@ -79,6 +79,7 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
           name="introScreen.items"
           label="Content sections"
           component={DialogArrayField}
+          addButtonLabel="Create new content section"
           validation={{ notEmpty }}
           initialValue={initialItems ?? []}
           addTitle="Edit Section"
@@ -92,7 +93,7 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
           }
           itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
           requestedEditFormName="editable-list-form"
-          emptyStateMessage='No content sections have been created yet. Click "Create new" to add text or media to the intro screen.'
+          emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
         />
       </Row>
     </Section>

@@ -192,47 +192,53 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
   await architectPage.getByRole('option', { name: 'Family Pedigree' }).click();
 
   // Diseases.tsx wraps its `diseases` array in the same DialogArrayField
-  // pattern every other prompt-array section in this suite uses (addPrompt's
-  // "Create new"/"Add" contract), even though the section is titled
-  // "Diseases" rather than "Prompts".
-  await addPrompt(editor.section('Diseases'), async () => {
-    // DiseaseFields.tsx: "Disease label" (labelHidden InputField).
-    await architectPage
-      .getByRole('textbox', { name: 'Disease label' })
-      .fill('Condition X');
+  // pattern every other prompt-array section in this suite uses, even though
+  // the section is titled "Diseases" rather than "Prompts" — so the add button
+  // is named for what it adds, and addPrompt is told which label to click.
+  await addPrompt(
+    editor.section('Diseases'),
+    async () => {
+      // DiseaseFields.tsx: "Disease label" (labelHidden InputField).
+      await architectPage
+        .getByRole('textbox', { name: 'Disease label' })
+        .fill('Condition X');
 
-    // ColorPicker (`palette: 'node-color-seq'`, `paletteRange: 10`) renders a
-    // Base UI RadioGroup of 10 swatch buttons, each `role="radio"` with
-    // `aria-label` `node-color-seq-{n}` (ColorPicker.tsx's `asColorOption`) —
-    // same Base UI Radio primitive already confirmed for
-    // EntitySelectField's node/edge-type pills. Any swatch is a valid,
-    // non-empty color; picking the first keeps this deterministic.
-    await architectPage.getByRole('radio').first().click();
+      // ColorPicker (`palette: 'node-color-seq'`, ranged to the palette's real
+      // eight colours) renders a Base UI RadioGroup of swatch buttons, each
+      // `role="radio"` named for its hue rather than its token — the same Base
+      // UI Radio primitive already confirmed for EntitySelectField's
+      // node/edge-type pills. Picked by name so the spec fails if the swatches
+      // ever go back to announcing `node-color-seq-1`.
+      await architectPage
+        .getByRole('radio', { name: 'Neon Coral', exact: true })
+        .click();
 
-    // DiseaseFields.tsx's "variable" VariablePicker passes NO
-    // `onCreateOption` (unlike every other variable picker in this suite),
-    // so its `onCreateOption` no-ops — this is a genuinely pick-only picker,
-    // as the task brief specifies. `createVariableViaSpotlight` still works
-    // unmodified: searching the EXACT existing variable name
-    // (`hasConditionX`, seeded above on the source stage's node type) means
-    // VariableSpotlight's "Create new variable called…" row never appears
-    // (an exact match exists), so the helper's fallback branch
-    // (`search.press('Enter')`, selecting the single filtered match) fires
-    // instead of ever attempting to create anything.
-    await createVariableViaSpotlight(architectPage, {
-      variableName: 'hasConditionX',
-    });
+      // DiseaseFields.tsx's "variable" VariablePicker passes NO
+      // `onCreateOption` (unlike every other variable picker in this suite),
+      // so its `onCreateOption` no-ops — this is a genuinely pick-only picker,
+      // as the task brief specifies. `createVariableViaSpotlight` still works
+      // unmodified: searching the EXACT existing variable name
+      // (`hasConditionX`, seeded above on the source stage's node type) means
+      // VariableSpotlight's "Create new variable called…" row never appears
+      // (an exact match exists), so the helper's fallback branch
+      // (`search.press('Enter')`, selecting the single filtered match) fires
+      // instead of ever attempting to create anything.
+      await createVariableViaSpotlight(architectPage, {
+        variableName: 'hasConditionX',
+      });
 
-    // "Inheritance pattern" (labelHidden FrescoStyledSelectField) — options
-    // are `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' ->
-    // "Autosomal Dominant".
-    await architectPage
-      .getByRole('combobox', { name: 'Inheritance pattern' })
-      .click();
-    await architectPage
-      .getByRole('option', { name: 'Autosomal Dominant' })
-      .click();
-  });
+      // "Inheritance pattern" (labelHidden FrescoStyledSelectField) — options
+      // are `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' ->
+      // "Autosomal Dominant".
+      await architectPage
+        .getByRole('combobox', { name: 'Inheritance pattern' })
+        .click();
+      await architectPage
+        .getByRole('option', { name: 'Autosomal Dominant' })
+        .click();
+    },
+    { addButtonLabel: 'Create new disease' },
+  );
 
   // AtRiskStatuses.tsx's `showAtRiskStatuses` toggle defaults to `false` via
   // the interface's own `template` (Interfaces.tsx) and is optional/boolean

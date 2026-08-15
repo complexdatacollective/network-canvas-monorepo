@@ -121,6 +121,13 @@ export type PopoverSegment = {
   onOpenChange: (open: boolean) => void;
   /** Which side of the trigger the popover opens on. @default 'right' */
   side?: 'top' | 'right' | 'bottom' | 'left';
+  /**
+   * Where focus goes when the popover closes. Defaults to the trigger, which
+   * is right for a popover the person merely dismissed and wrong for one whose
+   * content SENDS them somewhere — a list of errors to go and correct, say.
+   * Same contract as Base UI's `Popover.Popup` prop of this name.
+   */
+  finalFocus?: React.ComponentProps<typeof PopoverContent>['finalFocus'];
   children: React.ReactNode;
 } & SegmentContent;
 
@@ -483,6 +490,7 @@ function ToolbarPopoverSegment({
       <PopoverContent
         side={segment.side ?? overlaySide(orientation)}
         showArrow={false}
+        finalFocus={segment.finalFocus}
       >
         {segment.children}
       </PopoverContent>

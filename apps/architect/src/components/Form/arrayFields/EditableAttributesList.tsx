@@ -83,6 +83,14 @@ type EditableAttributesListProps = {
   editFormName?: string;
   title?: string;
   /**
+   * Visible text and accessible name of the add button. REQUIRED, and not
+   * defaultable: a Network Composer stage mounts one of these lists for its
+   * node type and one more for EVERY selected edge type, so no constant
+   * belonging to this component can tell them apart — only the caller knows
+   * whose attributes its list holds.
+   */
+  addButtonLabel: string;
+  /**
    * Accessible name for the list. The surrounding Subsection carries the
    * visible heading, so this is hidden by default (see plan §2.10).
    */
@@ -128,6 +136,7 @@ const EditableAttributesList = ({
   type,
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
+  addButtonLabel,
   label = 'Editable attributes',
   handleChangeFields,
   siblingUnvalidatedVariableIds,
@@ -296,6 +305,7 @@ const EditableAttributesList = ({
           label={label}
           labelHidden
           component={DialogArrayField}
+          addButtonLabel={addButtonLabel}
           value={value ?? NO_FIELDS}
           onChange={onChange}
           addTitle={title}
@@ -322,6 +332,7 @@ const EditableAttributesList = ({
       label={label}
       labelHidden
       component={DialogArrayField}
+      addButtonLabel={addButtonLabel}
       initialValue={initialValue}
       // Editable attributes are optional (no node/edge attributes is valid).
       validation={{}}

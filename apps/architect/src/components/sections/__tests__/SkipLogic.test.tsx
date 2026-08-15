@@ -106,7 +106,7 @@ describe('SkipLogic', () => {
       children: <SkipLogic {...STAGE_PROPS} interfaceType="EgoForm" />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
 
     expect(confirm).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'This will clear your skip logic' }),
@@ -134,11 +134,11 @@ describe('SkipLogic', () => {
     });
 
     // Turn off (clears and collapses), then back on.
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
     await waitFor(() => {
       expect(screen.queryByTestId('skip-logic-fields')).not.toBeInTheDocument();
     });
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
 
     await screen.findByTestId('skip-logic-fields');
     expect(screen.getAllByTestId('value').map((el) => el.textContent)).toEqual([
@@ -156,7 +156,7 @@ describe('SkipLogic', () => {
       children: <SkipLogic {...STAGE_PROPS} interfaceType="EgoForm" />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Skip Logic' }));
 
     await vi.waitFor(() => {
       expect(confirm).toHaveBeenCalled();

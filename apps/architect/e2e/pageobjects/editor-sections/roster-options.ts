@@ -27,7 +27,7 @@ export async function addCardDisplayProperties(
 ): Promise<void> {
   await editor
     .section('Card Display Options')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Card Display Options' })
     .click();
   const array = editor.field('cardOptions.additionalProperties');
   for (const [index, row] of rows.entries()) {
@@ -52,7 +52,7 @@ export async function configureSortOptions(
 ): Promise<void> {
   await editor
     .section('Sort Options')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Sort Options' })
     .click();
   await editor
     .field('sortOptions.sortOrder')
@@ -91,7 +91,7 @@ export async function configureSearchOptions(
 ): Promise<void> {
   await editor
     .section('Search Options')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Search Options' })
     .click();
   for (const property of opts.matchProperties) {
     await editor

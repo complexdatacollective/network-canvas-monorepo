@@ -36,9 +36,7 @@ export async function configureSkipLogic(
 ): Promise<void> {
   assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Skip Logic');
-  await section
-    .getByRole('switch', { name: 'Turn this feature on or off' })
-    .click();
+  await section.getByRole('switch', { name: 'Skip Logic' }).click();
   await editor
     .field('skipLogic.action')
     .getByRole('radio', { name: opts.action, exact: true })

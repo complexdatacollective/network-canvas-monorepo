@@ -70,7 +70,7 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Bin Sort Order' }));
 
     await waitFor(() => {
       expect(

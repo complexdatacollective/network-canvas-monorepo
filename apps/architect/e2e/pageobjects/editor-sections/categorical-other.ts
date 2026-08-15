@@ -32,7 +32,7 @@ export async function enableOtherOption(
 ): Promise<void> {
   const section = page.locator(`section[data-name='Follow-up "Other" Option']`);
   await section
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Follow-up "Other" Option' })
     .first()
     .click();
   await createVariableViaSpotlight(page, {

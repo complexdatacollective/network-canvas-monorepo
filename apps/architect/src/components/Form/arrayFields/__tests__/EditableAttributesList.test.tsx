@@ -73,6 +73,7 @@ const setup = (handleChangeFields = vi.fn((value: unknown) => value)) => {
         fieldName="nodeForm.fields"
         entity="node"
         type="person"
+        addButtonLabel="Create new node attribute"
         handleChangeFields={handleChangeFields}
       />
     ),
@@ -147,6 +148,7 @@ const setupControlled = () => {
         fieldName="edges[0].form.fields"
         entity="edge"
         type="knows"
+        addButtonLabel="Create new attribute for Knows"
         handleChangeFields={vi.fn((value: unknown) => value)}
         value={EDGE_FIELDS}
         onChange={onChange}

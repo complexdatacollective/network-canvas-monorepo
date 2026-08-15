@@ -228,7 +228,7 @@ describe('CategoricalBinPrompts', () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
     expect(screen.getAllByText('Prompts').length).toBeGreaterThan(0);
     expect(
-      screen.getByRole('button', { name: 'Create new' }),
+      screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeInTheDocument();
   });
 
@@ -237,7 +237,7 @@ describe('CategoricalBinPrompts', () => {
       subject: { entity: 'node', type: 'person' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.change(await screen.findByLabelText('variable'), {
       target: { value: 'group' },
     });
@@ -446,7 +446,7 @@ describe('CategoricalBinPrompts', () => {
       subject: { entity: 'node', type: 'person' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.change(await screen.findByLabelText('variable'), {
       target: { value: 'sparse' },
     });

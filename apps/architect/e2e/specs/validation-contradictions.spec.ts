@@ -34,7 +34,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
   const page = architectPage;
   await editor
     .section('Form')
-    .getByRole('button', { name: 'Create new', exact: true })
+    .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });
@@ -46,12 +46,11 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 
   // Expand the toggleable Validation section. Section.tsx's `toggleable`
   // prop renders fresco-ui's `ToggleField`, a Base UI `Switch.Root`
-  // (`role="switch"`) whose accessible name comes from the fixed `title`
-  // prop Section.tsx passes — `"Turn this feature on or off"` — not from
-  // the section's own "Validation" title.
+  // (`role="switch"`) named by `aria-labelledby` pointing at the section's own
+  // heading — so the switch IS "Validation".
   await editor
     .section('Validation')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Validation' })
     .click();
 
   const validationSection = editor.section('Validation');
@@ -130,7 +129,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
 
   await editor
     .section('Form')
-    .getByRole('button', { name: 'Create new', exact: true })
+    .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });
@@ -142,7 +141,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
 
   await editor
     .section('Validation')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Validation' })
     .click();
 
   const validationSection = editor.section('Validation');
@@ -206,7 +205,7 @@ test('the option editor rejects canonically equivalent labels', async ({
 
   await editor
     .section('Form')
-    .getByRole('button', { name: 'Create new', exact: true })
+    .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'venue' });
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });

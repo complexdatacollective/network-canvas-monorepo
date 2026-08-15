@@ -70,6 +70,7 @@ const setup = (initialRows: Row[]) => {
           name="fields"
           label="Form fields"
           component={DialogArrayField}
+          addButtonLabel="Create new form field"
           initialValue={initialRows}
           previewComponent={Preview}
           editorFieldsComponent={EditorFields}

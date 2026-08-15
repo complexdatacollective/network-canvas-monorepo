@@ -242,6 +242,7 @@ const renderEditor = ({
         fieldName="nodeForm.fields"
         entity="node"
         type="person"
+        addButtonLabel="Create new node attribute"
         handleChangeFields={(value) => value}
       />
     ),

@@ -1,5 +1,12 @@
 import { omit } from 'es-toolkit/compat';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector, useStore } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -476,26 +483,38 @@ const StageEditor = (props: StageEditorProps) => {
   const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
   const previewLabel = isOpeningPreview ? 'Opening preview…' : 'Preview';
 
+  const syntheticDataLabelId = useId();
+  const respectSkipLogicLabelId = useId();
+  // A `<label>` cannot name either of these: `ToggleField` renders a bare
+  // `<button role="switch">`, and a button's accessible name never comes from
+  // an associated label the way an `<input>`'s does. Wrapping them in one left
+  // both switches unnamed, so each is pointed at its own text explicitly.
   const previewOptionsContent = (
     <div className="flex flex-col gap-3">
-      <label className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <ToggleField
+          aria-labelledby={syntheticDataLabelId}
           value={useSyntheticData}
           onChange={(checked) =>
             dispatch(setPreviewUseSyntheticData(!!checked))
           }
         />
-        <span className="text-sm">Start preview with example data</span>
-      </label>
-      <label className="flex items-center gap-3">
+        <span id={syntheticDataLabelId} className="text-sm">
+          Start preview with example data
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
         <ToggleField
+          aria-labelledby={respectSkipLogicLabelId}
           value={respectSkipLogic}
           onChange={(checked) =>
             dispatch(setPreviewRespectSkipLogic(!!checked))
           }
         />
-        <span className="text-sm">Respect skip logic</span>
-      </label>
+        <span id={respectSkipLogicLabelId} className="text-sm">
+          Respect skip logic
+        </span>
+      </div>
     </div>
   );
 

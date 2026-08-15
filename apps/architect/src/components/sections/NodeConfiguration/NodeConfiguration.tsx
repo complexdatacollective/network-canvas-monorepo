@@ -404,6 +404,9 @@ export const NodeConfigurationComponent = ({
           type={type}
           editFormName="node-attr-edit"
           title="Edit attribute"
+          // Distinguishes this list from the per-edge-type attribute lists the
+          // same Network Composer stage renders below it.
+          addButtonLabel="Create new node attribute"
           handleChangeFields={handleChangeFields}
           siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />

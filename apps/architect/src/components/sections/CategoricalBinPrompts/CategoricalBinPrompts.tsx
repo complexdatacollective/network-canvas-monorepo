@@ -74,6 +74,7 @@ const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
         label="Prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new prompt"
         validation={{ notEmpty }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"

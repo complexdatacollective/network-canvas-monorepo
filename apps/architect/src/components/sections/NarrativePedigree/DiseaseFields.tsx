@@ -8,6 +8,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
+import { COLOR_PALETTES } from '~/config';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeInterfaceOwned } from '~/selectors/roleFilters';
@@ -112,7 +113,12 @@ const DiseaseFields = ({
             label="Select a color for this disease"
             initialValue={asString(item?.color)}
             palette="node-color-seq"
-            paletteRange={10}
+            // The palette's real size, not a hard-coded 10: the theme defines
+            // `--node-1` … `--node-8`, so the two extra swatches this used to
+            // offer rendered as nothing and stored a colour that renders as
+            // nothing wherever it is used. A protocol that already holds one
+            // still gets it back — see ColorPicker.
+            paletteRange={COLOR_PALETTES['node-color-seq']}
           />
         </Row>
       </Section>

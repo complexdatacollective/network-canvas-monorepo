@@ -2149,3 +2149,121 @@ describe('FormStore', () => {
     });
   });
 });
+
+/**
+ * A message is a claim about one value. Replacing the value ends the claim.
+ *
+ * The bug this pins: Architect's "create a variable" flow writes the picked
+ * variable through `setFieldValue`, and the required-field error raised
+ * moments earlier survived the write — the pill showed the chosen variable
+ * while the fieldset stayed red and still read "This field is required."
+ */
+describe('a host write and the errors it supersedes', () => {
+  let store: ReturnType<typeof createFormStore>;
+
+  beforeEach(() => {
+    store = createFormStore();
+    vi.clearAllMocks();
+  });
+
+  const registerTwoFields = () => {
+    store.getState().registerField({
+      name: 'variable',
+      initialValue: undefined,
+      validation: z.string().check(z.minLength(1, 'This field is required.')),
+    });
+    store.getState().registerField({
+      name: 'prompt',
+      initialValue: undefined,
+      validation: z.string().check(z.minLength(1, 'This field is required.')),
+    });
+  };
+
+  const registerVariablePicker = () => {
+    registerTwoFields();
+    store.getState().setErrors({
+      formErrors: [],
+      fieldErrors: {
+        variable: ['This field is required.'],
+        prompt: ['This field is required.'],
+      },
+    });
+  };
+
+  it("drops the written field's messages, and leaves every other field's alone", () => {
+    registerVariablePicker();
+
+    store.getState().setFieldValue('variable', 'age');
+
+    expect(store.getState().getFieldErrors('variable')).toBeNull();
+    expect(store.getState().getFieldState('variable')?.value).toBe('age');
+    // The other field is still wrong, and still says so.
+    expect(store.getState().getFieldErrors('prompt')).toEqual([
+      'This field is required.',
+    ]);
+    expect(store.getState().isValid).toBe(false);
+  });
+
+  it('drops the messages of a field that is no longer mounted', () => {
+    // A collapsed section unmounts its fields while their submit errors live
+    // on in the error map — which Architect's Issues panel reads directly, so
+    // a survivor here is a row pointing at nothing.
+    registerVariablePicker();
+    store.getState().unregisterField('variable');
+    store.getState().setErrors({
+      formErrors: [],
+      fieldErrors: { variable: ['This field is required.'] },
+    });
+
+    store.getState().setFieldValue('variable', 'age');
+
+    expect(store.getState().errors.fieldErrors).toEqual({});
+    expect(store.getState().dormantValues.get('variable')?.value).toBe('age');
+  });
+
+  it('does not revalidate the written field: a new problem waits for submit', async () => {
+    // The deliberate half of the contract. `useField.handleChange` owns the
+    // debounced validate-on-change, so the store must not fire a second one
+    // per keystroke — but nothing invalid can slip past, because submit
+    // validates every field.
+    registerVariablePicker();
+
+    store.getState().setFieldValue('variable', '');
+
+    expect(mockValidateFieldValue).not.toHaveBeenCalled();
+    expect(store.getState().getFieldErrors('variable')).toBeNull();
+
+    mockValidateFieldValue.mockResolvedValue({
+      success: false,
+      error: new z.core.$ZodError([
+        { code: 'custom', message: 'This field is required.', path: [] },
+      ]),
+    });
+    await store.getState().validateForm();
+
+    expect(store.getState().getFieldErrors('variable')).toEqual([
+      'This field is required.',
+    ]);
+  });
+
+  it('takes nothing away from a field that has already passed, because typing is a write too', async () => {
+    // The other half of the contract, and the one with the blast radius:
+    // `useField.handleChange` calls `setFieldValue` on every controlled
+    // change, so this path runs per character typed in every fresco-ui form —
+    // including the participant-facing ones. `SlidesForm` and `EgoForm` gate
+    // "ready to continue" on the form's flag and `QuickAddField` animates its
+    // add badge off the field's, so a write that reset the verdict to "not yet
+    // checked" would flicker both on every keystroke, for as long as it takes
+    // the debounced validation to land.
+    registerTwoFields();
+    mockValidateFieldValue.mockResolvedValue({ success: true, data: 'age' });
+    await store.getState().validateField('variable');
+    await store.getState().validateField('prompt');
+    expect(store.getState().isValid).toBe(true);
+
+    store.getState().setFieldValue('variable', 'age at diagnosis');
+
+    expect(store.getState().getFieldState('variable')?.meta.isValid).toBe(true);
+    expect(store.getState().isValid).toBe(true);
+  });
+});

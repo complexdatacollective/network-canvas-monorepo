@@ -188,6 +188,7 @@ const Form = ({
         label="Form fields"
         labelHidden={disableFormTitle}
         component={DialogArrayField}
+        addButtonLabel="Create new form field"
         initialValue={initialFields ?? NO_FIELDS}
         validation={{ notEmpty }}
         addTitle="Edit Field"

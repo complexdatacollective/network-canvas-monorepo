@@ -39,3 +39,40 @@ test('names the offending field on the first open of the issues panel', async ({
   // keyed by, which is what leaked before the harvest ran on mount.
   await expect(row).toHaveText(/^Title - /);
 });
+
+/**
+ * An issue row is a promise to take the researcher to the thing they have to
+ * correct.
+ *
+ * E2E rather than a component test for the same mount-ordering reason as
+ * above, plus one of its own: Base UI's popover restores focus on close, and
+ * where it restores it to is decided by the real focus manager against a real
+ * document. Before this it went back to the "Issues (n)" trigger, so a
+ * keyboard or screen-reader user was returned exactly where they started
+ * while the page had scrolled somewhere else entirely.
+ */
+test('sends focus to the control an issue row names', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const informationStage = protocol.stages.find(
+    (stage) => stage.type === 'Information',
+  );
+  if (!informationStage) throw new Error('fixture has no Information stage');
+
+  await seed(protocol, { name: 'Issues Focus', assets });
+  await gotoProtocol(architectPage);
+  await new Timeline(architectPage).openStage(informationStage.label);
+
+  const heading = architectPage.getByRole('textbox', { name: 'Page heading' });
+  await heading.fill('');
+  await architectPage.getByRole('button', { name: 'Finished Editing' }).click();
+
+  const row = architectPage.getByTestId('issue').first();
+  await expect(row).toBeVisible();
+  await row.getByRole('link').click();
+
+  // Not the trigger, and not `<body>`: the field the row names.
+  await expect(heading).toBeFocused();
+});

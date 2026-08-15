@@ -12,17 +12,26 @@ const SEQ_PREFIXES = [
  * sequence variants, so `dark` derives one via relative color syntax
  * (mirroring the palette's 0.05 lightness step). Named palette hues resolve
  * from the raw oklch triplets, which require the color-function wrapper.
+ *
+ * `fallback` is a CSS colour used when the theme defines no such sequence
+ * variable. A protocol can hold a sequence index past the end of its palette
+ * (some pickers used to offer ten swatches of an eight-colour palette), and
+ * without a fallback that value renders as nothing at all — an invisible chip
+ * the researcher cannot see to replace.
  */
 export function resolveProtocolColor(
   name: string,
-  opts?: { dark?: boolean },
+  opts?: { dark?: boolean; fallback?: string },
 ): string {
   const prefix = SEQ_PREFIXES.find((p) => name.startsWith(p));
   if (prefix) {
     const themeVar = `--${prefix.replace('-color-seq-', '-')}${name.slice(prefix.length)}`;
-    return opts?.dark
-      ? `oklch(from var(${themeVar}) calc(l - 0.05) c h)`
+    const reference = opts?.fallback
+      ? `var(${themeVar}, ${opts.fallback})`
       : `var(${themeVar})`;
+    return opts?.dark
+      ? `oklch(from ${reference} calc(l - 0.05) c h)`
+      : reference;
   }
   return opts?.dark ? `oklch(var(--${name}--dark))` : `oklch(var(--${name}))`;
 }

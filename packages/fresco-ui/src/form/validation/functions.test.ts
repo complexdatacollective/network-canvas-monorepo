@@ -202,6 +202,59 @@ describe('Validation Functions', () => {
     });
   });
 
+  describe('pattern', () => {
+    const NMTOKEN = {
+      regex: '^[a-zA-Z0-9._:-]+$',
+      errorMessage:
+        'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
+      hint: 'Use letters, numbers and the symbols ._-: only.',
+    };
+
+    it('rejects a non-empty value that does not match', () => {
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      const result = validator.safeParse('not valid!');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(NMTOKEN.errorMessage);
+      }
+    });
+
+    it('accepts a non-empty value that matches', () => {
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      expect(validator.safeParse('Person_1').success).toBe(true);
+    });
+
+    // `required` owns emptiness, exactly as HTML5's `pattern` attribute does.
+    // Without this an empty required field reported BOTH "This field is
+    // required." and "Not a valid …" at once, as a bulleted list — the
+    // researcher was told to fix two things when there was only one.
+    it.each([undefined, null, '', '   '])(
+      'says nothing about the unanswered value %p',
+      (value) => {
+        const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+        expect(validator.safeParse(value).success).toBe(true);
+      },
+    );
+
+    it('holds no cursor between values', () => {
+      // A `test` against a stateful (global) expression alternates pass/fail
+      // on identical input. Same validator instance, same value, twice.
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      expect(validator.safeParse('Person').success).toBe(true);
+      expect(validator.safeParse('Person').success).toBe(true);
+    });
+
+    it('should throw error when the expression is not specified', () => {
+      expect(() => {
+        validations.pattern({ ...NMTOKEN, regex: '' }, createMockContext())({});
+      }).toThrow('Regex must be specified');
+    });
+  });
+
   describe('minValue', () => {
     it('should reject numbers less than min', () => {
       const validator = validations.minValue(10, createMockContext())({});

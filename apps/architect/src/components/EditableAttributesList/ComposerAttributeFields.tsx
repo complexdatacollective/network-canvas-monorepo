@@ -193,13 +193,11 @@ const ComposerAttributeFields = ({
           initialValue={asString(item.component)}
           validation={{ required: true }}
           placeholder="Select an input control"
-          options={
-            isNewVariable
-              ? toSelectOptions(componentOptions)
-              : toSelectOptions(componentOptions).toSorted((a, b) =>
-                  a.label.localeCompare(b.label),
-                )
-          }
+          // As in FieldFields: authored order while the variable is still
+          // being defined, alphabetical (within group) once it is a lookup.
+          options={toSelectOptions(componentOptions, {
+            sorted: !isNewVariable,
+          })}
         />
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">

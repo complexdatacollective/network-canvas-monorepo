@@ -119,7 +119,7 @@ test('discarding stage edits reverts a validation change to a shared variable', 
     .click();
   await editor
     .section('Validation')
-    .getByRole('switch', { name: 'Turn this feature on or off' })
+    .getByRole('switch', { name: 'Validation' })
     .click();
   await editor
     .section('Validation')

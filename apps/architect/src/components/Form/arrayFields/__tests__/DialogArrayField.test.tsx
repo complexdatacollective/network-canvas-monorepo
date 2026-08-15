@@ -192,6 +192,7 @@ const arrayField = (
     name="items"
     label="Items"
     component={DialogArrayField}
+    addButtonLabel="Create new item"
     initialValue={initialItems}
     previewComponent={Preview}
     editorFieldsComponent={editorFieldsComponent}
@@ -231,11 +232,63 @@ const setup = ({
 
 const editorInput = () => screen.getByRole('textbox', { name: 'Item label' });
 
+/**
+ * A stage editor mounts several of these at once — a Name Generator has a form
+ * field list AND a prompt list; a Network Composer has one attribute list per
+ * selected edge type. Every one of them used to read "Create new", so anyone
+ * navigating by a list of buttons met the same control repeated, and
+ * Architect's own E2E specs had to scope each click to a section to tell them
+ * apart. `addButtonLabel` is required, with no default, so a call site cannot
+ * fall back into that state without failing to compile.
+ */
+describe('DialogArrayField add button', () => {
+  it('gives two lists on one screen two different buttons', () => {
+    const store = configureStore({ reducer: (state = {}) => state });
+
+    render(
+      <Provider store={store}>
+        <Form onSubmit={() => ({ success: true })}>
+          <ArchitectArrayField
+            name="fields"
+            label="Form fields"
+            component={DialogArrayField}
+            addButtonLabel="Create new form field"
+            initialValue={NO_ITEMS}
+            previewComponent={Preview}
+            editorFieldsComponent={EditorFields}
+            editorTitle="Edit field"
+            itemLabel="field"
+          />
+          <ArchitectArrayField
+            name="prompts"
+            label="Prompts"
+            component={DialogArrayField}
+            addButtonLabel="Create new prompt"
+            initialValue={NO_ITEMS}
+            previewComponent={Preview}
+            editorFieldsComponent={EditorFields}
+            editorTitle="Edit prompt"
+            itemLabel="prompt"
+          />
+        </Form>
+      </Provider>,
+    );
+
+    const addButtons = screen
+      .getAllByRole('button')
+      .map((button) => button.textContent?.trim() ?? '')
+      .filter((label) => label.startsWith('Create new'));
+
+    expect(addButtons).toEqual(['Create new form field', 'Create new prompt']);
+    expect(new Set(addButtons).size).toBe(addButtons.length);
+  });
+});
+
 describe('DialogArrayField', () => {
   it('adds a UUID-backed item only after the editor is saved', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     expect(getItems()).toEqual([]);
 
     fireEvent.change(editorInput(), { target: { value: 'First item' } });
@@ -306,7 +359,7 @@ describe('DialogArrayField', () => {
   it('discards a cancelled draft', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Discard me' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -350,7 +403,7 @@ describe('DialogArrayField', () => {
     }));
     setup({ onBeforeSave, normalizeItem });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Async' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -373,7 +426,7 @@ describe('DialogArrayField', () => {
     }));
     setup({ onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
@@ -388,7 +441,7 @@ describe('DialogArrayField', () => {
     const onBeforeSave = vi.fn((value: unknown) => value);
     setup({ editorValidate, onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('Blocked by validate')).toBeInTheDocument();
@@ -421,7 +474,7 @@ describe('DialogArrayField', () => {
 
     // A new item is not in the committed array, so it reports no index.
     editorValidate.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     await waitFor(() => expect(editorValidate).toHaveBeenCalled());
@@ -608,7 +661,7 @@ describe('DialogArrayField', () => {
     });
     const { unmount } = setup({ onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Slow addition' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
@@ -641,7 +694,7 @@ describe('DialogArrayField in the stage form', () => {
       arrayField(NO_ITEMS, {}),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Undo me' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -707,12 +760,12 @@ describe('DialogArrayField focus return', () => {
     // the control that opened the editor is the list's add button.
     setup();
 
-    await openEditorFor('Create new');
+    await openEditorFor('Create new item');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await settle();
 
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Create new' }),
+      screen.getByRole('button', { name: 'Create new item' }),
     );
   });
 

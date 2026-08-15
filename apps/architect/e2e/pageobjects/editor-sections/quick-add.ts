@@ -30,7 +30,7 @@ export async function createQuickAddVariable(
   if (opts.clearRequiredValidation) {
     const validation = page.locator('[data-name="Validation"]');
     const toggle = validation.getByRole('switch', {
-      name: 'Turn this feature on or off',
+      name: 'Validation',
     });
     // The created variable carries `required`, so the section starts
     // expanded (`startExpanded={!!hasValidation}`); one click turns it off.

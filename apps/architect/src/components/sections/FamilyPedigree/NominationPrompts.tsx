@@ -161,6 +161,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         label="Nomination prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new nomination prompt"
         validation={{ notEmpty }}
         initialValue={nominationPromptsInitial ?? []}
         addTitle="Edit Prompt"
@@ -172,7 +173,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         onBeforeSave={onBeforeSave}
         sortable
         requestedEditFormName="editable-list-form"
-        emptyStateMessage='No nomination prompts have been created yet. Click "Create new" to add your first prompt.'
+        emptyStateMessage='No nomination prompts have been created yet. Click "Create new nomination prompt" to add your first one.'
       />
     </Section>
   );

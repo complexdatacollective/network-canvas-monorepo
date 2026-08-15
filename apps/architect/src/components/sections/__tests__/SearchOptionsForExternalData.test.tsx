@@ -55,7 +55,7 @@ describe('SearchOptionsForExternalData', () => {
       children: <SearchOptionsForExternalData {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
     await waitFor(() => {
       expect(
         screen.queryByRole('group', {
@@ -64,7 +64,7 @@ describe('SearchOptionsForExternalData', () => {
       ).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
     await screen.findByRole('group', {
       name: 'Which attributes should be searchable?',
     });

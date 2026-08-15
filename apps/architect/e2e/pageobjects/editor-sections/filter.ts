@@ -23,9 +23,7 @@ export async function configureStageFilter(
 ): Promise<void> {
   assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Filter');
-  await section
-    .getByRole('switch', { name: 'Turn this feature on or off' })
-    .click();
+  await section.getByRole('switch', { name: 'Filter' }).click();
   for (const rule of opts.rules) {
     await addRule(section, rule);
   }

@@ -125,6 +125,39 @@ const makeContainerFocusable = (
   return container;
 };
 
+/**
+ * Where focus should go for ONE named errored field — the same answer
+ * `focusFirstError` would reach for that field, through the same tiers.
+ *
+ * Exists for callers that already know which error the person chose:
+ * Architect's Issues panel lists every message, and a researcher who clicks
+ * the third one means the third one. Scrolling alone is not enough — the
+ * scroll target is an `sr-only` anchor with no control in it, so a keyboard or
+ * screen-reader user is left holding the button they clicked while the thing
+ * to correct sits somewhere off-screen.
+ *
+ * Returns `undefined` when the field is not in the DOM at all. A field that IS
+ * mounted but owns nothing operable falls back to its own container, exactly
+ * as an invalid submit does, so focus lands on the error rather than being
+ * silently dropped on `<body>`.
+ */
+export const resolveFieldErrorTarget = (
+  fieldName: string,
+  root?: ParentNode | null,
+): HTMLElement | undefined => {
+  const resolveWithin = (scope: ParentNode) =>
+    findFieldContainer(
+      Array.from(scope.querySelectorAll<HTMLElement>(FIELD_CONTAINER_SELECTOR)),
+      fieldName,
+    );
+
+  const container =
+    (root ? resolveWithin(root) : undefined) ?? resolveWithin(document);
+  if (!container) return undefined;
+
+  return findOperableControl(container) ?? makeContainerFocusable(container);
+};
+
 /** The earliest of `containers` in document order. */
 const earliestInDocument = (
   containers: HTMLElement[],

@@ -220,14 +220,19 @@ const variableTypeGroup = (
 // Display order and group headings are Architect's own: the schema record orders
 // its keys differently, so iterating it directly would reorder the dropdown.
 // Only the per-type control lists come from the schema.
+//
+// The headings carry no `--` decoration: they name real `<optgroup>`s, which
+// the browser already sets apart visually and which a screen reader already
+// announces as groups. The dashes were there to make a disabled option look
+// like a heading, and they were read out as part of it.
 const VARIABLE_TYPES_COMPONENTS: [string, ComponentConfig[], string][] = [
-  variableTypeGroup('number', '-- Number Types -- '),
-  variableTypeGroup('scalar', '-- Scalar Types --'),
-  variableTypeGroup('datetime', '-- Date Types --'),
-  variableTypeGroup('text', '-- Text Types --'),
-  variableTypeGroup('boolean', '-- Boolean Types --'),
-  variableTypeGroup('ordinal', '-- Ordinal Types --'),
-  variableTypeGroup('categorical', '-- Categorical Types --'),
+  variableTypeGroup('number', 'Number Types'),
+  variableTypeGroup('scalar', 'Scalar Types'),
+  variableTypeGroup('datetime', 'Date Types'),
+  variableTypeGroup('text', 'Text Types'),
+  variableTypeGroup('boolean', 'Boolean Types'),
+  variableTypeGroup('ordinal', 'Ordinal Types'),
+  variableTypeGroup('categorical', 'Categorical Types'),
 ];
 
 // Internal config - not exported
@@ -242,21 +247,24 @@ export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(
 
 export const INPUT_OPTIONS = Object.values(COMPONENTS);
 
-type FormattedInputOption = {
+/**
+ * The input controls a researcher can choose from, grouped by the variable
+ * type each group produces.
+ *
+ * A real group, not a flat list punctuated by value-less "heading" options:
+ * seven headings all carrying the same absent value are seven duplicate React
+ * keys, and a screen reader reads each of them as one more thing to pick.
+ */
+export type InputControlGroup = {
   label: string;
-  value: string | null;
-  disabled?: boolean;
-  description?: string;
-  image?: string;
+  options: ComponentConfig[];
 };
 
-const formattedInputOptions = VARIABLE_TYPES_COMPONENTS.reduce<
-  FormattedInputOption[]
->((accumulator, currentValue) => {
-  accumulator.push({ label: currentValue[2], value: null, disabled: true });
-  accumulator.push(...currentValue[1]);
-  return accumulator;
-}, []);
+const formattedInputOptions: InputControlGroup[] =
+  VARIABLE_TYPES_COMPONENTS.map(([, controls, heading]) => ({
+    label: heading,
+    options: controls,
+  }));
 
 export const VARIABLE_OPTIONS = Object.values(VARIABLE_TYPES);
 

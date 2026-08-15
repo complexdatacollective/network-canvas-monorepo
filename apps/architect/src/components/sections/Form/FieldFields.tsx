@@ -186,13 +186,14 @@ const FieldFields = ({
           initialValue={asString(item.component)}
           validation={{ required: true }}
           placeholder="Select an input control"
-          options={
-            isNewVariable
-              ? toSelectOptions(componentOptions)
-              : toSelectOptions(componentOptions).toSorted((a, b) =>
-                  a.label.localeCompare(b.label),
-                )
-          }
+          // A NEW variable keeps the authored order, which reads as a
+          // progression from simplest control to most involved. An existing
+          // variable's list is a lookup — the researcher knows what they want
+          // and is finding it — so it is alphabetised (within each group,
+          // since the list may still be grouped by type).
+          options={toSelectOptions(componentOptions, {
+            sorted: !isNewVariable,
+          })}
         />
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">

@@ -58,7 +58,7 @@ export async function addSociogramPrompt(
       if (interaction) {
         const section = editor.section('Interaction Behavior');
         const toggle = section.getByRole('switch', {
-          name: 'Turn this feature on or off',
+          name: 'Interaction Behavior',
         });
         await toggle.click();
         if (interaction.kind === 'none-explicit') {
@@ -104,7 +104,7 @@ export async function addSociogramPrompt(
       if (spec.displayEdges) {
         const displaySection = editor.section('Display Edges');
         const displayToggle = displaySection.getByRole('switch', {
-          name: 'Turn this feature on or off',
+          name: 'Display Edges',
         });
         // The section auto-expands when edges.create is set (mount-effect
         // union) — guard instead of blind-clicking.

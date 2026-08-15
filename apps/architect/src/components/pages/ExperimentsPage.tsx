@@ -1,4 +1,5 @@
 import { ArrowLeft, FlaskConical } from 'lucide-react';
+import { useId } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -13,6 +14,7 @@ import { actionCreators } from '~/ducks/modules/activeProtocol';
 import { getExperiments } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const ExperimentsPage = () => {
+  const encryptedVariablesLabelId = useId();
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
   const experiments = useSelector(getExperiments) ?? {};
@@ -66,13 +68,21 @@ const ExperimentsPage = () => {
               )}
             >
               <div className="min-w-0 flex-1">
-                <Heading level="h4">Encrypted Variables</Heading>
+                <Heading level="h4" id={encryptedVariablesLabelId}>
+                  Encrypted Variables
+                </Heading>
                 <Paragraph className="text-muted text-sm">
                   Enable support for encrypted variables in the codebook. This
                   allows sensitive data to be collected securely.
                 </Paragraph>
               </div>
               <ToggleField
+                // A bare `<button role="switch">` takes its name from
+                // aria-labelledby, aria-label, its own contents or `title` —
+                // and this one has none of those, so it reached assistive
+                // technology as an unnamed switch. The feature's heading is
+                // its name.
+                aria-labelledby={encryptedVariablesLabelId}
                 value={isEncryptedEnabled}
                 onChange={(checked) =>
                   handleToggleExperiment('encryptedVariables', !!checked)

@@ -20,14 +20,10 @@ test('creates a valid Information stage from scratch', async ({
   // marks `title` optional (Title.tsx's `validation={{ required: true }}`).
   await editor.field('title').getByRole('textbox').fill('Welcome');
 
-  // ContentGrid.tsx's Section stamps `data-name="Items"` (its `title` prop),
-  // NOT "ContentGrid" — confirmed against the component source rather than
-  // guessed from the interface name. Scope "Create new" to that section so a
-  // same-named button elsewhere (there is none today, but future sections
-  // might add one) can't cause a strict-mode ambiguity.
-  await editor
-    .section('Items')
-    .getByRole('button', { name: 'Create new', exact: true })
+  // The add button names what it adds, so it needs no section scoping to be
+  // unambiguous — the whole point of #1391's rename.
+  await architectPage
+    .getByRole('button', { name: 'Create new content item', exact: true })
     .click();
 
   // The item dialog is a top-level Dialog (not nested under the Items
