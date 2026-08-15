@@ -89,6 +89,25 @@ export const getColorSwatchName = (color: string): string => {
 // Target protocol schema version. Used to determine compatibility & migration
 export const APP_SCHEMA_VERSION = 8 as const;
 
+// Product limit on a protocol name, counted in graphemes (see
+// `~/utils/countGraphemes`) rather than UTF-16 code units. Stage labels are
+// capped at 50 (`StageHeading`); a protocol name legitimately carries more
+// context (study + wave + version), and 100 fits
+// "Study Name — Wave 2 — v3.1 (2026)" comfortably while keeping the name from
+// consuming the editor viewport.
+//
+// Deliberately an Architect product rule and NOT a schema rule: `ProtocolSchema`
+// still accepts any non-empty name, so a `.netcanvas` authored by an older
+// Architect (or by Interviewer/Fresco) with a longer name keeps opening and is
+// never rewritten on load. An over-limit name renders bounded and stays
+// editable — only edits that push its count FURTHER over the limit are refused.
+export const PROTOCOL_NAME_MAX_LENGTH = 100;
+
+// One message for both places a researcher can name a protocol — the create
+// dialog and the editor's own name control — so the two surfaces cannot drift
+// into quoting different limits, and there is one whole string to localise.
+export const PROTOCOL_NAME_TOO_LONG_MESSAGE = `Protocol names are limited to ${PROTOCOL_NAME_MAX_LENGTH} characters.`;
+
 // Maps for supported asset types within the app. Used by asset chooser.
 export const SUPPORTED_EXTENSION_TYPE_MAP = {
   network: ['.csv', '.json'],

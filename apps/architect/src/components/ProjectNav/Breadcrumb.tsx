@@ -14,6 +14,14 @@ type BreadcrumbProps = {
 
 const labelClasses = 'inline-block text-current truncate max-w-xs';
 
+// `truncate` clips the LOGICAL end of a string and puts the ellipsis there.
+// Under the app's inherited LTR base direction, bidi reordering places the
+// logical START of an RTL protocol name at the visual right, so the 320px slice
+// on screen came from the MIDDLE of the name with the ellipsis on the wrong
+// side. `dir="auto"` derives each label's base direction from its own first
+// strong character, so an RTL name truncates from its end like an LTR one; the
+// `title` exposes the whole value either way.
+
 const Breadcrumb = ({ items }: BreadcrumbProps) => (
   <nav
     aria-label="Breadcrumb"
@@ -31,6 +39,8 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => (
           <button
             type="button"
             onClick={item.onClick}
+            title={item.label}
+            dir="auto"
             className={cx(
               labelClasses,
               'hover:text-action cursor-pointer border-none bg-transparent p-0 transition-colors',
@@ -39,7 +49,9 @@ const Breadcrumb = ({ items }: BreadcrumbProps) => (
             {item.label}
           </button>
         ) : (
-          <span className={labelClasses}>{item.label}</span>
+          <span className={labelClasses} dir="auto" title={item.label}>
+            {item.label}
+          </span>
         )}
       </Fragment>
     ))}

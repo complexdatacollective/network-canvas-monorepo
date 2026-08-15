@@ -246,6 +246,34 @@ describe('<LibraryPanel /> row action focus', () => {
   });
 });
 
+// #1397 filed long names as dominating the page generally. On this surface it
+// did NOT reproduce: the row name was already clamped to two lines with
+// `wrap-anywhere` and the full value on `title`. Pinned here so the filed
+// description cannot quietly become true later — and extended with `dir="auto"`,
+// which the row was missing, so an RTL name's clamp truncates from its own end.
+describe('<LibraryPanel /> protocol row name', () => {
+  const longRtlName = 'مشروع بحث الشبكات الاجتماعية الحضرية والريفية'.repeat(8);
+
+  // Its own setup rather than a shared one: the focus block above needs a
+  // default-named row and reset download/dialog mocks, this block needs the
+  // long RTL row and touches neither.
+  beforeEach(() => {
+    useProtocolLibraryMock.mockReturnValue({
+      protocols: [makeProtocolRow({ name: longRtlName })],
+      isLoaded: true,
+    });
+  });
+
+  it('stays clamped, wrappable and fully exposed however long the name is', () => {
+    renderPanel();
+
+    const label = screen.getByTitle(longRtlName);
+    expect(label).toHaveClass('line-clamp-2', 'wrap-anywhere');
+    expect(label).toHaveAttribute('dir', 'auto');
+    expect(label).toHaveTextContent(longRtlName);
+  });
+});
+
 describe('<LibraryPanel /> gallery card', () => {
   beforeEach(() => {
     localStorage.clear();

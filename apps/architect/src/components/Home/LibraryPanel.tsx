@@ -186,7 +186,14 @@ const PanelRow = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span title={name} className="line-clamp-2 font-semibold wrap-anywhere">
+        {/* Already height-bounded by `line-clamp-2`; `dir="auto"` is the RTL
+            half — without it the row's LTR base direction reorders an RTL name
+            so the clamp's ellipsis lands on the wrong end. */}
+        <span
+          title={name}
+          dir="auto"
+          className="line-clamp-2 font-semibold wrap-anywhere"
+        >
           {name}
         </span>
         {meta ? (

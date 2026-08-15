@@ -1,7 +1,12 @@
 import { type Page } from '@playwright/test';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
+import { PROTOCOL_NAME_TOO_LONG_MESSAGE } from '../../src/config/index.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { readProtocolJson } from '../helpers/read-store.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
 // No `@visual` tag: these assertions are measurements read out of the layout,
@@ -198,3 +203,230 @@ for (const viewport of VIEWPORTS) {
     expect(bounds.right).toBeLessThanOrEqual(bounds.width);
   });
 }
+
+/**
+ * #1397. A protocol whose name arrived before Architect capped names: ~400
+ * graphemes of RTL text and emoji, the exact shape the issue was filed with.
+ * Seeded straight into IndexedDB so the cap never sees it — these specs are
+ * about what an EXISTING oversized name does, which is the acceptance criterion
+ * no cap can satisfy on its own.
+ */
+const OVERSIZED_NAME =
+  'مشروع بحث الشبكات الاجتماعية الحضرية والريفية🏙️🏡 '.repeat(9);
+
+/** An unbroken token with no wrap opportunity anywhere in it. */
+const UNBREAKABLE_NAME = 'A'.repeat(400);
+
+/**
+ * Long enough to reach the description control's own `max-h-52` bound, so both
+ * of the card's growable regions are at maximum. A name-only fixture never
+ * exercises the compound worst case.
+ */
+const MAXIMAL_DESCRIPTION =
+  'This protocol collects egocentric network data from participants across urban and rural sites. '.repeat(
+    8,
+  );
+
+/**
+ * Deliberately NOT the all-interfaces fixture. Its Geospatial stage carries the
+ * shared Mapbox testing token, so `TestingMapboxTokenAlert` renders a banner
+ * above the card that pushes the timeline below the fold on its own (measured:
+ * the card's own top at y=457 on a 720px viewport, before the name contributes
+ * anything). A viewport assertion on that fixture would be measuring the
+ * banner, not the name.
+ */
+function protocolWithStages(): CurrentProtocol {
+  return {
+    ...emptyProtocol(),
+    stages: [1, 2, 3].map((index) => ({
+      id: `info-${index}`,
+      label: `Information ${index}`,
+      type: 'Information',
+      title: `Information ${index}`,
+      items: [],
+    })),
+  };
+}
+
+const NAME_VIEWPORTS = [
+  ...VIEWPORTS,
+  { name: 'desktop', width: 1280, height: 720 },
+] as const;
+
+/** The name control's bound, in line-heights (`max-h-[3lh]`). */
+const NAME_BOUND_LINES = 3;
+
+async function readNameControlMetrics(page: Page) {
+  return page.getByRole('textbox', { name: 'Protocol name' }).evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      offsetHeight: (el as HTMLElement).offsetHeight,
+      scrollHeight: el.scrollHeight,
+      clientWidth: el.clientWidth,
+      scrollWidth: el.scrollWidth,
+      lineHeight: parseFloat(style.lineHeight),
+      direction: style.direction,
+    };
+  });
+}
+
+function expectNameWithinBound(metrics: {
+  offsetHeight: number;
+  lineHeight: number;
+}) {
+  expect(metrics.offsetHeight).toBeLessThanOrEqual(
+    Math.ceil(NAME_BOUND_LINES * metrics.lineHeight) + 1,
+  );
+}
+
+for (const viewport of NAME_VIEWPORTS) {
+  test(`an oversized protocol name stays bounded and leaves the timeline on screen at ${viewport.name} width`, async ({
+    architectPage,
+    seed,
+  }) => {
+    await seed(protocolWithStages(), { name: OVERSIZED_NAME });
+    await architectPage.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await gotoProtocol(architectPage);
+
+    // AC4, the filed defect, asserted FIRST so it is what a regression reports:
+    // the timeline's first row measured y=1189 inside a 720px viewport before
+    // this. `toBeInViewport` compares against the real viewport; `offsetTop`
+    // would not — this app scrolls inside a container, so an
+    // offset-parent-relative number can be small while the list is off screen.
+    // This assertion is genuinely tight: a four-line bound instead of three put
+    // the row at y=726 and failed here.
+    await expect(new Timeline(architectPage).rows().first()).toBeInViewport();
+
+    const metrics = await readNameControlMetrics(architectPage);
+
+    // The bound is doing work rather than the value simply being short: the
+    // control's content is taller than the box that paints it. Without this the
+    // height assertion below would pass vacuously for any short name.
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.offsetHeight);
+    expectNameWithinBound(metrics);
+
+    // AC3: `dir="auto"` gives an RTL name an RTL base direction, so it reads
+    // and truncates from the correct end.
+    expect(metrics.direction).toBe('rtl');
+
+    // AC3 again: wrapping was never the defect. A ~400-grapheme mixed RTL and
+    // emoji name wraps with no horizontal overflow at any width.
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
+    expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
+
+    // The researcher's own metadata is never rewritten on load: no migration,
+    // no truncation, no silent repair. Only what the app PAINTS is bounded.
+    const stored = await readProtocolJson(architectPage);
+    expect(stored.name).toBe(OVERSIZED_NAME);
+  });
+
+  test(`an unbreakable protocol name wraps instead of overflowing at ${viewport.name} width`, async ({
+    architectPage,
+    seed,
+  }) => {
+    await seed(protocolWithStages(), { name: UNBREAKABLE_NAME });
+    await architectPage.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await gotoProtocol(architectPage);
+
+    const metrics = await readNameControlMetrics(architectPage);
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.offsetHeight);
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
+    expectNameWithinBound(metrics);
+    await expect(new Timeline(architectPage).rows().first()).toBeInViewport();
+    expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
+  });
+
+  test(`the protocol card stays inside a ${viewport.name} viewport with an oversized name AND a maximal description`, async ({
+    architectPage,
+    seed,
+  }) => {
+    await seed(
+      { ...protocolWithStages(), description: MAXIMAL_DESCRIPTION },
+      { name: OVERSIZED_NAME },
+    );
+    await architectPage.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await gotoProtocol(architectPage);
+
+    // Both growable regions at maximum. Measure the CARD, not just the name —
+    // the issue title is about the editor viewport, and a bound on the name
+    // alone would still let the pair of them fill the screen.
+    const cardHeight = await architectPage
+      .getByRole('textbox', { name: 'Protocol name' })
+      .evaluate((el) => {
+        const card = el.closest('.max-w-3xl');
+        if (!(card instanceof HTMLElement)) {
+          throw new Error('protocol info card not found');
+        }
+        return card.offsetHeight;
+      });
+
+    expect(cardHeight).toBeLessThanOrEqual(viewport.height);
+    expectNameWithinBound(await readNameControlMetrics(architectPage));
+    expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
+  });
+}
+
+/**
+ * #1397, AC1's "communicate". The editor's control enforces the cap by dropping
+ * the over-limit edit, which is indistinguishable from a broken paste unless
+ * the refusal is PAINTED. This is measured as geometry rather than asserted
+ * with `toBeVisible()` on purpose: an `sr-only` element is not `display: none`
+ * and does have a box, so `toBeVisible()` passes on a message no sighted
+ * researcher can read. A 1x1 clipped box is the thing being ruled out.
+ */
+test('a refused protocol name is painted on screen, not only announced', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(protocolWithStages(), { name: 'Wave 2 pilot' });
+  await architectPage.setViewportSize({ width: 1280, height: 720 });
+  await gotoProtocol(architectPage);
+
+  const nameControl = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  const describedBy = await nameControl.getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  // Attribute selector, not `#id`: React's `useId` emits colons, which are not
+  // valid in a bare CSS id selector.
+  const allowance = architectPage.locator(`[id="${describedBy}"]`);
+
+  // Twelve graphemes, 88 remaining — the counter is silent chrome at this
+  // distance from the limit. Asserting that FIRST is what stops the assertion
+  // after the refusal from passing on an always-painted counter.
+  const beforeRefusal = await allowance.boundingBox();
+  expect(beforeRefusal?.width ?? 0).toBeLessThanOrEqual(1);
+  expect(beforeRefusal?.height ?? 0).toBeLessThanOrEqual(1);
+
+  // A real one-shot insertion, which is what a paste is. Deliberately not
+  // `fill()`: that clears the field first, so the refusal would be measured
+  // against an empty control rather than against the researcher's own name.
+  await nameControl.click();
+  await architectPage.keyboard.press('End');
+  await architectPage.keyboard.insertText('B'.repeat(300));
+
+  // THE HEADLINE, asserted first so a regression reports the filed defect
+  // rather than something derived from it: the refusal now occupies real
+  // painted area. `expect.poll` because `boundingBox()` is a one-shot read and
+  // this has to be the assertion that waits, not one that races.
+  await expect
+    .poll(async () => (await allowance.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(1);
+  const afterRefusal = await allowance.boundingBox();
+  expect(afterRefusal?.height ?? 0).toBeGreaterThan(1);
+
+  // ...and what is painted is the refusal, not the counter carrying on.
+  await expect(allowance).toHaveText(PROTOCOL_NAME_TOO_LONG_MESSAGE);
+
+  // Refused: neither accepted nor truncated.
+  await expect(nameControl).toHaveValue('Wave 2 pilot');
+});

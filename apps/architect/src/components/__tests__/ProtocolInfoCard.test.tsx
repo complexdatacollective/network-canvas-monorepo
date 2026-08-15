@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { PROTOCOL_NAME_MAX_LENGTH } from '~/config';
 import createTimelineReducer from '~/ducks/middleware/timeline';
 import activeProtocolReducer, {
   setActiveProtocol,
@@ -55,9 +56,13 @@ const createTestStore = () =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-const renderCard = () => {
+const renderCard = (initialName?: string) => {
   const store = createTestStore();
-  store.dispatch(setActiveProtocol(protocol));
+  store.dispatch(
+    setActiveProtocol(
+      initialName === undefined ? protocol : { ...protocol, name: initialName },
+    ),
+  );
 
   render(
     <Provider store={store}>
@@ -67,6 +72,31 @@ const renderCard = () => {
 
   return store;
 };
+
+const nameControl = () =>
+  screen.getByRole('textbox', { name: 'Protocol name' }) as HTMLTextAreaElement;
+
+const allowanceElement = () => {
+  const describedBy = nameControl().getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  const element = document.getElementById(describedBy!);
+  expect(element).toBeTruthy();
+  return element!;
+};
+
+const allowanceText = () => allowanceElement().textContent;
+
+// jsdom applies no stylesheet, so `sr-only` is asserted as the class it is.
+// What it means in the browser — a 1x1 clipped box — is measured for real in
+// `e2e/specs/responsive.spec.ts`, which reads the element's bounding box.
+const SCREEN_READER_ONLY = 'sr-only';
+
+const TOO_LONG_MESSAGE = `Protocol names are limited to ${PROTOCOL_NAME_MAX_LENGTH} characters.`;
+
+// A ZWJ family emoji: 1 grapheme, 8 UTF-16 code units. Any cap that counts
+// `value.length` charges 8 for it, which is exactly what #1397's emoji names
+// must not be penalised by.
+const FAMILY = '🧑‍🤝‍🧑';
 
 describe('ProtocolInfoCard', () => {
   beforeEach(() => {
@@ -139,5 +169,241 @@ describe('ProtocolInfoCard', () => {
     });
 
     expect(description).toHaveValue('External description');
+  });
+
+  // #1397. The filed defect: `field-sizing: content` with no `max-height` made
+  // the control's height a pure function of the stored value, so a 342-character
+  // name measured 703px inside a 720px viewport and put the timeline's first row
+  // at y=1189. jsdom does no layout, so the pixel proof lives in
+  // `e2e/specs/responsive.spec.ts`; these pin the two rules that produce it.
+  describe('bounding the name against the viewport', () => {
+    it('always carries the three-line height bound, whatever the value', () => {
+      renderCard('Short name');
+      expect(nameControl()).toHaveClass('max-h-[3lh]');
+
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(90) } });
+      expect(nameControl()).toHaveClass('max-h-[3lh]');
+    });
+
+    it('lets an RTL name set its own base direction', () => {
+      renderCard('مشروع بحث الشبكات الاجتماعية');
+      expect(nameControl()).toHaveAttribute('dir', 'auto');
+    });
+
+    it('steps the heading down so a name at the limit fits that bound', () => {
+      renderCard('Short name');
+      // Up to 32 graphemes the page-heading size is untouched.
+      expect(nameControl()).toHaveClass('text-4xl');
+
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(50) } });
+      expect(nameControl()).toHaveClass('text-2xl');
+      expect(nameControl()).not.toHaveClass('text-4xl');
+
+      // Past 64 graphemes — the only tier in which a name at the 100-grapheme
+      // limit fits three lines at 390px, the narrowest supported width.
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(80) } });
+      expect(nameControl()).toHaveClass('text-lg');
+      expect(nameControl()).not.toHaveClass('text-2xl');
+    });
+
+    it('bounds and steps down a legacy name the cap never saw', () => {
+      // Arrives from IndexedDB / an imported .netcanvas, over the limit.
+      renderCard('م'.repeat(342));
+      expect(nameControl()).toHaveValue('م'.repeat(342));
+      expect(nameControl()).toHaveClass('max-h-[3lh]');
+      expect(nameControl()).toHaveClass('text-lg');
+    });
+  });
+
+  describe('the protocol name length limit', () => {
+    it('refuses an edit that pushes the name past the limit and announces why', () => {
+      const store = renderCard('Short name');
+
+      fireEvent.change(nameControl(), {
+        target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH) },
+      });
+      expect(nameControl()).toHaveValue('A'.repeat(PROTOCOL_NAME_MAX_LENGTH));
+
+      fireEvent.change(nameControl(), {
+        target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH + 1) },
+      });
+
+      // The refused keystroke leaves no text behind, so nothing over-limit can
+      // reach the store on the next blur.
+      expect(nameControl()).toHaveValue('A'.repeat(PROTOCOL_NAME_MAX_LENGTH));
+      expect(screen.getByRole('status')).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      fireEvent.blur(nameControl());
+      expect(store.getState().activeProtocol.present?.name).toBe(
+        'A'.repeat(PROTOCOL_NAME_MAX_LENGTH),
+      );
+    });
+
+    it('refuses an over-limit paste without silently truncating it', () => {
+      renderCard('Short name');
+
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+
+      // Neither accepted nor cut down to 100: the previous value stands, so the
+      // researcher's clipboard content is never half-committed.
+      expect(nameControl()).toHaveValue('Short name');
+      expect(screen.getByRole('status')).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      // ...and the refusal is on screen, not only in the live region. A
+      // `role="status"` message inside `sr-only` is a 1x1 clipped box: a
+      // sighted researcher pasting a long study title would see the paste
+      // simply not happen, with no error, no counter and no change of any kind.
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+    });
+
+    it('shows a refused edit on screen and clears it once an edit is accepted', () => {
+      renderCard('Wave 2 pilot');
+
+      // Twelve graphemes — 88 remaining. The counter is deliberately silent
+      // chrome at this distance from the limit, which is precisely why the
+      // refusal below needs to bring its own visible channel.
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+
+      expect(nameControl()).toHaveValue('Wave 2 pilot');
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+      // Reads as an error rather than as a statistic, in the boxed treatment
+      // that clears WCAG AA on this card's platinum ground (4.94:1, against
+      // 4.39:1 for plain destructive text at this size).
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).toHaveClass('bg-destructive');
+      expect(allowanceElement()).toHaveClass('text-destructive-contrast');
+
+      // The next accepted edit resolves it: the message goes, and the line
+      // falls back to being the control's silent description rather than
+      // leaving a refusal sitting under a name that is now perfectly fine.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 3 pilot' } });
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+      expect(allowanceElement()).not.toHaveClass('bg-destructive');
+      expect(allowanceText()).toBe(
+        `${PROTOCOL_NAME_MAX_LENGTH - 12} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+    });
+
+    it('keeps a legacy over-limit name editable downward', () => {
+      const legacy = 'م'.repeat(342);
+      const store = renderCard(legacy);
+
+      // Adding to it is refused...
+      fireEvent.change(nameControl(), { target: { value: `${legacy}م` } });
+      expect(nameControl()).toHaveValue(legacy);
+
+      // ...but every edit that does not make it longer is accepted, so the name
+      // that triggered the bug can always be shortened. A predicate of
+      // "reject anything over the limit" would trap it forever.
+      fireEvent.change(nameControl(), {
+        target: { value: legacy.slice(0, 200) },
+      });
+      expect(nameControl()).toHaveValue('م'.repeat(200));
+      expect(allowanceText()).toBe(
+        `100 characters over the ${PROTOCOL_NAME_MAX_LENGTH} character limit`,
+      );
+
+      fireEvent.change(nameControl(), { target: { value: 'Renamed' } });
+      fireEvent.blur(nameControl());
+      expect(store.getState().activeProtocol.present?.name).toBe('Renamed');
+    });
+
+    it('counts an emoji sequence as one character, so an emoji name reaches the full limit', () => {
+      const store = renderCard('Short name');
+      const emojiName = FAMILY.repeat(PROTOCOL_NAME_MAX_LENGTH);
+      expect(emojiName.length).toBe(PROTOCOL_NAME_MAX_LENGTH * 8);
+
+      fireEvent.change(nameControl(), { target: { value: emojiName } });
+
+      // A `value.length` cap would have refused this at the 13th emoji.
+      expect(nameControl()).toHaveValue(emojiName);
+
+      fireEvent.change(nameControl(), {
+        target: { value: emojiName + FAMILY },
+      });
+      expect(nameControl()).toHaveValue(emojiName);
+
+      fireEvent.blur(nameControl());
+      expect(store.getState().activeProtocol.present?.name).toBe(emojiName);
+    });
+  });
+
+  describe('communicating the limit', () => {
+    it('describes the remaining allowance on the control at all times', () => {
+      renderCard('Short name');
+      expect(allowanceText()).toBe(
+        `${PROTOCOL_NAME_MAX_LENGTH - 10} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(95) } });
+      expect(allowanceText()).toBe(
+        `5 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+    });
+
+    it('paints the counter from the same count at which it starts announcing', () => {
+      renderCard('Short name');
+      const status = screen.getByRole('status');
+
+      // 21 remaining: one short of the first announcement threshold, so
+      // neither channel says anything.
+      fireEvent.change(nameControl(), {
+        target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH - 21) },
+      });
+      expect(status).toHaveTextContent('');
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+
+      // 20 remaining: the live region speaks. The counter has to appear at the
+      // SAME count — a screen reader being told the allowance while the
+      // sighted counter is still hidden is two different products.
+      fireEvent.change(nameControl(), {
+        target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH - 20) },
+      });
+      expect(status).toHaveTextContent(
+        `20 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+    });
+
+    it('announces the allowance only as it crosses a threshold', () => {
+      renderCard('Short name');
+      const status = screen.getByRole('status');
+
+      // Far from the limit: nothing to say.
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(50) } });
+      expect(status).toHaveTextContent('');
+
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(85) } });
+      expect(status).toHaveTextContent(
+        `15 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+
+      // Same threshold band: silence, rather than one announcement per
+      // keystroke flooding the screen reader.
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(86) } });
+      expect(status).toHaveTextContent('');
+
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(93) } });
+      expect(status).toHaveTextContent(
+        `7 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+    });
+
+    it('does not announce a rename that the researcher did not type', () => {
+      const store = renderCard('Short name');
+
+      act(() => {
+        store.dispatch(updateProtocolName({ name: 'A'.repeat(99) }));
+      });
+
+      expect(nameControl()).toHaveValue('A'.repeat(99));
+      expect(screen.getByRole('status')).toHaveTextContent('');
+      expect(allowanceText()).toBe(
+        `1 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+    });
   });
 });
