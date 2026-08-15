@@ -411,6 +411,7 @@ const migrationV7toV8 = createMigration({
 - A variable's \`component\` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its \`parameters\`); layout variables, which have no control, have it removed.
 - Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean variable's option entry that is not a labelled true/false choice is removed; if no entries remain the variable falls back to the standard Yes/No choices.
 - The CategoricalBin "other" input and the NameGenerator quick-add field now honour the referenced variable's configured validation. Both previously required a response locally, so migration adds \`required: true\` to every variable they reference while preserving its other validation rules.
+- A form may no longer collect the same variable twice. Two fields naming one variable always shared a single answer — whichever the participant filled in last overwrote the other — so the repeat was never collecting anything of its own. Only the first field for each variable is kept.
 `,
   migrate: (doc, deps) => {
     const codebook = (doc as Record<string, unknown>).codebook;
@@ -984,8 +985,28 @@ const migrationV7toV8 = createMigration({
               !NON_RENDERABLE_VARIABLE_TYPES.has(type)
             );
           });
-          form.fields = renderable;
-          for (const field of renderable) {
+          // V8 rejects a form that names one variable twice
+          // (`uniqueFormFieldVariables`), so repair the legacy protocols that
+          // carry that shape rather than failing their migration. The
+          // duplicate was never functional: every field registers under
+          // `field.variable`, so both rows already shared one form value and
+          // the later registration silently replaced the earlier — the second
+          // field collected nothing of its own. Keep the first occurrence in
+          // authored array order and drop the rest, which is what Architect's
+          // `repairConfigurationConflicts` does for an already-v8 protocol.
+          // Array position, not object key order, picks the survivor, so the
+          // repair is deterministic. A field whose `variable` is not a string
+          // is passed through untouched for the schema to reject as before.
+          const seenVariables = new Set<string>();
+          const deduplicated = renderable.filter((field) => {
+            const variable = asRecord(field)?.variable;
+            if (typeof variable !== 'string') return true;
+            if (seenVariables.has(variable)) return false;
+            seenVariables.add(variable);
+            return true;
+          });
+          form.fields = deduplicated;
+          for (const field of deduplicated) {
             const typedField = asRecord(field);
             if (!typedField) continue;
             if (
