@@ -254,7 +254,9 @@ describe('SegmentedToolbar — toggles', () => {
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
     const button = screen.getByRole('button', { name: 'Freeze' });
-    expect(button).toBeDisabled();
+    // Disabled segments stay focusable and say so with `aria-disabled` rather
+    // than the native attribute — see the focus-retention tests below.
+    expect(button).toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(button);
     expect(button).toHaveAttribute('aria-pressed', 'false');
   });
@@ -325,7 +327,7 @@ describe('SegmentedToolbar — colour', () => {
     render(<SegmentedToolbar label="Tools" items={items} />);
 
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
-      'hover:enabled:bg-(--component-text)',
+      'ui-enabled:hover:bg-(--component-text)',
     );
   });
 
@@ -346,7 +348,7 @@ describe('SegmentedToolbar — colour', () => {
     const button = screen.getByRole('button', { name: 'Delete' });
     expect(button).toHaveClass('bg-tomato');
     expect(button).toHaveClass('text-white');
-    expect(button).not.toHaveClass('hover:enabled:bg-(--component-text)');
+    expect(button).not.toHaveClass('ui-enabled:hover:bg-(--component-text)');
   });
 });
 
@@ -404,7 +406,7 @@ describe('SegmentedToolbar — groups', () => {
     expect(typeof eventDetails.cancel).toBe('function');
   });
 
-  it('disables every option when a controlled group segment omits its callback', () => {
+  it('disables every option when a controlled group segment omits its callback', async () => {
     // Same hazard as a controlled toggle without onPressedChange: a
     // controlled `value` with no `onValueChange` can never change, so every
     // option in the group is disabled rather than left live-looking.
@@ -421,9 +423,203 @@ describe('SegmentedToolbar — groups', () => {
       },
     ];
     render(<SegmentedToolbar label="View" items={items} />);
-    expect(screen.getByRole('button', { name: 'List' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Grid' })).toBeDisabled();
+    const grid = screen.getByRole('button', { name: 'Grid' });
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(grid).toHaveAttribute('aria-disabled', 'true');
+    // `aria-disabled` alone would only be a claim; the option must actually be
+    // inert, since it is no longer the browser enforcing that.
+    await userEvent.click(grid);
+    expect(grid).toHaveAttribute('aria-pressed', 'false');
   });
+});
+
+describe('SegmentedToolbar — disabled segments', () => {
+  // A disabled segment stays in the toolbar's roving focus (Base UI's
+  // `focusableWhenDisabled`, the APG toolbar behaviour), so it must never be
+  // natively disabled: browsers blur a focused element the moment it becomes
+  // disabled, which would dump a keyboard user who exhausts an action — say,
+  // pressing Undo until there is nothing left to undo — onto <body>.
+  //
+  // jsdom does not implement that blur, so these tests pin the *cause*: no
+  // `disabled` attribute, ever, not even for the single commit Base UI takes
+  // to delete it again. The focus outcome itself is pinned in the browser, in
+  // SegmentedToolbar.stories.tsx.
+
+  /** Records every mutation of the `disabled` attribute on `element`. */
+  function watchDisabled(element: Element) {
+    const observer = new MutationObserver(() => undefined);
+    observer.observe(element, { attributes: true, attributeOldValue: true });
+    return () => {
+      const changes = observer
+        .takeRecords()
+        .filter((record) => record.attributeName === 'disabled')
+        .map((record) => (record.oldValue === null ? 'added' : 'removed'));
+      observer.disconnect();
+      return changes;
+    };
+  }
+
+  const disabledSegments: Array<
+    [string, (disabled: boolean) => ToolbarSegment]
+  > = [
+    [
+      'Undo',
+      (disabled) => ({
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        disabled,
+        onClick: vi.fn(),
+      }),
+    ],
+    [
+      'Freeze',
+      (disabled) => ({
+        type: 'toggle',
+        id: 'freeze',
+        label: 'Freeze',
+        icon: <Snowflake />,
+        pressed: false,
+        onPressedChange: vi.fn(),
+        disabled,
+      }),
+    ],
+    [
+      'List',
+      (disabled) => ({
+        type: 'group',
+        id: 'view',
+        mode: 'single',
+        value: [],
+        onValueChange: vi.fn(),
+        options: [{ value: 'list', label: 'List', icon: <List />, disabled }],
+      }),
+    ],
+    [
+      'Draw edge',
+      (disabled) => ({
+        type: 'menu',
+        id: 'edge',
+        label: 'Draw edge',
+        icon: <Spline />,
+        options: [{ value: 'friendship', label: 'Friendship' }],
+        onSelect: vi.fn(),
+        disabled,
+      }),
+    ],
+    [
+      'Add node',
+      (disabled) => ({
+        type: 'popover',
+        id: 'add',
+        label: 'Add node',
+        icon: <Trash2 />,
+        open: false,
+        onOpenChange: vi.fn(),
+        children: <input aria-label="Name" />,
+        disabled,
+      }),
+    ],
+  ];
+
+  it.each(disabledSegments)(
+    'never applies a native disabled attribute to a %s segment that becomes disabled',
+    (name, makeSegment) => {
+      const { rerender } = render(
+        <SegmentedToolbar label="Tools" items={[makeSegment(false)]} />,
+      );
+      const button = screen.getByRole('button', { name });
+      const readDisabledChanges = watchDisabled(button);
+
+      rerender(<SegmentedToolbar label="Tools" items={[makeSegment(true)]} />);
+
+      // Not "added then removed" — added at all is what loses focus.
+      expect(readDisabledChanges()).toEqual([]);
+      expect(button).not.toBeDisabled();
+      // The segment stays reachable, and says it is unavailable.
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+      expect(button).toHaveAttribute('tabindex', '0');
+    },
+  );
+
+  it('does not fire a disabled button segment that was activated while enabled', async () => {
+    // The reported case: Undo is activated repeatedly until the history runs
+    // out and the segment disables under the pointer/keyboard.
+    const onClick = vi.fn();
+    const items = (disabled: boolean): ToolbarSegment[] => [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        disabled,
+        onClick,
+      },
+    ];
+    const { rerender } = render(
+      <SegmentedToolbar label="Tools" items={items(false)} />,
+    );
+    const button = screen.getByRole('button', { name: 'Undo' });
+
+    await userEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+
+    rerender(<SegmentedToolbar label="Tools" items={items(true)} />);
+    await userEvent.click(button);
+    await userEvent.type(button, '{Enter}');
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an enabled segment free of the disabled affordances', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const button = screen.getByRole('button', { name: 'Undo' });
+    expect(button).not.toHaveAttribute('aria-disabled');
+  });
+
+  // Every appearance Button gates on availability — the dimming, the flat
+  // variants' hover colour flip, `raised`'s hover lift and elevation, and the
+  // `--component-text` token the default colour swaps on hover — is gated on
+  // `ui-enabled`/`ui-disabled`, which match `aria-disabled` as well as the
+  // native attribute. Enumerating those rules here instead would mean
+  // restating Button's internals from the outside, and silently drifting the
+  // next time one of them changes.
+  it.each(['text', 'outline', 'dashed', 'glass', 'raised', 'default'] as const)(
+    'gates a disabled %s segment on the availability variants, not `:disabled`',
+    (variant) => {
+      const items: ToolbarSegment[] = [
+        {
+          type: 'button',
+          id: 'undo',
+          label: 'Undo',
+          icon: <Undo2 />,
+          variant,
+          disabled: true,
+          onClick: vi.fn(),
+        },
+      ];
+      render(<SegmentedToolbar label="Tools" items={items} />);
+      const { className } = screen.getByRole('button', { name: 'Undo' });
+
+      // `disabled:`/`enabled:`/`not-disabled:` cannot match a segment that is
+      // never natively disabled, so none may remain.
+      expect(className).not.toMatch(/(^|\s)(disabled|not-disabled):/);
+      expect(className).not.toContain('hover:enabled:');
+      expect(className).toContain('ui-disabled:opacity-50');
+    },
+  );
 });
 
 describe('SegmentedToolbar — add/remove', () => {

@@ -196,6 +196,37 @@ function isLabelVisible(content: SegmentContent): boolean {
   return content.showLabel ?? !content.icon;
 }
 
+/**
+ * A disabled toolbar segment stays focusable — the APG toolbar behaviour Base
+ * UI's roving focus already implements via `focusableWhenDisabled`, so a
+ * keyboard user can still reach a segment to learn it is unavailable.
+ *
+ * A native `disabled` attribute is incompatible with that: browsers blur a
+ * focused element the instant it becomes disabled, so a keyboard user who
+ * exhausts an action — pressing Undo until there is nothing left to undo —
+ * loses focus to the document body. Base UI does delete the attribute again,
+ * but only in a layout effect, one commit after React has written it to the
+ * DOM and the browser has already taken focus away.
+ *
+ * So swallow `disabled` before it reaches the DOM and let `aria-disabled`
+ * carry the state (it is what Base UI converges on anyway). Activation is
+ * already blocked in Base UI's own click/keydown/pointerdown handlers, which
+ * close over the disabled state rather than reading the attribute.
+ */
+const SegmentControl = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  function SegmentControl({ disabled, ...props }, ref) {
+    // The composite item and the inner trigger each contribute a signal, and
+    // whichever renders last wins the merge — so treat either as disabled.
+    const isDisabled =
+      disabled === true ||
+      props['aria-disabled'] === true ||
+      props['aria-disabled'] === 'true';
+    return (
+      <Button ref={ref} {...props} aria-disabled={isDisabled || undefined} />
+    );
+  },
+);
+
 // Pressed-state highlight for toggle segments, via Base UI's data attribute.
 // `!important` so the selected colours win over Button's text-variant hover.
 const pressedClasses =
@@ -209,7 +240,7 @@ function segmentButton(
 ) {
   const labelVisible = isLabelVisible(content);
   return (
-    <Button
+    <SegmentControl
       variant={content.variant ?? 'text'}
       size={size}
       icon={content.icon}
@@ -222,7 +253,7 @@ function segmentButton(
       )}
     >
       {labelVisible ? content.label : null}
-    </Button>
+    </SegmentControl>
   );
 }
 
@@ -298,14 +329,19 @@ function ToolbarToggleSegment({
   // its own state regardless of whether a callback is supplied.
   const isUncontrollable =
     segment.pressed !== undefined && !segment.onPressedChange;
+  const disabled = segment.disabled || isUncontrollable;
+  // `disabled` also goes on the composite item, not just the inner Toggle:
+  // that is what tells Base UI's roving focus the segment is disabled-but-
+  // focusable, and keeps its `aria-disabled` in step with the Toggle's.
   const toggle = (
     <Toolbar.Button
+      disabled={disabled}
       render={
         <Toggle
           pressed={segment.pressed}
           defaultPressed={segment.defaultPressed}
           onPressedChange={segment.onPressedChange}
-          disabled={segment.disabled || isUncontrollable}
+          disabled={disabled}
           render={segmentButton(segment, size, pressedClasses)}
         />
       }
@@ -347,12 +383,17 @@ function ToolbarGroupSegment({
       )}
     >
       {segment.options.map((option) => {
+        // The group's own `disabled` reaches each Toggle through context, so
+        // fold it in here too — the composite item is outside that context and
+        // would otherwise treat the option as enabled.
+        const disabled = option.disabled || isUncontrollable;
         const toggle = (
           <Toolbar.Button
+            disabled={disabled}
             render={
               <Toggle
                 value={option.value}
-                disabled={option.disabled}
+                disabled={disabled}
                 render={segmentButton(option, size, pressedClasses)}
               />
             }
@@ -396,6 +437,7 @@ function ToolbarMenuSegment({
       : undefined;
   const trigger = (
     <Toolbar.Button
+      disabled={segment.disabled}
       render={
         <DropdownMenuTrigger
           disabled={segment.disabled}
@@ -455,6 +497,7 @@ function ToolbarPopoverSegment({
       : undefined;
   const trigger = (
     <Toolbar.Button
+      disabled={segment.disabled}
       render={
         <PopoverTrigger
           disabled={segment.disabled}
