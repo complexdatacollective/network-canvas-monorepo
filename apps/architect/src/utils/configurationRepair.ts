@@ -19,8 +19,14 @@ export type ConfigurationRepairAssessment =
 
 /**
  * Whether a protocol that failed validation failed for reasons Architect can
- * offer to fix — a form collecting one variable twice, a prompt or disease
- * bound to a variable an interface owns, two diseases sharing a name.
+ * offer to fix — a form collecting one variable twice, a prompt bound to a
+ * variable an interface owns, two diseases on one variable, two diseases
+ * sharing a name.
+ *
+ * Not a disease bound to an interface-owned variable: that is never detected,
+ * because `diseases[].variable` carries no `usage` tag and
+ * `findExclusiveVariableConflicts` treats an untagged reference as a read.
+ * Nothing here can offer a repair validation never asks for.
  *
  * Called only AFTER validation has failed, and never reports a repair it has
  * not proven: the repaired protocol is re-validated here, so accepting the fix

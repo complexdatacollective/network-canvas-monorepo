@@ -84,9 +84,14 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
       // UI mounts the popover's portal in a later commit than the one that
       // flips `open`, so on a first open the effect runs while `issueRefs` is
       // still empty and every row keeps its raw internal path. Verified in a
-      // real browser: submitting an invalid Information stage listed
-      // "title - This field is required.", and only re-validating after an
-      // edit turned it into "Title - …". A ref callback cannot be early: it
+      // real browser on an invalid Information stage: without this the row
+      // read "title - This field is required." — the raw field name — and only
+      // re-validating after an edit replaced it. It now harvests to
+      // "Page heading - …", because #1400 changed `ArchitectField`'s
+      // `IssueAnchor` description from `startCase(name)` to the field's own
+      // `label` ("Page heading", sections/Title.tsx), so the panel and the
+      // control agree by construction and neither says "Title". Pinned by
+      // e2e/specs/issues-panel.spec.ts. A ref callback cannot be early: it
       // runs when the element exists, whenever that turns out to be.
       harvestLabel(el, field);
     },
