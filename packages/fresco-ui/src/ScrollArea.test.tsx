@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ScrollArea } from './ScrollArea';
 
@@ -79,6 +79,81 @@ describe('ScrollArea keyboard reachability', () => {
         short
       </ScrollArea>,
     );
+
+    await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '0'));
+  });
+});
+
+describe('ScrollArea content that grows on its own', () => {
+  // The shared setup's ResizeObserver fires once per element and cannot be
+  // driven, so swap in one that records what is being watched and fires only
+  // when this test says so.
+  type Watcher = { callback: ResizeObserverCallback; targets: Set<Element> };
+  let watchers: Watcher[] = [];
+  const originalResizeObserver = globalThis.ResizeObserver;
+
+  beforeEach(() => {
+    watchers = [];
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      private watcher: Watcher;
+
+      constructor(callback: ResizeObserverCallback) {
+        this.watcher = { callback, targets: new Set() };
+        watchers.push(this.watcher);
+      }
+
+      observe(target: Element) {
+        this.watcher.targets.add(target);
+      }
+
+      unobserve(target: Element) {
+        this.watcher.targets.delete(target);
+      }
+
+      disconnect() {
+        this.watcher.targets.clear();
+      }
+    };
+  });
+
+  afterEach(() => {
+    globalThis.ResizeObserver = originalResizeObserver;
+  });
+
+  const reportResize = (target: Element) => {
+    const watching = watchers.filter((watcher) => watcher.targets.has(target));
+    if (watching.length === 0) {
+      throw new Error(
+        'Nothing is observing this element, so content that grows without a DOM mutation can never be measured.',
+      );
+    }
+    for (const watcher of watching) {
+      watcher.callback(
+        [{ target } as ResizeObserverEntry],
+        {} as ResizeObserver,
+      );
+    }
+  };
+
+  it('becomes a tab stop when its content grows without a mutation', async () => {
+    // An image that finishes loading takes its intrinsic height: `scrollHeight`
+    // grows, nothing is added to or removed from the DOM, and the viewport's
+    // own box — pinned by its layout — does not change. Left unwatched, a
+    // region with no focusable descendants stays at `tabIndex={-1}` and cannot
+    // be reached by keyboard at all (WCAG 2.1.1).
+    stubOverflow(100, 100);
+    render(
+      <ScrollArea viewportClassName="v" data-testid="viewport">
+        <img alt="" data-testid="content" />
+      </ScrollArea>,
+    );
+
+    await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '-1'));
+
+    stubOverflow(900, 100);
+    act(() => {
+      reportResize(screen.getByTestId('content'));
+    });
 
     await waitFor(() => expect(viewport()).toHaveAttribute('tabindex', '0'));
   });

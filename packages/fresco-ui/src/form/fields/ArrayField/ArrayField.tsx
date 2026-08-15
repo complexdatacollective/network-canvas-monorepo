@@ -148,6 +148,22 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * open time is a detached node by the time focus is returned.
    */
   editTriggerRef?: (element: HTMLElement | null) => void;
+  /**
+   * Resolves the list's own add control — the one control that survives this
+   * row being destroyed.
+   *
+   * For an item component that runs its OWN delete confirmation (rather than
+   * leaning on `confirmDelete`) and so has to name its own `finalFocus`. On
+   * confirm, both the row and the Remove control that opened the dialog are
+   * gone; when the row was the last one there is no neighbouring row to move
+   * to either, and answering `null` there sends focus to `<body>`, which Base
+   * UI resolves to the first tabbable element in the whole document.
+   *
+   * Call it when focus is being RETURNED, not when the dialog opens — see
+   * `editTriggerRef` for why an element captured earlier is a dead node by
+   * then.
+   */
+  getAddTrigger: () => HTMLElement | null;
 };
 
 export type ArrayFieldEditorProps<T extends Record<string, unknown>> = {
@@ -366,6 +382,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
   editTriggerRef: (element: HTMLElement | null) => void;
+  getAddTrigger: () => HTMLElement | null;
   disabled: boolean;
   readOnly: boolean;
   itemClasses?:
@@ -397,6 +414,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onUpdateItem,
     ItemComponent,
     editTriggerRef,
+    getAddTrigger,
     itemClasses,
     disabled,
     readOnly,
@@ -476,6 +494,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         readOnly={readOnly}
         dragControls={dragControls}
         editTriggerRef={editTriggerRef}
+        getAddTrigger={getAddTrigger}
       />
     </Surface>
   );
@@ -599,6 +618,11 @@ export default function ArrayField<T extends Record<string, unknown>>({
     editTriggerCallbacks.current.set(internalId, callback);
     return callback;
   }, []);
+
+  // The list's add button, resolved lazily. Handed to every row so an item
+  // component running its own delete confirmation can name a surviving focus
+  // target — the same answer this component's own `confirmDelete` path gives.
+  const getAddTrigger = useCallback(() => addButtonRef.current, []);
 
   const getEditorTrigger = useCallback(() => {
     const session = lastEditingRef.current;
@@ -870,6 +894,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   onCancel={cancelEditing}
                   ItemComponent={ItemComponent}
                   editTriggerRef={registerEditTrigger(item._internalId)}
+                  getAddTrigger={getAddTrigger}
                   itemClasses={itemClasses}
                   disabled={disabled ?? false}
                   readOnly={readOnly ?? false}

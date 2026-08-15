@@ -215,9 +215,7 @@ describe('ProtocolLockBanner', () => {
 
     const banner = screen.getByRole('status');
     expect(banner).toHaveTextContent(/The other tab has been closed/i);
-    expect(banner).toHaveTextContent(
-      /an editor is still open here with unsaved changes/i,
-    );
+    expect(banner).toHaveTextContent(/an editor is still open here/i);
     expect(banner).not.toHaveTextContent(/decide which to keep/i);
     expect(
       screen.queryByRole('button', { name: 'Choose What to Keep' }),

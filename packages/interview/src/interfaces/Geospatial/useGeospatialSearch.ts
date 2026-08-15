@@ -204,14 +204,23 @@ export const useGeospatialSearch = ({
    * selection settling late wiped a query the participant had already typed
    * into a reopened panel. Closing the panel is the caller's job, and it does
    * it synchronously.
+   *
+   * And it rotates only the token THIS request spent. Closing the panel starts
+   * a fresh session of its own, so a participant who selects a result, reopens
+   * search and types again is already on a new token by the time this settles —
+   * overwriting it there would leave the reopened search's `suggest()` and its
+   * eventual `retrieve()` on different tokens, which is two billed sessions for
+   * one lookup and not the session pairing Mapbox is being told about.
    */
   const handleSelect = useCallback(
     async (suggestion: Suggestion): Promise<SelectSuggestionOutcome> => {
       if (!accessToken || !map) return 'unavailable';
 
+      const spentToken = sessionTokenRef.current;
+
       try {
         const result = await searchBoxRef.current.retrieve(suggestion, {
-          sessionToken: sessionTokenRef.current,
+          sessionToken: spentToken,
         });
         const feature = result.features[0];
         if (feature?.geometry.type !== 'Point') return 'unavailable';
@@ -224,7 +233,9 @@ export const useGeospatialSearch = ({
         console.error('Retrieve error:', error);
         return 'unavailable';
       } finally {
-        sessionTokenRef.current = crypto.randomUUID();
+        if (sessionTokenRef.current === spentToken) {
+          sessionTokenRef.current = crypto.randomUUID();
+        }
       }
     },
     [map, accessToken],

@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { act, render, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -53,7 +54,7 @@ const NestedEditor = ({ dirty = true }: { dirty?: boolean }) => {
   return null;
 };
 
-const renderDialog = (store: TestStore, editor = <NestedEditor />) =>
+const renderDialog = (store: TestStore, editor: ReactNode = <NestedEditor />) =>
   render(
     <Provider store={store}>
       {editor}
@@ -92,11 +93,23 @@ describe('NestedDraftReclaimDialog', () => {
   it('asks nothing when the reclaim is blocked on the stage draft alone', () => {
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 
-    renderDialog(store, <NestedEditor dirty={false} />);
+    // No nested editor at all: the stage draft is the only thing holding the
+    // reclaim back.
+    renderDialog(store, null);
 
     // That situation is the stage editor's own three-action choice; answering
     // it here would put two questions about one reclaim on screen at once.
     expect(openDialogMock).not.toHaveBeenCalled();
+  });
+
+  // An untouched editor blocks the reclaim too — it was seeded from the buffer
+  // the refresh would replace — so it gets the same explanation.
+  it('explains an open editor with nothing typed into it', () => {
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+    renderDialog(store, <NestedEditor dirty={false} />);
+
+    expect(openDialogMock).toHaveBeenCalled();
   });
 
   // Outside a stage editor the inner editor's Finish writes the canonical

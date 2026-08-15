@@ -617,9 +617,14 @@ describe('useProtocolTabLock', () => {
     );
   });
 
-  // A pristine nested editor is not work; blocking on one would leave the tab
-  // refusing every write over an editor with nothing in it.
-  it('reclaims normally when the open nested editor has nothing in it', async () => {
+  // An untouched nested editor is no safer than a dirty one. It was seeded from
+  // the editing buffer as it stood when it opened and goes on showing those
+  // values after a refresh replaces that buffer — it does not re-seed itself
+  // (`Codebook/__tests__/EntityTypeDialog.bufferRefresh.test.tsx`) — so
+  // refreshing under it sets up a save that writes the older definition back
+  // over what the other tab saved. Closing it is what makes the refresh safe,
+  // and costs a pristine editor nothing.
+  it('does not refresh under an open nested editor with nothing in it', async () => {
     const fake = makeFakeLock();
     mockLocation.mockReturnValue('/protocol/codebook');
     window.history.replaceState(null, '', '/protocol/codebook');
@@ -628,13 +633,26 @@ describe('useProtocolTabLock', () => {
       store.dispatch(setActiveProtocolId('p1'));
       store.dispatch(setActiveProtocol(protocol));
     });
-    openNestedEditor(false);
+    const editor = openNestedEditor(false);
     act(() => {
       fake.fireExclusivity(false);
     });
 
     await act(async () => {
       fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).not.toHaveBeenCalled();
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+    expect(store.getState().activeProtocol?.present?.name).toBe(
+      'Test Protocol',
+    );
+
+    // Closing it resolves the reclaim, exactly as closing a dirty one does —
+    // nothing is left refusing writes with no way out.
+    await act(async () => {
+      editor.unmount();
       await Promise.resolve();
     });
 

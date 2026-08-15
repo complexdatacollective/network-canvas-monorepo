@@ -189,12 +189,46 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
       const resizeObserver = new ResizeObserver(updateScrollVariables);
       resizeObserver.observe(viewport);
 
+      // …and on the CONTENT's own boxes, not just the viewport's. Content can
+      // grow with no DOM mutation at all and without the viewport resizing: an
+      // image finishing loading and taking its intrinsic height, a webfont
+      // arriving and reflowing a paragraph, a height transition finishing. The
+      // viewport is normally pinned by its layout, so none of that resizes it,
+      // and none of it is a mutation either — yet each one is the fits-to-
+      // overflows transition the tab stop is derived from, and missing it
+      // leaves a scrollable region with no focusable descendants at
+      // `tabIndex={-1}`, unreachable by keyboard.
+      //
+      // The direct children are enough: a block that grows deeper inside grows
+      // its ancestors' boxes with it, and anything laid out so that it does not
+      // (a fixed-height or absolutely-positioned child) does not change
+      // `scrollHeight` either. The measurement writes only custom properties
+      // the fade pseudo-elements read and a tabIndex, so observing them cannot
+      // feed back into layout.
+      const observedChildren = new Set<Element>();
+      const syncChildObservers = () => {
+        for (const child of observedChildren) {
+          if (child.parentNode === viewport) continue;
+          resizeObserver.unobserve(child);
+          observedChildren.delete(child);
+        }
+        for (const child of viewport.children) {
+          if (observedChildren.has(child)) continue;
+          resizeObserver.observe(child);
+          observedChildren.add(child);
+        }
+      };
+      syncChildObservers();
+
       // The viewport's own box is usually pinned by its layout, so content
       // growing inside it — a tab panel swapped, validation errors appearing,
       // an async asset arriving — changes `scrollHeight` and resizes nothing.
       // That is exactly the fits-to-overflows transition the tab stop is
       // derived from, so it has to be watched directly.
-      const mutationObserver = new MutationObserver(updateScrollVariables);
+      const mutationObserver = new MutationObserver(() => {
+        syncChildObservers();
+        updateScrollVariables();
+      });
       mutationObserver.observe(viewport, {
         childList: true,
         subtree: true,
@@ -205,6 +239,7 @@ const ScrollArea = forwardRef<HTMLElement, ScrollAreaProps>(
         viewport.removeEventListener('scroll', updateScrollVariables);
         resizeObserver.disconnect();
         mutationObserver.disconnect();
+        observedChildren.clear();
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
         }

@@ -242,6 +242,44 @@ describe('GeospatialSearch', () => {
       expect(flyTo).toHaveBeenCalledTimes(1);
     });
 
+    // Both selections are in flight at once — the panel closes on the click,
+    // long before the network answers — so they can settle in either order.
+    // The one the participant actually ended on is the one the live region has
+    // to describe.
+    it('does not announce a selection the participant has already replaced', async () => {
+      let settleFirstRetrieve: (() => void) | undefined;
+      mockRetrieve.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settleFirstRetrieve = () =>
+              resolve({
+                features: [
+                  { geometry: { type: 'Point', coordinates: [-87.6, 41.9] } },
+                ],
+              });
+          }),
+      );
+
+      const { user, toggle, status } = setup();
+      await openAndSearch(user, toggle);
+      const firstOptions = await screen.findAllByRole('option');
+      await user.click(firstOptions[0]!);
+
+      // Reopen and choose the other place before the first retrieve answers.
+      await openAndSearch(user, toggle);
+      const secondOptions = await screen.findAllByRole('option');
+      await user.click(secondOptions[1]!);
+      await waitFor(() =>
+        expect(status()).toHaveTextContent('Map moved to Sideways.'),
+      );
+
+      // Only now does the abandoned first selection come back.
+      settleFirstRetrieve?.();
+
+      await waitFor(() => expect(flyTo).toHaveBeenCalledTimes(2));
+      expect(status()).toHaveTextContent('Map moved to Sideways.');
+    });
+
     it('announces a failure instead of a move when the place cannot be retrieved', async () => {
       const consoleError = vi
         .spyOn(console, 'error')

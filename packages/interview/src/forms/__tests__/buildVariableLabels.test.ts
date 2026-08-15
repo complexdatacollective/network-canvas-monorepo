@@ -41,4 +41,18 @@ describe('buildVariableLabels', () => {
       ]),
     ).toEqual({ age: 'Age' });
   });
+
+  // `VariableNameSchema` is `/^[a-zA-Z0-9._:-]+$/`, so `__proto__` is a valid
+  // codebook variable id. Accumulating onto a plain object drops the caption on
+  // `Object.prototype`'s setter, and the lookup then answers `Object.prototype`
+  // — which a participant reads as `[object Object]` in the hint that is meant
+  // to name their question.
+  it('names a variable whose id is a prototype key like any other', () => {
+    const labels = buildVariableLabels([
+      { variable: '__proto__', prompt: 'How old are they?' },
+    ]);
+
+    expect(Object.keys(labels)).toEqual(['__proto__']);
+    expect(labels.__proto__).toBe('How old are they?');
+  });
 });

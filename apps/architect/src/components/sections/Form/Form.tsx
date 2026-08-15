@@ -145,7 +145,16 @@ const Form = ({
       // sibling's variable; this is the backstop for a stale draft or an
       // imported protocol that already repeats one. Same predicate as the
       // composer editor's gate, so the two surfaces cannot drift.
-      if (isVariableUsedBySibling(initialFields, variable, props?.editIndex)) {
+      //
+      // Read from the LIVE rows, not the committed snapshot. A field added in
+      // this editing session is not in `form.fields` on the saved stage yet,
+      // so a committed list would let the researcher pick its variable a
+      // second time — and the picker, given the same list, would not even hide
+      // it — leaving a stage that the schema refuses on save. The converse
+      // costs them too: a variable freed by a row they just deleted would go
+      // on being rejected. `useStageFormValue` holds its reference while the
+      // value is unchanged, so this does not churn on unrelated keystrokes.
+      if (isVariableUsedBySibling(formFields, variable, props?.editIndex)) {
         return {
           variable:
             'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
@@ -153,11 +162,11 @@ const Form = ({
       }
       return validateField(values, props);
     };
-  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, initialFields]);
+  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, formFields]);
 
   const editorProps = useMemo(
-    () => ({ type, entity, currentStageIndex, siblingFields: initialFields }),
-    [currentStageIndex, entity, type, initialFields],
+    () => ({ type, entity, currentStageIndex, siblingFields: formFields }),
+    [currentStageIndex, entity, type, formFields],
   );
   const previewProps = useMemo(() => ({ entity, type }), [entity, type]);
   const rowItemSelector = useMemo(

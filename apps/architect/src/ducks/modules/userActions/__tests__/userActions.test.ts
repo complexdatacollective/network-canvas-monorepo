@@ -15,6 +15,7 @@ const setImportInProgress = vi.fn();
 const setExportInProgress = vi.fn();
 const validateProtocol = vi.fn();
 const putStoredProtocol = vi.fn();
+const putStoredProtocolIfUnchanged = vi.fn();
 const getStoredProtocol = vi.fn();
 const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
@@ -43,6 +44,8 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 
 vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
+  putStoredProtocolIfUnchanged: (...args: unknown[]) =>
+    putStoredProtocolIfUnchanged(...args),
   markStoredProtocolValidated: (...args: unknown[]) =>
     markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
@@ -194,6 +197,7 @@ describe('userActions', () => {
     setImportInProgress.mockReset();
     validateProtocol.mockReset();
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
+    putStoredProtocolIfUnchanged.mockReset().mockResolvedValue(true);
     getStoredProtocol.mockReset();
     markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
@@ -357,7 +361,7 @@ describe('userActions', () => {
         status: 'repair-required',
         repairable: true,
       });
-      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(putStoredProtocolIfUnchanged).not.toHaveBeenCalled();
       expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
 
       const applied = await runThunk(
@@ -365,14 +369,57 @@ describe('userActions', () => {
       );
       expect(applied.payload).toEqual({ status: 'opened' });
       // The repair is written back, so the researcher is not asked again.
-      expect(putStoredProtocol).toHaveBeenCalledTimes(1);
-      const [saved] = putStoredProtocol.mock.calls[0] as [
+      expect(putStoredProtocolIfUnchanged).toHaveBeenCalledTimes(1);
+      const [expected, saved] = putStoredProtocolIfUnchanged.mock.calls[0] as [
+        { id: string },
         { protocol: CurrentProtocol },
       ];
+      // Guarded against exactly the row this thunk read and assessed.
+      expect(expected.id).toBe('legacy');
       const repairedStage = saved.protocol.stages[0] as {
         nominationPrompts?: unknown[];
       };
       expect(repairedStage.nominationPrompts).toHaveLength(1);
+    });
+
+    // The tab does not hold the cross-tab lock while it is doing this — it
+    // claims the protocol only once the editor route mounts — so a tab that
+    // does can autosave into the same row during the admission and the repair
+    // assessment. Writing the pre-assessment snapshot over that would take the
+    // other tab's edits with nothing on screen to say so.
+    it('refuses to write an approved repair over a row another tab has saved', async () => {
+      const protocol = makeConflictedProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'legacy',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const { validateProtocol: realValidateProtocol } = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(async (candidate: unknown) =>
+        realValidateProtocol(candidate as CurrentProtocol),
+      );
+      // The guarded write reports that the row moved on under it.
+      putStoredProtocolIfUnchanged.mockResolvedValue(false);
+
+      const applied = await runThunk(
+        openLibraryProtocol({ id: 'legacy', repairApproved: true }),
+      );
+
+      expect(applied.payload).toEqual({
+        status: 'error',
+        title: 'Protocol Changed',
+        message:
+          'This protocol was saved somewhere else while it was being repaired, so the repair was not applied. Open it again to see the current version.',
+      });
+      // Nothing forced through, and the stale snapshot never becomes the
+      // editing buffer either.
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
     });
   });
 });

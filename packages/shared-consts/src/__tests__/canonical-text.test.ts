@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeForComparison, toCanonicalText } from '../canonicalText';
+import { normalizeForComparison, toCanonicalText } from '../canonical-text.ts';
 
 const PRECOMPOSED = 'Café';
 const DECOMPOSED = 'Cafe\u0301';

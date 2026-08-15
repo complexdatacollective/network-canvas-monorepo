@@ -216,6 +216,66 @@ describe('useGeospatialSearch', () => {
 
       await flushPendingSuggest();
     });
+
+    // It rotates only the token it SPENT. A participant who picks a result,
+    // reopens search and starts typing is on a new session before the first
+    // retrieve() has come back over the network; rotating again on the way out
+    // would leave the reopened search's suggest() and its eventual retrieve()
+    // quoting different tokens — two billed sessions for one lookup, and not
+    // the suggest→retrieve pairing Mapbox is being told about.
+    it('leaves a reopened search on its own session token when an earlier retrieve settles', async () => {
+      let settleFirstRetrieve: (() => void) | undefined;
+      mockRetrieve.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settleFirstRetrieve = () => resolve({ features: [] });
+          }),
+      );
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      act(() => {
+        result.current.handleQueryChange('berlin');
+      });
+      await flushPendingSuggest();
+
+      let firstSelection: Promise<unknown> | undefined;
+      act(() => {
+        firstSelection = result.current.handleSelect({
+          mapbox_id: 'berlin-id',
+        } as unknown as Suggestion);
+      });
+
+      // The panel closes and the participant reopens it and types again, all
+      // while that first retrieve is still in flight.
+      act(() => {
+        result.current.clear();
+      });
+      mockSuggest.mockClear();
+      act(() => {
+        result.current.handleQueryChange('paris');
+      });
+      const reopenedToken = mockSuggest.mock.calls[0]?.[1]?.sessionToken;
+      expect(reopenedToken).toBeDefined();
+      await flushPendingSuggest();
+
+      // Only now does the first retrieve come back.
+      await act(async () => {
+        settleFirstRetrieve?.();
+        await firstSelection;
+      });
+
+      mockRetrieve.mockClear();
+      await act(async () => {
+        await result.current.handleSelect({
+          mapbox_id: 'paris-id',
+        } as unknown as Suggestion);
+      });
+
+      expect(mockRetrieve.mock.calls[0]?.[1]?.sessionToken).toBe(reopenedToken);
+    });
   });
 
   // -------------------------------------------------------------------------

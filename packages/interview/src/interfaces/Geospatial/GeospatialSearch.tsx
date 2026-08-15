@@ -117,6 +117,27 @@ export default function GeospatialSearch({
    * sequential-focus starting point parked where the option had been, so the
    * next Tab resumed AFTER the toggle and landed on the zoom controls.
    */
+  /**
+   * Which selection the live region is currently speaking for.
+   *
+   * A selection announces when its `retrieve()` settles, which is a network
+   * round trip after the panel has already closed — so a participant who picks
+   * a place, reopens search and picks another has two in flight at once, and
+   * they can settle in either order. Without this, the slower FIRST one lands
+   * last and tells them the map moved to the place they changed their mind
+   * about; the same stale settlement can arrive after `resetKey` has moved the
+   * whole search on to another node, announcing a place that has nothing to do
+   * with what is on screen. Each selection takes the next generation and only
+   * speaks if it is still the current one.
+   */
+  const selectionGenerationRef = useRef(0);
+
+  // Moving to another node supersedes any selection still in flight: whatever
+  // it would say is about a map the participant has left.
+  useEffect(() => {
+    selectionGenerationRef.current += 1;
+  }, [resetKey]);
+
   const closeSearch = useCallback(() => {
     resetField();
     buttonRef.current?.focus();
@@ -216,7 +237,12 @@ export default function GeospatialSearch({
    */
   const handleSuggestionClick = useCallback(
     (suggestion: SuggestionItem) => () => {
+      const generation = (selectionGenerationRef.current += 1);
       void handleSelect(suggestion).then((outcome) => {
+        // A newer selection, or a move to another node, has taken over since
+        // this one was made. Saying anything now would describe a map the
+        // participant is no longer looking at.
+        if (selectionGenerationRef.current !== generation) return;
         setStatusMessage(
           outcome === 'moved'
             ? movedMessage(suggestion.name)

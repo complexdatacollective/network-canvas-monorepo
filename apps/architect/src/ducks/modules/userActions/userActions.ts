@@ -47,6 +47,7 @@ import {
   deleteStoredProtocol,
   getStoredProtocol,
   putStoredProtocol,
+  putStoredProtocolIfUnchanged,
 } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
@@ -610,12 +611,33 @@ export const openLibraryProtocol = createAppAsyncThunk(
         const assessment = await assessConfigurationRepair(protocol);
         if (assessment.status === 'repairable' && repairApproved) {
           protocol = assessment.protocol;
-          await putStoredProtocol({
+          // Guarded rather than written blind. This tab does not hold the
+          // cross-tab lock yet — it claims the protocol only once the editor
+          // route mounts, below — so a tab that DOES hold it can autosave into
+          // the same library row while the admission and the repair assessment
+          // are running. Both are asynchronous and neither is quick, and
+          // `putStoredProtocol` replaces the whole row without comparing
+          // anything: a blind write here lands this snapshot, read before all
+          // of that started, on top of edits the other tab has since saved.
+          //
+          // Nothing is merged and nothing is overwritten. The repair is
+          // reproducible — reopening derives it again from whatever is on disk
+          // then — so refusing costs the researcher a second click, while
+          // writing costs them work they cannot get back.
+          const written = await putStoredProtocolIfUnchanged(row, {
             id,
             protocol,
             name: row.name,
             description: row.description,
           });
+          if (!written) {
+            return {
+              status: 'error',
+              title: 'Protocol Changed',
+              message:
+                'This protocol was saved somewhere else while it was being repaired, so the repair was not applied. Open it again to see the current version.',
+            };
+          }
         } else if (assessment.status !== 'clean') {
           return {
             status: 'repair-required',

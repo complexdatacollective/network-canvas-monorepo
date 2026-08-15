@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,16 +26,22 @@ let capturedEditorValidate:
       props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>)
   | undefined;
+// The picker's sibling list travels the other way, as `editorProps`. Both are
+// captured so a test can prove the gate and the picker read the same rows.
+let capturedEditorProps: Record<string, unknown> | undefined;
 vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   default: ({
     editorValidate,
+    editorProps,
   }: {
     editorValidate: (
       values: Record<string, unknown>,
       props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
+    editorProps?: Record<string, unknown>;
   }) => {
     capturedEditorValidate = editorValidate;
+    capturedEditorProps = editorProps;
     return <div data-testid="dialog-array-field" />;
   },
 }));
@@ -46,9 +52,43 @@ vi.mock('../FieldFields', () => ({ default: () => null }));
 
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import {
+  type StageFormContextValue,
+  useStageFormContext,
+} from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import Form from '../Form';
+
+let stageFormContext: StageFormContextValue | null = null;
+const Probe = () => {
+  stageFormContext = useStageFormContext();
+  return null;
+};
+
+/**
+ * Rewrites `form.fields` the way the array editor does when the researcher
+ * adds or removes a row: the stage form holds it immediately, the saved stage
+ * does not carry it until the editor is saved.
+ */
+const setFormFields = (fields: Record<string, unknown>[]) => {
+  if (!stageFormContext) throw new Error('stage form context was not captured');
+  const { storeApi } = stageFormContext;
+  act(() => {
+    storeApi.getState().setFieldValue('form.fields', fields);
+  });
+};
+
+/** The `editorValidate` as it stands now, not as it stood at mount. */
+const currentEditorValidate = () => {
+  if (!capturedEditorValidate) {
+    throw new Error('editorValidate was not captured');
+  }
+  return capturedEditorValidate;
+};
+
+const currentSiblingFields = () => capturedEditorProps?.siblingFields;
 
 // `cat` is written both by an AlterForm field (validated, stage s1 — this
 // stage's OWN field, standing in for the field this dialog is editing) and
@@ -173,6 +213,8 @@ const renderForm = (
   props?: { editIndex?: number; initialValues?: unknown },
 ) => Record<string, unknown>) => {
   capturedEditorValidate = undefined;
+  capturedEditorProps = undefined;
+  stageFormContext = null;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: PROTOCOL_WITH_FORM_CONFLICT }) =>
@@ -206,6 +248,7 @@ const renderForm = (
           stageId="s1"
           formId="edit-stage"
         >
+          <Probe />
           <Form
             stagePath={`stages[${currentStageIndex}]`}
             stagePosition={currentStageIndex}
@@ -287,6 +330,44 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       { editIndex: 0 },
     );
     expect(errors.variable).toBeUndefined();
+  });
+
+  // The rows to check against are the ones in the OPEN editor, not the ones on
+  // the saved stage. A field added in this session is not on the saved stage
+  // yet, so a committed sibling list would let its variable be picked a second
+  // time — and would not hide it in the picker either — leaving a stage the
+  // schema refuses on save.
+  it('rejects a variable a field added in this editing session already collects', () => {
+    renderForm({ entity: 'node', type: 'person' });
+
+    setFormFields([
+      { variable: 'boolA' },
+      { variable: 'boolB' },
+      { variable: 'draftOnly' },
+    ]);
+
+    expect(
+      currentEditorValidate()({ variable: 'draftOnly', validation: {} })
+        .variable,
+    ).toBe(
+      'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+    );
+    expect(currentSiblingFields()).toEqual([
+      { variable: 'boolA' },
+      { variable: 'boolB' },
+      { variable: 'draftOnly' },
+    ]);
+  });
+
+  it('stops rejecting a variable whose field was removed in this editing session', () => {
+    renderForm({ entity: 'node', type: 'person' });
+
+    setFormFields([{ variable: 'boolB' }]);
+
+    expect(
+      currentEditorValidate()({ variable: 'boolA', validation: {} }).variable,
+    ).toBeUndefined();
+    expect(currentSiblingFields()).toEqual([{ variable: 'boolB' }]);
   });
 
   it('checks the current shared form as a stage-effective view', () => {

@@ -33,14 +33,23 @@ export const hasDirtyNestedDraft = (): boolean => {
 /**
  * Whether ANY nested editor is open, dirty or not.
  *
- * The question the cross-tab lock's read-only swap asks. Deliberately not the
- * dirty one: dirtiness flips back to clean the moment the researcher undoes
- * their typing, and a guard keyed on it would tear the editor away mid-edit —
- * the same reasoning that keys `held-stage-editor` on the route rather than on
+ * The question the cross-tab lock asks — both for its read-only swap and for a
+ * reclaim. Deliberately not the dirty one, for two separate reasons.
+ *
+ * Dirtiness flips back to clean the moment the researcher undoes their typing,
+ * and a guard keyed on it would tear the editor away mid-edit — the same
+ * reasoning that keys `held-stage-editor` on the route rather than on
  * `getLiveStageDraftDirty`. An editor being open, by contrast, only changes
  * when the researcher opens or closes one.
+ *
+ * And an open editor does not have to be dirty to be a hazard. It was seeded
+ * from the editing buffer as it stood when it opened, and it goes on showing
+ * those values after a reclaim replaces that buffer (pinned by
+ * `Codebook/__tests__/EntityTypeDialog.bufferRefresh.test.tsx`) — so changing
+ * one field and saving would write the rest of the older definition back over
+ * what the other tab saved. Nothing about the editor says so on screen.
  */
-const hasOpenNestedEditor = (): boolean => draftPredicates.size > 0;
+export const hasOpenNestedEditor = (): boolean => draftPredicates.size > 0;
 
 // Notified whenever an editor registers or unregisters — i.e. whenever one
 // opens or closes. Dirtiness itself is deliberately NOT observable: the

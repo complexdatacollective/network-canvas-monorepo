@@ -1,3 +1,4 @@
+export * from './canonical-text.ts';
 export * from './date-fields.ts';
 export * from './export-process.ts';
 export * from './family-pedigree.ts';

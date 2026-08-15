@@ -104,4 +104,23 @@ describe('deriveAssetDisplayNames', () => {
   it('returns an empty map for an empty manifest', () => {
     expect(deriveAssetDisplayNames({})).toEqual({});
   });
+
+  it('names an asset whose id is a prototype key like any other', () => {
+    // The manifest schema is `z.record(z.string(), …)`, so `__proto__` is a
+    // valid asset id, and `JSON.parse` gives a `.netcanvas` that carries one an
+    // OWN `__proto__` key. Accumulating into a plain object would drop the
+    // assignment on `Object.prototype`'s setter and hand the Resource Library
+    // `Object.prototype` as this resource's name.
+    const displayNames = deriveAssetDisplayNames(
+      JSON.parse(
+        '{"__proto__": {"name": "people.csv"}, "b": {"name": "people.csv"}}',
+      ) as Record<string, { name: string }>,
+    );
+
+    expect(Object.keys(displayNames)).toEqual(['__proto__', 'b']);
+    expect(Object.values(displayNames)).toEqual([
+      'people.csv',
+      'people (2).csv',
+    ]);
+  });
 });

@@ -279,15 +279,24 @@ describe('a half-typed API key is unsaved work', () => {
     );
   });
 
-  // The same control for the reclaim: with nothing typed there is nothing to
-  // rescue, so it must complete rather than strand the tab.
-  it('lets a cross-tab reclaim complete when the key form is untouched', async () => {
+  // An untouched browser holds the reclaim too, and for a reason of its own: it
+  // was filled in from the buffer the reclaim would replace and does not
+  // re-seed itself, so resuming over it sets up a save that writes the older
+  // settings back. Closing it — which asks nothing, because there is nothing to
+  // discard — releases the reclaim, so the tab is never stranded.
+  it('holds a cross-tab reclaim until an untouched key form is closed', async () => {
     const { store, fake, refreshActiveProtocol } = setup();
-    await openBrowser();
+    const dialog = await openBrowser();
 
     await reclaimFromAPeer(fake);
 
+    expect(getProtocolLockState(store.getState())).toBe('reclaim-blocked');
+    expect(refreshActiveProtocol).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
     await waitFor(() => expect(refreshActiveProtocol).toHaveBeenCalled());
+    expect(dialogTitles()).not.toContain('Discard unsaved changes?');
     expect(getProtocolLockState(store.getState())).not.toBe('reclaim-blocked');
   });
 

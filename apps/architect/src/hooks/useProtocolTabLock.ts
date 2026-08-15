@@ -3,8 +3,8 @@ import { useLocation } from 'wouter';
 import { navigate } from 'wouter/use-browser-location';
 
 import {
-  hasDirtyNestedDraft,
-  useNestedDraftDirty,
+  hasOpenNestedEditor,
+  useNestedEditorOpen,
 } from '~/components/DialogForm/nestedDraftRegistry';
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
@@ -151,7 +151,17 @@ export const useProtocolTabLock = (
         // was trying to keep. Stop and ask instead
         // (NestedDraftReclaimDialog); resolving the inner editor is what puts
         // its values somewhere the rest of this can reason about.
-        if (hasDirtyNestedDraft()) {
+        //
+        // OPEN, not dirty. An editor with nothing typed into it still has a
+        // baseline, taken from the editing buffer as it stood when it opened,
+        // and it goes on showing those values after the refresh below replaces
+        // that buffer — it does not re-seed itself
+        // (`EntityTypeDialog.bufferRefresh.test.tsx`). The researcher would
+        // then change one field, save, and write the rest of the definition
+        // they had before back over what the other tab saved, with nothing on
+        // screen to say so. Closing the editor is what makes it safe, and it
+        // costs a pristine editor nothing.
+        if (hasOpenNestedEditor()) {
           dispatch(setProtocolLockState('reclaim-blocked'));
           return;
         }
@@ -186,7 +196,7 @@ export const useProtocolTabLock = (
   const draftDirty = useAppSelector(getLiveStageDraftDirty);
   // Re-read whenever a nested editor opens or closes — the two transitions that
   // can answer the question this blocks on.
-  const nestedDraftDirty = useNestedDraftDirty();
+  const nestedEditorOpen = useNestedEditorOpen();
 
   // A blocked reclaim must not outlive the thing that blocked it. The stage
   // draft may simply go — the conflict dialog's discard, the banner's, a
@@ -202,12 +212,14 @@ export const useProtocolTabLock = (
       resolvingBlockedReclaim.current = false;
       return;
     }
-    // A nested editor still holding unsaved work blocks the reclaim on its own,
-    // whether or not a stage editor is open behind it. Finishing it moves its
-    // values into the stage draft (where the stage flow's three actions then
-    // apply unchanged); cancelling it takes them away by the researcher's own
-    // decision. Either way it is closing that answers this.
-    if (nestedDraftDirty) return;
+    // A nested editor blocks the reclaim on its own, whether or not a stage
+    // editor is open behind it, and whether or not anything has been typed into
+    // it — see the callback above for why an untouched one is no safer.
+    // Finishing it moves its values into the stage draft (where the stage
+    // flow's three actions then apply unchanged); cancelling it takes them away
+    // by the researcher's own decision. Either way it is closing that answers
+    // this.
+    if (nestedEditorOpen) return;
     if (draftOpen && draftDirty) return;
     // Closing the editor below clears the draft, which re-runs this effect
     // while the reclaim it started is still in flight.
@@ -233,7 +245,7 @@ export const useProtocolTabLock = (
     lockState,
     draftOpen,
     draftDirty,
-    nestedDraftDirty,
+    nestedEditorOpen,
     dispatch,
     finishReclaim,
     closeEditorAndReclaim,

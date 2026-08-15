@@ -17,12 +17,12 @@ import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayFie
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { VariableOptions } from '@codaco/protocol-validation';
+import { toCanonicalText } from '@codaco/shared-consts';
 import {
   isOptionComplete,
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
-import { toCanonicalText } from '~/utils/canonicalText';
 import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
@@ -246,7 +246,7 @@ const Option = ({
         value={labelContent}
         onChange={(value: unknown) => {
           // Stored canonically so two labels that read identically are also
-          // identical bytes on export — see `~/utils/canonicalText`.
+          // identical bytes on export — see shared-consts' `canonical-text`.
           const label = toCanonicalText(
             richTextContentToMarkdown(
               value as RichTextContent | undefined,

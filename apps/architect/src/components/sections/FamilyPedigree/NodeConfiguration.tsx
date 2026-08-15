@@ -389,13 +389,15 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       const variable =
         typeof values.variable === 'string' ? values.variable : '';
       // One form may not collect a variable twice — same rule, message and
-      // predicate as the ordinary Form editor, so the two cannot drift.
+      // predicate as the ordinary Form editor, so the two cannot drift, and
+      // read from the LIVE rows for the same reason: a field added in this
+      // editing session is not on the saved stage yet, so the committed
+      // snapshot would let its variable be picked a second time (and would not
+      // hide it in the picker either), leaving a stage the schema refuses on
+      // save — while a variable freed by a row just deleted would go on being
+      // rejected.
       if (
-        isVariableUsedBySibling(
-          nodeConfigFormInitial,
-          variable,
-          props?.editIndex,
-        )
+        isVariableUsedBySibling(pedigreeFormFields, variable, props?.editIndex)
       ) {
         return {
           variable:
@@ -404,12 +406,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       }
       return validateField(values, props);
     };
-  }, [
-    allVariables,
-    hasUnvalidatedUse,
-    resolvedFormViews,
-    nodeConfigFormInitial,
-  ]);
+  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, pedigreeFormFields]);
   const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):
   // rejects a pick a form elsewhere in the saved document already collects,
@@ -789,7 +786,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
                 editorProps={{
                   type: nodeType,
                   entity: 'node',
-                  siblingFields: nodeConfigFormInitial,
+                  siblingFields: pedigreeFormFields,
                 }}
                 previewComponent={NodeFormFieldPreview as unknown as Renderer}
                 editorTitle="Edit Field"

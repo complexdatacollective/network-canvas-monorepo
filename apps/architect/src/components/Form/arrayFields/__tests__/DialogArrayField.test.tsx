@@ -516,6 +516,58 @@ describe('DialogArrayField', () => {
     );
   });
 
+  /**
+   * The confirmed removal destroys the row AND the Remove control that opened
+   * the dialog, so the row has to name where focus goes instead. Resolved when
+   * focus is actually returned, against the list as it is by then.
+   */
+  const removalFinalFocus = (): HTMLElement | null => {
+    const options = globalThis.__architectDialogMocks.confirm.mock.calls.at(
+      -1,
+    )?.[0] as { finalFocus?: unknown } | undefined;
+    const { finalFocus } = options ?? {};
+    if (typeof finalFocus !== 'function') {
+      throw new Error('the removal confirm is expected to name a finalFocus');
+    }
+    return (finalFocus as () => HTMLElement | null)();
+  };
+
+  it('sends focus to the row that took the removed one’s place', async () => {
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+    });
+
+    const [firstRemove] = screen.getAllByRole('button', {
+      name: 'Remove item',
+    });
+    if (!firstRemove) throw new Error('Expected two remove buttons');
+    fireEvent.click(firstRemove);
+
+    await waitFor(() => expect(getItems()).toHaveLength(1));
+    expect(removalFinalFocus()).toBe(
+      screen.getByRole('button', { name: 'Remove item' }),
+    );
+  });
+
+  it('sends focus to the add button when the removed row was the only one', async () => {
+    // No row is left to move to, and both remembered openers point at the
+    // Remove control that has just been destroyed. Naming nothing here leaves
+    // focus on `<body>`, which Base UI resolves to the first tabbable element
+    // in the document — the researcher is thrown back to the page header from
+    // the middle of a form.
+    setup({ initialItems: [{ id: 'item-1', label: 'Only' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item' }));
+
+    await waitFor(() => expect(getItems()).toEqual([]));
+    expect(removalFinalFocus()).toBe(
+      screen.getByRole('button', { name: 'Create new item' }),
+    );
+  });
+
   it('emits the whole array when a row is reordered', async () => {
     setup({
       initialItems: [

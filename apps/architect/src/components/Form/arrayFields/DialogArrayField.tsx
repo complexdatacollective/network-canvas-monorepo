@@ -294,6 +294,7 @@ const DialogItem = ({
   disabled,
   readOnly,
   editTriggerRef,
+  getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) => {
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
   const { confirm } = useDialog();
@@ -316,19 +317,32 @@ const DialogItem = ({
       onConfirm: () => onDelete?.(),
       // Cancel returns focus to the Remove control, which is untouched. Confirm
       // destroys it along with the row, so name a surviving target: whichever
-      // row has taken this one's place, else the list itself.
+      // row has taken this one's place, else the list's add button — which is
+      // the only control left when the row just removed was the last one.
+      // Answering `null` there would leave focus on `<body>`, which Base UI
+      // resolves to the first tabbable element in the document, sending the
+      // researcher back to the page header from the middle of a form.
       finalFocus: () => {
-        if (!list?.isConnected) return null;
-        // `itemLabel` is caller-supplied, and this runs inside Base UI's
-        // layout-effect cleanup — an unescaped quote would throw a SyntaxError
-        // out of an unmount.
-        const remaining = list.querySelectorAll<HTMLElement>(
-          `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
-        );
-        if (remaining.length === 0) return null;
-        // The row that has taken this one's place, or the last one if this was
-        // the last row.
-        return remaining[Math.min(index, remaining.length - 1)] ?? null;
+        if (list?.isConnected) {
+          // `itemLabel` is caller-supplied, and this runs inside Base UI's
+          // layout-effect cleanup — an unescaped quote would throw a
+          // SyntaxError out of an unmount.
+          const remaining = list.querySelectorAll<HTMLElement>(
+            `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
+          );
+          // The row that has taken this one's place, or the last one if this
+          // was the last row.
+          const neighbour = remaining[Math.min(index, remaining.length - 1)];
+          if (neighbour) return neighbour;
+        }
+        // Nothing is left in the list. Both remembered openers point at the
+        // Remove button that has just been destroyed with the row, so
+        // answering nothing here lands focus on `<body>` — which Base UI
+        // resolves to the first tabbable element in the whole document,
+        // throwing the researcher back to the page header from the middle of
+        // a form. The add button is the one control that survives an emptied
+        // list, and it is where they are going next anyway.
+        return getAddTrigger();
       },
     });
   };

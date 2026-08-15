@@ -34,9 +34,15 @@ export const toCanonicalText = (value: string): string =>
  * `toLowerCase`, deliberately, and never `toLocaleLowerCase`: the latter
  * folds by the AUTHORING MACHINE's locale, under which `I` lowercases to `ı`
  * rather than `i` (Turkish, Azeri). Whether two option labels — or two
- * variable names, or two node types — collide would then depend on whose
- * laptop the protocol was written on, which is the same class of defect as
- * the canonical-equivalence hole this exists to close.
+ * variable names, or two node types, or two disease labels — collide would
+ * then depend on whose laptop the protocol was written on, which is the same
+ * class of defect as the canonical-equivalence hole this exists to close.
+ *
+ * It lives in shared-consts rather than in Architect because the same
+ * uniqueness question is asked in three places that must never disagree: the
+ * editor that refuses a duplicate as it is typed, the schema that decides
+ * whether a stored protocol is valid, and the repair that renames a duplicate
+ * it finds. A protocol carried between devices is validated on all of them.
  */
 export const normalizeForComparison = (value: string): string =>
   toCanonicalText(value).toLowerCase();

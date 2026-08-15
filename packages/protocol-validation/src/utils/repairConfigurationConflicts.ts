@@ -1,3 +1,5 @@
+import { normalizeForComparison } from '@codaco/shared-consts';
+
 import {
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOption,
@@ -310,7 +312,12 @@ export const repairConfigurationConflicts = (
     diseases.forEach((disease, index) => {
       if (droppedIndices.has(index)) return;
       if (typeof disease.label !== 'string') return;
-      const normalized = disease.label.trim().toLocaleLowerCase();
+      // The SAME comparison the schema makes (`narrative-pedigree.ts`), by the
+      // same helper. A repair that judged duplicates differently from the
+      // schema would either rename rows the schema was happy with, or leave a
+      // protocol the schema still rejects — asking the researcher to approve a
+      // repair that fixes nothing, every time they open it.
+      const normalized = normalizeForComparison(disease.label.trim());
       if (!seenLabels.has(normalized)) {
         seenLabels.add(normalized);
         return;
@@ -321,11 +328,11 @@ export const repairConfigurationConflicts = (
       const base = disease.label.trim();
       let suffix = 2;
       let candidate = `${base} (${suffix})`;
-      while (seenLabels.has(candidate.toLocaleLowerCase())) {
+      while (seenLabels.has(normalizeForComparison(candidate))) {
         suffix += 1;
         candidate = `${base} (${suffix})`;
       }
-      seenLabels.add(candidate.toLocaleLowerCase());
+      seenLabels.add(normalizeForComparison(candidate));
       labelRenames.push({
         path: ['stages', stageIndex, 'diseases', index],
         label: candidate,

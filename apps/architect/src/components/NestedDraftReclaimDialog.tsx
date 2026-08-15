@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { useNestedDraftDirty } from '~/components/DialogForm/nestedDraftRegistry';
+import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolLockState,
@@ -15,9 +15,12 @@ import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDr
  * open.
  *
  * The tab holding this protocol has closed, so editing could resume here — but
- * a variable, entity-type, resource or rule editor is still open with unsaved
- * changes in it. Those values live in that editor's own form store and nowhere
- * else, so re-reading the saved copy would unmount the editor and take them.
+ * a variable, entity-type, resource or rule editor is still open. Anything
+ * typed into it lives in that editor's own form store and nowhere else, so
+ * re-reading the saved copy would unmount the editor and take it; and even an
+ * untouched editor was filled in from the version this tab had before, so
+ * saving it after the re-read would write those older values back over what the
+ * other tab saved.
  *
  * Deliberately NOT the stage editor's three-action choice. That dialog's
  * "Download a Copy" builds the file from the stage draft, and a nested editor's
@@ -39,14 +42,14 @@ const TITLE = 'An editor is still open';
 // promising the wrong one is how a researcher loses work believing they saved
 // it.
 const IN_STAGE_EDITOR_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with: its changes are not part of this stage yet, and they exist nowhere else. Finish that editor to move its changes into this stage, or cancel it to discard them. You will then be asked what to do about your unsaved changes to this stage.';
+  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with: anything in it is not part of this stage yet, and it exists nowhere else. Finish that editor to move its changes into this stage, or cancel it to discard them. You will then be asked what to do about your unsaved changes to this stage.';
 
 const ELSEWHERE_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. Its changes cannot be saved over the version the other tab saved, so cancel that editor to continue — you will be asked to confirm before anything in it is discarded.';
+  'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.';
 
 const NestedDraftReclaimDialog = () => {
   const { openDialog, closeDialog } = useDialog();
-  const nestedDraftDirty = useNestedDraftDirty();
+  const nestedEditorOpen = useNestedEditorOpen();
   const blocked = useAppSelector(
     (state) => getProtocolLockState(state) === 'reclaim-blocked',
   );
@@ -58,7 +61,7 @@ const NestedDraftReclaimDialog = () => {
   // explanation again after dismissing it.
   const choiceRequest = useAppSelector(getProtocolReclaimChoiceRequest);
 
-  const pending = blocked && nestedDraftDirty;
+  const pending = blocked && nestedEditorOpen;
 
   // Read at the moment they are used, so a changed identity cannot restart the
   // effect and stack a second dialog on the first.

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
+import {
+  INHERITANCE_PATTERNS,
+  normalizeForComparison,
+} from '@codaco/shared-consts';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -42,6 +45,15 @@ export const narrativePedigreeStage = baseStageSchema.extend({
       const seenVariables = new Set<string>();
       // Labels are the participant-facing key, so two rows sharing a label are
       // indistinguishable on screen whatever they map to.
+      //
+      // `normalizeForComparison`, never `toLocaleLowerCase()`: this is a
+      // PERSISTED-SCHEMA invariant, so the answer has to be the same on every
+      // device the protocol is opened on. Locale folding makes it depend on the
+      // host — `I` lowercases to `ı` under Turkish and Azeri, so `Ilk` and
+      // `ilk` collide on one laptop and not on another — and the raw
+      // comparison it replaces also missed canonically equivalent spellings of
+      // the same label, which render identically to the participant. The
+      // editor and the repair use the same helper, so the three cannot drift.
       const seenLabels = new Set<string>();
       for (const [index, disease] of diseases.entries()) {
         if (seenVariables.has(disease.variable)) {
@@ -54,7 +66,7 @@ export const narrativePedigreeStage = baseStageSchema.extend({
           seenVariables.add(disease.variable);
         }
 
-        const label = disease.label.trim().toLocaleLowerCase();
+        const label = normalizeForComparison(disease.label.trim());
         if (seenLabels.has(label)) {
           ctx.addIssue({
             code: 'custom' as const,

@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
-import { useNestedDraftDirty } from '~/components/DialogForm/nestedDraftRegistry';
+import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolLockState,
@@ -36,7 +36,7 @@ const ProtocolLockBanner = () => {
   const [, setLocation] = useLocation();
   const mode = useProtocolAccessMode();
   const lockState = useAppSelector(getProtocolLockState);
-  const nestedDraftDirty = useNestedDraftDirty();
+  const nestedEditorOpen = useNestedEditorOpen();
   const bannerRef = useRef<HTMLDivElement>(null);
 
   // Entering the read-only view replaces whatever the user was looking at, so
@@ -60,15 +60,16 @@ const ProtocolLockBanner = () => {
 
   const readOnly = mode === 'read-only';
   const conflictPending = lockState === 'reclaim-blocked';
-  // A nested editor holding unsaved work is what has to be resolved first, so
-  // it decides both what this says and which action goes with it.
-  const nestedBlocking = conflictPending && nestedDraftDirty;
+  // An open nested editor is what has to be resolved first — whether or not
+  // anything has been typed into it, see `hasOpenNestedEditor` — so it decides
+  // both what this says and which action goes with it.
+  const nestedBlocking = conflictPending && nestedEditorOpen;
 
   // The conflict message leads, whatever the route: once the other tab has
   // closed, telling the researcher to close it would send them looking for a
   // tab that no longer exists.
   const message = nestedBlocking
-    ? 'The other tab has been closed, but an editor is still open here with unsaved changes in it. Nothing can be saved or loaded in this tab until you finish or cancel that editor.'
+    ? 'The other tab has been closed, but an editor is still open here. Nothing can be saved or loaded in this tab until you finish or cancel that editor.'
     : conflictPending
       ? 'The other tab has been closed, but your unsaved changes to this stage cannot be combined with the version it saved. Nothing can be saved here until you decide which to keep.'
       : readOnly

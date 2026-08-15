@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Stage } from '@codaco/protocol-validation';
+import { normalizeForComparison } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -80,14 +81,17 @@ const Diseases = (_props: StageEditorSectionProps) => {
         };
       }
       const label = typeof values.label === 'string' ? values.label : '';
-      const normalized = label.trim().toLocaleLowerCase();
+      // The same comparison the schema and the repair make, by the same
+      // helper: a label this editor accepts must be one the saved protocol is
+      // still valid under, on every device it is opened on.
+      const normalized = normalizeForComparison(label.trim());
       const duplicateLabel =
         normalized !== '' &&
         (diseasesInitial ?? []).some(
           (row, index) =>
             index !== props?.editIndex &&
             typeof row.label === 'string' &&
-            row.label.trim().toLocaleLowerCase() === normalized,
+            normalizeForComparison(row.label.trim()) === normalized,
         );
       if (duplicateLabel) {
         return {

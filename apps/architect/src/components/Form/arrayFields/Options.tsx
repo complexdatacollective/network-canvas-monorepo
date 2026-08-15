@@ -3,12 +3,12 @@ import { useCallback, useMemo } from 'react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { normalizeForComparison } from '@codaco/shared-consts';
 import {
   isOptionComplete,
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
-import { normalizeForComparison } from '~/utils/canonicalText';
 import { validations } from '~/utils/validations';
 
 import Option, { OptionsContext, type OptionValue } from './Option';
@@ -36,7 +36,7 @@ export const completeOptions = (value: unknown) =>
  * Strings compare case-insensitively and under Unicode canonical equivalence,
  * matching `uniqueArrayAttribute` — the rule the rows run — so the array and
  * its rows never disagree about which entries clash. See
- * `~/utils/canonicalText` for why canonical equivalence has to be part of it.
+ * shared-consts' `canonical-text` for why canonical equivalence is part of it.
  */
 const hasDuplicates = (values: unknown[]) => {
   const seen = new Set<unknown>();

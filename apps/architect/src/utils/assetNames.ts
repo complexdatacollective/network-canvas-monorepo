@@ -54,6 +54,16 @@ export const suffixAssetName = (name: string, counter: number): string => {
  * `people.csv`, `people (3).csv`, `people (2).csv` — the researcher's own
  * `people (2).csv` is still called what they called it, and no two cards share
  * a name.
+ *
+ * KEYED THROUGH A MAP, not an object accumulator. An asset id is an arbitrary
+ * manifest key — the schema is `z.record(z.string(), …)` — and `JSON.parse`
+ * gives a `.netcanvas` an own `__proto__` key if its author wrote one. Writing
+ * `displayNames.__proto__ = name` on an ordinary object hits `Object.prototype`
+ *'s setter instead: the string is silently dropped, `id in displayNames` is
+ * already true so pass 2 skips the id as well, and the selector reads
+ * `Object.prototype` back as that resource's name and hands React an object to
+ * render. `Object.fromEntries` defines own properties, so the returned map is
+ * still an ordinary object every caller can index.
  */
 export const deriveAssetDisplayNames = (
   assetManifest: Record<string, { name: string }>,
@@ -65,19 +75,19 @@ export const deriveAssetDisplayNames = (
     occurrences.set(asset.name, (occurrences.get(asset.name) ?? 0) + 1);
   }
 
-  const displayNames: Record<string, string> = {};
+  const displayNames = new Map<string, string>();
   const taken = new Set<string>();
 
   // Pass 1: every stored name that nothing else shares is reserved as-is.
   for (const [id, asset] of entries) {
     if (occurrences.get(asset.name) !== 1) continue;
-    displayNames[id] = asset.name;
+    displayNames.set(id, asset.name);
     taken.add(asset.name);
   }
 
   // Pass 2: the colliding groups, in the order their cards render.
   for (const [id, asset] of entries) {
-    if (id in displayNames) continue;
+    if (displayNames.has(id)) continue;
 
     let candidate = asset.name;
     let counter = 1;
@@ -87,8 +97,8 @@ export const deriveAssetDisplayNames = (
     }
 
     taken.add(candidate);
-    displayNames[id] = candidate;
+    displayNames.set(id, candidate);
   }
 
-  return displayNames;
+  return Object.fromEntries(displayNames);
 };

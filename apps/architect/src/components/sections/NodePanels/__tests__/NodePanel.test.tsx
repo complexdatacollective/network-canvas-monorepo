@@ -92,6 +92,8 @@ const itemProps: ArrayFieldItemProps<NodePanelValue> = {
   readOnly: false,
   // Only read by the drag handle, which `isSortable: false` never renders.
   dragControls: { start: () => undefined } as unknown as DragControls,
+  // Only read by an item component that runs its own delete confirmation.
+  getAddTrigger: () => null,
 };
 
 const renderPanel = () =>

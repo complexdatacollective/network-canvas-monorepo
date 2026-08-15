@@ -11,7 +11,7 @@ import {
 } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 
-import { normalizeForComparison } from './canonicalText';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 type ValidationValue = unknown;
 type ValidationMessage = string | undefined;
@@ -61,7 +61,7 @@ const hasValue = (value: ValidationValue) => {
 
 // Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
 // spelling of the same text are the same answer to a participant, so they are
-// the same value here too. See `~/utils/canonicalText`.
+// the same value here too. See `@codaco/shared-consts`' `canonical-text`.
 const isRoughlyEqual = (left: unknown, right: unknown) => {
   if (typeof left === 'string' && typeof right === 'string') {
     return normalizeForComparison(left) === normalizeForComparison(right);
