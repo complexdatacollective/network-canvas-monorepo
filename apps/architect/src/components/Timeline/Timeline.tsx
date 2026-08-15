@@ -92,10 +92,12 @@ const Timeline = () => {
   }, [stages]);
 
   // Every row's "open" control, so a deleted row can hand focus to a surviving
-  // neighbour. Resolved lazily, when focus is actually returned, because WHICH
-  // neighbour survives is not known until the deletion has been applied — and
-  // on the last stage there is no neighbour at all and focus has to go to the
-  // add control instead.
+  // neighbour. WHICH neighbour is decided eagerly, before the delete, from the
+  // pre-deletion list: the next stage, or the previous one when the last row
+  // goes (see `successor` below). Only the ELEMENT lookup is deferred to this
+  // map, because the surviving row's DOM node does not exist until the
+  // deletion has rendered. The add control is the fallback for exactly one
+  // case — deleting the only stage, where there is no neighbour to go to.
   const openControlsRef = useRef(new Map<string, HTMLButtonElement>());
   const addStageRef = useRef<HTMLButtonElement>(null);
 
@@ -321,6 +323,16 @@ const Timeline = () => {
           axis="y"
           onReorder={handleReorder}
           aria-label="Protocol stages"
+          // `role="list"` is redundant in the abstract, which is what the lint
+          // rule objects to, but not on a Tailwind page: preflight sets
+          // `list-style: none` on every `ul`, and Safari drops list semantics
+          // from an unstyled list. Without it VoiceOver announces no list and
+          // no count — which is the whole point of this element, and would
+          // have left the "wrong number of stages" defect fixed on one of the
+          // two engines Architect ships to. Same reason, same fix as
+          // `PreviewRules.tsx` and fresco-ui's `ArrayField`.
+          // oxlint-disable-next-line jsx-a11y/no-redundant-roles
+          role="list"
           className="relative grid w-full grid-cols-1 justify-items-center gap-1"
           values={orderedStages}
           initial={animate ? 'hidden' : false}
@@ -346,6 +358,12 @@ const Timeline = () => {
           {orderedStages.map((stage, index) => (
             <li
               key={stage.id}
+              // `display: grid` takes this element out of `list-item`, and an
+              // `li` that is not a list item is not guaranteed to keep the
+              // `listitem` role. Stated explicitly so the count the parent
+              // advertises is actually backed by items.
+              // oxlint-disable-next-line jsx-a11y/no-redundant-roles
+              role="listitem"
               className="grid w-full grid-cols-1 justify-items-center gap-1"
             >
               <InsertButton

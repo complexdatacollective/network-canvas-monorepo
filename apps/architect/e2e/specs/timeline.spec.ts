@@ -105,6 +105,19 @@ test('reports the list as exactly its stages', async ({
   expect(structure.insertionPointsInsideList).toBe(protocol.stages.length);
   expect(structure.insertionPointsOutsideAnItem).toBe(0);
   expect(structure.addControlIsInsideList).toBe(false);
+
+  // Everything above reads the DOM, which is exactly why the real defect got
+  // through it: a `<ul>` can be a perfect tree of `<li>`s and still reach a
+  // screen reader as no list at all. Tailwind's preflight sets
+  // `list-style: none`, and WebKit drops the `list` role from an unstyled
+  // list — so on Safari/VoiceOver there was no "list, N items" and no list
+  // navigation, and `aria-label="Protocol stages"` had no list role to attach
+  // to. Chromium keeps the role regardless, so only an accessibility-tree
+  // assertion can see the difference. `getByRole` resolves against the
+  // accessibility tree, not the tag.
+  const list = architectPage.getByRole('list', { name: 'Protocol stages' });
+  await expect(list).toHaveCount(1);
+  await expect(list.getByRole('listitem')).toHaveCount(protocol.stages.length);
 });
 
 test('keeps the timeline tab order insertion-point-then-stage', async ({

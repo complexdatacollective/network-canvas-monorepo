@@ -69,7 +69,14 @@ export const useProtocolTabLock = (
     // BOTH tabs back to autosaving one library row. Only hand editing back if
     // no lock event has happened since this reclaim began.
     const epoch = lockEpoch.current;
-    await refreshActiveProtocol(store);
+    // The researcher has not left: same protocol, same route, editor still on
+    // screen. Only the ownership of the library row changed. Say so, so the
+    // timeline middleware does not treat this re-read as a session ending and
+    // throw away undo history the four destructive dialogs promise is there
+    // ("You can restore it with Undo while this protocol remains open"). It
+    // preserves history only when the row read back is identical to what is
+    // already in the buffer; a peer that actually edited still resets.
+    await refreshActiveProtocol(store, { continuingSession: true });
     if (lockEpoch.current !== epoch) return;
     dispatch(setProtocolLockState('owned'));
   }, [dispatch, refreshActiveProtocol, store]);

@@ -150,7 +150,6 @@ const TimelineStageRow = ({
       // context and registers its own measured box, so it neither needs nor
       // notices being one element further down the DOM.
       as="div"
-      key={stage.id}
       value={stage}
       layoutId={`timeline-stage-${stage.id}`}
       dragControls={dragControls}

@@ -16,6 +16,12 @@ export type Locus = {
   path: string;
 };
 
+// `setActiveProtocol` carries this only from the cross-tab reclaim, which
+// re-reads the canonical row without the session ending. See its use below.
+type ActionWithContinuingSession = UnknownAction & {
+  meta?: { continuingSession?: boolean };
+};
+
 type TimelineState<T = unknown> = {
   past: T[];
   present: T | null;
@@ -279,6 +285,32 @@ const createTimelineReducer = <T>(
           // guard below: loading a protocol starts a new history even when the
           // protocol loaded happens to equal the one already open, because the
           // past and future entries belong to the session that is ending.
+          //
+          // A cross-tab reclaim is the one caller for which that is untrue.
+          // `useProtocolTabLock.finishReclaim` re-reads the canonical row while
+          // the researcher stays on the same protocol on the same route —
+          // nothing closed, nothing navigated — so wiping history there breaks
+          // the promise four destructive dialogs make in as many words: delete
+          // a stage, let a peer tab open and close, and Undo was greyed out
+          // with the stage unrecoverable. It marks itself `continuingSession`.
+          //
+          // That marker alone is not enough to keep the history, because the
+          // peer may have edited: then this tab's `past` describes a lineage
+          // the library row no longer has, and undoing into it would overwrite
+          // work this tab never saw (#1382). So the history survives only when
+          // the row read back is IDENTICAL to what is already in the buffer —
+          // in which case this is a no-op in every other respect too, and
+          // there is nothing for a reset to protect.
+          if (
+            action.type === 'activeProtocol/setActiveProtocol' &&
+            (action as ActionWithContinuingSession).meta?.continuingSession ===
+              true &&
+            (presentSnapshot === newPresent ||
+              isEqual(presentSnapshot, newPresent))
+          ) {
+            return state;
+          }
+
           if (action.type === 'activeProtocol/setActiveProtocol') {
             const locus: Locus = { id: uuid(), path: options.getPath() };
             Object.assign(state, {

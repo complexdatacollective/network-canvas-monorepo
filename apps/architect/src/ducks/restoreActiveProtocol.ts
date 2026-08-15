@@ -31,6 +31,18 @@ type RestoreDependencies = {
   onInvalid?: (message: string) => void;
   admitStoredProtocol?: typeof admitCanonicalProtocol;
   clearRememberedSession?: () => void;
+  /**
+   * Set by the cross-tab reclaim, which re-reads the canonical row while the
+   * researcher stays on the same protocol on the same route. Startup leaves it
+   * unset: there the session really is beginning.
+   *
+   * It only ever reaches the timeline middleware, and only lets it skip
+   * discarding undo history when the row it just read is identical to what is
+   * already in the buffer. A row that DIFFERS still resets, because then a peer
+   * tab edited and this tab's history describes a lineage that no longer exists
+   * — undoing into it would overwrite work this tab never saw (#1382).
+   */
+  continuingSession?: boolean;
 };
 
 export type RestoreActiveProtocolResult =
@@ -69,8 +81,15 @@ export const restoreActiveProtocolFromLibrary = async (
   const protocolId = getActiveProtocolId(store.getState());
   if (!protocolId) {
     // There is no session to restore, so a /protocol URL (bookmark, typed
-    // address, restored tab) has no protocol behind it. Settle on Home before
-    // React mounts, as every other unrestorable branch below does.
+    // address, restored tab) has no protocol behind it. Settle on Home, as
+    // every other unrestorable branch below does.
+    //
+    // This used to say "before React mounts", which was true when startup was
+    // the only caller. `useProtocolTabLock.finishReclaim` now calls this
+    // mid-session with React mounted, so the raw `history.replaceState` runs
+    // there too and the router does not hear it. Not a defect —
+    // `ProtocolRouteGuard` converges on a real navigation — but the route
+    // change is no longer guaranteed to happen before anything is rendering.
     blockProtocolRoute();
     return 'none';
   }
@@ -132,7 +151,14 @@ export const restoreActiveProtocolFromLibrary = async (
 
   store.dispatch(setStorageUnavailable(false));
   disarmInMemoryUnloadGuard();
-  store.dispatch(setActiveProtocol(row.protocol));
+  store.dispatch(
+    dependencies.continuingSession
+      ? {
+          ...setActiveProtocol(row.protocol),
+          meta: { continuingSession: true },
+        }
+      : setActiveProtocol(row.protocol),
+  );
   return 'restored';
 };
 

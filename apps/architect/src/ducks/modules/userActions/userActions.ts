@@ -16,6 +16,7 @@ import {
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
+import { timelineActions } from '~/ducks/middleware/timeline';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   saveProtocolAssets,
@@ -665,6 +666,16 @@ export const deleteLibraryProtocol = createAppAsyncThunk(
       disarmInMemoryUnloadGuard();
       dispatch(setActiveProtocolId(null));
       dispatch(clearActiveProtocol());
+      // `clearActiveProtocol` matches `protocolPattern` in ducks/modules/root.ts,
+      // so without this the timeline middleware takes its default path and
+      // pushes a `structuredClone` of the protocol that was just deleted onto
+      // `past` — where it stays, holding whatever the researcher wrote in
+      // labels, prompts and the codebook, until another protocol is opened or
+      // the page reloads. The dialog says it is permanently removed from this
+      // device, so it has to be. Same rule, same pairing as
+      // `restoreActiveProtocol`'s `clearRestoredSession` and
+      // `protocolValidationListener`.
+      dispatch(timelineActions.reset(null));
     }
   },
 );

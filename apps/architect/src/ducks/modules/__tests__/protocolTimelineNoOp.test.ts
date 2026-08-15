@@ -2,8 +2,9 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import createTimeline from '~/ducks/middleware/timeline';
+import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
+  clearActiveProtocol,
   setActiveProtocol,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
@@ -179,5 +180,52 @@ describe('operations that change nothing and the protocol timeline', () => {
       timeline: 1,
       futureTimeline: 0,
     });
+  });
+});
+
+/**
+ * Deleting a protocol from the library must not leave a copy of it in undo
+ * history. `clearActiveProtocol` matches `protocolPattern` in
+ * `ducks/modules/root.ts`, so on its own the middleware takes the default path
+ * and pushes a `structuredClone` of the protocol that was just deleted onto
+ * `past` — where it holds whatever the researcher wrote in labels, prompts and
+ * the codebook until another protocol is opened or the page reloads, while the
+ * dialog says it was permanently removed from this device.
+ *
+ * `deleteLibraryProtocol` therefore pairs the clear with a timeline reset, the
+ * same way `restoreActiveProtocol`'s `clearRestoredSession` and
+ * `protocolValidationListener` do.
+ */
+describe('clearing the active protocol and undo history', () => {
+  const seed = (): CurrentProtocol =>
+    ({
+      name: 'Pilot study',
+      stages: [{ id: 's1', label: 'Sensitive prompt text' }],
+      codebook: {},
+    }) as unknown as CurrentProtocol;
+
+  it('retains the cleared protocol in past when the timeline is not reset', () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocol(seed()));
+    store.dispatch(clearActiveProtocol());
+
+    const { past } = store.getState().activeProtocol;
+    expect(past.length).toBe(1);
+    expect(JSON.stringify(past)).toContain('Sensitive prompt text');
+  });
+
+  it('retains nothing once the clear is paired with a timeline reset', () => {
+    const store = makeStore();
+    store.dispatch(setActiveProtocol(seed()));
+    store.dispatch(clearActiveProtocol());
+    store.dispatch(timelineActions.reset(null));
+
+    const { past, future, present } = store.getState().activeProtocol;
+    expect(past).toEqual([]);
+    expect(future).toEqual([]);
+    expect(present).toBeNull();
+    expect(JSON.stringify({ past, future, present })).not.toContain(
+      'Sensitive prompt text',
+    );
   });
 });

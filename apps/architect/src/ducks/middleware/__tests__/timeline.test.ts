@@ -545,3 +545,76 @@ describe('timeline middleware', () => {
     });
   });
 });
+
+describe('setActiveProtocol and the cross-tab reclaim', () => {
+  // A reducer shaped like `activeProtocol`: setActiveProtocol replaces the
+  // whole state with the payload, every other action leaves it alone.
+  type Proto = { name: string; stages: string[] };
+  const protocolReducer: Reducer<Proto | null> = (
+    state: Proto | null = null,
+    action?: UnknownAction,
+  ) => {
+    if (action?.type === 'activeProtocol/setActiveProtocol') {
+      return (action as unknown as { payload: Proto }).payload;
+    }
+    if (action?.type === 'stages/deleteStage' && state) {
+      return { ...state, stages: state.stages.slice(0, -1) };
+    }
+    return state;
+  };
+
+  const setActive = (protocol: Proto, continuingSession = false) => ({
+    type: 'activeProtocol/setActiveProtocol',
+    payload: protocol,
+    ...(continuingSession ? { meta: { continuingSession: true } } : {}),
+  });
+
+  const seeded = () => {
+    const timelineReducer = createTimeline(protocolReducer);
+    let state = timelineReducer(
+      undefined,
+      setActive({ name: 'p', stages: ['a', 'b'] }),
+    );
+    // One real, undoable edit — the "delete a stage" the dialogs promise.
+    state = timelineReducer(state, { type: 'stages/deleteStage' });
+    return { timelineReducer, state };
+  };
+
+  it('keeps undo history when a reclaim re-reads an identical row', () => {
+    const { timelineReducer, state } = seeded();
+    expect(state.past.length).toBe(1);
+
+    // The peer tab opened and closed without editing, so the canonical row is
+    // byte-identical to the buffer. The session never ended, and the stage the
+    // researcher just deleted must still be restorable.
+    const after = timelineReducer(state, setActive(state.present!, true));
+
+    expect(after.past.length).toBe(1);
+    expect(after.past).toEqual(state.past);
+    expect(after.present).toEqual(state.present);
+  });
+
+  it('still resets history when the reclaimed row differs — a peer edited it', () => {
+    const { timelineReducer, state } = seeded();
+
+    const after = timelineReducer(
+      state,
+      setActive({ name: 'p', stages: ['a', 'z'] }, true),
+    );
+
+    // This tab's past describes a lineage the library row no longer has;
+    // undoing into it would overwrite work this tab never saw (#1382).
+    expect(after.past.length).toBe(0);
+    expect(after.future.length).toBe(0);
+  });
+
+  it('still resets history for a plain load of an identical protocol', () => {
+    const { timelineReducer, state } = seeded();
+
+    // No `continuingSession`: this is open/import, where the session really did
+    // end even if the protocol happens to match.
+    const after = timelineReducer(state, setActive(state.present!));
+
+    expect(after.past.length).toBe(0);
+  });
+});
