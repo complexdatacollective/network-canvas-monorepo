@@ -1,4 +1,4 @@
-import { type Locator } from '@playwright/test';
+import { type Locator, type Page } from '@playwright/test';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -49,6 +49,23 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * naming bug in its own right; this guard does not try to detect it.
  *
  * No `@visual` tag: this reads the accessibility tree, not pixels.
+ *
+ * ONE TEST PER STAGE TYPE, not one test for all of them. As a single test the
+ * work — 19 editors, every collapsed section in each expanded, one
+ * representative row-editor dialog opened per list — took 35s of the 60s
+ * budget on a developer machine, and on a CI runner it spent the whole 60s
+ * getting partway into the fourteenth editor, which had taken 26s here: about
+ * 2.3× slower, deterministically over budget, and it failed that way on the
+ * first run and both retries. Raising the timeout would only move the cliff to
+ * whatever the twentieth editor costs, and the walk is not doing anything it
+ * can skip — every editor and every one of its row-editor dialogs is the
+ * coverage. Split, the slowest editor is 2.8s of its own 60s, and a failure
+ * names the editor in the test title rather than in a list at the end.
+ *
+ * Coverage is by construction: the tests are generated from the fixture's
+ * stages, so a stage type added to `all-interfaces` gets a test with no edit
+ * here. (`packages/protocol-validation/src/__tests__/all-interfaces-fixture.test.ts`
+ * is what stops that fixture quietly losing a type.)
  */
 const ADD_BUTTON = /^(Add|Create) new\b/;
 
@@ -119,59 +136,63 @@ async function expandCollapsedSections(scope: Locator): Promise<void> {
   }
 }
 
-test('no stage editor offers two identically-named add buttons', async ({
-  architectPage: page,
-  seed,
-}) => {
-  const { protocol, assets } = loadAllInterfacesFixture();
-  await seed(protocol, { name: 'All Interfaces', assets });
-  await gotoProtocol(page);
-
-  const body = page.locator('body');
+/**
+ * The stage editor itself, and then each list's row editor: the row editors
+ * are their own surfaces, and three of the four known collisions only ever
+ * appeared inside one. `DialogItem` names each row's edit trigger
+ * `Edit ${itemLabel}`, one distinct label per list, so the first button of
+ * each distinct name opens one representative dialog per list without walking
+ * every row.
+ */
+async function duplicateAddButtons(page: Page): Promise<string[]> {
   const failures: string[] = [];
+  const body = page.locator('body');
 
-  for (const stage of protocol.stages) {
+  await expandCollapsedSections(body);
+  for (const name of duplicated(await addButtonNames(body))) {
+    failures.push(`stage editor: ${name}`);
+  }
+
+  const editTriggers = await page.getByRole('button', { name: /^Edit / }).all();
+  const openedLabels = new Set<string>();
+
+  for (const trigger of editTriggers) {
+    const label = await trigger.getAttribute('aria-label');
+    if (!label || openedLabels.has(label)) continue;
+    openedLabels.add(label);
+
+    await trigger.click();
+    const dialog = page.getByRole('dialog').last();
+    await expect(dialog).toBeVisible();
+
+    await expandCollapsedSections(dialog);
+
+    for (const name of duplicated(await addButtonNames(dialog))) {
+      failures.push(`"${label}" editor: ${name}`);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+  }
+
+  return failures;
+}
+
+const { protocol, assets } = loadAllInterfacesFixture();
+
+for (const stage of protocol.stages) {
+  test(`the ${stage.type} editor offers no two identically-named add buttons`, async ({
+    architectPage: page,
+    seed,
+  }) => {
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await gotoProtocol(page);
+
     await page.goto(`/protocol/stage/${stage.id}`);
     await expect(
       page.getByRole('textbox', { name: 'Stage name' }),
     ).toBeVisible();
 
-    await expandCollapsedSections(body);
-
-    const stageNames = await addButtonNames(body);
-    for (const name of duplicated(stageNames)) {
-      failures.push(`${stage.type} stage editor: ${name}`);
-    }
-
-    // The row editors are their own surfaces, and three of the four known
-    // collisions only ever appeared inside one. `DialogItem` names each row's
-    // edit trigger `Edit ${itemLabel}`, one distinct label per list, so the
-    // first button of each distinct name opens one representative dialog per
-    // list without walking every row.
-    const editTriggers = await page
-      .getByRole('button', { name: /^Edit / })
-      .all();
-    const openedLabels = new Set<string>();
-
-    for (const trigger of editTriggers) {
-      const label = await trigger.getAttribute('aria-label');
-      if (!label || openedLabels.has(label)) continue;
-      openedLabels.add(label);
-
-      await trigger.click();
-      const dialog = page.getByRole('dialog').last();
-      await expect(dialog).toBeVisible();
-
-      await expandCollapsedSections(dialog);
-
-      for (const name of duplicated(await addButtonNames(dialog))) {
-        failures.push(`${stage.type} "${label}" editor: ${name}`);
-      }
-
-      await page.keyboard.press('Escape');
-      await expect(dialog).toBeHidden();
-    }
-  }
-
-  expect(failures.toSorted()).toEqual([]);
-});
+    expect((await duplicateAddButtons(page)).toSorted()).toEqual([]);
+  });
+}
