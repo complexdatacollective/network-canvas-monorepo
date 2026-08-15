@@ -37,6 +37,10 @@ import {
 } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
+import {
+  describeImportFailure,
+  TEMPLATE_OPEN_FAILURE_MESSAGE,
+} from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
@@ -204,13 +208,18 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          const { message } = reportError(error);
-          void openDialog({
-            type: 'acknowledge',
-            intent: 'destructive',
-            title: 'Protocol Import Error',
-            description: message,
-            actions: { primary: { label: 'OK', value: true } },
+          reportError(error);
+          // This branch is the template's own asset loading and the thunk's
+          // rejection — never an archive — so the default talks about the
+          // template. `describeImportFailure` still runs first because a
+          // storage failure is reachable here and describes itself better.
+          await showProtocolOpenResultDialog({
+            result: {
+              status: 'error',
+              title: 'Protocol Import Error',
+              ...describeImportFailure(error, TEMPLATE_OPEN_FAILURE_MESSAGE),
+            },
+            openDialog,
           });
           return;
         }

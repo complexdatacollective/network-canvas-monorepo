@@ -12,6 +12,7 @@ import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 import {
+  isUsableFinalFocusTarget,
   normaliseFinalFocus,
   type FinalFocusCloseType,
   type FinalFocusResult,
@@ -136,9 +137,20 @@ export default function Dialog({
   const resolveFinalFocus = useCallback(
     (closeType: FinalFocusCloseType): FinalFocusResult => {
       const declared = normaliseFinalFocus(finalFocus, closeType);
+      // `true`/`false` are instructions, not targets, so they pass straight
+      // through.
+      if (typeof declared === 'boolean') return declared;
       // Anything the caller actually answered with wins; `null` means "no
-      // opinion", which is where the remembered opener comes in.
-      if (declared !== null) return declared;
+      // opinion", which is where the remembered opener comes in. A named
+      // element only wins if it can still be focused — the caller's target is
+      // usually the control that opened the dialog, and a confirmed destructive
+      // action removes exactly that. An explicit target bypasses Base UI's own
+      // connectivity check, so handing over a detached node leaves focus on
+      // `<body>`: worse than falling through to the opener (or to Base UI's
+      // default).
+      if (declared !== null && isUsableFinalFocusTarget(declared)) {
+        return declared;
+      }
 
       const opener = openerRef.current;
       // A disconnected opener (the row this dialog was editing has been

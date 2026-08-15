@@ -141,6 +141,21 @@ describe('Dialog focus return', () => {
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 
+  it('ignores an explicit finalFocus naming an element that is no longer in the document', async () => {
+    // A caller's `finalFocus` usually names a control the confirmed action goes
+    // on to destroy. An explicit target BYPASSES Base UI's own connectivity
+    // check, so handing over the detached node parks focus on <body> — strictly
+    // worse than declining and letting the remembered opener answer.
+    const detached = document.createElement('button');
+    render(<Harness finalFocus={() => detached} />);
+    const opener = await openViaOpener();
+
+    closeViaCloseButton();
+
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(detached.isConnected).toBe(false);
+  });
+
   it('does not return focus to an opener that has been removed', async () => {
     const Removing = () => {
       const [open, setOpen] = useState(false);

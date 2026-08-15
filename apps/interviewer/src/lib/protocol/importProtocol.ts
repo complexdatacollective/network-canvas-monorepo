@@ -2,11 +2,13 @@ import JSZip from 'jszip';
 
 import {
   type CurrentProtocol,
+  describeProtocolFileError,
   detectSchemaVersion,
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
   hashProtocol,
+  loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
   VersionedProtocolSchema,
@@ -86,8 +88,22 @@ export async function peekProtocolName(
 async function extractZip(
   buffer: Uint8Array,
 ): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = await loadNetcanvasArchive(buffer);
   return extractProtocolFromZip(zip);
+}
+
+/**
+ * What the "Import failed" toast says.
+ *
+ * `@codaco/protocol-validation` describes the failures it recognises — an
+ * unreadable archive, a missing protocol, a failed migration — in words written
+ * for the person holding the device. Anything else gets a plain sentence rather
+ * than the thrower's own message: a JSZip rejection naming a zip's central
+ * directory and linking to its own documentation is not something to put in
+ * front of a researcher mid-fieldwork.
+ */
+function describeImportFailure(cause: unknown, fallback: string): string {
+  return describeProtocolFileError(cause) ?? fallback;
 }
 
 async function importParsedProtocol(
@@ -119,7 +135,10 @@ async function importParsedProtocol(
       return {
         success: false,
         error: 'validation-failed',
-        message: cause instanceof Error ? cause.message : String(cause),
+        message: describeImportFailure(
+          cause,
+          'This protocol could not be upgraded to the current version.',
+        ),
       };
     }
   }
@@ -163,10 +182,14 @@ async function importParsedProtocol(
   try {
     await saveProtocol(validated, hash, assets);
   } catch (cause) {
+    // An IndexedDB or quota rejection reads as machine output. What the
+    // researcher needs is that the protocol is fine and the device is not.
+    console.error('Protocol import failed while saving', cause);
     return {
       success: false,
       error: 'save-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
+      message:
+        'This protocol could not be saved. This device may be out of space.',
     };
   }
 
@@ -185,10 +208,14 @@ async function importFromBuffer(
   try {
     extracted = await extractZip(buffer);
   } catch (cause) {
+    console.error('Protocol import failed while extracting', cause);
     return {
       success: false,
       error: 'extract-failed',
-      message: cause instanceof Error ? cause.message : String(cause),
+      message: describeImportFailure(
+        cause,
+        'This protocol could not be opened.',
+      ),
     };
   }
 

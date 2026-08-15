@@ -51,7 +51,13 @@ export type FinalFocusTarget =
   | RefObject<HTMLElement | null>
   | (() => HTMLElement | null | undefined);
 
-const isUsable = (
+/**
+ * Whether `element` is worth handing to Base UI as a focus-return target at
+ * all. Exported because EVERY path that names a target explicitly needs it: an
+ * explicit `finalFocus` bypasses Base UI's own connectivity check, so a target
+ * that has since been removed is strictly worse than answering "no opinion".
+ */
+export const isUsableFinalFocusTarget = (
   element: HTMLElement | null | undefined,
 ): element is HTMLElement => {
   if (!element) return false;
@@ -80,7 +86,7 @@ const resolveOne = (target: FinalFocusTarget): HTMLElement | null => {
         ? target.current
         : target;
 
-  return isUsable(element) ? element : null;
+  return isUsableFinalFocusTarget(element) ? element : null;
 };
 
 /**

@@ -38,6 +38,11 @@ import {
   NetcanvasTooLargeError,
 } from '~/utils/netcanvasSizeGuard';
 import {
+  describeImportFailure,
+  PROTOCOL_OPEN_FAILURE_MESSAGE,
+  TEMPLATE_OPEN_FAILURE_MESSAGE,
+} from '~/utils/protocolImportErrors';
+import {
   deleteStoredProtocol,
   getStoredProtocol,
   putStoredProtocol,
@@ -61,6 +66,13 @@ export type ProtocolOpenResult =
       status: 'error';
       title: string;
       message: string;
+      /**
+       * The underlying error's own text, for the dialog's collapsed technical
+       * details. Absent when the failure is an expected input problem whose
+       * message already says everything there is to know (an unsupported file
+       * type, an over-large file) — there is nothing further to disclose.
+       */
+      detail?: string;
     }
   | {
       status: 'validation-error';
@@ -328,12 +340,18 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       return openedResult;
     } catch (error) {
       trackImportException('local', error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      // The raw error still reaches exception reporting and the console above;
+      // what the dialog leads with is Architect's own description of it, and
+      // the raw text is offered only behind the technical-details disclosure.
+      const { message, detail } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Failed to Open Protocol',
-        message: errorMessage,
+        message,
+        detail,
       };
     } finally {
       setImportInProgress(false);
@@ -506,11 +524,18 @@ export const openBundledTemplate = createAppAsyncThunk(
       return openedResult;
     } catch (error) {
       trackImportException('bundled', error);
-      const errorMessage = ensureError(error).message;
+      // A bundled template never opens an archive, so the file-shaped reasons
+      // are unreachable here — but storage failures are not, and the default
+      // must talk about the template, never about a damaged file.
+      const { message, detail } = describeImportFailure(
+        error,
+        TEMPLATE_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Protocol Import Error',
-        message: errorMessage,
+        message,
+        detail,
       };
     } finally {
       setImportInProgress(false);
@@ -604,13 +629,16 @@ export const openLibraryProtocol = createAppAsyncThunk(
         }
       }
     } catch (error: unknown) {
-      const normalized = reportError(error, {
-        operation: 'stored-protocol-admission',
-      });
+      reportError(error, { operation: 'stored-protocol-admission' });
+      const { message, detail } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Protocol Open Error',
-        message: normalized.message,
+        message,
+        detail,
       };
     }
 

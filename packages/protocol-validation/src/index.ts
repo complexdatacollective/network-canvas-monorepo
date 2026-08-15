@@ -6,14 +6,20 @@ import {
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
+import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
   NetcanvasInflationLimitError,
 } from './utils/extractProtocol.ts';
 import { hashProtocol } from './utils/hashProtocol.ts';
+import {
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
+} from './utils/malformedNetcanvasError.ts';
 import {
   getVariableNamesFromNetwork,
   type Network,
@@ -72,6 +78,7 @@ export {
   asEntityAttributeReference,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
   type ExtractedAsset,
@@ -81,6 +88,9 @@ export {
   getAssetMimeType,
   getVariableNamesFromNetwork,
   hashProtocol,
+  loadNetcanvasArchive,
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
   MAX_INFLATED_BYTES,
   type Network,
   NetcanvasInflationLimitError,

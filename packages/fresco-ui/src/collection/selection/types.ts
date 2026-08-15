@@ -82,7 +82,7 @@ export type SelectableItemResult = {
   /** Props to spread on the item element */
   itemProps: {
     'tabIndex': number;
-    'onFocus': () => void;
+    'onFocus': (e: React.FocusEvent) => void;
     /**
      * Absent when the collection has no selection: a handler that exists but
      * does nothing still reads as "clickable" to whatever renders the item,

@@ -1,4 +1,6 @@
-import JSZip from 'jszip';
+import type JSZip from 'jszip';
+
+import { loadNetcanvasArchive } from '@codaco/protocol-validation';
 
 // A .netcanvas is a zip of protocol.json plus media assets. Importing it reads
 // the whole file into memory and inflates every asset to a Blob, so an oversized
@@ -73,7 +75,10 @@ export const loadGuardedNetcanvas = async (
 ): Promise<JSZip> => {
   assertCompressedSizeWithinLimit(data.byteLength);
 
-  const zip = await JSZip.loadAsync(data);
+  // Goes through the package's loader rather than JSZip directly, so the drop
+  // path and the package path cannot diverge on what an unreadable archive
+  // throws — and so neither can surface JSZip's own wording.
+  const zip = await loadNetcanvasArchive(data);
 
   const uncompressedTotal = declaredUncompressedTotal(zip);
   if (uncompressedTotal > MAX_UNCOMPRESSED_BYTES) {
