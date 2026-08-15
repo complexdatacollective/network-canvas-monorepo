@@ -62,13 +62,21 @@ const VIEWPORTS = [
  * `ArrayField`'s 24rem `min-width` floor — every one of these measured 432px of
  * content inside a 390px box before it was removed.
  *
- * Deliberately not the whole set. Five editors still overflow at 390 from
- * fixed widths of their own, unrelated to that floor and untouched by this
- * change: Name Generator Roster (484), Geospatial (484), Family Pedigree
- * (550), Alter Form and Alter Edge Form (400), Narrative Pedigree (410).
- * Listing them here rather than asserting them keeps this suite honest about
- * what has actually been fixed, and gives whoever takes those on a place to
- * extend.
+ * The last six were listed here as known gaps while that floor was fixed, and
+ * are asserted now that the fixed widths behind them are gone. Measured before,
+ * at 390: Name Generator Roster 484, Geospatial 484, Family Pedigree 550, Alter
+ * Form 400, Alter Edge Form 400, Narrative Pedigree 410. Four distinct causes
+ * between them, so each is worth its own assertion rather than one
+ * representative: the asset thumbnail's flat `w-[25rem]` (roster, geospatial);
+ * `ArrayField`'s remaining `min-w-fit`, inherited from `controlVariants` and
+ * left behind when `min-w-sm` went (roster, both Alter Forms, Narrative
+ * Pedigree); Family Pedigree's two-column variable rows, which now stack below
+ * a 34rem container query; and the variable pill's uncapped 20rem `max-width`,
+ * which no `min-w-0` can restrain because a variable name renders `nowrap` and
+ * so has no min-content smaller than itself.
+ *
+ * Still not the whole set of 19: the eight types not named here have never been
+ * reported overflowing, and each entry costs a navigation per viewport.
  */
 const EDITOR_TYPES_UNDER_TEST = [
   'Information',
@@ -76,6 +84,12 @@ const EDITOR_TYPES_UNDER_TEST = [
   'NameGenerator',
   'OrdinalBin',
   'Narrative',
+  'NameGeneratorRoster',
+  'Geospatial',
+  'FamilyPedigree',
+  'AlterForm',
+  'AlterEdgeForm',
+  'NarrativePedigree',
 ] as const;
 
 for (const viewport of VIEWPORTS) {

@@ -156,28 +156,40 @@ const VariableRow = ({
   const initialValue = useStageInitialValue<string>(name);
 
   return (
-    <div className="flex items-start gap-5">
-      <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
-        <span className="font-semibold">
-          {label}
-          <span className="text-destructive ms-1">*</span>
-        </span>
-        <span className="text-text/60 text-sm leading-snug">{description}</span>
-      </div>
-      <div className="relative flex-1 basis-0">
-        <IssueAnchor fieldName={name} description={`${label} Variable`} />
-        <ArchitectField
-          name={name}
-          component={VariablePickerControl}
-          validation={{ required: true, crossClassPick }}
-          label={`${label} variable`}
-          labelHidden
-          initialValue={initialValue}
-          entity="node"
-          type={entityType}
-          options={options}
-          onCreateOption={onCreateOption}
-        />
+    /* Two equal columns are only readable while there is room for two. The row
+       measured 246px wide inside a 390px viewport, where `flex-1 basis-0` with
+       the default `min-width: auto` floored each column at its content width
+       and forced 550px of editor into a 390px box (#1388). A container query,
+       not a viewport breakpoint: this row is nested several layouts deep and
+       knows its own width, not the window's. Below the threshold it stacks —
+       and the flex sizing has to stack with it, because `basis-0` in a column
+       direction sizes HEIGHT and would collapse both rows to nothing. */
+    <div className="@container">
+      <div className="flex flex-col items-start gap-5 @min-[34rem]:flex-row">
+        <div className="flex w-full min-w-0 flex-col gap-1 @min-[34rem]:flex-1 @min-[34rem]:basis-0 @min-[34rem]:pt-2.5">
+          <span className="font-semibold">
+            {label}
+            <span className="text-destructive ms-1">*</span>
+          </span>
+          <span className="text-text/60 text-sm leading-snug">
+            {description}
+          </span>
+        </div>
+        <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
+          <IssueAnchor fieldName={name} description={`${label} Variable`} />
+          <ArchitectField
+            name={name}
+            component={VariablePickerControl}
+            validation={{ required: true, crossClassPick }}
+            label={`${label} variable`}
+            labelHidden
+            initialValue={initialValue}
+            entity="node"
+            type={entityType}
+            options={options}
+            onCreateOption={onCreateOption}
+          />
+        </div>
       </div>
     </div>
   );

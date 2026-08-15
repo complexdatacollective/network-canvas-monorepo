@@ -134,7 +134,11 @@ export const VariablePickerControl = ({
           aria-disabled={readOnly || undefined}
           disabled={disabled}
           className={cx(
-            'bg-input text-input-contrast flex w-full flex-col items-start rounded border-2 p-4',
+            // `min-w-0`: without it this fieldset's automatic minimum is the
+            // min-content of the pill inside, so a long variable name made the
+            // whole picker — and the editor around it — refuse to shrink
+            // (#1388).
+            'bg-input text-input-contrast flex w-full min-w-0 flex-col items-start rounded border-2 p-4',
             ariaInvalid && 'border-destructive',
             disabled && 'opacity-50',
             readOnly && 'opacity-70',
@@ -148,7 +152,14 @@ export const VariablePickerControl = ({
           )}
           {value && (
             <AnimatePresence mode="wait" initial={false}>
+              {/* `w-full`, not shrink-to-fit. The fieldset is `items-start`,
+                  so without an explicit width this wrapper takes the pill's
+                  own content width — and the pill's `max-width: min(20rem,
+                  100%)` then resolves 100% against a box the pill itself
+                  sized, which can never clamp anything. Filling the fieldset
+                  gives that percentage a real bound to resolve against. */}
               <motion.div
+                className="w-full min-w-0"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}

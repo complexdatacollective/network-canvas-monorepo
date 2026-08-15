@@ -107,28 +107,35 @@ const VariableRow = ({
   const initialValue = useStageInitialValue<string>(name);
 
   return (
-    <div className="flex items-start gap-5">
-      <div className="flex flex-1 basis-0 flex-col gap-1 pt-2.5">
-        <span className="font-semibold">
-          {label}
-          <span className="text-destructive ms-1">*</span>
-        </span>
-        <span className="text-text/60 text-sm leading-snug">{description}</span>
-      </div>
-      <div className="relative flex-1 basis-0">
-        <IssueAnchor fieldName={name} description={`${label} Variable`} />
-        <ArchitectField
-          name={name}
-          component={VariablePickerControl}
-          validation={{ required: true, crossClassPick }}
-          label={`${label} variable`}
-          labelHidden
-          initialValue={initialValue}
-          entity="edge"
-          type={edgeType}
-          options={options}
-          onCreateOption={onCreateOption}
-        />
+    /* Stacks below its own container width rather than the viewport's — see
+       the matching row in `NodeConfiguration.tsx` for why, including why the
+       `flex-1 basis-0` sizing is gated on the same query. */
+    <div className="@container">
+      <div className="flex flex-col items-start gap-5 @min-[34rem]:flex-row">
+        <div className="flex w-full min-w-0 flex-col gap-1 @min-[34rem]:flex-1 @min-[34rem]:basis-0 @min-[34rem]:pt-2.5">
+          <span className="font-semibold">
+            {label}
+            <span className="text-destructive ms-1">*</span>
+          </span>
+          <span className="text-text/60 text-sm leading-snug">
+            {description}
+          </span>
+        </div>
+        <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
+          <IssueAnchor fieldName={name} description={`${label} Variable`} />
+          <ArchitectField
+            name={name}
+            component={VariablePickerControl}
+            validation={{ required: true, crossClassPick }}
+            label={`${label} variable`}
+            labelHidden
+            initialValue={initialValue}
+            entity="edge"
+            type={edgeType}
+            options={options}
+            onCreateOption={onCreateOption}
+          />
+        </div>
       </div>
     </div>
   );

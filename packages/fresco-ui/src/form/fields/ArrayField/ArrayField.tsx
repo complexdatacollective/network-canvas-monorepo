@@ -49,7 +49,13 @@ const arrayFieldVariants = compose(
   groupSpacingVariants,
   stateVariants,
   cva({
-    base: 'relative w-full flex-col overflow-hidden text-wrap',
+    // `min-w-0` overrides the `min-w-fit` `controlVariants` sets for buttons,
+    // whose labels should never be clipped. On this list that floor is
+    // `fit-content` of every row at once — a row of selects and buttons — so
+    // the group refused to shrink below ~428px and pushed the roster editor
+    // past a 390px viewport (#1388). The list wraps and clips its own rows
+    // (`overflow-hidden text-wrap`), so it has no need of a content floor.
+    base: 'relative w-full min-w-0 flex-col overflow-hidden text-wrap',
   }),
 );
 

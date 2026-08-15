@@ -61,8 +61,17 @@ type VariablePillEditorAnchor = {
 };
 
 const DARK_COLOR_SUFFIX = '-dark';
-const DEFAULT_MIN_WIDTH = '12rem';
-const DEFAULT_MAX_WIDTH = '20rem';
+// Both bounds are capped at the pill's containing block, never a bare length.
+// A variable name renders `white-space: nowrap`, so the pill's min-content IS
+// the whole token however narrow its container: measured 312px inside a 210px
+// box, which is what still pushed the family pedigree editor past a 390px
+// viewport after its rows learned to stack (#1388). No amount of `min-w-0`
+// above it helps — a percentage cap is the only thing that can clamp a
+// nowrap run. `min()` keeps the intended 12–20rem band wherever there is room
+// and yields to the container when there is not.
+const DEFAULT_MAX_WIDTH_REM = 20;
+const DEFAULT_MIN_WIDTH = 'min(12rem, 100%)';
+const DEFAULT_MAX_WIDTH = `min(${DEFAULT_MAX_WIDTH_REM}rem, 100%)`;
 const EDIT_MODE_SCALE = 1.5;
 const EDITOR_FRAME_GUTTER = 32;
 const EDITOR_FRAME_MIN_WIDTH = 320;
@@ -79,6 +88,19 @@ const getRawColorToken = (color: string) =>
     ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
     : color;
 
+/**
+ * How wide the zoomed name editor may grow the pill to. This is a DESIGN
+ * ceiling, not a layout one: the editor is an overlay positioned against the
+ * viewport (see `editorFrame`), so the pill's own container never constrains
+ * it.
+ *
+ * The unreadable-value branch therefore falls back to the design maximum, not
+ * to `currentWidth`. `max-width` is now `min(20rem, 100%)` — the `100%` is what
+ * keeps an inline pill inside its container (#1388) — and `Number.parseFloat`
+ * cannot read a `min()`. Returning the element's current width there would
+ * silently pin the editor to whatever the pill happened to be, which for a
+ * clipped long name is exactly the case the editor exists to open up.
+ */
 const getResolvedMaximumWidth = (
   element: HTMLElement,
   currentWidth: number,
@@ -87,7 +109,11 @@ const getResolvedMaximumWidth = (
   const numericMaxWidth = Number.parseFloat(computedMaxWidth);
 
   if (!Number.isFinite(numericMaxWidth)) {
-    return currentWidth;
+    const rootFontSize =
+      Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      ) || 16;
+    return Math.max(currentWidth, DEFAULT_MAX_WIDTH_REM * rootFontSize);
   }
 
   if (computedMaxWidth.endsWith('%')) {
@@ -147,7 +173,13 @@ function VariablePillContents({
   const icon = useMemo(() => getIconForType(type), [type]);
 
   return (
-    <span className="text-text bg-surface flex h-full w-full overflow-hidden rounded-[inherit]">
+    // `min-w-0` so the pill can actually reach the bound above it. This span is
+    // the pill's only flex item, and a variable name is an unbreakable
+    // monospace token — at the default `min-width: auto` its min-content became
+    // the pill's, then the picker's, then the whole editor's, so `max-width`
+    // had nothing left to clamp. The label inside already clips (`min-w-0` +
+    // `overflow-hidden`); this lets that clipping be reached.
+    <span className="text-text bg-surface flex h-full w-full min-w-0 overflow-hidden rounded-[inherit]">
       <span className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img className="icon opacity-80" src={icon} alt={`${type} variable`} />
       </span>
