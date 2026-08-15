@@ -26,12 +26,34 @@ export type UseGeospatialSearchProps = {
   onSearchPerformed?: () => void;
 };
 
+/**
+ * What selecting a suggestion actually did, so the caller can say so out loud.
+ *
+ * Derived from whether the camera MOVED — deliberately not from whether
+ * `retrieve()` threw. A response carrying no features, or a feature whose
+ * geometry is not a point, resolves perfectly happily and moves nothing;
+ * announcing "Map moved to …" in that case tells the participant something
+ * that did not happen.
+ */
+export type SelectSuggestionOutcome = 'moved' | 'unavailable';
+
 type UseGeospatialSearchReturn = {
   query: string;
   handleQueryChange: (value: string | undefined) => void;
   suggestions: Suggestion[];
   isLoading: boolean;
-  handleSelect: (suggestion: Suggestion) => Promise<void>;
+  /**
+   * The last settled `suggest()` FAILED rather than matching nothing.
+   *
+   * Same rule as `SelectSuggestionOutcome` above: report what happened. A
+   * request that throws — offline (both hosts are offline-first), a rejected
+   * token, a rate limit — leaves behind exactly the empty list a genuine
+   * zero-result leaves, so a caller reading `suggestions.length === 0` alone
+   * would tell the participant their query matched nothing when we have no
+   * idea whether it did.
+   */
+  searchFailed: boolean;
+  handleSelect: (suggestion: Suggestion) => Promise<SelectSuggestionOutcome>;
   clear: () => void;
 };
 
@@ -48,6 +70,7 @@ export const useGeospatialSearch = ({
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
 
   // UUIDv4 per Mapbox recommendation: https://docs.mapbox.com/api/search/search-box/#get-suggested-results
   // A session is one suggest→retrieve cycle.
@@ -75,6 +98,17 @@ export const useGeospatialSearch = ({
     [proximity],
   );
 
+  /**
+   * Bumped by every `reset()`. A `suggest()` request already in flight cannot
+   * be cancelled — `reset()` can only cancel the debounce timer — so each
+   * request remembers the generation it was issued in and drops its response
+   * if the field has been reset (or moved to another node via `resetKey`)
+   * since. Without this, a slow response repopulates a list the participant
+   * has already cleared, and clears the loading state of a query they have
+   * since retyped.
+   */
+  const searchGenerationRef = useRef(0);
+
   // Create debounced fetch function
   const fetchSuggestions = useMemo(() => {
     if (!accessToken) return null;
@@ -82,24 +116,37 @@ export const useGeospatialSearch = ({
     return debounce(async (value: string) => {
       if (!value.trim()) {
         setSuggestions([]);
+        setSearchFailed(false);
         setIsLoading(false);
         return;
       }
 
       onSearchPerformedRef.current?.();
 
+      const generation = searchGenerationRef.current;
+      const isStale = () => generation !== searchGenerationRef.current;
+
       try {
         const response = await searchBoxRef.current.suggest(value, {
           sessionToken: sessionTokenRef.current,
           proximity: proximityOption,
         });
+        if (isStale()) return;
         setSuggestions(response.suggestions);
+        setSearchFailed(false);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Search error:', error);
+        if (isStale()) return;
         setSuggestions([]);
+        // The empty list this leaves behind is the same one a genuine
+        // zero-result leaves, so the failure has to be recorded separately or
+        // the caller cannot help but claim nothing matched.
+        setSearchFailed(true);
       } finally {
-        setIsLoading(false);
+        if (!isStale()) {
+          setIsLoading(false);
+        }
       }
     }, 300);
   }, [accessToken, proximityOption]);
@@ -109,9 +156,11 @@ export const useGeospatialSearch = ({
 
   const reset = useCallback(() => {
     fetchSuggestionsRef.current?.cancel();
+    searchGenerationRef.current += 1;
     sessionTokenRef.current = crypto.randomUUID();
     setQuery('');
     setSuggestions([]);
+    setSearchFailed(false);
     setIsLoading(false);
   }, []);
 
@@ -138,33 +187,47 @@ export const useGeospatialSearch = ({
         fetchSuggestions?.(safeValue);
       } else {
         setSuggestions([]);
+        setSearchFailed(false);
         setIsLoading(false);
       }
     },
     [fetchSuggestions],
   );
 
-  // Retrieve coordinates and fly to location
+  /**
+   * Retrieve coordinates and fly to the location, reporting whether the camera
+   * actually moved.
+   *
+   * Only the session TOKEN is rotated once the retrieve settles — a
+   * suggest→retrieve cycle is one billable session, and this one is now spent.
+   * The whole-field `reset()` this used to call ran AFTER the await, so a
+   * selection settling late wiped a query the participant had already typed
+   * into a reopened panel. Closing the panel is the caller's job, and it does
+   * it synchronously.
+   */
   const handleSelect = useCallback(
-    async (suggestion: Suggestion) => {
-      if (!accessToken || !map) return;
+    async (suggestion: Suggestion): Promise<SelectSuggestionOutcome> => {
+      if (!accessToken || !map) return 'unavailable';
 
       try {
         const result = await searchBoxRef.current.retrieve(suggestion, {
           sessionToken: sessionTokenRef.current,
         });
         const feature = result.features[0];
-        if (feature?.geometry.type === 'Point') {
-          const [lng, lat] = feature.geometry.coordinates as [number, number];
-          map.flyTo({ center: [lng, lat], zoom: FLY_TO_ZOOM });
-        }
+        if (feature?.geometry.type !== 'Point') return 'unavailable';
+
+        const [lng, lat] = feature.geometry.coordinates as [number, number];
+        map.flyTo({ center: [lng, lat], zoom: FLY_TO_ZOOM });
+        return 'moved';
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Retrieve error:', error);
+        return 'unavailable';
+      } finally {
+        sessionTokenRef.current = crypto.randomUUID();
       }
-      reset();
     },
-    [map, accessToken, reset],
+    [map, accessToken],
   );
 
   const clear = reset;
@@ -174,6 +237,7 @@ export const useGeospatialSearch = ({
     handleQueryChange,
     suggestions,
     isLoading,
+    searchFailed,
     handleSelect,
     clear,
   };

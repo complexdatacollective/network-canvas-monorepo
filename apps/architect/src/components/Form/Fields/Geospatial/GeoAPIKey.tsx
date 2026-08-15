@@ -27,6 +27,7 @@ const GeoAPIKey = ({
   'aria-labelledby': ariaLabelledBy,
 }: GeoAPIKeyProps) => {
   const [showAPIKeyBrowser, setShowAPIKeyBrowser] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   return (
     <>
@@ -54,11 +55,37 @@ const GeoAPIKey = ({
         >
           {!value ? 'Select API key' : 'Update API key'}
         </Button>
+        {/*
+          Mounted with the field, not with the message, and OUTSIDE the dialog
+          it reports on. A region that arrives together with its first message
+          is announced late or not at all; one created while the dialog is open
+          would also be born inside the `inert` sweep the dialog put over the
+          page, whose exempt set is computed once, when it opens.
+
+          It describes whatever the field holds NOW: every route out of the
+          browser rewrites it, so it can never be left asserting a key that was
+          created earlier and has since been replaced.
+        */}
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="api-key-status"
+        >
+          {statusMessage}
+        </div>
       </fieldset>
       <APIKeyBrowser
         show={showAPIKeyBrowser}
         close={() => setShowAPIKeyBrowser(false)}
-        onSelect={(keyId) => onChange?.(keyId)}
+        onSelect={(selection) => {
+          onChange?.(selection.id);
+          setStatusMessage(
+            selection.created
+              ? `API key ${selection.name} created and selected.`
+              : `API key ${selection.name} selected.`,
+          );
+        }}
         selected={value}
       />
     </>

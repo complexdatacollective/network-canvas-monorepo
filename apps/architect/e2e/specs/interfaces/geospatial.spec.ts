@@ -158,15 +158,12 @@ test('creates a valid Geospatial stage from scratch', async ({
   // (same "receives raw WrappedFieldProps directly, wraps itself in
   // FrescoReduxField" pattern as VariablePicker/ColorPicker/MapSelection, so
   // `editor.field(...)` resolves it correctly). Its button reads "Select API
-  // key" (GeoAPIKeyControl.tsx) and opens APIKeyBrowser.tsx — a DIFFERENT
-  // dialog shape from `selectNetworkAsset`'s "Resource Browser" (title "API
-  // Key Browser", with its own inline create form ahead of the "Resource
-  // Library" listbox), so this drives it inline rather than reusing that
-  // helper.
-  await editor
-    .field('mapOptions.tokenAssetId')
-    .getByRole('button', { name: 'Select API key' })
-    .click();
+  // key" and opens APIKeyBrowser.tsx — a DIFFERENT dialog shape from
+  // `selectNetworkAsset`'s "Resource Browser" (title "API Key Browser", with
+  // its own inline create form ahead of the "Resource Library" listbox), so
+  // this drives it inline rather than reusing that helper.
+  const apiKeyField = editor.field('mapOptions.tokenAssetId');
+  await apiKeyField.getByRole('button', { name: 'Select API key' }).click();
   const apiKeyDialog = architectPage.getByRole('dialog', {
     name: 'API Key Browser',
   });
@@ -176,15 +173,37 @@ test('creates a valid Geospatial stage from scratch', async ({
   await apiKeyDialog
     .getByRole('textbox', { name: 'API Key Value' })
     .fill(TESTING_MAPBOX_TOKEN);
+  // Creating a key selects it and closes the dialog (#1394) — there is no
+  // second step of picking the new card out of the Resource Library, and no
+  // window in which pressing Create again would mint a duplicate. The field
+  // shows the selection by relabelling its own button.
   await apiKeyDialog.getByRole('button', { name: 'Create Key' }).click();
-  // `addApiKeyAsset` dispatches synchronously into redux (no async IDB
-  // write), so the new card renders in the SAME dialog's "Resource Library"
-  // (Assets.tsx, `aria-label="Resource library"`) immediately — no reload
-  // needed. AssetCard headings are level-4 (data-source.ts's own comment).
+  await expect(apiKeyDialog).toBeHidden();
+  const updateApiKeyButton = apiKeyField.getByRole('button', {
+    name: 'Update API key',
+  });
+  await expect(updateApiKeyButton).toBeVisible();
+  // Closing hands focus back to the control that opened the dialog, so the
+  // keyboard route continues from where it left off rather than at <body>.
+  await expect(updateApiKeyButton).toBeFocused();
+
+  // The other route through this dialog: picking a card out of the real
+  // Resource Library listbox, which is the only place the manifest lookup
+  // behind the announcement meets the real `Assets`/`Collection` wiring. The
+  // field's status region has to describe what it holds NOW — announcing only
+  // creations left "…created and selected." standing over a later selection
+  // that was itself announced by nothing.
+  const apiKeyStatus = apiKeyField.getByTestId('api-key-status');
+  await expect(apiKeyStatus).toHaveText(
+    'API key E2E Mapbox Key created and selected.',
+  );
+  await updateApiKeyButton.click();
   await apiKeyDialog
     .getByRole('listbox', { name: 'Resource library' })
     .getByRole('heading', { level: 4, name: 'E2E Mapbox Key', exact: true })
     .click();
+  await expect(apiKeyDialog).toBeHidden();
+  await expect(apiKeyStatus).toHaveText('API key E2E Mapbox Key selected.');
 
   // `mapOptions.dataSourceAssetId` renders through GeoDataSource.tsx, which
   // wraps the same `File`/`ResourcePickerControl` + `AssetBrowserWindow`

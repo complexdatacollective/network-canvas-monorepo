@@ -80,7 +80,7 @@ const MapOptions = () => {
         summary={
           <Paragraph>
             This interface requires an API key from Mapbox. For more information
-            about Mapbox and retreiving an API Key, read our{' '}
+            about Mapbox and retrieving an API key, read our{' '}
             <ExternalLink href={documentationLinks.geospatialInterface}>
               documentation
             </ExternalLink>{' '}

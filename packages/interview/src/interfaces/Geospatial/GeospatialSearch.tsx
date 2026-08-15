@@ -39,6 +39,23 @@ const searchContainerVariants = {
 // Prevent blur when clicking suggestions (fixes race condition)
 const preventBlur = (e: React.MouseEvent) => e.preventDefault();
 
+/**
+ * Search outcomes, as whole sentences a translator can work with — never
+ * assembled from fragments, and never a status code.
+ */
+const NO_RESULTS_MESSAGE = 'Nothing matched your search.';
+/**
+ * Kept distinct from `NO_RESULTS_MESSAGE` on purpose: a search that could not
+ * run tells us nothing about whether the place exists, and saying "Nothing
+ * matched your search." to someone who is simply offline is a false statement
+ * the participant cannot act on.
+ */
+const SEARCH_FAILED_MESSAGE =
+  'Search could not be completed. Try again in a moment.';
+const RETRIEVE_FAILED_MESSAGE =
+  'That place could not be loaded. Try another search.';
+const movedMessage = (place: string) => `Map moved to ${place}.`;
+
 export default function GeospatialSearch({
   accessToken,
   map,
@@ -48,6 +65,7 @@ export default function GeospatialSearch({
   className,
 }: UseGeospatialSearchProps & { className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -60,6 +78,7 @@ export default function GeospatialSearch({
     handleQueryChange,
     suggestions,
     isLoading,
+    searchFailed,
     handleSelect,
     clear,
   } = useGeospatialSearch({
@@ -73,16 +92,42 @@ export default function GeospatialSearch({
   // Layout inside component with useMemo to avoid shared instance issues
   const layout = useMemo(() => new ListLayout<SuggestionItem>({ gap: 0 }), []);
 
+  /**
+   * Tear the panel's state down. Deliberately does NOT touch focus.
+   *
+   * This also runs from the document-level `focusout` listener below, where
+   * focus is already on its way to somewhere the participant chose. A
+   * `.focus()` issued during `focusout` BEATS the browser's pending focus move
+   * in Chrome, so restoring focus here would bounce Tab backwards onto the
+   * toggle — and wipe the query on the way — and would steal the click from
+   * whichever map control was just pressed. Focus restoration belongs to the
+   * intentional closes below.
+   */
   const resetField = useCallback(() => {
     setIsOpen(false);
     clear();
   }, [clear]);
+
+  /**
+   * Close the panel for a reason the participant chose — Escape, or picking a
+   * suggestion — and hand focus back to the toggle that opened it.
+   *
+   * Selection is the route that was missing this: the `[role="option"]`
+   * holding focus unmounted with the panel, leaving focus on `<body>` with the
+   * sequential-focus starting point parked where the option had been, so the
+   * next Tab resumed AFTER the toggle and landed on the zoom controls.
+   */
+  const closeSearch = useCallback(() => {
+    resetField();
+    buttonRef.current?.focus();
+  }, [resetField]);
 
   const handleToggle = useCallback(
     (pressed: boolean) => {
       if (pressed) {
         setIsOpen(true);
       } else {
+        // Closing from the toggle itself: it already holds focus.
         resetField();
       }
     },
@@ -99,6 +144,7 @@ export default function GeospatialSearch({
       if (!next) return;
       if (buttonRef.current?.contains(next)) return;
       if (panelRef.current?.contains(next)) return;
+      // State only. `next` is where the participant is going; see resetField.
       resetField();
     };
     document.addEventListener('focusout', handleFocusOut);
@@ -106,16 +152,29 @@ export default function GeospatialSearch({
   }, [isOpen, resetField]);
 
   const handleClear = useCallback(() => {
+    setStatusMessage('');
     clear();
     inputRef.current?.focus();
   }, [clear]);
 
+  /**
+   * The status describes the OUTCOME of the last search, so a new query makes
+   * it stale. Clearing it first also means a repeated outcome — two empty
+   * searches in a row — changes the region's content twice and is announced
+   * again, rather than sitting there unchanged and silent.
+   */
+  const handleSearchQueryChange = useCallback(
+    (value: string | undefined) => {
+      setStatusMessage('');
+      handleQueryChange(value);
+    },
+    [handleQueryChange],
+  );
+
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        resetField();
-        // Restore focus to toggle button
-        buttonRef.current?.focus();
+        closeSearch();
       } else if (e.key === 'ArrowDown' && suggestions.length > 0) {
         // Move focus to the first suggestion
         e.preventDefault();
@@ -133,7 +192,7 @@ export default function GeospatialSearch({
         }
       }
     },
-    [resetField, suggestions.length],
+    [closeSearch, suggestions.length],
   );
 
   // Memoized extractors following Collection patterns
@@ -147,13 +206,26 @@ export default function GeospatialSearch({
     [],
   );
 
-  // Click handler factory - returns a handler for each suggestion
+  /**
+   * Click handler factory - returns a handler for each suggestion.
+   *
+   * The panel closes and focus returns immediately; the announcement lands
+   * when the retrieve settles. Waiting for the network before closing would
+   * leave the participant holding an open panel on a slow connection, and an
+   * open one on failure.
+   */
   const handleSuggestionClick = useCallback(
     (suggestion: SuggestionItem) => () => {
-      void handleSelect(suggestion);
-      resetField();
+      void handleSelect(suggestion).then((outcome) => {
+        setStatusMessage(
+          outcome === 'moved'
+            ? movedMessage(suggestion.name)
+            : RETRIEVE_FAILED_MESSAGE,
+        );
+      });
+      closeSearch();
     },
-    [handleSelect, resetField],
+    [handleSelect, closeSearch],
   );
 
   // KeyDown handler factory for suggestions
@@ -165,8 +237,7 @@ export default function GeospatialSearch({
         e.preventDefault();
         clickHandler();
       } else if (e.key === 'Escape') {
-        resetField();
-        buttonRef.current?.focus();
+        closeSearch();
       } else if (e.key === 'ArrowUp') {
         // Check if this is the first option - if so, return to input
         const options = panelRef.current?.querySelectorAll('[role="option"]');
@@ -187,7 +258,7 @@ export default function GeospatialSearch({
         // Otherwise let Collection handle navigation
       }
     },
-    [handleSuggestionClick, resetField],
+    [handleSuggestionClick, closeSearch],
   );
 
   // Memoized renderItem following OneToManyDyadCensus pattern
@@ -216,7 +287,29 @@ export default function GeospatialSearch({
     [handleSuggestionClick, handleSuggestionKeyDown],
   );
 
-  const showSuggestions = suggestions.length > 0 || isLoading;
+  /**
+   * A query that has finished searching without producing a list. Kept
+   * distinct from "not searching yet" so the participant is told the search
+   * ran, instead of being left with a panel that shows nothing at all and says
+   * nothing either — and split by WHY it produced nothing, because a request
+   * that never reached Mapbox has not established that anything failed to
+   * match.
+   */
+  const hasSettledEmpty =
+    query.trim().length > 0 && !isLoading && suggestions.length === 0;
+  const settledMessage = !hasSettledEmpty
+    ? null
+    : searchFailed
+      ? SEARCH_FAILED_MESSAGE
+      : NO_RESULTS_MESSAGE;
+
+  useEffect(() => {
+    if (!settledMessage) return;
+    setStatusMessage(settledMessage);
+  }, [settledMessage]);
+
+  const showSuggestions =
+    suggestions.length > 0 || isLoading || hasSettledEmpty;
 
   return (
     <motion.div
@@ -226,6 +319,22 @@ export default function GeospatialSearch({
       animate="animate"
       exit="exit"
     >
+      {/*
+        Always mounted, outside the panel, message or not. A screen reader only
+        announces changes to a region it was already observing, so a region
+        that arrives with its first message is announced late or not at all —
+        and one living inside the panel would be torn down by the very
+        selection it needs to report.
+      */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="geospatial-search-status"
+      >
+        {statusMessage}
+      </div>
+
       <Toggle
         pressed={isOpen}
         onPressedChange={handleToggle}
@@ -262,7 +371,7 @@ export default function GeospatialSearch({
                 autoFocus
                 placeholder="Search for a place..."
                 value={query}
-                onChange={handleQueryChange}
+                onChange={handleSearchQueryChange}
                 onKeyDown={handleInputKeyDown}
                 data-testid="geospatial-search-input"
                 // ARIA combobox attributes
@@ -301,11 +410,7 @@ export default function GeospatialSearch({
                   exit={{ opacity: 0, y: '-0.5rem' }}
                   transition={{ duration: 0.15, ease: 'easeOut' }}
                 >
-                  {isLoading && suggestions.length === 0 ? (
-                    <div className="p-4 text-center text-sm italic">
-                      Searching...
-                    </div>
-                  ) : (
+                  {suggestions.length > 0 ? (
                     <Collection
                       id={listboxId}
                       items={suggestions as SuggestionItem[]}
@@ -320,6 +425,29 @@ export default function GeospatialSearch({
                     >
                       {(CollectionElements) => CollectionElements}
                     </Collection>
+                  ) : (
+                    /*
+                      Nothing to list yet — but the popup still carries the
+                      listbox identity, because the combobox above points
+                      `aria-controls` at it for as long as it reports itself
+                      expanded. The states with no Collection used to leave
+                      that reference dangling.
+                    */
+                    <div
+                      id={listboxId}
+                      role="listbox"
+                      aria-label="Search suggestions"
+                      aria-busy={isLoading || undefined}
+                      data-testid="geospatial-search-empty"
+                      className={cx(
+                        'p-4 text-center text-sm',
+                        isLoading && 'italic',
+                      )}
+                    >
+                      {isLoading
+                        ? 'Searching...'
+                        : (settledMessage ?? NO_RESULTS_MESSAGE)}
+                    </div>
                   )}
                 </MotionSurface>
               )}

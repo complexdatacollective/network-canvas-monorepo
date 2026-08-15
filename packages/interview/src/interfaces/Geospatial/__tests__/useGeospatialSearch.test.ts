@@ -40,7 +40,8 @@ import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
 
 // Minimal Map stub (only flyTo is called by the hook)
-const mockMap = { flyTo: vi.fn() } as unknown as MapboxMap;
+const mockFlyTo = vi.fn();
+const mockMap = { flyTo: mockFlyTo } as unknown as MapboxMap;
 
 // ---------------------------------------------------------------------------
 
@@ -56,6 +57,7 @@ describe('useGeospatialSearch', () => {
     mockSuggest.mockClear().mockResolvedValue({ suggestions: [] });
     mockRetrieve.mockClear().mockResolvedValue({ features: [] });
     mockCancel.mockClear();
+    mockFlyTo.mockClear();
   });
 
   afterEach(() => {
@@ -169,10 +171,18 @@ describe('useGeospatialSearch', () => {
       await flushPendingSuggest();
     });
 
-    it('rotates token and cancels pending debounce on handleSelect()', async () => {
+    // A suggest→retrieve cycle is one billable session, so the token still
+    // rotates when a selection settles. What no longer happens is the whole
+    // field being reset from inside handleSelect: that reset ran AFTER the
+    // await, so a selection settling late wiped a query the participant had
+    // already typed into a reopened panel. Closing is the caller's job.
+    it('rotates the session token on handleSelect() without resetting the field', async () => {
       mockRetrieve.mockResolvedValueOnce({
         features: [{ geometry: { type: 'Point', coordinates: [13.4, 52.5] } }],
       });
+      mockSuggest.mockResolvedValue({
+        suggestions: [],
+      } as unknown as { suggestions: [] });
 
       const { result } = renderHook(() =>
         useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
@@ -181,6 +191,7 @@ describe('useGeospatialSearch', () => {
       act(() => {
         result.current.handleQueryChange('berlin');
       });
+      await flushPendingSuggest();
 
       const tokenBefore = mockSuggest.mock.calls[0]?.[1]?.sessionToken;
       mockSuggest.mockClear();
@@ -192,6 +203,9 @@ describe('useGeospatialSearch', () => {
         } as unknown as Suggestion);
       });
 
+      expect(result.current.query).toBe('berlin');
+      expect(mockCancel).not.toHaveBeenCalled();
+
       act(() => {
         result.current.handleQueryChange('paris');
       });
@@ -199,9 +213,177 @@ describe('useGeospatialSearch', () => {
       const tokenAfter = mockSuggest.mock.calls[0]?.[1]?.sessionToken;
       expect(tokenAfter).toBeDefined();
       expect(tokenAfter).not.toBe(tokenBefore);
-      expect(mockCancel).toHaveBeenCalled();
 
       await flushPendingSuggest();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Selection outcome
+  // -------------------------------------------------------------------------
+
+  describe('selection outcome', () => {
+    const select = async (
+      result: { current: ReturnType<typeof useGeospatialSearch> },
+      outcomeBox: { value?: string },
+    ) => {
+      await act(async () => {
+        outcomeBox.value = await result.current.handleSelect({
+          mapbox_id: 'some-id',
+        } as unknown as Suggestion);
+      });
+    };
+
+    it('reports "moved" only when the camera actually moved', async () => {
+      mockRetrieve.mockResolvedValueOnce({
+        features: [{ geometry: { type: 'Point', coordinates: [13.4, 52.5] } }],
+      });
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      const outcome: { value?: string } = {};
+      await select(result, outcome);
+
+      expect(outcome.value).toBe('moved');
+      expect(mockFlyTo).toHaveBeenCalledTimes(1);
+    });
+
+    // A response carrying nothing usable resolves happily, so an outcome
+    // derived from the catch block would claim a move that never happened.
+    it('reports "unavailable" when the response holds no point geometry', async () => {
+      mockRetrieve.mockResolvedValueOnce({ features: [] });
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      const outcome: { value?: string } = {};
+      await select(result, outcome);
+
+      expect(outcome.value).toBe('unavailable');
+    });
+
+    it('reports "unavailable" when the retrieve fails', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      mockRetrieve.mockRejectedValueOnce(new Error('network down'));
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      const outcome: { value?: string } = {};
+      await select(result, outcome);
+
+      expect(outcome.value).toBe('unavailable');
+      consoleError.mockRestore();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Suggest failures
+  // -------------------------------------------------------------------------
+
+  describe('suggest failures', () => {
+    // The empty list a failed request leaves is byte-identical to the one a
+    // genuine zero-result leaves, so the failure has to be reported on its own
+    // channel or the caller cannot avoid claiming nothing matched.
+    it('separates a failed search from one that matched nothing', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      mockSuggest.mockRejectedValueOnce(new Error('offline'));
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      act(() => {
+        result.current.handleQueryChange('berlin');
+      });
+      await flushPendingSuggest();
+
+      expect(result.current.searchFailed).toBe(true);
+      expect(result.current.suggestions).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
+
+      // A search that reaches Mapbox and comes back empty is not a failure.
+      act(() => {
+        result.current.handleQueryChange('berlin!');
+      });
+      await flushPendingSuggest();
+
+      expect(result.current.searchFailed).toBe(false);
+      expect(result.current.suggestions).toEqual([]);
+      consoleError.mockRestore();
+    });
+
+    it('drops the failure when the field is cleared', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      mockSuggest.mockRejectedValueOnce(new Error('offline'));
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      act(() => {
+        result.current.handleQueryChange('berlin');
+      });
+      await flushPendingSuggest();
+      expect(result.current.searchFailed).toBe(true);
+
+      act(() => {
+        result.current.clear();
+      });
+
+      expect(result.current.searchFailed).toBe(false);
+      consoleError.mockRestore();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Late responses
+  // -------------------------------------------------------------------------
+
+  describe('late responses', () => {
+    // `reset()` can cancel the debounce timer but cannot abort a request
+    // already in flight, so the response has to be dropped on arrival.
+    it('discards a suggest response that lands after the field was cleared', async () => {
+      let resolveSuggest: ((value: { suggestions: [] }) => void) | undefined;
+      mockSuggest.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSuggest = resolve;
+          }),
+      );
+
+      const { result } = renderHook(() =>
+        useGeospatialSearch({ accessToken: 'test-token', map: mockMap }),
+      );
+
+      act(() => {
+        result.current.handleQueryChange('berlin');
+      });
+      expect(result.current.isLoading).toBe(true);
+
+      act(() => {
+        result.current.clear();
+      });
+
+      await act(async () => {
+        resolveSuggest?.({
+          suggestions: [{ mapbox_id: 'late', name: 'Late' }],
+        } as unknown as { suggestions: [] });
+        await Promise.resolve();
+      });
+
+      expect(result.current.suggestions).toEqual([]);
+      expect(result.current.query).toBe('');
     });
   });
 

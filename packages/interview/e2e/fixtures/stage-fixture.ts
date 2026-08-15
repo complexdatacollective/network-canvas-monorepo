@@ -928,6 +928,14 @@ class GeospatialFixture {
   }
 
   /**
+   * Get the search's polite status region, which reports the outcome of the
+   * last search (the place the map moved to, a failure, or no matches).
+   */
+  get searchStatus(): Locator {
+    return this.page.getByTestId('geospatial-search-status');
+  }
+
+  /**
    * Get the search clear button locator.
    */
   get searchClearButton(): Locator {
