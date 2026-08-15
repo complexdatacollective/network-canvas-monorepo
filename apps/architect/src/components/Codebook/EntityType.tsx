@@ -100,7 +100,10 @@ const EntityType = ({
       // Codebook/Variables.tsx. A type name interpolated into the heading and
       // the confirm button overflowed the dialog at every width (#1392).
       title: 'Delete type',
-      description: `Are you sure you want to delete the ${entity} type “${name}”? This cannot be undone.`,
+      // `codebook/deleteType` is inside the protocol timeline, so Undo restores
+      // it (#1400) — wording shared with the stage, variable and resource
+      // dialogs.
+      description: `Are you sure you want to delete the ${entity} type “${name}”? You can restore it with Undo while this protocol remains open.`,
       confirmLabel: 'Delete type',
       cancelLabel: 'Cancel',
       intent: 'destructive',

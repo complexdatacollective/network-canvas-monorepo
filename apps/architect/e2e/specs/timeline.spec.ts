@@ -317,6 +317,57 @@ test('deletes a leaf stage after confirming the destructive dialog', async ({
     .toBe(false);
 });
 
+/**
+ * #1400: the dialog said "This action cannot be undone!" about a deletion the
+ * toolbar's Undo reverses — `stages/deleteStage` is inside the protocol
+ * timeline (`ducks/modules/root.ts`). The claim and the click are asserted
+ * together on purpose: pinning the sentence alone would keep passing if the
+ * action ever left the timeline and made the new sentence the false one.
+ *
+ * E2E rather than a component test because the promise is about the real
+ * toolbar control, on the real store, persisted to IndexedDB — the stage has
+ * to come back where the researcher would look for it.
+ */
+test('restores a deleted stage through Undo, as its dialog promises', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const target = before.find((stage) => stage.label === 'Information');
+  if (!target) throw new Error('fixture is missing an "Information" stage');
+
+  const timeline = new Timeline(architectPage);
+  await timeline.deleteStage('Information');
+
+  const dialog = architectPage.getByRole('dialog', { name: 'Delete stage' });
+  await expect(dialog).toContainText(
+    'You can restore it with Undo while this protocol remains open.',
+  );
+  await expect(dialog).not.toContainText('cannot be undone');
+  await dialog.getByRole('button', { name: 'Delete stage' }).click();
+
+  await expect
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).some(
+        (stage) => stage.id === target.id,
+      ),
+    )
+    .toBe(false);
+
+  await new Toolbar(architectPage).undo();
+
+  await expect
+    .poll(async () =>
+      stagesOf(await readProtocolJson(architectPage)).map((stage) => stage.id),
+    )
+    .toEqual(before.map((stage) => stage.id));
+  await expect(timeline.stageCard('Information')).toBeVisible();
+});
+
 // ---------------------------------------------------------------------------
 // Keyboard operability (#1388)
 // ---------------------------------------------------------------------------

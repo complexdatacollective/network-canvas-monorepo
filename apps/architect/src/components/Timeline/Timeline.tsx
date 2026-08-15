@@ -195,8 +195,13 @@ const Timeline = () => {
 
       void confirm({
         title: 'Delete stage',
+        // `stages/deleteStage` is inside the protocol timeline
+        // (`ducks/modules/root.ts`), so Undo restores the stage — the old
+        // "cannot be undone!" was simply false (#1400). Same sentence as the
+        // resource delete shipped in #1396 (`AssetBrowser.tsx`): four adjacent
+        // destructive dialogs stating one fact must state it one way.
         description:
-          'Are you sure you want to delete this stage from your protocol? This action cannot be undone!',
+          'Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.',
         confirmLabel: 'Delete stage',
         cancelLabel: 'Cancel',
         intent: 'destructive',

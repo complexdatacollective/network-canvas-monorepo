@@ -60,7 +60,10 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         // pushed Cancel clean out of the dialog (#1392). The identifier belongs
         // in the body text, which wraps.
         title: 'Delete variable',
-        description: `Are you sure you want to delete the variable “${name}”? This cannot be undone.`,
+        // `codebook/deleteVariable` is inside the protocol timeline, so Undo
+        // restores it (#1400) — wording shared with the stage, type and
+        // resource dialogs.
+        description: `Are you sure you want to delete the variable “${name}”? You can restore it with Undo while this protocol remains open.`,
         confirmLabel: 'Delete variable',
         cancelLabel: 'Cancel',
         intent: 'destructive',

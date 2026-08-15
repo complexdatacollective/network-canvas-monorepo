@@ -289,6 +289,29 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     [disabled, filteredItems],
   );
 
+  // `Collection` renders one `emptyState` whenever it holds nothing, and it
+  // cannot know WHY: it is handed `filteredItems`, which is already the roster
+  // minus everything in the network. So the three reasons are told apart here,
+  // where they are still distinguishable, rather than reporting a search miss
+  // for all of them (#1400) — including on stages that have no search at all,
+  // where `searchOptions` is absent, `CollectionFilterInput` never renders and
+  // a search miss is unreachable.
+  const emptyState = useMemo(() => {
+    // This branch is also the state of the frame before `useExternalData`'s
+    // effect runs and flips `isLoading` (it starts `false` with no data), so it
+    // can flash once on mount. That window predates this change — it used to
+    // flash the search message instead — and closing it means teaching
+    // `useItems` to tell "not started" from "loaded empty", which the
+    // panel-based interfaces share. Deliberately left alone here.
+    if (items.length === 0) {
+      return <>There is nothing to add from this list.</>;
+    }
+    if (filteredItems.length === 0) {
+      return <>Everything from this list has already been added.</>;
+    }
+    return <>Nothing matched your search term.</>;
+  }, [items.length, filteredItems.length]);
+
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
 
@@ -382,7 +405,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 dragAndDropHooks={dragAndDropHooks}
                 disabledKeys={disabledKeys}
                 virtualized
-                emptyState={<>Nothing matched your search term.</>}
+                emptyState={emptyState}
                 aria-label="List of available items to add"
                 id={sourceCollectionId}
               >

@@ -151,6 +151,13 @@ const NodePanel = ({
   // this only blanks content that is already disappearing.
   if (!ownsSlot) return null;
 
+  // Every panel used to repeat the same hardcoded "Data source" label — this
+  // distinguishes which panel it belongs to (the panel's own index is the only
+  // thing that varies; the panel has no title field value available here to
+  // name it by). Held in one place so the field and its issue anchor cannot
+  // call the same control two different things.
+  const dataSourceLabel = `Data source for panel ${index + 1}`;
+
   return (
     <div className="flex w-full items-center gap-4">
       {isSortable && (
@@ -169,8 +176,10 @@ const NodePanel = ({
           `getFieldId(...)` scroll targets the Issues panel resolves against
           (utils/issues.ts `candidateIdsFor`). The fields render bare now, so
           the exact-path anchors are rendered directly — `ArchitectField`'s own
-          anchor only covers the `._error` candidate, and its `startCase(name)`
-          description would put the raw field path in the issues list.
+          anchor only covers the `._error` candidate. Each `description` repeats
+          the field's `label`, which is what `ArchitectField` now anchors with
+          too (#1400), so whichever candidate the panel resolves names the field
+          the same way.
         */}
         <IssueAnchor
           fieldName={`${fieldName}.title`}
@@ -191,15 +200,11 @@ const NodePanel = ({
         />
         <IssueAnchor
           fieldName={`${fieldName}.dataSource`}
-          description={`Panel ${index + 1} data source`}
+          description={dataSourceLabel}
         />
         <ArchitectField
           name={`${fieldName}.dataSource`}
-          // Every panel repeated the same hardcoded "Data source" label —
-          // distinguish which panel this is (the panel's own index is the
-          // only thing that varies; the panel has no title field value
-          // available here to name it by).
-          label={`Data source for panel ${index + 1}`}
+          label={dataSourceLabel}
           hint={
             <Paragraph>
               Choose where this panel&rsquo;s data comes from: the in-progress

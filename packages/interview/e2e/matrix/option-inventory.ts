@@ -392,6 +392,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'remove-node-round-trip',
     'encrypted-variable-passphrase-gate',
     'label-fallback-heuristic',
+    'exhausted-roster-empty-state',
   ],
   NameGeneratorQuickAdd: [
     'label',

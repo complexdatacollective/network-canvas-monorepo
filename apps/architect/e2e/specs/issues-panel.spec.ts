@@ -36,8 +36,11 @@ test('names the offending field on the first open of the issues panel', async ({
   const row = architectPage.getByTestId('issue').first();
   await expect(row).toBeVisible();
   // The field's own label, not `title` — the internal path the errors are
-  // keyed by, which is what leaked before the harvest ran on mount.
-  await expect(row).toHaveText(/^Title - /);
+  // keyed by, which is what leaked before the harvest ran on mount. Until
+  // #1400 this read "Title", which is not the label at all: the harvest ran,
+  // but what it harvested was `startCase('title')`, and that only looks right
+  // for the handful of fields whose path start-cases into their own label.
+  await expect(row).toHaveText(/^Page heading - /);
 });
 
 /**

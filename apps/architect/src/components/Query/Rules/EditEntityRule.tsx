@@ -127,23 +127,40 @@ const EditEntityRule = ({
     ...optionsWithDefaults,
     value: isArray(optionsWithDefaults.value) ? '' : countFriendlyValue,
   };
+  // `rule.type` is the entity CLASS ('node' or 'edge' — 'ego' rules render
+  // EditEgoRule instead), so it is an internal token and never display copy.
+  // Interpolating it produced "node Type" and "Choose an node type…" (#1400).
+  // Each heading and sentence is written out whole rather than assembled from
+  // the token, because the indefinite article differs between the two and a
+  // sentence built from fragments cannot be localised.
+  const isNodeRule = entityType === 'node';
+  const typeSectionTitle = isNodeRule ? 'Node Type' : 'Edge Type';
   return (
     <>
       <Section
-        title={`${entityType} Type`}
+        title={typeSectionTitle}
         summary={
           <Paragraph>
-            Choose an {entityType} type to base your rule on. Remember you can
-            add multiple rules if you need to cover different types.
+            {isNodeRule
+              ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+              : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'}
           </Paragraph>
         }
         layout="vertical"
       >
-        <IssueAnchor fieldName="type" description={`${entityType} Type`} />
+        {/*
+          Kept identical to the heading above so the two cannot drift. This
+          anchor is not currently reachable from the Issues panel — rule-dialog
+          fields live outside the stage form store (see RuleField.tsx), so no
+          stage-form error is ever keyed by this `type` path — but the panel
+          harvests `data-name` wherever it does resolve, and a heading and its
+          anchor disagreeing is a defect waiting for the day it does.
+        */}
+        <IssueAnchor fieldName="type" description={typeSectionTitle} />
         <RuleField
           component={FrescoEntitySelectControl}
-          entityType={entityType === 'node' ? 'node' : 'edge'}
-          label={`${entityType === 'node' ? 'Node' : 'Edge'} type`}
+          entityType={isNodeRule ? 'node' : 'edge'}
+          label={isNodeRule ? 'Node type' : 'Edge type'}
           labelHidden
           name="type"
           options={typeOptions}
