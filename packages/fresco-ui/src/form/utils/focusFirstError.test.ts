@@ -85,6 +85,35 @@ describe('focusFirstError', () => {
     expect(scroller.scrollTo).toHaveBeenCalled();
   });
 
+  it('focuses a control-less container on EVERY failed submit, not just the first', () => {
+    // The container fallback works by stamping `tabindex="-1"` on the
+    // container. The operability predicate it is gated on REJECTS
+    // `tabindex="-1"` — it was written to reject Base UI's hidden proxy
+    // inputs — so after the first submit the container disqualifies itself
+    // from its own mechanism and every later submit leaves focus on <body>.
+    // A blocked dialog stays open, so the second submit is the common case,
+    // not the edge one.
+    const { field } = setup('_contradiction', undefined, { focusable: false });
+    const failedSubmit = () => {
+      focusFirstError({
+        formErrors: [],
+        fieldErrors: { _contradiction: ['Contradictory rules'] },
+      });
+    };
+
+    failedSubmit();
+    expect(document.activeElement).toBe(field);
+
+    // The submit button that held focus is disabled for the submit and the
+    // browser blurs it, so focus is genuinely lost between attempts.
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+
+    failedSubmit();
+    expect(document.activeElement).toBe(field);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it('leaves focus alone when it already sits inside the errored field', () => {
     const { input } = setup();
     const focusSpy = vi.spyOn(input, 'focus');
@@ -500,6 +529,18 @@ describe('resolveFieldErrorTarget', () => {
 
     expect(resolveFieldErrorTarget('dob')).toBe(field);
     expect(field.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('keeps answering with that container once it has been stamped', () => {
+    // #1391's Issues panel calls this on every row click. The stamp the first
+    // call leaves behind must not make the second call answer "nowhere" — that
+    // would kill the panel's focus hand-off for the whole session.
+    const { field } = setupComposite((container) => {
+      container.innerHTML = `<p>This attribute cannot be saved</p>`;
+    });
+
+    expect(resolveFieldErrorTarget('dob')).toBe(field);
+    expect(resolveFieldErrorTarget('dob')).toBe(field);
   });
 
   it('answers undefined for a field that is not in the DOM', () => {

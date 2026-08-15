@@ -71,13 +71,25 @@ const FOCUS_TARGET_TIERS = [
  * `[inert]` is included for the same reason: an inert subtree cannot take focus
  * at all, so calling `focus()` on something inside one silently leaves focus on
  * `<body>`.
+ *
+ * Split in two because the `tabindex="-1"` clause is about CONTROLS only.
+ * `isReachable` carries the conditions that hold for any focus target;
+ * `isOperable` adds the proxy-input rejection on top. The container fallback
+ * below must use `isReachable`, because `tabindex="-1"` is the very thing it
+ * stamps — gating it on `isOperable` made the whole mechanism one-shot: the
+ * first failed submit stamped the container, and every submit after that found
+ * it "inoperable" and dropped focus on `<body>`. That is the collision of two
+ * correct changes — the proxy-input clause and the container fallback — which
+ * is why it survived a green suite: no test invoked the fallback twice.
  */
-const isOperable = (candidate: HTMLElement) =>
+const isReachable = (candidate: HTMLElement) =>
   candidate.getAttribute('aria-hidden') !== 'true' &&
-  candidate.getAttribute('tabindex') !== '-1' &&
   !candidate.hasAttribute('disabled') &&
   !candidate.closest('[aria-hidden="true"]') &&
   !candidate.closest('[inert]');
+
+const isOperable = (candidate: HTMLElement) =>
+  isReachable(candidate) && candidate.getAttribute('tabindex') !== '-1';
 
 /**
  * The first control inside `container` that a person can actually operate,
@@ -117,7 +129,7 @@ const findOperableControl = (
 const makeContainerFocusable = (
   container: HTMLElement,
 ): HTMLElement | undefined => {
-  if (!isOperable(container)) return undefined;
+  if (!isReachable(container)) return undefined;
 
   if (!container.hasAttribute('tabindex')) {
     container.setAttribute('tabindex', '-1');
@@ -255,7 +267,10 @@ export const focusFirstError = (
   // alert win document order over the real fields below it, which is the case
   // the split exists to prevent.
   if (!focusableElement) {
-    focusTarget = earliestInDocument(containers.filter(isOperable));
+    // `isReachable`, not `isOperable`: a container this fallback has already
+    // stamped on an earlier failed submit still carries its `tabindex="-1"`,
+    // and filtering it out here would silently skip the topmost problem.
+    focusTarget = earliestInDocument(containers.filter(isReachable));
     focusableElement = focusTarget
       ? makeContainerFocusable(focusTarget)
       : undefined;
