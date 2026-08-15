@@ -30,7 +30,12 @@ const PreviewRules = ({
     <div
       className={cx(
         'bg-input rounded-sm border-2 border-transparent',
-        hasError && 'border-destructive rounded-b-none',
+        // Rounded on every corner, error or not. The square bottom edge this
+        // used to take butted against an error strip the rule builder rendered
+        // directly beneath it; that strip is gone — the field's one error
+        // message belongs to `BaseField`, below the whole builder — so a flat
+        // bottom would now just be a box missing two corners.
+        hasError && 'border-destructive',
       )}
     >
       {rules.length === 0 && (
@@ -39,9 +44,20 @@ const PreviewRules = ({
         </div>
       )}
       {rules.length > 0 && (
-        <div className="flex w-full flex-col items-start py-5">
+        // The rules are a list, and saying so is what tells assistive
+        // technology how many there are and lets its user step between them.
+        // Each item owns its card and the join that follows it — a `<ul>` may
+        // contain nothing but `<li>`.
+        //
+        // `role="list"` is redundant in the abstract, which is what the lint
+        // rule below objects to, but not here: Tailwind's preflight sets
+        // `list-style: none` on every `ul`, and Safari drops list semantics
+        // from an unstyled list — so without the role VoiceOver never
+        // announces the count this exists to give.
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles
+        <ul role="list" className="flex w-full flex-col items-start py-5">
           {rules.map((rule, index) => (
-            <div className="w-full" key={rule.id}>
+            <li className="w-full" key={rule.id}>
               <PreviewRule
                 // eslint-disable-next-line react/jsx-props-no-spreading
                 {...rule}
@@ -50,9 +66,9 @@ const PreviewRules = ({
                 onClick={() => onClickRule(rule.id)}
                 onDelete={() => onDeleteRule(rule.id)}
               />
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

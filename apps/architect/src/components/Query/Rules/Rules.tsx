@@ -1,11 +1,10 @@
-import { get, isEqual } from 'es-toolkit/compat';
-import { useCallback, useId, useState, type ComponentType } from 'react';
+import { isEqual } from 'es-toolkit/compat';
+import { useCallback, useState, type ComponentType } from 'react';
 import { compose } from 'react-recompose';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
@@ -19,13 +18,24 @@ import withDraftRule from './withDraftRule';
 const FrescoRadioGroupField = RadioGroupField as ComponentType<
   Record<string, unknown>
 >;
-type RulesProps = {
+/**
+ * The identity `Field` hands its control, forwarded to the rule builder's
+ * `role="group"` because a rule set is a region rather than a single input.
+ * `RuleSetFields` fills these in; a caller outside a form may omit them.
+ */
+export type RuleSetGroupProps = {
+  'id'?: string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
+  'aria-required'?: boolean;
+  'aria-invalid'?: boolean;
+};
+
+type RulesProps = RuleSetGroupProps & {
   type?: 'filter' | 'query';
   allowEdgeRules?: boolean;
   rules?: Rule[];
   join?: string | null;
-  error?: string | null;
-  meta?: Record<string, unknown>;
   codebook: Record<string, unknown>;
   draftRule?: Rule | null;
   resetDraft: () => void;
@@ -42,9 +52,12 @@ const Rules = ({
   allowEdgeRules = true,
   rules = [],
   join = null,
-  error = null,
-  meta = {},
   codebook,
+  id,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-required': ariaRequired,
+  'aria-invalid': ariaInvalid,
   draftRule = null,
   resetDraft,
   handleChangeDraft,
@@ -56,7 +69,6 @@ const Rules = ({
   onChange = () => {},
 }: RulesProps) => {
   const { confirm, openDialog } = useDialog();
-  const errorId = useId();
 
   /**
    * The rule editor seeds a non-null draft the instant it opens (a type and its
@@ -85,9 +97,11 @@ const Rules = ({
       if (confirmed) handleCancelDraft();
     });
   }, [handleCancelDraft, isDraftDirty, openDialog]);
-  // Default to true: `meta` is optional for callers outside a form store.
-  const isTouched = get(meta, 'touched', true) as boolean;
-  const hasError = isTouched && !!error;
+  // The rule list shows the field's invalidity the same way any other control
+  // does. The message itself belongs to `BaseField`, which renders it once,
+  // below the group — the region this group already points `aria-describedby`
+  // at.
+  const hasError = !!ariaInvalid;
   const updateJoin = useCallback(
     (nextJoin: string) =>
       onChange({
@@ -163,7 +177,14 @@ const Rules = ({
     [confirm, deleteRule],
   );
   return (
-    <div>
+    <div
+      id={id}
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      aria-required={ariaRequired}
+      aria-invalid={ariaInvalid}
+    >
       <EditRule
         codebook={codebook}
         rule={draftRule || undefined}
@@ -187,11 +208,6 @@ const Rules = ({
           onDeleteRule={handleDeleteRule}
           codebook={codebook}
           hasError={hasError}
-        />
-        <FieldErrors
-          id={errorId}
-          errors={error ? [error] : []}
-          show={hasError}
         />
       </div>
 
@@ -236,14 +252,12 @@ const Rules = ({
 };
 export default compose<
   RulesProps,
-  {
+  RuleSetGroupProps & {
     rules?: Rule[];
     join?: string;
     onChange?: (value: unknown) => void;
     codebook?: Record<string, unknown>;
     type?: 'filter' | 'query';
     allowEdgeRules?: boolean;
-    error?: string | null;
-    meta?: Record<string, unknown>;
   }
 >(withDraftRule)(Rules);

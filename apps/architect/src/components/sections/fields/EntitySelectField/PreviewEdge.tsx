@@ -68,8 +68,11 @@ const PreviewEdge = ({
     );
   }
 
+  // A `<span>`, not a `<div>`: with no `onClick` this is a picture of an edge
+  // type, and a rule card renders one inside its edit button — where only
+  // phrasing content is valid. `display: flex` keeps the box identical.
   return (
-    <div
+    <span
       className={cx(
         baseClasses,
         surfaceClasses,
@@ -79,7 +82,7 @@ const PreviewEdge = ({
       style={wrapperStyle}
     >
       {content}
-    </div>
+    </span>
   );
 };
 

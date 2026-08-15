@@ -286,23 +286,40 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
+/**
+ * An icon carries no text, so the button has to be named some other way — and
+ * exactly one of the two ways of doing it must be present. `aria-label` is the
+ * usual one; `aria-labelledby` is for a button whose name is already on the
+ * page (a row's delete control naming the row it deletes), where repeating the
+ * text in an attribute would let the two drift apart.
+ */
+type IconButtonAccessibleName =
+  | { 'aria-label': string; 'aria-labelledby'?: string }
+  | { 'aria-label'?: string; 'aria-labelledby': string };
+
 type IconButtonProps = Omit<
   ButtonProps,
-  'icon' | 'children' | 'iconPosition' | 'color' | 'textStyle'
-> & {
-  'icon': React.ReactNode;
-  'aria-label': string;
-  'color'?:
-    | 'default'
-    | 'dynamic'
-    | 'primary'
-    | 'secondary'
-    | 'warning'
-    | 'info'
-    | 'destructive'
-    | 'success'
-    | 'accent';
-};
+  | 'icon'
+  | 'children'
+  | 'iconPosition'
+  | 'color'
+  | 'textStyle'
+  | 'aria-label'
+  | 'aria-labelledby'
+> &
+  IconButtonAccessibleName & {
+    icon: React.ReactNode;
+    color?:
+      | 'default'
+      | 'dynamic'
+      | 'primary'
+      | 'secondary'
+      | 'warning'
+      | 'info'
+      | 'destructive'
+      | 'success'
+      | 'accent';
+  };
 
 const iconButtonVariants = compose(
   buttonVariants,

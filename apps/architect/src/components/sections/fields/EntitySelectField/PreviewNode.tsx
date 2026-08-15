@@ -4,7 +4,6 @@ import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import { cx } from '~/utils/cva';
 
 type NodeSize = ComponentProps<typeof Node>['size'];
 
@@ -19,6 +18,15 @@ type PreviewNodeProps = Omit<
   selected?: boolean;
 };
 
+/**
+ * A codebook entity type drawn as a node.
+ *
+ * There is deliberately no wrapper element: the node is the whole component,
+ * so it can be a flex item where a caller lays one out, and phrasing content
+ * where a caller (a rule card) puts one inside a control. `Node` renders its
+ * own pointer cursor from the presence of `onClick`, so a wrapper never had
+ * anything to add.
+ */
 const PreviewNode = ({
   label,
   color = 'node-color-seq-1',
@@ -30,21 +38,19 @@ const PreviewNode = ({
   ...buttonProps
 }: PreviewNodeProps) => {
   return (
-    <div className={cx(onClick && 'cursor-pointer')}>
-      <Node
-        {...buttonProps}
-        label={label}
-        ariaLabel={
-          buttonProps.role === 'radio' ? `Select node ${label}` : undefined
-        }
-        selected={selected}
-        color={color as NodeColorSequence}
-        shape={shape}
-        size={size}
-        onClick={onClick}
-        className={className}
-      />
-    </div>
+    <Node
+      {...buttonProps}
+      label={label}
+      ariaLabel={
+        buttonProps.role === 'radio' ? `Select node ${label}` : undefined
+      }
+      selected={selected}
+      color={color as NodeColorSequence}
+      shape={shape}
+      size={size}
+      onClick={onClick}
+      className={className}
+    />
   );
 };
 

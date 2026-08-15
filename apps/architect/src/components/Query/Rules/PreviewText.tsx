@@ -74,24 +74,43 @@ type JoinProps = {
   variant?: 'default' | 'summary';
 };
 
+/**
+ * The separator between two rules, reading how they combine ("and"/"or").
+ *
+ * A labelled divider — a rule either side of the word. This was a
+ * `<fieldset>`/`<legend>`, borrowed for the way a legend cuts a gap in the
+ * border, which announced a form group containing no controls to every screen
+ * reader, once per join. The geometry is unchanged: the line runs along the
+ * top of the word, with the same gap around it and the same space beneath.
+ */
 export const Join = ({ value = '', variant = 'default' }: JoinProps) =>
   variant === 'summary' ? (
     <div className="w-full py-5 text-center text-current/70 uppercase italic">
       {value.toLowerCase()}
     </div>
   ) : (
-    <fieldset className="border-platinum h-0 w-full border-t-4 px-10 py-5 text-center">
-      <legend className="text-platinum-dark px-5 uppercase italic">
+    <span className="flex w-full items-start pb-10">
+      <span className="border-platinum h-0 flex-1 border-t-4" />
+      <span className="text-platinum-dark px-5 uppercase italic">
         {value.toLowerCase()}
-      </legend>
-    </fieldset>
+      </span>
+      <span className="border-platinum h-0 flex-1 border-t-4" />
+    </span>
   );
+
+/*
+ * A rule reads as one sentence, and the whole card is the button that opens it
+ * for editing — so every part below is phrasing content. A `<div>` inside a
+ * `<button>` is invalid HTML, and the entity chips are drawn `presentational`
+ * for the same reason: a control inside a control is invalid and gives
+ * assistive technology a second, dead target.
+ */
 
 type VariableProps = {
   children?: React.ReactNode;
 };
 
-const Variable = ({ children = '' }: VariableProps) => <div>{children}</div>;
+const Variable = ({ children = '' }: VariableProps) => <span>{children}</span>;
 
 type OperatorProps = {
   value?: string;
@@ -99,7 +118,7 @@ type OperatorProps = {
 };
 
 const Operator = ({ value = '', isEgo = false }: OperatorProps) => (
-  <div>{get(operatorsAsText(isEgo), value, value.toLowerCase())}</div>
+  <span>{get(operatorsAsText(isEgo), value, value.toLowerCase())}</span>
 );
 
 type TypeOperatorProps = {
@@ -107,7 +126,7 @@ type TypeOperatorProps = {
 };
 
 const TypeOperator = ({ value = '' }: TypeOperatorProps) => (
-  <div>{get(typeOperatorsAsText, value, value.toLowerCase())}</div>
+  <span>{get(typeOperatorsAsText, value, value.toLowerCase())}</span>
 );
 
 type ValueProps = {
@@ -118,7 +137,7 @@ type ValueProps = {
 const Value = ({ value = '', plain = false }: ValueProps) => {
   const formattedValue = formatValue(value);
   return (
-    <div
+    <span
       className={
         plain
           ? 'font-semibold'
@@ -126,7 +145,7 @@ const Value = ({ value = '', plain = false }: ValueProps) => {
       }
     >
       {formattedValue}
-    </div>
+    </span>
   );
 };
 
@@ -134,7 +153,7 @@ type CopyProps = {
   children?: string;
 };
 
-const Copy = ({ children = '' }: CopyProps) => <div>{children}</div>;
+const Copy = ({ children = '' }: CopyProps) => <span>{children}</span>;
 
 type RuleEntityProps = {
   type: string;
@@ -147,7 +166,13 @@ const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) =>
   type === 'edge' ? (
     <PreviewEdge color={color} label={label} surface={2} />
   ) : (
-    <PreviewNode color={color} shape={shape} label={label} size="xs" />
+    <PreviewNode
+      color={color}
+      shape={shape}
+      label={label}
+      size="xs"
+      presentational
+    />
   );
 
 const PreviewText = ({
@@ -168,6 +193,7 @@ const PreviewText = ({
               size="xxs"
               className="shrink-0"
               style={SUMMARY_EGO_NODE_STYLE}
+              presentational
             />
             <Copy>has</Copy>
             <VariablePill
@@ -202,6 +228,7 @@ const PreviewText = ({
           size="xs"
           className="text-surface-2-contrast"
           style={EGO_NODE_STYLE}
+          presentational
         />
         <Copy>has</Copy>
         <VariablePill

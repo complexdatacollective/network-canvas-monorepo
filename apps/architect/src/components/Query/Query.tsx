@@ -1,13 +1,11 @@
-import Rules from './Rules';
+import Rules, { type RuleSetGroupProps } from './Rules/Rules';
 import type { Rule } from './Rules/validateRule';
 
-type QueryProps = {
+type QueryProps = RuleSetGroupProps & {
   onChange: (value: unknown) => void;
   rules?: Rule[];
   codebook: Record<string, unknown>;
   join?: string;
-  error?: string;
-  meta?: Record<string, unknown>;
 };
 
 const Query = ({
@@ -15,17 +13,15 @@ const Query = ({
   join,
   codebook,
   onChange,
-  error,
-  meta = {},
+  ...groupProps
 }: QueryProps) => (
   <Rules
-    meta={meta}
+    {...groupProps}
     rules={rules}
     join={join}
     onChange={onChange}
     codebook={codebook}
     type="query"
-    error={error}
   />
 );
 

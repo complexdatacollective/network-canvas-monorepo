@@ -298,6 +298,22 @@ type UINodeProps = {
   onDragEnd?: (event: PointerEvent, info: NodeDragEndInfo) => void;
   /** Suppresses the press-and-hold reveal for clipped labels */
   labelRevealDisabled?: boolean;
+  /**
+   * Renders the node as inert content — a `<span>` — rather than a control.
+   *
+   * Use it where the node is a picture of an entity inside something that
+   * already owns the interaction: Architect's rule cards, whose whole surface
+   * is the "edit this rule" button. A `<button>` there is invalid HTML
+   * (`<button>` takes phrasing content, and never another button) and hands
+   * assistive technology a second, dead target inside the real one.
+   *
+   * The label still reads as part of the surrounding control's accessible
+   * name, and press-and-hold still reveals a clipped one — that gesture never
+   * needed a tab stop. What a presentational node does NOT have: a role, a tab
+   * stop, activation (`onClick`), dragging, keyboard handling, or a forwarded
+   * `ref`. Pass none of those alongside it.
+   */
+  presentational?: boolean;
   ref?: Ref<HTMLButtonElement>;
 } & VariantProps<typeof nodeVariants> &
   Omit<
@@ -367,12 +383,15 @@ export default function Node(props: UINodeProps) {
     onDragMove,
     onDragEnd,
     labelRevealDisabled = false,
+    presentational = false,
     ...buttonProps
   } = props;
 
-  const hasClickHandler = !!onClick;
+  // Inert content has no activation and no drag, whatever it was handed.
+  const hasClickHandler = !presentational && !!onClick;
   // Any drag handler makes the node draggable; the recognizer owns the rest.
-  const dragEnabled = !!(onDragStart || onDragMove || onDragEnd);
+  const dragEnabled =
+    !presentational && !!(onDragStart || onDragMove || onDragEnd);
 
   // aria-pressed is only valid on roles that support it (button, menuitem, etc.)
   // When a Collection overrides role to 'option', aria-pressed is not permitted.
@@ -571,61 +590,48 @@ export default function Node(props: UINodeProps) {
     </>
   );
 
-  const button = (
-    <motion.button
-      {...buttonProps}
-      tabIndex={focusable ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)}
-      ref={useMergeRefs({ ref, scope })}
-      type="button"
-      disabled={disabled}
-      aria-label={ariaLabel ?? label}
-      // An external drag system (useDragSource) declares its own grabbed
-      // state; otherwise the recognizer's drag is the node being moved.
-      aria-grabbed={grabbed ?? (dragEnabled ? isDragging : undefined)}
-      aria-pressed={
-        // A host whose taps don't arrive as `onClick` — a canvas node driving
-        // selection from pointer events — can declare the toggle state itself,
-        // which is otherwise unknowable from here. The role guard still
-        // applies: `aria-pressed` is invalid on roles that don't support it.
-        supportsAriaPressed
-          ? (buttonProps['aria-pressed'] ??
-            (hasClickHandler ? selected : undefined))
-          : undefined
-      }
-      className={nodeVariants({
-        size,
-        shape,
-        color,
-        disabled,
-        className,
-      })}
-      style={{
-        ...nodeProps.style,
-        // A draggable node must not let the browser claim its movement for
-        // scrolling; everything else keeps fast-tap handling.
-        ...(dragEnabled && { touchAction: 'none' as const }),
-        ...style,
-        cursor,
-      }}
-      data-node-dragging={isDragging || undefined}
-      data-node-selected={selected || undefined}
-      data-node-linking={linking || undefined}
-      data-node-highlighted={highlighted || undefined}
-      onPointerDown={composeEventHandlers(
-        composeEventHandlers(nodeProps.onPointerDown, handlePointerDown),
-        externalPointerDown,
-      )}
-      onPointerUp={composeEventHandlers(
-        nodeProps.onPointerUp,
-        externalPointerUp,
-      )}
-      onPointerCancel={nodeProps.onPointerCancel}
-      onPointerLeave={nodeProps.onPointerLeave}
-      onKeyDown={composeEventHandlers(externalKeyDown, nodeProps.onKeyDown)}
-      onKeyUp={composeEventHandlers(externalKeyUp, nodeProps.onKeyUp)}
-      onBlur={composeEventHandlers(nodeProps.onBlur, externalBlur)}
-      onClick={handleClick}
-    >
+  // Hoisted out of the branch below: a ternary arm is not a place to call a
+  // hook, whatever `presentational` happens to be on this render.
+  const buttonRef = useMergeRefs({ ref, scope });
+
+  const rootClassName = nodeVariants({
+    size,
+    shape,
+    color,
+    disabled,
+    className,
+  });
+
+  const rootStyle: CSSProperties = {
+    ...nodeProps.style,
+    // A draggable node must not let the browser claim its movement for
+    // scrolling; everything else keeps fast-tap handling.
+    ...(dragEnabled && { touchAction: 'none' as const }),
+    ...style,
+    cursor,
+  };
+
+  const stateAttributes = {
+    'data-node-dragging': isDragging || undefined,
+    'data-node-selected': selected || undefined,
+    'data-node-linking': linking || undefined,
+    'data-node-highlighted': highlighted || undefined,
+  };
+
+  // The pointer sequence belongs to the recognizer in both forms: an inert
+  // node still holds to reveal a clipped label.
+  const pointerHandlers = {
+    onPointerDown: composeEventHandlers(
+      composeEventHandlers(nodeProps.onPointerDown, handlePointerDown),
+      externalPointerDown,
+    ),
+    onPointerUp: composeEventHandlers(nodeProps.onPointerUp, externalPointerUp),
+    onPointerCancel: nodeProps.onPointerCancel,
+    onPointerLeave: nodeProps.onPointerLeave,
+  };
+
+  const layers = (
+    <>
       {/* Shape layer - carries the background, state box-shadows, and (for
           diamonds) the rotation, keeping the root element transform-free */}
       <span
@@ -686,6 +692,54 @@ export default function Node(props: UINodeProps) {
         {nodeContent}
         {props.children}
       </span>
+    </>
+  );
+
+  const root = presentational ? (
+    // Inert content: a `<span>` with no role, no tab stop and no activation,
+    // so it can sit inside a control that owns the interaction without
+    // nesting one control in another. It forwards no `ref` — the press scope
+    // animates a press this node cannot receive, and there is no control for
+    // a caller to reference.
+    <motion.span
+      className={rootClassName}
+      style={rootStyle}
+      {...stateAttributes}
+      {...pointerHandlers}
+    >
+      {layers}
+    </motion.span>
+  ) : (
+    <motion.button
+      {...buttonProps}
+      tabIndex={focusable ? buttonProps.tabIndex : (buttonProps.tabIndex ?? -1)}
+      ref={buttonRef}
+      type="button"
+      disabled={disabled}
+      aria-label={ariaLabel ?? label}
+      // An external drag system (useDragSource) declares its own grabbed
+      // state; otherwise the recognizer's drag is the node being moved.
+      aria-grabbed={grabbed ?? (dragEnabled ? isDragging : undefined)}
+      aria-pressed={
+        // A host whose taps don't arrive as `onClick` — a canvas node driving
+        // selection from pointer events — can declare the toggle state itself,
+        // which is otherwise unknowable from here. The role guard still
+        // applies: `aria-pressed` is invalid on roles that don't support it.
+        supportsAriaPressed
+          ? (buttonProps['aria-pressed'] ??
+            (hasClickHandler ? selected : undefined))
+          : undefined
+      }
+      className={rootClassName}
+      style={rootStyle}
+      {...stateAttributes}
+      {...pointerHandlers}
+      onKeyDown={composeEventHandlers(externalKeyDown, nodeProps.onKeyDown)}
+      onKeyUp={composeEventHandlers(externalKeyUp, nodeProps.onKeyUp)}
+      onBlur={composeEventHandlers(nodeProps.onBlur, externalBlur)}
+      onClick={handleClick}
+    >
+      {layers}
     </motion.button>
   );
 
@@ -708,7 +762,7 @@ export default function Node(props: UINodeProps) {
         // place would make the label arrive late and then vanish.
         delay={0}
         closeOnClick={false}
-        render={button}
+        render={root}
       />
       <TooltipContent
         // The full label is already the button's accessible name, so announcing
