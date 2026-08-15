@@ -468,6 +468,36 @@ export const KeepsFocusWhenDisabled: Story = {
   },
 };
 
+/**
+ * The `glass` variant rests on `control-glass`'s translucent fill rather than
+ * on no fill at all, so its disabled hover reset has to restore that fill
+ * instead of blanking the background.
+ */
+export const DisabledGlass: Story = {
+  args: {
+    label: 'Drawing tools',
+    items: [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo2 />,
+        variant: 'glass',
+        disabled: true,
+        onClick: noop,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo2 />,
+        variant: 'glass',
+        onClick: noop,
+      },
+    ],
+  },
+};
+
 /** Adding and removing segments animates in and out; the container resizes via motion's layout. */
 export const DynamicItems: Story = {
   args: {

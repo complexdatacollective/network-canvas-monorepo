@@ -589,6 +589,73 @@ describe('SegmentedToolbar — disabled segments', () => {
     expect(button).not.toHaveAttribute('aria-disabled');
     expect(button.className).not.toMatch(/aria-disabled:/);
   });
+
+  // Button inverts the flat variants' colours on `hover:enabled:`, which still
+  // matches a segment that is never natively disabled, so each variant has to
+  // restore its own resting background. `glass` is the one that rests on a
+  // fill: `control-glass` supplies `bg-surface/50`, and blanking it would strip
+  // the segment's translucent surface the moment the pointer touched it.
+  //
+  // Asserted on the class list rather than on rendered `:hover` styles: the
+  // pseudo-class is driven by real pointer input, which neither jsdom nor
+  // Testing Library's synthetic events can produce.
+  it.each([
+    ['text', 'bg-transparent'],
+    ['outline', 'bg-transparent'],
+    ['dashed', 'bg-transparent'],
+    ['glass', 'bg-surface/50'],
+  ] as const)(
+    'resets a disabled %s segment to its own resting background on hover',
+    (variant, expectedBackground) => {
+      const items: ToolbarSegment[] = [
+        {
+          type: 'button',
+          id: 'undo',
+          label: 'Undo',
+          icon: <Undo2 />,
+          variant,
+          disabled: true,
+          onClick: vi.fn(),
+        },
+      ];
+      render(<SegmentedToolbar label="Tools" items={items} />);
+      const { className } = screen.getByRole('button', { name: 'Undo' });
+
+      expect(className).toContain(`aria-disabled:hover:${expectedBackground}!`);
+      expect(className).toContain(
+        'aria-disabled:hover:text-(--component-text)!',
+      );
+      if (variant === 'glass') {
+        expect(className).not.toContain('aria-disabled:hover:bg-transparent!');
+      }
+    },
+  );
+
+  it('leaves a segment that paints its own colours alone', () => {
+    // A caller-supplied className owns the segment's appearance, so resetting
+    // the hover colours would blank the colour it deliberately set.
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'download',
+        label: 'Downloading…',
+        showLabel: true,
+        variant: 'default',
+        className: 'bg-sea-green text-white',
+        disabled: true,
+        onClick: vi.fn(),
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+    const { className } = screen.getByRole('button', {
+      name: 'Downloading…',
+    });
+
+    expect(className).toContain('bg-sea-green');
+    expect(className).not.toMatch(/aria-disabled:hover:bg-/);
+    // The dimming still applies — only the colour reset is withheld.
+    expect(className).toContain('aria-disabled:opacity-50');
+  });
 });
 
 describe('SegmentedToolbar — add/remove', () => {

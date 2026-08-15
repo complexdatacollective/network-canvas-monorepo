@@ -236,27 +236,31 @@ const SegmentControl = React.forwardRef<HTMLButtonElement, ButtonProps>(
 const disabledSegmentClasses =
   'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:active:translate-none!';
 
-// The flat variants all invert the same token pair on hover, so one reset
-// restores every one of them to its resting colours. Variants that paint their
-// own background have no hover flip to undo.
-const FLAT_VARIANTS = new Set<ButtonProps['variant']>([
-  'text',
-  'outline',
-  'dashed',
-  'glass',
-]);
-const flatHoverResetClasses =
-  'aria-disabled:hover:bg-transparent! aria-disabled:hover:text-(--component-text)!';
+// The variants that invert this token pair on hover, mapped to the background
+// each one rests at. Restoring the resting background rather than blanking it
+// matters for `glass`, whose `control-glass` treatment rests on a translucent
+// `bg-surface/50` fill — forcing transparency would strip that fill on hover
+// instead of leaving the segment looking untouched. Variants that paint their
+// own background (`default`, `raised`) have no hover flip to undo.
+const HOVER_RESET_BACKGROUND: Partial<
+  Record<NonNullable<ButtonProps['variant']>, string>
+> = {
+  text: 'aria-disabled:hover:bg-transparent!',
+  outline: 'aria-disabled:hover:bg-transparent!',
+  dashed: 'aria-disabled:hover:bg-transparent!',
+  glass: 'aria-disabled:hover:bg-surface/50!',
+};
+const hoverResetForeground = 'aria-disabled:hover:text-(--component-text)!';
 
 /** Classes carrying the disabled appearance for a segment, if it is disabled. */
 function disabledClasses(content: SegmentContent, disabled?: boolean) {
   if (!disabled) return undefined;
-  const variant = content.variant ?? 'text';
+  const background = HOVER_RESET_BACKGROUND[content.variant ?? 'text'];
   return cx(
     disabledSegmentClasses,
     // A caller-supplied `className` is painting the segment itself, so leave
     // its colours alone rather than resetting them out from under it.
-    FLAT_VARIANTS.has(variant) && !content.className && flatHoverResetClasses,
+    background && !content.className && cx(background, hoverResetForeground),
   );
 }
 
