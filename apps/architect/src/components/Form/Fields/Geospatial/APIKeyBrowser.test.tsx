@@ -288,7 +288,16 @@ describe('API key creation', () => {
     ).toHaveFocus();
   });
 
-  it('names the unresolved stage draft when that is what blocks the reclaim', async () => {
+  /**
+   * This form is now a registered nested draft, so by the time a submit is
+   * refused — both fields filled — it is itself one of the things the blocked
+   * reclaim is waiting on. The refusal used to name the STAGE's unsaved changes
+   * and tell the researcher to answer a question about them, which was true
+   * only while this dialog was invisible to the registry: with a pristine stage
+   * behind it there is no such question, and cancelling this form is the whole
+   * way out.
+   */
+  it('names this form as what the blocked reclaim is waiting on', async () => {
     const { store, openBrowser } = setup({}, 'reclaim-blocked');
     const dialog = await openBrowser();
 
@@ -297,7 +306,7 @@ describe('API key creation', () => {
     await waitFor(() =>
       expect(
         within(dialog).getByText(
-          'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then create the key again.',
+          'The other tab has closed, so the saved copy of this protocol has to be read back into this tab before anything can be saved here, and this form is holding that up. Cancel it to let the protocol be read back, then create the key again.',
         ),
       ).toBeInTheDocument(),
     );

@@ -1,25 +1,19 @@
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
-import FormStoreProvider, {
-  FormStoreContext,
-} from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { Layout } from '~/components/EditorLayout';
 import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
-import { confirmDiscardNestedDraft } from './confirmDiscardNestedDraft';
 import {
   withFormLevelValidate,
   type FormLevelValidate,
   type LenientSubmitHandler,
 } from './formLevelValidate';
-import { isFormStoreDirty } from './formStoreDirty';
-import { useNestedDraft } from './nestedDraftRegistry';
+import { useNestedDraftDialog } from './useNestedDraftDialog';
 
 export type DialogFormProps = {
   /** Whether the dialog is open. */
@@ -89,9 +83,6 @@ const DialogFormBody = ({
   finalFocus,
   children,
 }: DialogFormProps) => {
-  const { isSubmitting } = useFormMeta();
-  const storeApi = useContext(FormStoreContext);
-  const { openDialog } = useDialog();
   const refusedCommit = useRefusedNestedCommit();
 
   /**
@@ -99,13 +90,15 @@ const DialogFormBody = ({
    * opt-in per caller (`DirtyProbe` + a hand-written confirm in
    * `NewVariableWindow` and `EntityTypeDialog`), and the array-row editor —
    * the one in the bug report — simply never opted in.
+   *
+   * The registration and the confirm-before-dismissal both live in
+   * `useNestedDraftDialog`, which the Geospatial API-key browser — a dialog
+   * that is not and cannot be a `DialogForm` — uses on exactly the same terms.
    */
-  const isDirty = useCallback(
-    () => (storeApi ? isFormStoreDirty(storeApi) : false),
-    [storeApi],
-  );
-
-  useNestedDraft(open, isDirty);
+  const { isSubmitting, requestClose } = useNestedDraftDialog({
+    open,
+    onClose,
+  });
 
   /**
    * The footer's SubmitButton is not a descendant of the `<form>` — it sits in
@@ -132,25 +125,6 @@ const DialogFormBody = ({
   });
 
   /**
-   * Cancel, the close button, Escape and a backdrop click all arrive here —
-   * fresco-ui's `Dialog` routes every dismissal through the single
-   * `closeDialog` prop — so one gate covers all four. Before this, a dirty
-   * nested editor was discarded silently by every one of them.
-   */
-  const handleClose = useCallback(() => {
-    if (isSubmitting) return;
-
-    if (!isDirty()) {
-      onClose();
-      return;
-    }
-
-    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
-      if (confirmed) onClose();
-    });
-  }, [isDirty, isSubmitting, onClose, openDialog]);
-
-  /**
    * A tab that cannot save must not accept a Finish that looks like it worked
    * — see `useRefusedNestedCommit` for which commits that covers and why.
    */
@@ -170,7 +144,7 @@ const DialogFormBody = ({
   return (
     <Dialog
       open={open}
-      closeDialog={handleClose}
+      closeDialog={requestClose}
       dismissible={!isSubmitting}
       title={title}
       size="editor"
@@ -179,7 +153,11 @@ const DialogFormBody = ({
       finalFocus={finalFocus}
       footer={
         <>
-          <Button color="default" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            color="default"
+            onClick={requestClose}
+            disabled={isSubmitting}
+          >
             {cancelLabel}
           </Button>
           <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>

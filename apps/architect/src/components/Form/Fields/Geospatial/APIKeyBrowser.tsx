@@ -1,9 +1,11 @@
 import { ArrowRight } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FieldValue,
   FormSubmissionResult,
@@ -12,13 +14,12 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
+import { useNestedDraftDialog } from '~/components/DialogForm/useNestedDraftDialog';
 import { Layout, Section } from '~/components/EditorLayout';
-import AppForm from '~/components/Form/AppForm';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import { getProtocolLockState } from '~/ducks/modules/app';
 import { getAssetManifest } from '~/selectors/protocol';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 
@@ -39,10 +40,14 @@ const DUPLICATE_NAME_MESSAGE =
 // differ in each, and each has to be localisable on its own.
 const NOT_OWNED_ELSEWHERE_MESSAGE =
   'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.';
-const NOT_OWNED_STAGE_DRAFT_MESSAGE =
-  'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then create the key again.';
-const NOT_OWNED_EDITOR_OPEN_MESSAGE =
-  'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then create the key again.';
+// A reclaim is blocked by whatever unsaved work stands in its way, and by the
+// time this is reached BOTH of this form's fields hold something — so this form
+// is itself one of the things it is waiting on (see `useNestedDraftDialog`
+// below). Pointing at the stage's unsaved changes instead, as this used to
+// while the form was invisible to the registry, sends the researcher to answer
+// a question that is not being asked and may not exist.
+const NOT_OWNED_RECLAIM_BLOCKED_MESSAGE =
+  'The other tab has closed, so the saved copy of this protocol has to be read back into this tab before anything can be saved here, and this form is holding that up. Cancel it to let the protocol be read back, then create the key again.';
 
 /**
  * What leaving this dialog with a key actually did, so the caller can say so
@@ -66,7 +71,8 @@ type APIKeyBrowserProps = {
   onCancel?: () => void;
   close: () => void;
 };
-const APIKeyBrowser = ({
+
+const APIKeyBrowserBody = ({
   show = true,
   close,
   onSelect = () => {},
@@ -75,6 +81,23 @@ const APIKeyBrowser = ({
   const dispatch = useAppDispatch();
   const store = useAppStore();
   const [preview, handleShowPreview] = useExternalDataPreview();
+  /**
+   * A half-typed key is unsaved work like any other nested editor's, and
+   * exactly as invisible: it lives in this dialog's own field store, in neither
+   * the editing buffer nor the stage draft. Until this registration existed,
+   * every guard that could destroy it — browser Back, a refresh, a read-only
+   * demotion, a cross-tab reclaim — read "pristine" and took it without a word
+   * (#1387 closed the same gap for `DialogForm` and the rule builder; #1394
+   * rewrote this dialog's submit from a base that predated all of it).
+   *
+   * Registered through the shared hook rather than by becoming a `DialogForm`:
+   * this is a BROWSER, not an editor. It is workspace-sized, its create form is
+   * one of two sections (the Resource Library below it is not part of the
+   * form at all), and it has two ways out holding a key — creating one and
+   * picking an existing card. A `DialogForm` would put "Create Key" in the
+   * footer, where it would read as acting on the library as well.
+   */
+  const { requestClose } = useNestedDraftDialog({ open: show, onClose: close });
   const selectAsset = useCallback(
     (assetId: string, created: boolean) => {
       // `Assets` lists the manifest and the create path passes the id it has
@@ -82,6 +105,9 @@ const APIKeyBrowser = ({
       // keeps the announced sentence whole rather than "API key  selected."
       const asset = getAssetManifest(store.getState())[assetId];
       onSelect({ id: assetId, name: asset?.name ?? assetId, created });
+      // The raw close, not `requestClose`: leaving with a key is what this
+      // dialog is FOR, and a confirmation here would ask about work the
+      // researcher has just had applied.
       close();
     },
     [onSelect, close, store],
@@ -148,9 +174,7 @@ const APIKeyBrowser = ({
           fieldErrors: {
             keyName: [
               lockState === 'reclaim-blocked'
-                ? getStageEditorCodebookTransactionOpen(store.getState())
-                  ? NOT_OWNED_STAGE_DRAFT_MESSAGE
-                  : NOT_OWNED_EDITOR_OPEN_MESSAGE
+                ? NOT_OWNED_RECLAIM_BLOCKED_MESSAGE
                 : NOT_OWNED_ELSEWHERE_MESSAGE,
             ],
           },
@@ -167,16 +191,16 @@ const APIKeyBrowser = ({
   return (
     <Dialog
       open={show}
-      closeDialog={close}
+      closeDialog={requestClose}
       title="API Key Browser"
       size="workspace"
       footer={
-        <Button color="default" onClick={close}>
+        <Button color="default" onClick={requestClose}>
           Cancel
         </Button>
       }
     >
-      <AppForm onSubmit={handleSubmit}>
+      <FormWithoutProvider onSubmit={handleSubmit}>
         <Layout>
           {/*
             `required` on a Section renders a red asterisk beside its heading.
@@ -232,8 +256,43 @@ const APIKeyBrowser = ({
           </Section>
           {preview}
         </Layout>
-      </AppForm>
+      </FormWithoutProvider>
     </Dialog>
   );
 };
+
+/**
+ * The field store is a PARENT of the dialog rather than a child of it (the
+ * arrangement `FormWithoutProvider` is documented for, and the one `DialogForm`
+ * uses): the routes that dismiss this dialog — the footer Cancel, the close
+ * button, Escape, a backdrop click — all live outside the `<form>` element, and
+ * they have to be able to ask whether the fields inside it hold anything.
+ *
+ * Which means the store now outlives a close, so it is remounted as the dialog
+ * OPENS — the same `key` bump, for the same reason, as `NewVariableWindow`.
+ * `Modal`'s exit animation normally unmounts the form and resets the store on
+ * the way out, but a close followed by another open before that exit finishes
+ * cancels the removal, and the next visit's fields then re-register over the
+ * previous one's parked values. Here that would mean a key the researcher had
+ * just confirmed discarding coming back, in a form they expect to be empty.
+ * Bumped on open rather than on close so the entering dialog is the fresh one
+ * and a close still animates out.
+ */
+const APIKeyBrowser = ({ show = true, ...props }: APIKeyBrowserProps) => {
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
+
+  return (
+    <FormStoreProvider key={openCount}>
+      <APIKeyBrowserBody show={show} {...props} />
+    </FormStoreProvider>
+  );
+};
+
 export default APIKeyBrowser;
