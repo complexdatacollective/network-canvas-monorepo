@@ -44,11 +44,6 @@ type ImportAssetCompletePayload = {
   duplicateCount: number;
 };
 
-type ImportAssetFailedPayload = {
-  filename: string;
-  error: Error;
-};
-
 type AddApiKeyAssetPayload = {
   id: string;
   name: string;
@@ -165,12 +160,11 @@ export const importAssetAsync = createAsyncThunk<
       dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
       return importPayload;
     } catch (error) {
-      dispatch(
-        assetManifestSlice.actions.importAssetFailed({
-          filename: name,
-          error: error as Error,
-        }),
-      );
+      // Deliberately dispatches nothing. A refused import changed no resource,
+      // so it must not reach the protocol timeline: the thunk's own
+      // `pending`/`rejected` lifecycle actions are excluded from it
+      // (`ducks/modules/root.ts`), and the rejection value below is what the
+      // caller shows the researcher.
       return rejectWithValue(getImportAssetErrorInfo(error, name));
     }
   },
@@ -196,12 +190,16 @@ const assetManifestSlice = createSlice({
         source: filename,
       };
     },
-    importAssetFailed: (
-      _state,
-      _action: PayloadAction<ImportAssetFailedPayload>,
-    ) => {},
     deleteAsset: (state, action: PayloadAction<string>) => {
       const assetId = action.payload;
+      // `omit` builds a new object even when the key was never there, and a new
+      // object is a change as far as the timeline is concerned — an id that is
+      // not in the manifest would record an undoable point that undoes nothing.
+      // `hasOwn`, not `in`: an id matching an inherited key (`toString`) would
+      // otherwise pass the guard and fall through to the rebuild below.
+      if (!Object.hasOwn(state, assetId)) {
+        return state;
+      }
       // Keep the blob on disk so an undo can restore this manifest entry. The
       // durable save path GCs blobs no longer referenced by the manifest.
       return omit(state, assetId);

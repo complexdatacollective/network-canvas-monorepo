@@ -257,6 +257,61 @@ test('undoes and redoes a protocol-name edit', async ({
   );
 });
 
+// #1396: the protocol name commits on blur, so clicking into the field and
+// away again — reading it, or tabbing past it — dispatched a rename to the
+// name it already had. `updateProtocolName` rebuilds the protocol rather than
+// mutating it, so that rebuilt-but-identical protocol counted as a change: it
+// invented an undo step and, worse, discarded a redo the researcher still had.
+test('clicking into the protocol name and out again is not a change', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'No Op Seed' });
+  await gotoProtocol(architectPage);
+
+  const toolbar = new Toolbar(architectPage);
+  const nameField = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await expect(nameField).toHaveValue('No Op Seed');
+
+  // One real rename, then undo it: that leaves an empty undo stack and a
+  // pending redo — both of which the no-op below used to destroy.
+  await nameField.fill('No Op Renamed');
+  await nameField.blur();
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'No Op Renamed',
+  );
+
+  await toolbar.undo();
+  await expect(nameField).toHaveValue('No Op Seed');
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+
+  // The whole interaction under test: focus the field, type nothing, leave.
+  await nameField.focus();
+  await nameField.blur();
+
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+
+  // And the redo still leads where it did.
+  await toolbar.redo();
+  await expect(nameField).toHaveValue('No Op Renamed');
+  await readProtocolJson(
+    architectPage,
+    (current) => current.name === 'No Op Renamed',
+  );
+});
+
 // #1389: activating Undo from a page other than the one the change was made on
 // used to navigate and stop, leaving the change in place until the researcher
 // pressed the same control a second time. Every assertion below reads the

@@ -1,6 +1,11 @@
 import crypto from 'node:crypto';
 
-import type { Reducer, UnknownAction } from '@reduxjs/toolkit';
+import {
+  createSlice,
+  type PayloadAction,
+  type Reducer,
+  type UnknownAction,
+} from '@reduxjs/toolkit';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,6 +48,55 @@ const getRewindableReducer = (
 ) => createTimeline(reducer, options);
 
 const dummyAction: UnknownAction = { type: 'DUMMY' };
+
+/**
+ * A real immer reducer with an OBJECT state, which is the only shape in which
+ * the "state is unchanged" guard is interesting: `createTimeline` hands the
+ * wrapped reducer `current(present)` and compares what comes back, so a guard
+ * that compared the draft proxy instead was false for every object present.
+ * `activeProtocol` is exactly this shape.
+ */
+type CountState = { count: number };
+
+const countingSlice = createSlice({
+  name: 'counting',
+  initialState: { count: 0 } as CountState,
+  reducers: {
+    increment: (state) => {
+      state.count += 1;
+    },
+    touch: () => {
+      // Runs, mutates nothing: the shape of an action a slice accepts and
+      // decides not to act on.
+    },
+  },
+});
+
+const countingReducer = countingSlice.reducer;
+const { increment, touch } = countingSlice.actions;
+const noopAction = touch();
+const seed = (): CountState => ({ count: 0 });
+
+/**
+ * The other half of the same class, and the one reference equality cannot
+ * answer: a reducer that REBUILDS its state rather than mutating a draft
+ * returns a new object every time, whether or not it changed anything.
+ * `activeProtocol/updateProtocolName` (`{ ...state, name }`), every `codebook`
+ * writer, and `stages/deletePrompt` are all this shape.
+ */
+const rebuildingSlice = createSlice({
+  name: 'rebuilding',
+  initialState: { count: 0 } as CountState,
+  reducers: {
+    setCount: (state, action: PayloadAction<number>) => ({
+      ...state,
+      count: action.payload,
+    }),
+  },
+});
+
+const rebuildingReducer = rebuildingSlice.reducer;
+const { setCount } = rebuildingSlice.actions;
 
 const applyTimes = <T>(
   n: number,
@@ -87,15 +141,89 @@ describe('timeline middleware', () => {
       expect(nextState.timeline.length).toBe(3); // +1 includes name for present
     });
 
-    it('each subsequent call adds an event to the timeline (unless state is unchanged)', () => {
-      const initialState = { foo: 'bar' };
-      const reducer = (state = initialState) => state;
-      const timelineReducer = createTimeline(reducer);
+    // The version of this that shipped was vacuous: its reducer was
+    // `(state = initialState) => state`, and a default parameter does not fire
+    // for `null`, so `present` stayed `null` for the whole test and the guard
+    // only ever compared `null === null`. The real subject is an OBJECT
+    // present produced by an immer reducer — which is every protocol action —
+    // where the guard was comparing an immer proxy against a plain object and
+    // was therefore never true.
+    it('does not add a timeline event when a real reducer changes nothing', () => {
+      const timelineReducer = createTimeline(countingReducer);
 
-      const nextState = applyTimes(3, timelineReducer);
+      const seeded = timelineReducer(undefined, timelineActions.reset(seed()));
+      const changed = timelineReducer(seeded, increment());
+      expect(changed.past.length).toBe(1);
+      expect(changed.timeline.length).toBe(2);
 
-      expect(nextState.past.length).toBe(0);
-      expect(nextState.timeline.length).toBe(1);
+      const noop = timelineReducer(changed, noopAction);
+
+      expect(noop.past.length).toBe(1);
+      expect(noop.timeline.length).toBe(2);
+      expect(noop.present).toEqual({ count: 1 });
+    });
+
+    it('does not destroy a pending redo when a real reducer changes nothing', () => {
+      // The sharper half of the same defect: the fall-through clears `future`
+      // BEFORE it pushes the new past entry, so a refused operation threw away
+      // work the researcher could still have redone.
+      const timelineReducer = createTimeline(countingReducer);
+
+      const seeded = timelineReducer(undefined, timelineActions.reset(seed()));
+      const changed = timelineReducer(seeded, increment());
+      const undone = timelineReducer(changed, timelineActions.undo());
+      expect(undone.future.length).toBe(1);
+
+      const noop = timelineReducer(undone, noopAction);
+
+      expect(noop.future.length).toBe(1);
+      expect(noop.futureTimeline.length).toBe(1);
+      expect(noop.past.length).toBe(0);
+    });
+
+    it('does not add a timeline event when a reducer rebuilds an identical state', () => {
+      // Reference equality only ever answered reducers that MUTATE a draft. A
+      // rebuild reproducing what it was given is a new object, so it recorded
+      // an undo step for an operation that changed nothing — which is what
+      // renaming a protocol to the name it already has does.
+      const timelineReducer = createTimeline(rebuildingReducer);
+
+      const seeded = timelineReducer(undefined, timelineActions.reset(seed()));
+      const changed = timelineReducer(seeded, setCount(1));
+      expect(changed.past.length).toBe(1);
+
+      const rebuilt = timelineReducer(changed, setCount(1));
+
+      expect(rebuilt.past.length).toBe(1);
+      expect(rebuilt.timeline.length).toBe(2);
+      // The old snapshot is kept, so nothing downstream re-renders either.
+      expect(rebuilt.present).toBe(changed.present);
+    });
+
+    it('does not destroy a pending redo when a reducer rebuilds an identical state', () => {
+      const timelineReducer = createTimeline(rebuildingReducer);
+
+      const seeded = timelineReducer(undefined, timelineActions.reset(seed()));
+      const changed = timelineReducer(seeded, setCount(1));
+      const undone = timelineReducer(changed, timelineActions.undo());
+      expect(undone.future.length).toBe(1);
+
+      const rebuilt = timelineReducer(undone, setCount(0));
+
+      expect(rebuilt.future.length).toBe(1);
+      expect(rebuilt.futureTimeline.length).toBe(1);
+      expect(rebuilt.past.length).toBe(0);
+    });
+
+    it('still records a rebuild that changed something', () => {
+      // The guard must not swallow a real change made the same way.
+      const timelineReducer = createTimeline(rebuildingReducer);
+
+      const seeded = timelineReducer(undefined, timelineActions.reset(seed()));
+      const changed = timelineReducer(seeded, setCount(1));
+
+      expect(changed.past.length).toBe(1);
+      expect(changed.present).toEqual({ count: 1 });
     });
 
     it('timeline entries are locus objects with id and path', () => {

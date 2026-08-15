@@ -3,7 +3,7 @@ import { compose } from 'react-recompose';
 import { connect } from 'react-redux';
 
 import type { RootState } from '~/ducks/modules/root';
-import { getAssetManifest } from '~/selectors/protocol';
+import { getDisplayAssetManifest } from '~/selectors/protocol';
 
 const existingMeta = {
   name: 'Interview network',
@@ -20,7 +20,9 @@ type WithMetaProps = {
 };
 
 const mapStateToProps = (state: RootState, { id }: OwnProps) => {
-  const assetManifest = getAssetManifest(state);
+  // Feeds the selected-resource thumbnails and the preview dialog's title, so
+  // it names the resource the same way its card in the library does.
+  const assetManifest = getDisplayAssetManifest(state);
   const meta = get(assetManifest, id, existingMeta);
 
   return {

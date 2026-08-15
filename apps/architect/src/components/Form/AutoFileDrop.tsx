@@ -1,5 +1,5 @@
 import { has } from 'es-toolkit/compat';
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef } from 'react';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -124,6 +124,16 @@ const AutoFileDrop = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const accepts = useMemo(() => getAccepts(type), [type]);
+  // Where focus goes when either dialog below is dismissed.
+  //
+  // `openDialog` prefers whatever was focused when it was called and uses this
+  // as the fallback, which between them covers both ways an import starts:
+  // clicking or pressing Enter on the upload control leaves that control
+  // focused, so it IS the opener; a file dropped onto the page moves no focus
+  // at all, and then this is the only answer. Resolved lazily, when focus is
+  // actually being returned.
+  const dropzoneRef = useRef<HTMLElement | null>(null);
+  const finalFocus = useCallback(() => dropzoneRef.current, []);
   const handleDrop = useCallback(
     async (files: File[]) => {
       const ids: string[] = [];
@@ -150,6 +160,7 @@ const AutoFileDrop = ({
                 </>
               ),
               actions: { primary: { label: 'OK', value: true } },
+              finalFocus,
             });
           }
         } catch (error) {
@@ -175,13 +186,14 @@ const AutoFileDrop = ({
               </>
             ),
             actions: { primary: { label: 'OK', value: true } },
+            finalFocus,
           });
           return;
         }
       }
       onDrop(ids);
     },
-    [dispatch, onDrop, openDialog],
+    [dispatch, onDrop, openDialog, finalFocus],
   );
   return (
     <Dropzone
@@ -189,6 +201,7 @@ const AutoFileDrop = ({
       onDrop={handleDrop}
       className={className}
       disabled={disabled}
+      rootRef={dropzoneRef}
     />
   );
 };

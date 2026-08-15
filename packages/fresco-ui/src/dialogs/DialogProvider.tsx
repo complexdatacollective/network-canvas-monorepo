@@ -564,10 +564,18 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const renderDialogActions = (dialog: DialogState) => {
     if (dialog.type === 'acknowledge') {
+      // An acknowledge dialog has exactly one action, and it is the only way
+      // out — so declare where focus starts instead of inheriting a default
+      // nobody has verified. Base UI's default is "the first tabbable element
+      // inside the popup", which here is the header's close button: a control
+      // whose label says nothing about what just happened, and a default that
+      // would move under us if the header ever gained another control.
+      // `autoFocus` is how the choice dialog below already declares this.
       return (
         <Button
           color="primary"
           onClick={() => closeDialog(dialog.id, dialog.actions.primary.value)}
+          autoFocus
           data-testid="dialog-primary"
         >
           {dialog.actions.primary.label}

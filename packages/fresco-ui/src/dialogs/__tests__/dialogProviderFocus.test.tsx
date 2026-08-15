@@ -108,3 +108,82 @@ describe('useDialog focus return', () => {
     );
   });
 });
+
+/**
+ * An acknowledge dialog is raised by something that has ALREADY happened — a
+ * refused import, a warning about the file just added — so it is routinely
+ * opened from a path that focused nothing at all (a file dropped onto the
+ * page). Both ends of its focus are declared here rather than inherited.
+ */
+const AcknowledgeHost = ({
+  finalFocus,
+}: {
+  finalFocus?: () => HTMLElement | null;
+}) => {
+  const { openDialog } = useDialog();
+
+  return (
+    <div>
+      <button type="button" id="upload">
+        Upload file
+      </button>
+      <button
+        type="button"
+        id="raise"
+        onClick={() =>
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'destructive',
+            title: 'That file could not be added',
+            actions: { primary: { label: 'OK', value: true } },
+            finalFocus,
+          })
+        }
+      >
+        Raise
+      </button>
+    </div>
+  );
+};
+
+describe('acknowledge dialog focus', () => {
+  it('starts on its single action, not on whatever happens to be first', async () => {
+    render(
+      <DialogProvider>
+        <AcknowledgeHost />
+      </DialogProvider>,
+    );
+
+    document.getElementById('raise')!.click();
+    await screen.findByRole('dialog');
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByTestId('dialog-primary')),
+    );
+  });
+
+  it('returns focus to the caller’s fallback when nothing was focused', async () => {
+    // The dropped-file path: no control was activated, so there is no opener to
+    // return to and focus would otherwise be left on `<body>`.
+    //
+    // This pins the pre-existing `finalFocus` contract (#1387) that
+    // AutoFileDrop now leans on, so it passes with or without this change — it
+    // documents the guarantee rather than gating the fix. The gate for the drop
+    // path is the `an import error dismissed from a drop returns focus to the
+    // upload control` e2e spec.
+    render(
+      <DialogProvider>
+        <AcknowledgeHost finalFocus={() => document.getElementById('upload')} />
+      </DialogProvider>,
+    );
+
+    expect(document.activeElement).toBe(document.body);
+    document.getElementById('raise')!.click();
+    await screen.findByRole('dialog');
+
+    screen.getByTestId('dialog-primary').click();
+    await settle();
+
+    expect(document.activeElement).toBe(document.getElementById('upload'));
+  });
+});

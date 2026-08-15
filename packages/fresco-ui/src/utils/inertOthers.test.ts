@@ -241,6 +241,46 @@ describe('inertOthers keep-path containment', () => {
     release();
     expect(el('app').getAttribute('tabindex')).toBe('0');
   });
+
+  it('does not remove a tabindex another owner added DURING the sweep', () => {
+    // The snapshot is only good while nobody else writes the attribute, and
+    // React does: it re-renders the element with a different `tabIndex` prop
+    // while a dialog is open (a `ScrollArea` viewport whose content stops
+    // overflowing; Architect's upload control, which react-dropzone takes out
+    // of the tab order for the duration of an import and React puts back).
+    // Releasing to the snapshot removes the attribute the other owner just
+    // wrote — and React's DOM cache still holds that value, so it never writes
+    // it again and the control is untabbable until it remounts.
+    build(`
+      <div id="app"><div id="live" aria-live="polite"></div></div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = inertOthers([el('modal')]);
+    expect(el('app').getAttribute('tabindex')).toBe('-1');
+
+    // A different owner takes the attribute over mid-sweep.
+    el('app').setAttribute('tabindex', '0');
+
+    release();
+    expect(el('app').getAttribute('tabindex')).toBe('0');
+  });
+
+  it('still restores its own value when nobody else touched it', () => {
+    // The other half of the ownership rule, and the reason it is written as
+    // "is the value still the `-1` we wrote?": an untouched element must go
+    // back to exactly what it had, not be left neutralised for the session.
+    build(`
+      <div id="app" tabindex="2"><div id="live" aria-live="polite"></div></div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = inertOthers([el('modal')]);
+    expect(el('app').getAttribute('tabindex')).toBe('-1');
+
+    release();
+    expect(el('app').getAttribute('tabindex')).toBe('2');
+  });
 });
 
 describe('inertOthers boundaries', () => {

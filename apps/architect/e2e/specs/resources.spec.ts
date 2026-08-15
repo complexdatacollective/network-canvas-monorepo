@@ -1,5 +1,7 @@
 import path from 'node:path';
 
+import type { Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
@@ -218,4 +220,250 @@ test('deletes an unused resource and removes it from the asset manifest', async 
       ),
     )
     .toBe('loaded');
+});
+
+// #1396. Three defects that all surface at the moment a resource is imported:
+// duplicate filenames were indistinguishable, a REFUSED import still moved the
+// undo history, and dismissing the resulting dialog left nothing focused.
+
+// A `.json` resource is a network roster, so an object that is not one is
+// refused by `validateAsset` (code NETWORK_EMPTY) after react-dropzone has
+// already accepted the extension — the "rejected import" of the report, not an
+// unsupported file type.
+const REFUSED_IMPORT = {
+  name: 'rubbish.json',
+  mimeType: 'application/json',
+  buffer: Buffer.from('{"a":1}'),
+};
+
+const uploadControl = (page: Page) =>
+  page.getByRole('button', { name: 'Upload file' });
+
+const fileInputOf = (page: Page) =>
+  uploadControl(page).locator('input[type="file"]');
+
+test('a refused import leaves the undo history exactly as it was', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/assets');
+
+  const toolbar = new Toolbar(architectPage);
+  // Nothing has been changed yet, so there is nothing to undo. This is the
+  // baseline the refusal must not move. `aria-disabled` rather than
+  // `toBeDisabled()`: ActionToolbar renders an inoperable item as an
+  // `aria-disabled` button that stays reachable, so this asserts the state the
+  // researcher's screen reader is actually told.
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).toHaveAttribute('aria-disabled', 'true');
+  const manifestBefore = assetManifestOf(
+    await readProtocolJson(architectPage),
+  ).map((asset) => asset.name);
+
+  await fileInputOf(architectPage).setInputFiles(REFUSED_IMPORT);
+
+  const errorDialog = architectPage.getByRole('dialog', {
+    name: 'That file could not be added',
+  });
+  await expect(errorDialog).toBeVisible();
+  await errorDialog.getByTestId('dialog-primary').click();
+  await expect(errorDialog).toHaveCount(0);
+
+  // Undo enabled here means the refusal recorded a history point: activating
+  // it would announce "Change undone" and write a fresh `lastModified` while
+  // changing nothing the researcher can see.
+  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
+  await expect(toolbar.button('redo')).toHaveAttribute('aria-disabled', 'true');
+  expect(
+    assetManifestOf(await readProtocolJson(architectPage)).map(
+      (asset) => asset.name,
+    ),
+  ).toEqual(manifestBefore);
+});
+
+test('a refused import does not throw away a pending redo', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/assets');
+
+  const toolbar = new Toolbar(architectPage);
+  await fileInputOf(architectPage).setInputFiles(TEST_IMAGE_PATH);
+  await expect
+    .poll(async () =>
+      assetManifestOf(await readProtocolJson(architectPage)).some(
+        (asset) => asset.name === TEST_IMAGE_NAME,
+      ),
+    )
+    .toBe(true);
+
+  await toolbar.undo();
+  await expect(toolbar.button('redo')).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+
+  await fileInputOf(architectPage).setInputFiles(REFUSED_IMPORT);
+  const errorDialog = architectPage.getByRole('dialog', {
+    name: 'That file could not be added',
+  });
+  await expect(errorDialog).toBeVisible();
+  await errorDialog.getByTestId('dialog-primary').click();
+  await expect(errorDialog).toHaveCount(0);
+
+  // The refusal used to clear the redo stack before recording itself, so the
+  // resource the researcher had just undone became unrecoverable.
+  await expect(toolbar.button('redo')).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+  await toolbar.redo();
+  await expect
+    .poll(async () =>
+      assetManifestOf(await readProtocolJson(architectPage)).some(
+        (asset) => asset.name === TEST_IMAGE_NAME,
+      ),
+    )
+    .toBe(true);
+});
+
+test('dismissing an import error returns focus to the upload control', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/assets');
+
+  const dropzone = uploadControl(architectPage);
+
+  // Drive the real keyboard path — focus the control and activate it — so the
+  // control genuinely holds focus when the import starts. `setInputFiles` on
+  // the hidden input moves no focus, and would let this pass while the path a
+  // researcher actually takes still lost it.
+  await dropzone.focus();
+  await expect(dropzone).toBeFocused();
+  const chooser = architectPage.waitForEvent('filechooser');
+  await dropzone.press('Enter');
+  await (await chooser).setFiles(REFUSED_IMPORT);
+
+  const errorDialog = architectPage.getByRole('dialog', {
+    name: 'That file could not be added',
+  });
+  await expect(errorDialog).toBeVisible();
+  await errorDialog.getByTestId('dialog-primary').click();
+  await expect(errorDialog).toHaveCount(0);
+
+  await expect(dropzone).toBeFocused();
+  // And it is still a tab stop: focus that lands on an element the browser has
+  // taken out of the tab order is focus the next Tab cannot recover.
+  await expect(dropzone).toHaveAttribute('tabindex', '0');
+});
+
+test('an import error dismissed from a drop returns focus to the upload control', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/assets');
+
+  const dropzone = uploadControl(architectPage);
+  // A file dropped onto the page activates nothing, so the dialog has no
+  // opener to return to — the case that left focus on `<body>` and made the
+  // next Tab restart at the page header.
+  await architectPage.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+  await expect
+    .poll(() =>
+      architectPage.evaluate(() => document.activeElement?.tagName ?? 'NONE'),
+    )
+    .toBe('BODY');
+
+  await fileInputOf(architectPage).setInputFiles(REFUSED_IMPORT);
+
+  const errorDialog = architectPage.getByRole('dialog', {
+    name: 'That file could not be added',
+  });
+  await expect(errorDialog).toBeVisible();
+  await errorDialog.getByTestId('dialog-primary').click();
+  await expect(errorDialog).toHaveCount(0);
+
+  await expect(dropzone).toBeFocused();
+  await expect(dropzone).toHaveAttribute('tabindex', '0');
+});
+
+test('two resources with the same filename are told apart', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.goto('/protocol/assets');
+
+  const roster = (rows: string) => ({
+    name: 'people.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(rows),
+  });
+
+  await fileInputOf(architectPage).setInputFiles(
+    roster('name,age\nAda,36\nGrace,45\n'),
+  );
+  const assetList = architectPage.getByRole('listbox', {
+    name: 'Resource library',
+  });
+  await expect(
+    assetList.getByRole('heading', {
+      level: 4,
+      name: 'people.csv',
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await fileInputOf(architectPage).setInputFiles(
+    roster('name,age\nAlan,41\nKatherine,52\n'),
+  );
+
+  // Both cards are on screen, and nothing about them reads the same: the
+  // heading, and the accessible name of every action on the card.
+  await expect(
+    assetList.getByRole('heading', {
+      level: 4,
+      name: 'people.csv',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    assetList.getByRole('heading', {
+      level: 4,
+      name: 'people (2).csv',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    architectPage.getByRole('button', {
+      name: 'Delete people.csv',
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await expect(
+    architectPage.getByRole('button', {
+      name: 'Delete people (2).csv',
+      exact: true,
+    }),
+  ).toHaveCount(1);
+
+  // The disambiguation is for reading only: the protocol still records the
+  // filenames the researcher chose, so nothing they never typed is saved,
+  // exported, or handed to Interviewer.
+  const stored = assetManifestOf(await readProtocolJson(architectPage))
+    .map((asset) => asset.name)
+    .filter((name) => name.startsWith('people'));
+  expect(stored).toEqual(['people.csv', 'people.csv']);
 });

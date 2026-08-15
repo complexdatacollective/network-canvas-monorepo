@@ -90,6 +90,14 @@ const preExistingInert = new WeakSet<Element>();
  * duration of a sweep. Same counting rules as `inertCounts`; `null` records
  * "had no tabindex of its own", so the attribute is removed rather than
  * restored to a value it never had.
+ *
+ * A snapshot is only good while nobody else writes the attribute. React does,
+ * whenever a `tabIndex` PROP changes during the sweep — `ScrollArea`'s viewport
+ * is a tab stop only while its content overflows, and Architect's upload
+ * control drops out of the tab order while it is busy. Restoring a stale
+ * snapshot over that new value strands the element: React's DOM cache already
+ * holds the value it wrote, so it never writes it again, and the control stays
+ * untabbable until it remounts. See the ownership check on release.
  */
 const neutralisedTabIndex = new WeakMap<
   Element,
@@ -244,6 +252,22 @@ export function inertOthers(insideElements: Element[]): () => void {
       if (record.count > 0) continue;
 
       neutralisedTabIndex.delete(element);
+
+      // Only put back what this sweep still owns. Anything other than the
+      // `-1` written on the way in means another owner (React, re-rendering
+      // the element with a different `tabIndex`) has taken the attribute over
+      // since, and their value is the current one — restoring the snapshot
+      // would overwrite it with a value nothing will ever write again.
+      //
+      // Ownership is inferred from the value, so an owner who coincidentally
+      // sets exactly `-1` mid-sweep is indistinguishable from this sweep and
+      // has its value overwritten by the snapshot. Left as is deliberately:
+      // the alternative is observing every neutralised element for the life of
+      // every dialog, and the failure it would prevent (an element restored to
+      // being tabbable that its owner wanted out of the tab order) is the one
+      // this file's release path has always produced.
+      if (element.getAttribute('tabindex') !== '-1') continue;
+
       if (record.previous === null) {
         element.removeAttribute('tabindex');
       } else {

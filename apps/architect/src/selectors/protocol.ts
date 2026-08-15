@@ -1,7 +1,9 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { find, findIndex, reduce } from 'es-toolkit/compat';
+import { find, findIndex, mapValues, reduce } from 'es-toolkit/compat';
 
+import type { Asset } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
+import { deriveAssetDisplayNames } from '~/utils/assetNames';
 
 import { getStageEditorDraftCodebook } from './stageEditorDraft';
 
@@ -52,10 +54,52 @@ export const getProtocolName = (state: RootState): string | undefined => {
   return getProtocol(state)?.name;
 };
 
+/**
+ * A stable identity for "this protocol has no resources", so the selectors
+ * derived from the manifest don't recompute — and hand their consumers a fresh
+ * object — on every dispatch while no protocol is loaded.
+ */
+const EMPTY_ASSET_MANIFEST: Record<string, Asset> = {};
+
+/**
+ * The asset manifest exactly as it is stored, validated, exported, and read by
+ * Interviewer and Fresco.
+ *
+ * Use this wherever the researcher's own filename is the subject: the name
+ * written into a stage label, the path an asset resolves through. Everything
+ * that merely SHOWS a resource wants `getDisplayAssetManifest`, whose names are
+ * unique within the protocol.
+ */
 export const getAssetManifest = (state: RootState) => {
   const protocol = getProtocol(state);
-  return protocol?.assetManifest || {};
+  return protocol?.assetManifest ?? EMPTY_ASSET_MANIFEST;
 };
+
+/**
+ * The asset manifest with every `name` replaced by one that is unique within
+ * the protocol (see `~/utils/assetNames`).
+ *
+ * NEVER PERSIST THIS. It is manifest-shaped so a display surface can swap it in
+ * for `getAssetManifest` without restructuring, but its names are derived for
+ * reading, not for saving: writing them back would put a name the researcher
+ * never chose into their protocol file.
+ *
+ * Entries whose stored name is already unique pass through by reference, so a
+ * manifest with no collisions — every protocol we ship — is untouched and every
+ * consumer keeps the memoisation it had.
+ */
+export const getDisplayAssetManifest = createSelector(
+  [getAssetManifest],
+  (assetManifest) => {
+    const displayNames = deriveAssetDisplayNames(assetManifest);
+
+    return mapValues(assetManifest, (asset, id) =>
+      displayNames[id] === asset.name
+        ? asset
+        : { ...asset, name: displayNames[id] ?? asset.name },
+    );
+  },
+);
 
 export const getCodebook = (state: RootState) => {
   const protocol = getProtocol(state);

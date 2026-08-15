@@ -6,7 +6,7 @@ import type { Asset as ProtocolAsset } from '@codaco/protocol-validation';
 import type { Asset } from '~/ducks/modules/protocol/assetManifest';
 import type { RootState } from '~/ducks/modules/root';
 import { getAssetIndex, utils as indexUtils } from '~/selectors/indexes';
-import { getAssetManifest } from '~/selectors/protocol';
+import { getDisplayAssetManifest } from '~/selectors/protocol';
 
 type AssetWithUsage = Asset & { isUsed: boolean };
 
@@ -45,7 +45,12 @@ const mapStateToProps = (
   state: RootState,
   { assetType, selected }: OwnProps,
 ) => {
-  const allAssets = getAssetManifest(state);
+  // Display names, so two resources sharing a filename can be told apart in the
+  // library and in the stage-editor pickers. Every label a researcher reads or
+  // types against is built from this `name`: the card heading and its tooltip,
+  // the Preview/Download/Delete action labels, and the Collection's typeahead
+  // key. The stored manifest is untouched — see `getDisplayAssetManifest`.
+  const allAssets = getDisplayAssetManifest(state);
   const filteredAssets = filterAssets(assetType, allAssets);
   // Get asset usage index
   const assetIndex = getAssetIndex(state);

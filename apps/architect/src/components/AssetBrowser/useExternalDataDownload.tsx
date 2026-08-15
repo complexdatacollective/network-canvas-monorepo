@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { getAssetManifest } from '~/selectors/protocol';
+import { getDisplayAssetManifest } from '~/selectors/protocol';
 import { getAssetById } from '~/utils/assetUtils';
 import { reportError } from '~/utils/reportError';
 
@@ -13,7 +13,11 @@ const defaultMeta = {
 
 const useExternalDataDownload = () => {
   const { openDialog } = useDialog();
-  const assetManifest = useSelector(getAssetManifest);
+  // The download is named after the card the researcher clicked, not after a
+  // stored name it may share with another card — downloading two resources
+  // both called `people.csv` is how "which one is which?" reaches the file
+  // system. `source` still comes from the same entry and is unchanged.
+  const assetManifest = useSelector(getDisplayAssetManifest);
 
   const getAssetInfo = useCallback(
     (id: string) => {

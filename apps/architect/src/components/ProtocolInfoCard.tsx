@@ -106,10 +106,17 @@ const ProtocolInfoCard = () => {
           }}
           onBlur={() => {
             const trimmed = localName.trim();
-            if (trimmed) {
-              dispatch(updateProtocolName({ name: trimmed }));
-            } else {
+            if (!trimmed) {
               setLocalName(name ?? '');
+              return;
+            }
+            // Clicking into the field and out again is not an edit, so it does
+            // not dispatch one — the same guard the description field below
+            // has always had. (The timeline refuses to record a change that
+            // isn't one, so this is about not dispatching something
+            // meaningless rather than about the history.)
+            if (trimmed !== name) {
+              dispatch(updateProtocolName({ name: trimmed }));
             }
           }}
           placeholder="Enter protocol name..."
