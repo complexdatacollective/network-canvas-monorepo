@@ -16,11 +16,11 @@ describe('Button', () => {
       'bg-(--component-text)',
       'border-(--component-raised-edge)',
       'border-b-4',
-      'not-disabled:hover:border-b-5',
+      'ui-enabled:hover:border-b-5',
       '[--component-text:var(--success)]',
       '[--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
-      'not-disabled:hover:elevation-medium',
-      'not-disabled:active:translate-y-1',
+      'ui-enabled:hover:elevation-medium',
+      'ui-enabled:active:translate-y-1',
       'uppercase',
       'tracking-widest',
       'text-sm',
@@ -41,11 +41,11 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
       'border-b-3',
-      'not-disabled:hover:border-b-4',
+      'ui-enabled:hover:border-b-4',
     );
     expect(screen.getByRole('button', { name: 'Extra large' })).toHaveClass(
       'border-b-6',
-      'not-disabled:hover:border-b-8',
+      'ui-enabled:hover:border-b-8',
       'normal-case',
       'tracking-wide',
       'text-xl',
@@ -123,7 +123,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Disabled action' });
 
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('disabled:[&>span]:bg-[length:0%_2px]!');
+    expect(button).toHaveClass('ui-disabled:[&>span]:bg-[length:0%_2px]!');
   });
 
   it('supports a slotted link without forwarding button-only attributes', () => {

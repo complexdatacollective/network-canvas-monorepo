@@ -227,43 +227,6 @@ const SegmentControl = React.forwardRef<HTMLButtonElement, ButtonProps>(
   },
 );
 
-// Button expresses its disabled appearance with `:disabled`, and inverts the
-// flat variants' colours on `hover:enabled:` — neither of which can match a
-// segment that is never natively disabled. Restate both on `aria-disabled` so
-// a disabled segment reads as unavailable and never lights up under the
-// pointer. It stays hoverable on purpose: for an icon-only segment the tooltip
-// is the only visible label, and it is most needed when the segment is dimmed.
-const disabledSegmentClasses =
-  'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:active:translate-none!';
-
-// The variants that invert this token pair on hover, mapped to the background
-// each one rests at. Restoring the resting background rather than blanking it
-// matters for `glass`, whose `control-glass` treatment rests on a translucent
-// `bg-surface/50` fill — forcing transparency would strip that fill on hover
-// instead of leaving the segment looking untouched. Variants that paint their
-// own background (`default`, `raised`) have no hover flip to undo.
-const HOVER_RESET_BACKGROUND: Partial<
-  Record<NonNullable<ButtonProps['variant']>, string>
-> = {
-  text: 'aria-disabled:hover:bg-transparent!',
-  outline: 'aria-disabled:hover:bg-transparent!',
-  dashed: 'aria-disabled:hover:bg-transparent!',
-  glass: 'aria-disabled:hover:bg-surface/50!',
-};
-const hoverResetForeground = 'aria-disabled:hover:text-(--component-text)!';
-
-/** Classes carrying the disabled appearance for a segment, if it is disabled. */
-function disabledClasses(content: SegmentContent, disabled?: boolean) {
-  if (!disabled) return undefined;
-  const background = HOVER_RESET_BACKGROUND[content.variant ?? 'text'];
-  return cx(
-    disabledSegmentClasses,
-    // A caller-supplied `className` is painting the segment itself, so leave
-    // its colours alone rather than resetting them out from under it.
-    background && !content.className && cx(background, hoverResetForeground),
-  );
-}
-
 // Pressed-state highlight for toggle segments, via Base UI's data attribute.
 // `!important` so the selected colours win over Button's text-variant hover.
 const pressedClasses =
@@ -273,7 +236,7 @@ const pressedClasses =
 function segmentButton(
   content: SegmentContent,
   size: SegmentSize,
-  { disabled, extraClassName }: { disabled?: boolean; extraClassName?: string },
+  extraClassName?: string,
 ) {
   const labelVisible = isLabelVisible(content);
   return (
@@ -287,7 +250,6 @@ function segmentButton(
         !labelVisible && 'aspect-square p-0',
         extraClassName,
         content.className,
-        disabledClasses(content, disabled),
       )}
     >
       {labelVisible ? content.label : null}
@@ -327,9 +289,7 @@ function ToolbarButtonSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
-  const styledButton = segmentButton(segment, size, {
-    disabled: segment.disabled,
-  });
+  const styledButton = segmentButton(segment, size);
   // When a caller hosts the segment in their own element (e.g. a Popover
   // trigger), the styled button becomes that element's render target so the
   // overlay wiring composes with the toolbar button — mirroring the
@@ -382,10 +342,7 @@ function ToolbarToggleSegment({
           defaultPressed={segment.defaultPressed}
           onPressedChange={segment.onPressedChange}
           disabled={disabled}
-          render={segmentButton(segment, size, {
-            disabled,
-            extraClassName: pressedClasses,
-          })}
+          render={segmentButton(segment, size, pressedClasses)}
         />
       }
     />
@@ -437,10 +394,7 @@ function ToolbarGroupSegment({
               <Toggle
                 value={option.value}
                 disabled={disabled}
-                render={segmentButton(option, size, {
-                  disabled,
-                  extraClassName: pressedClasses,
-                })}
+                render={segmentButton(option, size, pressedClasses)}
               />
             }
           />
@@ -487,10 +441,7 @@ function ToolbarMenuSegment({
       render={
         <DropdownMenuTrigger
           disabled={segment.disabled}
-          render={segmentButton(segment, size, {
-            disabled: segment.disabled,
-            extraClassName: activeClasses,
-          })}
+          render={segmentButton(segment, size, activeClasses)}
         />
       }
     />
@@ -550,10 +501,7 @@ function ToolbarPopoverSegment({
       render={
         <PopoverTrigger
           disabled={segment.disabled}
-          render={segmentButton(segment, size, {
-            disabled: segment.disabled,
-            extraClassName: activeClasses,
-          })}
+          render={segmentButton(segment, size, activeClasses)}
         />
       }
     />
