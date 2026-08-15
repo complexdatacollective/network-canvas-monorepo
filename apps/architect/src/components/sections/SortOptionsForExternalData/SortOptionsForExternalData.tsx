@@ -108,6 +108,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           label="Initial sort order"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new sort rule"
           initialValue={initialSortOrder}
           maxItems={1}
           properties={SORT_ORDER_PROPERTIES}
@@ -127,6 +128,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           label="Participant sortable properties"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new sortable property"
           initialValue={initialSortableProperties}
           maxItems={maxVariableOptions}
           properties={SORTABLE_PROPERTIES}

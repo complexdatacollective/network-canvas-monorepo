@@ -73,8 +73,11 @@ describe('CodebookVariableValidationSection', () => {
 
     renderSection();
 
+    // The negative of the expanded case below. This used to query an "Add
+    // new" button, which this section has never rendered — the rule list is a
+    // switch group — so the assertion passed no matter what was on screen.
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
   });
 

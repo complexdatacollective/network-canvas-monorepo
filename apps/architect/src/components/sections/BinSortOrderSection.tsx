@@ -72,6 +72,7 @@ const BinSortOrderSection = ({
           label="Bin sort order"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new bin sort rule"
           initialValue={initialValue}
           properties={SORT_RULE_PROPERTIES}
           validation={SORT_RULE_VALIDATION}

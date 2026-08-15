@@ -62,6 +62,7 @@ const setup = ({
         name="items"
         label="Items"
         component={MultiSelect}
+        addButtonLabel="Add new item"
         initialValue={initialItems}
         properties={properties}
         options={options}
@@ -126,6 +127,7 @@ describe('MultiSelect', () => {
           name="sortOptions.sortOrder"
           label="Sort order"
           component={MultiSelect}
+          addButtonLabel="Add new item"
           initialValue={[{ property: 'name', direction: 'asc' }]}
           properties={DEFAULT_PROPERTIES}
           options={(() => []) as OptionGetter}
@@ -164,11 +166,11 @@ describe('MultiSelect', () => {
   it('adds immediately and enforces maxItems', async () => {
     setup({ maxItems: 1 });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add new item' }));
 
     await waitFor(() => expect(getItems()).toEqual([{}]));
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('button', { name: 'Add new item' }),
     ).not.toBeInTheDocument();
   });
 
@@ -199,7 +201,7 @@ describe('MultiSelect', () => {
     ]) as OptionGetter;
     const { onSubmit } = setup({ options });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add new item' }));
     fireEvent.change(await screen.findByRole('combobox', { name: 'First' }), {
       target: { value: 'a' },
     });

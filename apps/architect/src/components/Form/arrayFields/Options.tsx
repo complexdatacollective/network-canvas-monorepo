@@ -135,7 +135,19 @@ export type OptionsProps = Omit<
   | 'itemTemplate'
   | 'onOperation'
   | 'sortable'
->;
+> & {
+  /**
+   * Visible text and accessible name of the add button — REQUIRED, and a whole
+   * string rather than a `Create new ${itemLabel}` template, so it can be
+   * localised and so no call site can fall back to a generic default.
+   *
+   * The sibling `MultiSelect` doc explains what a shared default costs: a
+   * Categorical Bin prompt editor mounts this list alongside two sort-rule
+   * lists, and named "Add new" all three are the same control to anyone
+   * navigating by a list of buttons (#1391).
+   */
+  addButtonLabel: string;
+};
 
 /**
  * The fresco-ui-native successor to `~/components/Options/Options.tsx`: the
@@ -150,6 +162,7 @@ const Options = ({
   value = EMPTY_OPTIONS,
   onChange,
   name = '',
+  addButtonLabel,
   'aria-invalid': ariaInvalid = false,
   ...arrayFieldProps
 }: OptionsProps) => {
@@ -175,7 +188,7 @@ const Options = ({
         itemComponent={Option}
         itemTemplate={itemTemplate}
         itemClasses="bg-surface-3 text-surface-3-contrast p-0! shadow-none"
-        addButtonLabel="Add new"
+        addButtonLabel={addButtonLabel}
         emptyStateMessage="No options have been added yet."
         immediateAdd
         sortable

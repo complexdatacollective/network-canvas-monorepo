@@ -79,6 +79,7 @@ const BucketSortOrderSection = ({
         label="Bucket sort order"
         labelHidden
         component={MultiSelect}
+        addButtonLabel="Add new bucket sort rule"
         initialValue={initialValue}
         properties={SORT_RULE_PROPERTIES}
         validation={SORT_RULE_VALIDATION}

@@ -215,7 +215,10 @@ test('the option editor rejects canonically equivalent labels', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Checkbox Group' });
 
-  const addOption = page.getByRole('button', { name: 'Add new', exact: true });
+  const addOption = page.getByRole('button', {
+    name: 'Create new option',
+    exact: true,
+  });
   const optionLabel = (index: number) =>
     page.locator(`[name="options[${index}].label"]`);
   const optionValue = (index: number) =>

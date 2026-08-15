@@ -143,6 +143,7 @@ const PromptFieldsLayout = ({
             label="Sort order"
             labelHidden
             component={MultiSelect}
+            addButtonLabel="Add new sort rule"
             initialValue={initialSortOrder ?? EMPTY_SORT_ORDER}
             properties={SORT_RULE_PROPERTIES}
             validation={SORT_RULE_VALIDATION}

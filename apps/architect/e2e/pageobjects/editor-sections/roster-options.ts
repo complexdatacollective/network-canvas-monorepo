@@ -8,11 +8,12 @@ import { type StageEditor } from '../stage-editor.js';
 // - All three sections are toggleable, gated on `dataSource`, and collapsed
 //   on a fresh stage; toggling ON writes nothing. ALWAYS pick the data
 //   source first — changing it resets all three areas.
-// - Rows are immediateAdd MultiSelects ('Add new' inserts `{}` inline).
-//   Several 'Add new' buttons coexist — scope through the array field's
-//   data-field-name seam. Within a row, set the SELECT (Variable/Property)
-//   before the text/direction field: changing an earlier row field nulls
-//   every later one (MultiSelect handleChange).
+// - Rows are immediateAdd MultiSelects: one click on the list's add button
+//   inserts `{}` inline. Each of this stage's three lists names that button
+//   for its own contents, so no scoping is needed to tell them apart. Within
+//   a row, set the SELECT (Variable/Property) before the text/direction
+//   field: changing an earlier row field nulls every later one (MultiSelect
+//   handleChange).
 // - Variable/Property options are the raw CSV header strings; row selects
 //   are native (selectOption works). Saved rows carry exactly the two keys.
 // - searchOptions.matchProperties is a checkbox group ('Which attributes
@@ -25,13 +26,12 @@ export async function addCardDisplayProperties(
   editor: StageEditor,
   rows: { variable: string; label: string }[],
 ): Promise<void> {
-  await editor
-    .section('Card Display Options')
-    .getByRole('switch', { name: 'Card Display Options' })
-    .click();
-  const array = editor.field('cardOptions.additionalProperties');
+  const section = editor.section('Card Display Options');
+  await section.getByRole('switch', { name: 'Card Display Options' }).click();
   for (const [index, row] of rows.entries()) {
-    await array.getByRole('button', { name: 'Add new' }).click();
+    await section
+      .getByRole('button', { name: 'Add new display property' })
+      .click();
     await editor
       .field(`cardOptions.additionalProperties[${index}].variable`)
       .getByRole('combobox', { name: 'Variable' })
@@ -50,14 +50,9 @@ export async function configureSortOptions(
     sortableProperties: { variable: string; label: string }[];
   },
 ): Promise<void> {
-  await editor
-    .section('Sort Options')
-    .getByRole('switch', { name: 'Sort Options' })
-    .click();
-  await editor
-    .field('sortOptions.sortOrder')
-    .getByRole('button', { name: 'Add new' })
-    .click();
+  const section = editor.section('Sort Options');
+  await section.getByRole('switch', { name: 'Sort Options' }).click();
+  await section.getByRole('button', { name: 'Add new sort rule' }).click();
   await editor
     .field('sortOptions.sortOrder[0].property')
     .getByRole('combobox', { name: 'Property' })
@@ -66,9 +61,10 @@ export async function configureSortOptions(
     .field('sortOptions.sortOrder[0].direction')
     .getByRole('combobox', { name: 'Direction' })
     .selectOption(opts.sortOrder.direction);
-  const sortable = editor.field('sortOptions.sortableProperties');
   for (const [index, row] of opts.sortableProperties.entries()) {
-    await sortable.getByRole('button', { name: 'Add new' }).click();
+    await section
+      .getByRole('button', { name: 'Add new sortable property' })
+      .click();
     await editor
       .field(`sortOptions.sortableProperties[${index}].variable`)
       .getByRole('combobox', { name: 'Variable' })

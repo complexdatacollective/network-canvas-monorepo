@@ -298,6 +298,7 @@ const PromptFields = ({
                       label="Options"
                       labelHidden
                       component={Options}
+                      addButtonLabel="Create new option"
                       validation={optionsValidation}
                       initialValue={variableOptions}
                     />

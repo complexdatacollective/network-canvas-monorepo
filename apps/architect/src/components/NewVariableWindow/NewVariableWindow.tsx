@@ -138,6 +138,7 @@ const NewVariableFields = ({
               label="Options"
               hint="Create the values this input control offers the participant."
               component={Options}
+              addButtonLabel="Create new option"
               initialValue={initialOptions}
               validation={optionsValidation}
             />

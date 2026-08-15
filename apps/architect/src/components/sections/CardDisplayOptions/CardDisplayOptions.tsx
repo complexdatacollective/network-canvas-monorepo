@@ -110,6 +110,7 @@ const CardDisplayOptions = ({
           label="Additional display properties"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new display property"
           initialValue={initialAdditionalProperties}
           maxItems={maxVariableOptions}
           properties={DISPLAY_PROPERTIES}

@@ -245,6 +245,7 @@ const FieldFields = ({
               label="Options"
               hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
               component={Options}
+              addButtonLabel="Create new option"
               initialValue={asOptions(item.options)}
               validation={optionsValidation}
             />

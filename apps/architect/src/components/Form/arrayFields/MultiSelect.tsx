@@ -250,6 +250,18 @@ export type MultiSelectProps = Omit<
   | 'onOperation'
   | 'sortable'
 > & {
+  /**
+   * Visible text and accessible name of the add button — REQUIRED, and a whole
+   * string rather than an `Add new ${itemLabel}` template, so it can be
+   * localised and so no call site can fall back to a generic default.
+   *
+   * One surface mounts several of these at once: a Categorical or Ordinal Bin
+   * prompt editor has a bucket sort order and a bin sort order, and a roster
+   * stage has an initial sort order, a sortable-property list and a
+   * display-property list. Named "Add new", every one of them is the same
+   * control to anyone navigating by a list of buttons (#1391).
+   */
+  addButtonLabel: string;
   /** One column per entry, in order; each narrows the next one's options. */
   properties: PropertyField[];
   /** Supplies the option list for a select column, per row. */
@@ -273,6 +285,7 @@ const MultiSelect = ({
   value = EMPTY_ITEMS,
   onChange,
   name = '',
+  addButtonLabel,
   properties,
   options,
   maxItems = null,
@@ -296,7 +309,7 @@ const MultiSelect = ({
           itemComponent={MultiSelectRow}
           itemTemplate={itemTemplate}
           itemClasses="p-0! shadow-none"
-          addButtonLabel="Add new"
+          addButtonLabel={addButtonLabel}
           emptyStateMessage="No properties available."
           immediateAdd
           sortable
