@@ -257,6 +257,16 @@ describe('PublicationRail', () => {
     expect(viewport.scrollLeft).toBe(600);
   });
 
+  it('shows each publication year as a machine-readable date', async () => {
+    renderRail();
+
+    const year = await screen.findByText('2024');
+
+    expect(year.tagName).toBe('TIME');
+    expect(year).toHaveAttribute('datetime', '2024');
+    expect(year.closest('a')).toHaveTextContent('Journal One · 2024');
+  });
+
   it('keeps a native horizontal row without pinning for reduced motion', async () => {
     motionState.reducedMotion = true;
     renderRail();
