@@ -185,9 +185,16 @@ describe('SegmentedToolbar — toggles', () => {
       },
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
-    expect(screen.getByRole('button', { name: 'Freeze' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    const button = screen.getByRole('button', { name: 'Freeze' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveClass(
+      'aria-pressed:border-selected!',
+      'aria-pressed:bg-selected!',
+      'aria-pressed:text-selected-contrast!',
+    );
+    expect(button).not.toHaveClass(
+      'data-pressed:bg-selected!',
+      'data-pressed:text-selected-contrast!',
     );
   });
 
@@ -368,9 +375,16 @@ const groupItems = (onValueChange = vi.fn()): ToolbarSegment[] => [
 describe('SegmentedToolbar — groups', () => {
   it('renders one button per option with the default pressed', () => {
     render(<SegmentedToolbar label="View" items={groupItems()} />);
-    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    const selectedOption = screen.getByRole('button', { name: 'List' });
+    expect(selectedOption).toHaveAttribute('aria-pressed', 'true');
+    expect(selectedOption).toHaveClass(
+      'aria-pressed:border-selected!',
+      'aria-pressed:bg-selected!',
+      'aria-pressed:text-selected-contrast!',
+    );
+    expect(selectedOption).not.toHaveClass(
+      'data-pressed:bg-selected!',
+      'data-pressed:text-selected-contrast!',
     );
     expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
       'aria-pressed',

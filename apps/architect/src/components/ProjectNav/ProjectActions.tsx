@@ -218,7 +218,6 @@ const ProjectActions = ({
 
     if (canRecoverHistory) {
       items.push(
-        { type: 'separator', id: 'project-history-separator' },
         {
           type: 'button',
           id: 'undo',

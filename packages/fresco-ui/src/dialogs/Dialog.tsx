@@ -205,7 +205,7 @@ export default function Dialog({
         <DialogContent labelledBy={title ? titleId : undefined}>
           {description && (
             <BaseDialog.Description
-              render={<Paragraph margin="none" className="max-w-[75ch]" />}
+              render={<Paragraph className="max-w-[75ch]" />}
             >
               {description}
             </BaseDialog.Description>

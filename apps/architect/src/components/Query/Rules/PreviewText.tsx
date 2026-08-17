@@ -99,11 +99,8 @@ export const Join = ({ value = '', variant = 'default' }: JoinProps) =>
   );
 
 /*
- * A rule reads as one sentence, and the whole card is the button that opens it
- * for editing — so every part below is phrasing content. A `<div>` inside a
- * `<button>` is invalid HTML, and the entity chips are drawn `presentational`
- * for the same reason: a control inside a control is invalid and gives
- * assistive technology a second, dead target.
+ * A rule reads as one sentence. Its entity chips are presentational because
+ * this is a preview, not another set of controls inside the editable-list row.
  */
 
 type VariableProps = {

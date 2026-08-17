@@ -29,15 +29,10 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  *
  * The rule builders were brought INSIDE it. `RuleSetFields` mounts
  * `Query/Rules/Rules.tsx` twice per stage editor, once for Skip Logic and once
- * for Filter, and both used to hard-code "Add alter rule"/"Add edge rule" — a
- * real duplicate of exactly this class in ten interfaces, and one this guard
- * could not see, because those names sit outside the convention. Each rule set
- * now names its own buttons ("Add new skip logic alter rule",
- * "Add new filter alter rule", …), so they are covered here with no widening
- * and no allowlist. The ego button was renamed along with them although it
- * never duplicated: it is the third button of the same group, and leaving it
- * as "Add ego rule" would have left one control of the three outside both the
- * convention and this guard.
+ * for Filter. Each rule set is now one editable list with one conventionally
+ * named add control ("Add new skip logic rule" / "Add new filter rule"); the
+ * rule target is selected inside the row editor. Both controls are therefore
+ * covered here with no widening and no allowlist.
  *
  * What stays outside is `RichTextEditor.tsx`'s "Add link" — a toolbar button,
  * one per editor, belonging to the editor it sits in exactly as a row's Edit

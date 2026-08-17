@@ -4,8 +4,10 @@ import { type Locator } from '@playwright/test';
 // SkipLogic section (`type="query"` — ego rules available) and the
 // Filter/NetworkFilter sections (no ego rules). Facts verified against
 // source, not guessed:
-// - Add buttons: each rule set names its own, because most stage editors mount
-//   both at once (RuleSetFields.tsx — see ADD_RULE_BUTTONS below). The rule
+// - Add buttons: each editable rule list names its one add control, because
+//   most stage editors mount both at once (RuleSetFields.tsx — see
+//   ADD_RULE_BUTTONS below). The rule target (Node/Edge/Ego) is selected inside
+//   the editor. The rule
 //   editor dialog is titled 'Construct a Rule' for both new and edit; its
 //   submit reads 'Finish and Close' (EditRule.tsx).
 // - Entity type selection inside the dialog reuses the EntitySelectField
@@ -19,7 +21,7 @@ import { type Locator } from '@playwright/test';
 //   withEntityRuleType.tsx) — matched with .filter({ hasText }) per the
 //   suite's long-markdown policy, not exact names.
 // - Operator LABELS (options.ts): EXACTLY → 'is exactly', EXISTS → 'exists',
-//   NOT_EXISTS → 'does not Exist' (capital E — verbatim from source).
+//   NOT_EXISTS → 'does not exist' .
 //   Presence operators render as radios; variable-rule operators are a native
 //   <select> named 'Operator'.
 // - Boolean 'Attribute Value' is a switch whose accessible name mirrors its
@@ -35,7 +37,7 @@ export type RuleSpec =
   | {
       kind: 'alterPresence';
       nodeTypeName: string;
-      operator: 'exists' | 'does not Exist';
+      operator: 'Exists' | 'Does not exist';
     }
   | {
       kind: 'alterBooleanAttribute';
@@ -57,19 +59,12 @@ export type RuleSpec =
 export type FilterRuleSpec = Exclude<RuleSpec, { kind: 'egoBooleanExactly' }>;
 
 /**
- * Verbatim from `RuleSetFields.tsx`. Both rule builders used to say
- * 'Add alter rule'/'Add edge rule', so a stage editor showed each name twice
- * and these locators resolved by luck of scoping; each set now names its own
- * (#1391). The edge buttons — 'Add new filter edge rule' and
- * 'Add new skip logic edge rule' — are absent here only because `RuleSpec`
- * has no edge kind yet.
+ * Verbatim from `RuleSetFields.tsx`. A rule set is one editable list, so each
+ * builder has one add control and the dialog owns the target choice.
  */
 const ADD_RULE_BUTTONS = {
-  filter: { alter: 'Add new filter alter rule' },
-  skipLogic: {
-    alter: 'Add new skip logic alter rule',
-    ego: 'Add new skip logic ego rule',
-  },
+  filter: 'Add new filter rule',
+  skipLogic: 'Add new skip logic rule',
 } as const;
 
 const ruleDialog = (host: Locator) =>
@@ -101,9 +96,8 @@ async function addEgoRule(
 ): Promise<void> {
   const dialog = ruleDialog(host);
 
-  await host
-    .getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic.ego })
-    .click();
+  await host.getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic }).click();
+  await dialog.getByRole('radio', { name: /^Ego -/ }).click();
   await dialog
     .getByRole('combobox', { name: 'Ego variable' })
     .selectOption({ label: spec.variableName });
@@ -128,12 +122,13 @@ async function addEgoRule(
 
 async function addEntityRule(
   host: Locator,
-  buttons: { readonly alter: string },
+  addButtonLabel: string,
   spec: FilterRuleSpec,
 ): Promise<void> {
   const dialog = ruleDialog(host);
 
-  await host.getByRole('button', { name: buttons.alter }).click();
+  await host.getByRole('button', { name: addButtonLabel }).click();
+  await dialog.getByRole('radio', { name: /^Node -/ }).click();
   await dialog
     .getByRole('radio', {
       name: `Select node ${spec.nodeTypeName}`,

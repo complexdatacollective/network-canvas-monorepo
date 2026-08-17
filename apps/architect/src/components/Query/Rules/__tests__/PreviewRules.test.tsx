@@ -1,6 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+
 import PreviewRules from '../PreviewRules';
 
 const CODEBOOK = {
@@ -35,25 +37,29 @@ const RULES = [
 
 const renderRules = (rules = RULES, join: string | null = 'OR') =>
   render(
-    <PreviewRules
-      rules={rules}
-      join={join}
-      codebook={CODEBOOK}
-      onClickRule={vi.fn()}
-      onDeleteRule={vi.fn()}
-    />,
+    <DialogProvider>
+      <PreviewRules
+        rules={rules}
+        join={join}
+        codebook={CODEBOOK}
+        ruleTypes={[{ label: 'Node', value: 'node' }]}
+        addButtonLabel="Add new rule"
+        onChange={vi.fn()}
+      />
+    </DialogProvider>,
   );
 
 describe('PreviewRules', () => {
-  it('renders the rules as a list, one item each', () => {
+  it('uses the shared editable list, one item per rule', () => {
     renderRules();
 
     const list = screen.getByRole('list');
-    // `role` is explicit: Tailwind's preflight sets `list-style: none`, which
-    // is on its own enough for Safari to drop a list's semantics.
     expect(list.tagName).toBe('UL');
     expect(list).toHaveAttribute('role', 'list');
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: 'Add new rule' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps the join inside the item it follows', () => {
@@ -63,8 +69,6 @@ describe('PreviewRules', () => {
       'listitem',
     );
 
-    // A `<ul>` may contain nothing but `<li>`, so the separator cannot be a
-    // sibling of the items — and it belongs to the item it follows.
     expect(first).toHaveTextContent('or');
     expect(second).not.toHaveTextContent('or');
     expect(screen.queryByRole('group')).toBeNull();
@@ -73,9 +77,6 @@ describe('PreviewRules', () => {
   it('tells two rules apart by name', () => {
     renderRules();
 
-    // Four identically-named controls would leave a screen-reader user with
-    // no way to tell which rule they are about to open or destroy: each name
-    // has to carry the rule's own sentence, not just the action.
     for (const name of [
       /^Edit rule:.*Dee$/,
       /^Delete rule:.*Dee$/,
@@ -86,12 +87,29 @@ describe('PreviewRules', () => {
     }
   });
 
-  it('renders no list at all when there are no rules', () => {
+  it('renders the preview beside separate edit and delete icon buttons', () => {
+    renderRules([RULES[0]!], null);
+
+    const item = within(screen.getByRole('list')).getByRole('listitem');
+    const edit = within(item).getByRole('button', {
+      name: /^Edit rule:.*Dee$/,
+    });
+    const remove = within(item).getByRole('button', {
+      name: /^Delete rule:.*Dee$/,
+    });
+
+    expect(edit.querySelector('.lucide-pencil')).toBeInTheDocument();
+    expect(remove.querySelector('.lucide-trash-2')).toBeInTheDocument();
+    expect(edit).not.toHaveTextContent('Dee');
+    expect(remove).not.toHaveClass('opacity-0');
+  });
+
+  it('renders the editable-list empty state when there are no rules', () => {
     renderRules([], null);
 
-    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.getByRole('list')).toBeInTheDocument();
     expect(
-      screen.getByText('Add rule types from the options below.'),
+      screen.getByText('No rules have been created yet.'),
     ).toBeInTheDocument();
   });
 });

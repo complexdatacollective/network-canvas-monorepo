@@ -132,9 +132,10 @@ export function DataTableColumnHeader<TData, TValue>({
           render={
             <Button
               size="sm"
-              className="-mx-4 min-w-max px-4! text-base"
-              variant={isActive ? 'default' : 'text'}
-              color={isActive ? 'primary' : 'dynamic'}
+              className="-mx-4 min-w-max px-4!"
+              aria-pressed={isActive}
+              variant="text"
+              color="dynamic"
               iconPosition="right"
               icon={
                 icons.length > 0 ? (

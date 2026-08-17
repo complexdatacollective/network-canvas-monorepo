@@ -46,6 +46,8 @@ const normalizeOption = (option: unknown): unknown => {
  * Controlled field for the Query/Rules editors, whose values live outside any
  * form store. Runs the same on-change validation as connected fields and
  * renders a fresco field directly.
+ *
+ * TODO: Query/Rules editors should use Form like everything else!
  */
 const RuleField = ({
   component,

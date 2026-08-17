@@ -1,5 +1,7 @@
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { selectOrCreateNodeType } from '../pageobjects/editor-sections/entity-types.js';
+import { configureStageFilter } from '../pageobjects/editor-sections/filter.js';
 import { configureSkipLogic } from '../pageobjects/editor-sections/skip-logic.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
@@ -98,4 +100,42 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
       return target?.getAttribute('role') ?? null;
     }),
   ).toBe('group');
+});
+
+test('network-filter rules use the same editable-list workflow', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Sociogram');
+  await editor.setStageName('Filtered Network');
+  await selectOrCreateNodeType(architectPage, 'person');
+
+  await configureStageFilter(editor, {
+    rules: [
+      {
+        kind: 'alterBooleanAttribute',
+        nodeTypeName: 'person',
+        variableName: 'flagged',
+        value: true,
+      },
+    ],
+  });
+
+  const section = editor.section('Filter');
+  const rules = section.getByRole('group', { name: 'Filter' });
+
+  await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);
+  await expect(
+    section.getByRole('button', { name: 'Add new filter rule' }),
+  ).toHaveCount(1);
+  await expect(
+    section.getByRole('button', {
+      name: `Edit rule: ${FLAGGED_RULE}`,
+      exact: true,
+    }),
+  ).toHaveCount(1);
 });

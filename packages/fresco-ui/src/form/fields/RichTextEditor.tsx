@@ -74,7 +74,6 @@ type ExtensionOptions = {
 };
 
 // Factory function to create custom extensions with typography classes
-// Using a function with explicit return type to satisfy ESLint's strict type checking
 function createCustomExtensions({
   headingLevels,
   enableBulletList,
@@ -200,6 +199,7 @@ const toolbarGroupStyles = cx('flex items-center');
 
 const toolbarButtonStyles = iconButtonVariants({
   size: 'sm',
+  color: 'dynamic',
   variant: 'text',
   className:
     'text-base data-pressed:bg-primary data-pressed:text-primary-contrast [&>.lucide]:h-[1.2em] [&>.lucide]:w-[1.2em] [&>.lucide]:[stroke-width:2.4]',

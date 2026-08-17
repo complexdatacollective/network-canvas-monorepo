@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import {
   Tooltip,
@@ -301,17 +302,18 @@ const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
     onDismiss();
   };
   return (
-    <div
+    <Surface
       ref={cardRef}
       role="group"
       aria-label="Protocol gallery"
-      className="border-outline bg-surface-2 relative mt-2.5 flex shrink-0 flex-col gap-1 rounded-sm border p-5"
+      spacing="sm"
     >
       <IconButton
         variant="text"
+        color="dynamic"
         size="sm"
         aria-label="Dismiss"
-        className="absolute top-1 right-1"
+        className="absolute top-1 right-2"
         onClick={handleDismiss}
         icon={<X />}
       />
@@ -324,7 +326,7 @@ const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
           protocol gallery
         </ExternalLink>
       </Paragraph>
-    </div>
+    </Surface>
   );
 };
 const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
@@ -719,7 +721,11 @@ const LibraryPanel = ({
       </div>
     ) : null;
   return (
-    <>
+    <Surface
+      spacing="sm"
+      className="publish-colors max-h-[85dvh] w-full"
+      noContainer
+    >
       <Tabs
         aria-label="Protocol library"
         layout="top"
@@ -734,7 +740,7 @@ const LibraryPanel = ({
           { value: 'templates', label: 'Templates' },
         ]}
         headerEnd={headerEnd}
-        className="bg-surface text-surface-contrast publish-colors max-h-[85dvh] w-full overflow-hidden rounded p-5 shadow-md"
+        className="h-full"
       >
         <TabsPanel value="recent" className="flex min-h-0 flex-col">
           <Collection
@@ -804,7 +810,7 @@ const LibraryPanel = ({
           </div>
         )}
       </Dialog>
-    </>
+    </Surface>
   );
 };
 export default LibraryPanel;

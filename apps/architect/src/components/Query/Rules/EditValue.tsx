@@ -1,21 +1,13 @@
 import type { ComponentType } from 'react';
 import { withProps } from 'react-recompose';
 
+import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import { type FieldValue } from '@codaco/fresco-ui/form/store/types';
 
 import RuleField from './RuleField';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoCheckboxGroupField = CheckboxGroupField as ComponentType<
-  Record<string, unknown>
->;
-const FrescoRadioGroupField = RadioGroupField as ComponentType<
-  Record<string, unknown>
->;
-const FrescoToggleField = ToggleField as ComponentType<Record<string, unknown>>;
 
 // `InputField` is string-valued (it emits `e.target.value` verbatim, even for
 // `type="number"`), while a rule's value must round-trip as a real number.
@@ -63,11 +55,11 @@ const booleanValue = {
 // scalar value (RadioGroup).
 const INPUT_TYPES = {
   string: {
-    component: FrescoInputField,
+    component: InputField,
     props: {},
   },
   number: {
-    component: FrescoInputField,
+    component: InputField,
     props: {
       type: 'number',
       step: 'any',
@@ -75,7 +67,7 @@ const INPUT_TYPES = {
     },
   },
   count: {
-    component: FrescoInputField,
+    component: InputField,
     props: {
       type: 'number',
       step: 1,
@@ -84,32 +76,21 @@ const INPUT_TYPES = {
     },
   },
   boolean: {
-    component: FrescoToggleField,
+    component: BooleanField,
     props: {
-      inline: true,
       ...booleanValue,
     },
   },
   categorical: {
-    component: FrescoCheckboxGroupField,
+    component: CheckboxGroupField,
     props: {
       ...arrayValue,
     },
   },
   ordinal: {
-    component: FrescoRadioGroupField,
+    component: RadioGroupField,
     props: {},
   },
-};
-
-const getLabel = (
-  type: string,
-  value: string | number | boolean | (string | number)[],
-): string | null => {
-  if (type !== 'boolean') {
-    return null;
-  }
-  return value ? 'True' : 'False';
 };
 
 type OptionItem = {
@@ -118,7 +99,9 @@ type OptionItem = {
 };
 
 type EditValueProps = {
-  value: string | number | boolean | (string | number)[];
+  label: string;
+  hint?: string;
+  value: FieldValue;
   options?: OptionItem[];
   onChange?: (
     event: unknown,
@@ -129,12 +112,6 @@ type EditValueProps = {
   variableType?: string;
   placeholder?: string;
   validation?: Record<string, unknown>;
-  /**
-   * Visually hide the value field's label while keeping it as the control's
-   * accessible name. Forwarded to the underlying RuleField. Used when the
-   * surrounding Section heading already names the value.
-   */
-  labelHidden?: boolean;
 };
 
 const EditValue = ({
@@ -149,13 +126,11 @@ const EditValue = ({
 }) => (
   <RuleField
     component={fieldConfig.component}
-    label={getLabel(variableType, value) ?? 'Attribute value'}
     name="value"
     onChange={onChange}
     value={value}
     options={options}
     {...fieldConfig.props}
-    // eslint-disable-next-line react/jsx-props-no-spreading
     {...rest}
   />
 );

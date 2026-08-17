@@ -174,6 +174,13 @@ describe('<ProjectActions />', () => {
     );
   });
 
+  it('renders a single separator between the page actions', () => {
+    const store = createTestStore();
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    expect(screen.getAllByRole('separator')).toHaveLength(1);
+  });
+
   // The `report` mode gates authoring only. History recovery is not authoring,
   // and #1389 requires undo/redo to work identically on every page carrying the
   // toolbar — Summary included.

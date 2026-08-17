@@ -1,91 +1,81 @@
-import { render, screen } from '@testing-library/react';
-import type { ComponentType } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
-vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
-
-import Rules, { type RulesOuterProps } from '../Rules';
-
-// `compose` erases the enhanced component's props, so the cast restores them.
-// It is the real outer props type, not a hand-written stand-in: a label this
-// component starts requiring has to appear here too.
-const RulesComponent = Rules as unknown as ComponentType<RulesOuterProps>;
-
-const LABELS = {
-  addAlterRuleLabel: 'Add new filter alter rule',
-  addEdgeRuleLabel: 'Add new filter edge rule',
-} as const;
+import Rules from '../Rules';
 
 const renderRules = (allowEdgeRules?: boolean) =>
   render(
     <DialogProvider>
-      <RulesComponent
-        {...LABELS}
+      <Rules
         codebook={{ node: {}, edge: {} }}
         allowEdgeRules={allowEdgeRules}
+        addRuleLabel="Add new filter rule"
       />
     </DialogProvider>,
   );
 
+const openRuleEditor = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Add new filter rule' }));
+
 describe('Rules', () => {
-  it('offers an edge rule by default', () => {
+  it('offers an edge target by default', async () => {
+    renderRules();
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Edge -/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers an edge target when edge rules are allowed', async () => {
+    renderRules(true);
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Edge -/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the edge target when edge rules are not allowed', async () => {
+    renderRules(false);
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Node -/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('radio', { name: /^Edge -/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('names its one add control from the caller', () => {
     renderRules();
 
     expect(
-      screen.getByRole('button', { name: LABELS.addEdgeRuleLabel }),
+      screen.getByRole('button', { name: 'Add new filter rule' }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Add new/ })).toHaveLength(1);
   });
 
-  it('offers an edge rule when they are allowed', () => {
-    renderRules(true);
-
-    expect(
-      screen.getByRole('button', { name: LABELS.addEdgeRuleLabel }),
-    ).toBeInTheDocument();
-  });
-
-  it('hides the edge rule button when edge rules are not allowed', () => {
-    renderRules(false);
-
-    expect(
-      screen.queryByRole('button', { name: LABELS.addEdgeRuleLabel }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: LABELS.addAlterRuleLabel }),
-    ).toBeInTheDocument();
-  });
-
-  it('names its add buttons from the caller, not from a default', () => {
-    // The whole point of the required labels: two builders in one editor must
-    // be able to differ. A hard-coded name here would make that impossible.
+  it('offers ego as a target only for skip logic', async () => {
     render(
       <DialogProvider>
-        <RulesComponent
+        <Rules
           type="query"
           codebook={{ node: {}, edge: {}, ego: {} }}
-          addAlterRuleLabel="Add new skip logic alter rule"
-          addEdgeRuleLabel="Add new skip logic edge rule"
-          addEgoRuleLabel="Add new skip logic ego rule"
+          addRuleLabel="Add new skip logic rule"
         />
       </DialogProvider>,
     );
 
-    for (const name of [
-      'Add new skip logic alter rule',
-      'Add new skip logic edge rule',
-      'Add new skip logic ego rule',
-    ]) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
-  });
-
-  it('offers no ego rule outside a query rule set', () => {
-    renderRules();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add new skip logic rule' }),
+    );
 
     expect(
-      screen.queryByRole('button', { name: /ego rule$/ }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole('radio', { name: /^Ego -/ }),
+    ).toBeInTheDocument();
   });
 });

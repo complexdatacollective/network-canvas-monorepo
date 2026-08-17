@@ -1,77 +1,269 @@
-import { cx } from '~/utils/cva';
+import { isEqual } from 'es-toolkit/compat';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+} from 'react';
+import { v4 as uuid } from 'uuid';
 
-import PreviewRule from './PreviewRule';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import ArrayField, {
+  type ArrayFieldEditorProps,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 
-type Rule = Record<string, unknown> & {
-  id: string;
+import EditRule from './EditRule';
+import RulePreview from './PreviewRule';
+import { Join } from './PreviewText';
+import validateRule, { type Rule } from './validateRule';
+
+export type RuleTypeOption = {
+  label: string;
+  value: 'node' | 'edge' | 'ego';
+};
+
+type EditableRule = Rule & Record<string, unknown>;
+
+type RuleListContextValue = {
+  codebook: Record<string, unknown>;
+  join?: string | null;
+  ruleTypes: RuleTypeOption[];
+};
+
+const RuleListContext = createContext<RuleListContextValue | null>(null);
+
+const useRuleListContext = () => {
+  const context = useContext(RuleListContext);
+  if (!context)
+    throw new Error('Rule list parts must render inside a rule list.');
+  return context;
+};
+
+const stripManagedProperties = (
+  item: Record<string, unknown> | undefined,
+): EditableRule => {
+  if (!item) return { type: '' };
+  const { _internalId, _draft, ...rule } = item;
+  return {
+    ...rule,
+    type: typeof rule.type === 'string' ? rule.type : '',
+  };
+};
+
+const RuleListItem = ({
+  item,
+  index,
+  itemCount,
+  isBeingEdited,
+  onEdit,
+  onDelete,
+  editTriggerRef,
+  disabled,
+  readOnly,
+}: ArrayFieldItemProps<EditableRule>) => {
+  const { codebook, join } = useRuleListContext();
+  const rule = stripManagedProperties(item);
+  const textId = useId();
+  const editActionId = useId();
+  const deleteActionId = useId();
+  const interactionDisabled = disabled || readOnly;
+
+  // External editors own the active row while their dialog is open. Hiding it
+  // matches every other dialog-edited ArrayField and gives the shared layout
+  // animation a single source and destination rather than two copies.
+  if (isBeingEdited || !rule.type) return null;
+
+  return (
+    <>
+      {/*
+        Both controls act on this one rule, so both are named from the rule's
+        sentence instead of repeating one generic name down the list. The
+        action words remain hidden because `aria-labelledby` can compose them
+        with the visible preview without duplicating content visually.
+      */}
+      <span id={editActionId} hidden>
+        Edit rule:
+      </span>
+      <span id={deleteActionId} hidden>
+        Delete rule:
+      </span>
+      <div className="flex w-full items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <RulePreview
+            id={textId}
+            type={rule.type}
+            options={rule.options ?? {}}
+            codebook={codebook}
+          />
+        </div>
+        <IconButton
+          ref={editTriggerRef}
+          icon={<Pencil />}
+          aria-labelledby={`${editActionId} ${textId}`}
+          color="dynamic"
+          disabled={interactionDisabled}
+          onClick={onEdit}
+        />
+        <IconButton
+          icon={<Trash2 />}
+          aria-labelledby={`${deleteActionId} ${textId}`}
+          color="destructive"
+          disabled={interactionDisabled}
+          onClick={onDelete}
+        />
+      </div>
+      {itemCount > 1 && index < itemCount - 1 && join && <Join value={join} />}
+    </>
+  );
+};
+
+type RuleEditorSession = {
+  sourceId: string | null;
+  draft: EditableRule;
+  open: boolean;
+  seed: EditableRule;
+};
+
+const RuleListEditor = ({
+  item,
+  onSave,
+  onCancel,
+  getEditorTrigger,
+}: ArrayFieldEditorProps<EditableRule>) => {
+  const { codebook, ruleTypes } = useRuleListContext();
+  const { openDialog } = useDialog();
+  const [session, setSession] = useState<RuleEditorSession | null>(null);
+
+  // ArrayField keeps one editor component mounted across sessions. Reset its
+  // local draft for every newly opened row, including reopening the same row
+  // after a cancelled edit; retaining the previous draft would resurrect work
+  // the researcher explicitly discarded.
+  useEffect(() => {
+    if (!item) {
+      setSession((previous) =>
+        previous ? { ...previous, open: false, sourceId: null } : previous,
+      );
+      return;
+    }
+
+    setSession((previous) => {
+      if (previous?.open && previous.sourceId === item._internalId) {
+        return previous;
+      }
+      const rule = stripManagedProperties(item);
+      return {
+        sourceId: item._internalId,
+        draft: rule,
+        open: true,
+        seed: rule,
+      };
+    });
+  }, [item]);
+
+  const isDraftDirty = useCallback(
+    () => !!session && !isEqual(session.draft, session.seed),
+    [session],
+  );
+  useNestedDraft(!!item && !!session?.open, isDraftDirty);
+
+  const handleCancel = useCallback(() => {
+    if (!isDraftDirty()) {
+      onCancel();
+      return;
+    }
+
+    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
+      if (confirmed) onCancel();
+      return confirmed;
+    });
+  }, [isDraftDirty, onCancel, openDialog]);
+
+  const handleSave = useCallback(() => {
+    const draft = session?.draft;
+    if (!draft || !validateRule(draft)) {
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'warning',
+        title: 'Please complete all fields',
+        description:
+          'To create your rule, all fields are required. Please complete all fields before clicking save, or use cancel to abandon this rule.',
+        actions: { primary: { label: 'OK', value: true } },
+      });
+      return;
+    }
+
+    onSave?.({ ...draft, id: draft.id ?? uuid() });
+  }, [onSave, openDialog, session?.draft]);
+
+  return (
+    <EditRule
+      open={!!item && !!session?.open}
+      rule={session?.draft}
+      ruleTypes={ruleTypes}
+      codebook={codebook}
+      onChange={(draft) =>
+        setSession((previous) =>
+          previous
+            ? { ...previous, draft: stripManagedProperties(draft) }
+            : previous,
+        )
+      }
+      onCancel={handleCancel}
+      onSave={handleSave}
+      finalFocus={getEditorTrigger}
+    />
+  );
 };
 
 type PreviewRulesProps = {
-  join?: string | null;
   rules: Rule[];
+  join?: string | null;
   codebook: Record<string, unknown>;
-  onClickRule: (id: string) => void;
-  onDeleteRule: (id: string) => void;
+  ruleTypes: RuleTypeOption[];
+  addButtonLabel: string;
+  onChange: (rules: Rule[]) => void;
   hasError?: boolean;
 };
 
-const PreviewRules = ({
-  join = null,
-  rules,
-  codebook,
-  onClickRule,
-  onDeleteRule,
-  hasError = false,
-}: PreviewRulesProps) => {
-  const getJoin = (index: number): string | null =>
-    rules.length !== 1 && index < rules.length - 1 ? join || null : null;
+const createEmptyRule = (): Partial<EditableRule> => ({});
+const getRuleId = (rule: EditableRule) => rule.id;
 
-  return (
-    <div
-      className={cx(
-        'bg-input rounded-sm border-2 border-transparent',
-        // Rounded on every corner, error or not. The square bottom edge this
-        // used to take butted against an error strip the rule builder rendered
-        // directly beneath it; that strip is gone — the field's one error
-        // message belongs to `BaseField`, below the whole builder — so a flat
-        // bottom would now just be a box missing two corners.
-        hasError && 'border-destructive',
-      )}
-    >
-      {rules.length === 0 && (
-        <div className="text-input-contrast/50 px-5 py-5 italic">
-          Add rule types from the options below.
-        </div>
-      )}
-      {rules.length > 0 && (
-        // The rules are a list, and saying so is what tells assistive
-        // technology how many there are and lets its user step between them.
-        // Each item owns its card and the join that follows it — a `<ul>` may
-        // contain nothing but `<li>`.
-        //
-        // `role="list"` is redundant in the abstract, which is what the lint
-        // rule below objects to, but not here: Tailwind's preflight sets
-        // `list-style: none` on every `ul`, and Safari drops list semantics
-        // from an unstyled list — so without the role VoiceOver never
-        // announces the count this exists to give.
-        // oxlint-disable-next-line jsx-a11y/no-redundant-roles
-        <ul role="list" className="flex w-full flex-col items-start py-5">
-          {rules.map((rule, index) => (
-            <li className="w-full" key={rule.id}>
-              <PreviewRule
-                // eslint-disable-next-line react/jsx-props-no-spreading
-                {...rule}
-                join={getJoin(index)}
-                codebook={codebook}
-                onClick={() => onClickRule(rule.id)}
-                onDelete={() => onDeleteRule(rule.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-};
+/**
+ * The shared editable-list presentation for skip-logic and network-filter
+ * rules. Fresco's ArrayField owns row identity, list semantics, focus return,
+ * deletion, animation and the standard add affordance; this adapter supplies
+ * only the rule-specific preview and editor.
+ */
+const PreviewRules = ({
+  rules,
+  join,
+  codebook,
+  ruleTypes,
+  addButtonLabel,
+  onChange,
+  hasError = false,
+}: PreviewRulesProps) => (
+  <RuleListContext.Provider value={{ codebook, join, ruleTypes }}>
+    <ArrayField<EditableRule>
+      value={rules as EditableRule[]}
+      onChange={(nextRules) => onChange(nextRules ?? [])}
+      getId={getRuleId}
+      itemTemplate={createEmptyRule}
+      itemComponent={RuleListItem}
+      editorComponent={RuleListEditor}
+      addButtonLabel={addButtonLabel}
+      emptyStateMessage="No rules have been created yet."
+      itemClasses="bg-accent text-accent-contrast elevation-low"
+      aria-invalid={hasError}
+    />
+  </RuleListContext.Provider>
+);
 
 export default PreviewRules;

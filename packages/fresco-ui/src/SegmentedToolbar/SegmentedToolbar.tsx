@@ -209,11 +209,6 @@ function isLabelVisible(content: SegmentContent): boolean {
   return content.showLabel ?? !content.icon;
 }
 
-// Pressed-state highlight for toggle segments, via Base UI's data attribute.
-// `!important` so the selected colours win over Button's text-variant hover.
-const pressedClasses =
-  'data-pressed:bg-selected! data-pressed:text-selected-contrast!';
-
 /** A toolbar segment built on the shared Button component, styled flat + round. */
 function segmentButton(
   content: SegmentContent,
@@ -330,7 +325,7 @@ function ToolbarToggleSegment({
           defaultPressed={segment.defaultPressed}
           onPressedChange={segment.onPressedChange}
           disabled={segment.disabled || isUncontrollable}
-          render={segmentButton(segment, size, pressedClasses)}
+          render={segmentButton(segment, size)}
         />
       }
     />
@@ -377,7 +372,7 @@ function ToolbarGroupSegment({
               <Toggle
                 value={option.value}
                 disabled={option.disabled}
-                render={segmentButton(option, size, pressedClasses)}
+                render={segmentButton(option, size)}
               />
             }
           />
@@ -397,8 +392,8 @@ function ToolbarGroupSegment({
   );
 }
 
-// Active styling for a menu trigger. Unlike a Toggle it has no data-pressed
-// state, so the selected highlight is applied directly when `pressed`.
+// Active styling for a menu trigger. Unlike a toggle, an active menu selection
+// is not an `aria-pressed` state, so its highlight is applied directly.
 const menuActiveClasses = 'bg-selected! text-selected-contrast!';
 
 function ToolbarMenuSegment({

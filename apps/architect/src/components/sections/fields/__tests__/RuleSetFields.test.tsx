@@ -140,7 +140,7 @@ describe('the rule-builder field', () => {
     // Emptying the required rule set is what makes it invalid.
     fireEvent.click(screen.getByRole('button', { name: /^Delete rule:/ }));
     fireEvent.blur(
-      screen.getByRole('button', { name: 'Add new skip logic alter rule' }),
+      screen.getByRole('button', { name: 'Add new skip logic rule' }),
     );
 
     await waitFor(() => {
@@ -163,10 +163,9 @@ describe('the rule-builder field', () => {
 
   /**
    * The defect these two adapters existed to reproduce: a stage editor mounts
-   * `QueryField` (Skip Logic) and `FilterField` (Filter) at once, and both
-   * used to hard-code "Add alter rule"/"Add edge rule". Ten interfaces
-   * therefore offered each of those names twice, which to anyone navigating by
-   * a list of controls is one control (#1391).
+   * `QueryField` (Skip Logic) and `FilterField` (Filter) at once. Each is one
+   * editable list and therefore owns one add control; the names still need to
+   * identify which list will receive the rule.
    *
    * Asserted over the accessible names of every add button in the surface, not
    * over the two literals, so a future third mount is covered too.
@@ -197,8 +196,7 @@ describe('the rule-builder field', () => {
 
     const names = addButtonNames();
 
-    // Five: alter/edge/ego for skip logic, alter/edge for the filter.
-    expect(names).toHaveLength(5);
+    expect(names).toEqual(['Add new skip logic rule', 'Add new filter rule']);
     expect(new Set(names).size).toBe(names.length);
   });
 });

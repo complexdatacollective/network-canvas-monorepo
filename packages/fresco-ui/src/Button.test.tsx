@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { Check } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
-import Button from './Button';
+import Button, { IconButton } from './Button';
 
 describe('Button', () => {
   it('derives the raised edge from the selected button color', () => {
@@ -155,5 +155,51 @@ describe('Button', () => {
 
     expect(button.firstElementChild).toBeNull();
     expect(button).not.toHaveClass('group', 'text-link');
+  });
+
+  it('styles toggle buttons from aria-pressed using selected colors', () => {
+    render(
+      <>
+        <Button aria-pressed>Favorite</Button>
+        <IconButton aria-label="Favorite icon" aria-pressed icon={<Check />} />
+      </>,
+    );
+
+    const toggleButtons = [
+      screen.getByRole('button', { name: 'Favorite' }),
+      screen.getByRole('button', { name: 'Favorite icon' }),
+    ];
+
+    for (const toggleButton of toggleButtons) {
+      expect(toggleButton).toHaveAttribute('aria-pressed', 'true');
+      expect(toggleButton).toHaveClass(
+        'aria-pressed:border-selected!',
+        'aria-pressed:bg-selected!',
+        'aria-pressed:text-selected-contrast!',
+      );
+    }
+  });
+
+  it('styles disclosure buttons from aria-expanded using selected colors', () => {
+    render(
+      <>
+        <Button aria-expanded>Options</Button>
+        <IconButton aria-label="Icon options" aria-expanded icon={<Check />} />
+      </>,
+    );
+
+    const disclosureButtons = [
+      screen.getByRole('button', { name: 'Options' }),
+      screen.getByRole('button', { name: 'Icon options' }),
+    ];
+
+    for (const disclosureButton of disclosureButtons) {
+      expect(disclosureButton).toHaveAttribute('aria-expanded', 'true');
+      expect(disclosureButton).toHaveClass(
+        'aria-expanded:border-selected!',
+        'aria-expanded:bg-selected!',
+        'aria-expanded:text-selected-contrast!',
+      );
+    }
   });
 });

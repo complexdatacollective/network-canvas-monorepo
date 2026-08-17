@@ -97,7 +97,7 @@ export const Default: Story = {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
+          <TableHead>rrr</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
         </TableRow>

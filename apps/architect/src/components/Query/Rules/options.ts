@@ -34,7 +34,7 @@ const operators = {
 export const operatorsAsOptions = [
   [operators.EXACTLY, 'is exactly'],
   [operators.EXISTS, 'exists'],
-  [operators.NOT_EXISTS, 'does not Exist'],
+  [operators.NOT_EXISTS, 'does not exist'],
   [operators.NOT, 'is not'],
   [operators.GREATER_THAN, 'is greater than'],
   [operators.GREATER_THAN_OR_EQUAL, 'is greater than or exactly'],

@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { compose } from 'react-recompose';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -24,16 +25,6 @@ import {
 } from './withEntityRuleType';
 import withOptions from './withOptions';
 import withRuleChangeHandler from './withRuleChangeHandler';
-
-const FrescoNativeSelectField = NativeSelectField as ComponentType<
-  Record<string, unknown>
->;
-const FrescoRadioGroupField = RadioGroupField as ComponentType<
-  Record<string, unknown>
->;
-const FrescoEntitySelectControl = EntitySelectControl as ComponentType<
-  Record<string, unknown>
->;
 
 // Categorical operands are arrays of selected option values, so they must reach
 // EditValue intact rather than being coerced to a scalar (which would drop the
@@ -134,147 +125,116 @@ const EditEntityRule = ({
   // the token, because the indefinite article differs between the two and a
   // sentence built from fragments cannot be localised.
   const isNodeRule = entityType === 'node';
-  const typeSectionTitle = isNodeRule ? 'Node Type' : 'Edge Type';
   return (
     <>
-      <Section
-        title={typeSectionTitle}
-        summary={
-          <Paragraph>
-            {isNodeRule
-              ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-              : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'}
-          </Paragraph>
+      <RuleField
+        component={EntitySelectControl}
+        allowCreation={false}
+        entityType={isNodeRule ? 'node' : 'edge'}
+        label={isNodeRule ? 'Node type' : 'Edge type'}
+        hint={
+          isNodeRule
+            ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
+            : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
         }
-        layout="vertical"
-      >
-        {/*
-          Kept identical to the heading above so the two cannot drift. This
-          anchor is not currently reachable from the Issues panel — rule-dialog
-          fields live outside the stage form store (see RuleField.tsx), so no
-          stage-form error is ever keyed by this `type` path — but the panel
-          harvests `data-name` wherever it does resolve, and a heading and its
-          anchor disagreeing is a defect waiting for the day it does.
-        */}
-        <IssueAnchor fieldName="type" description={typeSectionTitle} />
+
+        name="type"
+        options={typeOptions}
+        onChange={handleRuleChange}
+        value={optionsWithDefaults.type}
+        validation={{ required: true }}
+      />
+      {optionsWithDefaults.type && (
         <RuleField
-          component={FrescoEntitySelectControl}
-          entityType={isNodeRule ? 'node' : 'edge'}
-          label={isNodeRule ? 'Node type' : 'Edge type'}
-          labelHidden
-          name="type"
-          options={typeOptions}
-          onChange={handleRuleChange}
-          value={optionsWithDefaults.type}
-          validation={{ required: true }}
-        />
-      </Section>
-      <Section
-        title="Rule Type"
-        disabled={!optionsWithDefaults.type}
-        layout="vertical"
-      >
-        <RuleField
-          component={FrescoRadioGroupField}
+          component={RichSelectGroupField}
           label="Rule type"
-          labelHidden
+          hint="Select whether this rule will be based on the entity type or a variable."
           options={entityRuleTypeOptions(entityType)}
           value={entityRuleType}
           onChange={(_event, value) =>
             handleChangeEntityRuleType(value as string)
           }
         />
-      </Section>
+      )}
+
       {isTypeRule && optionsWithDefaults.type && (
-        <Section title="Operator" layout="vertical">
-          <RuleField
-            component={FrescoRadioGroupField}
-            label="Operator"
-            labelHidden
-            name="operator"
-            options={operatorOptions}
-            onChange={handleRuleChange}
-            value={optionsWithDefaults.operator}
-            validation={{ required: true }}
-          />
-        </Section>
+        <RuleField
+          component={RadioGroupField}
+          label="Operator"
+          hint="Select the operator that will be used to compare the entity type to the value."
+          name="operator"
+          options={operatorOptions}
+          onChange={handleRuleChange}
+          value={optionsWithDefaults.operator}
+          validation={{ required: true }}
+        />
       )}
       {isVariableRule && optionsWithDefaults.type && (
-        <Section
-          title="Variable"
-          summary={<Paragraph>Select a variable to query.</Paragraph>}
-          layout="vertical"
-        >
-          <RuleField
-            component={FrescoNativeSelectField}
-            label="Variable"
-            labelHidden
-            name="attribute"
-            placeholder="Select a variable…"
-            options={variablesAsOptions}
-            onChange={handleRuleChange}
-            value={optionsWithDefaults.attribute}
-            validation={{ required: true }}
-          />
-        </Section>
+        <RuleField
+          component={NativeSelectField}
+          label="Variable"
+          hint="Select a variable to base this rule on."
+          name="attribute"
+          placeholder="Select a variable…"
+          options={variablesAsOptions}
+          onChange={handleRuleChange}
+          value={optionsWithDefaults.attribute}
+          validation={{ required: true }}
+        />
       )}
       {isVariableRule && optionsWithDefaults.attribute && (
-        <Section title="Operator" layout="vertical">
-          <RuleField
-            component={FrescoNativeSelectField}
-            label="Operator"
-            labelHidden
-            name="operator"
-            placeholder="Select an operator…"
-            options={operatorOptions}
-            onChange={handleRuleChange}
-            value={optionsWithDefaults.operator}
-            validation={{ required: true }}
-          />
-        </Section>
+        <RuleField
+          component={NativeSelectField}
+          label="Operator"
+          hint="Select the operator that will be used to compare the variable to the value."
+          name="operator"
+          placeholder="Select an operator…"
+          options={operatorOptions}
+          onChange={handleRuleChange}
+          value={optionsWithDefaults.operator}
+          validation={{ required: true }}
+        />
       )}
       {isVariableRule && operatorNeedsValue && (
-        <Section title="Attribute Value" layout="vertical">
-          <EditValue
-            variableType={variableType}
-            placeholder="Enter a value..."
-            onChange={handleRuleChange}
-            value={toEditValue(optionsWithDefaults.value)}
-            options={variableOptions}
-            validation={{ required: true }}
-            labelHidden
-          />
-        </Section>
+        <EditValue
+          label="Attribute Value"
+          hint="Enter the value to compare against."
+          variableType={variableType}
+          placeholder="Enter a value..."
+          onChange={handleRuleChange}
+          value={toEditValue(optionsWithDefaults.value)}
+          options={variableOptions}
+          validation={{ required: true }}
+        />
       )}
       {isVariableRule && operatorNeedsRegExp && (
-        <Section title="Attribute Value">
-          <EditValue
-            variableType={variableType}
-            placeholder="Enter a regular expression..."
-            onChange={handleRuleChange}
-            value={toEditValue(optionsWithDefaults.value)}
-            options={variableOptions}
-            validation={{ required: true, validRegExp: true }}
-            labelHidden
-          />
-        </Section>
+        <EditValue
+          label="Attribute Value"
+          hint="Enter a regular expression to compare against."
+          variableType={variableType}
+          placeholder="Enter a regular expression..."
+          onChange={handleRuleChange}
+          value={toEditValue(optionsWithDefaults.value)}
+          options={variableOptions}
+          validation={{ required: true, validRegExp: true }}
+        />
       )}
       {isVariableRule && operatorNeedsOptionCount && (
-        <Section title="Selected Option Count" layout="vertical">
-          <EditValue
-            variableType="count"
-            placeholder="Enter a value..."
-            onChange={handleRuleChange}
-            value={
-              typeof optionsWithCounts.value === 'string' ||
-              typeof optionsWithCounts.value === 'number' ||
-              typeof optionsWithCounts.value === 'boolean'
-                ? optionsWithCounts.value
-                : 0
-            }
-            validation={{ requiredAcceptsZero: true }}
-          />
-        </Section>
+        <EditValue
+          label="Selected Option Count"
+          hint="Enter the number of options that must be selected for this rule to pass."
+          variableType="count"
+          placeholder="Enter a value..."
+          onChange={handleRuleChange}
+          value={
+            typeof optionsWithCounts.value === 'string' ||
+            typeof optionsWithCounts.value === 'number' ||
+            typeof optionsWithCounts.value === 'boolean'
+              ? optionsWithCounts.value
+              : 0
+          }
+          validation={{ requiredAcceptsZero: true }}
+        />
       )}
     </>
   );

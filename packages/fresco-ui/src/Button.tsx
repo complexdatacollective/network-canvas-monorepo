@@ -22,18 +22,15 @@ import { compose, cva, cx, type VariantProps } from './utils/cva';
 const buttonSpecificVariants = cva({
   base: cx(
     'font-heading inline-flex cursor-pointer border-0 font-bold tracking-wide',
-    // A button must never force its container to overflow. `controlVariants`
-    // floors every control at `min-w-fit`, which for an unbreakable label (a
-    // researcher-authored identifier hundreds of characters long) is the width
-    // of the whole token; combined with the old `shrink-0` that floor pushed
-    // sibling actions clean out of a dialog and off the viewport (#1392).
-    // `min-w-0` + the default shrink let the button give way and clip inside
-    // the box that owns the space; `max-w-full` caps it even where nothing
+    // A button must never force its container to overflow.
+    // `max-w-full` caps it even where nothing
     // shrinks it. Buttons that genuinely must hold their size — icon buttons
     // (below), toolbar actions — say so with `shrink-0` at the call site.
     'max-w-full min-w-0',
     'items-center justify-center',
     'disabled:cursor-not-allowed disabled:opacity-50',
+    'aria-pressed:border-selected! aria-pressed:bg-selected! aria-pressed:text-selected-contrast!',
+    'aria-expanded:border-selected! aria-expanded:bg-selected! aria-expanded:text-selected-contrast!',
     'focusable',
     'elevation-low',
     'not-disabled:active:elevation-none not-disabled:active:translate-y-[2px]',
