@@ -89,25 +89,27 @@ describe('TimelineStageRow', () => {
     expect(onOpen).toHaveBeenCalledWith('stage-1');
   });
 
-  it('moves the stage down with ArrowDown on the reorder handle', () => {
+  it('moves the stage down with ArrowDown from the preview control', () => {
     const onMove = vi.fn(acceptMove);
     renderRow(0, { onMove });
 
     fireEvent.keyDown(
-      screen.getByRole('button', { name: 'Reorder stage 1 of 2: Consent' }),
+      screen.getByRole('button', {
+        name: 'Edit stage 1: Consent, Information',
+      }),
       { key: 'ArrowDown' },
     );
 
     expect(onMove).toHaveBeenCalledWith('stage-1', 1);
   });
 
-  it('moves the stage up with ArrowUp on the reorder handle', () => {
+  it('moves the stage up with ArrowUp from the preview control', () => {
     const onMove = vi.fn(acceptMove);
     renderRow(1, { onMove });
 
     fireEvent.keyDown(
       screen.getByRole('button', {
-        name: 'Reorder stage 2 of 2: Demographics',
+        name: 'Edit stage 2: Demographics, Information',
       }),
       { key: 'ArrowUp' },
     );
@@ -119,7 +121,9 @@ describe('TimelineStageRow', () => {
     const onMoveFirst = vi.fn(acceptMove);
     const first = renderRow(0, { onMove: onMoveFirst });
     fireEvent.keyDown(
-      screen.getByRole('button', { name: 'Reorder stage 1 of 2: Consent' }),
+      screen.getByRole('button', {
+        name: 'Edit stage 1: Consent, Information',
+      }),
       { key: 'ArrowUp' },
     );
     expect(onMoveFirst).not.toHaveBeenCalled();
@@ -129,20 +133,28 @@ describe('TimelineStageRow', () => {
     renderRow(1, { onMove: onMoveLast });
     fireEvent.keyDown(
       screen.getByRole('button', {
-        name: 'Reorder stage 2 of 2: Demographics',
+        name: 'Edit stage 2: Demographics, Information',
       }),
       { key: 'ArrowDown' },
     );
     expect(onMoveLast).not.toHaveBeenCalled();
   });
 
-  it('names the destructive control after the stage it deletes', () => {
+  it('uses only the open and delete controls, with default Delete styling', () => {
     const onDelete = vi.fn();
     renderRow(1, { onDelete });
 
     const deleteControl = screen.getByRole('button', {
       name: 'Delete stage 2: Demographics',
     });
+    expect(
+      screen.queryByRole('button', { name: 'Reorder stage' }),
+    ).not.toBeInTheDocument();
+    expect(deleteControl).toHaveClass(
+      'bg-(--component-text)',
+      'text-(--component-bg)',
+    );
+    expect(deleteControl).not.toHaveClass('elevation-none');
     fireEvent.click(deleteControl);
 
     expect(onDelete).toHaveBeenCalledWith('stage-2');

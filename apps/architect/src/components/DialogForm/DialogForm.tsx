@@ -147,7 +147,6 @@ const DialogFormBody = ({
       closeDialog={requestClose}
       dismissible={!isSubmitting}
       title={title}
-      size="editor"
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}

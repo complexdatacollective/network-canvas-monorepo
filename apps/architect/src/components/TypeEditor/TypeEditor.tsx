@@ -82,49 +82,47 @@ const TypeEditor = ({
 
   return (
     <>
-      <Section title={`${capitalize(entity)} Type`} layout="vertical">
-        <ArchitectField
-          label={`${capitalize(entity)} type name`}
-          hint={
-            <>
-              This name identifies the {entity} type in the codebook and in your
-              data exports.
-              {entity === 'node' &&
-                ' Some examples might be "Person", "Place", or "Organization".'}
-              {entity === 'edge' &&
-                ' Some examples might be "Friends" or "Works With".'}
-            </>
-          }
-          component={InputField}
-          name="name"
-          initialValue={initialValues.name}
-          validation={{
-            required: true,
-            // Names the subject, so the message reads "Not a valid node type
-            // name" rather than the mapper's default "variable name" — this
-            // field is not a variable. Whole strings, one per branch, rather
-            // than an interpolated `${entity} type name`.
-            allowedNMToken:
-              entity === 'node' ? 'node type name' : 'edge type name',
-            uniqueByList: existingTypes,
-          }}
-          placeholder={`Enter a name for this ${entity} type...`}
-        />
-      </Section>
-      <Section title="Color" id={getFieldId('color')} layout="vertical">
-        <ArchitectField
-          component={ColorPicker}
-          name="color"
-          label="Color"
-          hint={`Choose a color for this ${entity} type.`}
-          initialValue={initialValues.color}
-          validation={{ required: true }}
-          palette={paletteName}
-          paletteRange={paletteSize}
-        />
-      </Section>
+      <ArchitectField
+        label={`${capitalize(entity)} type name`}
+        hint={
+          <>
+            This name identifies the {entity} type in the codebook and in your
+            data exports.
+            {entity === 'node' &&
+              ' Some examples might be "Person", "Place", or "Organization".'}
+            {entity === 'edge' &&
+              ' Some examples might be "Friends" or "Works With".'}
+          </>
+        }
+        component={InputField}
+        name="name"
+        initialValue={initialValues.name}
+        validation={{
+          required: true,
+          // Names the subject, so the message reads "Not a valid node type
+          // name" rather than the mapper's default "variable name" — this
+          // field is not a variable. Whole strings, one per branch, rather
+          // than an interpolated `${entity} type name`.
+          allowedNMToken:
+            entity === 'node' ? 'node type name' : 'edge type name',
+          uniqueByList: existingTypes,
+        }}
+        placeholder={`Enter a name for this ${entity} type...`}
+      />
+
+      <ArchitectField
+        component={ColorPicker}
+        name="color"
+        label="Color"
+        hint={`Choose a color for this ${entity} type.`}
+        initialValue={initialValues.color}
+        validation={{ required: true }}
+        palette={paletteName}
+        paletteRange={paletteSize}
+      />
+
       {entity === 'node' && (
-        <Section title="Shape" id={getFieldId('shape')} layout="vertical">
+        <>
           <ArchitectField
             component={ShapePickerControl}
             label="Shape"
@@ -144,10 +142,6 @@ const TypeEditor = ({
                 : undefined
             }
           />
-        </Section>
-      )}
-      {entity === 'node' && (
-        <Section title="Icon" id={getFieldId('icon')} layout="vertical">
           <ArchitectField
             component={IconPicker}
             label="Icon"
@@ -156,7 +150,7 @@ const TypeEditor = ({
             initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
             validation={{ required: true }}
           />
-        </Section>
+        </>
       )}
     </>
   );

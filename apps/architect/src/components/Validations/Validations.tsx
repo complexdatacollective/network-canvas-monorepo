@@ -1,9 +1,17 @@
 import { isEqual, map, omit } from 'es-toolkit/compat';
+import { input } from 'motion/react-client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { compose } from '@codaco/fresco-ui/utils/cva';
 import type { Variable } from '@codaco/protocol-validation';
+import { cx } from '~/utils/cva';
 
 import ArchitectField from '../Form/ArchitectField';
 import {
@@ -271,42 +279,56 @@ const RuleList = ({
     );
   };
 
-  return (
-    <div className="flex w-full flex-col gap-8">
-      {groups.map((group) => (
-        <fieldset key={group.id} className="flex min-w-0 flex-col gap-1">
-          <legend className="mb-2">
-            <Heading level="h4">{group.heading}</Heading>
-          </legend>
-          {group.rules.map((rule) => {
-            const on = isOn(rule.value);
-            const isUnavailable =
-              !on &&
-              isValidationWithListValue(rule.value) &&
-              (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+  );
 
-            return (
-              <ValidationRule
-                key={rule.value}
-                ruleKey={rule.value}
-                label={rule.label}
-                isOn={on}
-                isUnavailable={isUnavailable}
-                hint={hintFor(rule.value, isUnavailable)}
-                text={textFor(rule.value)}
-                issues={issuesFor(rule.value)}
-                targetOptions={targetOptionsFor(rule.value)}
-                onToggle={handleToggle}
-                onTextChange={handleTextChange}
-                onCommit={handleCommit}
-                focusValueToken={
-                  focusRequest?.ruleKey === rule.value
-                    ? focusRequest.token
-                    : undefined
-                }
-              />
-            );
-          })}
+  return (
+    <div className="flex w-full flex-col">
+      {groups.map((group) => (
+        <fieldset
+          key={group.id}
+          className={cx(
+            variants(),
+            'relative my-4 flex flex-col overflow-visible',
+          )}
+        >
+          <legend className="bg-input absolute -top-3 left-6 z-10 rounded px-4">
+            <Heading level="label">{group.heading}</Heading>
+          </legend>
+          <div className="flex w-full flex-col gap-4 pt-4">
+            {group.rules.map((rule) => {
+              const on = isOn(rule.value);
+              const isUnavailable =
+                !on &&
+                isValidationWithListValue(rule.value) &&
+                (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+
+              return (
+                <ValidationRule
+                  key={rule.value}
+                  ruleKey={rule.value}
+                  label={rule.label}
+                  isOn={on}
+                  isUnavailable={isUnavailable}
+                  hint={hintFor(rule.value, isUnavailable)}
+                  text={textFor(rule.value)}
+                  issues={issuesFor(rule.value)}
+                  targetOptions={targetOptionsFor(rule.value)}
+                  onToggle={handleToggle}
+                  onTextChange={handleTextChange}
+                  onCommit={handleCommit}
+                  focusValueToken={
+                    focusRequest?.ruleKey === rule.value
+                      ? focusRequest.token
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
         </fieldset>
       ))}
     </div>
@@ -647,7 +669,7 @@ const Validations = ({
       name={name}
       component={ValidationsField}
       label="Validation rules"
-      labelHidden
+      hint="Enable one or more validation rules to apply to this variable."
       initialValue={initialValue ?? EMPTY_VALIDATION}
       validation={validation}
       validateOnChange={commitsImmediately}

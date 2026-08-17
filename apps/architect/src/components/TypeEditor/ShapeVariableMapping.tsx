@@ -428,8 +428,8 @@ const ShapeVariableMapping = ({
   };
 
   return (
-    <div className="mt-5">
-      <div className="border-surface-2 border-t py-2.5">
+    <div className="mb-8">
+      <div className="py-2.5">
         <div className="flex items-center justify-between font-semibold">
           <span>Map variable to shape</span>
           <ToggleField

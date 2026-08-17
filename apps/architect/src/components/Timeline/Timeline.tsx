@@ -236,8 +236,8 @@ const Timeline = () => {
   }, []);
 
   // Returns whether the move was committed. The keyboard path passes that
-  // answer back to the drag handle, which is otherwise left waiting to reclaim
-  // focus for a move that never happened.
+  // answer back to the open control, which is otherwise left waiting to
+  // reclaim focus for a move that never happened.
   const commitReorder = useCallback(
     (stageId: string, proposedStages: typeof stages) => {
       const oldIndex = stages.findIndex((s) => s.id === stageId);

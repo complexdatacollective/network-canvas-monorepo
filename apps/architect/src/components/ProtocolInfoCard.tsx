@@ -50,7 +50,7 @@ import { cx } from '~/utils/cva';
  * is measured on proportional scripts. It holds for Latin and for Arabic. It
  * does NOT hold for scripts whose glyphs are full-width — Chinese, Japanese,
  * Korean — or for emoji: 100 of those measure 6 lines in the 332px box at
- * phone width, so roughly half of a legal name sits behind a scroll there
+ * phone width, so roughly half of a legal name sits outside the painted bound
  * (they fit at 768px and above). No further tier fixes it, and one was
  * considered: a full-width glyph is about 1em wide, so 100 of them need ~100em
  * of line length, and three lines of a 332px box only supply that at a font
@@ -253,7 +253,7 @@ const ProtocolInfoCard = () => {
               margin: 'none',
               className: cx(
                 'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
-                'max-h-[3lh] overflow-x-hidden overflow-y-auto wrap-break-word',
+                'max-h-[3lh] overflow-hidden wrap-break-word',
                 protocolNameSizeClass(nameGraphemes),
               ),
             })}

@@ -1,9 +1,15 @@
 import { Trash2 } from 'lucide-react';
-import { Reorder, useDragControls, type Variants } from 'motion/react';
-import { useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
+import { Reorder, type Variants } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
@@ -21,13 +27,12 @@ const INTERFACE_TITLES = new Map(
   INTERFACE_TYPES.map((option) => [option.type as string, option.title]),
 );
 
-// Reveals on hover as before, and now on focus too: these controls are always
-// in the tab order, so without the focus-within branch a keyboard researcher
-// would be operating an invisible Delete. Kept `opacity-0` rather than
-// unmounted so the row never changes size. Carried by each control rather than
-// a wrapper so "is it visible?" can be asked of the control itself.
+// Reveal Delete on row hover or when keyboard focus reaches the button itself.
+// Using the row's `focus-within` state would also react to pointer focus on the
+// preview button, leaving Delete stuck visible after a preview-origin drag.
+// Kept `opacity-0` rather than unmounted so the row never changes size.
 const revealOnRowInterest =
-  'opacity-0 transition-opacity duration-300 ease-in-out group-focus-within:opacity-100 group-hover:opacity-100';
+  'opacity-0 transition-opacity duration-300 ease-in-out focus-visible:opacity-100 group-hover:opacity-100';
 
 export type TimelineRowStage = {
   id: string;
@@ -44,8 +49,8 @@ type TimelineStageRowProps = {
   onOpen: (stageId: string) => void;
   /**
    * Commit a keyboard reorder of this stage to `targetIndex`. Returns whether
-   * the move was accepted — a refusal has to reach the drag handle, or it goes
-   * on waiting to reclaim focus for a move that never happened.
+   * the move was accepted — a refusal has to reach the open control, or it
+   * goes on waiting to reclaim focus for a move that never happened.
    */
   onMove: (stageId: string, targetIndex: number) => boolean;
   onDelete: (stageId: string) => void;
@@ -67,15 +72,15 @@ type TimelineStageRowProps = {
  *
  * The row itself stays a pointer drag surface that opens the stage editor when
  * clicked — that affordance predates this component and researchers rely on it.
- * What it grows is a keyboard path for each of those three actions, because the
+ * What it grows is a keyboard path for opening and deleting, because the
  * row element has no activation behaviour of its own — it was an `<li>` then
  * and is a `<div>` now — and previously carried nothing but `tabIndex={0}` and
  * an `onClick`:
  *
- * - the thumbnail is a real `<button>`, so Enter and Space open the editor;
- * - a grip handle moves the stage with ArrowUp/ArrowDown (and still starts a
- *   pointer drag), reusing `ArrayFieldDragHandle` so the app has one reorder
- *   vocabulary rather than two;
+ * - the thumbnail is a real `<button>`, so Enter and Space open the editor,
+ *   while ArrowUp/ArrowDown provide the keyboard reorder path;
+ * - the whole row — including its thumbnail and text — remains the pointer
+ *   drag surface, without a separate grip control;
  * - the delete control sits in the row's own grid instead of 10rem outside it.
  *
  * The stage label stays a real `<h4>` SIBLING of the open button rather than
@@ -97,7 +102,8 @@ const TimelineStageRow = ({
 }: TimelineStageRowProps) => {
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
-  const dragControls = useDragControls();
+  const openControlRef = useRef<HTMLButtonElement>(null);
+  const refocusAfterMoveRef = useRef(false);
 
   const stageName = stage.label || 'Untitled stage';
   const position = index + 1;
@@ -118,10 +124,21 @@ const TimelineStageRow = ({
   // reason enough on its own.
   const setOpenControl = useCallback(
     (element: HTMLButtonElement | null) => {
+      openControlRef.current = element;
       registerOpenControl(stage.id, element);
     },
     [registerOpenControl, stage.id],
   );
+
+  // A keyboard reorder may reposition this control in the DOM and drop focus
+  // to <body>. Restore it after the row settles so repeated arrow presses keep
+  // moving the same stage.
+  useEffect(() => {
+    if (!refocusAfterMoveRef.current) return undefined;
+    refocusAfterMoveRef.current = false;
+    const frame = requestAnimationFrame(() => openControlRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [index]);
 
   const handleRowPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     pointerStart.current = { x: event.clientX, y: event.clientY };
@@ -141,6 +158,23 @@ const TimelineStageRow = ({
     onOpen(stage.id);
   };
 
+  const handleOpenControlKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= stageCount) return;
+
+    refocusAfterMoveRef.current = true;
+    if (!onMove(stage.id, targetIndex)) {
+      refocusAfterMoveRef.current = false;
+    }
+  };
+
   return (
     <Reorder.Item
       // A `<div>`, not the `<li>` this defaults to. The row is not the list
@@ -152,7 +186,6 @@ const TimelineStageRow = ({
       as="div"
       value={stage}
       layoutId={`timeline-stage-${stage.id}`}
-      dragControls={dragControls}
       className={cx(timelineRowGrid, 'group relative cursor-pointer p-4')}
       variants={variants}
       onPointerDown={handleRowPointerDown}
@@ -180,7 +213,9 @@ const TimelineStageRow = ({
         type="button"
         ref={setOpenControl}
         aria-label={openControlLabel}
+        aria-keyshortcuts="ArrowUp ArrowDown"
         onClick={handleOpenFromButton}
+        onKeyDown={handleOpenControlKeyDown}
         className="focusable block w-full max-w-56 justify-self-end rounded-xs"
       >
         <StageTypeImage
@@ -225,19 +260,10 @@ const TimelineStageRow = ({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <ArrayFieldDragHandle
-            dragControls={dragControls}
-            index={index}
-            itemCount={stageCount}
-            onMove={(targetIndex) => onMove(stage.id, targetIndex)}
-            label={`Reorder stage ${position} of ${stageCount}: ${stageName}`}
-            className={revealOnRowInterest}
-          />
           <IconButton
             icon={<Trash2 />}
             aria-label={`Delete stage ${position}: ${stageName}`}
             color="destructive"
-            variant="text"
             className={revealOnRowInterest}
             onClick={(event) => {
               event.stopPropagation();

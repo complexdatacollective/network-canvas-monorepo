@@ -308,6 +308,7 @@ async function readNameControlMetrics(page: Page) {
       scrollWidth: el.scrollWidth,
       lineHeight: parseFloat(style.lineHeight),
       direction: style.direction,
+      overflowY: style.overflowY,
     };
   });
 }
@@ -349,6 +350,7 @@ for (const viewport of NAME_VIEWPORTS) {
     // height assertion below would pass vacuously for any short name.
     expect(metrics.scrollHeight).toBeGreaterThan(metrics.offsetHeight);
     expectNameWithinBound(metrics);
+    expect(metrics.overflowY).toBe('hidden');
 
     // AC3: `dir="auto"` gives an RTL name an RTL base direction, so it reads
     // and truncates from the correct end.

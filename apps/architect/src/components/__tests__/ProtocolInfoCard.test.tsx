@@ -226,9 +226,12 @@ describe('ProtocolInfoCard', () => {
     it('always carries the three-line height bound, whatever the value', () => {
       renderCard('Short name');
       expect(nameControl()).toHaveClass('max-h-[3lh]');
+      expect(nameControl()).toHaveClass('overflow-hidden');
+      expect(nameControl()).not.toHaveClass('overflow-y-auto');
 
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(90) } });
       expect(nameControl()).toHaveClass('max-h-[3lh]');
+      expect(nameControl()).toHaveClass('overflow-hidden');
     });
 
     it('lets an RTL name set its own base direction', () => {

@@ -56,7 +56,7 @@ const ValidationSection = ({
   disabled = false,
   entity,
   id = getFieldId('validation'),
-  summary = 'Choose which validation rules apply to this form field.',
+  summary = 'Enable validation of this variable.',
   variableType = '',
   existingVariables,
   allVariables,

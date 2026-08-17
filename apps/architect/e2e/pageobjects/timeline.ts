@@ -64,13 +64,6 @@ export class Timeline {
     });
   }
 
-  /** The row's keyboard/pointer reorder handle. */
-  reorderHandle(label: string): Locator {
-    return this.stageRowByLabel(label).getByRole('button', {
-      name: 'Reorder stage',
-    });
-  }
-
   deleteControl(label: string): Locator {
     return this.stageRowByLabel(label).getByRole('button', {
       name: 'Delete stage',
@@ -92,6 +85,26 @@ export class Timeline {
 
   async dragStage(fromLabel: string, toLabel: string) {
     const from = this.stageCard(fromLabel);
+    await this.dragFrom(from, fromLabel, toLabel);
+  }
+
+  async dragStageFromPreview(fromLabel: string, toLabel: string) {
+    await this.dragFrom(this.openControl(fromLabel), fromLabel, toLabel);
+  }
+
+  async dragStageFromText(fromLabel: string, toLabel: string) {
+    await this.dragFrom(
+      this.stageRowByLabel(fromLabel).getByRole('heading', {
+        level: 4,
+        name: fromLabel,
+      }),
+      fromLabel,
+      toLabel,
+    );
+  }
+
+  private async dragFrom(from: Locator, fromLabel: string, toLabel: string) {
+    const fromCard = this.stageCard(fromLabel);
     const to = this.stageCard(toLabel);
     // Raw `page.mouse.move` targets viewport-relative coordinates and never
     // triggers a mid-drag auto-scroll the way real pointer input would, so a
@@ -101,7 +114,7 @@ export class Timeline {
     // 'nearest' — that landed on inconsistent offsets across rows in
     // practice) reliably brings both rows' centers on-screen for any `to`
     // within a couple of rows below `from`.
-    await from.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await fromCard.evaluate((el) => el.scrollIntoView({ block: 'start' }));
     const fromBox = await from.boundingBox();
     const toBox = await to.boundingBox();
     if (!fromBox || !toBox) throw new Error('stage row not found');

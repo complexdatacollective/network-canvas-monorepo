@@ -19,10 +19,9 @@ import {
   useRef,
 } from 'react';
 
-import { IconButton, iconButtonVariants, MotionButton } from '../../../Button';
+import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
-import Surface from '../../../layout/Surface';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -292,10 +291,9 @@ const dragHandleVariants = compose(
 /**
  * Pointer drag handle with an arrow-key equivalent, for any reorderable list.
  *
- * Exported for lists that are not `ArrayField`s — Architect's stage timeline
- * uses it so the app has one reorder vocabulary rather than two — which is why
- * `onMove` carries a refusal channel a list with ordering rules of its own can
- * answer on.
+ * Exported for lists that are not `ArrayField`s. `onMove` carries a refusal
+ * channel so a list with ordering rules of its own can answer whether a move
+ * was accepted.
  */
 export function ArrayFieldDragHandle({
   dragControls,

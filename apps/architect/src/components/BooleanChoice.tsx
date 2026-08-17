@@ -198,26 +198,27 @@ const BooleanChoice = ({ initialValue }: BooleanChoiceProps) => {
   );
 
   return (
-    <div>
-      <Paragraph>
-        The BooleanChoice input component allows you to specify rich text labels
-        for the two choices that your participant sees. Create a label for the
-        first option, representing the value true, and the second option,
-        representing the value false, below.
-      </Paragraph>
-      <Paragraph>
-        Each value can also be styled to indicate that it is negative. When
-        enabled, this will make the option red when selected.
-      </Paragraph>
-      <ArchitectField
-        name="options"
-        component={BooleanChoiceOptionsField}
-        label="Answer options"
-        labelHidden
-        initialValue={normalizedInitialValue}
-        validation={{ bothOptionLabelsRequired }}
-      />
-    </div>
+    <ArchitectField
+      name="options"
+      component={BooleanChoiceOptionsField}
+      label="Answer options"
+      hint={
+        <>
+          <Paragraph>
+            The BooleanChoice input component allows you to specify rich text
+            labels for the two choices that your participant sees. Create a
+            label for the first option, representing the value true, and the
+            second option, representing the value false, below.
+          </Paragraph>
+          <Paragraph>
+            Each value can also be styled to indicate that it is negative. When
+            enabled, this will make the option red when selected.
+          </Paragraph>
+        </>
+      }
+      initialValue={normalizedInitialValue}
+      validation={{ bothOptionLabelsRequired }}
+    />
   );
 };
 export default BooleanChoice;

@@ -104,16 +104,7 @@ export const ShapePickerControl = ({
               shape={shape.value}
               color={nodeColor as NodeColorSequence}
               size={nodeSize}
-              // Selection reads as the design-system focus ring in the node's
-              // own colour (Node's colour variant sets `outline-node-N`), rather
-              // than the generic `--selected` highlight. Unselected shapes sit at
-              // reduced opacity and come forward on hover.
-              className={cx(
-                'transition-[opacity,outline] duration-150',
-                state.checked
-                  ? 'outline-2 outline-offset-3'
-                  : 'opacity-70 hover:opacity-100',
-              )}
+              selected={state.checked}
             />
           )}
         />

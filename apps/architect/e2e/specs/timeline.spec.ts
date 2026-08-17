@@ -140,8 +140,6 @@ test('keeps the timeline tab order insertion-point-then-stage', async ({
     await architectPage.keyboard.press('Tab');
     await expect(timeline.openControl(label)).toBeFocused();
     await architectPage.keyboard.press('Tab');
-    await expect(timeline.reorderHandle(label)).toBeFocused();
-    await architectPage.keyboard.press('Tab');
     await expect(timeline.deleteControl(label)).toBeFocused();
     await architectPage.keyboard.press('Tab');
   }
@@ -150,7 +148,7 @@ test('keeps the timeline tab order insertion-point-then-stage', async ({
   await expect(timeline.insertButtons().nth(2)).toBeFocused();
 });
 
-test('reorders stages via drag and commits one moveStage', async ({
+test('reorders stages by dragging the preview and commits one moveStage', async ({
   architectPage,
   seed,
 }) => {
@@ -162,7 +160,32 @@ test('reorders stages via drag and commits one moveStage', async ({
   const [first, , third] = before;
   if (!first || !third) throw new Error('fixture must have at least 3 stages');
   const timeline = new Timeline(architectPage);
-  await timeline.dragStage(first.label, third.label);
+  await timeline.dragStageFromPreview(first.label, third.label);
+
+  await expect
+    .poll(async () => stagesOf(await readProtocolJson(architectPage))[0]?.id)
+    .not.toBe(first.id);
+
+  // Starting a drag on the preview focuses its native button. Once the pointer
+  // leaves the dropped row, that retained focus must not keep Delete revealed.
+  await architectPage.mouse.move(0, 0);
+  await expect(timeline.deleteControl(first.label)).toHaveCSS('opacity', '0');
+});
+
+test('reorders stages by dragging the stage text', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const [first, , third] = before;
+  if (!first || !third) throw new Error('fixture must have at least 3 stages');
+
+  const timeline = new Timeline(architectPage);
+  await timeline.dragStageFromText(first.label, third.label);
 
   await expect
     .poll(async () => stagesOf(await readProtocolJson(architectPage))[0]?.id)
@@ -509,9 +532,9 @@ test('reorders stages with the arrow keys, announcing where the stage landed', a
   if (!first || !second) throw new Error('fixture must have at least 2 stages');
 
   const timeline = new Timeline(architectPage);
-  const handle = timeline.reorderHandle(first.label);
-  await handle.focus();
-  await handle.press('ArrowDown');
+  const openControl = timeline.openControl(first.label);
+  await openControl.focus();
+  await openControl.press('ArrowDown');
 
   await expect
     .poll(async () =>
@@ -525,7 +548,7 @@ test('reorders stages with the arrow keys, announcing where the stage landed', a
 
   // Focus follows the stage, so a second press keeps moving the same stage
   // instead of stranding the researcher on <body>.
-  await expect(timeline.reorderHandle(first.label)).toBeFocused();
+  await expect(timeline.openControl(first.label)).toBeFocused();
 });
 
 test('blocks a keyboard reorder that would strand a skip destination', async ({
@@ -547,9 +570,9 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
 
   const before = stagesOf(await readProtocolJson(architectPage));
   const timeline = new Timeline(architectPage);
-  const handle = timeline.reorderHandle(destination.label);
-  await handle.focus();
-  await handle.press('ArrowUp');
+  const openControl = timeline.openControl(destination.label);
+  await openControl.focus();
+  await openControl.press('ArrowUp');
 
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot move stage',
@@ -573,24 +596,10 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
     ),
   ).toEqual([]);
 
-  // A refused move must also release the handle's claim on focus. Left armed,
-  // it fires on the NEXT index change from any cause — so delete the stage
-  // above this one, which shifts it up, and assert focus stays where the delete
-  // put it instead of being yanked onto this handle a frame later.
-  const deleteControl = timeline.deleteControl(source.label);
-  await deleteControl.focus();
-  await deleteControl.press('Enter');
-  await architectPage
-    .getByRole('dialog', { name: 'Delete stage' })
-    .getByRole('button', { name: 'Delete stage' })
-    .click();
-  await expect(timeline.rows()).toHaveCount(before.length - 1);
-
-  await expect(timeline.openControl(destination.label)).toBeFocused();
-  await expect(handle).not.toBeFocused();
+  await expect(openControl).toBeFocused();
 });
 
-test('reveals the reorder and delete controls when they take focus', async ({
+test('reveals the delete control when it takes focus', async ({
   architectPage,
   seed,
 }) => {
@@ -607,13 +616,10 @@ test('reveals the reorder and delete controls when they take focus', async ({
   // `opacity: 0` at full layout size. Opacity is the whole defect, so opacity
   // is what gets asserted.
   const deleteControl = timeline.deleteControl(first.label);
-  const reorderHandle = timeline.reorderHandle(first.label);
   await expect(deleteControl).toHaveCSS('opacity', '0');
-  await expect(reorderHandle).toHaveCSS('opacity', '0');
 
   await deleteControl.focus();
   await expect(deleteControl).toHaveCSS('opacity', '1');
-  await expect(reorderHandle).toHaveCSS('opacity', '1');
 });
 
 test('reveals a focused insertion point', async ({ architectPage, seed }) => {
