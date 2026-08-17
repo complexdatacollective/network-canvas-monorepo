@@ -131,7 +131,6 @@ export function DataTableColumnHeader<TData, TValue>({
           ref={buttonRef}
           render={
             <Button
-              size="sm"
               className="-mx-4 min-w-max px-4!"
               aria-pressed={isActive}
               variant="text"
