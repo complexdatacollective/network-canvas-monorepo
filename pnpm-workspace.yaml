@@ -84,6 +84,7 @@ catalog:
   '@vitest/browser': ^4.1.10
   '@vitest/browser-playwright': ^4.1.10
   '@vitest/coverage-v8': ^4.1.10
+  better-auth: 1.6.27
   chromatic: ^18.1.0
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
