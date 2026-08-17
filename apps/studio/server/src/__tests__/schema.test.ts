@@ -11,9 +11,8 @@ import {
 } from '../db/schema.ts';
 import { createScratchSchema, reachableDb } from './support/postgres.ts';
 
-// The fingerprint guard: what stops an edited AUTH_SCHEMA_SQL from booting
-// clean against a database that predates the edit. Each case runs in its own
-// Postgres schema, because half of them corrupt the fingerprint on purpose.
+// Each case runs in its own Postgres schema, because half of them corrupt the
+// fingerprint on purpose.
 
 const db = await reachableDb();
 

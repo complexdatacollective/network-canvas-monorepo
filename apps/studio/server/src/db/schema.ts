@@ -2,10 +2,6 @@ import { createHash } from 'node:crypto';
 
 import type pg from 'pg';
 
-// better-auth's tables (users, cookie sessions, provider accounts,
-// verification tokens) plus the Postgres-backed rate-limit counters (#1246:
-// durable security counters live in Postgres, never memory or Redis).
-//
 // Snapshotted from `npx -y @better-auth/cli@latest generate --config
 // scripts/auth-cli-config.ts` (CLI 1.4.22 at snapshot time — the CLI
 // versions independently of better-auth itself) and made idempotent, the
@@ -34,9 +30,8 @@ create index if not exists "account_userId_idx" on "account" ("userId");
 create index if not exists "verification_identifier_idx" on "verification" ("identifier");
 `;
 
-// Every table the SQL above owns. Kept beside it because the unstamped probe
-// below has to ask about all of them: finding any one is enough to know the
-// database was built by something other than this build.
+// The unstamped probe below reads this list; finding any one table is enough
+// to know the database was built by something other than this build.
 export const SCHEMA_TABLES = [
   'user',
   'session',
@@ -87,9 +82,9 @@ async function applySchema(client: pg.PoolClient): Promise<void> {
 }
 
 /**
- * The only way a database comes to have this schema. A mismatch is returned
- * rather than thrown so callers can tell a verdict from a connection failure:
- * anything this throws is transient, and everything it returns is an answer.
+ * A mismatch is returned rather than thrown so callers can tell a verdict from
+ * a connection failure: anything this throws is transient, and everything it
+ * returns is an answer.
  */
 export async function ensureSchema(pool: pg.Pool): Promise<SchemaState> {
   const client = await pool.connect();

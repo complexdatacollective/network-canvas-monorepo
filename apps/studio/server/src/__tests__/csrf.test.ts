@@ -4,9 +4,6 @@ import { createApp } from '../app.ts';
 import type { AuthService } from '../auth/index.ts';
 import { readEnv } from '../env.ts';
 
-// The cookie plane's cross-origin refusal (#1248), unit-tested through the
-// app with a fake auth service behind the seam — no database involved.
-
 function fakeAuthService(): AuthService {
   return {
     handler: () => Promise.resolve(Response.json({})),

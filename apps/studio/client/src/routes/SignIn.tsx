@@ -26,8 +26,6 @@ const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
   microsoft: { label: 'Continue with Microsoft', icon: <MicrosoftIcon /> },
 };
 
-// The magic-link verify redirect's error codes; every other `?error=` value
-// on this page comes from an OAuth round trip that did not complete.
 const MAGIC_LINK_ERRORS = new Set(['EXPIRED_TOKEN', 'INVALID_TOKEN']);
 
 export default function SignIn() {
@@ -47,21 +45,13 @@ export default function SignIn() {
   }, [sentTo]);
 
   // Only definitive status data closes anything off; not knowing (the status
-  // query failing) must not lock the door. Auth being enabled is not enough
-  // on its own: a server with no mailer and no provider reports `enabled`
-  // while having no way to actually start a sign-in.
+  // query failing) must not lock the door.
   const auth = status.isSuccess ? status.data.auth : undefined;
   const unavailable = auth
     ? !auth.enabled || (!auth.magicLink && auth.socialProviders.length === 0)
     : false;
 
-  // The server sets `magicLink` false when no mail can leave the instance, in
-  // which case every send here would come back as a failure the person can do
-  // nothing about.
   const magicLink = auth ? auth.magicLink : true;
-
-  // Rendered only from definitive status data: starting a sign-in with an
-  // unconfigured provider would fail at the server.
   const socialProviders = auth?.socialProviders ?? [];
 
   const signInWith = async (provider: SocialProvider) => {
@@ -116,10 +106,6 @@ export default function SignIn() {
                 <Form
                   onSubmit={async (values) => {
                     const email = String(values.email ?? '');
-                    // A rejection rather than an `error` result — the
-                    // connection dropping mid-send — reads the same to the
-                    // person waiting, and unhandled would leave the form stuck
-                    // submitting.
                     const failed = {
                       success: false,
                       formErrors: [
@@ -131,10 +117,11 @@ export default function SignIn() {
                       result = await authClient.signIn.magicLink({
                         email,
                         callbackURL: '/',
-                        // better-auth appends its own ?error=<code> on failure.
                         errorCallbackURL: '/sign-in',
                       });
                     } catch {
+                      // Unhandled, a rejection would leave the form stuck
+                      // submitting.
                       return failed;
                     }
                     if (result.error) return failed;
@@ -161,7 +148,6 @@ export default function SignIn() {
             )}
             {socialProviders.length > 0 && (
               <>
-                {/* Only a divider when there are two things to divide. */}
                 {magicLink && (
                   <div className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20">
                     or
@@ -196,7 +182,6 @@ export default function SignIn() {
             )}
           </>
         )}
-        {/* Live region so the send is announced without a focus change. */}
         <Paragraph role="status" ref={sentRef} tabIndex={-1}>
           {sentTo !== null && (
             <>

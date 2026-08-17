@@ -5,10 +5,6 @@ import pg from 'pg';
 import { createPool } from '../../db/pool.ts';
 import { type DbEnv, readEnv } from '../../env.ts';
 
-// The reachability probe every database suite opens with, extracted rather
-// than copied a fourth time. Returns the resolved DbEnv so callers get their
-// narrowing from the same call that decides whether to skip.
-
 const PROBE_TIMEOUT_MS = 3000;
 
 export async function reachableDb(): Promise<DbEnv | null> {

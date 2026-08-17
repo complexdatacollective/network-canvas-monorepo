@@ -13,11 +13,6 @@ import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
 import SignIn from './routes/SignIn.tsx';
 
-/**
- * One session probe with three honest outcomes: signed in, signed out, or
- * "couldn't tell". Guards must not conflate the last two — a briefly
- * unreachable server is not a sign-out.
- */
 async function probeSession(): Promise<
   'signedIn' | 'signedOut' | 'unreachable'
 > {
@@ -43,8 +38,6 @@ const signInRoute = createRoute({
   path: '/sign-in',
   validateSearch: (search): { error?: string } =>
     typeof search.error === 'string' ? { error: search.error } : {},
-  // A signed-in visitor has no business here; an unreachable server still
-  // renders the page (it degrades to the form, which will fail loudly).
   beforeLoad: async () => {
     if ((await probeSession()) === 'signedIn') {
       throw redirect({ to: '/' });
@@ -53,8 +46,6 @@ const signInRoute = createRoute({
   component: SignIn,
 });
 
-// Pathless layout guarding everything that isn't the sign-in page: Studio
-// has no anonymous surface.
 const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'authenticated',
@@ -83,7 +74,6 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([indexRoute]),
 ]);
 
-/** Tests pass a memory history; the app uses the browser default. */
 export function createAppRouter(history?: RouterHistory) {
   return createRouter({
     routeTree,

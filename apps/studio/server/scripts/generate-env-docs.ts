@@ -10,10 +10,6 @@ import {
   spliceReadme,
 } from './env-docs.ts';
 
-// Writes the three artifacts rendered from src/env/catalogue.ts. Run via
-// `pnpm --filter @codaco/studio-server generate:env-docs`; the drift guard in
-// src/env/__tests__/docs.test.ts fails if what is committed differs.
-
 writeFileSync(ENV_DEVELOPMENT_PATH, renderEnvDevelopment());
 writeFileSync(ENV_EXAMPLE_PATH, renderEnvExample());
 writeFileSync(

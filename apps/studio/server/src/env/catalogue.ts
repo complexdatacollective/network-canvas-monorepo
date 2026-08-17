@@ -1,23 +1,13 @@
 import type { VariableName } from './variables.ts';
 
-// The documentation half of the environment declaration. Nothing under
-// `src/` outside this directory imports it — it is read by
-// `scripts/generate-env-docs.ts`, by the dev scripts (which take their
-// container ports and credentials from `DEV` below), and by the drift guard.
-//
 // `CATALOGUE` is typed as an exhaustive record over `VariableName`, so adding
 // a variable to `variables.ts` without documenting it fails `pnpm typecheck`.
-// That is what makes the schema the documentation source rather than merely
-// its inspiration.
 
 /**
- * The concrete development stack: one Postgres and one MinIO container, both
- * provisioned by `scripts/dev-pg.ts` and `scripts/dev-s3.ts`. Those scripts
- * import these values rather than restating them, so the containers and the
- * generated `.env.development` cannot drift apart.
- *
- * The Postgres port and credentials are also what `packages/studio-sync`'s
- * conformance suite expects, so the one container serves both.
+ * `scripts/dev-pg.ts` and `scripts/dev-s3.ts` import these values rather than
+ * restating them, so the containers and the generated `.env.development`
+ * cannot drift apart. The Postgres port and credentials are also what
+ * `packages/studio-sync`'s conformance suite expects.
  */
 export const DEV = {
   pgHost: '127.0.0.1',
@@ -42,9 +32,7 @@ export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DE
 export const DEV_S3_ENDPOINT = `http://localhost:${DEV.s3Port}`;
 
 export type VariableDoc = {
-  /** Groups variables into sections in the generated documentation. */
   group: string;
-  /** What the variable is, in one sentence. */
   summary: string;
   /** What happens in a real deployment when it is set, and when it is not. */
   deployment: string;

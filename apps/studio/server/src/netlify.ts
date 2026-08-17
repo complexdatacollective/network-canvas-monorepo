@@ -2,12 +2,6 @@ import { createApp } from './app.ts';
 import { createPool } from './db/pool.ts';
 import { readEnv } from './env.ts';
 
-// Netlify Functions entry — the serverless deployment of the same Hono app
-// `src/index.ts` serves from a persistent Node process. Functions v2 handlers
-// are Web-standard Request/Response, so `app.fetch` is the whole adapter; the
-// Node-specific concerns of the persistent entry are the CDN's job or do not
-// exist here.
-//
 // Deliberately NOT ported from src/index.ts:
 //   - serveStatic / SPA fallback — Netlify's CDN serves apps/studio/client/dist
 //   - ensureSchema — there is no boot in a serverless runtime; run it once

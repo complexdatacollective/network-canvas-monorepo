@@ -2,12 +2,6 @@ import nodemailer from 'nodemailer';
 
 import type { MailerEnv } from '../env.ts';
 
-// Magic-link delivery behind an interface: SMTP is the one production
-// transport (#1250 — any provider's SMTP endpoint works, no vendor SDK), the
-// console mailer is the development loop, and the refusing mailer makes a
-// production deployment without SMTP fail loudly at send time instead of
-// silently dropping sign-in mail. Tests inject a capturing implementation.
-
 export type MagicLinkMailer = {
   sendMagicLink(input: { email: string; url: string }): Promise<void>;
 };

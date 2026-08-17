@@ -13,11 +13,8 @@ import {
 } from '../../../scripts/env-docs.ts';
 import { CATALOGUE, GROUPS } from '../catalogue.ts';
 
-// The generated environment documentation must match src/env/catalogue.ts.
-// Re-render in memory and compare, rather than shelling out to the writer —
-// the same shape as packages/fresco-ui's exports-map guard. A failure here
-// means the catalogue moved without the artifacts being regenerated:
-// `pnpm --filter @codaco/studio-server generate:env-docs`.
+// A failure here means the catalogue moved without the artifacts being
+// regenerated: `pnpm --filter @codaco/studio-server generate:env-docs`.
 
 describe('generated environment documentation', () => {
   it('matches the committed .env.development', () => {

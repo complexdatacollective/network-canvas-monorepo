@@ -8,10 +8,6 @@ import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
 import { seed } from '../src/db/seed.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 
-// The remedy the fingerprint guard names: drop everything, rebuild from the
-// current schema, seed. Pre-release a schema change means recreating the
-// database rather than migrating it (see src/db/schema.ts).
-//
 // It drops the schema rather than the database — unlike packages/studio-sync's
 // test helper — so it needs no second connection to the maintenance database
 // and no privilege to drop a database that has connections open. The same

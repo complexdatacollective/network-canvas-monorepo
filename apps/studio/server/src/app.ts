@@ -27,9 +27,7 @@ const STORAGE_PATHS = ['/storage', '/storage/*'];
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 type CreateAppDeps = {
-  /** Override the auth service — how tests inject fakes behind the seam. */
   auth?: AuthService;
-  /** Share an existing pg pool (the entry point's) with the auth service. */
   pool?: pg.Pool;
 };
 
@@ -60,24 +58,18 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
-  // Sign-in and session routes (#1255), served by the auth service behind
-  // the src/auth seam. Registered before the problem-JSON catch-alls below,
-  // which would otherwise swallow the /api prefix.
+  // Registered before the problem-JSON catch-alls below, which would
+  // otherwise swallow the /api prefix.
   app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
   app.route('/api/v1', createApiV1(authCaps));
 
-  // Content-addressed asset bytes over plain HTTP (#1278) — /storage, not
-  // /assets, which the client build claims for its hashed chunks.
-  //
-  // Writing is on the cookie plane's protected side, gated exactly like /rpc:
-  // an upload is 100 MB of someone else's bucket, and the SPA is its only
-  // caller. Reading stays open — a content address is unguessable, assets are
-  // fetched from contexts that carry no cookie, and a session lookup per byte
-  // range would put the database on the delivery path. Mounting the gate on
-  // the unsafe methods alone is what keeps it off that path.
+  // /storage, not /assets, which the client build claims for its hashed
+  // chunks. Reading stays open: a session lookup per byte range would put the
+  // database on the delivery path, and mounting the gate on the unsafe
+  // methods alone is what keeps it off that path.
   if (env.auth) {
     app.on(UNSAFE_METHODS, STORAGE_PATHS, requireSameOrigin(env.auth.baseUrl));
   }
@@ -90,9 +82,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
-  // implementing the @codaco/studio-rpc boundary contract. The cookie plane
-  // (#1248): explicit cross-origin refusal on unsafe methods, then principal
-  // resolution into the oRPC context.
+  // implementing the @codaco/studio-rpc boundary contract.
   if (env.auth) {
     app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
   }
@@ -122,9 +112,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
 
   // Placeholder handlers proving the WebSocket topology end to end; the real
   // protocol ("studio.sync.v1", #1247) replaces the echo behaviour, not the
-  // wiring. The upgrade is session-gated (#1248: cookie sessions cover /ws):
-  // it is a GET, so requireSameOrigin cannot protect it and the Origin
-  // header is checked directly.
+  // wiring.
   if (env.auth) {
     app.use(WS_PATH, requireWsOrigin(env.auth.baseUrl));
   }

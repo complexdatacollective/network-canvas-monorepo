@@ -8,12 +8,6 @@ import { type AuthService, createDisabledAuthService } from './service.ts';
 
 export type { AuthService, Principal, SessionPrincipal } from './service.ts';
 
-/**
- * Build the auth service the environment describes: the real implementation
- * when a database is configured, the refusing one otherwise. Pass `pool` to
- * share an existing connection pool (the entry point's); omitted, a new lazy
- * pool is created from the same configuration.
- */
 export function createAuthService(env: StudioEnv, pool?: pg.Pool): AuthService {
   if (!env.db || !env.auth) return createDisabledAuthService();
   return createBetterAuthService(

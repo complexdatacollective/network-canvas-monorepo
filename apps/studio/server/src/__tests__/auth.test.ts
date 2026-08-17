@@ -71,11 +71,10 @@ describe('principal resolution', () => {
     };
     const app = createApp(readEnv(), { auth });
 
-    // The same request without the header authenticates...
     const me = await createRpcClient(app).me();
     expect(me.userId).toBe('user-1');
 
-    // ...and with it, the request is on the token plane (#1248): the cookie
+    // With the header, the request is on the token plane (#1248): the cookie
     // session must not even be consulted.
     const { error } = await safe(
       createRpcClient(app, { authorization: 'Bearer some-token' }).me(),
@@ -114,7 +113,6 @@ describe('principal resolution', () => {
 });
 
 describe('unconfigured auth', () => {
-  // A production boot without DATABASE_URL: the server runs, auth refuses.
   const env: StudioEnv = {
     port: 3000,
     host: '0.0.0.0',
@@ -153,12 +151,7 @@ describe('unconfigured auth', () => {
   });
 });
 
-// The full magic-link round trip against a real Postgres — the dev instance
-// from scripts/dev-pg.ts. Skips when no database is reachable (same pattern
-// as the asset and connectivity suites). The mailer interface is the test
-// seam: a capturing implementation stands in for email delivery.
-//
-// It runs in its own Postgres schema, like the fingerprint suite: this test
+// Runs in its own Postgres schema, like the fingerprint suite: this test
 // needs an empty rate-limit table to start from, and clearing that in the
 // shared database would delete durable security counters from whatever
 // DATABASE_URL happens to point at.
@@ -190,7 +183,6 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       const app = createApp(env, { auth });
       const email = `researcher-${Date.now()}@example.com`;
 
-      // Request a magic link the way the SPA does.
       const send = await app.request('/api/auth/sign-in/magic-link', {
         method: 'POST',
         headers: {
@@ -203,20 +195,16 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       expect(sent).toHaveLength(1);
       expect(sent[0]?.email).toBe(email);
 
-      // Follow the emailed link; the verify redirect carries the session
-      // cookie.
       const verify = await app.request(sent[0]!.url);
       expect([302, 200]).toContain(verify.status);
       const setCookie = verify.headers.get('set-cookie');
       expect(setCookie).toBeTruthy();
       const cookie = (setCookie ?? '').split(';')[0]!;
 
-      // The session authenticates the protected RPC surface.
       const me = await createRpcClient(app, { cookie }).me();
       expect(me.email).toBe(email);
       expect(me.emailVerified).toBe(true);
 
-      // Without the cookie, the same procedure refuses.
       const { error } = await safe(createRpcClient(app).me());
       expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
     } finally {

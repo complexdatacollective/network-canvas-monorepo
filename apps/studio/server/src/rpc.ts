@@ -5,12 +5,8 @@ import { contract } from '@codaco/studio-rpc';
 import type { Principal } from './auth/index.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
 
-// The SPA's internal surface: the server-side implementation of the
-// @codaco/studio-rpc contract, mounted at /rpc (src/app.ts). Unpublished and
-// free-moving within the deploy-compatibility rules on #1245 — its only
-// client is the Studio SPA. Handlers are thin adapters over the domain layer
-// (src/domain.ts). The context carries the resolved principal (#1248); the
-// principal middleware in src/auth/principal.ts is the only writer.
+// The SPA's internal surface: unpublished and free-moving within the
+// deploy-compatibility rules on #1245 — its only client is the Studio SPA.
 
 export type RpcContext = {
   principal: Principal | null;

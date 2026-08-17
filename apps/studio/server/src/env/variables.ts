@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-// Every environment variable the Studio server reads, declared once. This is
-// the runtime schema half of the pair; `catalogue.ts` carries the prose and
-// the development values, and `pnpm generate:env-docs` renders both into the
-// README, `.env.development`, and `.env.example`.
-//
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
 // publicly-known development auth secret used to ship inside the built
@@ -75,7 +70,6 @@ export const serverSchemas = {
 
 export type VariableName = keyof typeof serverSchemas;
 
-/** The validated flat record, before `env/resolve.ts` builds the domain model. */
 export type RawEnv = Readonly<{
   [Name in VariableName]?: z.infer<(typeof serverSchemas)[Name]>;
 }>;

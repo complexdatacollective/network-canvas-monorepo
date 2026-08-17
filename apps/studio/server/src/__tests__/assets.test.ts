@@ -47,9 +47,6 @@ async function storeReachable(): Promise<boolean> {
 
 const reachable = await storeReachable();
 
-// Uploads are session-gated and same-origin-gated (see src/app.ts), so every
-// write here goes through a signed-in caller. The auth seam is the injection
-// point; the storage routes themselves know nothing about principals.
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'user-1',

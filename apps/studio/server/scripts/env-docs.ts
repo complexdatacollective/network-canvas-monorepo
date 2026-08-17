@@ -36,7 +36,6 @@ function fileBanner(what: string): string[] {
   ];
 }
 
-/** Wraps prose to a width, so generated comments stay readable in an editor. */
 function wrap(text: string, width: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];

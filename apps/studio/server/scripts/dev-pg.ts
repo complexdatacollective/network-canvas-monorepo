@@ -1,9 +1,7 @@
 /* oxlint-disable no-console -- dev tooling log output */
-// Branch-scoped Postgres for local development, the same shape as dev-s3.ts:
-// development never touches third-party services (#1246, 2026-08-11). Runs
-// under `concurrently` from the package's dev script. The port and
-// credentials deliberately match packages/studio-sync's conformance-suite
-// expectations, so one container serves the app and that suite.
+// The port and credentials deliberately match packages/studio-sync's
+// conformance-suite expectations, so one container serves the app and that
+// suite.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 

@@ -5,17 +5,11 @@ import Button from '@codaco/fresco-ui/Button';
 
 import { authClient } from '../lib/auth.ts';
 
-// The signed-in shell: every authenticated route renders inside it. The
-// route guard in router.tsx has already established a session by the time
-// this mounts; useSession keeps the identity reactive from there.
 export default function AppLayout() {
   const { data: session, isPending } = authClient.useSession();
   const navigate = useNavigate();
   const [signOutFailed, setSignOutFailed] = useState(false);
 
-  // The session can end underneath a mounted layout — sign-out in another
-  // tab, revocation, expiry surfaced by the store's focus refresh. Leave
-  // rather than sitting on an authenticated screen with no identity.
   useEffect(() => {
     if (!isPending && !session) {
       void navigate({ to: '/sign-in' });

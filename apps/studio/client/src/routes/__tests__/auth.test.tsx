@@ -18,8 +18,6 @@ vi.mock('../../lib/auth.ts', () => ({
   },
 }));
 
-// The mock payload is typed against the real contract, so a schema change
-// here fails the tests instead of silently drifting.
 type Status = InferContractRouterOutputs<typeof contract>['status'];
 const STATUS: Status = {
   name: 'Network Canvas Studio',
@@ -119,13 +117,10 @@ describe('route guard', () => {
         screen.getByText(/The server could not be reached/),
       ).toBeInTheDocument(),
     );
-    // A possibly-authenticated user must not be bounced to sign-in.
     expect(router.state.location.pathname).toBe('/');
   });
 
   it('sends a visitor to sign-in, not the error screen, when auth is switched off', async () => {
-    // A server with no database answers /api/auth/* with 503. That is the
-    // supported degradation, and the sign-in page is where it gets explained.
     mocked.getSession.mockResolvedValue({
       data: null,
       error: { status: 503 },
@@ -191,8 +186,6 @@ describe('sign-in page', () => {
         callbackURL: '/',
       }),
     );
-    // The escape hatch back to the form for a mistyped-but-deliverable
-    // address.
     fireEvent.click(
       screen.getByRole('button', { name: 'Use a different email address' }),
     );
@@ -248,8 +241,6 @@ describe('sign-in page', () => {
   });
 
   it('offers no email form when the server cannot send mail', async () => {
-    // magicLink false means the mailer resolved to `refuse`; every send would
-    // come back as a failure the person can do nothing about.
     currentStatus = {
       ...STATUS,
       auth: { ...STATUS.auth, magicLink: false, socialProviders: ['google'] },
@@ -313,8 +304,6 @@ describe('OAuth sign-in', () => {
 
   it('starts the provider round trip', async () => {
     currentStatus = withProviders;
-    // On success better-auth navigates away; the promise resolves with the
-    // authorization URL and the page unloads.
     mocked.signIn.social.mockResolvedValue({
       data: {
         url: 'https://accounts.google.com/o/oauth2/auth',
@@ -334,7 +323,6 @@ describe('OAuth sign-in', () => {
         expect.objectContaining({ provider: 'google', callbackURL: '/' }),
       ),
     );
-    // The button stays busy until the navigation happens.
     expect(button).toBeDisabled();
   });
 
@@ -359,8 +347,6 @@ describe('OAuth sign-in', () => {
   });
 
   it('re-enables the buttons when starting the round trip rejects outright', async () => {
-    // Not an `error` result but a thrown rejection — the connection dropping
-    // as the redirect starts. Unhandled, it leaves every button disabled.
     currentStatus = withProviders;
     mocked.signIn.social.mockRejectedValue(new Error('network down'));
     renderAt('/sign-in');

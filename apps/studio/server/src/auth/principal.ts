@@ -2,10 +2,6 @@ import { createMiddleware } from 'hono/factory';
 
 import type { AuthService, Principal } from './service.ts';
 
-// The one place a request becomes a principal (#1248): downstream handlers
-// never know which plane authenticated. Today only the cookie plane exists;
-// scoped API tokens (#1288) will extend this resolver, not add another.
-
 export type PrincipalVariables = {
   Variables: { principal: Principal | null };
 };
@@ -25,9 +21,8 @@ export function createPrincipalMiddleware(auth: AuthService) {
 }
 
 /**
- * Refuse the request when no principal resolved. The RPC surface enforces
- * this per-procedure inside oRPC; this middleware covers routes outside it —
- * currently the WebSocket upgrade.
+ * The RPC surface enforces this per-procedure inside oRPC; this middleware
+ * covers routes outside it — currently the WebSocket upgrade.
  */
 export function requirePrincipal() {
   return createMiddleware<PrincipalVariables>(async (c, next) => {

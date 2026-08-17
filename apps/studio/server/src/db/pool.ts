@@ -2,9 +2,8 @@ import pg from 'pg';
 
 import type { DbEnv } from '../env.ts';
 
-// The single construction point for the server's Postgres pool. The pool is
-// lazy — no connection is made until the first query — so creating it with
-// the dev defaults never requires a running database.
+// The pool is lazy — no connection is made until the first query — so
+// creating it with the dev defaults never requires a running database.
 
 // An unroutable host makes connect() hang until the OS gives up, which is long
 // enough for the boot retry to stack a probe per tick until the pool is

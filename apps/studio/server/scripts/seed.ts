@@ -4,8 +4,7 @@ import { seed } from '../src/db/seed.ts';
 import { readEnv } from '../src/env.ts';
 
 // The deploy-time seed step, run once per deployment rather than once per
-// replica. It checks the schema first so rows can never land in a database
-// this build did not build.
+// replica.
 
 const env = readEnv();
 

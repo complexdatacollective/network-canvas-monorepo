@@ -1,10 +1,5 @@
 import type { RawEnv } from './variables.ts';
 
-// The domain model the rest of the server consumes, and the cross-field rules
-// that build it. `variables.ts` validates variables one at a time; the rules
-// that span several of them — all-or-nothing S3, the SMTP pairing, the mailer's
-// three-way resolution — cannot be expressed there and live here.
-
 export type S3Env = {
   endpoint: string;
   region: string;
@@ -14,28 +9,14 @@ export type S3Env = {
 };
 
 export type DbEnv = {
-  /** Postgres connection string, `pg.Pool`'s native format. */
   url: string;
 };
 
-/**
- * How magic-link email leaves the server. Fully resolved here so the auth
- * layer never consults the environment: `smtp` in any configured deployment,
- * `console` as the development loop (the link is printed to the server log),
- * `refuse` in production without SMTP — sends fail loudly rather than
- * silently dropping mail.
- */
 export type MailerEnv =
   | { kind: 'smtp'; url: string; from: string }
   | { kind: 'console' }
   | { kind: 'refuse' };
 
-/**
- * OAuth sign-in providers (#1255: the launch set is magic link, Google, and
- * Microsoft). Each provider is configured independently and offered only when
- * its credential pair is complete; an absent provider simply isn't rendered
- * by the SPA.
- */
 export type SocialProvidersEnv = {
   google?: { clientId: string; clientSecret: string };
   microsoft?: { clientId: string; clientSecret: string; tenantId?: string };
@@ -43,59 +24,22 @@ export type SocialProvidersEnv = {
 
 export type AuthEnv = {
   secret: string;
-  /**
-   * The browser-facing origin — cookies and magic-link URLs are minted
-   * against it. In development that is the Vite dev server, which proxies
-   * every server path (single-origin invariant, #1245).
-   */
+  /** The browser-facing origin; cookies and magic-link URLs are minted against it. */
   baseUrl: string;
   mailer: MailerEnv;
-  /**
-   * Proxy addresses/CIDRs whose X-Forwarded-For may be trusted when
-   * resolving the client IP for rate limiting. Unset, no forwarded header is
-   * read at all — safe, but every client then shares one rate-limit bucket
-   * until this is configured.
-   */
   trustedProxies: string[] | undefined;
   socialProviders: SocialProvidersEnv;
 };
 
+// An undefined s3, db, or auth means that surface is not configured and
+// refuses with 503; the server still boots.
 export type StudioEnv = {
   port: number;
   host: string;
-  /**
-   * Directory of built client assets to serve for the self-host topology,
-   * resolved against the working directory. Unset means the production
-   * default (`../client` relative to the server bundle — the Docker image
-   * layout); in development the Vite dev server serves the client instead
-   * and this path simply doesn't resolve.
-   */
   clientDist: string | undefined;
-  /**
-   * Object storage (#1246, 2026-08-11): the S3 API is the contract — R2 in
-   * the managed topology, MinIO or any S3-compatible endpoint self-hosted.
-   * Undefined means asset storage is not configured and the asset routes
-   * refuse with 503.
-   */
   s3: S3Env | undefined;
-  /**
-   * Postgres (#1246): the only relational store in either topology.
-   * Undefined means no database is configured; surfaces that need one
-   * (auth, and eventually sync) refuse rather than the server failing to
-   * boot — the same degradation contract as `s3`.
-   */
   db: DbEnv | undefined;
-  /**
-   * Authentication (#1255, #1245): requires the database. Undefined means
-   * auth is not configured — `/api/auth/*` refuses with 503 and protected
-   * procedures refuse, but the server boots.
-   */
   auth: AuthEnv | undefined;
-  /**
-   * Running against the committed development defaults. It is the marker,
-   * not `NODE_ENV`, that says so — and it is the only lane where a missing
-   * database is survivable rather than a failed deployment.
-   */
   devDefaults: boolean;
 };
 
@@ -163,8 +107,6 @@ function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
 function resolveSocialProviders(raw: RawEnv): SocialProvidersEnv {
   const providers: SocialProvidersEnv = {};
 
-  // Same fail-fast contract as resolveS3: half a credential pair is a
-  // deployment mistake, not a request to silently drop the provider.
   if (raw.GOOGLE_CLIENT_ID || raw.GOOGLE_CLIENT_SECRET) {
     if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) {
       throw new Error(
@@ -212,8 +154,6 @@ function resolveAuth(
   // fast even on a deployment where auth is otherwise off.
   const socialProviders = resolveSocialProviders(raw);
 
-  // Sessions, users, and rate-limit counters all live in Postgres (#1246);
-  // without a database there is nothing for auth to run on.
   if (!db) return undefined;
 
   if (!raw.BETTER_AUTH_SECRET) {
@@ -237,18 +177,10 @@ function resolveAuth(
 export function resolve(raw: RawEnv): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
 
-  // The marker only ever arrives from the committed `.env.development`, which
-  // the dev script loads and no deployment path does. Seeing it anywhere else
-  // means a deployment picked that file up somehow — refuse rather than serve
-  // with a publicly-known signing secret and a console mailer.
-  //
-  // The check is for an explicit development or test NODE_ENV rather than
+  // Checked against an explicit development or test NODE_ENV rather than
   // merely "not production", because the two mistakes travel together: an
   // entrypoint that accidentally sources `.env.development` is exactly the one
-  // likely to have forgotten `NODE_ENV=production`, and a guard that only
-  // fires on the second would let that deployment through. `.env.development`
-  // sets NODE_ENV itself, so the supported development path always satisfies
-  // this.
+  // likely to have forgotten `NODE_ENV=production`.
   if (
     devDefaults &&
     raw.NODE_ENV !== 'development' &&

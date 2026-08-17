@@ -243,8 +243,6 @@ describe('process configuration', () => {
   });
 
   it('keeps validating when SKIP_ENV_VALIDATION says not to skip', () => {
-    // `Boolean('false')` is true, so a coerced check would read this as an
-    // instruction to skip and hand the resolver unparsed strings.
     vi.stubEnv('SKIP_ENV_VALIDATION', 'false');
     vi.stubEnv('PORT', 'http');
     expect(() => readEnv()).toThrow();

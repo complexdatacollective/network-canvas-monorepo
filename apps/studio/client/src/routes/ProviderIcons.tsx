@@ -1,7 +1,5 @@
-// Official Google and Microsoft brand marks for the OAuth sign-in buttons
-// (#1255). Both brands' guidelines require the exact marks and colors, so
-// these are the one sanctioned exception to styling with theme tokens.
-// Decorative: the button text carries the provider name.
+// Both brands' guidelines require the exact marks and colors (#1255), so these
+// are the one sanctioned exception to styling with theme tokens.
 
 const ICON_CLASS = 'h-[1em] w-auto shrink-0';
 

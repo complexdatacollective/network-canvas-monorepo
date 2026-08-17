@@ -3,14 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createPool } from '../db/pool.ts';
 import { reachableDb } from './support/postgres.ts';
 
-// Environment resolution is covered by src/env/__tests__/env.test.ts; what
-// remains here is the integration probe.
-
-// Integration probe against a real Postgres — the dev instance from
-// scripts/dev-pg.ts (or whatever DATABASE_URL points at). Skips when no
-// database is reachable, the same pattern as the asset-storage suite: unit
-// lanes stay green without Docker; run the server's dev script to exercise
-// this for real.
+// Skips when no database is reachable: unit lanes stay green without Docker;
+// run the server's dev script to exercise this for real.
 
 const db = await reachableDb();
 
