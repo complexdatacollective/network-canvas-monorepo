@@ -3,6 +3,8 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
 
+import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
+
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
@@ -50,7 +52,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
     socialProviders: enabled
-      ? (['google', 'microsoft'] as const).filter(
+      ? SOCIAL_PROVIDERS.filter(
           (provider) => env.auth?.socialProviders[provider],
         )
       : [],

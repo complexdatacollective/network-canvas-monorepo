@@ -2,6 +2,8 @@ import { oc } from '@orpc/contract';
 
 import { MeSchema, StatusSchema } from './schemas.ts';
 
+export { SOCIAL_PROVIDERS, type SocialProvider } from './schemas.ts';
+
 // The SPA's internal RPC contract (oRPC v2, per the 2026-08-10 decision on
 // #1244). This is the only shared code between the two Studio deployables —
 // the leaf of the client/server package diamond (#1244, 2026-08-11) — so it

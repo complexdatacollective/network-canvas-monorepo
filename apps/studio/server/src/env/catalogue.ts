@@ -31,8 +31,17 @@ export const DEV = {
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;
 export const DEV_S3_ENDPOINT = `http://localhost:${DEV.s3Port}`;
 
+export const GROUPS = [
+  'Process',
+  'Object storage',
+  'Database',
+  'Authentication',
+] as const;
+
+export type Group = (typeof GROUPS)[number];
+
 export type VariableDoc = {
-  group: string;
+  group: Group;
   summary: string;
   /** What happens in a real deployment when it is set, and when it is not. */
   deployment: string;
@@ -45,13 +54,6 @@ export type VariableDoc = {
    */
   example?: string;
 };
-
-export const GROUPS = [
-  'Process',
-  'Object storage',
-  'Database',
-  'Authentication',
-] as const;
 
 export const CATALOGUE: Record<VariableName, VariableDoc> = {
   NODE_ENV: {

@@ -1,3 +1,7 @@
+import type { InferContractRouterOutputs } from '@orpc/contract';
+
+import type { contract } from '@codaco/studio-rpc';
+
 import { STUDIO_VERSION } from './version.ts';
 
 // The domain layer: one implementation of app behaviour that every surface
@@ -6,24 +10,17 @@ import { STUDIO_VERSION } from './version.ts';
 // separation decided 2026-08-11 on #1248, the surfaces share this layer and
 // nothing else: no surface is generated from another.
 
-/**
- * What sign-in the instance currently offers — how the SPA knows which
- * affordances to render, and an honest report when auth is unconfigured.
- * `magicLink` is false when no mail can leave the server even though auth
- * is otherwise enabled; `socialProviders` lists the OAuth providers whose
- * credentials are configured (#1255), empty when none are.
- */
-export type AuthCapabilities = {
-  enabled: boolean;
-  magicLink: boolean;
-  socialProviders: ('google' | 'microsoft')[];
-};
+export type InstanceStatus = InferContractRouterOutputs<
+  typeof contract
+>['status'];
 
-export type InstanceStatus = {
-  name: string;
-  version: string;
-  auth: AuthCapabilities;
-};
+/**
+ * What sign-in the instance currently offers. `magicLink` is false when no
+ * mail can leave the server even though auth is otherwise enabled;
+ * `socialProviders` lists the OAuth providers whose credentials are
+ * configured (#1255), empty when none are.
+ */
+export type AuthCapabilities = InstanceStatus['auth'];
 
 export function getInstanceStatus(auth: AuthCapabilities): InstanceStatus {
   return {

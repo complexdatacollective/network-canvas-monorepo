@@ -1,6 +1,11 @@
 import { fileURLToPath } from 'node:url';
 
-import { CATALOGUE, GROUPS, type VariableDoc } from '../src/env/catalogue.ts';
+import {
+  CATALOGUE,
+  type Group,
+  GROUPS,
+  type VariableDoc,
+} from '../src/env/catalogue.ts';
 
 // Pure renderers for the three generated environment artifacts. Kept separate
 // from the writer so the drift guard (src/env/__tests__/docs.test.ts) can
@@ -24,7 +29,7 @@ export const README_PATH = fileURLToPath(new URL('../README.md', serverRoot));
 
 type Entry = [name: string, doc: VariableDoc];
 
-function entriesByGroup(group: string): Entry[] {
+function entriesByGroup(group: Group): Entry[] {
   return Object.entries(CATALOGUE).filter(([, doc]) => doc.group === group);
 }
 

@@ -2,6 +2,8 @@ import { betterAuth } from 'better-auth';
 import { magicLink } from 'better-auth/plugins';
 import type pg from 'pg';
 
+import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
+
 import type { AuthEnv } from '../env.ts';
 import type { MagicLinkMailer } from './email.ts';
 import type { AuthService } from './service.ts';
@@ -56,7 +58,7 @@ export function createBetterAuthInstance(
       // (some Entra tenants).
       accountLinking: {
         enabled: true,
-        trustedProviders: ['google', 'microsoft'],
+        trustedProviders: [...SOCIAL_PROVIDERS],
       },
     },
     plugins: [

@@ -12,14 +12,13 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { SocialProvider } from '@codaco/studio-rpc';
 
 import { orpc } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { GoogleIcon, MicrosoftIcon } from './ProviderIcons.tsx';
 
 const route = getRouteApi('/sign-in');
-
-type SocialProvider = 'google' | 'microsoft';
 
 const PROVIDERS: Record<SocialProvider, { label: string; icon: ReactNode }> = {
   google: { label: 'Continue with Google', icon: <GoogleIcon /> },
