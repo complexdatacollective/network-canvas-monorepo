@@ -34,9 +34,39 @@ function Harness({
   );
 }
 
+function FormHarness({ onSubmit }: { onSubmit: () => void }) {
+  const dragControls = useDragControls();
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <ArrayFieldDragHandle
+        dragControls={dragControls}
+        index={0}
+        itemCount={2}
+        onMove={vi.fn()}
+      />
+    </form>
+  );
+}
+
 const handle = () => screen.getByRole('button', { name: /^Reorder item/ });
 
 describe('ArrayFieldDragHandle', () => {
+  it('does not submit an ancestor form when a pointer drag ends in a click', () => {
+    const onSubmit = vi.fn();
+    render(<FormHarness onSubmit={onSubmit} />);
+
+    expect(handle()).toHaveAttribute('type', 'button');
+    fireEvent.click(handle());
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('reclaims focus after a move it asked for', async () => {
     render(<Harness onMove={vi.fn()} />);
 

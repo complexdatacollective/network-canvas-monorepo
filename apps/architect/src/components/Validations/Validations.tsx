@@ -126,15 +126,14 @@ type RuleListProps = {
    */
   fieldErrorToken?: string;
   /**
-   * Whether an unanswered rule should say so straight away, without waiting
-   * for a save to object. True only on a surface that has no save to object
-   * WITH — `CodebookVariableValidationSection` writes to the codebook on every
-   * change, so a rule it is holding back has no later moment to be explained.
+   * Whether leaving an unanswered value control should reveal its error. True
+   * only on a surface that has no save to object WITH —
+   * `CodebookVariableValidationSection` writes complete rules to the codebook
+   * on every change, but a newly focused picker still gets a chance to be
+   * answered before it is marked invalid.
    */
-  revealIncompleteImmediately?: boolean;
+  revealIncompleteOnBlur?: boolean;
 };
-
-type FocusRequest = { ruleKey: string; token: number };
 
 const RuleList = ({
   groups,
@@ -146,21 +145,19 @@ const RuleList = ({
   candidateCount,
   uniqueValueCount,
   fieldErrorToken,
-  revealIncompleteImmediately = false,
+  revealIncompleteOnBlur = false,
 }: RuleListProps) => {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
-  const focusToken = useRef(0);
 
   /**
    * Rules the researcher has already been TOLD are unanswered.
    *
    * Naming a rule as unanswered the instant it is switched on would scold
-   * them for not yet having typed the value the toggle just moved focus to —
-   * so a row only says so once a save has objected while that row was
-   * unanswered. Membership is per rule, not a single form-wide flag: a rule
-   * switched on AFTER a refusal has not been objected to yet, and must not
-   * inherit the standing complaint about a different one.
+   * them before they have interacted with its value control. A row only says
+   * so once that control has been left empty, or a save has objected while the
+   * row was unanswered. Membership is per rule, not a single form-wide flag:
+   * a rule switched on AFTER a refusal has not been objected to yet, and must
+   * not inherit the standing complaint about a different one.
    */
   const [revealedIncomplete, setRevealedIncomplete] =
     useState<ReadonlySet<string>>(EMPTY_KEYS);
@@ -189,11 +186,6 @@ const RuleList = ({
     Object.hasOwn(drafts, ruleKey)
       ? drafts[ruleKey]!
       : formatCommitted(committed[ruleKey]);
-
-  const requestFocus = (ruleKey: string) => {
-    focusToken.current += 1;
-    setFocusRequest({ ruleKey, token: focusToken.current });
-  };
 
   /**
    * Every row's typed-but-uncommitted text, applied to the map.
@@ -241,9 +233,6 @@ const RuleList = ({
    */
   const handleToggle = (ruleKey: string, nextState: boolean) => {
     if (!nextState) {
-      setFocusRequest((current) =>
-        current?.ruleKey === ruleKey ? null : current,
-      );
       // Switching a rule off answers the complaint about it, so switching it
       // back on later starts from silence again.
       setRevealedIncomplete((current) => {
@@ -266,12 +255,10 @@ const RuleList = ({
         ...base,
         [ruleKey]: initialNumericRuleValue(ruleKey, base),
       }));
-      requestFocus(ruleKey);
       return;
     }
 
     commit((base) => ({ ...base, [ruleKey]: null }));
-    requestFocus(ruleKey);
   };
 
   const handleTextChange = (ruleKey: string, text: string) => {
@@ -282,13 +269,27 @@ const RuleList = ({
     commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, text) }));
   };
 
+  const handleValueExit = (ruleKey: string, text: string) => {
+    handleCommit(ruleKey, text);
+    if (
+      !revealIncompleteOnBlur ||
+      isRuleValueComplete(ruleKey, parseForRule(ruleKey, text))
+    ) {
+      return;
+    }
+    setRevealedIncomplete((current) => {
+      if (current.has(ruleKey)) return current;
+      return new Set(current).add(ruleKey);
+    });
+  };
+
   const issuesFor = (ruleKey: string): string[] => {
     if (!isOn(ruleKey)) {
       return [];
     }
     const parsed = parseForRule(ruleKey, textFor(ruleKey));
     if (!isRuleValueComplete(ruleKey, parsed)) {
-      if (!revealIncompleteImmediately && !revealedIncomplete.has(ruleKey)) {
+      if (!revealedIncomplete.has(ruleKey)) {
         return [];
       }
       const incomplete = incompleteRuleIssue({ [ruleKey]: parsed });
@@ -363,11 +364,7 @@ const RuleList = ({
                   onToggle={handleToggle}
                   onTextChange={handleTextChange}
                   onCommit={handleCommit}
-                  focusValueToken={
-                    focusRequest?.ruleKey === rule.value
-                      ? focusRequest.token
-                      : undefined
-                  }
+                  onValueExit={handleValueExit}
                 />
               );
             })}
@@ -393,7 +390,7 @@ type ValidationsFieldProps = {
   draftComponent?: unknown;
   draftParameters?: unknown;
   draftVariableName?: unknown;
-  revealIncompleteImmediately?: boolean;
+  revealIncompleteOnBlur?: boolean;
 };
 
 type RuleMapContextInput = {
@@ -455,7 +452,7 @@ const ValidationsField = ({
   draftComponent,
   draftParameters,
   draftVariableName,
-  revealIncompleteImmediately,
+  revealIncompleteOnBlur,
 }: ValidationsFieldProps) => {
   const committed = isRecord(value) ? value : EMPTY_VALIDATION;
 
@@ -619,7 +616,7 @@ const ValidationsField = ({
         candidateCount={candidateIds.length}
         uniqueValueCount={uniqueValueCount}
         fieldErrorToken={fieldErrorToken}
-        revealIncompleteImmediately={revealIncompleteImmediately}
+        revealIncompleteOnBlur={revealIncompleteOnBlur}
       />
     </div>
   );
@@ -654,9 +651,8 @@ type ValidationsProps = {
   /**
    * Set by a host that writes every change straight through rather than
    * collecting them for a save — `CodebookVariableValidationSection`. There
-   * being no save to refuse, the field validates on every change instead, and
-   * an unanswered rule says so at once: it is being held back from the
-   * codebook, and there is no later moment to explain that.
+   * being no save to refuse, an unanswered rule is reported when the user
+   * leaves its value control empty; complete rules are written immediately.
    */
   commitsImmediately?: boolean;
 };
@@ -668,13 +664,13 @@ type ValidationsProps = {
  * migration) — individual rows are rendered from that value locally, never
  * registered as their own form fields.
  *
- * The field validates its OWN value (`ruleMapIssue`): an unanswered rule, a
- * value the schema would reject, or a contradiction against the rest of the
- * codebook makes the field invalid, so every host — a row-editor dialog, the
- * stage form, the codebook section's isolated form — refuses the save through
- * the ordinary `validateForm` path, with `aria-invalid`, `aria-describedby`,
- * `FieldErrors` and `focusFirstError` all behaving as they do for any other
- * field.
+ * Save-backed hosts validate the field's OWN value (`ruleMapIssue`) and refuse
+ * an unanswered or contradictory map through the ordinary `validateForm`
+ * path. The codebook section has no save boundary, so it omits field-level
+ * validation and uses the same predicate before each direct write instead;
+ * this prevents one blurred rule from making later untouched rules inherit
+ * its form-field error. Row errors keep `aria-invalid` and
+ * `aria-describedby` attached to the exact control that needs correction.
  */
 const Validations = ({
   name,
@@ -714,9 +710,8 @@ const Validations = ({
       label="Validation rules"
       hint="Enable one or more validation rules to apply to this variable."
       initialValue={initialValue ?? EMPTY_VALIDATION}
-      validation={validation}
-      validateOnChange={commitsImmediately}
-      revealIncompleteImmediately={commitsImmediately}
+      validation={commitsImmediately ? undefined : validation}
+      revealIncompleteOnBlur={commitsImmediately}
       existingVariables={existingVariables}
       variableType={variableType}
       entity={entity}

@@ -399,9 +399,13 @@ describe('Validations behaviour', () => {
           validation: {},
         });
 
-        fireEvent.click(toggle(label));
+        const ruleToggle = toggle(label);
+        ruleToggle.focus();
+        fireEvent.click(ruleToggle);
 
         expect(committedValidation()).toEqual({ [ruleKey]: initialValue });
+        expect(ruleToggle).toHaveFocus();
+        expect(numberValue(label)).not.toHaveFocus();
         expect(numberValue(label)).toHaveValue(initialValue);
         await expectSaveAllowed();
       },
@@ -643,6 +647,41 @@ describe('Validations behaviour', () => {
   });
 
   describe('comparison rules', () => {
+    it.each([
+      'Different from',
+      'Same as',
+      'Less than',
+      'Greater than',
+      'Less than or equal to',
+      'Greater than or equal to',
+    ])('does not focus or immediately invalidate the %s picker', (label) => {
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: { c: { name: 'C', type: 'number' } },
+        validation: {},
+      });
+
+      const ruleToggle = toggle(label);
+      ruleToggle.focus();
+      fireEvent.click(ruleToggle);
+
+      const picker = targetSelect(label);
+      expect(ruleToggle).toHaveFocus();
+      expect(picker).not.toHaveFocus();
+      expect(picker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison variable for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
     it('filters a candidate that would form a strict comparator cycle out of the reference picker', () => {
       // a already requires a < b. On b's existing "less than c" rule, a
       // candidate of "a" would close a < b < a — an impossible strict cycle —

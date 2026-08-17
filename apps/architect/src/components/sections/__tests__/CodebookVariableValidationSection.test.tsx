@@ -192,6 +192,120 @@ describe('CodebookVariableValidationSection', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    'Different from',
+    'Same as',
+    'Less than',
+    'Greater than',
+    'Less than or equal to',
+    'Greater than or equal to',
+  ])(
+    'leaves the %s picker untouched and waits for interaction before showing an error',
+    async (label) => {
+      codebookVariables.current = {
+        v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+          id: string;
+        },
+        v2: { id: 'v2', name: 'Limit', type: 'number' } as Variable & {
+          id: string;
+        },
+      };
+      updateVariableAsync.mockClear();
+
+      renderSection();
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
+      const ruleToggle = await screen.findByRole('switch', {
+        name: label,
+        hidden: true,
+      });
+      ruleToggle.focus();
+      fireEvent.click(ruleToggle);
+
+      const picker = screen.getByRole('combobox', { name: label });
+      expect(ruleToggle).toHaveFocus();
+      expect(picker).not.toHaveFocus();
+      expect(picker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison variable for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+
+      fireEvent.focus(picker);
+      fireEvent.blur(picker);
+
+      await waitFor(() => {
+        expect(picker).toHaveAttribute('aria-invalid', 'true');
+      });
+      expect(
+        screen.getAllByText(
+          `Choose a comparison variable for "${label}", or switch the rule off.`,
+        ).length,
+      ).toBeGreaterThan(0);
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    'Different from',
+    'Same as',
+    'Less than',
+    'Greater than',
+    'Less than or equal to',
+    'Greater than or equal to',
+  ])(
+    'does not let an earlier picker error leak into a newly enabled %s rule',
+    async (label) => {
+      codebookVariables.current = {
+        v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+          id: string;
+        },
+        v2: { id: 'v2', name: 'Limit', type: 'number' } as Variable & {
+          id: string;
+        },
+      };
+      updateVariableAsync.mockClear();
+
+      renderSection();
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
+      const firstLabel =
+        label === 'Different from' ? 'Same as' : 'Different from';
+      const firstToggle = await screen.findByRole('switch', {
+        name: firstLabel,
+        hidden: true,
+      });
+      fireEvent.click(firstToggle);
+      const firstPicker = screen.getByRole('combobox', { name: firstLabel });
+      fireEvent.focus(firstPicker);
+      fireEvent.blur(firstPicker);
+      await waitFor(() => {
+        expect(firstPicker).toHaveAttribute('aria-invalid', 'true');
+      });
+      fireEvent.click(firstToggle);
+
+      const nextToggle = screen.getByRole('switch', {
+        name: label,
+        hidden: true,
+      });
+      nextToggle.focus();
+      fireEvent.click(nextToggle);
+
+      const nextPicker = screen.getByRole('combobox', { name: label });
+      expect(nextToggle).toHaveFocus();
+      expect(nextPicker).not.toHaveFocus();
+      expect(nextPicker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison variable for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not write a contradictory pair, then writes it once corrected', async () => {
     codebookVariables.current = {
       v1: {

@@ -344,6 +344,7 @@ export function ArrayFieldDragHandle({
   return (
     <button
       ref={buttonRef}
+      type="button"
       aria-label={label}
       aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."

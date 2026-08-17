@@ -37,7 +37,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill('How old are you?');
   await page
@@ -126,7 +126,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'age' });
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill('How old are you?');
   await page
@@ -197,7 +197,7 @@ test('the option editor rejects canonically equivalent labels', async ({
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: 'venue' });
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill('Where did you meet?');
   await page

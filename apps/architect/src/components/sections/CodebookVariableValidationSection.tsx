@@ -101,8 +101,7 @@ const ValidationCommitObserver = ({
    * Whether the rule map is finished and satisfiable. This surface has no
    * submit to refuse — it writes straight to the codebook on every change —
    * so an unanswered or contradictory map is simply not written, and the rule
-   * row's own inline error (plus the field error the section renders) is what
-   * explains the wait.
+   * row's own inline error explains what still needs attention.
    */
   isCommittable: (validation: ValidationMap) => boolean;
   onCommit: (validation: ValidationMap) => void;

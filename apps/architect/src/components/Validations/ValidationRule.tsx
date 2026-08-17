@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
+import { useId, type KeyboardEvent } from 'react';
 
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -29,13 +29,7 @@ type ValidationRuleProps = {
   onToggle: (ruleKey: string, nextState: boolean) => void;
   onTextChange: (ruleKey: string, text: string) => void;
   onCommit: (ruleKey: string, text: string) => void;
-  /**
-   * Bumped by the list when this row is switched on, to put the cursor in the
-   * value it now needs. A token rather than a boolean so switching the same
-   * row off and on again re-triggers the effect, which a `true` that is
-   * already `true` would not.
-   */
-  focusValueToken?: number;
+  onValueExit: (ruleKey: string, text: string) => void;
 };
 
 const ROW_BASE =
@@ -55,7 +49,7 @@ const ValidationRule = ({
   onToggle,
   onTextChange,
   onCommit,
-  focusValueToken,
+  onValueExit,
 }: ValidationRuleProps) => {
   const rowId = useId();
   const labelId = `${rowId}-label`;
@@ -66,19 +60,6 @@ const ValidationRule = ({
   const takesNumber = isValidationWithNumberValue(ruleKey);
   const takesTarget = isValidationWithListValue(ruleKey);
 
-  // `InputField`/`NativeSelectField` own their own element, so focus is taken
-  // through the wrapper rather than a forwarded ref. `display: contents` keeps
-  // the wrapper out of the row's layout entirely.
-  //
-  // An effect rather than `autoFocus` because the control is already mounted
-  // whenever a row is asked for focus a second time, and `autoFocus` only
-  // applies at mount.
-  const valueRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (focusValueToken === undefined) return;
-    valueRef.current?.querySelector<HTMLElement>('input, select')?.focus();
-  }, [focusValueToken]);
-
   const describedBy =
     [hint ? hintId : null, hasIssues ? errorId : null]
       .filter(Boolean)
@@ -87,7 +68,7 @@ const ValidationRule = ({
   const handleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      onCommit(ruleKey, text);
+      onValueExit(ruleKey, text);
     }
   };
 
@@ -112,7 +93,7 @@ const ValidationRule = ({
       </div>
 
       {isOn && takesNumber && (
-        <div ref={valueRef} className="contents">
+        <div className="contents">
           <InputField
             name={`validation-value-${ruleKey}`}
             className="w-36"
@@ -123,7 +104,7 @@ const ValidationRule = ({
             onChange={(value: unknown) =>
               onTextChange(ruleKey, typeof value === 'string' ? value : '')
             }
-            onBlur={() => onCommit(ruleKey, text)}
+            onBlur={() => onValueExit(ruleKey, text)}
             onStep={(value: string) => onCommit(ruleKey, value)}
             stepperLabels={{
               increase: `Increase ${label}`,
@@ -137,7 +118,7 @@ const ValidationRule = ({
       )}
 
       {isOn && takesTarget && (
-        <div ref={valueRef} className="w-72">
+        <div className="w-72">
           <NativeSelectField
             options={targetOptions ?? []}
             name={`validation-value-${ruleKey}`}
@@ -150,6 +131,7 @@ const ValidationRule = ({
               onTextChange(ruleKey, next);
               onCommit(ruleKey, next);
             }}
+            onBlur={() => onValueExit(ruleKey, text)}
             placeholder="Select comparison variable"
           />
         </div>
