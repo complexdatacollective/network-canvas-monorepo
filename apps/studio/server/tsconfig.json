@@ -5,6 +5,12 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "vite.config.ts", "vitest.config.ts"],
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "vite.config.ts",
+    "vite.netlify.config.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
