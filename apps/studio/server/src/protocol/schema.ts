@@ -6,10 +6,10 @@
 // UPDATE/DELETE triggers raise on the version tables, and version_sections'
 // foreign key into sections makes garbage-collecting a pinned section
 // structurally impossible.
-import pg from 'pg';
-
-import { SCHEMA_SQL as SYNC_SCHEMA_SQL } from '@codaco/studio-sync/schema';
-
+//
+// Whitespace counts: src/db/schema.ts hashes this string as part of the
+// database fingerprint, so reformatting it reads as a schema change and
+// demands that every Studio database be recreated.
 export const PROTOCOL_STORE_SCHEMA_SQL = `
 CREATE TABLE protocols (
   id uuid PRIMARY KEY,
@@ -55,17 +55,17 @@ CREATE TABLE protocol_drafts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE FUNCTION protocol_versions_are_immutable() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION protocol_versions_are_immutable() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'published protocol versions are immutable';
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER protocol_versions_immutable
+CREATE OR REPLACE TRIGGER protocol_versions_immutable
   BEFORE UPDATE OR DELETE ON protocol_versions
   FOR EACH ROW EXECUTE FUNCTION protocol_versions_are_immutable();
 
-CREATE TRIGGER version_sections_immutable
+CREATE OR REPLACE TRIGGER version_sections_immutable
   BEFORE UPDATE OR DELETE ON version_sections
   FOR EACH ROW EXECUTE FUNCTION protocol_versions_are_immutable();
 
@@ -73,7 +73,7 @@ CREATE TRIGGER version_sections_immutable
 -- itself (xmin equals the current transaction): inserting a pin later would
 -- change what the version assembles to while its frozen manifest and hash
 -- stay unchanged.
-CREATE FUNCTION version_sections_pins_are_frozen() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION version_sections_pins_are_frozen() RETURNS trigger AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM protocol_versions v
@@ -86,41 +86,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER version_sections_insert_frozen
+CREATE OR REPLACE TRIGGER version_sections_insert_frozen
   BEFORE INSERT ON version_sections
   FOR EACH ROW EXECUTE FUNCTION version_sections_pins_are_frozen();
 `;
-
-/**
- * Test helper: a scratch database carrying the sync schema plus the protocol
- * store's tables. Connects as the postgres superuser to a disposable
- * instance — never point it at a real one.
- */
-export async function createStoreDatabase(port: number, name: string) {
-  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
-    throw new Error(`unsafe scratch database name: ${name}`);
-  }
-  const admin = new pg.Client({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: 'postgres',
-  });
-  await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
-  await admin.query(`CREATE DATABASE ${name}`);
-  await admin.end();
-
-  const db = new pg.Pool({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: name,
-    max: 20,
-  });
-  await db.query(SYNC_SCHEMA_SQL);
-  await db.query(PROTOCOL_STORE_SCHEMA_SQL);
-  return db;
-}

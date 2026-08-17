@@ -26,10 +26,15 @@ when its boundary moved.
   type-only.
 - `server/` — `@codaco/studio-server`: Hono app on `@hono/node-server`
   (Node 24 baseline), one persistent process serving every surface below,
-  plus static client assets in the self-host topology.
+  plus static client assets in the self-host topology. It owns the database:
+  `src/db` holds the pool and the schema, and `src/protocol` is the sectioned,
+  content-addressed protocol store (#1276) built on top of it.
 - `packages/studio-rpc` — `@codaco/studio-rpc`: the internal RPC boundary
   (Zod schemas + typed oRPC contract). The only shared code between the
   halves.
+- `packages/studio-sync` — `@codaco/studio-sync`: the sync protocol core
+  (#1247). Isomorphic: the client imports its apply engine, the server its
+  lease and commit engine and the schema those run against.
 
 ## Surfaces
 
@@ -113,12 +118,21 @@ means recreating the database rather than migrating it — see the comment at th
 top of `server/src/db/schema.ts` for the reasoning and for when that stops being
 true.
 
-Because every statement in the schema is `create table if not exists`, applying
-it to a database that already has the tables changes nothing, so a stale
-database would otherwise boot clean and fail later inside better-auth. Boot
-therefore records a fingerprint — the hash of the SQL that built the database —
-and compares it on every subsequent start. A mismatch stops the server with the
-remedy:
+Studio has one schema, composed from three blocks that live with their owners:
+better-auth's generated tables in `server/src/db/auth-schema.ts`, the sync
+engine's drafts, sections, manifests, leases and command log in
+`packages/studio-sync/src/schema.ts`, and the protocol store's versioning
+tables in `server/src/protocol/schema.ts`. `server/src/db/schema.ts` joins them
+in that order — the protocol store's foreign keys point into the sync engine's
+tables — and applies them together or not at all.
+
+Applying that SQL to a database that already has the tables would not
+reliably fail: the auth block is `create table if not exists` throughout, so a
+stale database would boot clean and fail later inside better-auth. Boot
+therefore records a fingerprint — the hash of the composed SQL that built the
+database — and compares it on every subsequent start. Editing _any_ of the
+three blocks, whitespace included, changes it. A mismatch stops the server with
+the remedy:
 
 ```bash
 pnpm --filter @codaco/studio-server db:reset
@@ -127,7 +141,8 @@ pnpm --filter @codaco/studio-server db:reset
 which drops the schema, rebuilds it, and seeds. It refuses to touch a
 non-loopback database unless you pass `--force`. It reads `.env` first and
 adds the committed development defaults only when the target is local, so a
-forced reset of a managed database never picks up the development marker.
+forced reset of a managed database never picks up the development marker. It
+also sweeps up any `studio_test_*` schemas an interrupted test run left behind.
 
 It is the command to run the first time you start the server after this check
 was introduced: databases
@@ -135,9 +150,37 @@ created before it carry the tables but no fingerprint, and an unstamped
 database is indistinguishable from one built by older SQL, so it is refused
 rather than adopted.
 
-The fingerprint compares the database against `AUTH_SCHEMA_SQL`. It cannot tell
-you that a `better-auth` upgrade expects a shape that SQL no longer describes —
-the regeneration procedure in `schema.ts` remains the only control for that.
+The fingerprint compares the database against the SQL this build composes. It
+cannot tell you that a `better-auth` upgrade expects a shape that SQL no longer
+describes — the regeneration procedure in `auth-schema.ts` remains the only
+control for that.
+
+### Protocol storage
+
+Protocols are not stored as documents. Each stage, each codebook entity, the
+settings block and the stage order is an immutable, individually validated
+section document identified by its content hash, and a draft or a published
+version is a _manifest_ — an ordered map of section id to section hash
+(#1276). Editing a section writes a new section and a new manifest; unchanged
+sections are shared, reordering stages touches only the manifest, and
+structural diff falls out of comparing two manifests.
+
+`server/src/protocol` implements this over the same pool everything else uses.
+Assembly (`getProtocolDocument`) is the contract: outside the storage layer,
+Studio consumes the schema-conformant protocol document exactly as
+`@codaco/protocol-validation` defines it, and publishing re-validates the
+assembled document with the canonical validator before freezing it. Sectioning
+is Studio-internal storage topology, not a protocol-schema change.
+
+Live editing within a section is not here — that is the sync engine's lease and
+commit path in `@codaco/studio-sync`. The store owns what sync deliberately
+refuses: creation, structural add and remove, publishing, versions, diff,
+platform migration, and garbage collection.
+
+Its database-backed tests run against the dev Postgres and skip without one, so
+on a machine with no container `pnpm --filter @codaco/studio-server test`
+passes having verified far less than it appears to. Read the reporter, not the
+exit code.
 
 ## Environment
 

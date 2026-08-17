@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SyncServer } from '@codaco/studio-sync/server';
 
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, dbAvailable, makeStoreDb } from './helpers.ts';
+import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
 async function setDescription(
   db: pg.Pool,
@@ -24,16 +24,17 @@ async function setDescription(
   });
 }
 
-describe.skipIf(!dbAvailable)('publishDraft', () => {
+describe.skipIf(!storeDb)('publishDraft', () => {
   let db: pg.Pool;
+  let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    db = await makeStoreDb('protocol_store_publish_test');
+    ({ db, dispose } = await makeStoreSchema());
     store = new ProtocolStore(db);
   });
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   it('freezes the head manifest verbatim into an immutable version', async () => {

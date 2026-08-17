@@ -29,6 +29,7 @@ import {
 } from './validate.ts';
 import { versionContentHash } from './version-hash.ts';
 
+/** @public — the store's error surface, thrown outward from ProtocolStore. */
 export class ProtocolStoreError extends Error {}
 
 export type PublishResult =

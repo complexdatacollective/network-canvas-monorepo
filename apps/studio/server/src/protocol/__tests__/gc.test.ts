@@ -5,7 +5,7 @@ import { SyncServer, forceExpire } from '@codaco/studio-sync/server';
 
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, dbAvailable, makeStoreDb } from './helpers.ts';
+import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
 async function commitDescription(
   db: pg.Pool,
@@ -31,16 +31,17 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
   return res.rowCount === 1;
 }
 
-describe.skipIf(!dbAvailable)('gcProtocolStore', () => {
+describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
+  let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    db = await makeStoreDb('protocol_store_gc_test');
+    ({ db, dispose } = await makeStoreSchema());
     store = new ProtocolStore(db);
   });
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   it('sweeps unpinned superseded sections, keeps version pins and the head', async () => {

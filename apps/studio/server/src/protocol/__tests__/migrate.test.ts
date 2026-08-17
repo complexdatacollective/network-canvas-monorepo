@@ -8,7 +8,7 @@ import { SyncServer } from '@codaco/studio-sync/server';
 
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, dbAvailable, makeStoreDb } from './helpers.ts';
+import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
 // A stored schema-7 version, as one would exist after the platform moved on:
 // same taxonomy, settings carrying the historical schemaVersion. Write-time
@@ -28,16 +28,17 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
   },
 };
 
-describe.skipIf(!dbAvailable)('migrateStoredVersionToDraft', () => {
+describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   let db: pg.Pool;
+  let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    db = await makeStoreDb('protocol_store_migrate_test');
+    ({ db, dispose } = await makeStoreSchema());
     store = new ProtocolStore(db);
   });
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   async function seedV7Version(): Promise<{

@@ -20,6 +20,7 @@ import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 import { sectionId } from './taxonomy.ts';
 
+/** @public — the store's error surface, thrown outward from migrate. */
 export class MigrationTargetError extends Error {}
 
 /**

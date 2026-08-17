@@ -3,9 +3,43 @@ import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
-import { createSyncDatabase } from '../schema.ts';
+import { SCHEMA_SQL } from '../schema.ts';
 import { SyncServer } from '../server.ts';
 import { PGPORT } from './test-env.ts';
+
+/**
+ * A scratch database carrying the sync schema. Connects as the postgres
+ * superuser to a disposable instance — never point it at a real one. It lives
+ * here rather than beside the schema because ../schema.ts is on the Studio
+ * server's production boot path.
+ */
+async function createSyncDatabase(port: number, name: string) {
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`unsafe scratch database name: ${name}`);
+  }
+  const admin = new pg.Client({
+    host: '127.0.0.1',
+    port,
+    user: 'postgres',
+    password: 'spike',
+    database: 'postgres',
+  });
+  await admin.connect();
+  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+  await admin.query(`CREATE DATABASE ${name}`);
+  await admin.end();
+
+  const db = new pg.Pool({
+    host: '127.0.0.1',
+    port,
+    user: 'postgres',
+    password: 'spike',
+    database: name,
+    max: 20,
+  });
+  await db.query(SCHEMA_SQL);
+  return db;
+}
 
 /**
  * Whether a Postgres is reachable for the DB-backed conformance suites. The

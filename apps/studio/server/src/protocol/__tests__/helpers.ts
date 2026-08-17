@@ -1,58 +1,56 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import pg from 'pg';
+import type pg from 'pg';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-import { createStoreDatabase } from '../schema.ts';
-import { PGPORT } from './test-env.ts';
+import {
+  createScratchSchema,
+  reachableDb,
+} from '../../__tests__/support/postgres.ts';
+import { ensureSchema } from '../../db/schema.ts';
 
 /**
- * Whether a Postgres is reachable for the pg-backed suites. The pure suites
- * (taxonomy, sectionize/assemble round-trips, diff) always run.
+ * A Postgres to run the DB-backed protocol suites against, or null. The pure
+ * suites (taxonomy, sectionize/assemble round-trips, diff, validate) always
+ * run; everything touching real transactions skips without one.
  */
-export const dbAvailable = await (async () => {
-  const probe = new pg.Client({
-    host: '127.0.0.1',
-    port: PGPORT,
-    user: 'postgres',
-    password: 'spike',
-    database: 'postgres',
-    connectionTimeoutMillis: 1_500,
-  });
-  try {
-    await probe.connect();
-    await probe.end();
-    return true;
-  } catch {
-    console.warn(
-      `[studio-protocol-store] Postgres not reachable on 127.0.0.1:${PGPORT} — skipping the pg-backed suites. ` +
-        `Start one with: docker run -d -e POSTGRES_PASSWORD=spike -p ${PGPORT}:5432 postgres:18`,
-    );
-    return false;
-  }
-})();
+export const storeDb = await reachableDb();
 
-export async function makeStoreDb(name: string): Promise<pg.Pool> {
-  return createStoreDatabase(PGPORT, name);
+/**
+ * An isolated schema carrying the whole Studio schema. Applying it through
+ * ensureSchema rather than raw DDL means every DB test exercises the same path
+ * boot does.
+ */
+export async function makeStoreSchema(): Promise<{
+  db: pg.Pool;
+  dispose: () => Promise<void>;
+}> {
+  if (!storeDb) throw new Error('unreachable: probe guaranteed a database');
+  const scratch = await createScratchSchema(storeDb);
+  const state = await ensureSchema(scratch.pool);
+  if (state.kind !== 'created') {
+    await scratch.dispose();
+    throw new Error(`scratch schema was not created: ${state.kind}`);
+  }
+  return { db: scratch.pool, dispose: scratch.dispose };
 }
 
-// packages/protocols is a pure-data package with no test runner; fixtures are
-// read by relative path, exactly as protocol-validation's own tests do.
-export function readFixtureProtocol(relative: string): CurrentProtocol {
-  const fixturePath = path.resolve(
-    import.meta.dirname,
-    '../../../protocols',
-    relative,
-  );
-  return JSON.parse(readFileSync(fixturePath, 'utf8')) as CurrentProtocol;
+// packages/protocols is a pure-data package with no test runner; its fixtures
+// are resolved through its exports map so that changing one invalidates this
+// suite's Turbo cache.
+export function readFixtureProtocol(specifier: string): CurrentProtocol {
+  const resolved = import.meta.resolve(specifier);
+  return JSON.parse(
+    readFileSync(fileURLToPath(resolved), 'utf8'),
+  ) as CurrentProtocol;
 }
 
 export const FIXTURES = [
-  'e2e/all-interfaces/protocol.json',
-  'sample/protocol.json',
-  'development/protocol.json',
+  '@codaco/protocols/e2e/all-interfaces/protocol.json',
+  '@codaco/protocols/sample',
+  '@codaco/protocols/development',
 ] as const;
 
 /** A small, valid schema-8 protocol used by golden-hash, diff, and pg tests

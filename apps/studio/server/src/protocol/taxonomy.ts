@@ -17,6 +17,7 @@ export type SectionRef =
   | { kind: 'codebookEgo' }
   | { kind: 'assets' };
 
+/** @public — the store's error surface, thrown outward from parseSectionId. */
 export class UnknownSectionIdError extends Error {
   constructor(id: string) {
     super(`not a protocol-store section id: ${id}`);

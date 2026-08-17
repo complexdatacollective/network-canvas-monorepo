@@ -25,8 +25,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
     "@hono/node-server": "^2.1.0",
+    "@noble/hashes": "^2.3.0",
     "@orpc/contract": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",
     "@orpc/server": "2.0.0-beta.26",
@@ -40,6 +43,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@orpc/client": "2.0.0-beta.26",
     "@types/nodemailer": "8.0.1",

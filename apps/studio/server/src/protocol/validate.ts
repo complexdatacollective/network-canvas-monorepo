@@ -19,6 +19,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { parseSectionId } from './taxonomy.ts';
 
+/** @public — the settings section's shape, part of the store's schema surface. */
 export const SettingsSectionSchema = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -27,6 +28,7 @@ export const SettingsSectionSchema = z.strictObject({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
 });
 
+/** @public — the stage-order section's shape, part of the store's schema surface. */
 export const StageOrderSectionSchema = z.strictObject({
   stages: z.array(z.string().min(1)),
 });

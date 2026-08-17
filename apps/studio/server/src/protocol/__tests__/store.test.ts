@@ -14,18 +14,19 @@ import {
 } from '../draft-structure.ts';
 import { ProtocolStore } from '../store.ts';
 import { SectionValidationFailedError } from '../validate.ts';
-import { baseProtocol, dbAvailable, makeStoreDb } from './helpers.ts';
+import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
-describe.skipIf(!dbAvailable)('ProtocolStore drafts', () => {
+describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   let db: pg.Pool;
+  let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    db = await makeStoreDb('protocol_store_drafts_test');
+    ({ db, dispose } = await makeStoreSchema());
     store = new ProtocolStore(db);
   });
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
 
   it('createProtocol round-trips through getDraftDocument', async () => {

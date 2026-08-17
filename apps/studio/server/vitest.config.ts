@@ -16,5 +16,9 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    // The protocol suites validate whole fixture protocols and build a
+    // fourteen-table schema per file; the 5s default is not enough for either.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });

@@ -67,6 +67,19 @@ try {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
 
+  // The test harness gives each suite its own uniquely-named schema and drops
+  // it on the way out, so a crashed or interrupted run leaves a fully
+  // populated one behind that nothing else would ever collect.
+  const leftovers = await pool.query<{ nspname: string }>(
+    `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
+  );
+  for (const { nspname } of leftovers.rows) {
+    await pool.query(`drop schema if exists "${nspname}" cascade`);
+  }
+  if (leftovers.rowCount) {
+    console.log(`Dropped ${leftovers.rowCount} leftover test schema(s).`);
+  }
+
   const state = await ensureSchema(pool);
   if (state.kind === 'stale') {
     console.error(staleSchemaMessage(state));

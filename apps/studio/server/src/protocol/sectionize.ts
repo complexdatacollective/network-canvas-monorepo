@@ -7,6 +7,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { sectionId } from './taxonomy.ts';
 
+/** @public — the store's error surface, thrown outward from sectionize. */
 export class SectionizeError extends Error {}
 
 /**

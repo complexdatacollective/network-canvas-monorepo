@@ -1,5 +1,9 @@
-import pg from 'pg';
-
+// This module is on the Studio server's boot path: apps/studio/server's
+// src/db/schema.ts composes this SQL with its own and hashes the result as the
+// database fingerprint. Two consequences — whitespace counts, because
+// reformatting reads as a schema change and demands that every Studio database
+// be recreated; and nothing but the string belongs here, because whatever this
+// module imports ships in the server's production bundle.
 export const SCHEMA_SQL = `
 CREATE TABLE drafts (
   id uuid PRIMARY KEY,
@@ -61,28 +65,3 @@ CREATE TABLE command_log (
   UNIQUE (draft_id, section_id, owner, epoch, client_seq)
 );
 `;
-
-export async function createSyncDatabase(port: number, name: string) {
-  const admin = new pg.Client({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: 'postgres',
-  });
-  await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
-  await admin.query(`CREATE DATABASE ${name}`);
-  await admin.end();
-
-  const db = new pg.Pool({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: name,
-    max: 20,
-  });
-  await db.query(SCHEMA_SQL);
-  return db;
-}
