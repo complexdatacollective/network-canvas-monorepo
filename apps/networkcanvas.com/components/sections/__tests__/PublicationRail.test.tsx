@@ -50,6 +50,7 @@ const publications: Publication[] = [
     source: 'Journal One',
     authors: 'Researcher One',
     href: 'https://example.com/first',
+    year: '2024',
   },
   {
     id: 'second',
@@ -57,6 +58,7 @@ const publications: Publication[] = [
     source: 'Journal Two',
     authors: 'Researcher Two',
     href: 'https://example.com/second',
+    year: '2023',
   },
   {
     id: 'third',
@@ -64,6 +66,7 @@ const publications: Publication[] = [
     source: 'Journal Three',
     authors: 'Researcher Three',
     href: 'https://example.com/third',
+    year: '2022',
   },
 ];
 
