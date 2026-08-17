@@ -3,23 +3,86 @@ import {
   createRoute,
   createRouter,
   Outlet,
+  redirect,
+  type RouterHistory,
 } from '@tanstack/react-router';
 
+import { authClient } from './lib/auth.ts';
+import AppLayout from './routes/AppLayout.tsx';
+import ErrorScreen, { ServerUnreachableError } from './routes/ErrorScreen.tsx';
 import Home from './routes/Home.tsx';
+import SignIn from './routes/SignIn.tsx';
+
+async function probeSession(): Promise<
+  'signedIn' | 'signedOut' | 'unreachable'
+> {
+  try {
+    const { data, error } = await authClient.getSession();
+    // A server with no database answers /api/auth/* with 503 — the supported
+    // degradation, not a failure. That is a reachable server saying nobody is
+    // signed in, so it belongs on the sign-in page, which reads the same
+    // capability from the status query and explains it.
+    if (error) return error.status === 503 ? 'signedOut' : 'unreachable';
+    return data ? 'signedIn' : 'signedOut';
+  } catch {
+    return 'unreachable';
+  }
+}
 
 const rootRoute = createRootRoute({
   component: Outlet,
 });
 
-const indexRoute = createRoute({
+const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
+  path: '/sign-in',
+  validateSearch: (search): { error?: string } =>
+    typeof search.error === 'string' ? { error: search.error } : {},
+  beforeLoad: async () => {
+    if ((await probeSession()) === 'signedIn') {
+      throw redirect({ to: '/' });
+    }
+  },
+  component: SignIn,
+});
+
+const authenticatedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'authenticated',
+  beforeLoad: async () => {
+    const session = await probeSession();
+    if (session === 'signedOut') {
+      throw redirect({ to: '/sign-in' });
+    }
+    if (session === 'unreachable') {
+      // Renders the router's defaultErrorComponent rather than bouncing a
+      // possibly-still-authenticated user to the sign-in page.
+      throw new ServerUnreachableError();
+    }
+  },
+  component: AppLayout,
+});
+
+const indexRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
   path: '/',
   component: Home,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute]);
+const routeTree = rootRoute.addChildren([
+  signInRoute,
+  authenticatedRoute.addChildren([indexRoute]),
+]);
 
-export const router = createRouter({ routeTree });
+export function createAppRouter(history?: RouterHistory) {
+  return createRouter({
+    routeTree,
+    history,
+    defaultErrorComponent: ErrorScreen,
+  });
+}
+
+export const router = createAppRouter();
 
 declare module '@tanstack/react-router' {
   // Interface merging is the documented registration mechanism for router

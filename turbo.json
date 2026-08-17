@@ -427,6 +427,18 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
+    "@codaco/studio-server#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
     "@codaco/architect#test": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -498,6 +510,20 @@
         "PROTOCOL_ENCRYPTION_KEY",
         "PROTOCOL_ENCRYPTION_IV",
         "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/studio-server#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "vitest.config.*",
+        "package.json",
+        ".env",
+        ".env.development",
+        ".env.example",
+        "$TURBO_ROOT$/apps/studio/README.md"
       ],
       "outputs": []
     },

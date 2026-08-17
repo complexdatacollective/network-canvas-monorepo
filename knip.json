@@ -146,6 +146,12 @@
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/studio/server": {
+      "entry": [
+        "scripts/auth-cli-config.ts!",
+        // Resolved by vite.netlify.config.ts as a build input string, never
+        // by an import — it is the Netlify Function entry.
+        "src/netlify.ts!"
+      ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },
     "apps/interviewer": {
