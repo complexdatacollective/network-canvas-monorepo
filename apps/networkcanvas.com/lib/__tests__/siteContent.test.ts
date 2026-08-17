@@ -133,6 +133,15 @@ p1,Publication,Publicación,Journal,Revista,Author,http://example.com/p1,2024
 `,
     },
     {
+      name: 'invalid year',
+      filename: 'publications.csv',
+      row: 'row 2',
+      field: 'year',
+      source: `id,title_en,title_es,source_en,source_es,authors,href,year
+p1,Publication,Publicación,Journal,Revista,Author,https://example.com/p1,26
+`,
+    },
+    {
       name: 'unsafe internal URL',
       filename: 'latest-news.csv',
       row: 'row 2',

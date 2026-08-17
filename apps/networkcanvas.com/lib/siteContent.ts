@@ -55,6 +55,7 @@ const publicImage = z
   .regex(/^\/images\/.+/, 'must start with /images/');
 const publicationYear = z
   .string()
+  .trim()
   .regex(/^\d{4}$/, 'must be a four-digit year');
 
 const newsRowSchema = z

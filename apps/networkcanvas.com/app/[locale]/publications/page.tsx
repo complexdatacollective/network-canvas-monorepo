@@ -19,8 +19,6 @@ type PublicationsPageProps = {
   params: Promise<{ locale: string }>;
 };
 
-const headingId = 'publications-heading';
-
 export async function generateMetadata({
   params,
 }: PublicationsPageProps): Promise<Metadata> {
@@ -98,7 +96,6 @@ export default async function PublicationsPage({
             level="h1"
             variant="display-heading"
             margin="none"
-            id={headingId}
             className="text-text"
           >
             {t('heading')}
@@ -118,7 +115,7 @@ export default async function PublicationsPage({
             {t.rich('submission', { thread: renderThreadLink })}
           </Paragraph>
         </div>
-        <Container as="section" aria-labelledby={headingId}>
+        <Container>
           <ul className="divide-text/10 mx-auto max-w-4xl divide-y">
             {sorted.map((publication) => (
               <li key={publication.id} className="py-6">
