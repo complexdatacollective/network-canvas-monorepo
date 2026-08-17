@@ -3,7 +3,6 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -25,7 +24,6 @@ import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../BooleanChoice';
 import ExternalLink from '../ExternalLink';
-import InputPreview from '../Form/Fields/InputPreview';
 import { asValidationMap, toSelectOptions } from '../sections/Form/helpers';
 import {
   CREATE_NEW_VARIABLE_FIELD,
@@ -107,7 +105,6 @@ const ComposerAttributeFields = ({
     variableOptions,
     component,
     componentOptions,
-    metaForType,
     existingVariables,
     hasInterfaceOwnedOptions,
     handleNewVariable,
@@ -221,18 +218,6 @@ const ComposerAttributeFields = ({
             </AlertDescription>
           </Alert>
         )}
-        {variableType &&
-          metaForType &&
-          typeof metaForType.label === 'string' && (
-            <div>
-              <Heading level="h4">Preview</Heading>
-              <InputPreview
-                label={metaForType.label}
-                description={metaForType.description}
-                image={metaForType.image}
-              />
-            </div>
-          )}
       </Section>
 
       {isOrdinalOrCategoricalType(variableType) && (

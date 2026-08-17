@@ -82,74 +82,82 @@ const TypeEditor = ({
 
   return (
     <>
-      <ArchitectField
-        label={`${capitalize(entity)} type name`}
-        hint={
-          <>
-            This name identifies the {entity} type in the codebook and in your
-            data exports.
-            {entity === 'node' &&
-              ' Some examples might be "Person", "Place", or "Organization".'}
-            {entity === 'edge' &&
-              ' Some examples might be "Friends" or "Works With".'}
-          </>
-        }
-        component={InputField}
-        name="name"
-        initialValue={initialValues.name}
-        validation={{
-          required: true,
-          // Names the subject, so the message reads "Not a valid node type
-          // name" rather than the mapper's default "variable name" — this
-          // field is not a variable. Whole strings, one per branch, rather
-          // than an interpolated `${entity} type name`.
-          allowedNMToken:
-            entity === 'node' ? 'node type name' : 'edge type name',
-          uniqueByList: existingTypes,
-        }}
-        placeholder={`Enter a name for this ${entity} type...`}
-      />
+      <Section layout="vertical">
+        <ArchitectField
+          label={`${capitalize(entity)} type name`}
+          hint={
+            <>
+              This name identifies the {entity} type in the codebook and in your
+              data exports.
+              {entity === 'node' &&
+                ' Some examples might be "Person", "Place", or "Organization".'}
+              {entity === 'edge' &&
+                ' Some examples might be "Friends" or "Works With".'}
+            </>
+          }
+          component={InputField}
+          name="name"
+          initialValue={initialValues.name}
+          validation={{
+            required: true,
+            // Names the subject, so the message reads "Not a valid node type
+            // name" rather than the mapper's default "variable name" — this
+            // field is not a variable. Whole strings, one per branch, rather
+            // than an interpolated `${entity} type name`.
+            allowedNMToken:
+              entity === 'node' ? 'node type name' : 'edge type name',
+            uniqueByList: existingTypes,
+          }}
+          placeholder={`Enter a name for this ${entity} type...`}
+        />
+      </Section>
 
-      <ArchitectField
-        component={ColorPicker}
-        name="color"
-        label="Color"
-        hint={`Choose a color for this ${entity} type.`}
-        initialValue={initialValues.color}
-        validation={{ required: true }}
-        palette={paletteName}
-        paletteRange={paletteSize}
-      />
+      <Section id={getFieldId('color')} layout="vertical">
+        <ArchitectField
+          component={ColorPicker}
+          name="color"
+          label="Color"
+          hint={`Choose a color for this ${entity} type.`}
+          initialValue={initialValues.color}
+          validation={{ required: true }}
+          palette={paletteName}
+          paletteRange={paletteSize}
+        />
+      </Section>
 
       {entity === 'node' && (
         <>
-          <ArchitectField
-            component={ShapePickerControl}
-            label="Shape"
-            hint="Choose a default shape for this node type."
-            name="shape.default"
-            initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
-            validation={{ required: true }}
-            nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
-          />
-          <ShapeVariableMapping
-            variables={initialValues.variables}
-            initialMapping={initialValues.shape?.dynamic}
-            nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
-            defaultShape={
-              typeof defaultShape === 'string'
-                ? (defaultShape as NodeShape)
-                : undefined
-            }
-          />
-          <ArchitectField
-            component={IconPicker}
-            label="Icon"
-            hint={`Choose an icon to display on interfaces that create this ${entity}.`}
-            name="icon"
-            initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
-            validation={{ required: true }}
-          />
+          <Section id={getFieldId('shape')} layout="vertical">
+            <ArchitectField
+              component={ShapePickerControl}
+              label="Shape"
+              hint="Choose a default shape for this node type."
+              name="shape.default"
+              initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
+              validation={{ required: true }}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+            />
+            <ShapeVariableMapping
+              variables={initialValues.variables}
+              initialMapping={initialValues.shape?.dynamic}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+              defaultShape={
+                typeof defaultShape === 'string'
+                  ? (defaultShape as NodeShape)
+                  : undefined
+              }
+            />
+          </Section>
+          <Section id={getFieldId('icon')} layout="vertical">
+            <ArchitectField
+              component={IconPicker}
+              label="Icon"
+              hint={`Choose an icon to display on interfaces that create this ${entity}.`}
+              name="icon"
+              initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
+              validation={{ required: true }}
+            />
+          </Section>
         </>
       )}
     </>

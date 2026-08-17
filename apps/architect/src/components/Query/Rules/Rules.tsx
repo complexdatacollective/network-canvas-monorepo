@@ -1,7 +1,6 @@
 import { useCallback, useMemo, type ComponentType } from 'react';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import PreviewRules, { type RuleTypeOption } from './PreviewRules';
 import RuleField from './RuleField';
@@ -110,7 +109,15 @@ const Rules = ({
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div
+      id={id}
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      aria-required={ariaRequired}
+      aria-invalid={ariaInvalid}
+      className="flex flex-col gap-8"
+    >
       <PreviewRules
         rules={rules}
         codebook={codebook}

@@ -32,8 +32,8 @@ import {
 //   key can never be removed once written — so: omit → never touch,
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
-// - Required validation goes through the toggleable Validation section,
-//   then the directly toggleable 'Required' rule.
+// - Field dialogs render validation inline without a master section toggle;
+//   each rule, including 'Required', has its own switch.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults
@@ -138,10 +138,7 @@ export async function addConfiguredFormField(
     .selectOption({ label: spec.inputControl });
 
   if (spec.options) {
-    await fillOptionRows(
-      dialog.locator('[data-name="Categorical/Ordinal options"]'),
-      spec.options,
-    );
+    await fillOptionRows(dialog, spec.options);
   }
 
   if (spec.booleanOptions) {
@@ -163,11 +160,7 @@ export async function addConfiguredFormField(
   }
 
   if (spec.required) {
-    const validation = dialog.locator('[data-name="Validation"]');
-    await validation.getByRole('switch', { name: 'Validation' }).click();
-    await validation
-      .getByRole('switch', { name: 'Required', exact: true })
-      .click();
+    await dialog.getByRole('switch', { name: 'Required', exact: true }).click();
   }
 
   await page.getByRole('button', { name: 'Add', exact: true }).click();

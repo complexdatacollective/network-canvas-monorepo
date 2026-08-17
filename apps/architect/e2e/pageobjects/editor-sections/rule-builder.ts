@@ -16,22 +16,21 @@ import { type Locator } from '@playwright/test';
 //   convention entity-types.ts already documents. The dialog also contains a
 //   'Create new node type' button, and the stage editor BEHIND the dialog has
 //   identical pills — every locator here is dialog-scoped.
-// - The 'Rule type' radios carry long markdown sentences as accessible names
-//   ('Attribute - rule based on…' / 'Presence - based on…',
-//   withEntityRuleType.tsx) — matched with .filter({ hasText }) per the
-//   suite's long-markdown policy, not exact names.
+// - The 'Rule type' rich select is a listbox whose options carry the long
+//   markdown descriptions as accessible names ('Attribute Rule based on…' /
+//   'Presence Based on…', withEntityRuleType.tsx).
 // - Operator LABELS (options.ts): EXACTLY → 'is exactly', EXISTS → 'exists',
 //   NOT_EXISTS → 'does not exist' .
 //   Presence operators render as radios; variable-rule operators are a native
 //   <select> named 'Operator'.
-// - Boolean 'Attribute Value' is a switch whose accessible name mirrors its
-//   state ('False'/'True', EditValue.tsx getLabel) — located by role within
-//   [data-name="Attribute Value"], never by name.
-// - Ego rules: no entity-type step; 'Ego variable' native select. When the
-//   operator is chosen the value defaults to false (EditEgoRule's handler
-//   injects it), so an EXACTLY-false ego rule never touches the switch.
-// - The join control ('Must match' — 'All rules'/'Any rule' radios) only
-//   renders once 2+ rules exist; a single-rule filter writes no `join` key.
+// - Boolean 'Attribute Value' is a radiogroup. Its visible option labels come
+//   from the variable's authored markdown, while each radio exposes the stored
+//   boolean through `data-value`.
+// - Ego rules: no entity-type step; the native select is labelled 'Ego
+//   attribute'.
+// - The 'Rule Matching' control only renders once 2+ rules exist. Its visible
+//   radios read 'All rules must match' / 'Any rule can match'; a single-rule
+//   filter writes no `join` key.
 export type RuleSpec =
   | { kind: 'egoBooleanExactly'; variableName: string; value: boolean }
   | {
@@ -99,23 +98,15 @@ async function addEgoRule(
   await host.getByRole('button', { name: ADD_RULE_BUTTONS.skipLogic }).click();
   await dialog.getByRole('radio', { name: /^Ego -/ }).click();
   await dialog
-    .getByRole('combobox', { name: 'Ego variable' })
+    .getByRole('combobox', { name: 'Ego attribute' })
     .selectOption({ label: spec.variableName });
   await dialog
     .getByRole('combobox', { name: 'Operator' })
     .selectOption({ label: 'is exactly' });
-  // The draft's `value` stays '' after the operator pick (the change
-  // handler misses the boolean default — verified live: the rendered
-  // toggle shows False while the draft holds ''), and '' fails
-  // validateRule. The toggle must be touched: once for true, twice
-  // (on→off) to write an explicit false.
-  const valueSwitch = dialog
-    .locator('[data-name="Attribute Value"]')
-    .getByRole('switch');
-  await valueSwitch.click();
-  if (!spec.value) {
-    await valueSwitch.click();
-  }
+  await dialog
+    .getByRole('radiogroup', { name: 'Attribute Value' })
+    .locator(`[role="radio"][data-value="${String(spec.value)}"]`)
+    .click();
 
   await finishRule(dialog);
 }
@@ -136,16 +127,19 @@ async function addEntityRule(
     })
     .click();
   if (spec.kind === 'alterPresence') {
-    // Long-markdown radio labels are sibling <label> elements — the radio
-    // button has no text content, so match on the accessible NAME (which
-    // does include the label) rather than .filter({hasText}).
-    await dialog.getByRole('radio', { name: /^Presence/ }).click();
     await dialog
-      .locator('[data-name="Operator"]')
+      .getByRole('listbox', { name: 'Rule type' })
+      .getByRole('option', { name: /^Presence/ })
+      .click();
+    await dialog
+      .getByRole('radiogroup', { name: 'Operator' })
       .getByRole('radio', { name: spec.operator, exact: true })
       .click();
   } else {
-    await dialog.getByRole('radio', { name: /^Attribute -/ }).click();
+    await dialog
+      .getByRole('listbox', { name: 'Rule type' })
+      .getByRole('option', { name: /^Attribute/ })
+      .click();
     await dialog
       .getByRole('combobox', { name: 'Variable' })
       .selectOption({ label: spec.variableName });
@@ -153,8 +147,8 @@ async function addEntityRule(
       .getByRole('combobox', { name: 'Operator' })
       .selectOption({ label: 'is exactly' });
     await dialog
-      .locator('[data-name="Attribute Value"]')
-      .getByRole('switch')
+      .getByRole('radiogroup', { name: 'Attribute Value' })
+      .locator('[role="radio"][data-value="true"]')
       .click();
   }
 
@@ -183,11 +177,13 @@ export function assertJoinMatchesRules(
   }
 }
 
-// 'Must match' radios: 'All rules' → AND, 'Any rule' → OR. Only rendered
+// 'Rule Matching' radios: 'All rules' → AND, 'Any rule' → OR. Only rendered
 // once the host holds 2+ rules.
 export async function chooseJoin(
   host: Locator,
   join: 'All rules' | 'Any rule',
 ): Promise<void> {
-  await host.getByRole('radio', { name: join, exact: true }).click();
+  const label =
+    join === 'All rules' ? 'All rules must match' : 'Any rule can match';
+  await host.getByRole('radio', { name: label, exact: true }).click();
 }

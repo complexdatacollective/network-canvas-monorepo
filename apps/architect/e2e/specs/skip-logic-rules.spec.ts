@@ -56,11 +56,20 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
   });
 
   const section = editor.section('Skip Logic');
-  const rules = section.getByRole('group', { name: 'Rules' });
+  const rules = editor.field('skipLogic.filter');
 
-  // The rule builder is a named, required region — the visible "Rules *"
-  // label used to point at nothing at all.
-  await expect(rules).toHaveAttribute('aria-required', 'true');
+  // The rule builder is the required group targeted by the visible field
+  // label; the label used to point at nothing at all.
+  expect(
+    await rules.evaluate((element) => {
+      const label = element.querySelector('label');
+      const target = label && document.getElementById(label.htmlFor);
+      return {
+        role: target?.getAttribute('role') ?? null,
+        required: target?.getAttribute('aria-required') ?? null,
+      };
+    }),
+  ).toEqual({ role: 'group', required: 'true' });
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(2);
 
   for (const sentence of [FLAGGED_RULE, HIGHLIGHTED_RULE]) {
@@ -91,15 +100,6 @@ test('skip-logic rule cards carry valid, distinct semantics', async ({
       flow: element.querySelectorAll('div, p, fieldset, ul, ol, li').length,
     })),
   ).toEqual({ controls: 0, flow: 0 });
-
-  // The field's `<label for>` resolves to the group it names.
-  expect(
-    await editor.field('skipLogic.filter').evaluate((element) => {
-      const label = element.querySelector('label');
-      const target = label && document.getElementById(label.htmlFor);
-      return target?.getAttribute('role') ?? null;
-    }),
-  ).toBe('group');
 });
 
 test('network-filter rules use the same editable-list workflow', async ({
@@ -126,7 +126,7 @@ test('network-filter rules use the same editable-list workflow', async ({
   });
 
   const section = editor.section('Filter');
-  const rules = section.getByRole('group', { name: 'Filter' });
+  const rules = editor.field('filter');
 
   await expect(rules.getByRole('list').getByRole('listitem')).toHaveCount(1);
   await expect(

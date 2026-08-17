@@ -1,5 +1,4 @@
 import { isEqual, map, omit } from 'es-toolkit/compat';
-import { input } from 'motion/react-client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -22,6 +21,7 @@ import {
 import {
   getGroupedValidationsForVariableType,
   isValidationWithListValue,
+  isValidationWithNumberValue,
   isValidationWithoutValue,
   type ValidationGroup,
 } from './options';
@@ -45,6 +45,40 @@ import ValidationRule, { type TargetOption } from './ValidationRule';
 const EMPTY_VALIDATION: ValidationMap = {};
 
 const EMPTY_KEYS: ReadonlySet<string> = new Set();
+
+const NUMERIC_RULE_DEFAULTS: Readonly<Record<string, number>> = {
+  minLength: 1,
+  maxLength: 1,
+  minValue: 0,
+  maxValue: 0,
+  minSelected: 1,
+  maxSelected: 1,
+};
+
+const OPPOSITE_BOUND: Readonly<Record<string, string>> = {
+  minLength: 'maxLength',
+  maxLength: 'minLength',
+  minValue: 'maxValue',
+  maxValue: 'minValue',
+  minSelected: 'maxSelected',
+  maxSelected: 'minSelected',
+};
+
+/**
+ * A numeric rule starts valid and useful instead of briefly entering the form
+ * as `null`. If its opposite bound already exists, matching that value keeps
+ * the pair satisfiable; otherwise counts start at one and scalar bounds at
+ * zero.
+ */
+const initialNumericRuleValue = (
+  ruleKey: string,
+  rules: ValidationMap,
+): number => {
+  const oppositeValue = rules[OPPOSITE_BOUND[ruleKey] ?? ''];
+  return typeof oppositeValue === 'number'
+    ? oppositeValue
+    : (NUMERIC_RULE_DEFAULTS[ruleKey] ?? 0);
+};
 
 /**
  * The passphrase substitute codebook. Stable at module scope because
@@ -198,12 +232,12 @@ const RuleList = ({
   };
 
   /**
-   * Switching a rule on writes it into the committed map immediately —
-   * `true` for a value-less rule, `null` for one still waiting on a value.
-   * Carrying the ON state in the value rather than in local component state
-   * is what lets the field validate itself: a half-configured rule is now
-   * visible to `ruleMapIssue`, so the editor refuses to save instead of
-   * quietly dropping the rule.
+   * Switching a rule on writes it into the committed map immediately: `true`
+   * for a value-less rule, a valid initial number for a numeric rule, and
+   * `null` for a comparison rule still waiting on an explicit target. Carrying
+   * the ON state in the value rather than in local component state is what lets
+   * the field validate itself instead of quietly dropping half-configured
+   * rules.
    */
   const handleToggle = (ruleKey: string, nextState: boolean) => {
     if (!nextState) {
@@ -224,6 +258,15 @@ const RuleList = ({
 
     if (isValidationWithoutValue(ruleKey)) {
       commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, '') }));
+      return;
+    }
+
+    if (isValidationWithNumberValue(ruleKey)) {
+      commit((base) => ({
+        ...base,
+        [ruleKey]: initialNumericRuleValue(ruleKey, base),
+      }));
+      requestFocus(ruleKey);
       return;
     }
 
@@ -292,10 +335,10 @@ const RuleList = ({
           key={group.id}
           className={cx(
             variants(),
-            'relative my-4 flex flex-col overflow-visible',
+            'relative my-4 flex w-full min-w-0 flex-col overflow-visible',
           )}
         >
-          <legend className="bg-input absolute -top-3 left-6 z-10 rounded px-4">
+          <legend className="bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']">
             <Heading level="label">{group.heading}</Heading>
           </legend>
           <div className="flex w-full flex-col gap-4 pt-4">

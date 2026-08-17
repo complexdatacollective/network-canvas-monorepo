@@ -11,6 +11,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
@@ -59,6 +60,15 @@ const EditorFields = (props: Record<string, unknown>) => {
       component={TextInput}
       initialValue={typeof props.label === 'string' ? props.label : ''}
     />
+  );
+};
+
+const EditorLivePreview = () => {
+  const { label } = useFormValue(['label'] as const);
+  return (
+    <output aria-label="Live item preview">
+      {typeof label === 'string' ? label : ''}
+    </output>
   );
 };
 
@@ -172,6 +182,7 @@ const releaseAndSettle = async ({
 
 type FieldOverrides = {
   editorFieldsComponent?: React.ComponentType<Record<string, unknown>>;
+  editorPreviewComponent?: React.ComponentType<Record<string, unknown>>;
   editorValidate?: DialogArrayEditorValidate;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -182,6 +193,7 @@ const arrayField = (
   initialItems: Item[],
   {
     editorFieldsComponent = EditorFields,
+    editorPreviewComponent,
     editorValidate,
     normalizeItem,
     onBeforeSave,
@@ -196,6 +208,7 @@ const arrayField = (
     initialValue={initialItems}
     previewComponent={Preview}
     editorFieldsComponent={editorFieldsComponent}
+    editorPreviewComponent={editorPreviewComponent}
     editorTitle="Edit item"
     addTitle="Add item"
     itemLabel="item"
@@ -314,6 +327,24 @@ describe('DialogArrayField', () => {
     await waitFor(() => {
       expect(getItems()).toEqual([{ id: 'item-1', label: 'After' }]);
     });
+  });
+
+  it('renders an editor preview beside the form and updates it from live draft values', () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+      editorPreviewComponent: EditorLivePreview,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+
+    const preview = screen.getByRole('status', {
+      name: 'Live item preview',
+    });
+    expect(preview).toHaveTextContent('Before');
+    expect(preview.closest('aside')).not.toBeNull();
+
+    fireEvent.change(editorInput(), { target: { value: 'After' } });
+    expect(preview).toHaveTextContent('After');
   });
 
   it('drops a field the editor cleared before its section unmounted', async () => {

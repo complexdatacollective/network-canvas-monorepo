@@ -193,13 +193,14 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      expect(
-        screen.getByRole('group', { name: 'Requirements' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Requirements' })).toHaveClass(
+        'w-full',
+        'min-w-0',
+      );
       expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
       expect(
         screen.getByRole('group', { name: 'Compare to another variable' }),
-      ).toBeInTheDocument();
+      ).toHaveClass('w-full', 'min-w-0');
 
       expect(toggle('Minimum value')).not.toBeChecked();
       expect(toggle('Maximum value')).not.toBeChecked();
@@ -354,10 +355,10 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ minLength: 2 });
     });
 
-    // Switching a rule on records it right away, as an unanswered rule — that
-    // is what stops it from vanishing on save — but the VALUE is still only
-    // written on blur, so a half-typed number never lands in the map.
-    it('records a switched-on rule as unanswered and writes its value on blur', () => {
+    // Switching a numeric rule on records a useful, valid starting value. An
+    // edit is still only written on blur, so a half-typed number never lands
+    // in the map.
+    it('records a numeric rule with an initial value and writes edits on blur', () => {
       const { committedValidation } = setup({
         variableType: 'text',
         entity: 'node',
@@ -368,32 +369,61 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Minimum length'));
-      expect(committedValidation()).toEqual({ minLength: null });
+      expect(committedValidation()).toEqual({ minLength: 1 });
+      expect(numberValue('Minimum length')).toHaveValue(1);
 
       const input = typeValue('Minimum length', '1');
       fireEvent.change(input, { target: { value: '10' } });
-      expect(committedValidation()).toEqual({ minLength: null });
+      expect(committedValidation()).toEqual({ minLength: 1 });
 
       fireEvent.blur(input);
       expect(committedValidation()).toEqual({ minLength: 10 });
     });
 
-    it('refuses to save a rule that was switched on but never answered', async () => {
-      const { committedValidation, expectSaveBlocked } = setup({
+    it.each([
+      ['text', 'Minimum length', 'minLength', 1],
+      ['text', 'Maximum length', 'maxLength', 1],
+      ['number', 'Minimum value', 'minValue', 0],
+      ['number', 'Maximum value', 'maxValue', 0],
+      ['categorical', 'Minimum selected', 'minSelected', 1],
+      ['categorical', 'Maximum selected', 'maxSelected', 1],
+    ])(
+      'starts %s %s valid before the value control is edited',
+      async (variableType, label, ruleKey, initialValue) => {
+        const { committedValidation, expectSaveAllowed } = setup({
+          variableType,
+          entity: 'node',
+          currentVariableId: `${variableType}-var`,
+          allVariables: {},
+          existingVariables: {},
+          validation: {},
+        });
+
+        fireEvent.click(toggle(label));
+
+        expect(committedValidation()).toEqual({ [ruleKey]: initialValue });
+        expect(numberValue(label)).toHaveValue(initialValue);
+        await expectSaveAllowed();
+      },
+    );
+
+    it('uses an existing opposite bound as the initial value', () => {
+      const { committedValidation } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
         allVariables: {},
         existingVariables: {},
-        validation: {},
+        validation: { maxLength: 7 },
       });
 
       fireEvent.click(toggle('Minimum length'));
 
-      expect(committedValidation()).toEqual({ minLength: null });
-      expect(await expectSaveBlocked()).toBe(
-        'Enter a value for "Minimum length", or switch the rule off.',
-      );
+      expect(committedValidation()).toEqual({
+        maxLength: 7,
+        minLength: 7,
+      });
+      expect(numberValue('Minimum length')).toHaveValue(7);
     });
 
     it('commits on Enter as well as blur', () => {
@@ -427,7 +457,7 @@ describe('Validations behaviour', () => {
       const input = typeValue('Minimum value', '-');
 
       expect(input).toHaveValue(null);
-      expect(committedValidation()).toEqual({ minValue: null });
+      expect(committedValidation()).toEqual({ minValue: 0 });
 
       fireEvent.change(input, { target: { value: '-5' } });
       fireEvent.blur(input);
@@ -1381,6 +1411,7 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Minimum value'));
+      fireEvent.blur(typeValue('Minimum value', ''));
       await expectSaveBlocked();
       expect(
         screen.getAllByText(/Enter a value for "Minimum value"/).length,
@@ -1404,6 +1435,7 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Minimum value'));
+      fireEvent.blur(typeValue('Minimum value', ''));
       await expectSaveBlocked();
       fireEvent.click(toggle('Minimum value'));
       fireEvent.click(toggle('Minimum value'));
@@ -1450,6 +1482,7 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', ''));
       expect(
         screen.queryByText(/Enter a value for "Maximum value"/),
       ).not.toBeInTheDocument();

@@ -138,9 +138,6 @@ vi.mock('~/components/EditorLayout', () => ({
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: () => <div data-testid="variable-picker" />,
 }));
-vi.mock('~/components/Form/Fields/InputPreview', () => ({
-  default: () => <div data-testid="input-preview" />,
-}));
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
   optionsValidation: {},

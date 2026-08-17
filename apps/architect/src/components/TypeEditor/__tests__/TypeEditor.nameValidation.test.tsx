@@ -53,6 +53,18 @@ const messagesFor = (name: string) => {
  * name a variable name.
  */
 describe('<TypeEditor /> name validation', () => {
+  it('groups controls in untitled Sections', () => {
+    const { container } = renderTypeEditor('node');
+
+    expect(container.querySelectorAll('section')).toHaveLength(4);
+    expect(screen.getByText('Node type name')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', {
+        name: /^(Node Type|Color|Shape|Icon)$/,
+      }),
+    ).toBeNull();
+  });
+
   it('reports only that the name is required when it is empty', async () => {
     renderTypeEditor('node');
 

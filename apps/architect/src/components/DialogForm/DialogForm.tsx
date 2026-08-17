@@ -5,6 +5,7 @@ import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { Layout } from '~/components/EditorLayout';
 import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
@@ -62,6 +63,12 @@ export type DialogFormProps = {
    * while the dialog was open has been remounted as a different element.
    */
   finalFocus?: DialogProps['finalFocus'];
+  /**
+   * Optional supporting content rendered beside the form in a workspace-sized
+   * dialog. It remains outside the form element, so interactive previews can
+   * own their own form semantics without nesting forms.
+   */
+  aside?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -81,6 +88,7 @@ const DialogFormBody = ({
   layoutId,
   style,
   finalFocus,
+  aside,
   children,
 }: DialogFormProps) => {
   const refusedCommit = useRefusedNestedCommit();
@@ -150,6 +158,7 @@ const DialogFormBody = ({
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}
+      size={aside ? 'workspace' : undefined}
       footer={
         <>
           <Button
@@ -163,11 +172,32 @@ const DialogFormBody = ({
         </>
       }
     >
-      <Layout>
-        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-          {children}
-        </FormWithoutProvider>
-      </Layout>
+      {aside ? (
+        <ResizableFlexPanel
+          storageKey={`${formId}-workspace-split`}
+          defaultBasis={50}
+          min={30}
+          max={70}
+          stickyHandle
+          aria-label="Resize form and preview panes"
+          className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 @container w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
+        >
+          <Layout className="min-w-0 @min-[60rem]:pr-4">
+            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+              {children}
+            </FormWithoutProvider>
+          </Layout>
+          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+            {aside}
+          </aside>
+        </ResizableFlexPanel>
+      ) : (
+        <Layout>
+          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+            {children}
+          </FormWithoutProvider>
+        </Layout>
+      )}
     </Dialog>
   );
 };

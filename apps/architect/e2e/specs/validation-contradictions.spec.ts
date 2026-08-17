@@ -44,16 +44,10 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Number Input' });
 
-  // Expand the toggleable Validation section. Section.tsx's `toggleable`
-  // prop renders fresco-ui's `ToggleField`, a Base UI `Switch.Root`
-  // (`role="switch"`) named by `aria-labelledby` pointing at the section's own
-  // heading — so the switch IS "Validation".
-  await editor
-    .section('Validation')
-    .getByRole('switch', { name: 'Validation' })
-    .click();
-
-  const validationSection = editor.section('Validation');
+  // Field dialogs render validation inline without the legacy section heading
+  // or master toggle. The issue-anchor id remains the stable scope for its
+  // individual validation controls.
+  const validationSection = page.locator('#field_validation');
 
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
@@ -139,12 +133,7 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
     .getByLabel('Input control')
     .selectOption({ label: 'Number Input' });
 
-  await editor
-    .section('Validation')
-    .getByRole('switch', { name: 'Validation' })
-    .click();
-
-  const validationSection = editor.section('Validation');
+  const validationSection = page.locator('#field_validation');
   const minValue = page.locator('input[name="validation-value-minValue"]');
   const maxValue = page.locator('input[name="validation-value-maxValue"]');
 

@@ -107,6 +107,13 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   /** Renders the editor dialog's fields. Receives the item's own properties. */
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
+  /**
+   * Optional supporting pane for the editor dialog. It receives the row that
+   * opened the dialog plus `editorPreviewProps`, and can subscribe to the
+   * dialog form store for live draft values.
+   */
+  editorPreviewComponent?: Renderer;
+  editorPreviewProps?: Record<string, unknown>;
   editorValidate?: DialogArrayEditorValidate;
   /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
   itemLabel?: string;
@@ -254,6 +261,8 @@ type DialogArrayContextValue = {
     isNewRow: boolean,
   ) => boolean;
   editorFieldsComponent: Renderer;
+  editorPreviewComponent?: Renderer;
+  editorPreviewProps?: Record<string, unknown>;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
   editorValidate?: DialogArrayEditorValidate;
@@ -409,6 +418,8 @@ const DialogEditor = ({
     commitDetachedRow,
     editFormName,
     editorFieldsComponent,
+    editorPreviewComponent,
+    editorPreviewProps,
     editorProps,
     editorTitle,
     editorValidate,
@@ -594,6 +605,16 @@ const DialogEditor = ({
 
   if (!session) return null;
 
+  const editorPreview = editorPreviewComponent
+    ? createElement(editorPreviewComponent, {
+        ...itemValues,
+        ...editorProps,
+        ...editorPreviewProps,
+        item: itemValues,
+        editIndex,
+      })
+    : undefined;
+
   return (
     <DialogForm
       key={session.id}
@@ -619,6 +640,7 @@ const DialogEditor = ({
           : undefined
       }
       style={{ borderRadius: 'var(--radius)' }}
+      aside={editorPreview}
     >
       <DialogStoreCapture apiRef={storeApiRef} />
       {createElement(editorFieldsComponent, {
@@ -646,6 +668,8 @@ function DialogArrayField<T extends ArrayItem>({
   addTitle,
   editorTitle,
   editorFieldsComponent,
+  editorPreviewComponent,
+  editorPreviewProps,
   editorProps,
   editorValidate,
   itemLabel = 'item',
@@ -716,6 +740,8 @@ function DialogArrayField<T extends ArrayItem>({
       commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(name),
       editorFieldsComponent,
+      editorPreviewComponent,
+      editorPreviewProps,
       editorProps,
       editorTitle,
       editorValidate,
@@ -730,6 +756,8 @@ function DialogArrayField<T extends ArrayItem>({
       addTitle,
       commitDetachedRow,
       editorFieldsComponent,
+      editorPreviewComponent,
+      editorPreviewProps,
       editorProps,
       editorTitle,
       editorValidate,

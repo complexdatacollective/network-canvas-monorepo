@@ -21,6 +21,10 @@ export type {
 } from './contract/types';
 // Runtime
 export { default as Shell, type NavigationOrientation } from './Shell';
+export {
+  default as ProtocolField,
+  type ProtocolFieldDefinition,
+} from './forms/ProtocolField';
 
 export { createInitialNetwork } from './contract/network';
 // Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)

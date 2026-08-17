@@ -171,8 +171,8 @@ export type OptionRow = { label: string; value: string };
 
 // Fill an Options editor's rows (components/Options/*), shared between the
 // NewVariableWindow flow above and the form-field dialog's
-// 'Categorical/Ordinal options' section (editor-sections/
-// form-field-controls.ts). `scope` names WHICH editor to fill, not which of
+// 'Categorical/Ordinal options' field (editor-sections/form-field-controls.ts).
+// `scope` names WHICH editor to fill, not which of
 // several same-named buttons to press: every options list is now the only
 // "Create new option" on its surface. The row edit fields are page-unique
 // because only one option row is ever open (see the Option.tsx notes above).

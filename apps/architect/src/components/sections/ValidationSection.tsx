@@ -51,6 +51,12 @@ type ValidationSectionProps = {
    * to refuse a half-configured rule with.
    */
   commitsImmediately?: boolean;
+  /**
+   * Keep the validation editor inside its Section surface without rendering
+   * the legacy Section heading/toggle. Dialogs use the field's own label and
+   * hint instead; stage-editor consumers retain the toggleable heading.
+   */
+  showHeading?: boolean;
 };
 const ValidationSection = ({
   disabled = false,
@@ -63,6 +69,7 @@ const ValidationSection = ({
   currentVariableId,
   initialValue,
   commitsImmediately = false,
+  showHeading = true,
 }: ValidationSectionProps) => {
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
@@ -154,11 +161,11 @@ const ValidationSection = ({
     <Section
       layout="vertical"
       id={id}
-      title="Validation"
-      summary={<Paragraph>{summary}</Paragraph>}
+      title={showHeading ? 'Validation' : undefined}
+      summary={showHeading ? <Paragraph>{summary}</Paragraph> : undefined}
       disabled={disabled}
-      toggleable
-      startExpanded={startExpanded}
+      toggleable={showHeading}
+      startExpanded={showHeading ? startExpanded : true}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleChange}
     >

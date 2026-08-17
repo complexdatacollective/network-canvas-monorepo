@@ -54,6 +54,33 @@ describe('DialogForm', () => {
     expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue('Alice');
   });
 
+  it('starts workspace dialogs at an even split and resizes them from the keyboard', () => {
+    render(
+      <DialogForm
+        open
+        onClose={vi.fn()}
+        title="Edit field"
+        formId="resizable-workspace-form"
+        submitLabel="Save"
+        onSubmit={vi.fn()}
+        aside={<div>Participant preview</div>}
+      >
+        <Field name="label" label="Label" component={InputField} />
+      </DialogForm>,
+    );
+
+    const resizeHandle = screen.getByRole('slider', {
+      name: 'Resize form and preview panes',
+    });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '50');
+    expect(
+      screen.getByText('Participant preview').closest('aside'),
+    ).toHaveClass('z-10');
+
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '52');
+  });
+
   it('submits via the footer button’s form= association, not DOM nesting', async () => {
     const onSubmit = vi.fn().mockResolvedValue({ success: true });
 

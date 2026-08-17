@@ -155,12 +155,7 @@ describe('CodebookVariableValidationSection', () => {
     });
   });
 
-  // Issue #1383. This surface has no submit to refuse — it writes straight to
-  // the codebook on every change — so an unanswered or contradictory map is
-  // simply not written. What it must never do is write the `null` a
-  // switched-on-but-unanswered rule carries, or a pair the protocol schema
-  // would then reject.
-  it('does not write a rule that is switched on but not yet answered', async () => {
+  it('writes a numeric rule with its valid initial value', async () => {
     codebookVariables.current = {
       v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
         id: string;
@@ -179,11 +174,22 @@ describe('CodebookVariableValidationSection', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('spinbutton', { name: 'Minimum value' }),
-      ).toBeInTheDocument();
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variable: 'v1',
+          configuration: { validation: { minValue: 0 } },
+          replaceProperties: ['validation'],
+        }),
+      );
     });
-    expect(updateVariableAsync).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(0);
+    expect(
+      screen.queryByText(
+        'Enter a value for "Minimum value", or switch the rule off.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('does not write a contradictory pair, then writes it once corrected', async () => {
@@ -205,6 +211,15 @@ describe('CodebookVariableValidationSection', () => {
         hidden: true,
       }),
     );
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: { validation: { maxValue: 6, minValue: 6 } },
+        }),
+      );
+    });
+    updateVariableAsync.mockClear();
+
     const input = screen.getByRole('spinbutton', { name: 'Minimum value' });
     fireEvent.change(input, { target: { value: '10' } });
     fireEvent.blur(input);

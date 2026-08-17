@@ -19,6 +19,7 @@ import {
   isVariableUsedBySibling,
   sharedFormValidationViews,
 } from '~/components/sections/Form/composerHelpers';
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import { useStageFormValues } from '~/components/StageEditor/useStageFormValues';
 import { makeFieldEditorValidate } from '~/components/Validations/contradictions';
@@ -36,10 +37,14 @@ import DialogArrayField, {
 
 /** Stable empty array: `initialValue` is a register-effect dependency. */
 const NO_FIELDS: Record<string, unknown>[] = [];
+const COMPOSER_PREVIEW_PROPS = { mode: 'composer' };
 
 // DialogArrayField renders these with the edited row's own properties, so it
 // types them by the only shape it can know.
 const EditorFields = ComposerAttributeFields as ComponentType<
+  Record<string, unknown>
+>;
+const EditorPreview = FieldEditorPreview as ComponentType<
   Record<string, unknown>
 >;
 const Preview = ComposerFieldPreview as ComponentType<Record<string, unknown>>;
@@ -311,6 +316,8 @@ const EditableAttributesList = ({
           addTitle={title}
           editorTitle={title}
           editorFieldsComponent={EditorFields}
+          editorPreviewComponent={EditorPreview}
+          editorPreviewProps={COMPOSER_PREVIEW_PROPS}
           editorProps={editorProps}
           editorValidate={editorValidate}
           itemLabel="attribute"
@@ -339,6 +346,8 @@ const EditableAttributesList = ({
       addTitle={title}
       editorTitle={title}
       editorFieldsComponent={EditorFields}
+      editorPreviewComponent={EditorPreview}
+      editorPreviewProps={COMPOSER_PREVIEW_PROPS}
       // The editor's variable picker takes the same committed sibling list
       // `editorValidate` gates on, so a variable another attribute already
       // collects is never offered in the first place rather than being offered

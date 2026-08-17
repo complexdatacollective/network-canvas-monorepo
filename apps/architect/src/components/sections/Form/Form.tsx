@@ -32,6 +32,7 @@ import {
   sharedFormValidationView,
 } from './composerHelpers';
 import { useFormFieldCommit } from './fieldCommit';
+import FieldEditorPreview from './FieldEditorPreview';
 import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
@@ -39,6 +40,9 @@ import { itemSelector, normalizeField } from './helpers';
 // DialogArrayField renders these with the edited row's own properties, so it
 // types them by the only shape it can know.
 const EditorFields = FieldFields as ComponentType<Record<string, unknown>>;
+const EditorPreview = FieldEditorPreview as ComponentType<
+  Record<string, unknown>
+>;
 const Preview = FieldPreview as ComponentType<Record<string, unknown>>;
 
 /** Stable empty array: `initialValue` is a register-effect dependency. */
@@ -203,6 +207,7 @@ const Form = ({
         addTitle="Edit Field"
         editorTitle="Edit Field"
         editorFieldsComponent={EditorFields}
+        editorPreviewComponent={EditorPreview}
         editorProps={editorProps}
         editorValidate={editorValidate}
         itemLabel="field"

@@ -3,6 +3,7 @@ import { compose } from 'react-recompose';
 
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 
+import Section from '../../EditorLayout/Section';
 import EditValue from './EditValue';
 import {
   operatorsWithOptionCount,
@@ -74,63 +75,73 @@ const EditEgoRule = ({
   };
   return (
     <>
-      <RuleField
-        component={NativeSelectField}
-        label="Ego attribute"
-        hint="Select the ego attribute this rule will be based on."
-        name="attribute"
-        placeholder="Select an ego variable…"
-        options={variablesAsOptions}
-        onChange={handleRuleChange}
-        value={optionsWithDefaults.attribute}
-        validation={{ required: true }}
-      />
-      {optionsWithDefaults.attribute && (
+      <Section layout="vertical">
         <RuleField
           component={NativeSelectField}
-          label="Operator"
-          hint="Select the operator that will be used to compare the ego attribute to the value."
-          name="operator"
-          placeholder="Select an operator…"
-          options={operatorOptions}
+          label="Ego attribute"
+          hint="Select the ego attribute this rule will be based on."
+          name="attribute"
+          placeholder="Select an ego variable…"
+          options={variablesAsOptions}
           onChange={handleRuleChange}
-          value={optionsWithDefaults.operator}
+          value={optionsWithDefaults.attribute}
           validation={{ required: true }}
         />
+      </Section>
+      {optionsWithDefaults.attribute && (
+        <Section layout="vertical">
+          <RuleField
+            component={NativeSelectField}
+            label="Operator"
+            hint="Select the operator that will be used to compare the ego attribute to the value."
+            name="operator"
+            placeholder="Select an operator…"
+            options={operatorOptions}
+            onChange={handleRuleChange}
+            value={optionsWithDefaults.operator}
+            validation={{ required: true }}
+          />
+        </Section>
       )}
       {operatorNeedsValue && (
-        <EditValue
-          label="Attribute Value"
-          hint="Enter the value to compare against."
-          variableType={variableType}
-          placeholder="Enter a value..."
-          onChange={handleRuleChange}
-          value={optionsWithDefaults.value}
-          options={variableOptions}
-          validation={{ required: true }}
-        />
+        <Section layout="vertical">
+          <EditValue
+            label="Attribute Value"
+            hint="Enter the value to compare against."
+            variableType={variableType}
+            placeholder="Enter a value..."
+            onChange={handleRuleChange}
+            value={optionsWithDefaults.value}
+            options={variableOptions}
+            validation={{ required: true }}
+          />
+        </Section>
       )}
       {operatorNeedsRegExp && (
-        <EditValue
-          label="Attribute Value"
-          hint="Enter the value to compare against. You can use a regular expression to match multiple values."
-          variableType={variableType}
-          placeholder="Enter a regular expression..."
-          onChange={handleRuleChange}
-          value={optionsWithDefaults.value}
-          options={variableOptions}
-          validation={{ required: true, validRegExp: true }}
-        />
+        <Section layout="vertical">
+          <EditValue
+            label="Attribute Value"
+            hint="Enter the value to compare against. You can use a regular expression to match multiple values."
+            variableType={variableType}
+            placeholder="Enter a regular expression..."
+            onChange={handleRuleChange}
+            value={optionsWithDefaults.value}
+            options={variableOptions}
+            validation={{ required: true, validRegExp: true }}
+          />
+        </Section>
       )}
       {operatorNeedsOptionCount && (
-        <EditValue
-          label="Selected Option Count"
-          hint="Enter the number of options that must be selected for this rule to pass."
-          variableType="number"
-          onChange={handleRuleChange}
-          value={optionsWithCounts.value}
-          validation={{ requiredAcceptsZero: true }}
-        />
+        <Section layout="vertical">
+          <EditValue
+            label="Selected Option Count"
+            hint="Enter the number of options that must be selected for this rule to pass."
+            variableType="number"
+            onChange={handleRuleChange}
+            value={optionsWithCounts.value}
+            validation={{ requiredAcceptsZero: true }}
+          />
+        </Section>
       )}
     </>
   );

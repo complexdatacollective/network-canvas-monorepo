@@ -52,34 +52,28 @@ const renderRule = (entityType: 'node' | 'edge') =>
     />,
   );
 
-/**
- * `rule.type` is the entity CLASS ('node'/'edge'), an internal token. It was
- * interpolated straight into the section heading and its summary sentence, so
- * the rule builder greeted every researcher with "node Type" and "Choose an
- * node type to base your rule on." (#1400).
- *
- * The heading and the summary are asserted per entity because the two branches
- * differ by more than capitalisation: the indefinite article changes, which is
- * why the sentences are written out whole rather than built from the token.
- */
 describe('EditEntityRule copy', () => {
-  it('names the node type section in prose, with the right article', () => {
-    renderRule('node');
+  it('uses field copy rather than a duplicate Section heading for node rules', () => {
+    const { container } = renderRule('node');
 
-    expect(screen.getByText('Node Type')).toBeInTheDocument();
+    expect(screen.getByText('Node type')).toBeInTheDocument();
     expect(
       screen.getByText(/^Choose a node type to base your rule on\./),
     ).toBeInTheDocument();
+    expect(container.querySelectorAll('section')).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: 'Node Type' })).toBeNull();
     expect(screen.queryByText('node Type')).toBeNull();
   });
 
-  it('names the edge type section in prose, with the right article', () => {
-    renderRule('edge');
+  it('uses field copy rather than a duplicate Section heading for edge rules', () => {
+    const { container } = renderRule('edge');
 
-    expect(screen.getByText('Edge Type')).toBeInTheDocument();
+    expect(screen.getByText('Edge type')).toBeInTheDocument();
     expect(
       screen.getByText(/^Choose an edge type to base your rule on\./),
     ).toBeInTheDocument();
+    expect(container.querySelectorAll('section')).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: 'Edge Type' })).toBeNull();
     expect(screen.queryByText('edge Type')).toBeNull();
   });
 
@@ -91,16 +85,16 @@ describe('EditEntityRule copy', () => {
    * researcher can see.
    */
   it.each([
-    ['node', 'Node Type'],
-    ['edge', 'Edge Type'],
+    ['node', 'Node type'],
+    ['edge', 'Edge type'],
   ] as const)(
-    'gives the %s rule issue anchor the same name as its heading',
-    (entityType, heading) => {
+    'gives the %s rule issue anchor the same name as its field label',
+    (entityType, fieldLabel) => {
       const { container } = renderRule(entityType);
 
       expect(container.querySelector('#field_type')).toHaveAttribute(
         'data-name',
-        heading,
+        fieldLabel,
       );
     },
   );
