@@ -60,7 +60,7 @@ describe('loadSiteContent', () => {
     ]);
   });
 
-  it('limits publications to the first eight rows', async () => {
+  it('returns every publication row in file order', async () => {
     const content = await loadSiteContent('en-US', directory);
 
     expect(content.publications.map(({ id }) => id)).toEqual([
@@ -72,6 +72,7 @@ describe('loadSiteContent', () => {
       'p6',
       'p7',
       'p8',
+      'p9',
     ]);
   });
 
