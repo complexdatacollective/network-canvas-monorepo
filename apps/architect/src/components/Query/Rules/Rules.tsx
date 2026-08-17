@@ -110,10 +110,9 @@ const Rules = ({
   );
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       <PreviewRules
         rules={rules}
-        join={join}
         codebook={codebook}
         ruleTypes={ruleTypes}
         addButtonLabel={addRuleLabel}
@@ -124,10 +123,11 @@ const Rules = ({
       {rules.length > 1 && (
         <RuleField
           component={FrescoRadioGroupField}
-          label="Rule matching"
+          label="Rule Matching"
+          hint="When you have multiple rules, how should matching work?"
           options={[
-            { label: 'All rules', value: 'AND' },
-            { label: 'Any rule', value: 'OR' },
+            { label: 'All rules must match', value: 'AND' },
+            { label: 'Any rule can match', value: 'OR' },
           ]}
           value={join}
           onChange={(_event, value) => {
@@ -135,7 +135,7 @@ const Rules = ({
           }}
         />
       )}
-    </>
+    </div>
   );
 };
 

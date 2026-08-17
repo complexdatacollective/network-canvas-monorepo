@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -33,7 +33,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <ArchitectArrayField
           name="items"
           label="Content items"
@@ -60,7 +60,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
           requestedEditFormName="editable-list-form"
           sortable
         />
-      </Row>
+      </>
     </Section>
   );
 };

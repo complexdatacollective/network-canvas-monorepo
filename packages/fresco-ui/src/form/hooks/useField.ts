@@ -30,12 +30,6 @@ import useFormStore from './useFormStore';
  *
  * For fields without validateOnChange: shows errors after the field has been
  * blurred, is dirty, and validation has completed.
- *
- * Exported because the store's `errors.fieldErrors` map is NOT the set of
- * errors on screen: every focus-out validates the field it leaves, so a
- * question the participant tabbed through without answering holds an error
- * that nothing renders. Anything reacting to "this form is showing an error"
- * has to ask this, not the map.
  */
 export function shouldShowFieldError(
   fieldState: FieldState | undefined,

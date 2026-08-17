@@ -7,7 +7,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import {
   useCreateVariable,
@@ -150,7 +150,7 @@ const TapBehaviour = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Row>
+      <>
         <RadioGroupField
           onChange={handleChangeTapBehaviour}
           value={tapBehaviour ?? undefined}
@@ -167,9 +167,9 @@ const TapBehaviour = ({
             },
           ]}
         />
-      </Row>
+      </>
       {tapBehaviour && (
-        <Row>
+        <>
           {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
             <>
               <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
@@ -212,7 +212,7 @@ const TapBehaviour = ({
               />
             </>
           )}
-        </Row>
+        </>
       )}
     </Section>
   );

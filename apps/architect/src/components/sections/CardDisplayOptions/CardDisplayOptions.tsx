@@ -3,7 +3,7 @@ import { compose } from 'react-recompose';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -78,15 +78,15 @@ const CardDisplayOptions = ({
       handleToggleChange={handleToggleCardDisplayOptions}
       disabled={disabled}
     >
-      <Row>
+      <>
         <Alert variant="info" className="my-7">
           <AlertDescription>
             Cards will use the <strong>name</strong> attribute from your
             external data as the main card title.
           </AlertDescription>
         </Alert>
-      </Row>
-      <Row>
+      </>
+      <>
         <Heading level="h4">Additional Display Properties</Heading>
         <Paragraph>
           Would you like to display any other attributes to help the participant
@@ -127,7 +127,7 @@ const CardDisplayOptions = ({
             )
           }
         />
-      </Row>
+      </>
     </Section>
   );
 };

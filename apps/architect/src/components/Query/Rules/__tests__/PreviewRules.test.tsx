@@ -35,12 +35,11 @@ const RULES = [
   },
 ];
 
-const renderRules = (rules = RULES, join: string | null = 'OR') =>
+const renderRules = (rules = RULES) =>
   render(
     <DialogProvider>
       <PreviewRules
         rules={rules}
-        join={join}
         codebook={CODEBOOK}
         ruleTypes={[{ label: 'Node', value: 'node' }]}
         addButtonLabel="Add new rule"
@@ -62,15 +61,15 @@ describe('PreviewRules', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the join inside the item it follows', () => {
+  it('does not render join elements between items', () => {
     renderRules();
 
     const [first, second] = within(screen.getByRole('list')).getAllByRole(
       'listitem',
     );
 
-    expect(first).toHaveTextContent('or');
-    expect(second).not.toHaveTextContent('or');
+    expect(first).not.toHaveTextContent(/\b(?:and|or)\b/i);
+    expect(second).not.toHaveTextContent(/\b(?:and|or)\b/i);
     expect(screen.queryByRole('group')).toBeNull();
   });
 
@@ -88,7 +87,7 @@ describe('PreviewRules', () => {
   });
 
   it('renders the preview beside separate edit and delete icon buttons', () => {
-    renderRules([RULES[0]!], null);
+    renderRules([RULES[0]!]);
 
     const item = within(screen.getByRole('list')).getByRole('listitem');
     const edit = within(item).getByRole('button', {
@@ -101,11 +100,28 @@ describe('PreviewRules', () => {
     expect(edit.querySelector('.lucide-pencil')).toBeInTheDocument();
     expect(remove.querySelector('.lucide-trash-2')).toBeInTheDocument();
     expect(edit).not.toHaveTextContent('Dee');
+    expect(edit).toHaveAccessibleName(
+      'Edit rule: person where text variable name is exactly equal to Dee',
+    );
+    expect(edit).toHaveClass('h-12', 'bg-(--component-text)');
+    expect(edit).not.toHaveClass('elevation-none');
+    expect(edit).toHaveClass('text-current');
+    expect(remove).toHaveClass('h-12', 'bg-(--component-text)');
+    expect(remove).not.toHaveClass('elevation-none');
     expect(remove).not.toHaveClass('opacity-0');
+    expect(edit.parentElement).not.toHaveClass('border-t', 'border-l');
+    expect(item).toHaveClass(
+      'publish-colors',
+      'bg-surface-3',
+      'elevation-low',
+      'rounded-sm',
+    );
+    expect(item).not.toHaveClass('bg-transparent', 'p-0!', 'shadow-none');
+    expect(item.querySelector('[data-rule-surface]')).toBeNull();
   });
 
   it('renders the editable-list empty state when there are no rules', () => {
-    renderRules([], null);
+    renderRules([]);
 
     expect(screen.getByRole('list')).toBeInTheDocument();
     expect(

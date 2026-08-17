@@ -657,7 +657,7 @@ function DialogArrayField<T extends ArrayItem>({
   previewProps,
   requestedEditFormName,
   getId,
-  itemClasses = 'bg-accent text-accent-contrast elevation-low',
+  itemClasses,
   ...arrayFieldProps
 }: DialogArrayFieldProps<T>) {
   const createItem = useCallback(() => {

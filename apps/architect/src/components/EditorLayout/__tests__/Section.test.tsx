@@ -69,3 +69,44 @@ describe('<Section /> toggle', () => {
     expect(screen.queryByRole('switch')).toBeNull();
   });
 });
+
+describe('<Section /> content', () => {
+  it('renders the fieldset only while the section is open', () => {
+    const { container, rerender } = render(
+      <Section toggleable title="Skip Logic" startExpanded={false}>
+        <p>Contents</p>
+      </Section>,
+    );
+
+    expect(container.querySelector('fieldset')).toBeNull();
+    expect(screen.queryByText('Contents')).toBeNull();
+
+    rerender(
+      <Section toggleable title="Skip Logic" startExpanded>
+        <p>Contents</p>
+      </Section>,
+    );
+
+    expect(container.querySelector('fieldset')).not.toBeNull();
+    expect(screen.getByText('Contents')).toBeVisible();
+  });
+
+  it('shows the disabled message without rendering a fieldset', () => {
+    const { container } = render(
+      <Section
+        disabled
+        disabledMessage="Select a node type above to configure this section."
+        startExpanded={false}
+        title="Prompts"
+        toggleable
+      >
+        <p>Contents</p>
+      </Section>,
+    );
+
+    expect(container.querySelector('fieldset')).toBeNull();
+    expect(
+      screen.getByText('Select a node type above to configure this section.'),
+    ).toBeVisible();
+  });
+});

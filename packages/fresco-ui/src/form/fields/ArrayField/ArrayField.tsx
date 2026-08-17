@@ -19,15 +19,18 @@ import {
   useRef,
 } from 'react';
 
-import { IconButton, MotionButton } from '../../../Button';
+import { IconButton, iconButtonVariants, MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
 import Surface from '../../../layout/Surface';
 import {
   controlVariants,
   groupSpacingVariants,
+  heightVariants,
   inputControlVariants,
+  proportionalLucideIconVariants,
   stateVariants,
+  textSizeVariants,
 } from '../../../styles/controlVariants';
 import { compose, cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
@@ -60,7 +63,7 @@ const arrayFieldVariants = compose(
 );
 
 const itemVariants = cva({
-  base: 'w-full select-none',
+  base: 'publish-colors bg-surface-3 text-surface-3-contrast w-full rounded-sm px-6 py-4 select-none',
 });
 
 /**
@@ -280,6 +283,12 @@ export type ArrayFieldDragHandleProps = {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
+const dragHandleVariants = compose(
+  heightVariants,
+  textSizeVariants,
+  proportionalLucideIconVariants,
+);
+
 /**
  * Pointer drag handle with an arrow-key equivalent, for any reorderable list.
  *
@@ -293,7 +302,6 @@ export function ArrayFieldDragHandle({
   index,
   itemCount,
   onMove,
-  disabled = false,
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
   size = 'md',
@@ -336,24 +344,25 @@ export function ArrayFieldDragHandle({
   };
 
   return (
-    <IconButton
+    <button
       ref={buttonRef}
-      icon={<GripVerticalIcon />}
       aria-label={label}
       aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."
-      size={size}
-      variant="text"
-      color="dynamic"
-      disabled={disabled}
-      className={cx('cursor-grab touch-none active:cursor-grabbing', className)}
+      className={cx(
+        dragHandleVariants({ size }),
+        'cursor-grab touch-none active:cursor-grabbing',
+        className,
+      )}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={handleKeyDown}
       onPointerDown={(event) => {
         event.stopPropagation();
         dragControls.start(event);
       }}
-    />
+    >
+      <GripVerticalIcon />
+    </button>
   );
 }
 
@@ -456,10 +465,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   );
 
   return (
-    <Surface
-      as={Reorder.Item}
-      noContainer
-      spacing="sm"
+    <Reorder.Item
       ref={ref}
       value={item}
       dragListener={false}
@@ -496,7 +502,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         editTriggerRef={editTriggerRef}
         getAddTrigger={getAddTrigger}
       />
-    </Surface>
+    </Reorder.Item>
   );
 }
 
@@ -524,6 +530,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
   itemClasses,
   disabled,
   readOnly,
+  className,
   ...ariaProps
 }: ArrayFieldProps<T>) {
   // Props for getInputState - combines disabled/readOnly with aria props
@@ -806,7 +813,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const effectiveSortable = sortable && !isInteractionDisabled;
 
   // Extract conflicting event handlers and ref before spreading to motion component
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   const {
     onAnimationStart,
     onAnimationEnd,
@@ -822,17 +828,19 @@ export default function ArrayField<T extends Record<string, unknown>>({
     ref,
     ...safeAriaProps
   } = ariaProps;
-  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   return (
-    <LayoutGroup id={id}>
+    <LayoutGroup id={id} inherit={false}>
       {/* `min-w-0`, never a fixed floor. The 24rem `min-w-sm` this carried
           overflowed every container narrower than itself — measurably the sole
           source of the horizontal scroll on Architect's stage editor at phone
           widths — and a field cannot know how much room its host has. */}
       <motion.div
         layoutRoot
-        className="flex w-full min-w-0 flex-col items-start gap-4"
+        className={cx(
+          'flex w-full min-w-0 flex-col items-start gap-4',
+          className,
+        )}
       >
         <Reorder.Group
           axis="y"

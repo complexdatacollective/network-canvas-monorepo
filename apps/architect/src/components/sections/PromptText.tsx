@@ -1,4 +1,4 @@
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import { getFieldId } from '~/utils/issues';
@@ -18,7 +18,7 @@ type PromptTextProps = {
 const PromptText = ({ name = 'text', initialValue }: PromptTextProps) => {
   return (
     <Section id={getFieldId(name)} title="Prompt Text" layout="vertical">
-      <Row>
+      <>
         <ArchitectField
           name={name}
           component={RichText}
@@ -29,7 +29,7 @@ const PromptText = ({ name = 'text', initialValue }: PromptTextProps) => {
           validation={{ required: true }}
           initialValue={initialValue}
         />
-      </Row>
+      </>
     </Section>
   );
 };

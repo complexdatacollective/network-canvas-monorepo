@@ -9,7 +9,7 @@ import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup'
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -182,7 +182,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
       }
     >
       {imageAllowed && (
-        <Row>
+        <>
           <UnconnectedField
             name="background-type"
             label="Choose a background type"
@@ -192,11 +192,11 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
             options={backgroundTypeOptions}
             orientation="horizontal"
           />
-        </Row>
+        </>
       )}
       {!showImage && (
         <>
-          <Row>
+          <>
             <ArchitectField
               name="background.concentricCircles"
               component={IntegerInput}
@@ -204,8 +204,8 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               label="Number of concentric circles to use:"
               initialValue={concentricCirclesInitialValue}
             />
-          </Row>
-          <Row>
+          </>
+          <>
             <ArchitectField
               name="background.skewedTowardCenter"
               component={ToggleField}
@@ -213,7 +213,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               label="Skew the size of the circles so that the middle is proportionally larger."
               initialValue={skewedTowardCenterInitialValue ?? false}
             />
-          </Row>
+          </>
         </>
       )}
       {showImage && (
@@ -229,7 +229,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               .
             </AlertDescription>
           </Alert>
-          <Row>
+          <>
             <ArchitectField
               name="background.image"
               component={Image}
@@ -239,7 +239,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               validation={{ required: true }}
               initialValue={imageInitialValue}
             />
-          </Row>
+          </>
         </>
       )}
     </Section>

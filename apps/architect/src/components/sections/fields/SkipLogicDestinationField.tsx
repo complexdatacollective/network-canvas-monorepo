@@ -1,7 +1,7 @@
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
+import NativeSelect from '~/components/Form/Fields/NativeSelect';
 
 const NEXT_AVAILABLE_ROUTE = 'route:next';
 const FINISH_ROUTE = 'route:finish';
@@ -95,16 +95,16 @@ type DestinationSelectProps = CreateFormFieldProps<
 >;
 
 /**
- * The stored value is a destination object; the control speaks route strings.
- * This field bridges the two — the fresco-ui form store has no
- * `format`/`parse` hook of its own.
+ * Protocol state stores a destination object, while NativeSelect speaks route
+ * strings. Keep that representation boundary here so the shared select stays
+ * a normal string field and the stage form never contains UI-only route IDs.
  */
 const DestinationSelect = ({
   value,
   onChange,
   ...props
 }: DestinationSelectProps) => (
-  <StyledSelectField
+  <NativeSelect
     {...props}
     value={formatSkipLogicDestination(value)}
     onChange={(nextValue) => onChange?.(parseSkipLogicDestination(nextValue))}

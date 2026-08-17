@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -195,7 +195,7 @@ const PromptFields = ({
         }
         layout="vertical"
       >
-        <Row>
+        <>
           {/*
             The field only mounts once a node type is chosen: with no subject
             there is no pool to pick from and nothing to validate. Hoisting it
@@ -225,7 +225,7 @@ const PromptFields = ({
               validation={validation}
             />
           )}
-        </Row>
+        </>
       </Section>
     </>
   );

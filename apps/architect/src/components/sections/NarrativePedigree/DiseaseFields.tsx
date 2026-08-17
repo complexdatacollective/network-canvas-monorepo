@@ -3,7 +3,7 @@ import { startCase } from 'es-toolkit/compat';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { INHERITANCE_PATTERNS } from '@codaco/shared-consts';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import ColorPicker from '~/components/Form/Fields/ColorPicker';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -90,7 +90,7 @@ const DiseaseFields = ({
   return (
     <>
       <Section title="Disease Label" layout="vertical">
-        <Row>
+        <>
           <IssueAnchor fieldName="label" description="Disease label" />
           <ArchitectField
             name="label"
@@ -101,10 +101,10 @@ const DiseaseFields = ({
             initialValue={asString(item?.label)}
             placeholder="Enter a name for this disease..."
           />
-        </Row>
+        </>
       </Section>
       <Section title="Color" layout="vertical">
-        <Row>
+        <>
           <IssueAnchor fieldName="color" description="Disease color" />
           <ArchitectField
             name="color"
@@ -120,10 +120,10 @@ const DiseaseFields = ({
             // still gets it back — see ColorPicker.
             paletteRange={COLOR_PALETTES['node-color-seq']}
           />
-        </Row>
+        </>
       </Section>
       <Section title="Node Variable" layout="vertical">
-        <Row>
+        <>
           <IssueAnchor fieldName="variable" description="Disease variable" />
           <ArchitectField
             name="variable"
@@ -135,10 +135,10 @@ const DiseaseFields = ({
             type={nodeType ?? ''}
             options={availableVariables}
           />
-        </Row>
+        </>
       </Section>
       <Section title="Inheritance Pattern" layout="vertical">
-        <Row>
+        <>
           <IssueAnchor
             fieldName="inheritancePattern"
             description="Inheritance pattern"
@@ -153,7 +153,7 @@ const DiseaseFields = ({
             options={INHERITANCE_PATTERN_OPTIONS}
             placeholder="Select an inheritance pattern..."
           />
-        </Row>
+        </>
       </Section>
     </>
   );

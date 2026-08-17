@@ -21,7 +21,6 @@ import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 
 import EditRule from './EditRule';
 import RulePreview from './PreviewRule';
-import { Join } from './PreviewText';
 import validateRule, { type Rule } from './validateRule';
 
 export type RuleTypeOption = {
@@ -33,7 +32,6 @@ type EditableRule = Rule & Record<string, unknown>;
 
 type RuleListContextValue = {
   codebook: Record<string, unknown>;
-  join?: string | null;
   ruleTypes: RuleTypeOption[];
 };
 
@@ -59,8 +57,6 @@ const stripManagedProperties = (
 
 const RuleListItem = ({
   item,
-  index,
-  itemCount,
   isBeingEdited,
   onEdit,
   onDelete,
@@ -68,7 +64,7 @@ const RuleListItem = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<EditableRule>) => {
-  const { codebook, join } = useRuleListContext();
+  const { codebook } = useRuleListContext();
   const rule = stripManagedProperties(item);
   const textId = useId();
   const editActionId = useId();
@@ -94,32 +90,39 @@ const RuleListItem = ({
       <span id={deleteActionId} hidden>
         Delete rule:
       </span>
-      <div className="flex w-full items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <RulePreview
-            id={textId}
-            type={rule.type}
-            options={rule.options ?? {}}
-            codebook={codebook}
-          />
+      <div className="@container w-full">
+        <div className="flex w-full min-w-0 flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-center">
+          <div className="min-w-0 flex-1">
+            <RulePreview
+              id={textId}
+              type={rule.type}
+              options={rule.options ?? {}}
+              codebook={codebook}
+            />
+          </div>
+          <div className="flex shrink-0 items-center justify-end gap-3">
+            <IconButton
+              ref={editTriggerRef}
+              icon={<Pencil />}
+              aria-labelledby={`${editActionId} ${textId}`}
+              color="dynamic"
+              variant="default"
+              className="shrink-0 text-current"
+              disabled={interactionDisabled}
+              onClick={onEdit}
+            />
+            <IconButton
+              icon={<Trash2 />}
+              aria-labelledby={`${deleteActionId} ${textId}`}
+              color="destructive"
+              variant="default"
+              className="shrink-0"
+              disabled={interactionDisabled}
+              onClick={onDelete}
+            />
+          </div>
         </div>
-        <IconButton
-          ref={editTriggerRef}
-          icon={<Pencil />}
-          aria-labelledby={`${editActionId} ${textId}`}
-          color="dynamic"
-          disabled={interactionDisabled}
-          onClick={onEdit}
-        />
-        <IconButton
-          icon={<Trash2 />}
-          aria-labelledby={`${deleteActionId} ${textId}`}
-          color="destructive"
-          disabled={interactionDisabled}
-          onClick={onDelete}
-        />
       </div>
-      {itemCount > 1 && index < itemCount - 1 && join && <Join value={join} />}
     </>
   );
 };
@@ -224,7 +227,6 @@ const RuleListEditor = ({
 
 type PreviewRulesProps = {
   rules: Rule[];
-  join?: string | null;
   codebook: Record<string, unknown>;
   ruleTypes: RuleTypeOption[];
   addButtonLabel: string;
@@ -243,14 +245,13 @@ const getRuleId = (rule: EditableRule) => rule.id;
  */
 const PreviewRules = ({
   rules,
-  join,
   codebook,
   ruleTypes,
   addButtonLabel,
   onChange,
   hasError = false,
 }: PreviewRulesProps) => (
-  <RuleListContext.Provider value={{ codebook, join, ruleTypes }}>
+  <RuleListContext.Provider value={{ codebook, ruleTypes }}>
     <ArrayField<EditableRule>
       value={rules as EditableRule[]}
       onChange={(nextRules) => onChange(nextRules ?? [])}
@@ -260,7 +261,7 @@ const PreviewRules = ({
       editorComponent={RuleListEditor}
       addButtonLabel={addButtonLabel}
       emptyStateMessage="No rules have been created yet."
-      itemClasses="bg-accent text-accent-contrast elevation-low"
+      itemClasses="elevation-low"
       aria-invalid={hasError}
     />
   </RuleListContext.Provider>

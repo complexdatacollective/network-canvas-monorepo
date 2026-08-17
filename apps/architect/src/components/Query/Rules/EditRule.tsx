@@ -6,6 +6,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { documentationLinks } from '~/utils/documentationLinks';
 
+import Section from '../../EditorLayout/Section';
 import ExternalLink from '../../ExternalLink';
 import { getDefaultOptions } from './defaultRule';
 import EditEgoRule from './EditEgoRule';
@@ -77,7 +78,9 @@ class EditRule extends Component<EditRuleProps> {
         title="Construct a Rule"
         description={
           <>
-            For help with constructing rules, see our documentation articles on{' '}
+            Rules are used to filter the data in your study. You can use them to
+            show or hide nodes and edges based on their attributes. For help
+            with constructing rules, see our documentation articles on{' '}
             <ExternalLink href={documentationLinks.skipLogic}>
               skip logic
             </ExternalLink>{' '}
@@ -88,6 +91,7 @@ class EditRule extends Component<EditRuleProps> {
             .
           </>
         }
+        size="editor"
         finalFocus={finalFocus}
         footer={
           <>
@@ -102,8 +106,8 @@ class EditRule extends Component<EditRuleProps> {
       >
         <RuleField
           component={FrescoRadioGroupField}
-          label="Rule target"
-          hint="Which entity type should your rule target?"
+          label="Entity"
+          hint="Select which network entity your rule should target."
           options={ruleTypes}
           value={rule?.type}
           onChange={(_event, value) => {

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { compose } from 'react-recompose';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -81,7 +81,7 @@ const ExternalDataSource = ({
       disabled={disabled}
       disabledMessage={disabledMessage}
     >
-      <Row>
+      <>
         <ArchitectField
           component={DataSource}
           name="dataSource"
@@ -89,7 +89,7 @@ const ExternalDataSource = ({
           label="Roster data source"
           validation={{ required: true }}
         />
-      </Row>
+      </>
     </Section>
   );
 };

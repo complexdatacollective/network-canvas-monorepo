@@ -85,6 +85,12 @@ const Filter = () => {
   return (
     <Section
       title="Filter"
+      summary={
+        <Paragraph>
+          You can optionally filter which nodes or edges are shown on this
+          stage, by creating one or more rules using the options below.
+        </Paragraph>
+      }
       toggleable
       startExpanded={!!currentValue}
       handleToggleChange={handleToggleChange}
@@ -101,13 +107,8 @@ const Filter = () => {
       )}
       <ArchitectField
         name="filter"
-        label="Filter"
-        hint={
-          <Paragraph>
-            You can optionally filter which nodes or edges are shown on this
-            stage, by creating one or more rules using the options below.
-          </Paragraph>
-        }
+        label="Filter Rules"
+        hint="Create one or more rules to filter what is shown on this stage."
         component={FilterField}
         initialValue={initialValue}
         validation={{ validator: ruleValidator }}

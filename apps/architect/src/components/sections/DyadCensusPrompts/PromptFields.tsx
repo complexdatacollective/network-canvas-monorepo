@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import { getFieldId } from '~/utils/issues';
@@ -18,7 +18,7 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
     id={getFieldId('text')}
     layout="vertical"
   >
-    <Row>
+    <>
       <Paragraph>
         Dyad Census prompts explain to your participant which relationship they
         should evaluate (for example, &apos;friendship&apos;, &apos;material
@@ -54,8 +54,8 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
         singleLine
         placeholder="Enter text for the prompt here..."
       />
-    </Row>
-    <Row>
+    </>
+    <>
       <ArchitectField
         name="createEdge"
         label="Create edges of the following type"
@@ -64,7 +64,7 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => (
         initialValue={createEdge}
         entityType="edge"
       />
-    </Row>
+    </>
   </Section>
 );
 

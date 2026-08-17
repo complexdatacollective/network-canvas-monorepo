@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import NewVariableWindow, {
   type Entity,
@@ -85,7 +85,7 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section title="Selection Variable" layout="vertical">
-        <Row>
+        <>
           <ArchitectField
             name="variable"
             label="Selection variable"
@@ -98,7 +98,7 @@ const PromptFields = ({
             options={geoVariableOptions}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

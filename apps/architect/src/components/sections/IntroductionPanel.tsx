@@ -1,6 +1,6 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -24,7 +24,7 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <ArchitectField
           name="introductionPanel.title"
           label="Title"
@@ -32,8 +32,8 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
           validation={{ required: true, maxLength: 50 }}
           initialValue={titleInitialValue}
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <ArchitectField
           name="introductionPanel.text"
           component={RichText}
@@ -41,7 +41,7 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
           validation={{ required: true }}
           initialValue={textInitialValue}
         />
-      </Row>
+      </>
     </Section>
   );
 };

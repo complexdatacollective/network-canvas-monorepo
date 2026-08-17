@@ -1,6 +1,6 @@
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
@@ -90,7 +90,7 @@ const NominationPromptFields = ({
     <>
       <PromptText initialValue={asString(item?.text)} />
       <Section title="Variable" layout="vertical">
-        <Row>
+        <>
           <div id={getFieldId('variable')} />
           <ArchitectField
             name="variable"
@@ -104,7 +104,7 @@ const NominationPromptFields = ({
             options={availableVariables}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

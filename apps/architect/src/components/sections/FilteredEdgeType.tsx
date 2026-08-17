@@ -1,4 +1,4 @@
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 // Screen message listeners removed as part of screen system refactor
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -25,7 +25,7 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
 
   return (
     <Section title="Edge Type">
-      <Row>
+      <>
         <IssueAnchor fieldName="subject" description="Edge Type" />
         <ArchitectField
           name="subject"
@@ -37,7 +37,7 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
           label="Edge type"
           labelHidden
         />
-      </Row>
+      </>
       <Filter />
     </Section>
   );

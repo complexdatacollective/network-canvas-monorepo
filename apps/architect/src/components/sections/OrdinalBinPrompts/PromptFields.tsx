@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -181,7 +181,7 @@ const PromptFields = ({
         id={getFieldId('variable')}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="variable"
             label="Ordinal variable"
@@ -194,7 +194,7 @@ const PromptFields = ({
             options={ordinalVariableOptions}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
       </Section>
       {currentVariable && (
         <Section
@@ -202,7 +202,7 @@ const PromptFields = ({
           id={getFieldId('variableOptions')}
           layout="vertical"
         >
-          <Row>
+          <>
             {lockedOptions ? (
               <LockedOptions options={lockedOptions} />
             ) : (
@@ -233,11 +233,11 @@ const PromptFields = ({
                 />
               </>
             )}
-          </Row>
+          </>
         </Section>
       )}
       <Section title="Color" id={getFieldId('color')} layout="vertical">
-        <Row>
+        <>
           <ArchitectField
             name="color"
             label="Which color would you like to use for this scale?"
@@ -248,7 +248,7 @@ const PromptFields = ({
             palette="ord-color-seq"
             paletteRange={8}
           />
-        </Row>
+        </>
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

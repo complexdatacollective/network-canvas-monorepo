@@ -2,7 +2,7 @@ import { compose } from 'react-recompose';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -95,7 +95,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       handleToggleChange={handleToggleSortOptions}
       disabled={disabled}
     >
-      <Row>
+      <>
         <Heading level="h4">Initial Sort Order</Heading>
         <Paragraph>
           Create one or more rules to determine the default sort order or the
@@ -115,8 +115,8 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           validation={SORT_ORDER_VALIDATION}
           options={sortOrderOptionGetter}
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <Heading level="h4">Participant Sortable Properties</Heading>
         <Paragraph>
           This interface allows the participant to sort the roster, to help with
@@ -145,7 +145,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
             )
           }
         />
-      </Row>
+      </>
     </Section>
   );
 };

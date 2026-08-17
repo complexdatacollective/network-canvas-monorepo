@@ -7,7 +7,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -235,7 +235,7 @@ const PromptFields = ({
         id={getFieldId('variable')}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="variable"
             label="Categorical variable"
@@ -248,9 +248,9 @@ const PromptFields = ({
             options={categoricalVariableOptions}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
         {currentVariable && (
-          <Row>
+          <>
             <Heading level="h4" id={getFieldId('options')}>
               Variable Options
             </Heading>
@@ -285,7 +285,7 @@ const PromptFields = ({
                 />
               </>
             )}
-          </Row>
+          </>
         )}
       </Section>
       <Section
@@ -305,7 +305,7 @@ const PromptFields = ({
         handleToggleChange={handleToggleOtherVariable}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="otherVariable"
             label="Other variable"
@@ -318,7 +318,7 @@ const PromptFields = ({
             options={otherVariableTextOptions}
             onCreateOption={handleCreateOtherVariable}
           />
-        </Row>
+        </>
         {currentOtherVariable && (
           <CodebookVariableValidationSection
             fieldName="otherVariable"
@@ -327,7 +327,7 @@ const PromptFields = ({
             variableId={currentOtherVariable}
           />
         )}
-        <Row>
+        <>
           <ArchitectField
             name="otherOptionLabel"
             label="Label for Bin"
@@ -337,8 +337,8 @@ const PromptFields = ({
             singleLine
             placeholder='Enter a label (such as "other") for this bin...'
           />
-        </Row>
-        <Row>
+        </>
+        <>
           <ArchitectField
             name="otherVariablePrompt"
             label="Question Prompt for Dialog"
@@ -348,7 +348,7 @@ const PromptFields = ({
             singleLine
             placeholder="Enter a question prompt to show when the other option is triggered..."
           />
-        </Row>
+        </>
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

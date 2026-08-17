@@ -9,7 +9,6 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import Row from '../../EditorLayout/Row';
 import Section from '../../EditorLayout/Section';
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
@@ -105,7 +104,7 @@ const PresetFields = ({
         }
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="label"
             label="Preset label"
@@ -115,7 +114,7 @@ const PresetFields = ({
             initialValue={label ?? ''}
             placeholder="Enter a label for the preset..."
           />
-        </Row>
+        </>
       </Section>
       <Section
         layout="vertical"
@@ -126,7 +125,7 @@ const PresetFields = ({
           </Paragraph>
         }
       >
-        <Row>
+        <>
           <ArchitectField
             name="layoutVariable"
             label="Layout variable"
@@ -139,7 +138,7 @@ const PresetFields = ({
             options={layoutVariablesForSubject}
             onCreateOption={handleCreateLayoutVariable}
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Group Variable"
@@ -155,7 +154,7 @@ const PresetFields = ({
         handleToggleChange={handleToggleGroupVariable}
         layout="vertical"
       >
-        <Row>
+        <>
           <Paragraph>
             This feature will draw a semi-transparent convex hull for each
             categorical value of the variable you select. If a node&apos;s
@@ -173,7 +172,7 @@ const PresetFields = ({
             options={groupVariablesForSubject}
             disallowCreation
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Display Edges"
@@ -188,7 +187,7 @@ const PresetFields = ({
         }
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="edges.display"
             component={CheckboxGroupField}
@@ -196,7 +195,7 @@ const PresetFields = ({
             initialValue={edges?.display ?? []}
             options={edgesForSubject}
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Highlight Node Attributes"
@@ -215,7 +214,7 @@ const PresetFields = ({
         handleToggleChange={handleToggleHighlightVariables}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="highlight"
             component={CheckboxGroupField}
@@ -223,7 +222,7 @@ const PresetFields = ({
             initialValue={highlight ?? []}
             options={highlightVariablesForSubject}
           />
-        </Row>
+        </>
       </Section>
     </>
   );

@@ -7,7 +7,7 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageFormValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -120,7 +120,7 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
       }}
       layout="vertical"
     >
-      <Row>
+      <>
         {shouldShowNetworkFilterWarning && (
           <Alert variant="warning" className="my-7">
             <AlertTitle>Network filter hides configured edge types</AlertTitle>
@@ -149,7 +149,7 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
           labelHidden
           initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
         />
-      </Row>
+      </>
     </Section>
   );
 };

@@ -7,7 +7,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -170,7 +170,7 @@ const PromptFields = ({
         id={getFieldId('text')}
         layout="vertical"
       >
-        <Row>
+        <>
           <Paragraph>
             Tie-Strength Census prompts explain to your participant which
             relationship they should evaluate (for example,
@@ -198,7 +198,7 @@ const PromptFields = ({
             singleLine
             placeholder="Enter text for the prompt here..."
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Tie-Strength Configuration"
@@ -232,7 +232,7 @@ const PromptFields = ({
           }
           layout="vertical"
         >
-          <Row>
+          <>
             <ArchitectField
               name="createEdge"
               label="Select an edge type"
@@ -250,11 +250,11 @@ const PromptFields = ({
                 allowedNMToken: 'edge type name',
               }}
             />
-          </Row>
+          </>
         </Section>
         {currentCreateEdge && (
           <Section title="Ordinal Variable" layout="vertical">
-            <Row>
+            <>
               <ArchitectField
                 name="edgeVariable"
                 label="Select an ordinal variable for this edge type"
@@ -266,9 +266,9 @@ const PromptFields = ({
                 options={ordinalVariableOptions}
                 onCreateOption={handleNewVariable}
               />
-            </Row>
+            </>
             {currentEdgeVariable && (
-              <Row>
+              <>
                 <Heading level="h4" id={getFieldId('variableOptions')}>
                   Variable Options
                 </Heading>
@@ -304,7 +304,7 @@ const PromptFields = ({
                     />
                   </>
                 )}
-              </Row>
+              </>
             )}
           </Section>
         )}

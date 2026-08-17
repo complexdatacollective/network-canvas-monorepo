@@ -1,6 +1,6 @@
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -49,7 +49,7 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
           the condition is satisfied.
         </li>
       </ul>
-      <Row>
+      <>
         <IssueAnchor
           fieldName="boundaries.requireGrandparents"
           description="Require Grandparents"
@@ -70,8 +70,8 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
             </Paragraph>
           }
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <IssueAnchor
           fieldName="boundaries.requireChildrenContributors"
           description="Require Co-Parents' Families"
@@ -94,7 +94,7 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
             </Paragraph>
           }
         />
-      </Row>
+      </>
     </Section>
   );
 };

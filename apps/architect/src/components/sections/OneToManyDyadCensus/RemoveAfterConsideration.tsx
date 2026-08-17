@@ -1,6 +1,6 @@
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -10,7 +10,7 @@ const RemoveAfterConsideration = () => {
   );
   return (
     <Section title="Remove After Consideration">
-      <Row>
+      <>
         <ArchitectField
           name="behaviours.removeAfterConsideration"
           component={FrescoBooleanField}
@@ -36,7 +36,7 @@ const RemoveAfterConsideration = () => {
           ]}
           noReset
         />
-      </Row>
+      </>
     </Section>
   );
 };

@@ -59,7 +59,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
         initialValue={initialValue}
         label="Interviewer script text"
         labelHidden
-        placeholder="Enter text for the interviewer here."
+        placeholder="Enter text for the interviewer here..."
       />
     </Section>
   );

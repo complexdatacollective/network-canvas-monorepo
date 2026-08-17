@@ -11,7 +11,7 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
@@ -403,7 +403,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           </>
         }
       >
-        <Row>
+        <>
           <IssueAnchor fieldName="edgeConfig.type" description="Edge Type" />
           <ArchitectField
             name="edgeConfig.type"
@@ -414,7 +414,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             label="Edge type"
             initialValue={edgeTypeInitial}
           />
-        </Row>
+        </>
         {edgeType && (
           <Surface
             noContainer

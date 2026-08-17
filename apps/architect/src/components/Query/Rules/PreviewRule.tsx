@@ -14,7 +14,7 @@ export const PreviewRule = ({ id, type, options }: PreviewRuleProps) => {
   return (
     <span
       id={id}
-      className="flex w-full min-w-0 items-center text-wrap *:mx-2.5 *:max-w-[24rem] [&_.variable-pill]:zoom-[0.8]"
+      className="block w-full min-w-0 leading-[2.5] text-wrap [&_.variable-pill]:zoom-[0.8]"
     >
       <RuleText type={type} options={options} />
     </span>

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section, Subsection } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -291,7 +291,7 @@ export const NodeConfigurationComponent = ({
         title="Quick add variable"
         summary="The variable populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
       >
-        <Row>
+        <>
           <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
           <ArchitectField
             name="quickAdd"
@@ -311,7 +311,7 @@ export const NodeConfigurationComponent = ({
               })
             }
           />
-        </Row>
+        </>
         {typeof quickAddVariable === 'string' && (
           <CodebookVariableValidationSection
             fieldName="quickAdd"
@@ -326,7 +326,7 @@ export const NodeConfigurationComponent = ({
         title="Node positions"
         summary="Stores each node's position on the canvas. Reusing the same variable across stages preserves positions as the participant moves between tasks."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="layoutVariable"
             description="Layout Variable"
@@ -344,14 +344,14 @@ export const NodeConfigurationComponent = ({
               handleCreateVariable(value, 'layout', 'layoutVariable')
             }
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection
         title="Automatic layout"
         summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
@@ -363,14 +363,14 @@ export const NodeConfigurationComponent = ({
             inline
             initialValue={initialAutomaticLayout ?? true}
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection
         title="Group hulls"
         summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. Choose (or create) the variable whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="convexHullVariable"
             description="Group hull variable"
@@ -391,7 +391,7 @@ export const NodeConfigurationComponent = ({
               )
             }
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection

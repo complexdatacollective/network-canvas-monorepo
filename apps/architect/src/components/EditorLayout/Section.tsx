@@ -131,7 +131,7 @@ const Section = ({
     </div>
   );
 
-  const fieldsetContent = disabled ? (
+  const sectionContent = disabled ? (
     layout === 'horizontal' ? (
       <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
         {disabledMessage}
@@ -141,15 +141,15 @@ const Section = ({
         {disabledMessage}
       </div>
     )
+  ) : isOpen ? (
+    <fieldset className="relative min-w-0">{children}</fieldset>
   ) : (
-    <>
-      {isOpen && children}
-      {toggleable && !isOpen && layout !== 'vertical' && (
-        <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
-          Click the toggle to enable this feature...
-        </div>
-      )}
-    </>
+    toggleable &&
+    layout !== 'vertical' && (
+      <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
+        Click the toggle to enable this feature...
+      </div>
+    )
   );
 
   if (layout === 'horizontal') {
@@ -171,7 +171,7 @@ const Section = ({
           shadow="sm"
           className="relative overflow-visible!"
         >
-          <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
+          {sectionContent}
         </Surface>
       </section>
     );
@@ -191,7 +191,7 @@ const Section = ({
       )}
     >
       {sectionHeader}
-      <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
+      {sectionContent}
     </Surface>
   );
 };

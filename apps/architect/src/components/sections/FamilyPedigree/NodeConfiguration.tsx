@@ -15,7 +15,7 @@ import {
   type VariableOptions,
 } from '@codaco/protocol-validation';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -694,7 +694,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
           </Paragraph>
         }
       >
-        <Row>
+        <>
           <IssueAnchor fieldName="nodeConfig.type" description="Node Type" />
           <ArchitectField
             name="nodeConfig.type"
@@ -706,7 +706,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
             label="Node type"
             initialValue={nodeTypeInitial}
           />
-        </Row>
+        </>
 
         {nodeType && (
           <>

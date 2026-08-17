@@ -1,20 +1,11 @@
-import { get, isArray, isNil, join } from 'es-toolkit/compat';
-import type { CSSProperties } from 'react';
+import { get, isNil } from 'es-toolkit/compat';
+import { Fragment, type CSSProperties } from 'react';
 
-import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
+import Icon from '@codaco/fresco-ui/Icon';
+import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import { VariablePill } from '~/components/VariablePill';
-
-import PreviewEdge from '../../sections/fields/EntitySelectField/PreviewEdge';
-import PreviewNode from '../../sections/fields/EntitySelectField/PreviewNode';
-
-// Ego is rendered as a one-off platinum node — not a real codebook color
-const EGO_NODE_STYLE: CSSProperties = {
-  ['--base' as string]: 'oklch(var(--platinum))',
-};
-
-const SUMMARY_EGO_NODE_STYLE: CSSProperties = {
-  ['--base' as string]: 'oklch(var(--cyber-grape))',
-};
+import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
 const operatorsAsText = (isEgo: boolean) => ({
   EXISTS: 'where',
@@ -32,7 +23,7 @@ const operatorsAsText = (isEgo: boolean) => ({
   CONTAINS: isEgo ? 'that contains' : 'contains',
   DOES_NOT_CONTAIN: isEgo ? 'that does not contain' : 'does not contain',
   INCLUDES: isEgo ? 'that includes' : 'includes',
-  NOT_INCLUDES: isEgo ? 'that does not include' : 'does not include',
+  EXCLUDES: isEgo ? 'that excludes' : 'excludes',
   OPTIONS_GREATER_THAN: isEgo
     ? 'that has selected options greater than'
     : 'has selected options greater than',
@@ -52,26 +43,12 @@ const typeOperatorsAsText = {
   NOT_EXISTS: 'does not exist',
 };
 
-const formatValue = (
-  value: string | number | boolean | Array<string | number>,
-): string | number | boolean => {
-  switch (typeof value) {
-    case 'boolean':
-      return value ? 'true' : 'false';
-    case 'object': {
-      if (isArray(value)) {
-        return join(value, ', ');
-      }
-      return value;
-    }
-    default:
-      return value;
-  }
-};
+const formatValue = (value: string | number | boolean): string | number =>
+  typeof value === 'boolean' ? (value ? 'true' : 'false') : value;
 
 type JoinProps = {
   value?: string;
-  variant?: 'default' | 'summary';
+  variant?: 'default' | 'list' | 'summary';
 };
 
 /**
@@ -88,6 +65,12 @@ export const Join = ({ value = '', variant = 'default' }: JoinProps) =>
     <div className="w-full py-5 text-center text-current/70 uppercase italic">
       {value.toLowerCase()}
     </div>
+  ) : variant === 'list' ? (
+    <span className="flex w-full items-center gap-3 py-2.5 text-sm font-semibold tracking-wide text-current/60 uppercase">
+      <span className="h-0 flex-1 border-t border-current/20" />
+      <span>{value.toLowerCase()}</span>
+      <span className="h-0 flex-1 border-t border-current/20" />
+    </span>
   ) : (
     <span className="flex w-full items-start pb-10">
       <span className="border-platinum h-0 flex-1 border-t-4" />
@@ -109,13 +92,33 @@ type VariableProps = {
 
 const Variable = ({ children = '' }: VariableProps) => <span>{children}</span>;
 
+const RuleSubject = ({ children }: { children: React.ReactNode }) => (
+  <span data-rule-part="subject" className="inline">
+    {children}
+  </span>
+);
+
+const RulePredicate = ({ children }: { children: React.ReactNode }) => (
+  <span data-rule-part="predicate" className="inline">
+    {children}
+  </span>
+);
+
+const RulePresence = ({ children }: { children: React.ReactNode }) => (
+  <span data-rule-part="subject" className="inline whitespace-nowrap">
+    {children}
+  </span>
+);
+
 type OperatorProps = {
   value?: string;
   isEgo?: boolean;
 };
 
 const Operator = ({ value = '', isEgo = false }: OperatorProps) => (
-  <span>{get(operatorsAsText(isEgo), value, value.toLowerCase())}</span>
+  <span data-rule-part="operator">
+    {get(operatorsAsText(isEgo), value, value.toLowerCase())}
+  </span>
 );
 
 type TypeOperatorProps = {
@@ -123,7 +126,9 @@ type TypeOperatorProps = {
 };
 
 const TypeOperator = ({ value = '' }: TypeOperatorProps) => (
-  <span>{get(typeOperatorsAsText, value, value.toLowerCase())}</span>
+  <span data-rule-part="operator">
+    {get(typeOperatorsAsText, value, value.toLowerCase())}
+  </span>
 );
 
 type ValueProps = {
@@ -131,19 +136,37 @@ type ValueProps = {
   plain?: boolean;
 };
 
+type ValueTokenProps = {
+  plain: boolean;
+  value: string | number | boolean;
+};
+
+const ValueToken = ({ plain, value }: ValueTokenProps) => (
+  <RenderMarkdown
+    render={
+      <span
+        className={
+          plain
+            ? 'max-w-full min-w-0 wrap-break-word whitespace-normal'
+            : 'border-sea-green max-w-full min-w-0 rounded-sm border-2 border-dashed box-decoration-clone px-2 py-1 wrap-break-word whitespace-normal'
+        }
+        data-rule-part="value"
+      />
+    }
+  >
+    {String(formatValue(value))}
+  </RenderMarkdown>
+);
+
 const Value = ({ value = '', plain = false }: ValueProps) => {
-  const formattedValue = formatValue(value);
-  return (
-    <span
-      className={
-        plain
-          ? 'font-semibold'
-          : 'border-rules-assert mx-1 -mb-0.75 border-b-[3px] border-dotted font-semibold'
-      }
-    >
-      {formattedValue}
-    </span>
-  );
+  const values = Array.isArray(value) ? value : [value];
+
+  return values.map((item, index) => (
+    <Fragment key={`${typeof item}-${String(item)}-${index}`}>
+      {index > 0 && ', '}
+      <ValueToken plain={plain} value={item} />
+    </Fragment>
+  ));
 };
 
 type CopyProps = {
@@ -152,6 +175,12 @@ type CopyProps = {
 
 const Copy = ({ children = '' }: CopyProps) => <span>{children}</span>;
 
+const EgoEntity = () => (
+  <strong data-rule-entity="ego" className="font-bold">
+    Ego
+  </strong>
+);
+
 type RuleEntityProps = {
   type: string;
   color: string;
@@ -159,18 +188,42 @@ type RuleEntityProps = {
   label: string;
 };
 
-const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) =>
-  type === 'edge' ? (
-    <PreviewEdge color={color} label={label} surface={2} />
-  ) : (
-    <PreviewNode
-      color={color}
-      shape={shape}
-      label={label}
-      size="xs"
-      presentational
-    />
+type ProtocolIconStyle = CSSProperties & {
+  '--icon-tone-primary': string;
+  '--icon-tone-secondary': string;
+};
+
+const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) => {
+  const iconStyle: ProtocolIconStyle = {
+    '--icon-tone-primary': resolveProtocolColor(color, { dark: true }),
+    '--icon-tone-secondary': resolveProtocolColor(color),
+  };
+  const nodeColor =
+    NodeColors.find((candidate) => candidate === color) ?? NodeColors[0];
+
+  return (
+    <span className="inline" data-rule-entity={type}>
+      <span
+        className="mr-2 inline-flex size-8 items-center justify-center align-middle"
+        data-rule-entity-glyph={type}
+        aria-hidden
+      >
+        {type === 'edge' ? (
+          <Icon name="links" className="size-7" style={iconStyle} />
+        ) : (
+          <Node
+            label=""
+            color={nodeColor}
+            shape={shape}
+            size="xxs"
+            presentational
+          />
+        )}
+      </span>
+      <strong className="font-bold wrap-break-word">{label}</strong>
+    </span>
   );
+};
 
 const PreviewText = ({
   type,
@@ -184,14 +237,7 @@ const PreviewText = ({
       return (
         <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Node
-              label="Ego"
-              color="custom"
-              size="xxs"
-              className="shrink-0"
-              style={SUMMARY_EGO_NODE_STYLE}
-              presentational
-            />
+            <EgoEntity />
             <Copy>has</Copy>
             <VariablePill
               label={options.attribute ?? ''}
@@ -219,37 +265,52 @@ const PreviewText = ({
 
     return (
       <>
-        <Node
-          label="Ego"
-          color="custom"
-          size="xs"
-          className="text-surface-2-contrast"
-          style={EGO_NODE_STYLE}
-          presentational
-        />
-        <Copy>has</Copy>
-        <VariablePill
-          label={options.attribute ?? ''}
-          type={
-            (options.variableType as
-              | 'number'
-              | 'text'
-              | 'boolean'
-              | 'ordinal'
-              | 'categorical'
-              | 'scalar'
-              | 'datetime'
-              | 'layout'
-              | 'location') ?? 'text'
-          }
-        />
-        <Operator value={options.operator} isEgo />
-        <Value value={options.value} />
+        <RuleSubject>
+          <EgoEntity /> <Copy>has</Copy>{' '}
+          <span
+            className="inline-flex max-w-full align-middle"
+            aria-label={`${options.variableType ?? 'text'} variable ${options.attribute ?? ''}`}
+          >
+            <VariablePill
+              label={options.attribute ?? ''}
+              type={
+                (options.variableType as
+                  | 'number'
+                  | 'text'
+                  | 'boolean'
+                  | 'ordinal'
+                  | 'categorical'
+                  | 'scalar'
+                  | 'datetime'
+                  | 'layout'
+                  | 'location') ?? 'text'
+              }
+            />
+          </span>
+        </RuleSubject>{' '}
+        <RulePredicate>
+          <Operator value={options.operator} isEgo />{' '}
+          <Value value={options.value} />
+        </RulePredicate>
       </>
     );
   }
 
   if (isNil(options.attribute)) {
+    if (!isSummary) {
+      return (
+        <RulePresence>
+          <RuleEntity
+            type={type}
+            color={options.typeColor ?? ''}
+            shape={options.typeShape}
+            label={options.typeLabel ?? ''}
+          />{' '}
+          <TypeOperator value={options.operator} />
+        </RulePresence>
+      );
+    }
+
     return (
       <>
         <RuleEntity
@@ -263,6 +324,25 @@ const PreviewText = ({
     );
   }
   if (isNil(options.value)) {
+    if (!isSummary) {
+      return (
+        <>
+          <RuleSubject>
+            <RuleEntity
+              type={type}
+              color={options.typeColor ?? ''}
+              shape={options.typeShape}
+              label={options.typeLabel ?? ''}
+            />
+          </RuleSubject>{' '}
+          <RulePredicate>
+            <Operator value={options.operator} />{' '}
+            <Variable>{options.attribute}</Variable>
+          </RulePredicate>
+        </>
+      );
+    }
+
     return (
       <>
         <RuleEntity
@@ -314,30 +394,38 @@ const PreviewText = ({
 
   return (
     <>
-      <RuleEntity
-        type={type}
-        color={options.typeColor ?? ''}
-        shape={options.typeShape}
-        label={options.typeLabel ?? ''}
-      />
-      <Copy>where</Copy>
-      <VariablePill
-        label={options.attribute ?? ''}
-        type={
-          (options.variableType as
-            | 'number'
-            | 'text'
-            | 'boolean'
-            | 'ordinal'
-            | 'categorical'
-            | 'scalar'
-            | 'datetime'
-            | 'layout'
-            | 'location') ?? 'text'
-        }
-      />
-      <Operator value={options.operator} />
-      <Value value={options.value} />
+      <RuleSubject>
+        <RuleEntity
+          type={type}
+          color={options.typeColor ?? ''}
+          shape={options.typeShape}
+          label={options.typeLabel ?? ''}
+        />{' '}
+        <Copy>where</Copy>{' '}
+        <span
+          className="inline-flex max-w-full align-middle"
+          aria-label={`${options.variableType ?? 'text'} variable ${options.attribute ?? ''}`}
+        >
+          <VariablePill
+            label={options.attribute ?? ''}
+            type={
+              (options.variableType as
+                | 'number'
+                | 'text'
+                | 'boolean'
+                | 'ordinal'
+                | 'categorical'
+                | 'scalar'
+                | 'datetime'
+                | 'layout'
+                | 'location') ?? 'text'
+            }
+          />
+        </span>
+      </RuleSubject>{' '}
+      <RulePredicate>
+        <Operator value={options.operator} /> <Value value={options.value} />
+      </RulePredicate>
     </>
   );
 };

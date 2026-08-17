@@ -6,7 +6,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -149,7 +149,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           </AlertDescription>
         </Alert>
       )}
-      <Row>
+      <>
         <ArchitectField
           name="behaviours.minNodes"
           component={IntegerInputField}
@@ -165,8 +165,8 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           hint="0 = no minimum"
           placeholder="0"
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <ArchitectField
           name="behaviours.maxNodes"
           component={IntegerInputField}
@@ -182,7 +182,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           hint="Leave empty for no maximum"
           placeholder="Infinity"
         />
-      </Row>
+      </>
     </Section>
   );
 };

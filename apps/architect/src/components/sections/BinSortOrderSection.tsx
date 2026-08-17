@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -66,7 +66,7 @@ const BinSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Row>
+      <>
         <ArchitectArrayField
           name="binSortOrder"
           label="Bin sort order"
@@ -79,7 +79,7 @@ const BinSortOrderSection = ({
           maxItems={maxItems}
           options={optionGetter}
         />
-      </Row>
+      </>
     </Section>
   );
 };

@@ -1,7 +1,7 @@
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useSetStageValue,
@@ -69,7 +69,7 @@ const AnonymisationValidation = ({
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
-      <Row>
+      <>
         <Validations
           name="validation"
           initialValue={initialValidation}
@@ -82,7 +82,7 @@ const AnonymisationValidation = ({
           // the edited stage's own slot, and is null only before it exists.
           scopeId={stagePath ?? `new-${interfaceType}`}
         />
-      </Row>
+      </>
       {/* fresco-ui's own Field error slot only shows once the field is both
           dirty and blurred, which a field revealed here for the first time
           (the section was collapsed) never is. Render the message directly,

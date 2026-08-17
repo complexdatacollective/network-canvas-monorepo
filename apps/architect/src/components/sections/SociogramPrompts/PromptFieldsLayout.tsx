@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import MultiSelect, {
@@ -100,7 +100,7 @@ const PromptFieldsLayout = ({
       group
       layout="vertical"
     >
-      <Row>
+      <>
         <Alert variant="info" className="my-7">
           <AlertDescription>
             If you use the same layout variable across all prompts, the position
@@ -121,7 +121,7 @@ const PromptFieldsLayout = ({
             handleCreateVariable(value, 'layout', 'layout.layoutVariable')
           }
         />
-      </Row>
+      </>
       <Section
         toggleable
         title="Sort Unplaced Nodes"
@@ -137,7 +137,7 @@ const PromptFieldsLayout = ({
         handleToggleChange={handleToggleSortOrder}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectArrayField
             name="sortOrder"
             label="Sort order"
@@ -160,7 +160,7 @@ const PromptFieldsLayout = ({
               )
             }
           />
-        </Row>
+        </>
       </Section>
     </Section>
   );

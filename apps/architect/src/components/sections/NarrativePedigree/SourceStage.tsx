@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -89,7 +89,7 @@ const SourceStage = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <ArchitectField
           name="sourceStageId"
           component={StyledSelectField}
@@ -99,7 +99,7 @@ const SourceStage = (_props: StageEditorSectionProps) => {
           options={options}
           disabled={options.length === 0}
         />
-      </Row>
+      </>
     </Section>
   );
 };

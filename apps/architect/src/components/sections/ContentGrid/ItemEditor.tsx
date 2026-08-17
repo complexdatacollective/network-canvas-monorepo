@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 
@@ -173,7 +173,7 @@ const ItemEditor = ({
         {announcement}
       </span>
       <Section title="Type" layout="vertical">
-        <Row>
+        <>
           <ArchitectField
             name="type"
             label="Content type"
@@ -183,20 +183,20 @@ const ItemEditor = ({
             initialValue={initialType}
             options={typeOptions}
           />
-        </Row>
+        </>
       </Section>
       {unusableContentNotice && (
         <Section title="Content" layout="vertical">
-          <Row>
+          <>
             <Alert variant="warning">
               <AlertDescription>{unusableContentNotice}</AlertDescription>
             </Alert>
-          </Row>
+          </>
         </Section>
       )}
       {slotType && (
         <Section title="Content" layout="vertical">
-          <Row>
+          <>
             <ArchitectField
               name={CONTENT_SLOT_NAMES[slotType]}
               component={contentInputs[slotType]}
@@ -210,7 +210,7 @@ const ItemEditor = ({
                 slotType === initialType ? initialContent : undefined
               }
             />
-          </Row>
+          </>
         </Section>
       )}
       {allowSize && supportsSize(resolvedType) && (
@@ -220,7 +220,7 @@ const ItemEditor = ({
           layout="vertical"
           required={false}
         >
-          <Row>
+          <>
             <ArchitectField
               name="size"
               component={FrescoRadioGroupField}
@@ -230,7 +230,7 @@ const ItemEditor = ({
               options={sizeOptions}
               orientation="horizontal"
             />
-          </Row>
+          </>
         </Section>
       )}
     </>

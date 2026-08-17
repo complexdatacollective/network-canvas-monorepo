@@ -83,11 +83,6 @@ export const surfaceVariants = compose(
   }),
 );
 
-// `process.env.NODE_ENV` is replaced statically by consuming bundlers (the
-// library-safe convention React itself uses); declared here because the web
-// tsconfig deliberately excludes Node globals.
-declare const process: { env: { NODE_ENV?: string } };
-
 const MAX_SURFACE_DEPTH = 4;
 
 const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {

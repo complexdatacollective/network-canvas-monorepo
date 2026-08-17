@@ -1,6 +1,6 @@
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
@@ -18,7 +18,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
 
   return (
     <Section title="At-Risk Statuses">
-      <Row>
+      <>
         <ArchitectField
           name={FIELD_NAME}
           component={ToggleField}
@@ -33,7 +33,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
             </Paragraph>
           }
         />
-      </Row>
+      </>
       <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
         <Paragraph>
           When enabled, the pedigree also shows a person who{' '}
