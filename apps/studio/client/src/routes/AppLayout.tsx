@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
+import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 
 import { authClient } from '../lib/auth.ts';
@@ -20,9 +21,9 @@ export default function AppLayout() {
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-end gap-4 px-4 py-2">
         {signOutFailed && (
-          <span role="alert" className="text-destructive text-sm">
+          <Alert variant="destructive">
             Sign-out did not complete. Try again.
-          </span>
+          </Alert>
         )}
         {session && (
           <span className="text-sm">

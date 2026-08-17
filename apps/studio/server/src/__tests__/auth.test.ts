@@ -7,7 +7,7 @@ import type { contract } from '@codaco/studio-rpc';
 
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
-import type { AuthService, SessionPrincipal } from '../auth/index.ts';
+import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { ensureSchema } from '../db/schema.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 import { createScratchSchema, reachableDb } from './support/postgres.ts';

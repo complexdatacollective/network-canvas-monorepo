@@ -10,7 +10,7 @@ import {
   createAssetStore,
   deliveryFor,
 } from '../assets.ts';
-import type { AuthService, SessionPrincipal } from '../auth/index.ts';
+import type { AuthService, SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
@@ -77,7 +77,8 @@ const spaUpload = (
   },
 });
 
-describe.skipIf(!reachable)('asset upload authorisation', () => {
+// Both cases refuse before the store is consulted, so they need no MinIO.
+describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
     const auth: AuthService = {
       handler: () => Promise.resolve(Response.json({})),
@@ -109,7 +110,9 @@ describe.skipIf(!reachable)('asset upload authorisation', () => {
     expect(res.status).toBe(403);
     expect(lookups).toBe(0);
   });
+});
 
+describe.skipIf(!reachable)('asset retrieval authorisation', () => {
   it('leaves retrieval public', async () => {
     // Assets are fetched from contexts that carry no cookie, and the content
     // address is the capability. A GET must not consult the session at all.

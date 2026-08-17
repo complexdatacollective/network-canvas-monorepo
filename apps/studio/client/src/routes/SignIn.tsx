@@ -104,7 +104,8 @@ export default function SignIn() {
                 </Paragraph>
                 <Form
                   onSubmit={async (values) => {
-                    const email = String(values.email ?? '');
+                    const email =
+                      typeof values.email === 'string' ? values.email : '';
                     const failed = {
                       success: false,
                       formErrors: [
@@ -148,7 +149,10 @@ export default function SignIn() {
             {socialProviders.length > 0 && (
               <>
                 {magicLink && (
-                  <div className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20">
+                  <div
+                    aria-hidden="true"
+                    className="my-4 flex items-center gap-3 before:h-px before:flex-1 before:bg-current/20 after:h-px after:flex-1 after:bg-current/20"
+                  >
                     or
                   </div>
                 )}

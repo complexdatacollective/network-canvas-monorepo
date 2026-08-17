@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
-import type { AuthService } from '../auth/index.ts';
+import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 
 function fakeAuthService(): AuthService {

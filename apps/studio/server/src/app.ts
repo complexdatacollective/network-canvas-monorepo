@@ -7,13 +7,14 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
 import { createAssetRoutes, createAssetStore } from './assets.ts';
+import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
-import { type AuthService, createAuthService } from './auth/index.ts';
 import {
   createPrincipalMiddleware,
   type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
+import type { AuthService } from './auth/service.ts';
 import type { AuthCapabilities } from './domain.ts';
 import { readEnv } from './env.ts';
 import { createRpcRouter } from './rpc.ts';

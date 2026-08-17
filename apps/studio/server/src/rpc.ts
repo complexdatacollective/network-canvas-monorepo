@@ -2,7 +2,7 @@ import { implement, ORPCError } from '@orpc/server';
 
 import { contract } from '@codaco/studio-rpc';
 
-import type { Principal } from './auth/index.ts';
+import type { Principal } from './auth/service.ts';
 import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the

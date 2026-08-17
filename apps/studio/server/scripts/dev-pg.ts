@@ -1,4 +1,3 @@
-/* oxlint-disable no-console -- dev tooling log output */
 // The port and credentials deliberately match packages/studio-sync's
 // conformance-suite expectations, so one container serves the app and that
 // suite.
