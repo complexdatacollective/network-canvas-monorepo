@@ -152,6 +152,11 @@ it uses no `globIgnores`.
 
 ## PostHog source maps
 
+The production and hotfix workflows pass the public PostHog project key from
+the `VITE_PUBLIC_POSTHOG_KEY` repository variable. Without it, the app builds
+successfully but does not initialize analytics. Local Vite development mode
+never initializes analytics, even if the variable is present.
+
 Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
 `POSTHOG_PROJECT_ID` (repository secrets shared with Interviewer and
 Documentation; the personal API key needs the _error tracking: write_ and
