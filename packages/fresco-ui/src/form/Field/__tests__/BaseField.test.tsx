@@ -13,6 +13,8 @@ describe('BaseField', () => {
 
     const spacingElement = container.querySelector('.not-last\\:mb-8');
     expect(spacingElement).not.toBeNull();
+    expect(spacingElement).toHaveClass('group/field');
+    expect(spacingElement).not.toHaveClass('group');
     expect(spacingElement?.classList.contains('@container')).toBe(false);
 
     const queryContainer = container.querySelector('.\\@container');

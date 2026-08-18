@@ -87,15 +87,15 @@ describe('Button', () => {
     const label = button.firstElementChild;
 
     expect(button).toHaveClass(
-      'group',
+      'group/link',
       'focusable',
       'text-link',
       'font-semibold',
       'overflow-visible',
     );
     expect(label).toHaveClass(
-      'group-hover:bg-[length:100%_2px]',
-      'group-focus-visible:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:100%_2px]',
+      'group-focus-visible/link:bg-[length:100%_2px]',
     );
   });
 
@@ -143,8 +143,8 @@ describe('Button', () => {
     expect(link).not.toHaveAttribute('type');
     expect(link.firstElementChild).toBe(screen.getByTestId('slotted-icon'));
     expect(link.lastElementChild).toHaveClass(
-      'group-hover:bg-[length:100%_2px]',
-      'group-focus-visible:bg-[length:100%_2px]',
+      'group-hover/link:bg-[length:100%_2px]',
+      'group-focus-visible/link:bg-[length:100%_2px]',
     );
   });
 
@@ -154,7 +154,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Continue' });
 
     expect(button.firstElementChild).toBeNull();
-    expect(button).not.toHaveClass('group', 'text-link');
+    expect(button).not.toHaveClass('group/link', 'text-link');
   });
 
   it('styles toggle buttons from aria-pressed using selected colors', () => {

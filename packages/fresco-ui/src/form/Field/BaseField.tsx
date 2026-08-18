@@ -69,7 +69,7 @@ export function BaseField({
   return (
     <div
       {...containerProps}
-      className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
+      className={cx('group/field w-full grow not-last:mb-8', 'flex flex-col')}
     >
       {/*
         Only `inline` fields query this element (see the `@min-[28rem]:`

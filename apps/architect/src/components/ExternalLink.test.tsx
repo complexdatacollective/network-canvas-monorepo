@@ -12,9 +12,11 @@ describe('ExternalLink', () => {
 
   it('uses the shared prose-link treatment and opens outside the app', () => {
     render(
-      <ExternalLink href="https://documentation.networkcanvas.com">
-        Documentation
-      </ExternalLink>,
+      <div className="group/field">
+        <ExternalLink href="https://documentation.networkcanvas.com">
+          Documentation
+        </ExternalLink>
+      </div>,
     );
 
     const link = screen.getByRole('link', { name: 'Documentation' });
@@ -22,7 +24,20 @@ describe('ExternalLink', () => {
 
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(link).toHaveClass('focusable', 'text-link', 'font-semibold');
+    expect(link).toHaveClass(
+      'group/link',
+      'focusable',
+      'text-link',
+      'font-semibold',
+    );
+    expect(link).not.toHaveClass('group');
+    expect(link.firstElementChild).toHaveClass(
+      'group-hover/link:bg-[length:100%_2px]',
+      'group-focus-visible/link:bg-[length:100%_2px]',
+    );
+    expect(link.firstElementChild).not.toHaveClass(
+      'group-hover:bg-[length:100%_2px]',
+    );
     expect(dispatched).toBe(false);
     expect(open).toHaveBeenCalledWith(
       'https://documentation.networkcanvas.com',
