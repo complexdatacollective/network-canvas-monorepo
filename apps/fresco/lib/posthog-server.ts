@@ -125,9 +125,25 @@ export async function captureException(
   }
 }
 
-export async function shutdownPostHog() {
-  if (client) {
-    await client.shutdown();
-    client = null;
+/**
+ * Flushes anything captured so far, so it is delivered before a serverless
+ * invocation freezes.
+ *
+ * This flushes rather than shuts the client down. One request can queue
+ * several `after` callbacks — a route's own telemetry alongside activity
+ * recorded by the action it called — and Next runs them concurrently against
+ * this one shared client. Tearing the client down would let whichever callback
+ * finished first strand another's event: the second would find `client` already
+ * null, skip its own flush, and return with the event unsent. Flushing is
+ * idempotent and safe to call concurrently, and the client is meant to outlive
+ * a single request anyway — that is what memoizing it above is for.
+ */
+export async function flushPostHog() {
+  // Telemetry must never throw: this runs inside `after` callbacks, where an
+  // error would surface as an unhandled rejection long after the response.
+  try {
+    await client?.flush();
+  } catch {
+    // swallow
   }
 }

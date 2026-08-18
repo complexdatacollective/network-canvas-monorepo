@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockCapture,
   mockCaptureException,
-  mockShutdown,
+  mockFlush,
   mockGetDisableAnalytics,
   mockGetInstallationId,
   mockHeaders,
 } = vi.hoisted(() => ({
   mockCapture: vi.fn(),
   mockCaptureException: vi.fn(),
-  mockShutdown: vi.fn().mockResolvedValue(undefined),
+  mockFlush: vi.fn().mockResolvedValue(undefined),
   mockGetDisableAnalytics: vi.fn(),
   mockGetInstallationId: vi.fn(),
   mockHeaders: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('posthog-node', () => {
   const MockPostHog = vi.fn(function (this: Record<string, unknown>) {
     this.capture = mockCapture;
     this.captureException = mockCaptureException;
-    this.shutdown = mockShutdown;
+    this.flush = mockFlush;
   });
   return { PostHog: MockPostHog };
 });
@@ -198,25 +198,61 @@ describe('posthog-server', () => {
     });
   });
 
-  describe('shutdownPostHog', () => {
-    it('calls shutdown and allows re-initialization', async () => {
+  describe('flushPostHog', () => {
+    it('flushes what has been captured', async () => {
       mockGetDisableAnalytics.mockResolvedValue(false);
       mockGetInstallationId.mockResolvedValue('install-123');
 
-      const { captureEvent, shutdownPostHog } =
-        await import('../posthog-server');
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
 
-      // Initialize the client by making a call
       await captureEvent('init-event');
       expect(mockCapture).toHaveBeenCalledTimes(1);
 
-      // Shutdown
-      await shutdownPostHog();
-      expect(mockShutdown).toHaveBeenCalledTimes(1);
+      await flushPostHog();
+      expect(mockFlush).toHaveBeenCalledTimes(1);
+    });
 
-      // Re-initialize by making another call
-      await captureEvent('post-shutdown-event');
-      expect(mockCapture).toHaveBeenCalledTimes(2);
+    // One request can queue several `after` callbacks — a route's telemetry
+    // alongside activity recorded by the action it called — and Next runs them
+    // concurrently against one shared client. Tearing that client down let
+    // whichever finished first strand the other's event; every flush must
+    // reach the client that holds it.
+    it('flushes for every caller sharing the client', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
+
+      // Two callbacks capture against the one shared client...
+      await captureEvent('route-event');
+      await captureEvent('activity-event');
+
+      // ...and each then flushes what it captured. Under a teardown the first
+      // would drop the shared client, and the second would find nothing to
+      // flush and return with its event still queued.
+      await flushPostHog();
+      await flushPostHog();
+
+      expect(mockFlush).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not throw when the client has nothing to flush', async () => {
+      const { flushPostHog } = await import('../posthog-server');
+
+      await expect(flushPostHog()).resolves.toBeUndefined();
+      expect(mockFlush).not.toHaveBeenCalled();
+    });
+
+    it('swallows a failing flush', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockFlush.mockRejectedValueOnce(new Error('network down'));
+
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
+
+      await captureEvent('init-event');
+
+      await expect(flushPostHog()).resolves.toBeUndefined();
     });
   });
 });

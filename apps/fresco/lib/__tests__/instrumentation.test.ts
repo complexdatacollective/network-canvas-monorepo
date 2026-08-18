@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockCaptureException,
+  mockFlushPostHog,
   mockGetPostHogSessionProperties,
-  mockShutdownPostHog,
 } = vi.hoisted(() => ({
   mockCaptureException: vi.fn(),
+  mockFlushPostHog: vi.fn(),
   mockGetPostHogSessionProperties: vi.fn(),
-  mockShutdownPostHog: vi.fn(),
 }));
 
 vi.mock('../../lib/posthog-server', () => ({
+  flushPostHog: mockFlushPostHog,
   getPostHogServer: () => ({ captureException: mockCaptureException }),
   getPostHogSessionProperties: mockGetPostHogSessionProperties,
   POSTHOG_SESSION_ID_HEADER: 'x-posthog-session-id',
-  shutdownPostHog: mockShutdownPostHog,
 }));
 
 vi.mock('../../env', () => ({
@@ -77,6 +77,6 @@ describe('Fresco request-error instrumentation', () => {
         $source: 'server',
       }),
     );
-    expect(mockShutdownPostHog).toHaveBeenCalledOnce();
+    expect(mockFlushPostHog).toHaveBeenCalledOnce();
   });
 });
