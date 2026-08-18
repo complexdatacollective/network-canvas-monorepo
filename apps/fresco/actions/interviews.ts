@@ -10,7 +10,7 @@ import { requireApiAuth } from '~/lib/auth/guards';
 import { safeRevalidateTag, safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { Prisma } from '~/lib/db/generated/client';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { getInterviewIdsMatching } from '~/queries/interviews';
 import type {
@@ -289,7 +289,7 @@ export async function createInterview(
 
     after(async () => {
       await captureException(e);
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return {

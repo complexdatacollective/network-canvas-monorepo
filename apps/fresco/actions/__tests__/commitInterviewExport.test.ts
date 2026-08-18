@@ -38,7 +38,7 @@ vi.mock('~/lib/db', () => ({ prisma: { interview: { updateMany } } }));
 vi.mock('~/lib/activityFeed', () => ({ addEvent }));
 vi.mock('~/lib/posthog-server', () => ({
   captureEvent,
-  shutdownPostHog: vi.fn(() => Promise.resolve()),
+  flushPostHog: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('~/lib/cache', () => ({
   safeUpdateTag,

@@ -10,7 +10,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Link from '~/components/Link';
 import { env } from '~/env';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { ensureError } from '~/utils/ensureError';
 import { getSemverUpdateType, semverSchema } from '~/utils/semVer';
 
@@ -69,7 +69,7 @@ async function checkForUpdate() {
     const error = ensureError(e);
     after(async () => {
       await captureException(error);
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return {

@@ -4,7 +4,7 @@ import { after, NextResponse } from 'next/server';
 import { addEvent } from '~/lib/activityFeed';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { ensureError } from '~/utils/ensureError';
 
 export async function POST(
@@ -44,7 +44,7 @@ export async function POST(
 
     after(async () => {
       await captureException(error, { interviewId });
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return NextResponse.json(

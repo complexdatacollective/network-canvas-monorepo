@@ -100,7 +100,7 @@ vi.mock('next/server', async (importOriginal) => {
 vi.mock('~/lib/posthog-server', () => ({
   captureEvent: vi.fn(),
   captureException: mockCaptureException,
-  shutdownPostHog: vi.fn(),
+  flushPostHog: vi.fn(),
 }));
 
 vi.mock('@codaco/interview/contract', () => ({

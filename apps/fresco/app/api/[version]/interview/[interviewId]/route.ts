@@ -5,7 +5,7 @@ import {
   requireApiTokenAuth,
 } from '~/app/api/_helpers/auth';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { ensureError } from '~/utils/ensureError';
 
@@ -82,7 +82,7 @@ export async function GET(
     const error = ensureError(e);
     await captureException(error);
     after(async () => {
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return NextResponse.json(

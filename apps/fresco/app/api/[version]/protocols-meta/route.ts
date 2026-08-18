@@ -6,7 +6,7 @@ import {
 } from '~/app/api/_helpers/auth';
 import { createVersionedHandler } from '~/app/api/_helpers/versioning';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { ensureError } from '~/utils/ensureError';
 
@@ -55,7 +55,7 @@ async function v1(request: NextRequest) {
     const error = ensureError(e);
     await captureException(error);
     after(async () => {
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return NextResponse.json(

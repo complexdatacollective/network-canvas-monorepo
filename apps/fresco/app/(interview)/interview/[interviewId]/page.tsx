@@ -9,7 +9,7 @@ import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/type
 import { getServerSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureEvent, shutdownPostHog } from '~/lib/posthog-server';
+import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
   getInterviewById,
@@ -103,7 +103,7 @@ async function InterviewContent({
       safeRevalidateTag('activityFeed');
 
       await captureEvent('Interview Opened', { message });
-      await shutdownPostHog();
+      await flushPostHog();
     } catch {
       // Non-critical — don't block the interview
     }

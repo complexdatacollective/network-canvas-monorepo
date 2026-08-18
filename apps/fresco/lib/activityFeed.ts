@@ -7,7 +7,7 @@ import type {
 } from '~/app/dashboard/_components/ActivityFeed/types';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureEvent, shutdownPostHog } from '~/lib/posthog-server';
+import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 
 type NewActivity = {
   type: ActivityType;
@@ -67,7 +67,7 @@ async function recordActivity(activities: NewActivity[]) {
       await captureEvent(type, properties);
     }
 
-    await shutdownPostHog();
+    await flushPostHog();
   });
 
   if (!(await written)) {

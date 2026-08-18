@@ -12,7 +12,7 @@ export const onRequestError: Instrumentation.onRequestError = async (
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Dynamic imports to avoid pulling Prisma (node:path, node:url, etc.)
     // into the Edge Instrumentation bundle
-    const { getPostHogServer, shutdownPostHog } =
+    const { getPostHogServer, flushPostHog } =
       await import('./lib/posthog-server');
     const { env } = await import('./env');
     const { prisma } = await import('./lib/db');
@@ -35,6 +35,6 @@ export const onRequestError: Instrumentation.onRequestError = async (
       $source: 'server',
     });
 
-    await shutdownPostHog();
+    await flushPostHog();
   }
 };

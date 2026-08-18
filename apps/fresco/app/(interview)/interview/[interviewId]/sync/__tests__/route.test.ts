@@ -27,7 +27,7 @@ vi.mock('~/queries/appSettings', () => ({
 
 vi.mock('~/lib/posthog-server', () => ({
   captureException: vi.fn(),
-  shutdownPostHog: vi.fn(),
+  flushPostHog: vi.fn(),
 }));
 
 import { POST } from '../route';

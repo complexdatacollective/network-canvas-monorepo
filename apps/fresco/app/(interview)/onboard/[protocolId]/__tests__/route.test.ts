@@ -34,7 +34,7 @@ vi.mock('next/server', async (importOriginal) => {
 vi.mock('~/lib/posthog-server', () => ({
   captureEvent: vi.fn(),
   captureException: vi.fn(),
-  shutdownPostHog: vi.fn(),
+  flushPostHog: vi.fn(),
 }));
 
 import { cookies } from 'next/headers';

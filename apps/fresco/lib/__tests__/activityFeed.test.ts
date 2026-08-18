@@ -42,7 +42,7 @@ vi.mock('~/lib/cache', () => ({
 
 vi.mock('~/lib/posthog-server', () => ({
   captureEvent: mockCaptureEvent,
-  shutdownPostHog: mockShutdownPostHog,
+  flushPostHog: mockShutdownPostHog,
 }));
 
 import { addEvent, addEvents } from '../activityFeed';

@@ -3,7 +3,7 @@ import { after, NextResponse, type NextRequest } from 'next/server';
 
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
-import { captureEvent, shutdownPostHog } from '~/lib/posthog-server';
+import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
 const handler = async (
@@ -70,7 +70,7 @@ const handler = async (
         message: 'Failed to create interview',
         path: '/onboard/[protocolId]/route.ts',
       });
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     if (result.errorType === 'no-anonymous-recruitment') {
@@ -90,7 +90,7 @@ const handler = async (
     await captureEvent('InterviewStarted', {
       usingAnonymousParticipant: !participantIdentifier,
     });
-    await shutdownPostHog();
+    await flushPostHog();
   });
 
   // Redirect to the interview
