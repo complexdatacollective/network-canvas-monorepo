@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { after, NextResponse } from 'next/server';
 
-import { addEvent } from '~/actions/activityFeed';
+import { addEvent } from '~/lib/activityFeed';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureException, shutdownPostHog } from '~/lib/posthog-server';

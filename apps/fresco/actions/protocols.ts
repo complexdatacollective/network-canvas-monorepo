@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import { type z } from 'zod';
 
 import { hashProtocol } from '@codaco/protocol-validation';
+import { addEvent, addEvents } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -12,8 +13,6 @@ import { selectUnreferencedKeys } from '~/lib/protocol/selectUnreferencedKeys';
 import { getStorageLayer } from '~/lib/storage/layers/StorageLayer';
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
 import { type protocolInsertSchema } from '~/schemas/protocol';
-
-import { addEvent, addEvents } from './activityFeed';
 
 /**
  * Check if a protocol with the given hash already exists.

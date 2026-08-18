@@ -4,8 +4,8 @@ import { createId } from '@paralleldrive/cuid2';
 import { after } from 'next/server';
 
 import { createInitialNetwork } from '@codaco/interview/contract';
-import { addEvent } from '~/actions/activityFeed';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
+import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeRevalidateTag, safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';

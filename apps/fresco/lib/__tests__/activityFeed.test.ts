@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('server-only', () => ({}));
+
 const {
   mockCreateMany,
   mockCaptureEvent,
@@ -19,7 +21,7 @@ vi.mock('next/server', async (importOriginal) => {
   return {
     ...actual,
     // Collect rather than run, so tests can assert on *when* registration
-    // happened as well as what the callback does.
+    // happened and on what the callback holds open, not just its effects.
     after: vi.fn((callback: () => Promise<unknown>) => {
       afterCallbacks.push(callback);
     }),
@@ -30,7 +32,6 @@ vi.mock('~/lib/db', () => ({
   prisma: {
     events: {
       createMany: mockCreateMany,
-      findMany: vi.fn(),
     },
   },
 }));
@@ -44,10 +45,6 @@ vi.mock('~/lib/posthog-server', () => ({
   shutdownPostHog: mockShutdownPostHog,
 }));
 
-vi.mock('~/lib/auth/guards', () => ({
-  requireApiAuth: vi.fn().mockResolvedValue(undefined),
-}));
-
 import { addEvent, addEvents } from '../activityFeed';
 
 const flushAfterCallbacks = async () => {
@@ -56,6 +53,8 @@ const flushAfterCallbacks = async () => {
   }
 };
 
+const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe('activity feed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,27 +62,52 @@ describe('activity feed', () => {
     mockCreateMany.mockResolvedValue({ count: 1 });
   });
 
-  describe('analytics registration', () => {
-    // The regression this guards: registering `after` only once the database
-    // write had resolved. Callers almost always fire these without awaiting,
-    // so by then the request scope was gone, `after` threw, and the error was
+  describe('work that must outlive the response', () => {
+    // The regression this guards: registering `after` only once the feed write
+    // had resolved. Callers almost always fire these without awaiting, so by
+    // then the request scope was gone, `after` threw, and the error was
     // swallowed — analytics silently stopped for every unawaited caller.
-    it('registers analytics before the database write settles', () => {
+    it('registers before the feed write settles', () => {
       mockCreateMany.mockReturnValue(new Promise(() => undefined));
 
-      void addEvent(
-        'Protocol Uninstalled',
-        'User admin uninstalled a protocol',
-      );
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
 
       expect(afterCallbacks).toHaveLength(1);
     });
 
-    it('reports the activity even when the caller does not await it', async () => {
-      void addEvent(
-        'Protocol Uninstalled',
-        'User admin uninstalled a protocol',
+    // Nothing else awaits the write when the caller does not, so the callback
+    // adopting it is the only thing keeping a serverless invocation alive
+    // until the row lands.
+    it('holds the invocation open until the feed write lands', async () => {
+      let settleWrite!: (value: { count: number }) => void;
+      mockCreateMany.mockReturnValue(
+        new Promise<{ count: number }>((resolve) => {
+          settleWrite = resolve;
+        }),
       );
+
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
+
+      const callback = afterCallbacks[0];
+      expect(callback).toBeDefined();
+
+      let finished = false;
+      const running = callback!().then(() => {
+        finished = true;
+        return null;
+      });
+
+      await nextTick();
+      expect(finished).toBe(false);
+
+      settleWrite({ count: 1 });
+      await running;
+
+      expect(finished).toBe(true);
+    });
+
+    it('reports the activity even when the caller does not await it', async () => {
+      void addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
       await flushAfterCallbacks();
 
       expect(mockCaptureEvent).toHaveBeenCalledWith(
@@ -123,7 +147,26 @@ describe('activity feed', () => {
       });
     });
 
-    it('still writes the message to the feed', async () => {
+    // A database refusing writes is precisely when the reports matter.
+    it('reports the activity even when the feed write fails', async () => {
+      mockCreateMany.mockRejectedValue(new Error('Connection refused'));
+
+      const result = await addEvent(
+        'Protocol Uninstalled',
+        'User admin uninstalled "Study"',
+      );
+      await flushAfterCallbacks();
+
+      expect(result).toEqual({ success: false, error: 'Failed to add event' });
+      expect(mockCaptureEvent).toHaveBeenCalledWith(
+        'Protocol Uninstalled',
+        undefined,
+      );
+    });
+  });
+
+  describe('the feed', () => {
+    it('writes the message and invalidates the feed', async () => {
       await addEvent('Protocol Uninstalled', 'User admin uninstalled "Study"');
 
       expect(mockCreateMany).toHaveBeenCalledWith({
@@ -135,6 +178,22 @@ describe('activity feed', () => {
         ],
       });
       expect(mockSafeUpdateTag).toHaveBeenCalledWith('activityFeed');
+    });
+
+    // updateTag is only available in Server Actions, and most callers are not
+    // in one by the time this runs. A failed invalidation costs a slightly
+    // later refresh, never the row.
+    it('still succeeds when the feed cannot be invalidated', async () => {
+      mockSafeUpdateTag.mockImplementation(() => {
+        throw new Error('updateTag is not available here');
+      });
+
+      const result = await addEvent(
+        'Protocol Uninstalled',
+        'User admin uninstalled "Study"',
+      );
+
+      expect(result).toEqual({ success: true, error: null });
     });
   });
 
@@ -181,13 +240,5 @@ describe('activity feed', () => {
       expect(mockCreateMany).not.toHaveBeenCalled();
       expect(afterCallbacks).toHaveLength(0);
     });
-  });
-
-  it('reports failure without throwing when the write fails', async () => {
-    mockCreateMany.mockRejectedValue(new Error('Connection refused'));
-
-    const result = await addEvent('Protocol Uninstalled', 'User admin removed');
-
-    expect(result).toEqual({ success: false, error: 'Failed to add event' });
   });
 });

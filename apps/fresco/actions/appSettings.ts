@@ -6,7 +6,7 @@ import { after } from 'next/server';
 import { type z } from 'zod';
 import { z as zm } from 'zod/mini';
 
-import { addEvent } from '~/actions/activityFeed';
+import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';

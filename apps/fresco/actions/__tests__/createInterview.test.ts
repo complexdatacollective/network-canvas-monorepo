@@ -79,7 +79,7 @@ vi.mock('~/lib/cache', () => ({
   safeCacheTag: vi.fn(),
 }));
 
-vi.mock('~/actions/activityFeed', () => ({
+vi.mock('~/lib/activityFeed', () => ({
   addEvent: vi.fn(),
 }));
 
