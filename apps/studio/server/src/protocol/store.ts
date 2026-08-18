@@ -10,7 +10,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { assembleProtocol } from './assemble.ts';
+import { AssemblyError, assembleProtocol } from './assemble.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
@@ -76,6 +76,21 @@ function sectionIdentityIssues(
     }
   }
   return issues;
+}
+
+function assembleOrIssues(
+  sections: Record<string, SectionDoc>,
+):
+  | { document: Record<string, unknown>; issues?: undefined }
+  | { document?: undefined; issues: ProtocolValidationIssue[] } {
+  try {
+    return { document: assembleProtocol(sections) };
+  } catch (err) {
+    if (err instanceof AssemblyError) {
+      return { issues: [{ code: 'custom', path: [], message: err.message }] };
+    }
+    throw err;
+  }
 }
 
 function assertNoValidationFailures(sections: Record<string, SectionDoc>) {
@@ -238,8 +253,13 @@ export class ProtocolStore {
     if (identityIssues.length > 0) {
       return { valid: false, issues: identityIssues };
     }
-    const document = assembleProtocol(sections);
-    const result = await validateProtocol(document as VersionedProtocol);
+    const assembled = assembleOrIssues(sections);
+    if (assembled.document === undefined) {
+      return { valid: false, issues: assembled.issues };
+    }
+    const result = await validateProtocol(
+      assembled.document as VersionedProtocol,
+    );
     return result.success
       ? { valid: true }
       : { valid: false, issues: result.error.issues };
@@ -263,8 +283,13 @@ export class ProtocolStore {
     if (identityIssues.length > 0) {
       return { status: 'invalid', issues: identityIssues };
     }
-    const document = assembleProtocol(head.sections);
-    const validation = await validateProtocol(document as VersionedProtocol);
+    const assembled = assembleOrIssues(head.sections);
+    if (assembled.document === undefined) {
+      return { status: 'invalid', issues: assembled.issues };
+    }
+    const validation = await validateProtocol(
+      assembled.document as VersionedProtocol,
+    );
     if (!validation.success) {
       return { status: 'invalid', issues: validation.error.issues };
     }

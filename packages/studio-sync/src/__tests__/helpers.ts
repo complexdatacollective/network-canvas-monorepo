@@ -5,7 +5,7 @@ import pg from 'pg';
 import type { SectionDoc } from '../apply.ts';
 import { SCHEMA_SQL } from '../schema.ts';
 import { SyncServer } from '../server.ts';
-import { PGPORT } from './test-env.ts';
+import { CI, PGPORT } from './test-env.ts';
 
 /**
  * A scratch database carrying the sync schema. Connects as the postgres
@@ -59,7 +59,13 @@ export const dbAvailable = await (async () => {
     await probe.connect();
     await probe.end();
     return true;
-  } catch {
+  } catch (err) {
+    if (CI) {
+      throw new Error(
+        `the sync conformance suites cannot run: 127.0.0.1:${PGPORT} is unreachable (${String(err)})`,
+        { cause: err },
+      );
+    }
     console.warn(
       `[studio-sync] Postgres not reachable on 127.0.0.1:${PGPORT} — skipping the DB-backed conformance suites. ` +
         `Start one with: docker run -d -e POSTGRES_PASSWORD=spike -p ${PGPORT}:5432 postgres:18`,

@@ -26,7 +26,11 @@ export const SettingsSectionSchema = z.strictObject({
 
 /** @public */
 export const StageOrderSectionSchema = z.strictObject({
-  stages: z.array(z.string().min(1)),
+  stages: z
+    .array(z.string().min(1))
+    .refine((stages) => new Set(stages).size === stages.length, {
+      message: 'stage order lists the same stage twice',
+    }),
 });
 
 const AssetsSectionSchema = z.record(z.string(), assetSchema);
@@ -89,20 +93,57 @@ export function validateSection(
   };
 }
 
-export function assertSectionValid(id: string, doc: SectionDoc): void {
-  const result = validateSection(id, doc);
-  if (!result.success) {
-    throw new SectionValidationFailedError([
-      { sectionId: id, issues: result.issues },
-    ]);
+function validateStageOrderMembership(
+  doc: SectionDoc,
+  sectionIds: string[],
+): SectionValidationResult {
+  const order = doc.stages;
+  if (!Array.isArray(order)) return { success: true };
+  const inOrder = new Set(order.filter((id) => typeof id === 'string'));
+  const inManifest = new Set<string>();
+  for (const id of sectionIds) {
+    const ref = parseSectionId(id);
+    if (ref.kind === 'stage') inManifest.add(ref.stageId);
   }
+  const issues: SectionIssue[] = [];
+  for (const stageId of inOrder) {
+    if (!inManifest.has(stageId)) {
+      issues.push({
+        path: ['stages'],
+        message: `stage order names ${stageId}, which the draft has no section for`,
+      });
+    }
+  }
+  for (const stageId of inManifest) {
+    if (!inOrder.has(stageId)) {
+      issues.push({
+        path: ['stages'],
+        message: `stage ${stageId} is missing from the stage order`,
+      });
+    }
+  }
+  return issues.length > 0 ? { success: false, issues } : { success: true };
+}
+
+export function assertSectionValid(
+  id: string,
+  doc: SectionDoc,
+  sectionIds?: string[],
+): void {
+  const fail = (result: SectionValidationResult) => {
+    if (!result.success) {
+      throw new SectionValidationFailedError([
+        { sectionId: id, issues: result.issues },
+      ]);
+    }
+  };
+  fail(validateSection(id, doc));
   const ref = parseSectionId(id);
-  if (ref.kind !== 'stage') return;
-  const identity = validateStageSectionIdentity(ref.stageId, doc);
-  if (!identity.success) {
-    throw new SectionValidationFailedError([
-      { sectionId: id, issues: identity.issues },
-    ]);
+  if (ref.kind === 'stage') {
+    fail(validateStageSectionIdentity(ref.stageId, doc));
+  }
+  if (ref.kind === 'stageOrder' && sectionIds !== undefined) {
+    fail(validateStageOrderMembership(doc, sectionIds));
   }
 }
 

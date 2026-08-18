@@ -49,7 +49,11 @@ const SECTION_EXISTS = `SELECT 1 FROM drafts d
 
 export type Lease = { epoch: bigint; expiresAt: Date };
 
-export type SectionValidator = (sectionId: string, doc: SectionDoc) => void;
+export type SectionValidator = (
+  sectionId: string,
+  doc: SectionDoc,
+  sectionIds: string[],
+) => void;
 
 export type CommitResult = {
   deduped: boolean;
@@ -358,7 +362,7 @@ export class SyncServer {
         (currentDoc.rows[0] as { doc: SectionDoc }).doc,
         commands,
       );
-      this.validateSection?.(sectionId, newDoc);
+      this.validateSection?.(sectionId, newDoc, Object.keys(sectionHashes));
       const newSectionHash = contentHash(newDoc);
       await client.query(
         `INSERT INTO sections (hash, doc) VALUES ($1, $2)

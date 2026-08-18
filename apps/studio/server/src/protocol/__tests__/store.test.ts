@@ -388,6 +388,57 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await sync.release(draftId, 'settings', 'commit-tab', lease!.epoch);
   });
 
+  it('a validating sync server rejects a stage order the draft cannot assemble', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = createProtocolSyncServer(db);
+    const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
+    const before = await store.getDraftSections(draftId);
+
+    for (const stages of [
+      ['nameGenerator1', 'sociogram1', 'ghost'],
+      ['nameGenerator1'],
+      ['nameGenerator1', 'sociogram1', 'sociogram1'],
+    ]) {
+      await expect(
+        sync.commit({
+          draftId,
+          sectionId: 'stageOrder',
+          owner: 'tab-1',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [{ op: 'set', key: 'stages', value: stages }],
+        }),
+      ).rejects.toThrow(SectionValidationFailedError);
+    }
+
+    const after = await store.getDraftSections(draftId);
+    expect(after.headManifestHash).toBe(before.headManifestHash);
+    expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('reports an unassemblable draft as invalid rather than throwing', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
+    await sync.commit({
+      draftId,
+      sectionId: 'stageOrder',
+      owner: 'tab-1',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'stages', value: ['ghost'] }],
+    });
+
+    const validation = await store.validateDraft(draftId);
+    expect(validation.valid).toBe(false);
+    const published = await store.publishDraft({ draftId });
+    expect(published.status).toBe('invalid');
+  });
+
   it('refuses to take over a lease whose section has been removed', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),

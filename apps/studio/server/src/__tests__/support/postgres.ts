@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import process from 'node:process';
 
 import pg from 'pg';
 
@@ -7,11 +8,22 @@ import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
 
+/* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
+const CI = process.env.CI === 'true';
+
+function unavailable(reason: string): null {
+  if (CI) throw new Error(`the Studio database suites cannot run: ${reason}`);
+  return null;
+}
+
 export async function reachableDb(): Promise<DbEnv | null> {
   const { db } = readEnv();
   // Local only, the same refusal scripts/db-reset.ts makes: these suites run
   // garbage collection's unqualified DELETEs.
-  if (!db || !isLocalDatabase(db.url)) return null;
+  if (!db) return unavailable('DATABASE_URL is not set');
+  if (!isLocalDatabase(db.url)) {
+    return unavailable(`${db.url} is not a local database`);
+  }
   const pool = createPool(db);
   let timer: NodeJS.Timeout | undefined;
   try {
@@ -30,8 +42,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
       }),
     ]);
     return db;
-  } catch {
-    return null;
+  } catch (err) {
+    return unavailable(`${db.url} is unreachable (${String(err)})`);
   } finally {
     // Otherwise the timer keeps the suite alive for the rest of its window.
     clearTimeout(timer);

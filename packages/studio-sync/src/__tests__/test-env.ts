@@ -2,3 +2,5 @@
  * for the conformance suite's Postgres location. */
 
 export const PGPORT = Number(process.env.PGPORT ?? 54318);
+
+export const CI = process.env.CI === 'true';
