@@ -89,4 +89,19 @@ describe('getDisplayAssetManifest', () => {
 
     expect(getDisplayAssetManifest(state)).toBe(getDisplayAssetManifest(state));
   });
+
+  it('preserves a resource whose id is a prototype property name', () => {
+    const state = stateWith(
+      JSON.parse(
+        '{"__proto__":{"type":"network","name":"people.csv","source":"people.csv"},"asset-2":{"type":"network","name":"people.csv","source":"people.csv"}}',
+      ) as Record<string, unknown>,
+    );
+
+    const displayed = getDisplayAssetManifest(state);
+
+    expect(Object.hasOwn(displayed, '__proto__')).toBe(true);
+    expect(Object.keys(displayed)).toEqual(['__proto__', 'asset-2']);
+    expect(displayed['__proto__']?.name).toBe('people.csv');
+    expect(displayed['asset-2']?.name).toBe('people (2).csv');
+  });
 });

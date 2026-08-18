@@ -596,7 +596,11 @@ const comparisonLabel = (
     'Comparison attribute not found in codebook',
   );
 
-  return variableLabels?.[attribute];
+  if (!variableLabels || !Object.hasOwn(variableLabels, attribute)) {
+    return undefined;
+  }
+
+  return variableLabels[attribute];
 };
 
 /**

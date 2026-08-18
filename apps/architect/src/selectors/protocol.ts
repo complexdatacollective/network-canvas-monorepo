@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { find, findIndex, mapValues, reduce } from 'es-toolkit/compat';
+import { find, findIndex, reduce } from 'es-toolkit/compat';
 
 import type { Asset } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
@@ -93,10 +93,13 @@ export const getDisplayAssetManifest = createSelector(
   (assetManifest) => {
     const displayNames = deriveAssetDisplayNames(assetManifest);
 
-    return mapValues(assetManifest, (asset, id) =>
-      displayNames[id] === asset.name
-        ? asset
-        : { ...asset, name: displayNames[id] ?? asset.name },
+    return Object.fromEntries(
+      Object.entries(assetManifest).map(([id, asset]) => [
+        id,
+        displayNames[id] === asset.name
+          ? asset
+          : { ...asset, name: displayNames[id] ?? asset.name },
+      ]),
     );
   },
 );

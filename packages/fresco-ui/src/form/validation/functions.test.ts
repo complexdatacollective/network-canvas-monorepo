@@ -35,6 +35,10 @@ describe('Validation Functions', () => {
               name: 'Date Attribute',
               type: 'datetime',
             },
+            toString: {
+              name: 'Prototype-named Attribute',
+              type: 'number' as const,
+            },
           },
         },
       },
@@ -1587,6 +1591,21 @@ describe('Validation Functions', () => {
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
           "Your answer must be greater than your answer to 'How many years have you lived here?'.",
+        );
+      }
+    });
+
+    it('treats an inherited label property as an absent authored label', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'toString', type: 'number' },
+        createMockContext({ variableLabels: {} }),
+      )({ toString: 5 });
+
+      const result = validator.safeParse(1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Your answer must be greater than your earlier answer.',
         );
       }
     });
