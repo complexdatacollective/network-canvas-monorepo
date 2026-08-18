@@ -36,7 +36,7 @@ export default async function HomePage({ params }: HomePageProps) {
         <DesignPrinciples />
 
         <Grants grants={grants} />
-        <Publications publications={publications} />
+        <Publications publications={publications.slice(0, 8)} />
         <CoreTeam members={coreTeam} />
         <Institutions />
         <WhatNext />

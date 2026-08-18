@@ -5,11 +5,24 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { SectionHeading } from '~/components/ui/SectionHeading';
 import { externalLinks } from '~/lib/content';
+import { Link } from '~/lib/i18n/navigation';
 import type { Publication } from '~/lib/siteContent';
 
 import { PublicationRail } from './PublicationRail';
 
 const headingId = 'recent-publications-heading';
+
+function renderAllLink(chunks: ReactNode) {
+  return (
+    <NativeLink
+      href="/publications"
+      render={<Link href="/publications" />}
+      className="font-bold"
+    >
+      {chunks}
+    </NativeLink>
+  );
+}
 
 function renderArticleLink(chunks: ReactNode) {
   return (
@@ -52,7 +65,10 @@ export function Publications({
     >
       <SectionHeading title={t('heading')} id={headingId}>
         <Paragraph margin="none">
-          {t.rich('introduction', { article: renderArticleLink })}
+          {t.rich('introduction', {
+            all: renderAllLink,
+            article: renderArticleLink,
+          })}
         </Paragraph>
         <Paragraph margin="none" className="mt-3">
           {t.rich('submission', { thread: renderThreadLink })}
