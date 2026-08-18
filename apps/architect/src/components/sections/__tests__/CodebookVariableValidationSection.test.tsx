@@ -228,7 +228,7 @@ describe('CodebookVariableValidationSection', () => {
       expect(picker).not.toHaveAttribute('aria-invalid');
       expect(
         screen.queryByText(
-          `Choose a comparison variable for "${label}", or switch the rule off.`,
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
         ),
       ).not.toBeInTheDocument();
       expect(updateVariableAsync).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe('CodebookVariableValidationSection', () => {
       });
       expect(
         screen.getAllByText(
-          `Choose a comparison variable for "${label}", or switch the rule off.`,
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
         ).length,
       ).toBeGreaterThan(0);
       expect(updateVariableAsync).not.toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('CodebookVariableValidationSection', () => {
       expect(nextPicker).not.toHaveAttribute('aria-invalid');
       expect(
         screen.queryByText(
-          `Choose a comparison variable for "${label}", or switch the rule off.`,
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
         ),
       ).not.toBeInTheDocument();
       expect(updateVariableAsync).not.toHaveBeenCalled();

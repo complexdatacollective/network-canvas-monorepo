@@ -349,7 +349,7 @@ describe('Forms & prompts schema conformance', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
-          i.message.includes('otherVariable must name a variable'),
+          i.message.includes('otherVariable must name an attribute'),
         );
         expect(issue).toBeDefined();
       }

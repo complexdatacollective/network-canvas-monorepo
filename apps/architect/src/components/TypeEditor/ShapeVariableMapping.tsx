@@ -281,7 +281,7 @@ const ShapeMappingEditor = ({
     <div className="flex flex-col">
       <UnconnectedField
         name={`${SHAPE_MAPPING_FIELD}.variable`}
-        label="Variable"
+        label="Attribute"
         component={VariablePickerControl}
         value={selectedVarId}
         onChange={handleVariableChange}
@@ -431,9 +431,9 @@ const ShapeVariableMapping = ({
     <div className="mb-8">
       <div className="py-2.5">
         <div className="flex items-center justify-between font-semibold">
-          <span>Map variable to shape</span>
+          <span>Map attribute to shape</span>
           <ToggleField
-            aria-label="Map variable to shape"
+            aria-label="Map attribute to shape"
             value={enabled}
             onChange={handleToggle}
           />

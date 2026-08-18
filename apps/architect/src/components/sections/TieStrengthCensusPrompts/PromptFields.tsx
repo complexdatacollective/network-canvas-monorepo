@@ -212,7 +212,7 @@ const PromptFields = ({
             <ul>
               <li>
                 Create an edge between two alters, and simultaneously assign a
-                value to an ordinal variable.
+                value to an ordinal attribute.
               </li>
               <li>Decline to create an edge</li>
             </ul>
@@ -225,8 +225,8 @@ const PromptFields = ({
           summary={
             <Paragraph>
               Begin by selecting or creating an edge type. You will then be able
-              to select or create an ordinal variable on this edge type. The
-              options of this ordinal variable will represent the choices
+              to select or create an ordinal attribute on this edge type. The
+              options of this ordinal attribute will represent the choices
               provided to the user when creating an edge.
             </Paragraph>
           }
@@ -253,11 +253,11 @@ const PromptFields = ({
           </>
         </Section>
         {currentCreateEdge && (
-          <Section title="Ordinal Variable" layout="vertical">
+          <Section title="Ordinal Attribute" layout="vertical">
             <>
               <ArchitectField
                 name="edgeVariable"
-                label="Select an ordinal variable for this edge type"
+                label="Select an ordinal attribute for this edge type"
                 component={VariablePicker}
                 validation={{ required: true }}
                 initialValue={edgeVariable}
@@ -270,7 +270,7 @@ const PromptFields = ({
             {currentEdgeVariable && (
               <>
                 <Heading level="h4" id={getFieldId('variableOptions')}>
-                  Variable Options
+                  Attribute Options
                 </Heading>
                 {lockedOptions ? (
                   <LockedOptions options={lockedOptions} />
@@ -278,8 +278,8 @@ const PromptFields = ({
                   <>
                     <Paragraph>
                       The following choices or &apos;options&apos; are
-                      configured for this variable. We suggest no more than four
-                      options should be used on this interface.
+                      configured for this attribute. We suggest no more than
+                      four options should be used on this interface.
                     </Paragraph>
                     {showVariableOptionsTip && (
                       <Alert variant="destructive" className="my-7">

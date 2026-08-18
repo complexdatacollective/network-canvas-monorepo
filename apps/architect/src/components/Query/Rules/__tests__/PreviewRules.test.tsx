@@ -101,7 +101,7 @@ describe('PreviewRules', () => {
     expect(remove.querySelector('.lucide-trash-2')).toBeInTheDocument();
     expect(edit).not.toHaveTextContent('Dee');
     expect(edit).toHaveAccessibleName(
-      'Edit rule: person where text variable name is exactly equal to Dee',
+      'Edit rule: person where text attribute name is exactly equal to Dee',
     );
     expect(edit).toHaveClass('h-12', 'bg-(--component-text)');
     expect(edit).not.toHaveClass('elevation-none');

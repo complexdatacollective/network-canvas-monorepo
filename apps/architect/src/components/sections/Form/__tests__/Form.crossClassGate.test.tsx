@@ -319,7 +319,7 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
     const errors = editorValidate({ variable: 'boolA', validation: {} });
     expect(errors.variable).toBe(
-      'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
   });
 
@@ -350,7 +350,7 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       currentEditorValidate()({ variable: 'draftOnly', validation: {} })
         .variable,
     ).toBe(
-      'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
     expect(currentSiblingFields()).toEqual([
       { variable: 'boolA' },

@@ -43,7 +43,7 @@ const meta = {
     docs: {
       description: {
         component: `
-\`VariablePill\` is the single presentation component for every variable
+\`VariablePill\` is the single presentation component for every attribute
 reference in Architect. Its semantics and visual treatment are controlled
 independently:
 
@@ -51,8 +51,8 @@ independently:
 | --- | --- | --- |
 | \`editable={false}\`, \`animated={false}\` | Non-interactive \`<data>\` with a static type-colored border. | Picker options, query previews, stage configuration, and printable output. This is the default. |
 | \`editable={false}\`, \`animated\` | Non-interactive \`<data>\` with an animated border. | A static on-screen reference needs extra visual emphasis. Never use this for printable output. |
-| \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The variable can be renamed. Provide \`onLabelChange\` to persist edits. |
-| \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from a variable UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the variable and edits must update the protocol codebook. |
+| \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The attribute can be renamed. Provide \`onLabelChange\` to persist edits. |
+| \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from an attribute UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the attribute and edits must update the protocol codebook. |
 
 \`\`\`tsx
 // Content-sized between the default 12rem minimum and 20rem maximum.
@@ -76,7 +76,7 @@ independently:
 
 - \`label\` is both the visible name and the machine-readable \`data\` value
   when the pill is not editable.
-- \`type\` selects the variable icon and accent color.
+- \`type\` selects the attribute icon and accent color.
 - Without \`width\`, the pill grows with its content between \`minWidth\`
   (default \`12rem\`) and \`maxWidth\` (default \`20rem\`).
 - Labels truncate with an ellipsis only after reaching \`maxWidth\`.
@@ -101,12 +101,12 @@ independently:
   argTypes: {
     label: {
       control: 'text',
-      description: 'Displayed variable name.',
+      description: 'Displayed attribute name.',
     },
     type: {
       control: 'select',
       options: VARIABLE_TYPES,
-      description: 'Variable type, which selects the icon and accent color.',
+      description: 'Attribute type, which selects the icon and accent color.',
     },
     width: {
       control: 'text',

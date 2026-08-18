@@ -77,7 +77,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
       ) {
         return {
           variable:
-            'This variable is already mapped by another disease. Choose a different variable, or edit the existing disease instead.',
+            'This attribute is already mapped by another disease. Choose a different attribute, or edit the existing disease instead.',
         };
       }
       const label = typeof values.label === 'string' ? values.label : '';
@@ -110,7 +110,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
       summary={
         <Paragraph>
           Define the diseases to visualize on the pedigree. Each disease maps to
-          a boolean node variable from the source Family Pedigree stage.
+          a boolean node attribute from the source Family Pedigree stage.
         </Paragraph>
       }
     >

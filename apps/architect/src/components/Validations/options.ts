@@ -132,7 +132,7 @@ const VALIDATION_GROUPS: readonly {
   { id: 'limits', heading: 'Limits', includes: isValidationWithNumberValue },
   {
     id: 'comparisons',
-    heading: 'Compare to another variable',
+    heading: 'Compare to another attribute',
     includes: isValidationWithListValue,
   },
 ];

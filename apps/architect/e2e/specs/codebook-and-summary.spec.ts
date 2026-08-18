@@ -26,7 +26,7 @@ test(
     // file is fetched and parsed for its variables (Asset.tsx gates the whole
     // table on `variables`), so wait for it or the capture races the async load.
     await expect(
-      architectPage.locator('#asset-roster_data').getByText('Variables'),
+      architectPage.locator('#asset-roster_data').getByText('Attributes'),
     ).toBeVisible();
     await architectPage.emulateMedia({ media: 'print' });
     await capture('summary-print', { fullPage: true });
@@ -101,7 +101,7 @@ test(
     // `biologicalSex` is unique to the `person` node type in the fixture.
     await expect(
       architectPage.getByRole('button', {
-        name: 'Edit variable name: biologicalSex',
+        name: 'Edit attribute name: biologicalSex',
         exact: true,
       }),
     ).toBeVisible();
@@ -130,7 +130,7 @@ test('lists roster data-source references in Used In', async ({
   // the roster entirely.
   const ageRow = architectPage.locator('tr', {
     has: architectPage.getByRole('button', {
-      name: 'Edit variable name: age',
+      name: 'Edit attribute name: age',
       exact: true,
     }),
   });
@@ -260,11 +260,11 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
 
   const row = architectPage.locator('tr', {
     has: architectPage.getByRole('button', {
-      name: `Edit variable name: ${LONG_NAME}`,
+      name: `Edit attribute name: ${LONG_NAME}`,
       exact: true,
     }),
   });
-  await row.getByRole('button', { name: 'Delete variable' }).click();
+  await row.getByRole('button', { name: 'Delete attribute' }).click();
 
   const dialog = architectPage.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -294,7 +294,7 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   expect(geometry.actions.every((action) => action.hittable)).toBe(true);
   // The identifier is in the body text, which wraps; the action label is fixed.
   await expect(dialog.getByTestId('dialog-primary')).toHaveText(
-    'Delete variable',
+    'Delete attribute',
   );
 
   await dialog.getByTestId('dialog-primary').click();

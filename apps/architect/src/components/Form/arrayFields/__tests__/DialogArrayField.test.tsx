@@ -181,6 +181,7 @@ const releaseAndSettle = async ({
 };
 
 type FieldOverrides = {
+  editorDialogSize?: 'editor';
   editorFieldsComponent?: React.ComponentType<Record<string, unknown>>;
   editorPreviewComponent?: React.ComponentType<Record<string, unknown>>;
   editorValidate?: DialogArrayEditorValidate;
@@ -193,6 +194,7 @@ const arrayField = (
   initialItems: Item[],
   {
     editorFieldsComponent = EditorFields,
+    editorDialogSize,
     editorPreviewComponent,
     editorValidate,
     normalizeItem,
@@ -208,6 +210,7 @@ const arrayField = (
     initialValue={initialItems}
     previewComponent={Preview}
     editorFieldsComponent={editorFieldsComponent}
+    editorDialogSize={editorDialogSize}
     editorPreviewComponent={editorPreviewComponent}
     editorTitle="Edit item"
     addTitle="Add item"
@@ -298,6 +301,14 @@ describe('DialogArrayField add button', () => {
 });
 
 describe('DialogArrayField', () => {
+  it('uses the configured semantic width for its editor dialog', () => {
+    setup({ editorDialogSize: 'editor' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
+
+    expect(screen.getByRole('dialog')).toHaveClass('max-w-4xl');
+  });
+
   it('adds a UUID-backed item only after the editor is saved', async () => {
     setup();
 

@@ -1606,7 +1606,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+      'a prompt fixes these attributes to false and true, which sameAs cannot hold',
     );
   });
 
@@ -1620,7 +1620,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 
@@ -2478,7 +2478,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to 2005-05-01, which parameters does not allow',
+        'a prompt fixes this attribute to 2005-05-01, which parameters does not allow',
       );
     }
   });
@@ -2679,7 +2679,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to true, which options does not allow',
+        'a prompt fixes this attribute to true, which options does not allow',
       );
     }
   });
@@ -2807,7 +2807,7 @@ describe('a unique value a prompt fixes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow('(unique, additionalAttributes)');
-    expect(build).toThrow('these variables, which are held equal, to true');
+    expect(build).toThrow('these attributes, which are held equal, to true');
   });
 
   it('refuses identically regardless of seed', () => {
@@ -3697,7 +3697,7 @@ describe('a prompt the stage node ceiling leaves nothing for', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 

@@ -113,7 +113,7 @@ describe('Codebook delete confirmations', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete attribute' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent(UNDO_PROMISE);

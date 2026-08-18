@@ -44,7 +44,7 @@ export const uniqueFormFieldVariables = (
     if (seen.has(field.variable)) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Form fields contain duplicate variable "${field.variable}"`,
+        message: `Form fields contain duplicate attribute "${field.variable}"`,
         path: [index, 'variable'],
       });
       continue;

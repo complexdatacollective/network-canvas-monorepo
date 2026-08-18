@@ -34,7 +34,7 @@ export async function addCardDisplayProperties(
       .click();
     await editor
       .field(`cardOptions.additionalProperties[${index}].variable`)
-      .getByRole('combobox', { name: 'Variable' })
+      .getByRole('combobox', { name: 'Attribute' })
       .selectOption(row.variable);
     await editor
       .field(`cardOptions.additionalProperties[${index}].label`)
@@ -67,7 +67,7 @@ export async function configureSortOptions(
       .click();
     await editor
       .field(`sortOptions.sortableProperties[${index}].variable`)
-      .getByRole('combobox', { name: 'Variable' })
+      .getByRole('combobox', { name: 'Attribute' })
       .selectOption(row.variable);
     await editor
       .field(`sortOptions.sortableProperties[${index}].label`)

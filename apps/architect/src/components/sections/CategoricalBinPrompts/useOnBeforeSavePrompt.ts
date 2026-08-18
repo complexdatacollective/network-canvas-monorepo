@@ -194,7 +194,7 @@ export function useOnBeforeSavePrompt(
             success: false,
             fieldErrors: {
               variableOptions: [
-                'These options are set by the interface that uses this variable and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+                'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
               ],
             },
           };

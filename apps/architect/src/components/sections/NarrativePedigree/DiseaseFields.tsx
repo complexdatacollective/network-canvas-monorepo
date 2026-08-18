@@ -122,14 +122,14 @@ const DiseaseFields = ({
           />
         </>
       </Section>
-      <Section title="Node Variable" layout="vertical">
+      <Section title="Node Attribute" layout="vertical">
         <>
-          <IssueAnchor fieldName="variable" description="Disease variable" />
+          <IssueAnchor fieldName="variable" description="Disease attribute" />
           <ArchitectField
             name="variable"
             component={VariablePickerControl}
             validation={{ required: true }}
-            label="Select boolean node variable"
+            label="Select boolean node attribute"
             initialValue={asString(item?.variable)}
             entity="node"
             type={nodeType ?? ''}

@@ -29,6 +29,7 @@ type ValidationSectionProps = {
   disabled?: boolean;
   entity: string;
   id?: string;
+  label?: string;
   summary?: string;
   variableType?: string;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
@@ -62,7 +63,8 @@ const ValidationSection = ({
   disabled = false,
   entity,
   id = getFieldId('validation'),
-  summary = 'Enable validation of this variable.',
+  label = 'Validation',
+  summary = 'Enable validation of this attribute.',
   variableType = '',
   existingVariables,
   allVariables,
@@ -161,7 +163,7 @@ const ValidationSection = ({
     <Section
       layout="vertical"
       id={id}
-      title={showHeading ? 'Validation' : undefined}
+      title={showHeading ? label : undefined}
       summary={showHeading ? <Paragraph>{summary}</Paragraph> : undefined}
       disabled={disabled}
       toggleable={showHeading}

@@ -183,7 +183,7 @@ describe('splitValidation — native mapping', () => {
       splitValidation({ allowedNMToken: true }, 'f').nativeProps.pattern
         ?.errorMessage,
     ).toBe(
-      'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported',
+      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
     );
   });
 

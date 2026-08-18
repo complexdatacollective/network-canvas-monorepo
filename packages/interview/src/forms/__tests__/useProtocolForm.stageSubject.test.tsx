@@ -180,8 +180,10 @@ describe('useProtocolForm stageSubject', () => {
       { wrapper: makeWrapper() },
     );
 
-    expect(firstFieldProp(result.current.fieldComponents, 'sameAs')).toBe(
-      DISPLAY_NAME_VAR,
+    expect(firstFieldProp(result.current.fieldComponents, 'field')).toEqual(
+      expect.objectContaining({
+        validation: expect.objectContaining({ sameAs: DISPLAY_NAME_VAR }),
+      }),
     );
     expect(firstFieldValidationContext(result.current.fieldComponents)).toEqual(
       expect.objectContaining({

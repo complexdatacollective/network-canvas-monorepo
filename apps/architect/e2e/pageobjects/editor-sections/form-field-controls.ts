@@ -114,7 +114,7 @@ export async function addConfiguredFormField(
   // the unset variable picker. If the shared dialog form resurrected the
   // previous field's state, cancel — forcing the unmount that destroys the
   // form — and reopen.
-  const freshSign = dialog.getByRole('button', { name: 'Select variable' });
+  const freshSign = dialog.getByRole('button', { name: 'Select attribute' });
   try {
     await freshSign.waitFor({ state: 'visible', timeout: 3_000 });
   } catch {
@@ -126,7 +126,7 @@ export async function addConfiguredFormField(
   }
   await createVariableViaSpotlight(page, {
     variableName: spec.variableName,
-    until: dialog.getByRole('button', { name: 'Change variable' }),
+    until: dialog.getByRole('button', { name: 'Change attribute' }),
   });
 
   const prompt = page.getByRole('textbox', { name: 'Prompt text' });

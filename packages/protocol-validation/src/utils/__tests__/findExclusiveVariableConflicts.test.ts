@@ -277,7 +277,7 @@ describe('findExclusiveVariableConflicts', () => {
     expect(
       result.error?.issues.some((issue) =>
         issue.message.includes(
-          'biological sex variable "biologicalSex" must use its fixed set of options',
+          'biological sex attribute "biologicalSex" must use its fixed set of options',
         ),
       ),
     ).toBe(true);

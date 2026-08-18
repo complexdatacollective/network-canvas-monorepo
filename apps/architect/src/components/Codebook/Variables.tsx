@@ -59,12 +59,12 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         // with no break opportunity; interpolated into the confirm button it
         // pushed Cancel clean out of the dialog (#1392). The identifier belongs
         // in the body text, which wraps.
-        title: 'Delete variable',
+        title: 'Delete attribute',
         // `codebook/deleteVariable` is inside the protocol timeline, so Undo
         // restores it (#1400) — wording shared with the stage, type and
         // resource dialogs.
-        description: `Are you sure you want to delete the variable “${name}”? You can restore it with Undo while this protocol remains open.`,
-        confirmLabel: 'Delete variable',
+        description: `Are you sure you want to delete the attribute “${name}”? You can restore it with Undo while this protocol remains open.`,
+        confirmLabel: 'Delete attribute',
         cancelLabel: 'Cancel',
         intent: 'destructive',
         // `.unwrap()` re-throws a rejected thunk so `confirm` can surface the
@@ -155,7 +155,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
       <DataTable
         table={table}
         showPagination={false}
-        emptyText="No variables."
+        emptyText="No attributes."
       />
     </div>
   );

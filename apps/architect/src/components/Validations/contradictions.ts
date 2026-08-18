@@ -44,7 +44,7 @@ const draftVariableBase = (
         name:
           typeof draftVariableName === 'string' && draftVariableName.trim()
             ? draftVariableName
-            : 'this variable',
+            : 'this attribute',
         type: variableType,
       };
 

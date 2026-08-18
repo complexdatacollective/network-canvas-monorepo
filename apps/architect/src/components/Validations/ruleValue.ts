@@ -107,7 +107,7 @@ export const incompleteRuleIssue = (
     if (isRuleValueComplete(ruleKey, value)) continue;
     const label = getValidationLabel(ruleKey);
     if (isValidationWithListValue(ruleKey)) {
-      return `Choose a comparison variable for "${label}", or switch the rule off.`;
+      return `Choose a comparison attribute for "${label}", or switch the rule off.`;
     }
     return `Enter a value for "${label}", or switch the rule off.`;
   }

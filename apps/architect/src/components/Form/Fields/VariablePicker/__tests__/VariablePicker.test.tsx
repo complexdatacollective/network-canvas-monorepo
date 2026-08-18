@@ -27,12 +27,12 @@ vi.mock('../VariableSpotlight', () => ({
     onCreateOption: (value: string) => void;
   }) =>
     open ? (
-      <div role="dialog" aria-label="Variable library">
+      <div role="dialog" aria-label="Attribute library">
         <button type="button" onClick={() => onSelect('age')}>
           Choose age
         </button>
         <button type="button" onClick={() => onCreateOption('height')}>
-          Create new variable called height
+          Create new attribute called height
         </button>
         <button type="button" onClick={onCancel}>
           Cancel selection
@@ -91,7 +91,7 @@ const setup = (initialValue?: string) => {
   const view = renderPicker(
     <ArchitectField
       name="variable"
-      label="Variable"
+      label="Attribute"
       component={VariablePicker}
       initialValue={initialValue}
       validation={{ required: true }}
@@ -119,12 +119,14 @@ describe('VariablePicker', () => {
   it('uses the shared field label and group semantics', () => {
     setup();
 
-    expect(screen.getByRole('group', { name: 'Variable' })).toBeInTheDocument();
     expect(
-      screen.getByRole('group', { name: 'Variable' }),
+      screen.getByRole('group', { name: 'Attribute' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Attribute' }),
     ).toHaveAccessibleDescription(/Required/);
     expect(
-      screen.getByRole('button', { name: 'Select variable' }),
+      screen.getByRole('button', { name: 'Select attribute' }),
     ).toBeInTheDocument();
   });
 
@@ -132,8 +134,8 @@ describe('VariablePicker', () => {
     const { container } = renderPicker(
       <ArchitectField
         name="variable"
-        label="Layout variable"
-        hint="Positions are stored against this variable."
+        label="Layout attribute"
+        hint="Positions are stored against this attribute."
         component={VariablePicker}
         validation={{ required: true }}
         options={options}
@@ -147,9 +149,9 @@ describe('VariablePicker', () => {
     expect(field).not.toBeNull();
     expect(field?.querySelectorAll('label')).toHaveLength(1);
 
-    const group = screen.getByRole('group', { name: 'Layout variable' });
+    const group = screen.getByRole('group', { name: 'Layout attribute' });
     expect(group).toHaveAccessibleDescription(
-      /Positions are stored against this variable\./,
+      /Positions are stored against this attribute\./,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -164,7 +166,7 @@ describe('VariablePicker', () => {
 
     expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Change variable' }),
+      screen.getByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
   });
 
@@ -177,7 +179,7 @@ describe('VariablePicker', () => {
   it('persists a spotlight selection to the form store', () => {
     const { getValue } = setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
     fireEvent.click(screen.getByRole('button', { name: 'Choose age' }));
 
     expect(getValue()).toBe('age');
@@ -218,11 +220,11 @@ describe('VariablePicker', () => {
         await screen.findByTestId('variable-field-error'),
       ).toHaveTextContent('This field is required.');
 
-      fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
       // The picker's own create path: clear, close, hand the name to the host.
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'Create new variable called height',
+          name: 'Create new attribute called height',
         }),
       );
       // What `withFieldsHandlers.handleNewVariable` does next.
@@ -233,11 +235,11 @@ describe('VariablePicker', () => {
       expect(getValue()).toBe('height');
       expect(screen.queryByTestId('variable-field-error')).toBeNull();
       expect(
-        screen.getByRole('group', { name: 'Variable' }),
+        screen.getByRole('group', { name: 'Attribute' }),
       ).not.toHaveAttribute('aria-invalid', 'true');
       // And the control itself has moved on.
       expect(
-        screen.getByRole('button', { name: 'Change variable' }),
+        screen.getByRole('button', { name: 'Change attribute' }),
       ).toBeInTheDocument();
     });
 
@@ -245,10 +247,10 @@ describe('VariablePicker', () => {
       const { setFieldValue } = createVariable();
       await screen.findByTestId('variable-field-error');
 
-      fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'Create new variable called height',
+          name: 'Create new attribute called height',
         }),
       );
       act(() => {

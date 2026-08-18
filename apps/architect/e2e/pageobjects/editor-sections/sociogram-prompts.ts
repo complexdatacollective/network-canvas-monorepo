@@ -41,7 +41,7 @@ export async function addSociogramPrompt(
   const fresh = (candidate: Page): Locator =>
     candidate
       .locator('[data-field-name="layout.layoutVariable"]')
-      .getByRole('button', { name: 'Select variable' });
+      .getByRole('button', { name: 'Select attribute' });
   await addPrompt(
     editor.section('Prompts'),
     async () => {
@@ -51,7 +51,7 @@ export async function addSociogramPrompt(
         scope: editor.field('layout.layoutVariable'),
         until: editor
           .field('layout.layoutVariable')
-          .getByRole('button', { name: 'Change variable' }),
+          .getByRole('button', { name: 'Change attribute' }),
       });
 
       const interaction = spec.interaction;
@@ -96,7 +96,7 @@ export async function addSociogramPrompt(
             scope: editor.field('highlight.variable'),
             until: editor
               .field('highlight.variable')
-              .getByRole('button', { name: 'Change variable' }),
+              .getByRole('button', { name: 'Change attribute' }),
           });
         }
       }

@@ -141,7 +141,7 @@ async function addEntityRule(
       .getByRole('option', { name: /^Attribute/ })
       .click();
     await dialog
-      .getByRole('combobox', { name: 'Variable' })
+      .getByRole('combobox', { name: 'Attribute' })
       .selectOption({ label: spec.variableName });
     await dialog
       .getByRole('combobox', { name: 'Operator' })

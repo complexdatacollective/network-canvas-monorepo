@@ -138,6 +138,7 @@ const SociogramPrompts = ({
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         editorProps={{ entity, type }}
         editorValidate={editorValidate}
         requestedEditFormName="editable-list-form"

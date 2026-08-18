@@ -265,7 +265,7 @@ const INTERSECTED_BOUNDS = [
  * as the same fact reported twice.
  */
 const ALSO_DECLARED =
-  ', which one of these variables already declares on its own';
+  ', which one of these attributes already declares on its own';
 
 /**
  * The values a variable's type can hold, as a key two types share only when one

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
@@ -36,18 +35,12 @@ const SORT_RULE_VALIDATION = {
   completeRows: completeRows(SORT_RULE_PROPERTIES),
 };
 
-const getDefaultSummary = () => (
-  <Paragraph>
-    You may also configure one or more sort rules that determine the order that
-    nodes are listed after they have been placed into a bin.
-  </Paragraph>
-);
 const BinSortOrderSection = ({
   initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
-  summary = getDefaultSummary(),
+  summary = 'Enable this option to set the order that nodes appear after they have been placed into a bin.',
 }: BinSortOrderSectionProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const handleToggleChange = (nextState: boolean) => {
@@ -58,7 +51,7 @@ const BinSortOrderSection = ({
   };
   return (
     <Section
-      title="Bin Sort Order"
+      title="Set the order of nodes in bins"
       summary={summary}
       toggleable
       disabled={disabled}
@@ -69,9 +62,10 @@ const BinSortOrderSection = ({
       <>
         <ArchitectArrayField
           name="binSortOrder"
-          label="Bin sort order"
-          labelHidden
+          label="Bin sort rules"
+          hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
           component={MultiSelect}
+          emptyStateMessage="No sort rules have been created yet."
           addButtonLabel="Add new bin sort rule"
           initialValue={initialValue}
           properties={SORT_RULE_PROPERTIES}

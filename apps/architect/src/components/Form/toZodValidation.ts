@@ -153,7 +153,7 @@ const allowedVariableName: NativeMapper = ({ value }, claimed) => {
   // (message) argument entirely, so a non-string parameter — such as the
   // `allowedNMToken: true` call sites — falls back to the default instead of
   // interpolating `true` into the message.
-  const name = typeof value === 'string' ? value : 'variable name';
+  const name = typeof value === 'string' ? value : 'attribute name';
   return {
     pattern: {
       regex: NMTOKEN_PATTERN,

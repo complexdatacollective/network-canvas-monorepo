@@ -8,6 +8,7 @@ describe('EditValue', () => {
     const onChange = vi.fn();
     render(
       <EditValue
+        label="Attribute value"
         variableType="categorical"
         value={['apple', 'banana']}
         options={[
@@ -33,6 +34,7 @@ describe('EditValue', () => {
     const onChange = vi.fn();
     render(
       <EditValue
+        label="Attribute value"
         variableType="count"
         value={2}
         onChange={onChange}
@@ -52,10 +54,11 @@ describe('EditValue', () => {
     expect(onChange.mock.lastCall?.[1]).toBeNull();
   });
 
-  it('routes boolean operands through the fresco ToggleField', () => {
+  it('routes boolean operands through the fresco BooleanField', () => {
     const onChange = vi.fn();
     render(
       <EditValue
+        label="Attribute value"
         variableType="boolean"
         value={false}
         onChange={onChange}
@@ -63,10 +66,12 @@ describe('EditValue', () => {
       />,
     );
 
-    const toggle = screen.getByRole('switch');
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    const yes = screen.getByRole('radio', { name: 'Yes' });
+    const no = screen.getByRole('radio', { name: 'No' });
+    expect(yes).not.toBeChecked();
+    expect(no).toBeChecked();
 
-    fireEvent.click(toggle);
+    fireEvent.click(yes);
 
     expect(onChange.mock.lastCall?.[1]).toBe(true);
   });

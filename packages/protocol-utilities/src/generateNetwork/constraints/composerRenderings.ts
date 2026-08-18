@@ -72,10 +72,11 @@ export type ComposerRenderingDisagreement = {
  * `SyntheticInterview` — refuse it in the same words.
  */
 export const COMPOSER_RENDERING_CONFLICT = {
-  summary: 'this protocol renders one variable with incompatible date controls',
+  summary:
+    'this protocol renders one attribute with incompatible date controls',
   rules: ['component', 'parameters'],
   reason:
-    'reachable forms render this variable with date controls that have no common window at one resolution, ' +
+    'reachable forms render this attribute with date controls that have no common window at one resolution, ' +
     'and the one value it holds is submitted through both',
 } as const;
 

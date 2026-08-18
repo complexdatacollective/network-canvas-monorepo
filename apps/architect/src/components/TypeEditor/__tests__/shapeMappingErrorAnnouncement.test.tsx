@@ -14,7 +14,7 @@ import { SHAPE_MAPPING_FIELD } from '../validateEntityType';
 // The exact copy the dialog's form-level validator reports; kept literal so a
 // reworded message does not quietly turn these assertions vacuous.
 const SHAPE_MAPPING_INCOMPLETE =
-  'Select a variable to map to a shape, or turn off shape mapping.';
+  'Select an attribute to map to a shape, or turn off shape mapping.';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
@@ -61,7 +61,7 @@ const renderMapping = () => {
 
   // Turn the mapping on and leave the variable unchosen — the state the
   // dialog's form-level validator refuses to save.
-  fireEvent.click(screen.getByLabelText('Map variable to shape'));
+  fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
   const reportIncompleteMapping = () =>
     act(() => {
@@ -135,6 +135,6 @@ describe('an incomplete shape mapping', () => {
 
     expect(document.activeElement).not.toBe(document.body);
     expect(mappingField().contains(document.activeElement)).toBe(true);
-    expect(document.activeElement).toHaveAccessibleName('Select variable');
+    expect(document.activeElement).toHaveAccessibleName('Select attribute');
   });
 });

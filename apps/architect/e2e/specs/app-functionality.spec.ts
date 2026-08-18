@@ -378,17 +378,17 @@ test('applies one history operation per activation for a codebook change', async
   // records the locus at /protocol/codebook (VariablePill.tsx).
   await architectPage
     .getByRole('button', {
-      name: 'Edit variable name: biologicalSex',
+      name: 'Edit attribute name: biologicalSex',
       exact: true,
     })
     .click();
   // VariablePill.tsx labels the editor dialog "Edit variable name" and its
   // input "Variable name".
   const variableEditor = architectPage.getByRole('dialog', {
-    name: 'Edit variable name',
+    name: 'Edit attribute name',
   });
   await variableEditor
-    .getByRole('textbox', { name: 'Variable name' })
+    .getByRole('textbox', { name: 'Attribute name' })
     .fill('biologicalSexRenamed');
   await variableEditor.getByRole('button', { name: 'Save Changes' }).click();
   await readProtocolJson(architectPage, (current) =>

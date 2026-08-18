@@ -147,7 +147,7 @@ export const VariablePickerControl = ({
         >
           {!value && (
             <p className="w-full py-6 text-center text-sm text-current/70 italic">
-              No variable selected
+              No attribute selected
             </p>
           )}
           {value && (
@@ -186,7 +186,7 @@ export const VariablePickerControl = ({
           // field once a variable has been picked.
           data-field-focus-target=""
         >
-          {value ? 'Change variable' : 'Select variable'}
+          {value ? 'Change attribute' : 'Select attribute'}
         </Button>
       </div>
       <VariableSpotlight

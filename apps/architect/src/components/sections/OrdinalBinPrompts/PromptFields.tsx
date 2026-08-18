@@ -176,16 +176,12 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section
-        title="Ordinal Variable"
-        id={getFieldId('variable')}
-        layout="vertical"
-      >
+      <Section id={getFieldId('variable')} layout="vertical">
         <>
           <ArchitectField
             name="variable"
-            label="Ordinal variable"
-            labelHidden
+            label="Ordinal attribute"
+            hint="Select an ordinal attribute to assign a value to."
             component={VariablePicker}
             validation={{ required: true }}
             initialValue={variable}
@@ -197,11 +193,7 @@ const PromptFields = ({
         </>
       </Section>
       {currentVariable && (
-        <Section
-          title="Variable Options"
-          id={getFieldId('variableOptions')}
-          layout="vertical"
-        >
+        <Section id={getFieldId('variableOptions')} layout="vertical">
           <>
             {lockedOptions ? (
               <LockedOptions options={lockedOptions} />
@@ -223,7 +215,10 @@ const PromptFields = ({
                   label="Option values"
                   hint={
                     <>
-                      Create <strong>up to 5</strong> options for this variable.
+                      An ordinal attribute contains pre-defined categories made
+                      up of a label (shown to the participant) and a value.
+                      Create <strong>up to 5</strong> option values for this
+                      attribute.
                     </>
                   }
                   component={Options}
@@ -236,19 +231,17 @@ const PromptFields = ({
           </>
         </Section>
       )}
-      <Section title="Color" id={getFieldId('color')} layout="vertical">
-        <>
-          <ArchitectField
-            name="color"
-            label="Which color would you like to use for this scale?"
-            hint="Interviewer will render each option in your ordinal variable using a color gradient."
-            component={ColorPicker}
-            validation={{ required: true }}
-            initialValue={color}
-            palette="ord-color-seq"
-            paletteRange={8}
-          />
-        </>
+      <Section id={getFieldId('color')} layout="vertical">
+        <ArchitectField
+          name="color"
+          label="Color"
+          hint="Interviewer will render each option in your ordinal attribute using a color gradient."
+          component={ColorPicker}
+          validation={{ required: true }}
+          initialValue={color}
+          palette="ord-color-seq"
+          paletteRange={8}
+        />
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

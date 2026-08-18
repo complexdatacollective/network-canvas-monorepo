@@ -190,10 +190,10 @@ test('renaming a variable inline marks the stage dirty and reverts on discard', 
   // shared codebook immediately AND leave the stage reading as clean, so
   // Cancel navigated away with no prompt at all.
   await architectPage
-    .getByRole('button', { name: 'Edit variable name: age' })
+    .getByRole('button', { name: 'Edit attribute name: age' })
     .dblclick();
   const nameInput = architectPage.getByRole('textbox', {
-    name: 'Variable name',
+    name: 'Attribute name',
   });
   await nameInput.fill('ageQA');
   await architectPage.getByRole('button', { name: 'Save Changes' }).click();
@@ -249,11 +249,11 @@ test('leaving a pristine editor does not swallow later codebook edits', async ({
   await architectPage.waitForURL(/\/protocol\/codebook$/);
 
   await architectPage
-    .getByRole('button', { name: 'Edit variable name: age' })
+    .getByRole('button', { name: 'Edit attribute name: age' })
     .first()
     .dblclick();
   await architectPage
-    .getByRole('textbox', { name: 'Variable name' })
+    .getByRole('textbox', { name: 'Attribute name' })
     .fill('ageAfterLeaving');
   await architectPage.getByRole('button', { name: 'Save Changes' }).click();
 

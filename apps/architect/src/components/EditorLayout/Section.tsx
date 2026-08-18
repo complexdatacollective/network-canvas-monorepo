@@ -83,7 +83,7 @@ const Section = ({
       className={cx(
         layout === 'vertical' &&
           headingVariants({
-            level: 'h4',
+            level: 'label',
             margin: 'none',
           }),
         layout === 'horizontal' &&
@@ -105,7 +105,7 @@ const Section = ({
     <div>
       <div
         className={cx(
-          'flex items-center gap-4 text-right',
+          'mb-2 flex items-center gap-4 text-right',
           // `tablet-landscape:top-24` (6rem) pins the heading just below
           // the sticky top menu bar so it never overlaps it; `z-1` keeps
           // it above the section content but below the nav.
@@ -120,10 +120,6 @@ const Section = ({
             value={isOpen}
             onChange={() => void changeToggleState()}
             disabled={disabled}
-            className={cx(
-              'shrink-0 grow-0',
-              disabled && 'cursor-not-allowed opacity-50',
-            )}
           />
         )}
       </div>
@@ -133,11 +129,11 @@ const Section = ({
 
   const sectionContent = disabled ? (
     layout === 'horizontal' ? (
-      <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
+      <div className="bg-surface-2 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center rounded font-semibold italic">
         {disabledMessage}
       </div>
     ) : (
-      <div className="bg-surface-2/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+      <div className="bg-surface-2 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
         {disabledMessage}
       </div>
     )

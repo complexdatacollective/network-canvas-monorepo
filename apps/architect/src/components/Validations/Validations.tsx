@@ -303,11 +303,11 @@ const RuleList = ({
   const hintFor = (ruleKey: string, isUnavailable: boolean) => {
     if (isUnavailable) {
       return candidateCount === 0
-        ? 'No other variable of this type exists to compare against.'
-        : 'Every comparable variable would make this rule impossible to satisfy.';
+        ? 'No other attribute of this type exists to compare against.'
+        : 'Every comparable attribute would make this rule impossible to satisfy.';
     }
     if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
-      return `This variable has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
+      return `This attribute has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
     }
     return undefined;
   };
@@ -336,7 +336,7 @@ const RuleList = ({
           key={group.id}
           className={cx(
             variants(),
-            'relative my-4 flex w-full min-w-0 flex-col overflow-visible',
+            'relative my-4 flex w-full min-w-0 flex-col overflow-visible whitespace-normal',
           )}
         >
           <legend className="bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']">
@@ -708,7 +708,7 @@ const Validations = ({
       name={name}
       component={ValidationsField}
       label="Validation rules"
-      hint="Enable one or more validation rules to apply to this variable."
+      hint="Enable one or more validation rules to apply to this attribute."
       initialValue={initialValue ?? EMPTY_VALIDATION}
       validation={commitsImmediately ? undefined : validation}
       revealIncompleteOnBlur={commitsImmediately}

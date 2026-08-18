@@ -2,6 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+  stateVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
+import { compose } from '@codaco/fresco-ui/utils/cva';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
@@ -62,28 +69,59 @@ const ResourcePicker = ({
     onCloseBrowser?.();
   };
 
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+  );
+
+  const getState = () => {
+    if (disabled) return 'disabled';
+    if (readOnly) return 'readOnly';
+    if (ariaInvalid) return 'invalid';
+    return 'normal';
+  };
+
   return (
-    <fieldset
-      id={id}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
-      aria-describedby={ariaDescribedBy}
-      aria-disabled={readOnly || undefined}
-      disabled={disabled}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      className={cx(
-        'bg-input text-input-contrast flex w-full flex-col gap-4 rounded border-2 border-transparent p-4',
-        ariaInvalid && 'border-destructive',
-        disabled && 'opacity-50',
-        readOnly && 'opacity-70',
-        className,
-      )}
-      data-name={name}
-    >
-      {value && (
-        <div className="relative overflow-hidden">{children?.(value)}</div>
-      )}
+    <>
+      <fieldset
+        id={id}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+        aria-describedby={ariaDescribedBy}
+        aria-disabled={readOnly || undefined}
+        disabled={disabled}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        className={cx(
+          variants({
+            state: getState(),
+          }),
+          'mb-4',
+          className,
+        )}
+        data-name={name}
+      >
+        {value && (
+          <div className="relative overflow-hidden">{children?.(value)}</div>
+        )}
+        {!value && (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="text-text/70 flex h-32 w-full items-center justify-center text-center font-semibold italic">
+              No resource selected.
+            </div>
+          </div>
+        )}
+
+        <AssetBrowserWindow
+          show={browserOpen}
+          type={type}
+          selected={selected ?? value}
+          onSelect={handleSelectAsset}
+          onCancel={closeBrowser}
+        />
+      </fieldset>
       <Button
         type="button"
         onClick={() => setBrowserOpen(true)}
@@ -93,14 +131,7 @@ const ResourcePicker = ({
       >
         {!value ? 'Select resource' : 'Update resource'}
       </Button>
-      <AssetBrowserWindow
-        show={browserOpen}
-        type={type}
-        selected={selected ?? value}
-        onSelect={handleSelectAsset}
-        onCancel={closeBrowser}
-      />
-    </fieldset>
+    </>
   );
 };
 

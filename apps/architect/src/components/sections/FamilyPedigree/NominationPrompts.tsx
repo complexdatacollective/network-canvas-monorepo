@@ -148,7 +148,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         <Paragraph>
           Optionally add prompts to collect attribute information about family
           members. Each prompt should ask about a specific condition or trait
-          and will store the response in the selected boolean variable.
+          and will store the response in the selected boolean attribute.
         </Paragraph>
       }
       title="Nomination Prompts"
@@ -170,6 +170,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         editorTitle="Edit Prompt"
         editorProps={{ nodeType }}
         itemLabel="prompt"
+        editorDialogSize="editor"
         onBeforeSave={onBeforeSave}
         sortable
         requestedEditFormName="editable-list-form"

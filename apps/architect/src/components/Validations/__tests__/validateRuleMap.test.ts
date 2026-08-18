@@ -63,7 +63,7 @@ describe('incompleteRuleIssue', () => {
 
   it('names an unanswered comparison rule differently', () => {
     expect(incompleteRuleIssue({ sameAs: null })).toBe(
-      'Choose a comparison variable for "Same as", or switch the rule off.',
+      'Choose a comparison attribute for "Same as", or switch the rule off.',
     );
   });
 
@@ -87,7 +87,7 @@ describe('ruleMapIssue', () => {
     expect(
       ruleMapIssue({ minValue: 10, maxValue: 2, sameAs: null }, context()),
     ).toBe(
-      'Choose a comparison variable for "Same as", or switch the rule off.',
+      'Choose a comparison attribute for "Same as", or switch the rule off.',
     );
   });
 

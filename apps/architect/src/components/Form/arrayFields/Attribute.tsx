@@ -242,7 +242,7 @@ const Attribute = ({
       <div>
         <RowField
           name={`${rowFieldName}.variable`}
-          label="Create or select a variable"
+          label="Create or select an attribute"
           component={FrescoVariablePicker}
           value={variable}
           onChange={(value: unknown) =>

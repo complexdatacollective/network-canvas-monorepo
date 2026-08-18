@@ -88,10 +88,10 @@ function diseasesForStage(
               rules: ['inheritancePattern'],
               reason:
                 `NarrativePedigree stages assign both ${existingPattern} and ` +
-                `${disease.inheritancePattern} to the same disease variable`,
+                `${disease.inheritancePattern} to the same disease attribute`,
             },
           ],
-          'one disease variable cannot represent conflicting inheritance patterns',
+          'one disease attribute cannot represent conflicting inheritance patterns',
         );
       }
       narrativePatternByVariable.set(

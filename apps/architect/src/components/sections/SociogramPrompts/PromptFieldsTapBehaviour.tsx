@@ -163,7 +163,7 @@ const TapBehaviour = ({
             {
               value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
               label:
-                '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean variable to true or false.',
+                '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean attribute to true or false.',
             },
           ]}
         />

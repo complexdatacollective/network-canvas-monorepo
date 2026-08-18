@@ -65,7 +65,7 @@ const renderWindow = (onCancel: () => void) =>
 describe('NewVariableWindow name normalisation', () => {
   it('drops characters a variable name cannot contain', () => {
     renderWindow(vi.fn());
-    const input = screen.getByRole('textbox', { name: 'Variable name' });
+    const input = screen.getByRole('textbox', { name: 'Attribute name' });
 
     fireEvent.change(input, { target: { value: 'my.name[0]' } });
 
@@ -94,7 +94,7 @@ describe('NewVariableWindow seeding across opens', () => {
     const { rerender } = render(
       <NewVariableWindow {...props} show initialValues={first} />,
     );
-    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
       'firstVariable',
     );
 
@@ -103,7 +103,7 @@ describe('NewVariableWindow seeding across opens', () => {
     );
     rerender(<NewVariableWindow {...props} show initialValues={second} />);
 
-    expect(screen.getByRole('textbox', { name: 'Variable name' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
       'secondVariable',
     );
   });

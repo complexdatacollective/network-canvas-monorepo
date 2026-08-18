@@ -122,12 +122,12 @@ const VariableRow = ({
           </span>
         </div>
         <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
-          <IssueAnchor fieldName={name} description={`${label} Variable`} />
+          <IssueAnchor fieldName={name} description={`${label} Attribute`} />
           <ArchitectField
             name={name}
             component={VariablePickerControl}
             validation={{ required: true, crossClassPick }}
-            label={`${label} variable`}
+            label={`${label} attribute`}
             labelHidden
             initialValue={initialValue}
             entity="edge"
@@ -397,7 +397,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
               the pedigree appears in your exported data.
             </Paragraph>
             <Paragraph>
-              Select the edge type to use, along with the variables that store
+              Select the edge type to use, along with the attributes that store
               the details of each relationship.
             </Paragraph>
           </>
@@ -409,7 +409,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             name="edgeConfig.type"
             component={EntitySelectControl}
             entityType="edge"
-            promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the variables selected for this edge type must be cleared. Do you want to change the edge type now?"
+            promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the attributes selected for this edge type must be cleared. Do you want to change the edge type now?"
             validation={{ required: true }}
             label="Edge type"
             initialValue={edgeTypeInitial}
@@ -452,7 +452,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
             <VariableRow
               name="edgeConfig.gameteRoleVariable"
               label="Gamete Role"
-              description="Stores which reproductive cell (gamete) a parent contributed to a child: the egg or the sperm. The interface uses this to trace the biological route of inheritance along each parent relationship. This variable uses a fixed set of values (egg/sperm) that cannot be edited."
+              description="Stores which reproductive cell (gamete) a parent contributed to a child: the egg or the sperm. The interface uses this to trace the biological route of inheritance along each parent relationship. This attribute uses a fixed set of values (egg/sperm) that cannot be edited."
               edgeType={edgeType}
               options={gameteRoleVariableOptions}
               onCreateOption={handleNewGameteRoleVariable}

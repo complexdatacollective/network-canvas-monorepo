@@ -24,7 +24,7 @@ const QuickAdd = ({ quickAdd = null }: QuickAddProps) => {
         rotated
         rows={[
           [
-            <span key="label">Variable</span>,
+            <span key="label">Attribute</span>,
             <Variable key="var" id={quickAdd} />,
           ],
           [

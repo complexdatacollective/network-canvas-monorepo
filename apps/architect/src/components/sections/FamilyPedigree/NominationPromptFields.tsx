@@ -89,14 +89,14 @@ const NominationPromptFields = ({
   return (
     <>
       <PromptText initialValue={asString(item?.text)} />
-      <Section title="Variable" layout="vertical">
+      <Section title="Attribute" layout="vertical">
         <>
           <div id={getFieldId('variable')} />
           <ArchitectField
             name="variable"
             component={VariablePickerControl}
             validation={{ required: true }}
-            label="Variable"
+            label="Attribute"
             labelHidden
             initialValue={asString(item?.variable)}
             entity="node"

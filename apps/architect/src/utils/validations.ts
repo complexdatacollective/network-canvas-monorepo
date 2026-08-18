@@ -307,7 +307,7 @@ const minDate =
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 const allowedVariableName =
-  (name = 'variable name'): Validator =>
+  (name = 'attribute name'): Validator =>
   (value) => {
     if (!/^[a-zA-Z0-9._\-:]+$/.test(value as string)) {
       return `Not a valid ${name}. Only letters, numbers and the symbols ._-: are supported`;

@@ -89,7 +89,7 @@ describe('AnonymisationValidation', () => {
       screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('group', { name: 'Compare to another variable' }),
+      screen.queryByRole('group', { name: 'Compare to another attribute' }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('switch', { name: 'Minimum length', hidden: true }),

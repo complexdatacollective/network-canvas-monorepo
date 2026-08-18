@@ -36,7 +36,7 @@ describe('<ExperimentsPage />', () => {
     render(<ExperimentsPage />);
 
     expect(
-      screen.getByRole('switch', { name: 'Encrypted Variables' }),
+      screen.getByRole('switch', { name: 'Encrypted Attributes' }),
     ).toBeVisible();
   });
 

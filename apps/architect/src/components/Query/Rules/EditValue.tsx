@@ -1,6 +1,6 @@
-import type { ComponentType } from 'react';
 import { withProps } from 'react-recompose';
 
+import type { ValidFieldComponent } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -129,7 +129,7 @@ const EditValue = ({
     name="value"
     onChange={onChange}
     value={value}
-    options={options}
+    options={options.length > 0 ? options : undefined}
     {...fieldConfig.props}
     {...rest}
   />
@@ -144,7 +144,7 @@ type MappedProps = {
 };
 
 type FieldConfig = {
-  component: ComponentType<Record<string, unknown>>;
+  component: ValidFieldComponent;
   props: Record<string, unknown>;
 };
 

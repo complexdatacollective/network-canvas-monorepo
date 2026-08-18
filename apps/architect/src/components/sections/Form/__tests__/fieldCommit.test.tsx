@@ -148,7 +148,7 @@ describe('useFormFieldCommit', () => {
 
     expect(result).toEqual({
       success: false,
-      formErrors: ['Variable not found'],
+      formErrors: ['Attribute not found'],
     });
   });
 

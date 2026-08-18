@@ -593,7 +593,7 @@ const comparisonLabel = (
   const { stageSubject, codebook, variableLabels } = context;
   invariant(
     getVariableDefinition(codebook, stageSubject, attribute),
-    'Comparison variable not found in codebook',
+    'Comparison attribute not found in codebook',
   );
 
   return variableLabels?.[attribute];

@@ -38,7 +38,7 @@ export async function enableOtherOption(
   await createVariableViaSpotlight(page, {
     variableName: opts.variableName,
     scope: section,
-    until: section.getByRole('button', { name: 'Change variable' }),
+    until: section.getByRole('button', { name: 'Change attribute' }),
   });
   await editor.fillRichText('Label for Bin', opts.optionLabel);
   await editor.fillRichText('Question Prompt for Dialog', opts.variablePrompt);

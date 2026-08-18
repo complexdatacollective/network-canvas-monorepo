@@ -196,7 +196,7 @@ export const categoricalBinPromptSchema = promptSchema
     if (prompt.otherVariable === '') {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'otherVariable must name a variable.',
+        message: 'otherVariable must name an attribute.',
         path: ['otherVariable'],
       });
       return;

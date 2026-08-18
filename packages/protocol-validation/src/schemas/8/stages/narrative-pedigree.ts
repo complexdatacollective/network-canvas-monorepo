@@ -59,7 +59,7 @@ export const narrativePedigreeStage = baseStageSchema.extend({
         if (seenVariables.has(disease.variable)) {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `Diseases contain duplicate variable "${disease.variable}"`,
+            message: `Diseases contain duplicate attribute "${disease.variable}"`,
             path: [index, 'variable'],
           });
         } else {

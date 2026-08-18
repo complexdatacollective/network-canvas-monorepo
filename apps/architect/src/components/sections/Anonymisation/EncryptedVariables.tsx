@@ -63,9 +63,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         return true;
       }
       const confirmed = await confirm({
-        title: 'This will clear selected variables',
-        description: `This will deselect all encrypted variables for the ${nodeType.name} node type. Do you want to continue?`,
-        confirmLabel: 'Clear encrypted variables',
+        title: 'This will clear selected attributes',
+        description: `This will deselect all encrypted attributes for the ${nodeType.name} node type. Do you want to continue?`,
+        confirmLabel: 'Clear encrypted attributes',
         cancelLabel: 'Cancel',
         intent: 'warning',
         onConfirm: () => {},
@@ -110,16 +110,16 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
   );
   return (
     <Section
-      title="Encrypted Variables"
+      title="Encrypted Attributes"
       summary={
         <>
           <Paragraph>
-            You may encrypt one or more text variables. Select the text
-            variables for each node type that should be encrypted.
+            You may encrypt one or more text attributes. Select the text
+            attributes for each node type that should be encrypted.
           </Paragraph>
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              Values for encrypted variables are not stored in the database.
+              Values for encrypted attributes are not stored in the database.
             </AlertDescription>
           </Alert>
         </>
@@ -144,7 +144,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
               handleToggleChange(hasEncryptedVariable, nodeType, newState)
             }
             summary={
-              <Paragraph>Which variables should be encrypted?</Paragraph>
+              <Paragraph>
+                Enable this section to encrypt attributes for this node type.
+              </Paragraph>
             }
           >
             <div className="max-h-75 overflow-y-auto">

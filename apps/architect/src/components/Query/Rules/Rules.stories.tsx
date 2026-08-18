@@ -242,7 +242,7 @@ const ALL_RULE_EXAMPLES: Rule[] = [
 
 const toRuleSetValue = (
   candidate: unknown,
-): { rules: Rule[]; join?: string } | null => {
+): { rules: Rule[]; join: string | undefined } | null => {
   if (
     !candidate ||
     typeof candidate !== 'object' ||
@@ -254,9 +254,10 @@ const toRuleSetValue = (
 
   return {
     rules: candidate.rules as Rule[],
-    ...('join' in candidate && typeof candidate.join === 'string'
-      ? { join: candidate.join }
-      : {}),
+    join:
+      'join' in candidate && typeof candidate.join === 'string'
+        ? candidate.join
+        : undefined,
   };
 };
 
@@ -306,7 +307,7 @@ actions; the shared ArrayField pattern owns adding, focus return, deletion and
 empty state behavior.
 
 The **All rule types** story is an exhaustive visual inventory: it covers node
-and edge presence rules, node/edge/ego attribute rules, every variable type,
+and edge presence rules, node/edge/ego attribute rules, every attribute type,
 every operator the rule editor exposes, and multi-value categorical operands.
 The story remains fully interactive inside a keyboard-accessible scroll area,
 so each example can be edited, removed, or supplemented with a new rule.
@@ -350,7 +351,7 @@ export const AllRuleTypes: Story = {
 
     const multiValueRule = canvas
       .getByRole('button', {
-        name: /^Edit rule: Ego has categorical variable Selected groups that includes Family,/,
+        name: /^Edit rule: Ego has categorical attribute Selected groups that includes Family,/,
       })
       .closest('li');
     const values = multiValueRule?.querySelectorAll('[data-rule-part="value"]');

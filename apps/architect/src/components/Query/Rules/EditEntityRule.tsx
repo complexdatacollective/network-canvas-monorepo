@@ -150,7 +150,7 @@ const EditEntityRule = ({
         <RuleField
           component={RichSelectGroupField}
           label="Rule type"
-          hint="Select whether this rule will be based on the entity type or a variable."
+          hint="Select whether this rule will be based on the entity type or an attribute."
           options={entityRuleTypeOptions(entityType)}
           value={entityRuleType}
           onChange={(_event, value) =>
@@ -177,10 +177,10 @@ const EditEntityRule = ({
         <Section layout="vertical">
           <RuleField
             component={NativeSelectField}
-            label="Variable"
-            hint="Select a variable to base this rule on."
+            label="Attribute"
+            hint="Select an attribute to base this rule on."
             name="attribute"
-            placeholder="Select a variable…"
+            placeholder="Select an attribute…"
             options={variablesAsOptions}
             onChange={handleRuleChange}
             value={optionsWithDefaults.attribute}
@@ -193,7 +193,7 @@ const EditEntityRule = ({
           <RuleField
             component={NativeSelectField}
             label="Operator"
-            hint="Select the operator that will be used to compare the variable to the value."
+            hint="Select the operator that will be used to compare the attribute to the value."
             name="operator"
             placeholder="Select an operator…"
             options={operatorOptions}

@@ -141,6 +141,8 @@ type CodebookVariableValidationSectionProps = {
   entity: string;
   type?: string | null;
   variableId?: string | null;
+  sectionLabel?: string;
+  sectionSummary?: string;
 };
 
 /**
@@ -151,6 +153,8 @@ type CodebookVariableValidationSectionProps = {
  * instead via `ValidationCommitObserver`.
  */
 const CodebookVariableValidationSection = ({
+  sectionLabel = 'Validation',
+  sectionSummary = 'Enable to add validation rules to the attribute.',
   fieldName,
   entity,
   type,
@@ -222,7 +226,8 @@ const CodebookVariableValidationSection = ({
         allVariables={variables}
         currentVariableId={variableId}
         id={`codebook-validation-${variableId}`}
-        summary="Choose which validation rules apply to the selected variable."
+        label={sectionLabel}
+        summary={sectionSummary}
         initialValue={currentValidation}
         commitsImmediately
       />

@@ -250,7 +250,7 @@ const EditableAttributesList = ({
         ) {
           return {
             variable:
-              'This variable is already collected by another attribute in this list. Choose a different variable, or edit the existing attribute instead.',
+              'This attribute is already collected by another attribute in this list. Choose a different attribute, or edit the existing attribute instead.',
           };
         }
         // `makeFieldEditorValidate` keys its messages at `validation`, which

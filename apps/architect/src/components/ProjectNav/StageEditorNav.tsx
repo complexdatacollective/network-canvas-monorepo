@@ -185,15 +185,9 @@ const StageEditorNav = ({
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {
     const items: ToolbarSegment[] = [
       ...(issuesSegment ? [issuesSegment] : []),
-      {
-        type: 'button',
-        id: 'cancel',
-        label: 'Cancel',
-        icon: <X />,
-        showLabel: true,
-        onClick: onCancel,
-      },
-      { type: 'separator', id: 'cancel-history-separator' },
+      ...(issuesSegment
+        ? [{ type: 'separator' as const, id: 'issues-history-separator' }]
+        : []),
       {
         type: 'button',
         id: 'undo',
@@ -210,10 +204,18 @@ const StageEditorNav = ({
         disabled: !canRedo,
         onClick: redo,
       },
+      { type: 'separator', id: 'history-actions-separator' },
+      {
+        type: 'button',
+        id: 'cancel',
+        label: 'Cancel',
+        icon: <X />,
+        showLabel: true,
+        onClick: onCancel,
+      },
     ];
 
     if (hasUnsavedChanges) {
-      items.push({ type: 'separator', id: 'history-save-separator' });
       items.push({
         type: 'component',
         id: 'finished-editing',

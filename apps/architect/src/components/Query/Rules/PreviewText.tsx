@@ -269,7 +269,7 @@ const PreviewText = ({
           <EgoEntity /> <Copy>has</Copy>{' '}
           <span
             className="inline-flex max-w-full align-middle"
-            aria-label={`${options.variableType ?? 'text'} variable ${options.attribute ?? ''}`}
+            aria-label={`${options.variableType ?? 'text'} attribute ${options.attribute ?? ''}`}
           >
             <VariablePill
               label={options.attribute ?? ''}
@@ -404,7 +404,7 @@ const PreviewText = ({
         <Copy>where</Copy>{' '}
         <span
           className="inline-flex max-w-full align-middle"
-          aria-label={`${options.variableType ?? 'text'} variable ${options.attribute ?? ''}`}
+          aria-label={`${options.variableType ?? 'text'} attribute ${options.attribute ?? ''}`}
         >
           <VariablePill
             label={options.attribute ?? ''}

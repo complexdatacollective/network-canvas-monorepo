@@ -141,7 +141,7 @@ const COMPONENTS = {
     label: 'LikertScale',
     value: 'LikertScale',
     description:
-      'A component providing a likert-type scale in the form of a slider. Values are derived from the option properties of this variable, with labels for each option label.',
+      'A component providing a likert-type scale in the form of a slider. Values are derived from the option properties of this attribute, with labels for each option label.',
     image: 'LikertScale',
   },
   VisualAnalogScale: {
@@ -169,7 +169,7 @@ const COMPONENTS = {
     label: 'BooleanChoice',
     value: 'Boolean',
     description:
-      'A component for boolean variables that requires the participant to actively select an option. Unlike the toggle component, this component accepts the "required" validation.',
+      'A component for boolean attributes that requires the participant to actively select an option. Unlike the toggle component, this component accepts the "required" validation.',
     image: 'BooleanChoice',
   },
 };

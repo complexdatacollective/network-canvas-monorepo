@@ -163,7 +163,7 @@ describe('StageDraftConflictDialog', () => {
     // the codebook edits made while the editor was open.
     expect(dialog.description).toMatch(/cannot be combined|no safe way/i);
     expect(dialog.description).toMatch(/discards your changes to this stage/i);
-    expect(dialog.description).toMatch(/variables you added or edited/i);
+    expect(dialog.description).toMatch(/attributes you added or edited/i);
     // …and honest about what the rescue copy does NOT contain: it is built from
     // this tab's pre-demotion buffer, so the other tab's saved work is missing
     // from it.

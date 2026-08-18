@@ -75,7 +75,7 @@ const getValidationErrorContent = ({
     return (
       <>
         <Paragraph>
-          The file you attempted to import contained invalid variable names.
+          The file you attempted to import contained invalid attribute names.
         </Paragraph>
         <Paragraph>{message}</Paragraph>
         {documentationMessage}

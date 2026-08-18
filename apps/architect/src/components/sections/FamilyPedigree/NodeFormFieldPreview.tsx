@@ -33,7 +33,7 @@ const NodeFormFieldPreview = ({
         <Badge color={getColorForType(codebookVariable.type)}>
           <span>
             <strong>{codebookVariable.type}</strong>
-            {' variable using '}
+            {' attribute using '}
             <strong>{codebookVariable.component}</strong>
             {' input control'}
           </span>

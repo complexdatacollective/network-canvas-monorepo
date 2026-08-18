@@ -4420,7 +4420,7 @@ describe('Migration V7 to V8', () => {
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
         expect(migrationV7toV8.notes).toContain(
-          'migration adds `required: true` to every variable they reference',
+          'migration adds `required: true` to every attribute they reference',
         );
         expect(migrationV7toV8.notes).toContain(
           'while preserving its other validation rules',

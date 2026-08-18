@@ -161,7 +161,7 @@ const Form = ({
       if (isVariableUsedBySibling(formFields, variable, props?.editIndex)) {
         return {
           variable:
-            'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+            'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
         };
       }
       return validateField(values, props);
@@ -184,22 +184,23 @@ const Form = ({
       disabledMessage={disabledMessage}
       group
       title="Form"
-      summary="Add one or more fields to your form to collect attributes about each node the participant creates. Use the drag handle on the left of each prompt to adjust its order."
+      summary="A Network Canvas form collects attributes by mapping them to input controls and defining validation rules."
     >
       {!disableFormTitle && (
         <ArchitectField
           name="form.title"
-          label="Form heading text (e.g 'Add a person')"
+          label="Form title"
+          hint="Shown at the top of the form. Use a short descriptive title such as 'Add a contact'."
           component={InputField}
           initialValue={initialTitle}
           validation={{ required: true }}
-          placeholder="Enter your title here"
+          placeholder="Enter a title..."
         />
       )}
       <ArchitectArrayField
         name="form.fields"
         label="Form fields"
-        labelHidden={disableFormTitle}
+        hint="Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order."
         component={DialogArrayField}
         addButtonLabel="Create new form field"
         initialValue={initialFields ?? NO_FIELDS}

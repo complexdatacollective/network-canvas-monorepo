@@ -241,7 +241,6 @@ export type MultiSelectProps = Omit<
   | 'addButtonLabel'
   | 'confirmDelete'
   | 'editorComponent'
-  | 'emptyStateMessage'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -283,6 +282,7 @@ export type MultiSelectProps = Omit<
  */
 const MultiSelect = ({
   value = EMPTY_ITEMS,
+  emptyStateMessage = 'No items available.',
   onChange,
   name = '',
   addButtonLabel,
@@ -310,7 +310,7 @@ const MultiSelect = ({
           itemTemplate={itemTemplate}
           itemClasses="p-0! shadow-none"
           addButtonLabel={addButtonLabel}
-          emptyStateMessage="No properties available."
+          emptyStateMessage={emptyStateMessage}
           immediateAdd
           sortable
           confirmDelete={false}

@@ -199,7 +199,7 @@ describe('Validations behaviour', () => {
       );
       expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
       expect(
-        screen.getByRole('group', { name: 'Compare to another variable' }),
+        screen.getByRole('group', { name: 'Compare to another attribute' }),
       ).toHaveClass('w-full', 'min-w-0');
 
       expect(toggle('Minimum value')).not.toBeChecked();
@@ -237,7 +237,7 @@ describe('Validations behaviour', () => {
         screen.queryByRole('group', { name: 'Requirements' }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('group', { name: 'Compare to another variable' }),
+        screen.queryByRole('group', { name: 'Compare to another attribute' }),
       ).not.toBeInTheDocument();
     });
   });
@@ -677,7 +677,7 @@ describe('Validations behaviour', () => {
       expect(picker).not.toHaveAttribute('aria-invalid');
       expect(
         screen.queryByText(
-          `Choose a comparison variable for "${label}", or switch the rule off.`,
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
         ),
       ).not.toBeInTheDocument();
     });
@@ -793,7 +793,7 @@ describe('Validations behaviour', () => {
 
       expect(committedValidation()).toEqual({ lessThanVariable: null });
       expect(await expectSaveBlocked()).toBe(
-        'Choose a comparison variable for "Less than", or switch the rule off.',
+        'Choose a comparison attribute for "Less than", or switch the rule off.',
       );
     });
 
@@ -878,11 +878,25 @@ describe('Validations behaviour', () => {
       });
 
       expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
-      expect(
-        screen.getAllByText(
-          'Every comparable variable would make this rule impossible to satisfy.',
-        ).length,
-      ).toBeGreaterThan(0);
+      const unavailableHint = screen.getAllByText(
+        'Every comparable attribute would make this rule impossible to satisfy.',
+      )[0];
+
+      if (!unavailableHint) {
+        throw new Error('Expected the unavailable comparison hint to render.');
+      }
+
+      expect(unavailableHint).toBeVisible();
+      expect(unavailableHint.parentElement).toHaveClass(
+        'w-full',
+        'max-w-full',
+        'min-w-0',
+        'whitespace-normal',
+      );
+      expect(unavailableHint.closest('fieldset')).toHaveClass(
+        'min-w-0',
+        'whitespace-normal',
+      );
     });
 
     it('explains an empty codebook differently from an exhausted one', () => {
@@ -898,7 +912,7 @@ describe('Validations behaviour', () => {
       expect(toggle('Same as')).toHaveAttribute('aria-disabled', 'true');
       expect(
         screen.getAllByText(
-          'No other variable of this type exists to compare against.',
+          'No other attribute of this type exists to compare against.',
         ).length,
       ).toBeGreaterThan(0);
     });
@@ -1029,7 +1043,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -1058,7 +1072,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 1 possible values/),
+        screen.getByText(/This attribute has only 1 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -1082,7 +1096,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -1110,7 +1124,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -1135,7 +1149,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 3 possible values/),
+        screen.getByText(/This attribute has only 3 possible values/),
       ).toBeInTheDocument();
     });
 

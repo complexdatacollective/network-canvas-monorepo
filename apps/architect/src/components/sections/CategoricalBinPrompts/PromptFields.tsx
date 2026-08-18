@@ -4,7 +4,6 @@ import { shallowEqual } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
@@ -230,16 +229,12 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section
-        title="Categorical Variable"
-        id={getFieldId('variable')}
-        layout="vertical"
-      >
+      <Section id={getFieldId('variable')} layout="vertical">
         <>
           <ArchitectField
             name="variable"
-            label="Categorical variable"
-            labelHidden
+            label="Categorical attribute"
+            hint="Select a categorical attribute to assign a value to."
             component={VariablePicker}
             validation={{ required: true }}
             initialValue={variable}
@@ -251,33 +246,27 @@ const PromptFields = ({
         </>
         {currentVariable && (
           <>
-            <Heading level="h4" id={getFieldId('options')}>
-              Variable Options
-            </Heading>
             {lockedOptions ? (
               <LockedOptions options={lockedOptions} />
             ) : (
               <>
-                <Paragraph>
-                  Create <strong>up to 8</strong> options for this variable.
-                </Paragraph>
                 {showVariableOptionsTip && (
                   <Alert variant="destructive" className="my-7">
                     <AlertTitle>Too many option values</AlertTitle>
                     <AlertDescription>
                       The categorical bin interface is designed to use{' '}
                       <strong>up to 8 option values</strong> (including an
-                      &quot;other&quot; variable). Using more will create a
+                      &quot;other&quot; attribute). Using more will create a
                       sub-optimal experience for participants, and might reduce
-                      data quality. Consider grouping your variable options and
+                      data quality. Consider grouping your attribute options and
                       capturing further detail with follow-up questions.
                     </AlertDescription>
                   </Alert>
                 )}
                 <ArchitectArrayField
                   name="variableOptions"
-                  label="Options"
-                  labelHidden
+                  label="Option values"
+                  hint="A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute."
                   component={Options}
                   addButtonLabel="Create new option"
                   validation={optionsValidation}
@@ -295,7 +284,7 @@ const PromptFields = ({
           <Paragraph>
             You can optionally create an &quot;other&quot; option that triggers
             a follow-up dialog when nodes are dropped within it, and stores the
-            value the participant enters in a designated variable. This feature
+            value the participant enters in a designated attribute. This feature
             may be useful in order to collect values you might not have listed
             above.
           </Paragraph>
@@ -308,8 +297,8 @@ const PromptFields = ({
         <>
           <ArchitectField
             name="otherVariable"
-            label="Other variable"
-            labelHidden
+            label="Other attribute"
+            hint="Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option."
             component={VariablePicker}
             validation={{ required: true }}
             initialValue={otherVariable}
@@ -320,17 +309,21 @@ const PromptFields = ({
           />
         </>
         {currentOtherVariable && (
-          <CodebookVariableValidationSection
-            fieldName="otherVariable"
-            entity={entity}
-            type={type}
-            variableId={currentOtherVariable}
-          />
+          <div className="mb-8">
+            <CodebookVariableValidationSection
+              sectionSummary="Enable validation of the other attribute."
+              fieldName="otherVariable"
+              entity={entity}
+              type={type}
+              variableId={currentOtherVariable}
+            />
+          </div>
         )}
         <>
           <ArchitectField
             name="otherOptionLabel"
-            label="Label for Bin"
+            label="Label for 'Other' bin"
+            hint="Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above."
             component={RichTextField}
             validation={{ required: true }}
             initialValue={otherOptionLabel}
@@ -342,6 +335,7 @@ const PromptFields = ({
           <ArchitectField
             name="otherVariablePrompt"
             label="Question Prompt for Dialog"
+            hint="Enter a question prompt to show when the other option is triggered."
             component={RichTextField}
             validation={{ required: true }}
             initialValue={otherVariablePrompt}

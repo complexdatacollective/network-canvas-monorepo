@@ -835,7 +835,7 @@ describe('Validation Functions', () => {
             unknownAttribute: 'value',
           })
           .safeParse('test');
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
   });
 
@@ -1005,7 +1005,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1095,7 +1095,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1190,7 +1190,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1283,7 +1283,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {

@@ -48,11 +48,11 @@ const ProjectNav = () => {
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
     '/protocol': hasVariableRoleConflicts
-      ? 'has variables written both with and without validation'
+      ? 'has attributes written both with and without validation'
       : undefined,
     '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
     '/protocol/codebook': hasUnusedVariables
-      ? 'has unused variables'
+      ? 'has unused attributes'
       : undefined,
   };
 

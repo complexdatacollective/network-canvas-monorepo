@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
@@ -184,17 +183,7 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section
-        title="Assign Additional Variables"
-        summary={
-          <Paragraph>
-            This feature allows you to assign a variable and associated value to
-            any nodes created on this prompt. You could then use this variable
-            in your skip logic or stage filtering rules.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
+      <Section layout="vertical">
         <>
           {/*
             The field only mounts once a node type is chosen: with no subject
@@ -206,8 +195,10 @@ const PromptFields = ({
           {subject && (
             <ArchitectArrayField
               name="additionalAttributes"
-              label="Additional variables to assign"
-              labelHidden
+              label="Assign Additional Attributes"
+              hint="This feature allows you to assign an attribute and associated value
+            to any nodes created on this prompt. You could then use this
+            attribute in your skip logic or stage filtering rules."
               component={AssignAttributes}
               initialValue={additionalAttributes}
               entity={subject.entity}

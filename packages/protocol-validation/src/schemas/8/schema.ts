@@ -137,7 +137,7 @@ const validateFilterRules = (
       !hasAttribute || filterRuleAttributeExists(rule, codebook);
     if (!attributeExists && hasAttribute && 'attribute' in rule.options) {
       addIssue({
-        message: `"${rule.options.attribute}" is not a valid variable ID`,
+        message: `"${rule.options.attribute}" is not a valid attribute ID`,
         path: [...rulePath, 'options', 'attribute'],
       });
     }
@@ -151,7 +151,7 @@ const validateFilterRules = (
           validOperators && !validOperators.includes(rule.options.operator);
         if (shouldAddIssue) {
           addIssue({
-            message: `Operator "${rule.options.operator}" is not valid for variable type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
+            message: `Operator "${rule.options.operator}" is not valid for attribute type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
             path: [...rulePath, 'options', 'operator'],
           });
         }
@@ -212,12 +212,12 @@ const validateFormFieldVariable = (
   if (!variable) return;
   if (NON_RENDERABLE_VARIABLE_TYPES.has(variable.type)) {
     addIssue({
-      message: `Form field variable "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
+      message: `Form field attribute "${fieldVariable}" of type "${variable.type}" cannot be rendered as a form field.`,
       path,
     });
   } else if (!('component' in variable) || variable.component === undefined) {
     addIssue({
-      message: `Form field variable "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
+      message: `Form field attribute "${fieldVariable}" must define a component (input control) to be rendered as a form field.`,
       path,
     });
   }
@@ -284,13 +284,13 @@ const validateComposerFieldComponents = (
     }
     if (allowedComponents.length === 0) {
       addIssue({
-        message: `NetworkComposer field variable "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,
+        message: `NetworkComposer field attribute "${variable.name}" of type "${variable.type}" cannot be rendered as a form field.`,
         path,
       });
       return;
     }
     addIssue({
-      message: `NetworkComposer field for "${variable.name}" uses the "${field.component}" input control, which cannot render a ${variable.type} variable. Valid controls: ${allowedComponents.join(', ')}.`,
+      message: `NetworkComposer field for "${variable.name}" uses the "${field.component}" input control, which cannot render a ${variable.type} attribute. Valid controls: ${allowedComponents.join(', ')}.`,
       path,
     });
   });
@@ -554,7 +554,7 @@ const validateComposerFieldContradictions = (
     const causeName =
       codebookVariables[causeField.variable]?.name ?? causeField.variable;
     addIssue({
-      message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked variables contradictory: ${contradiction.message}`,
+      message: `NetworkComposer field overrides for "${causeName}" propagate through its validation rules and make its linked attributes contradictory: ${contradiction.message}`,
       path: [...fieldsPath, causeIndex, 'parameters'],
     });
   }
@@ -691,7 +691,7 @@ const ProtocolSchema = z
     for (const conflict of findExclusiveVariableConflicts(protocol, hits)) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Variable "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
+        message: `Attribute "${conflict.variableName}" is set by ${conflict.owner.owner}, so it cannot be used anywhere else in this protocol.`,
         path: conflict.path,
       });
     }
@@ -728,7 +728,7 @@ const ProtocolSchema = z
           : undefined;
       ctx.addIssue({
         code: 'custom' as const,
-        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} variable "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
+        message: `${owningStage?.type ?? 'Stage'} ${optionSet.label} attribute "${binding.variableId}" must use its fixed set of options and cannot be modified.`,
         path: binding.path,
       });
     }
@@ -943,7 +943,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== 'layout') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Layout variable "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
+                message: `Layout attribute "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -974,7 +974,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== 'boolean') {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Highlight variable "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
+                message: `Highlight attribute "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1005,7 +1005,7 @@ const ProtocolSchema = z
         if (variable && variable.type !== 'text') {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `quickAdd variable "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
+            message: `quickAdd attribute "${stage.quickAdd}" must be of type "text", but is "${variable.type}".`,
             path: ['stages', stageIndex, 'quickAdd'],
           });
         }
@@ -1079,7 +1079,7 @@ const ProtocolSchema = z
               if (variable && variable.type !== 'location') {
                 ctx.addIssue({
                   code: 'custom' as const,
-                  message: `Geospatial prompt variable "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
+                  message: `Geospatial prompt attribute "${prompt.variable}" must be of type "location", but is "${variable.type}".`,
                   path: [
                     'stages',
                     stageIndex,
@@ -1189,7 +1189,7 @@ const ProtocolSchema = z
           if (!nodeVariable) {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
+              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" does not exist on node type "${stage.nodeConfig.type}".`,
               path: [
                 'stages',
                 stageIndex,
@@ -1201,7 +1201,7 @@ const ProtocolSchema = z
           } else if (nodeVariable.type !== 'boolean') {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `FamilyPedigree nomination prompt variable "${prompt.variable}" must be a boolean variable, but is "${nodeVariable.type}".`,
+              message: `FamilyPedigree nomination prompt attribute "${prompt.variable}" must be a boolean attribute, but is "${nodeVariable.type}".`,
               path: [
                 'stages',
                 stageIndex,
@@ -1250,7 +1250,7 @@ const ProtocolSchema = z
             if (!sourceVariable) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease variable "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
+                message: `NarrativePedigree disease attribute "${disease.variable}" does not exist on source node type "${sourceNodeType}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1265,7 +1265,7 @@ const ProtocolSchema = z
               // affected set (a clinically blank pedigree).
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `NarrativePedigree disease variable "${disease.variable}" must be a boolean variable (affected/not affected), but is "${sourceVariable.type}".`,
+                message: `NarrativePedigree disease attribute "${disease.variable}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1300,7 +1300,7 @@ const ProtocolSchema = z
             if (variable && variable.type !== expectedType) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `${stage.type} prompt variable "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
+                message: `${stage.type} prompt attribute "${prompt.variable}" must be of type "${expectedType}", but is "${variable.type}".`,
                 path: [
                   'stages',
                   stageIndex,
@@ -1448,7 +1448,7 @@ const ProtocolSchema = z
             ) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Discrete shape mapping requires a categorical, ordinal, or boolean variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                message: `Discrete shape mapping requires a categorical, ordinal, or boolean attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
                 path: [...basePath, 'type'],
               });
             }
@@ -1458,7 +1458,7 @@ const ProtocolSchema = z
             ) {
               ctx.addIssue({
                 code: 'custom' as const,
-                message: `Breakpoint shape mapping requires a number or scalar variable, but "${dynamic.variable}" is of type "${variable.type}"`,
+                message: `Breakpoint shape mapping requires a number or scalar attribute, but "${dynamic.variable}" is of type "${variable.type}"`,
                 path: [...basePath, 'type'],
               });
             }

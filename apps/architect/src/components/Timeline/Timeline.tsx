@@ -396,7 +396,7 @@ const Timeline = () => {
           ref={addStageRef}
           className={cx(
             timelineRowGrid,
-            'focusable group mt-3 cursor-pointer p-4',
+            'focusable group relative z-1 mt-3 cursor-pointer p-4',
           )}
           onClick={() => handleInsertStage(stages.length)}
           initial={animate ? 'hidden' : false}

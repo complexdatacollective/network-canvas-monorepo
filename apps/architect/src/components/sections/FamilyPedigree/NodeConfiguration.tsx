@@ -176,12 +176,12 @@ const VariableRow = ({
           </span>
         </div>
         <div className="relative w-full min-w-0 @min-[34rem]:flex-1 @min-[34rem]:basis-0">
-          <IssueAnchor fieldName={name} description={`${label} Variable`} />
+          <IssueAnchor fieldName={name} description={`${label} Attribute`} />
           <ArchitectField
             name={name}
             component={VariablePickerControl}
             validation={{ required: true, crossClassPick }}
-            label={`${label} variable`}
+            label={`${label} attribute`}
             labelHidden
             initialValue={initialValue}
             entity="node"
@@ -401,7 +401,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       ) {
         return {
           variable:
-            'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+            'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
         };
       }
       return validateField(values, props);
@@ -646,7 +646,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         // where `useSelector` runs).
         const current = get(allVariables, variable ?? '');
         if (!current) {
-          return { success: false, formErrors: ['Variable not found'] };
+          return { success: false, formErrors: ['Attribute not found'] };
         }
         await dispatch(
           updateVariableAsync({
@@ -689,7 +689,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         title="Node Configuration"
         summary={
           <Paragraph>
-            Select the node type and configure variables and form fields for
+            Select the node type and configure attributes and form fields for
             family members.
           </Paragraph>
         }
@@ -719,7 +719,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               <VariableRow
                 name="nodeConfig.nodeLabelVariable"
                 label="Node Label"
-                description="A text variable used to store the display label for each family member other than the participant."
+                description="A text attribute used to store the display label for each family member other than the participant."
                 entityType={nodeType}
                 options={nodeLabelVariableOptions}
                 onCreateOption={handleNewNodeLabelVariable}
@@ -736,7 +736,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               <VariableRow
                 name="nodeConfig.egoVariable"
                 label="Ego Identifier"
-                description="A boolean variable to identify which node represents the participant (ego) in the family pedigree."
+                description="A boolean attribute to identify which node represents the participant (ego) in the family pedigree."
                 entityType={nodeType}
                 options={egoVariableOptions}
                 onCreateOption={handleNewEgoVariable}
@@ -753,7 +753,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
               />
               <VariableRow
                 name="nodeConfig.biologicalSexVariable"
-                label="Biological Sex Variable"
+                label="Biological Sex Attribute"
                 description="Stores each family member’s sex recorded at birth (female/male/intersex/don’t know/prefer not to say), used for sex-linked inheritance."
                 entityType={nodeType}
                 options={biologicalSexVariableOptions}

@@ -147,7 +147,7 @@ export const INTERFACE_TYPES: InterfaceType[] = [
     type: 'TieStrengthCensus',
     title: 'Tie-Strength Census',
     description:
-      'Combines a dyad census with an ordinal variable to simultaneously capture the strength of ties between alters.',
+      'Combines a dyad census with an ordinal attribute to simultaneously capture the strength of ties between alters.',
   },
   {
     category: CATEGORIES.SOCIOGRAMS,

@@ -39,6 +39,8 @@ export type SegmentContent = {
   showLabel?: boolean;
   /** Fresco Button variant. @default 'text' */
   variant?: ButtonProps['variant'];
+  /** Fresco Button semantic colour. @default 'default' */
+  color?: ButtonProps['color'];
   /**
    * Tailwind classes forwarded to the underlying control — e.g. to colour a
    * segment with named theme colours: `className="bg-tomato text-white"`.
@@ -121,6 +123,10 @@ export type PopoverSegment = {
   onOpenChange: (open: boolean) => void;
   /** Which side of the trigger the popover opens on. @default 'right' */
   side?: 'top' | 'right' | 'bottom' | 'left';
+  /** Classes applied to the popover surface rather than its trigger. */
+  popoverClassName?: React.ComponentProps<typeof PopoverContent>['className'];
+  /** Whether to show an arrow connecting the popover to its trigger. @default false */
+  showArrow?: React.ComponentProps<typeof PopoverContent>['showArrow'];
   /**
    * Where focus goes when the popover closes. Defaults to the trigger, which
    * is right for a popover the person merely dismissed and wrong for one whose
@@ -219,6 +225,7 @@ function segmentButton(
   return (
     <Button
       variant={content.variant ?? 'text'}
+      color={content.color}
       size={size}
       icon={content.icon}
       aria-label={labelVisible ? undefined : content.label}
@@ -495,7 +502,8 @@ function ToolbarPopoverSegment({
       )}
       <PopoverContent
         side={segment.side ?? overlaySide(orientation)}
-        showArrow={false}
+        className={segment.popoverClassName}
+        showArrow={segment.showArrow ?? false}
         finalFocus={segment.finalFocus}
       >
         {segment.children}

@@ -97,7 +97,7 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(onSelect).toHaveBeenCalledWith('advice');
   });
 
-  it('renders a popover segment that advertises a popup and shows its content when open', () => {
+  it('renders a configured popover surface and arrow', () => {
     const items: ToolbarSegment[] = [
       {
         type: 'popover',
@@ -107,13 +107,19 @@ describe('SegmentedToolbar — buttons & separators', () => {
         pressed: true,
         open: true,
         onOpenChange: vi.fn(),
-        children: <input aria-label="Name" />,
+        popoverClassName: 'p-0',
+        showArrow: true,
+        children: <input aria-label="Name" data-testid="popover-content" />,
       },
     ];
     render(<SegmentedToolbar label="Tools" items={items} />);
     const trigger = screen.getByRole('button', { name: 'Add node' });
     expect(trigger).toHaveAttribute('aria-haspopup');
     expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+
+    const popup = screen.getByTestId('popover-content').parentElement;
+    expect(popup).toHaveClass('p-0');
+    expect(popup?.querySelector('[data-side] svg')).toBeInTheDocument();
   });
 
   it('calls onOpenChange when the popover trigger is clicked', async () => {
@@ -354,6 +360,28 @@ describe('SegmentedToolbar — colour', () => {
     expect(button).toHaveClass('bg-tomato');
     expect(button).toHaveClass('text-white');
     expect(button).not.toHaveClass('hover:enabled:bg-(--component-text)');
+  });
+
+  it('forwards semantic colours to segment buttons', () => {
+    const items: ToolbarSegment[] = [
+      {
+        type: 'popover',
+        id: 'issues',
+        label: 'Issues',
+        icon: <Pencil />,
+        color: 'warning',
+        open: false,
+        onOpenChange: vi.fn(),
+        children: <div>Issue list</div>,
+      },
+    ];
+    render(<SegmentedToolbar label="Tools" items={items} />);
+
+    expect(screen.getByRole('button', { name: 'Issues' })).toHaveClass(
+      'focus:outline-warning',
+      '[--component-text:var(--warning)]',
+      '[--component-bg:var(--warning-contrast)]',
+    );
   });
 });
 

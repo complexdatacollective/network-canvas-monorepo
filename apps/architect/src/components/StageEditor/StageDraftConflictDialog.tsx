@@ -37,10 +37,10 @@ import { flushStageLiveValues } from './StageFormBridge';
 const CONFLICT_TITLE = 'Choose what to do with your unsaved changes';
 
 const PENDING_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your changes to this stage, along with any variables you added or edited while it was open.';
+  'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your changes to this stage, along with any attributes you added or edited while it was open.';
 
 const DOWNLOADED_DESCRIPTION =
-  'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your changes to this stage, along with any variables you added or edited while it was open.';
+  'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your changes to this stage, along with any attributes you added or edited while it was open.';
 
 type StageDraftConflictDialogProps = {
   /** The stage being edited, or `null` when the editor is creating one. */

@@ -94,7 +94,7 @@ const PromptFieldsLayout = ({
       title="Layout"
       summary={
         <Paragraph>
-          This variable stores the position of nodes on the sociogram.
+          This attribute stores the position of nodes on the sociogram.
         </Paragraph>
       }
       group
@@ -103,14 +103,14 @@ const PromptFieldsLayout = ({
       <>
         <Alert variant="info" className="my-7">
           <AlertDescription>
-            If you use the same layout variable across all prompts, the position
-            of nodes will be automatically set as the participant moves between
-            tasks.
+            If you use the same layout attribute across all prompts, the
+            position of nodes will be automatically set as the participant moves
+            between tasks.
           </AlertDescription>
         </Alert>
         <ArchitectField
           name="layout.layoutVariable"
-          label="Create or select a variable to store node coordinates"
+          label="Create or select an attribute to store node coordinates"
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={layout?.layoutVariable ?? undefined}

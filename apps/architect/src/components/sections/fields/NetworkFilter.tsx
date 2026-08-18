@@ -77,6 +77,7 @@ const NetworkFilter = ({
   return (
     <Section
       title="Filter"
+      summary="Enable to filter the nodes and edges that are displayed to participants in this panel."
       toggleable
       startExpanded={hasFilter}
       handleToggleChange={handleToggleChange}
@@ -91,8 +92,8 @@ const NetworkFilter = ({
       */}
       <ArchitectField
         name={name}
-        label="Filter"
-        labelHidden
+        label="Rules"
+        hint="Create one or more rules that must match in order for a node or edge to be shown in this panel."
         component={FilterField}
         initialValue={initialFilter}
         allowEdgeRules={allowEdgeRules}

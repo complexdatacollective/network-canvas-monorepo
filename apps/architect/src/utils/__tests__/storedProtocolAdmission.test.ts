@@ -98,7 +98,7 @@ describe('admitStoredProtocol', () => {
 
     expect(result.success).toBe(false);
     expect(!result.success && result.error.message).toContain(
-      'the same variable',
+      'the same attribute',
     );
     expect(validate).not.toHaveBeenCalled();
     expect(markValidated).not.toHaveBeenCalled();

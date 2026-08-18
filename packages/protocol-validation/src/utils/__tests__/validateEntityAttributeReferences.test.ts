@@ -32,7 +32,7 @@ describe('validateReferences', () => {
     expect(issues).toEqual([
       {
         code: 'custom',
-        message: 'The variable "MISSING" does not exist in the codebook',
+        message: 'The attribute "MISSING" does not exist in the codebook',
         path: ['stages', 0, 'prompts', 0, 'variable'],
       },
     ]);
@@ -50,7 +50,7 @@ describe('validateReferences', () => {
     expect(issues).toEqual([
       {
         code: 'custom',
-        message: 'The variable "age" must be of type ordinal',
+        message: 'The attribute "age" must be of type ordinal',
         path: ['p'],
       },
     ]);
@@ -100,7 +100,7 @@ describe('validateReferences', () => {
       {
         code: 'custom',
         message:
-          'The "sameAs" rule on variable "age" must reference another number variable, but "rank" is ordinal',
+          'The "sameAs" rule on attribute "age" must reference another number attribute, but "rank" is ordinal',
         path,
       },
     ]);

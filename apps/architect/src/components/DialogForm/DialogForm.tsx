@@ -57,6 +57,8 @@ export type DialogFormProps = {
    */
   layoutId?: string;
   style?: React.CSSProperties;
+  /** Semantic width preset forwarded to the underlying Dialog. */
+  size?: DialogProps['size'];
   /**
    * Where focus RETURNS when this dialog closes. Resolve lazily (a function) —
    * it is read after the exit animation, by which time a control that unmounted
@@ -87,6 +89,7 @@ const DialogFormBody = ({
   editIndex,
   layoutId,
   style,
+  size,
   finalFocus,
   aside,
   children,
@@ -158,7 +161,7 @@ const DialogFormBody = ({
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}
-      size={aside ? 'workspace' : undefined}
+      size={size ?? (aside ? 'workspace' : undefined)}
       footer={
         <>
           <Button

@@ -75,6 +75,28 @@ describe('<Issues />', () => {
     expect(await screen.findAllByTestId('issue')).toHaveLength(3);
   });
 
+  it('uses the semantic warning colour for its toolbar segment', () => {
+    const view = renderStageForm({ children: <IssuesHarness /> });
+
+    act(() => {
+      view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
+      view.getContext().markSubmitFailed();
+    });
+
+    expect(popoverSegment()).toMatchObject({
+      color: 'warning',
+      popoverClassName: 'p-0',
+      showArrow: true,
+    });
+    expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
+      'focus:outline-warning',
+    );
+    expect(screen.getByRole('dialog').lastElementChild).toHaveClass(
+      'overflow-hidden',
+      'rounded-[inherit]',
+    );
+  });
+
   describe('a field that fails several rules', () => {
     // Reachable today via an Introduction Panel / Anonymisation title over 50
     // characters that trims to empty: `required` and `maxLength` both fail, and

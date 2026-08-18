@@ -86,6 +86,7 @@ const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         onBeforeSave={onBeforeSave}
         itemSelector={makeItemSelector(entity, type)}
         editorProps={{ entity, type }}

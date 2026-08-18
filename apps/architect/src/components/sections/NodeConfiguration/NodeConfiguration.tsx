@@ -279,7 +279,7 @@ export const NodeConfigurationComponent = ({
       title="Node Configuration"
       summary={
         <Paragraph>
-          Configure the variable mappings, layout behaviour, group hulls, and
+          Configure the attribute mappings, layout behaviour, group hulls, and
           the attributes collected for each node.
         </Paragraph>
       }
@@ -288,14 +288,14 @@ export const NodeConfigurationComponent = ({
       layout="horizontal"
     >
       <Subsection
-        title="Quick add variable"
-        summary="The variable populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
+        title="Quick add attribute"
+        summary="The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
       >
         <>
-          <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
+          <IssueAnchor fieldName="quickAdd" description="Quick Add Attribute" />
           <ArchitectField
             name="quickAdd"
-            label="Create or select a variable for the quick-add form"
+            label="Create or select an attribute for the quick-add form"
             component={VariablePicker}
             initialValue={initialQuickAdd}
             validation={{
@@ -324,16 +324,16 @@ export const NodeConfigurationComponent = ({
 
       <Subsection
         title="Node positions"
-        summary="Stores each node's position on the canvas. Reusing the same variable across stages preserves positions as the participant moves between tasks."
+        summary="Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks."
       >
         <>
           <IssueAnchor
             fieldName="layoutVariable"
-            description="Layout Variable"
+            description="Layout Attribute"
           />
           <ArchitectField
             name="layoutVariable"
-            label="Create or select a variable to store node coordinates"
+            label="Create or select an attribute to store node coordinates"
             component={VariablePicker}
             initialValue={initialLayoutVariable}
             validation={{ required: true }}
@@ -368,16 +368,16 @@ export const NodeConfigurationComponent = ({
 
       <Subsection
         title="Group hulls"
-        summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. Choose (or create) the variable whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
+        summary="Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
         <>
           <IssueAnchor
             fieldName="convexHullVariable"
-            description="Group hull variable"
+            description="Group hull attribute"
           />
           <ArchitectField
             name="convexHullVariable"
-            label="Create or select a categorical variable for grouping"
+            label="Create or select a categorical attribute for grouping"
             component={VariablePicker}
             initialValue={initialConvexHullVariable}
             validation={{ crossClassPick: convexHullCrossClassValidate }}
@@ -396,7 +396,7 @@ export const NodeConfigurationComponent = ({
 
       <Subsection
         title="Editable attributes"
-        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
       >
         <EditableAttributesList
           fieldName="nodeForm.fields"

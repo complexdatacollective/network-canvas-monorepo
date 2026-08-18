@@ -405,7 +405,7 @@ describe('Validations', () => {
       'rejects %s',
       (value) => {
         expect(allowedVariableName()(value)).toBe(
-          'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported',
+          'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
         );
       },
     );

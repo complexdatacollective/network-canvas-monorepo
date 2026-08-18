@@ -64,7 +64,7 @@ export const useCreateVariable = (
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          title: 'Could not create variable',
+          title: 'Could not create attribute',
           description: message,
           actions: { primary: { label: 'OK', value: true } },
         });

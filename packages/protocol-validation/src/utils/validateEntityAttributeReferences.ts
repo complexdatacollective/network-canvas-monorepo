@@ -35,7 +35,7 @@ export const validateReferences = (
     if (!variableExists(codebook, hit.subject, hit.variableId)) {
       issues.push({
         code: 'custom',
-        message: `The variable "${hit.variableId}" does not exist in the codebook`,
+        message: `The attribute "${hit.variableId}" does not exist in the codebook`,
         path: hit.path,
       });
       continue;
@@ -47,7 +47,7 @@ export const validateReferences = (
       if (variable && !hit.requireType.includes(variable.type)) {
         issues.push({
           code: 'custom',
-          message: `The variable "${hit.variableId}" must be of type ${hit.requireType.join(' or ')}`,
+          message: `The attribute "${hit.variableId}" must be of type ${hit.requireType.join(' or ')}`,
           path: hit.path,
         });
       }
@@ -70,7 +70,7 @@ export const validateReferences = (
       if (source && target && source.type !== target.type) {
         issues.push({
           code: 'custom',
-          message: `The "${rule}" rule on variable "${source.name}" must reference another ${source.type} variable, but "${target.name}" is ${target.type}`,
+          message: `The "${rule}" rule on attribute "${source.name}" must reference another ${source.type} attribute, but "${target.name}" is ${target.type}`,
           path: hit.path,
         });
       }

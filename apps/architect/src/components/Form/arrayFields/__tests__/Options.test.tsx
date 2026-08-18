@@ -155,7 +155,7 @@ describe('Options', () => {
 
     expect(
       await screen.findByText(
-        'Requires a minimum of two options. If you need fewer options, consider using a boolean variable.',
+        'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
       ),
     ).toBeInTheDocument();
     expect(

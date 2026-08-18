@@ -128,7 +128,7 @@ const Asset = ({ id, size = null }: AssetProps) => {
           rows={[
             ['Name', name],
             ['Type', 'Network'],
-            ['Variables', variables],
+            ['Attributes', variables],
           ]}
         />
       )}

@@ -72,7 +72,9 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Bin Sort Order' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Set the order of nodes in bins' }),
+    );
 
     await waitFor(() => {
       expect(

@@ -24,7 +24,7 @@ export type { OptionValue } from './Option';
  */
 export const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
-    ? 'Requires a minimum of two options. If you need fewer options, consider using a boolean variable.'
+    ? 'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.'
     : undefined;
 
 export const completeOptions = (value: unknown) =>

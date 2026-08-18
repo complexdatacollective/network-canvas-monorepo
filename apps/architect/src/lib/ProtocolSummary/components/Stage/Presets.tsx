@@ -30,7 +30,7 @@ const Presets = ({ presets = null }: PresetsProps) => {
                 rotated
                 rows={[
                   [
-                    'Layout variable',
+                    'Layout attribute',
                     <Variable
                       key={`layout-${preset.layoutVariable}`}
                       id={preset.layoutVariable ?? ''}
@@ -47,7 +47,7 @@ const Presets = ({ presets = null }: PresetsProps) => {
                     </ul>,
                   ],
                   [
-                    'Group variable',
+                    'Group attribute',
                     <Variable
                       key={`group-${preset.groupVariable}`}
                       id={preset.groupVariable ?? ''}

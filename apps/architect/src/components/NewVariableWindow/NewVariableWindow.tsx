@@ -88,11 +88,11 @@ const NewVariableFields = ({
 
   return (
     <Section layout="vertical">
-      <Subsection id={getFieldId('name')} title="Variable Name">
+      <Subsection id={getFieldId('name')} title="Attribute Name">
         <ArchitectField
           name="name"
-          label="Variable name"
-          hint="The variable name is how you will reference the variable elsewhere, including in exported data."
+          label="Attribute name"
+          hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
           component={VariableNameField}
           placeholder="e.g. Nickname"
           initialValue={
@@ -107,13 +107,13 @@ const NewVariableFields = ({
           }}
         />
       </Subsection>
-      <Subsection id={getFieldId('type')} title="Variable Type">
+      <Subsection id={getFieldId('type')} title="Attribute Type">
         <ArchitectField
           name="type"
-          label="Variable type"
+          label="Attribute type"
           labelHidden
           component={StyledSelectField}
-          placeholder="Select variable type"
+          placeholder="Select attribute type"
           options={variableTypeOptions}
           initialValue={
             typeof initialValues.type === 'string'
@@ -267,7 +267,7 @@ export default function NewVariableWindow({
       key={openCount}
       open={show}
       onClose={onCancel}
-      title="Create New Variable"
+      title="Create New Attribute"
       formId={FORM_ID}
       submitLabel="Save and Close"
       onSubmit={handleSubmit}

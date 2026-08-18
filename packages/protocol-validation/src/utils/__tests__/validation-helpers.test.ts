@@ -646,7 +646,7 @@ describe('Validation Helpers', () => {
       const result = createValidationMessage('Base error', {
         variable: 'testVar',
       });
-      expect(result).toBe('Base error - variable: "testVar"');
+      expect(result).toBe('Base error - attribute: "testVar"');
     });
 
     it('appends entity context', () => {
@@ -663,7 +663,7 @@ describe('Validation Helpers', () => {
         entity: 'testEntity',
       });
       expect(result).toBe(
-        'Base error (node[person]) - variable: "testVar" - entity: "testEntity"',
+        'Base error (node[person]) - attribute: "testVar" - entity: "testEntity"',
       );
     });
   });

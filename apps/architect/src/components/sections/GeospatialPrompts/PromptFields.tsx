@@ -84,11 +84,11 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section title="Selection Variable" layout="vertical">
+      <Section title="Selection Attribute" layout="vertical">
         <>
           <ArchitectField
             name="variable"
-            label="Selection variable"
+            label="Selection attribute"
             labelHidden
             component={VariablePicker}
             validation={{ required: true }}

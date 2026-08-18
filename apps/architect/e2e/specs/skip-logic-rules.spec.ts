@@ -21,9 +21,9 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  */
 
 const FLAGGED_RULE =
-  'person where boolean variable flagged is exactly equal to true';
+  'person where boolean attribute flagged is exactly equal to true';
 const HIGHLIGHTED_RULE =
-  'person where boolean variable highlighted is exactly equal to true';
+  'person where boolean attribute highlighted is exactly equal to true';
 
 test('skip-logic rule cards carry valid, distinct semantics', async ({
   architectPage,

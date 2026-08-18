@@ -33,7 +33,7 @@ type ValidationRuleProps = {
 };
 
 const ROW_BASE =
-  'flex flex-wrap items-center gap-x-5 gap-y-2 rounded px-5 transition-colors duration-300 ease-in-out';
+  'flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 rounded px-5 whitespace-normal transition-colors duration-300 ease-in-out';
 const ROW_OFF = `${ROW_BASE} py-3`;
 const ROW_ON = `${MULTI_SELECT_RULE_CLASSES} ${ROW_BASE}`;
 
@@ -132,19 +132,19 @@ const ValidationRule = ({
               onCommit(ruleKey, next);
             }}
             onBlur={() => onValueExit(ruleKey, text)}
-            placeholder="Select comparison variable"
+            placeholder="Select comparison attribute"
           />
         </div>
       )}
 
       {hint && (
-        <div className="basis-full">
+        <div className="w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
           <Hint id={hintId}>{hint}</Hint>
         </div>
       )}
 
       {hasIssues && (
-        <div className="mt-2 basis-full">
+        <div className="mt-2 w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
           <FieldErrors id={errorId} errors={issues} show variant="box" />
         </div>
       )}

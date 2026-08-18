@@ -57,6 +57,7 @@ const SkipLogicFields = ({
       <ArchitectField
         name="skipLogic.filter"
         label="Rules"
+        hint="Create one or more rules to determine when the action should occur."
         component={QueryField}
         initialValue={initialFilter}
         validation={{ required: true, validator: ruleValidator }}

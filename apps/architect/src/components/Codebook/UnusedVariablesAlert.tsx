@@ -20,12 +20,12 @@ const UnusedVariablesAlert = () => {
   return (
     <Alert variant="warning">
       <AlertTitle>
-        {count} unused {isSingular ? 'variable' : 'variables'}
+        {count} unused {isSingular ? 'attribute' : 'attributes'}
       </AlertTitle>
       <AlertDescription>
-        {isSingular ? 'This variable is' : 'These variables are'} not referenced
-        anywhere in your protocol and {isSingular ? 'is' : 'are'} tagged{' '}
-        <strong>not in use</strong> below. Use the{' '}
+        {isSingular ? 'This attribute is' : 'These attributes are'} not
+        referenced anywhere in your protocol and {isSingular ? 'is' : 'are'}{' '}
+        tagged <strong>not in use</strong> below. Use the{' '}
         <strong>Show unused only</strong> filter to find{' '}
         {isSingular ? 'it' : 'them'}, then reference{' '}
         {isSingular ? 'it' : 'them'} in a stage or delete{' '}

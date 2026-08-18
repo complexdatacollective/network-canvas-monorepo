@@ -143,7 +143,7 @@ describe('form field variable uniqueness', () => {
     expect(
       result.error?.issues.some(
         (issue) =>
-          issue.message === 'Form fields contain duplicate variable "age"',
+          issue.message === 'Form fields contain duplicate attribute "age"',
       ),
     ).toBe(true);
   });

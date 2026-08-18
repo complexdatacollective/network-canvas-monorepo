@@ -181,7 +181,7 @@ function VariablePillContents({
     // `overflow-hidden`); this lets that clipping be reached.
     <span className="text-text bg-surface flex h-full w-full min-w-0 overflow-hidden rounded-[inherit]">
       <span className="flex shrink-0 basis-12 items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-        <img className="icon opacity-80" src={icon} alt={`${type} variable`} />
+        <img className="icon opacity-80" src={icon} alt={`${type} attribute`} />
       </span>
       <span className="flex w-[calc(100%-3rem)] min-w-0 flex-1 items-center justify-between">
         {children}
@@ -224,7 +224,7 @@ export const VariablePill = ({
   const hasChanges = newName !== label;
 
   const getValidation = (value: string) => {
-    const required = validations.required('You must enter a variable name')(
+    const required = validations.required('You must enter an attribute name')(
       value,
     );
     const external = validateLabel?.(value);
@@ -265,7 +265,7 @@ export const VariablePill = ({
     const nextValidation = getValidation(label);
     setValidation(nextValidation);
     setIsValid(!nextValidation);
-    setAnnouncement(`Editing variable ${label}`);
+    setAnnouncement(`Editing attribute ${label}`);
     restoreFocusRef.current = true;
     setEditing(true);
   };
@@ -292,7 +292,7 @@ export const VariablePill = ({
 
   const handleCancel = () => {
     closeEditor({
-      announcement: 'Variable name edit cancelled',
+      announcement: 'Attribute name edit cancelled',
     });
   };
 
@@ -302,7 +302,7 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: `Variable renamed to ${newName}`,
+      announcement: `Attribute renamed to ${newName}`,
       beforeClose: () => onLabelChange(newName),
     });
   };
@@ -392,7 +392,7 @@ export const VariablePill = ({
               ref={triggerRef}
               type="button"
               aria-haspopup="dialog"
-              aria-label={`Edit variable name: ${label}`}
+              aria-label={`Edit attribute name: ${label}`}
               className={getVariablePillClassName({
                 animated,
                 fluid: width === '100%',
@@ -409,7 +409,7 @@ export const VariablePill = ({
             </button>
           }
         />
-        <TooltipContent side="top">Edit variable name: {label}</TooltipContent>
+        <TooltipContent side="top">Edit attribute name: {label}</TooltipContent>
       </Tooltip>
 
       <Modal
@@ -425,7 +425,7 @@ export const VariablePill = ({
         {editorFrame && (
           <ModalPopup
             key="variable-pill-editor"
-            aria-label="Edit variable name"
+            aria-label="Edit attribute name"
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -456,11 +456,11 @@ export const VariablePill = ({
               <VariablePillContents type={type}>
                 <InputField
                   autoFocus
-                  aria-label="Variable name"
+                  aria-label="Attribute name"
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
                   className="h-full w-full rounded-l-none! outline-none!"
-                  placeholder="Enter a variable name..."
+                  placeholder="Enter an attribute name..."
                   value={newName}
                   onChange={handleUpdateName}
                   onKeyDown={handleKeyDown}

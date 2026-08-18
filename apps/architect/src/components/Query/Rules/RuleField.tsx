@@ -1,9 +1,8 @@
-import { type ComponentType, useState } from 'react';
+import { useState } from 'react';
 
+import type { ValidFieldComponent } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import { getValidations } from '~/utils/validations';
-
-type FrescoFieldComponent = ComponentType<Record<string, unknown>>;
 
 type RuleFieldOnChange = (
   eventOrValue: unknown,
@@ -13,7 +12,7 @@ type RuleFieldOnChange = (
 ) => void;
 
 type RuleFieldProps = {
-  component: FrescoFieldComponent;
+  component: ValidFieldComponent;
   label: string;
   onChange: RuleFieldOnChange;
   value?: unknown;

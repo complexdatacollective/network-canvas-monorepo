@@ -2,7 +2,6 @@ import { get } from 'es-toolkit/compat';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { useStore } from 'react-redux';
 
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -203,6 +202,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               validation={{ required: true, positiveNumber: true }}
               label="Number of concentric circles to use:"
               initialValue={concentricCirclesInitialValue}
+              inline
             />
           </>
           <>
@@ -210,37 +210,41 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
               name="background.skewedTowardCenter"
               component={ToggleField}
               inline
-              label="Skew the size of the circles so that the middle is proportionally larger."
+              label="Skew circle size?"
+              hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
               initialValue={skewedTowardCenterInitialValue ?? false}
             />
           </>
         </>
       )}
       {showImage && (
-        <>
-          <Alert variant="info" className="my-7">
-            <AlertTitle>Make the background responsive</AlertTitle>
-            <AlertDescription>
-              A responsive SVG can span the canvas in portrait and landscape
-              while keeping labels readable.{' '}
-              <ExternalLink href={documentationLinks.responsiveSvgBackgrounds}>
-                Learn how to create a responsive SVG background
-              </ExternalLink>
-              .
-            </AlertDescription>
-          </Alert>
-          <>
-            <ArchitectField
-              name="background.image"
-              component={Image}
-              label="Background image"
-              labelHidden
-              canvasBackgroundPreview
-              validation={{ required: true }}
-              initialValue={imageInitialValue}
-            />
-          </>
-        </>
+        <ArchitectField
+          name="background.image"
+          component={Image}
+          label="Background image"
+          hint={
+            <>
+              <Paragraph>
+                Choose an image to use as the background for this prompt. The
+                image will be scaled to fit the canvas.
+              </Paragraph>
+              <Paragraph>
+                {' '}
+                A responsive SVG can span the canvas in portrait and landscape
+                while keeping labels readable.{' '}
+                <ExternalLink
+                  href={documentationLinks.responsiveSvgBackgrounds}
+                >
+                  Learn how to create a responsive SVG background
+                </ExternalLink>
+                .
+              </Paragraph>
+            </>
+          }
+          canvasBackgroundPreview
+          validation={{ required: true }}
+          initialValue={imageInitialValue}
+        />
       )}
     </Section>
   );

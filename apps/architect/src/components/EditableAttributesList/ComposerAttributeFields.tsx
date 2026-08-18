@@ -135,11 +135,11 @@ const ComposerAttributeFields = ({
         initialValue={asValidationMap(item.validation) ?? undefined}
       />
       <ContradictionAlert />
-      <Section layout="vertical" id={getFieldId('variable')} title="Variable">
+      <Section layout="vertical" id={getFieldId('variable')} title="Attribute">
         <ArchitectField
           name="variable"
-          label="Variable"
-          hint="Create or select a variable to collect this attribute. If you select an existing variable, any changes you make to the input control or validation options will also change other uses of this variable."
+          label="Attribute"
+          hint="Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute."
           component={VariablePickerControl}
           initialValue={asString(item.variable)}
           validation={{ required: true }}
@@ -159,11 +159,11 @@ const ComposerAttributeFields = ({
         <ArchitectField
           name="label"
           label="Label"
-          hint="Optionally caption this attribute in the side panel. When left empty, the variable's name is shown instead."
+          hint="Optionally caption this attribute in the side panel. When left empty, the attribute's name is shown instead."
           component={InputField}
           initialValue={asString(item.label)}
           validation={{}}
-          placeholder="Defaults to the variable name"
+          placeholder="Defaults to the attribute name"
         />
       </Section>
 
@@ -199,7 +199,7 @@ const ComposerAttributeFields = ({
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              The selected input control will cause this variable to be defined
+              The selected input control will cause this attribute to be defined
               as type <strong>{variableType}</strong>. Once set, this cannot be
               changed (although you may change the input control within this
               type).
@@ -208,13 +208,13 @@ const ComposerAttributeFields = ({
         )}
         {!isNewVariable && variableType && (
           <Alert variant="warning" className="my-7">
-            <AlertTitle>Variable type is locked</AlertTitle>
+            <AlertTitle>Attribute type is locked</AlertTitle>
             <AlertDescription>
-              A pre-existing variable is currently selected. You cannot change a
-              variable type after it has been created, so only{' '}
+              A pre-existing attribute is currently selected. You cannot change
+              an attribute type after it has been created, so only{' '}
               <strong>{variableType}</strong> compatible input controls can be
               selected above. If you would like to use a different input control
-              type, you will need to create a new variable.
+              type, you will need to create a new attribute.
             </AlertDescription>
           </Alert>
         )}
@@ -232,7 +232,7 @@ const ComposerAttributeFields = ({
             <ArchitectArrayField
               name="options"
               label="Options"
-              hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
+              hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               addButtonLabel="Create new option"
               initialValue={asOptions(item.options)}

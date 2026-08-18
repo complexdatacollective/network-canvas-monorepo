@@ -99,7 +99,7 @@ export const interfaceOwnedPickIssue = (
   if (!variableId) return undefined;
   const claim = slotMap[roleMapKey(subject, variableId)];
   if (!claim || claim.slot === ownSlot) return undefined;
-  return `This variable is set by ${claim.owner}, so it cannot be used here. Choose a different variable.`;
+  return `This attribute is set by ${claim.owner}, so it cannot be used here. Choose a different attribute.`;
 };
 
 /**

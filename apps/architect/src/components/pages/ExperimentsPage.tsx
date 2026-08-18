@@ -72,10 +72,10 @@ const ExperimentsPage = () => {
             >
               <div className="min-w-0 flex-1">
                 <Heading level="h4" id={encryptedVariablesLabelId}>
-                  Encrypted Variables
+                  Encrypted Attributes
                 </Heading>
                 <Paragraph className="text-muted text-sm">
-                  Enable support for encrypted variables in the codebook. This
+                  Enable support for encrypted attributes in the codebook. This
                   allows sensitive data to be collected securely.
                 </Paragraph>
               </div>

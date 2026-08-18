@@ -127,7 +127,7 @@ describe('NodeConfiguration', () => {
   it('renders each field area under its own subsection heading', () => {
     renderSection();
     expect(
-      screen.getByRole('heading', { name: /quick add variable/i }),
+      screen.getByRole('heading', { name: /quick add attribute/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /node positions/i }),

@@ -71,7 +71,7 @@ export const completeAttributes = (value: unknown) =>
       row.variable !== '' &&
       typeof row.value === 'boolean',
   )
-    ? 'Every additional variable needs both a variable and a value.'
+    ? 'Every additional attribute needs both an attribute and a value.'
     : undefined;
 
 /**
@@ -234,8 +234,8 @@ const AssignAttributes = ({
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"
-        addButtonLabel="Add new variable to assign"
-        emptyStateMessage="No additional variables assigned."
+        addButtonLabel="Add new attribute to assign"
+        emptyStateMessage="No additional attributes assigned."
         immediateAdd
         confirmDelete={false}
       />

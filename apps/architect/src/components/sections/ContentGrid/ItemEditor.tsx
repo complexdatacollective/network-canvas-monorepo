@@ -172,12 +172,12 @@ const ItemEditor = ({
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <Section title="Type" layout="vertical">
+      <Section layout="vertical">
         <>
           <ArchitectField
             name="type"
             label="Content type"
-            labelHidden
+            hint="Choose the type of content this item will show."
             component={FrescoRadioGroupField}
             validation={{ required: true }}
             initialValue={initialType}
@@ -195,13 +195,13 @@ const ItemEditor = ({
         </Section>
       )}
       {slotType && (
-        <Section title="Content" layout="vertical">
+        <Section layout="vertical">
           <>
             <ArchitectField
               name={CONTENT_SLOT_NAMES[slotType]}
               component={contentInputs[slotType]}
               label="Content"
-              labelHidden
+              hint={`Provide the ${slotType} content for this item. This is what participants will see when they reach this item in the study.`}
               validation={{ required: true }}
               // Only the slot for the type the row was saved as starts from
               // the row's content; every other slot starts empty, which is
@@ -214,18 +214,13 @@ const ItemEditor = ({
         </Section>
       )}
       {allowSize && supportsSize(resolvedType) && (
-        <Section
-          title="Display size"
-          summary="Optionally constrain the height of this item. Full size lets it display at its natural height."
-          layout="vertical"
-          required={false}
-        >
+        <Section layout="vertical" required={false}>
           <>
             <ArchitectField
               name="size"
               component={FrescoRadioGroupField}
               label="Display size"
-              labelHidden
+              hint="Optionally constrain the height of this item. Full size lets it display at its natural height."
               initialValue={size ?? ''}
               options={sizeOptions}
               orientation="horizontal"

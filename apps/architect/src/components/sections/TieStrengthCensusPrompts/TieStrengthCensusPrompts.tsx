@@ -82,6 +82,7 @@ const TieStrengthCensusPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         onBeforeSave={onBeforeSave}
         itemSelector={itemSelector}
         requestedEditFormName="editable-list-form"

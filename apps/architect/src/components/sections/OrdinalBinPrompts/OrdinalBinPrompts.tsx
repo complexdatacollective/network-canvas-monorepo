@@ -90,6 +90,7 @@ const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         itemTemplate={template}
         onBeforeSave={onBeforeSave}
         itemSelector={makeItemSelector(entity, type)}

@@ -22,5 +22,5 @@ it('groups ego-rule controls in untitled Sections', () => {
   expect(
     screen.getByText('Select the ego attribute this rule will be based on.'),
   ).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { name: 'Ego Variable' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Ego Attribute' })).toBeNull();
 });

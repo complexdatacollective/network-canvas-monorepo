@@ -234,7 +234,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(!isEmpty(stageVariables)
                   ? [
                       [
-                        'Variables',
+                        'Attributes',
                         <React.Fragment key="vars">
                           {stageVariables.map(([variableId, variable], i) => (
                             <React.Fragment key={`${id}-${variableId}`}>

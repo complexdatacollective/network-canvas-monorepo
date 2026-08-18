@@ -226,7 +226,7 @@ export const createValidationMessage = (
   }
 
   if (context?.variable) {
-    message += ` - variable: "${context.variable}"`;
+    message += ` - attribute: "${context.variable}"`;
   }
 
   if (context?.entity) {

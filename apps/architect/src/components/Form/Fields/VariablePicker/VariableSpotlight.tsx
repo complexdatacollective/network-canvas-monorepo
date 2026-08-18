@@ -177,14 +177,14 @@ const VariableSpotlight = ({
         items.push({
           id: `invalid:${filterTerm}`,
           kind: 'invalid',
-          label: `Cannot create variable named "${filterTerm}"`,
+          label: `Cannot create attribute named "${filterTerm}"`,
           reason: invalidVariableName,
         });
       } else {
         items.push({
           id: `create:${filterTerm}`,
           kind: 'create',
-          label: `Create new variable called "${filterTerm}".`,
+          label: `Create new attribute called "${filterTerm}".`,
           value: filterTerm,
         });
       }
@@ -308,9 +308,9 @@ const VariableSpotlight = ({
         {...itemProps}
         data-testid="spotlight-list-item"
         className={cx(
-          'focusable flex w-full items-center justify-between rounded px-4 py-2.5 transition-colors',
+          'focusable hover:bg-surface-2 flex w-full items-center justify-between rounded px-4 py-2.5 transition-colors',
           'data-focused:bg-surface-2 data-selected:bg-primary data-selected:text-primary-contrast',
-          'data-disabled:cursor-not-allowed data-disabled:opacity-60',
+          'data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:bg-transparent',
         )}
       >
         {item.kind === 'variable' && (
@@ -363,15 +363,15 @@ const VariableSpotlight = ({
               type="search"
               placeholder={
                 disallowCreation
-                  ? 'Find a variable...'
-                  : 'Create or find a variable...'
+                  ? 'Find an attribute...'
+                  : 'Create or find an attribute...'
               }
               value={filterTerm}
               onChange={handleFilter}
               onKeyDown={handleInputKeyDown}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label="Find or create a variable"
+              aria-label="Find or create an attribute"
             />
           </header>
           <main className="min-h-0 flex-auto pb-1">
@@ -380,10 +380,10 @@ const VariableSpotlight = ({
                 {renderEmptyMessage(
                   <Info aria-hidden />,
                   <Paragraph margin="none">
-                    To create your first variable of this type, type a name
+                    To create your first attribute of this type, type a name
                     above and press enter. See our&nbsp;
                     <ExternalLink href={documentationLinks.variableNaming}>
-                      documentation on variable naming
+                      documentation on attribute naming
                     </ExternalLink>
                     &nbsp;for more information.
                   </Paragraph>,
@@ -396,8 +396,8 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  No variables exist for you to select, and you cannot create a
-                  new variable from here. Please create one or more variables
+                  No attributes exist for you to select, and you cannot create a
+                  new attribute from here. Please create one or more attributes
                   elsewhere in your protocol, and return here to select them.
                 </Paragraph>,
               )}
@@ -407,15 +407,15 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  You cannot create a new variable from here. Please create one
-                  or more variables elsewhere in your protocol, and return here
+                  You cannot create a new attribute from here. Please create one
+                  or more attributes elsewhere in your protocol, and return here
                   to select them.
                 </Paragraph>,
               )}
             {collectionItems.length > 0 && (
               <Collection
                 id={RESULTS_ID}
-                aria-label="Variable results"
+                aria-label="Attribute results"
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
                 textValueExtractor={(item) => item.label}

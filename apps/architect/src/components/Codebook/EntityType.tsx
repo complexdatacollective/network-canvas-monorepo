@@ -174,7 +174,7 @@ const EntityType = ({
             size="sm"
             onClick={() => setShowAddVariable(true)}
           >
-            Add variable
+            Add attribute
           </Button>
         </div>
         {filteredVariables.length > 0 && (

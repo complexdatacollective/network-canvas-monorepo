@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
@@ -35,21 +33,12 @@ const SORT_RULE_VALIDATION = {
   completeRows: completeRows(SORT_RULE_PROPERTIES),
 };
 
-const getDefaultSummary = () => (
-  <Paragraph>
-    Nodes are stacked in the bucket before they are placed by the participant.
-    You may optionally configure a list of rules to determine how nodes are
-    sorted in the bucket when the task starts, which will determine the order
-    that your participant places them into bins. Interviewer will default to
-    using the order in which nodes were named.
-  </Paragraph>
-);
 const BucketSortOrderSection = ({
   initialValue,
   disabled = false,
   maxItems = 5,
   optionGetter,
-  summary = getDefaultSummary(),
+  summary = 'Enable this option to set the order that nodes appear before they are placed.',
 }: BucketSortOrderSectionProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const handleToggleChange = (nextState: boolean) => {
@@ -60,7 +49,7 @@ const BucketSortOrderSection = ({
   };
   return (
     <Section
-      title="Bucket Sort Order"
+      title="Set the order of nodes in the bucket"
       summary={summary}
       toggleable
       disabled={disabled}
@@ -68,17 +57,12 @@ const BucketSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <Alert variant="info" className="my-7">
-        <AlertDescription>
-          Use the asterisk property to sort by the order that nodes were
-          created.
-        </AlertDescription>
-      </Alert>
       <ArchitectArrayField
         name="bucketSortOrder"
-        label="Bucket sort order"
-        labelHidden
+        label="Bucket sort rules"
+        hint="Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created."
         component={MultiSelect}
+        emptyStateMessage="No sort rules have been created yet."
         addButtonLabel="Add new bucket sort rule"
         initialValue={initialValue}
         properties={SORT_RULE_PROPERTIES}

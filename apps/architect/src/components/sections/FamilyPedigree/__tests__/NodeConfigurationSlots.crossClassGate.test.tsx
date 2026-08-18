@@ -456,7 +456,7 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
         validation: {},
       }).variable,
     ).toBe(
-      'This variable is already collected by another field in this form. Choose a different variable, or edit the existing field instead.',
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
     expect(currentSiblingFields()).toEqual([
       { variable: 'freeLabel', component: 'Text' },

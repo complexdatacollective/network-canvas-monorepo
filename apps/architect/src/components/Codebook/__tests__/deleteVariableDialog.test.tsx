@@ -73,13 +73,13 @@ describe('Codebook delete confirmation', () => {
       </Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete attribute' }));
 
     const dialog = await screen.findByRole('dialog');
     // The identifier lives in the body, not in the action label — the label is
     // a fixed, localisable string that cannot blow the dialog's width open.
     expect(screen.getByTestId('dialog-primary')).toHaveTextContent(
-      'Delete variable',
+      'Delete attribute',
     );
     expect(dialog).toHaveTextContent('last_name');
 

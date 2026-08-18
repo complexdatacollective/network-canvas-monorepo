@@ -52,7 +52,7 @@ type FieldValues = {
 
 const VARIABLE_NOT_FOUND: FormSubmissionResult = {
   success: false,
-  formErrors: ['Variable not found'],
+  formErrors: ['Attribute not found'],
 };
 
 const isSubmissionResult = (

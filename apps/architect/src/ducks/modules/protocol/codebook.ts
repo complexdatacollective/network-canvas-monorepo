@@ -189,11 +189,11 @@ export const createVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!configuration.name) {
-      throw new Error('Cannot create a new variable without a name');
+      throw new Error('Cannot create a new attribute without a name');
     }
 
     if (!configuration.type) {
-      throw new Error('Cannot create a new variable without a type');
+      throw new Error('Cannot create a new attribute without a type');
     }
 
     const safeConfiguration = prune({
@@ -202,7 +202,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }) as Variable;
 
     if (isEmpty(safeConfiguration.name)) {
-      throw new Error('Variable name contains no valid characters');
+      throw new Error('Attribute name contains no valid characters');
     }
 
     const state = getState();
@@ -214,7 +214,7 @@ export const createVariableAsync = createAppAsyncThunk(
     // We can't use same variable name twice.
     if (variableNameExists) {
       throw new Error(
-        `Variable with name "${safeConfiguration.name}" already exists`,
+        `Attribute with name "${safeConfiguration.name}" already exists`,
       );
     }
 
@@ -302,7 +302,7 @@ export const deleteVariableAsync = createAppAsyncThunk(
     // in the confirm dialog's error paragraph.
     if (get(isUsed, variable, false)) {
       throw new Error(
-        'This variable is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
+        'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
       );
     }
 

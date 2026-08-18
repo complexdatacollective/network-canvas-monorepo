@@ -200,9 +200,9 @@ const FieldEditorPreview = ({
       {codebookVariable && (
         <Alert variant="info" className="mt-4">
           <AlertDescription>
-            When selecting an existing variable, changes you make to the input
+            When selecting an existing attribute, changes you make to the input
             control or validation options will also change other uses of this
-            variable.
+            attribute.
           </AlertDescription>
         </Alert>
       )}
@@ -225,7 +225,7 @@ const FieldEditorPreview = ({
           ) : (
             <div className="flex min-h-56 items-center justify-center text-center">
               <Paragraph className="max-w-[36ch]" margin="none">
-                Select a variable and input control to preview this field.
+                Select an attribute and input control to preview this field.
               </Paragraph>
             </div>
           )}

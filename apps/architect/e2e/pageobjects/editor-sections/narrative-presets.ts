@@ -46,19 +46,19 @@ export async function addNarrativePreset(
         scope: editor.field('layoutVariable'),
         until: editor
           .field('layoutVariable')
-          .getByRole('button', { name: 'Change variable' }),
+          .getByRole('button', { name: 'Change attribute' }),
       });
       if (spec.groupVariable) {
         await editor
-          .section('Group Variable')
-          .getByRole('switch', { name: 'Group Variable' })
+          .section('Group Attribute')
+          .getByRole('switch', { name: 'Group Attribute' })
           .click();
         await createVariableViaSpotlight(page, {
           variableName: spec.groupVariable,
           scope: editor.field('groupVariable'),
           until: editor
             .field('groupVariable')
-            .getByRole('button', { name: 'Change variable' }),
+            .getByRole('button', { name: 'Change attribute' }),
         });
       }
       if (spec.displayEdges) {
@@ -91,7 +91,7 @@ export async function addNarrativePreset(
       freshSign: (candidate) =>
         candidate
           .locator('[data-field-name="layoutVariable"]')
-          .getByRole('button', { name: 'Select variable' }),
+          .getByRole('button', { name: 'Select attribute' }),
     },
   );
 }

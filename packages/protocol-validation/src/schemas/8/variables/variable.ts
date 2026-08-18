@@ -499,7 +499,7 @@ const rejectEncryptedOnNonTextNode = (
     if (variable.encrypted && variable.type !== 'text') {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'Only text variables can be encrypted',
+        message: 'Only text attributes can be encrypted',
         path: [key, 'encrypted'],
       });
     }
@@ -513,7 +513,7 @@ const rejectEncrypted =
       if (variable.encrypted) {
         ctx.addIssue({
           code: 'custom' as const,
-          message: `${entity} variables cannot be encrypted`,
+          message: `${entity} attributes cannot be encrypted`,
           path: [key, 'encrypted'],
         });
       }
@@ -532,7 +532,7 @@ const rejectEgoUnique = (variables: VariablesRecord, ctx: z.RefinementCtx) => {
     ) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'Ego variables cannot use the "unique" validation',
+        message: 'Ego attributes cannot use the "unique" validation',
         path: [key, 'validation', 'unique'],
       });
     }
@@ -572,7 +572,7 @@ const checkDuplicateVariableNames = <T extends Record<string, Variable>>(
   if (duplicateVarName) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: `Duplicate variable name "${duplicateVarName}"`,
+      message: `Duplicate attribute name "${duplicateVarName}"`,
       path: [],
     });
   }

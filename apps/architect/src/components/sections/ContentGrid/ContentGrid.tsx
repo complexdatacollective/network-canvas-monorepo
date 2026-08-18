@@ -46,6 +46,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
           editorFieldsComponent={
             ItemEditor as ComponentType<Record<string, unknown>>
           }
+          editorDialogSize="editor"
           editorProps={{ allowSize: true }}
           editorTitle="Edit Item"
           emptyStateMessage='No items have been created yet. Click "Create new content item" to add text or media.'

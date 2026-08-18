@@ -236,7 +236,7 @@ export const stageDiscardDescriptions: Record<
   'open-elsewhere':
     'Changes made in this stage cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave the stage editor now, those changes will be discarded.',
   'reclaim-blocked':
-    'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any variables you added or edited while it was open, and that saved version will be loaded here.',
+    'Changes made in this stage cannot be saved over the version the other tab saved. If you leave the stage editor now, those changes will be discarded, along with any attributes you added or edited while it was open, and that saved version will be loaded here.',
   'storage-unavailable':
     'This protocol could not be saved on this device, so nothing in this editor has been kept — including the changes made in this stage. Leaving the stage editor now discards them.',
 };

@@ -161,7 +161,7 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       success: false,
       fieldErrors: {
         variable: [
-          'This variable is set by the Family Pedigree interface, which marks the participant, so it cannot be used here. Choose a different variable.',
+          'This attribute is set by the Family Pedigree interface, which marks the participant, so it cannot be used here. Choose a different attribute.',
         ],
       },
     });

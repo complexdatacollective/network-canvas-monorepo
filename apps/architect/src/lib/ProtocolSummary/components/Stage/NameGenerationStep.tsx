@@ -44,7 +44,7 @@ const NameGenerationStep = ({
           <Heading level="h4">Form Fields</Heading>
           <MiniTable
             wide
-            rows={[['Variable', 'Component', 'Prompt'], ...fieldRows]}
+            rows={[['Attribute', 'Component', 'Prompt'], ...fieldRows]}
           />
         </>
       )}

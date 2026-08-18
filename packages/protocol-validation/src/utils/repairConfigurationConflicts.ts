@@ -264,7 +264,7 @@ export const repairConfigurationConflicts = (
       }
       scheduleRemoval(
         [...path, index, 'variable'],
-        `A form collects the same variable ("${variableDisplayName(source, field.variable)}") more than once.`,
+        `A form collects the same attribute ("${variableDisplayName(source, field.variable)}") more than once.`,
         () => 'The repeated form field will be removed.',
       );
     });
@@ -301,7 +301,7 @@ export const repairConfigurationConflicts = (
       droppedIndices.add(index);
       scheduleRemoval(
         ['stages', stageIndex, 'diseases', index, 'variable'],
-        `A Narrative Pedigree records two diseases ("${firstLabel}" and "${label}") against the same variable.`,
+        `A Narrative Pedigree records two diseases ("${firstLabel}" and "${label}") against the same attribute.`,
         () => `The second disease ("${label}") will be removed.`,
       );
     });

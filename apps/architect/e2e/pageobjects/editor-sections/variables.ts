@@ -58,13 +58,13 @@ export async function createVariableViaSpotlight(
   },
 ): Promise<void> {
   const trigger = (opts.scope ?? page).getByRole('button', {
-    name: opts.buttonName ?? 'Select variable',
+    name: opts.buttonName ?? 'Select attribute',
   });
 
   const attempt = async () => {
     await trigger.click();
     const search = page.getByRole('searchbox', {
-      name: 'Find or create a variable',
+      name: 'Find or create an attribute',
     });
     await search.fill(opts.variableName);
     // The list may still show the pre-filter rows for a beat after the
@@ -75,7 +75,7 @@ export async function createVariableViaSpotlight(
     const rows = page.getByTestId('spotlight-list-item');
     await rows.filter({ hasText: opts.variableName }).first().waitFor();
     const createRow = rows
-      .filter({ hasText: 'Create new variable called' })
+      .filter({ hasText: 'Create new attribute called' })
       .first();
     if (await createRow.count()) {
       await createRow.click();
@@ -141,18 +141,18 @@ export async function createVariableWithOptions(
   },
 ): Promise<void> {
   await page
-    .getByRole('textbox', { name: 'Variable name' })
+    .getByRole('textbox', { name: 'Attribute name' })
     .fill(opts.variableName);
 
   const typeLabel = opts.type === 'ordinal' ? 'Ordinal' : 'Categorical';
-  const typeCombobox = page.getByRole('combobox', { name: 'Variable type' });
+  const typeCombobox = page.getByRole('combobox', { name: 'Attribute type' });
   if (await typeCombobox.isEnabled()) {
     await typeCombobox.click();
     await page.getByRole('option', { name: typeLabel }).click();
   }
 
   await fillOptionRows(
-    page.getByRole('dialog', { name: 'Create New Variable' }),
+    page.getByRole('dialog', { name: 'Create New Attribute' }),
     opts.options.map((option) =>
       typeof option === 'string'
         ? { label: option, value: option.toLowerCase() }

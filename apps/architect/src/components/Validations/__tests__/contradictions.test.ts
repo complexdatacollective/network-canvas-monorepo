@@ -58,7 +58,7 @@ describe('findDraftContradictions', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.message).toBe(
-      'Variable "this variable": minValue (10) is greater than maxValue (2)',
+      'Attribute "this attribute": minValue (10) is greater than maxValue (2)',
     );
   });
 
@@ -71,7 +71,7 @@ describe('findDraftContradictions', () => {
       draftVariableName: 'test',
     });
     expect(result[0]?.message).toBe(
-      'Variable "test": minValue (10) is greater than maxValue (2)',
+      'Attribute "test": minValue (10) is greater than maxValue (2)',
     );
   });
 
@@ -256,7 +256,7 @@ describe('makeFieldEditorValidate', () => {
       validation: { minLength: 10, maxLength: 2 },
     });
     expect(errors.validation).toBe(
-      'Variable "this variable": minLength (10) is greater than maxLength (2)',
+      'Attribute "this attribute": minLength (10) is greater than maxLength (2)',
     );
   });
 

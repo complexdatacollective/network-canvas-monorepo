@@ -26,6 +26,7 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ArrayField, {
@@ -114,6 +115,8 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
    */
   editorPreviewComponent?: Renderer;
   editorPreviewProps?: Record<string, unknown>;
+  /** Semantic width preset for the editor dialog. */
+  editorDialogSize?: DialogProps['size'];
   editorValidate?: DialogArrayEditorValidate;
   /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
   itemLabel?: string;
@@ -261,6 +264,7 @@ type DialogArrayContextValue = {
     isNewRow: boolean,
   ) => boolean;
   editorFieldsComponent: Renderer;
+  editorDialogSize?: DialogProps['size'];
   editorPreviewComponent?: Renderer;
   editorPreviewProps?: Record<string, unknown>;
   editorProps?: Record<string, unknown>;
@@ -418,6 +422,7 @@ const DialogEditor = ({
     commitDetachedRow,
     editFormName,
     editorFieldsComponent,
+    editorDialogSize,
     editorPreviewComponent,
     editorPreviewProps,
     editorProps,
@@ -626,6 +631,7 @@ const DialogEditor = ({
       onSubmit={handleSave}
       validate={validate}
       editIndex={editIndex}
+      size={editorDialogSize}
       /**
        * A row hides its own controls while it is being edited, so the Edit
        * button that opened this dialog is not the element that will be on
@@ -668,6 +674,7 @@ function DialogArrayField<T extends ArrayItem>({
   addTitle,
   editorTitle,
   editorFieldsComponent,
+  editorDialogSize,
   editorPreviewComponent,
   editorPreviewProps,
   editorProps,
@@ -740,6 +747,7 @@ function DialogArrayField<T extends ArrayItem>({
       commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(name),
       editorFieldsComponent,
+      editorDialogSize,
       editorPreviewComponent,
       editorPreviewProps,
       editorProps,
@@ -756,6 +764,7 @@ function DialogArrayField<T extends ArrayItem>({
       addTitle,
       commitDetachedRow,
       editorFieldsComponent,
+      editorDialogSize,
       editorPreviewComponent,
       editorPreviewProps,
       editorProps,

@@ -149,18 +149,24 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
       label: `Issues (${issueCount})`,
       icon: <TriangleAlert />,
       showLabel: true,
+      color: 'warning',
+      className:
+        'aria-expanded:border-warning! aria-expanded:bg-warning! aria-expanded:text-warning-contrast!',
       open,
       onOpenChange: setPanelOpen,
       side: 'top',
+      popoverClassName: 'p-0',
+      showArrow: true,
       finalFocus: () => finalFocusRef.current ?? true,
       children: (
-        <>
-          <div className="border-outline flex items-center gap-5 border-b px-5 py-3">
+        <div className="flex flex-col overflow-hidden rounded-[inherit]">
+          <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
             <span className="text-sm font-semibold tracking-wider uppercase">
               Issues ({issueCount})
             </span>
           </div>
+          <hr className="my-0" />
           <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
             {map(flatIssues, ({ id, field, issue }) => {
               // Row identity (`id`) and anchor target (`fieldId`) are separate:
@@ -187,7 +193,7 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
               );
             })}
           </ol>
-        </>
+        </div>
       ),
     };
   }, [

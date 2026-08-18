@@ -29,7 +29,7 @@ vi.mock('~/selectors/protocol', () => ({
 import FieldEditorPreview from '../FieldEditorPreview';
 
 const existingVariableMessage =
-  'When selecting an existing variable, changes you make to the input control or validation options will also change other uses of this variable.';
+  'When selecting an existing attribute, changes you make to the input control or validation options will also change other uses of this attribute.';
 
 const renderPreview = (item: Record<string, unknown>) =>
   render(

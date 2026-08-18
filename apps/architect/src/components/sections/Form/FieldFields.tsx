@@ -105,8 +105,8 @@ const FieldFields = ({
       <Section layout="vertical" id={getFieldId('variable')}>
         <ArchitectField
           name="variable"
-          label="Variable"
-          hint="Select a variable"
+          label="Attribute"
+          hint="Select an attribute"
           component={VariablePickerControl}
           initialValue={asString(item.variable)}
           validation={{ required: true }}
@@ -186,7 +186,7 @@ const FieldFields = ({
         {isNewVariable && variableType && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              The selected input control will cause this variable to be defined
+              The selected input control will cause this attribute to be defined
               as type <strong>{variableType}</strong>. Once set, this cannot be
               changed (although you may change the input control within this
               type).
@@ -195,13 +195,13 @@ const FieldFields = ({
         )}
         {!isNewVariable && variableType && (
           <Alert variant="warning" className="my-7">
-            <AlertTitle>Variable type is locked</AlertTitle>
+            <AlertTitle>Attribute type is locked</AlertTitle>
             <AlertDescription>
-              A pre-existing variable is currently selected. You cannot change a
-              variable type after it has been created, so only{' '}
+              A pre-existing attribute is currently selected. You cannot change
+              an attribute type after it has been created, so only{' '}
               <strong>{variableType}</strong> compatible input controls can be
               selected above. If you would like to use a different input control
-              type, you will need to create a new variable.
+              type, you will need to create a new attribute.
             </AlertDescription>
           </Alert>
         )}
@@ -215,7 +215,7 @@ const FieldFields = ({
             <ArchitectArrayField
               name="options"
               label="Categorical/Ordinal options"
-              hint="The input type you selected indicates that this is a categorical or ordinal variable. Create a minimum of two possible values for the participant to choose between."
+              hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               addButtonLabel="Create new option"
               initialValue={asOptions(item.options)}

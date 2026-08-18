@@ -95,7 +95,7 @@ const EdgeAttributeBlock = ({
     <Section title={title} layout="horizontal" required={false}>
       <Subsection
         title="Editable attributes"
-        summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+        summary="The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
       >
         <EditableAttributesList
           fieldName={fieldName}

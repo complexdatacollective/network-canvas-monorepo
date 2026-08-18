@@ -25,7 +25,7 @@ export async function createQuickAddVariable(
     scope: editor.field('quickAdd'),
     until: editor
       .field('quickAdd')
-      .getByRole('button', { name: 'Change variable' }),
+      .getByRole('button', { name: 'Change attribute' }),
   });
   if (opts.clearRequiredValidation) {
     const validation = page.locator('[data-name="Validation"]');
