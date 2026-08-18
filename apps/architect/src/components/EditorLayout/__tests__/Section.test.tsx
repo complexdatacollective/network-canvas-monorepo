@@ -108,5 +108,31 @@ describe('<Section /> content', () => {
     expect(
       screen.getByText('Select a node type above to configure this section.'),
     ).toBeVisible();
+
+    const toggle = screen.getByRole('switch', { name: 'Prompts' });
+    expect(toggle).toHaveClass(
+      'bg-input-contrast/20',
+      'opacity-100',
+      '[&>span]:bg-input-contrast/60',
+    );
+  });
+
+  it('leaves the shared disabled styling unchanged for vertical sections', () => {
+    render(
+      <Section
+        disabled
+        layout="vertical"
+        startExpanded={false}
+        title="Validation"
+        toggleable
+      >
+        <p>Contents</p>
+      </Section>,
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'Validation' });
+    expect(toggle).toHaveClass('bg-input-contrast/10', 'opacity-50');
+    expect(toggle).not.toHaveClass('[&>span]:bg-input-contrast/60');
+    expect(toggle.querySelector('span')).toHaveClass('bg-input-contrast/30');
   });
 });

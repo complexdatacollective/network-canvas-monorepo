@@ -75,4 +75,19 @@ describe('EditValue', () => {
 
     expect(onChange.mock.lastCall?.[1]).toBe(true);
   });
+
+  it('renders boolean operands when the attribute has no options', () => {
+    render(
+      <EditValue
+        label="Attribute value"
+        variableType="boolean"
+        value={false}
+        options={null}
+        validation={{ required: true }}
+      />,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Yes' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'No' })).toBeChecked();
+  });
 });

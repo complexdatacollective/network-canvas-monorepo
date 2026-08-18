@@ -770,7 +770,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         {
           kind: 'alterPresence',
           nodeTypeName: 'Classmate',
-          operator: 'Does not exist',
+          operator: 'does not exist',
         },
       ],
     });
@@ -791,7 +791,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         {
           kind: 'alterPresence',
           nodeTypeName: 'Classmate',
-          operator: 'Exists',
+          operator: 'exists',
         },
       ],
     });
@@ -969,7 +969,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await configureSkipLogic(editor, page, {
       action: 'Show this stage',
       rules: [
-        { kind: 'alterPresence', nodeTypeName: 'Person', operator: 'Exists' },
+        { kind: 'alterPresence', nodeTypeName: 'Person', operator: 'exists' },
         {
           kind: 'alterBooleanAttribute',
           nodeTypeName: 'Person',

@@ -18,7 +18,7 @@ import { createVariableViaSpotlight } from './variables.js';
 //   form, which rides into the saved prompt and fails the schema's strict
 //   object (verified live) — so the comparison layer drops it instead
 //   (helpers/normalize-protocol.ts dropForcedRequiredValidation).
-// - otherOptionLabel ('Label for Bin') and otherVariablePrompt ('Question
+// - otherOptionLabel ("Label for 'Other' bin") and otherVariablePrompt ('Question
 //   Prompt for Dialog') are visible-labelled inline RichText fields; all
 //   three fields are required once the section is on.
 export async function enableOtherOption(
@@ -40,6 +40,6 @@ export async function enableOtherOption(
     scope: section,
     until: section.getByRole('button', { name: 'Change attribute' }),
   });
-  await editor.fillRichText('Label for Bin', opts.optionLabel);
+  await editor.fillRichText("Label for 'Other' bin", opts.optionLabel);
   await editor.fillRichText('Question Prompt for Dialog', opts.variablePrompt);
 }

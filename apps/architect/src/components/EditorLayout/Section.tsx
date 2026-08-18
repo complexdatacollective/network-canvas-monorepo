@@ -120,6 +120,14 @@ const Section = ({
             value={isOpen}
             onChange={() => void changeToggleState()}
             disabled={disabled}
+            className={
+              disabled && layout === 'horizontal'
+                ? cx(
+                    '[&>span]:bg-input-contrast/60 opacity-100',
+                    isOpen ? 'bg-input-contrast/40' : 'bg-input-contrast/20',
+                  )
+                : undefined
+            }
           />
         )}
       </div>

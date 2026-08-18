@@ -129,7 +129,7 @@ export async function addConfiguredFormField(
     until: dialog.getByRole('button', { name: 'Change attribute' }),
   });
 
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(spec.promptText);
 

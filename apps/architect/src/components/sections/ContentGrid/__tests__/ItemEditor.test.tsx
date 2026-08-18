@@ -104,16 +104,16 @@ const clickButton = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name }));
 };
 
-const contentSection = () => {
-  const section = document.querySelector('section[data-name="Content"]');
-  if (!(section instanceof HTMLElement)) {
-    throw new Error('the Content section is not rendered');
+const contentField = () => {
+  const field = document.querySelector('[data-field-name^="content"]');
+  if (!(field instanceof HTMLElement)) {
+    throw new Error('the Content field is not rendered');
   }
-  return section;
+  return field;
 };
 
 const richTextValue = () =>
-  within(contentSection()).getByRole('textbox').textContent;
+  within(contentField()).getByRole('textbox').textContent;
 
 const pickerValue = (kind: Exclude<SlotType, 'text'>) =>
   screen.getByTestId(`${kind}-value`).textContent;
@@ -151,7 +151,7 @@ describe('ItemEditor content-type switching', () => {
     await waitFor(() => {
       expect(richTextValue()).toBe('');
     });
-    expect(contentSection().textContent).not.toContain('asset-image-1');
+    expect(contentField().textContent).not.toContain('asset-image-1');
     // The text control is a field of its OWN, not the shared `content` field
     // the asset id lives in — that separation is what makes the emptiness
     // above structural rather than a matter of clearing in time.
@@ -257,7 +257,7 @@ describe('ItemEditor content-type switching', () => {
       } else {
         expect(pickerValue(to)).toBe('');
       }
-      expect(contentSection().textContent).not.toContain(`asset-${from}-1`);
+      expect(contentField().textContent).not.toContain(`asset-${from}-1`);
     },
   );
 
@@ -303,7 +303,7 @@ describe('ItemEditor content-type switching', () => {
   it('shows no missing-resource notice for an item with no content yet', () => {
     renderItemEditor({ id: '1', type: '' });
 
-    expect(document.querySelector('section[data-name="Content"]')).toBeNull();
+    expect(document.querySelector('[data-field-name^="content"]')).toBeNull();
     expect(
       screen.queryByText(/resource is no longer in this protocol/),
     ).toBeNull();

@@ -22,7 +22,7 @@ import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
 
 const DISPLAY_PROPERTIES: PropertyField[] = [
-  { fieldName: 'variable' },
+  { fieldName: 'variable', label: 'Attribute' },
   {
     fieldName: 'label',
     control: 'input',

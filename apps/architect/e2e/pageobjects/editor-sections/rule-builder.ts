@@ -36,7 +36,7 @@ export type RuleSpec =
   | {
       kind: 'alterPresence';
       nodeTypeName: string;
-      operator: 'Exists' | 'Does not exist';
+      operator: 'exists' | 'does not exist';
     }
   | {
       kind: 'alterBooleanAttribute';

@@ -102,7 +102,7 @@ type EditValueProps = {
   label: string;
   hint?: string;
   value: FieldValue;
-  options?: OptionItem[];
+  options?: OptionItem[] | null;
   onChange?: (
     event: unknown,
     value: unknown,
@@ -119,7 +119,7 @@ const EditValue = ({
   value,
   variableType = 'string',
   onChange = () => {},
-  options = [],
+  options,
   ...rest
 }: EditValueProps & {
   fieldConfig: FieldConfig;
@@ -129,7 +129,7 @@ const EditValue = ({
     name="value"
     onChange={onChange}
     value={value}
-    options={options.length > 0 ? options : undefined}
+    options={Array.isArray(options) && options.length > 0 ? options : undefined}
     {...fieldConfig.props}
     {...rest}
   />

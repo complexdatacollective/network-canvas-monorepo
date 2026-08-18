@@ -25,11 +25,9 @@ import { createVariableViaSpotlight } from './variables.js';
 //   variable" but stays unhidden, which doesn't matter here since the
 //   picker's *button* text ("Select variable") is what `createVariableViaSpotlight`
 //   targets.
-// - `prompt`: a RichText field whose accessible name is explicitly
-//   overridden to "Prompt text" (FieldFields.tsx:
-//   `componentProps={{ label: 'Prompt text', labelHidden: true, ... }}`) —
-//   NOT the field's raw name ("prompt"), unlike RichText fields elsewhere
-//   that fall back to `input.name`.
+// - `prompt`: a RichText field whose accessible name is "Question text"
+//   (FieldFields.tsx). This is the stable field-level label; the surrounding
+//   heading-less Section deliberately contributes no duplicate name.
 // - `component` ("Input Control", labelHidden): a real native `<select>`
 //   (fresco-ui's `NativeSelectField`), so `selectOption` works directly.
 //   Its Subsection is `disabled={!variable}` (FieldFields.tsx) — i.e. it
@@ -54,7 +52,7 @@ export async function addFormField(
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: opts.variableName });
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(opts.promptText);
   await page

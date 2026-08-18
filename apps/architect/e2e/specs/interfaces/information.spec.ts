@@ -129,12 +129,11 @@ test('never turns an image item into its own asset id as participant text', asyn
 
   await dialog.getByRole('radio', { name: 'Text', exact: true }).click();
 
-  // The editor is empty, and the asset id is nowhere in the Content section.
-  const contentSection = dialog.locator('section[data-name="Content"]');
-  const contentEditor = contentSection.getByRole('textbox');
+  // The editor is empty, and the asset id is nowhere in the Content field.
+  const contentEditor = dialog.getByRole('textbox', { name: 'Content' });
   await expect(contentEditor).toBeEditable();
   await expect(contentEditor).toHaveText('');
-  await expect(contentSection).not.toContainText('photo-asset');
+  await expect(dialog).not.toContainText('photo-asset');
 
   // The save is REFUSED, visibly: it used to be swallowed with no error, no
   // invalid control and focus on <body> — and that silent attempt is what
@@ -175,23 +174,19 @@ test('keeps an unsaved text draft across a round trip through Image', async ({
   const editor = new StageEditor(architectPage);
   const dialog = await openItemDialog(editor, architectPage, 1);
 
-  const contentEditor = dialog
-    .locator('section[data-name="Content"]')
-    .getByRole('textbox');
+  const contentEditor = dialog.getByRole('textbox', { name: 'Content' });
   await expect(contentEditor).toHaveText('Original text body');
   await editor.fillRichText('Content', 'Original text body plus unsaved work');
 
   await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
   await expect(
-    dialog
-      .locator('section[data-name="Content"]')
-      .getByRole('button', { name: 'Select resource' }),
+    dialog.getByRole('button', { name: 'Select resource' }),
   ).toBeVisible();
 
   await dialog.getByRole('radio', { name: 'Text', exact: true }).click();
-  await expect(
-    dialog.locator('section[data-name="Content"]').getByRole('textbox'),
-  ).toHaveText('Original text body plus unsaved work');
+  await expect(dialog.getByRole('textbox', { name: 'Content' })).toHaveText(
+    'Original text body plus unsaved work',
+  );
 });
 
 // The per-type drafts are session state, and the row is committed by
@@ -213,14 +208,12 @@ test('drops a text draft left behind by a switch to Image', async ({
 
   const editor = new StageEditor(architectPage);
   const dialog = await openItemDialog(editor, architectPage, 1);
-  const contentSection = dialog.locator('section[data-name="Content"]');
-
   // Diverge the text slot from the value it registered with, so its dormant
   // entry is a real edit that `mergeEditedRow` writes onto the row.
   await editor.fillRichText('Content', 'A text draft that must not be saved');
 
   await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
-  await contentSection.getByRole('button', { name: 'Select resource' }).click();
+  await dialog.getByRole('button', { name: 'Select resource' }).click();
   await expect(
     architectPage.getByRole('dialog', { name: 'Resource Browser' }),
   ).toBeVisible();
@@ -229,7 +222,7 @@ test('drops a text draft left behind by a switch to Image', async ({
     .getByText('photo.svg')
     .click();
   await expect(
-    contentSection.getByRole('button', { name: 'Update resource' }),
+    dialog.getByRole('button', { name: 'Update resource' }),
   ).toBeVisible();
 
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();

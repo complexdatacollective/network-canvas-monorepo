@@ -27,7 +27,7 @@ const SORT_ORDER_PROPERTIES: PropertyField[] = [
 ];
 
 const SORTABLE_PROPERTIES: PropertyField[] = [
-  { fieldName: 'variable' },
+  { fieldName: 'variable', label: 'Attribute' },
   {
     fieldName: 'label',
     control: 'input',
