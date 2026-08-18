@@ -1,5 +1,12 @@
 # @codaco/documentation
 
+## 0.3.3
+
+### Patch Changes
+
+- Populate PostHog's built-in app name and version metadata for Documentation
+  events.
+
 ## 0.3.2
 
 ### Patch Changes
