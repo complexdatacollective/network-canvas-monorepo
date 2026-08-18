@@ -4,6 +4,7 @@ import { appVersion } from './utils/appVersion';
 
 const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 const INSTALLATION_ID_KEY = 'network-canvas-architect-installation-id';
+const APP_KEY = 'ArchitectWeb';
 const APP_NAME = 'Architect';
 
 function getOrCreateInstallationId(): string {
@@ -57,7 +58,7 @@ export function initializeAnalytics({
   });
 
   posthog.register({
-    app: APP_NAME,
+    app: APP_KEY,
     $app_name: APP_NAME,
     installation_id: getOrCreateInstallationId(),
     host_version: appVersion,

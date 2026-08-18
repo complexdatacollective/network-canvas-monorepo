@@ -11,7 +11,7 @@ export function computeSuperProperties(
 ): SuperProperties {
   const props: SuperProperties = {
     [SUPER_PROPS.APP]: metadata.hostApp,
-    [SUPER_PROPS.APP_NAME]: metadata.hostApp,
+    [SUPER_PROPS.APP_NAME]: metadata.appName ?? metadata.hostApp,
     [SUPER_PROPS.INSTALLATION_ID]: metadata.installationId,
     [SUPER_PROPS.PACKAGE_VERSION]: version,
     [SUPER_PROPS.PROTOCOL_HASH]: payload.protocol.hash,

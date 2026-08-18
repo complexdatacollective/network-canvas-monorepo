@@ -38,6 +38,18 @@ describe('computeSuperProperties', () => {
     });
   });
 
+  it('uses an explicit display name without changing the custom app key', () => {
+    const metadata: InterviewAnalyticsMetadata = {
+      installationId: 'install-1',
+      hostApp: 'interviewer',
+      appName: 'Interviewer',
+    };
+    expect(computeSuperProperties(metadata, fixturePayload)).toMatchObject({
+      app: 'interviewer',
+      $app_name: 'Interviewer',
+    });
+  });
+
   it('omits host_version when undefined', () => {
     const metadata: InterviewAnalyticsMetadata = {
       installationId: 'install-1',

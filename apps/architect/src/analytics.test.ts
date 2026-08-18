@@ -40,7 +40,7 @@ describe('initializeAnalytics', () => {
       }),
     );
     expect(register).toHaveBeenCalledWith({
-      app: 'Architect',
+      app: 'ArchitectWeb',
       $app_name: 'Architect',
       host_version: appVersion,
       $app_version: appVersion,
