@@ -9,10 +9,15 @@ import type { InterviewsSearchParams } from '~/app/dashboard/_components/Intervi
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeRevalidateTag, safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { Prisma } from '~/lib/db/generated/client';
 import { captureException, shutdownPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { getInterviewIdsMatching } from '~/queries/interviews';
-import type { CreateInterview, DeleteInterviews } from '~/schemas/interviews';
+import type {
+  CreateInterview,
+  CreateInterviewResult,
+  DeleteInterviews,
+} from '~/schemas/interviews';
 import { participantIdentifierSchema } from '~/schemas/participant';
 import { ensureError } from '~/utils/ensureError';
 
@@ -139,7 +144,25 @@ export async function getIncompleteInterviewUrlData(
   }
 }
 
-export async function createInterview(data: CreateInterview) {
+/**
+ * Prisma raises P2025 when a nested `connect` cannot resolve the record it
+ * points at. For `createInterview` that can only be the protocol connect, so
+ * it means the protocol id taken from the onboarding URL no longer exists.
+ *
+ * Checking the code rather than pre-reading the protocol keeps this to a
+ * single round trip and stays correct when a protocol is deleted between the
+ * check and the write.
+ */
+function isMissingProtocol(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2025'
+  );
+}
+
+export async function createInterview(
+  data: CreateInterview,
+): Promise<CreateInterviewResult> {
   const { participantIdentifier, protocolId } = data;
 
   // The participant identifier may arrive unauthenticated via /onboard, so
@@ -234,6 +257,17 @@ export async function createInterview(data: CreateInterview) {
       errorType: null,
     };
   } catch (error) {
+    // A participant following a link to a protocol that no longer exists is an
+    // expected outcome of an unauthenticated, user-supplied id — report it to
+    // the caller so it can be explained, but never as an application exception.
+    if (isMissingProtocol(error)) {
+      return {
+        errorType: 'no-protocol',
+        error: 'Protocol not found',
+        createdInterviewId: null,
+      };
+    }
+
     const e = ensureError(error);
 
     after(async () => {
@@ -242,7 +276,7 @@ export async function createInterview(data: CreateInterview) {
     });
 
     return {
-      errorType: e.message,
+      errorType: 'unknown',
       error: 'Failed to create interview',
       createdInterviewId: null,
     };
