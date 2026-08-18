@@ -174,11 +174,16 @@ describe('<ProjectActions />', () => {
     );
   });
 
-  it('renders a single separator between the page actions', () => {
+  it('renders Return-to-start in its own page-action segment', () => {
     const store = createTestStore();
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(screen.getAllByRole('separator')).toHaveLength(1);
+    expect(
+      screen.getByRole('toolbar', { name: 'Page actions' }),
+    ).toContainElement(screen.getByRole('separator'));
+    expect(
+      screen.getByRole('toolbar', { name: 'History actions' }),
+    ).not.toContainElement(screen.getByRole('separator'));
   });
 
   // The `report` mode gates authoring only. History recovery is not authoring,
@@ -252,7 +257,7 @@ describe('<ProjectActions />', () => {
     expect(screen.getByRole('status')).toHaveTextContent('');
   });
 
-  it('renders additional items between Return-to-start and Undo/Redo', () => {
+  it('renders additional page actions separately from Undo/Redo', () => {
     const store = createTestStore();
     render(
       <ProjectActions
@@ -269,6 +274,12 @@ describe('<ProjectActions />', () => {
     );
 
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('toolbar', { name: 'Page actions' }),
+    ).toContainElement(screen.getByRole('button', { name: /print/i }));
+    expect(
+      screen.getByRole('toolbar', { name: 'History actions' }),
+    ).toContainElement(screen.getByRole('button', { name: /undo/i }));
   });
 
   it('keeps the Download action filled on hover', () => {
@@ -311,6 +322,23 @@ describe('<ProjectActions />', () => {
     );
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
+
+  it.each(['/protocol/assets', '/protocol/codebook', '/protocol/summary'])(
+    'returns from %s to the timeline',
+    (route) => {
+      mockLocation.mockReturnValue(route);
+      const store = createTestStore();
+      render(<ProjectActions />, { wrapper: wrap(store) });
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /return to timeline/i }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith('/protocol');
+      expect(
+        screen.queryByRole('button', { name: /return to start screen/i }),
+      ).toBeNull();
+    },
+  );
 
   it('hides save-to-source outside source authoring mode', () => {
     const store = createTestStore();

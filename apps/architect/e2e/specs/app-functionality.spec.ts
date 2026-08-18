@@ -6,6 +6,53 @@ import { readProtocolJson } from '../helpers/read-store.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
+test('separates history controls and returns project subpages to the timeline', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'Project Toolbar', assets });
+  await gotoProtocol(architectPage);
+
+  const pageActions = architectPage.getByRole('toolbar', {
+    name: 'Page actions',
+  });
+  const historyActions = architectPage.getByRole('toolbar', {
+    name: 'History actions',
+  });
+
+  await expect(
+    pageActions.getByRole('button', { name: 'Return to Start Screen' }),
+  ).toBeVisible();
+  await expect(pageActions.getByRole('separator')).toHaveCount(1);
+  await expect(
+    historyActions.getByRole('button', { name: 'Undo' }),
+  ).toBeVisible();
+  await expect(
+    historyActions.getByRole('button', { name: 'Redo' }),
+  ).toBeVisible();
+  await expect(historyActions.getByRole('separator')).toHaveCount(0);
+
+  const historyBox = await historyActions.boundingBox();
+  const pageBox = await pageActions.boundingBox();
+  if (!historyBox || !pageBox) {
+    throw new Error('both project action toolbars must be visible');
+  }
+  expect(historyBox.x).toBeLessThan(pageBox.x);
+
+  for (const route of [
+    '/protocol/assets',
+    '/protocol/codebook',
+    '/protocol/summary',
+  ]) {
+    await architectPage.goto(route);
+    await pageActions
+      .getByRole('button', { name: 'Return to Timeline' })
+      .click();
+    await expect(architectPage).toHaveURL(/\/protocol$/);
+  }
+});
+
 test('downloads the active protocol as a .netcanvas', async ({
   architectPage,
   seed,
@@ -200,6 +247,8 @@ test('does not leave a cleared protocol in browser history', async ({
   await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
 
   const toolbar = new Toolbar(architectPage);
+  await toolbar.returnToTimeline();
+  await expect(architectPage).toHaveURL(/\/protocol$/);
   await toolbar.returnToStart();
   await architectPage.getByTestId('dialog-primary').click();
   await expect(architectPage).toHaveURL(/\/$/);

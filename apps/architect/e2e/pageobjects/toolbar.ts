@@ -34,6 +34,7 @@ export class Toolbar {
       'undo': 'Undo',
       'redo': 'Redo',
       'return-to-start': 'Return to Start Screen',
+      'return-to-timeline': 'Return to Timeline',
       'print': 'Print',
       'finished-editing': 'Finished Editing',
     };
@@ -54,6 +55,10 @@ export class Toolbar {
 
   async returnToStart() {
     await this.button('return-to-start').click();
+  }
+
+  async returnToTimeline() {
+    await this.button('return-to-timeline').click();
   }
 
   async print() {

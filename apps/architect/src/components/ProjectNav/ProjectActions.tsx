@@ -65,10 +65,19 @@ const ProjectActions = ({
     undo: scopedUndo,
     redo: scopedRedo,
   } = useProtocolUndoRedo();
-  const [, setLocation] = useLocation();
-  const handleReturnToStart = useCallback(
-    () => setLocation('/'),
-    [setLocation],
+  const [location, setLocation] = useLocation();
+  const returnsToTimeline = [
+    '/protocol/assets',
+    '/protocol/codebook',
+    '/protocol/summary',
+  ].includes(location);
+  const returnDestination = returnsToTimeline ? '/protocol' : '/';
+  const returnLabel = returnsToTimeline
+    ? 'Return to Timeline'
+    : 'Return to Start Screen';
+  const handleReturn = useCallback(
+    () => setLocation(returnDestination),
+    [returnDestination, setLocation],
   );
 
   const [isExporting, setIsExporting] = useState(false);
@@ -203,58 +212,66 @@ const ProjectActions = ({
   // owns the saved copy — and only to it. See `ProjectActionsMode`.
   const canRecoverHistory = mode !== 'locked';
 
+  const historyItems = useMemo<ToolbarSegment[]>(() => {
+    if (!canRecoverHistory) {
+      return [];
+    }
+
+    return [
+      {
+        type: 'button',
+        id: 'undo',
+        label: 'Undo',
+        icon: <Undo />,
+        disabled: !canUndo,
+        onClick: handleUndo,
+      },
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Redo />,
+        disabled: !canRedo,
+        onClick: handleRedo,
+      },
+    ];
+  }, [canRecoverHistory, canRedo, canUndo, handleRedo, handleUndo]);
+
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {
     const items: ToolbarSegment[] = [
       {
         type: 'button',
         id: 'return-to-start',
-        label: 'Return to Start Screen',
+        label: returnLabel,
         icon: <ArrowLeftToLine />,
         showLabel: true,
-        onClick: handleReturnToStart,
+        onClick: handleReturn,
       },
-      ...additionalItems,
+      { type: 'separator', id: 'project-return-separator' },
     ];
 
-    if (canRecoverHistory) {
-      items.push(
-        {
-          type: 'button',
-          id: 'undo',
-          label: 'Undo',
-          icon: <Undo />,
-          disabled: !canUndo,
-          onClick: handleUndo,
-        },
-        {
-          type: 'button',
-          id: 'redo',
-          label: 'Redo',
-          icon: <Redo />,
-          disabled: !canRedo,
-          onClick: handleRedo,
-        },
-      );
+    if (additionalItems.length > 0) {
+      items.push(...additionalItems, {
+        type: 'separator',
+        id: 'project-download-separator',
+      });
     }
 
-    items.push(
-      { type: 'separator', id: 'project-download-separator' },
-      {
-        type: 'button',
-        id: 'download',
-        label: downloadSuccess
-          ? 'Downloaded'
-          : isExporting
-            ? 'Downloading...'
-            : 'Download',
-        icon: downloadSuccess ? <Check /> : <Download />,
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-sea-green text-white',
-        disabled: isExporting,
-        onClick: handleDownload,
-      },
-    );
+    items.push({
+      type: 'button',
+      id: 'download',
+      label: downloadSuccess
+        ? 'Downloaded'
+        : isExporting
+          ? 'Downloading...'
+          : 'Download',
+      icon: downloadSuccess ? <Check /> : <Download />,
+      showLabel: true,
+      variant: 'default',
+      className: 'bg-sea-green text-white',
+      disabled: isExporting,
+      onClick: handleDownload,
+    });
 
     if (canSaveToSource) {
       items.push(
@@ -278,22 +295,18 @@ const ProjectActions = ({
     return items;
   }, [
     additionalItems,
-    canRecoverHistory,
-    canRedo,
     canSaveToSource,
-    canUndo,
     downloadSuccess,
     handleDownload,
-    handleRedo,
-    handleReturnToStart,
+    handleReturn,
     handleSaveSource,
-    handleUndo,
     isExporting,
     isSavingSource,
+    returnLabel,
     sourceSaveSuccess,
   ]);
 
-  return <ActionToolbar items={toolbarItems} />;
+  return <ActionToolbar items={toolbarItems} leadingItems={historyItems} />;
 };
 
 export default ProjectActions;
