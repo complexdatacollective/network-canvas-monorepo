@@ -10,11 +10,8 @@ import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
 import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
-// A stored schema-7 version, as one would exist after the platform moved on:
-// same taxonomy, settings carrying the historical schemaVersion. Write-time
-// validation pins new sections to the CURRENT schema, so this seeds through
-// the sync engine directly — exactly how such rows come to exist (they were
-// current when written).
+// Write-time validation pins new sections to the current schema, so a stored
+// schema-7 version has to be seeded through the sync engine directly.
 const V7_SECTIONS: Record<string, SectionDoc> = {
   'settings': { name: 'Legacy Protocol', schemaVersion: 7 },
   'stageOrder': { stages: [] },
@@ -101,7 +98,6 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       migratedFromVersionId: versionId,
     });
 
-    // As-fielded provenance: the original version row is untouched.
     const frozenAfter = await db.query(
       `SELECT manifest FROM protocol_versions WHERE id = $1`,
       [versionId],

@@ -1,9 +1,3 @@
-// Deterministic canonical assembly — the pure core of the protocol-store
-// contract operation getProtocolDocument (#1276). Everything outside the
-// storage layer consumes the assembled, schema-conformant document; this
-// module is deliberately schema-version-agnostic (it merges whatever the
-// settings section carries), so stored versions at older schema versions
-// assemble for migration exactly as fielded.
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { parseSectionId } from './taxonomy.ts';
@@ -21,11 +15,9 @@ function stageOrderOf(doc: SectionDoc): string[] {
   return order as string[];
 }
 
-/**
- * Assembles a full protocol document from a section map. Every section must
- * be consumed and every stage in the order list must have a section — a
- * mismatch is an integrity violation, never silently repaired.
- */
+// Deliberately schema-version-agnostic — it merges whatever the settings
+// section carries — so a stored version at an older schema assembles exactly
+// as fielded for migration.
 export function assembleProtocol(
   sections: Record<string, SectionDoc>,
 ): Record<string, unknown> {
@@ -34,10 +26,9 @@ export function assembleProtocol(
   let ego: SectionDoc | undefined;
   let assets: SectionDoc | undefined;
   const stageDocs = new Map<string, SectionDoc>();
-  // Null prototypes: type ids are schema-valid identifiers that may collide
-  // with Object.prototype members ('__proto__' passes VariableNameSchema),
-  // and assigning that key into an ordinary object invokes the prototype
-  // setter instead of creating an entry.
+  // Null prototypes: '__proto__' is a schema-valid type id, and assigning it
+  // into an ordinary object invokes the prototype setter instead of adding an
+  // entry, silently losing the entity.
   const node: Record<string, SectionDoc> = Object.create(null) as Record<
     string,
     SectionDoc
@@ -100,8 +91,6 @@ export function assembleProtocol(
   if (ego !== undefined) codebook.ego = ego;
 
   const protocol: Record<string, unknown> = { ...settings, codebook, stages };
-  // Every draft carries an assets section so the sync engine can lease and
-  // edit it; an empty manifest normalizes back to the absent field.
   if (assets !== undefined && Object.keys(assets).length > 0) {
     protocol.assetManifest = assets;
   }

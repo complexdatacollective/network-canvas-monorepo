@@ -1,11 +1,7 @@
 import { z } from 'zod';
 
-// Write-time section validation (#1276): each section document validates
-// against @codaco/protocol-validation's modular sub-schema for its kind.
-// Cross-section invariants (codebook-wide uniqueness, stage cross-references,
-// skip-logic ordering) deliberately do NOT run here — they belong to the
-// assembled document, which validateDraft and the publish gate check with the
-// canonical validator.
+// Per-section only. Cross-section invariants belong to the assembled document,
+// which validateDraft and the publish gate check with the canonical validator.
 import {
   CURRENT_SCHEMA_VERSION,
   EdgeDefinitionSchema,
@@ -19,7 +15,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { parseSectionId } from './taxonomy.ts';
 
-/** @public — the settings section's shape, part of the store's schema surface. */
+/** @public */
 export const SettingsSectionSchema = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -28,7 +24,7 @@ export const SettingsSectionSchema = z.strictObject({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
 });
 
-/** @public — the stage-order section's shape, part of the store's schema surface. */
+/** @public */
 export const StageOrderSectionSchema = z.strictObject({
   stages: z.array(z.string().min(1)),
 });
@@ -76,7 +72,6 @@ function schemaFor(id: string): z.ZodType {
   }
 }
 
-/** Validates one section document against its kind's sub-schema. */
 export function validateSection(
   id: string,
   doc: SectionDoc,
@@ -94,7 +89,6 @@ export function validateSection(
   };
 }
 
-/** A stage section's id must match the stage document's own id. */
 export function validateStageSectionIdentity(
   stageId: string,
   doc: SectionDoc,

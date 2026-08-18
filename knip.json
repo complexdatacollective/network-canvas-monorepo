@@ -153,9 +153,8 @@
         "src/netlify.ts!"
       ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"],
-      // The protocol suites resolve their fixtures through this package's
-      // exports map with import.meta.resolve, so the specifier is a runtime
-      // string knip cannot follow.
+      // Resolved with import.meta.resolve, so the specifier is a runtime string
+      // knip cannot follow.
       "ignoreDependencies": ["@codaco/protocols"]
     },
     "apps/interviewer": {

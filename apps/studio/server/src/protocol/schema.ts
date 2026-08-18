@@ -1,15 +1,11 @@
-// The protocol store's own tables (#1276), layered over @codaco/studio-sync's
-// drafts/sections/manifests. House style follows the sync schema: snake_case
-// unquoted identifiers, uuid primary keys, jsonb documents.
-//
-// Published versions are immutable by construction twice over: BEFORE
-// UPDATE/DELETE triggers raise on the version tables, and version_sections'
-// foreign key into sections makes garbage-collecting a pinned section
-// structurally impossible.
-//
 // Whitespace counts: src/db/schema.ts hashes this string as part of the
-// database fingerprint, so reformatting it reads as a schema change and
-// demands that every Studio database be recreated.
+// database fingerprint, so reformatting it reads as a schema change and demands
+// that every Studio database be recreated.
+//
+// The functions and triggers are CREATE OR REPLACE because DROP TABLE CASCADE
+// leaves functions behind, and an `already exists` error thrown from applySchema
+// reads as transient to the boot retry loop — which would spin forever instead
+// of reporting a stale database.
 export const PROTOCOL_STORE_SCHEMA_SQL = `
 CREATE TABLE protocols (
   id uuid PRIMARY KEY,
@@ -24,12 +20,9 @@ CREATE TABLE protocol_versions (
   version_number int NOT NULL,
   label text,
   version_hash text NOT NULL,
-  -- The frozen manifest, VERBATIM: as-fielded provenance that platform
-  -- migrations never rewrite. Not parsed on hot paths; version_sections is
-  -- the relational form.
   manifest jsonb NOT NULL,
   schema_version int NOT NULL,
-  -- Provenance only — no FK: draft rows are discardable.
+  -- No FK: draft rows are discardable.
   source_draft_id uuid,
   source_manifest_hash text NOT NULL,
   migrated_from_version_id uuid REFERENCES protocol_versions (id),
@@ -38,8 +31,8 @@ CREATE TABLE protocol_versions (
   UNIQUE (protocol_id, version_hash)
 );
 
--- The GC pin set: sections referenced here can never be swept (FK), and the
--- rows themselves are as immutable as the version they belong to.
+-- The GC pin set: the FK into sections makes sweeping a pinned section
+-- structurally impossible.
 CREATE TABLE version_sections (
   version_id uuid NOT NULL REFERENCES protocol_versions (id),
   section_id text NOT NULL,
@@ -47,7 +40,6 @@ CREATE TABLE version_sections (
   PRIMARY KEY (version_id, section_id)
 );
 
--- Joins a sync draft to its protocol and records what it branched from.
 CREATE TABLE protocol_drafts (
   draft_id uuid PRIMARY KEY REFERENCES drafts (id),
   protocol_id uuid NOT NULL REFERENCES protocols (id),
@@ -69,10 +61,8 @@ CREATE OR REPLACE TRIGGER version_sections_immutable
   BEFORE UPDATE OR DELETE ON version_sections
   FOR EACH ROW EXECUTE FUNCTION protocol_versions_are_immutable();
 
--- Pins may only be written by the transaction that created the version row
--- itself (xmin equals the current transaction): inserting a pin later would
--- change what the version assembles to while its frozen manifest and hash
--- stay unchanged.
+-- Inserting a pin after publication would change what the version assembles to
+-- while its frozen manifest and hash stayed unchanged.
 CREATE OR REPLACE FUNCTION version_sections_pins_are_frozen() RETURNS trigger AS $$
 BEGIN
   IF NOT EXISTS (

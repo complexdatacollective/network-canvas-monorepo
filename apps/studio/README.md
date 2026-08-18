@@ -166,7 +166,8 @@ sections are shared, reordering stages touches only the manifest, and
 structural diff falls out of comparing two manifests.
 
 `server/src/protocol` implements this over the same pool everything else uses.
-Assembly (`getProtocolDocument`) is the contract: outside the storage layer,
+Assembly (`getDraftDocument`, `getVersionDocument`) is the contract: outside
+the storage layer,
 Studio consumes the schema-conformant protocol document exactly as
 `@codaco/protocol-validation` defines it, and publishing re-validates the
 assembled document with the canonical validator before freezing it. Sectioning
@@ -181,6 +182,22 @@ Its database-backed tests run against the dev Postgres and skip without one, so
 on a machine with no container `pnpm --filter @codaco/studio-server test`
 passes having verified far less than it appears to. Read the reporter, not the
 exit code.
+
+No surface exposes the store yet — neither RPC procedure nor API route — so
+
+```bash
+pnpm --filter @codaco/studio-server protocol-demo
+```
+
+is the only way to look at one. It sectionizes a protocol (the sample one, or
+`--protocol <path>`), prints its sections and their hashes (`--sections` for
+every row), assembles it back, publishes it, edits one prompt and publishes
+again to show how much of the second version is structurally shared with the
+first, and renders the structural diff as sentences. It asserts nothing — the
+suites in `server/src/protocol/__tests__` own that — and it should be deleted
+once the client can show the same things. The rows it writes stay behind for
+inspection; published versions cannot be deleted, so `db:reset` is how you clear
+them.
 
 ## Environment
 

@@ -1,13 +1,3 @@
-// The section taxonomy for the sectioned, content-addressed protocol store
-// (#1276): each stage, each codebook entity, the protocol-level settings
-// block, the stage-order list, and the asset manifest is one section
-// document. This module is the single place the section-id string scheme
-// lives; everything else goes through SectionRef.
-//
-// Stage ids and codebook type ids may themselves contain ':' (the shared
-// VariableNameSchema allows it), so parsing matches fixed prefixes and treats
-// the remainder as the id verbatim.
-
 export type SectionRef =
   | { kind: 'settings' }
   | { kind: 'stageOrder' }
@@ -17,7 +7,7 @@ export type SectionRef =
   | { kind: 'codebookEgo' }
   | { kind: 'assets' };
 
-/** @public — the store's error surface, thrown outward from parseSectionId. */
+/** @public */
 export class UnknownSectionIdError extends Error {
   constructor(id: string) {
     super(`not a protocol-store section id: ${id}`);
@@ -47,6 +37,8 @@ export function sectionId(ref: SectionRef): string {
   }
 }
 
+// Stage and codebook type ids may themselves contain ':', so this matches
+// fixed prefixes and takes the remainder verbatim rather than splitting.
 export function parseSectionId(id: string): SectionRef {
   if (id === 'settings') return { kind: 'settings' };
   if (id === 'stageOrder') return { kind: 'stageOrder' };

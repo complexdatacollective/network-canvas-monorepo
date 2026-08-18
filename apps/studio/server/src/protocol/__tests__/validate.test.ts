@@ -46,9 +46,7 @@ describe('validateSection', () => {
 describe('validation layering', () => {
   it('cross-entity codebook violations pass write-time but fail assembled validation', async () => {
     const protocol = baseProtocol();
-    // The same variable record key on two node types: legal per entity
-    // definition, illegal for the codebook as a whole (global key
-    // uniqueness), so only the assembled document can reject it.
+    // Legal per entity definition, illegal for the codebook as a whole.
     protocol.codebook.node = {
       ...protocol.codebook.node,
       colleague: {

@@ -1,9 +1,3 @@
-// The protocol store's lifecycle operations (#1276): protocol/draft
-// creation, canonical assembly (getProtocolDocument's stored form), the
-// publish gate, version listing/reading, and structural diff between stored
-// versions. Draft EDITING is not here — live section edits go through
-// @codaco/studio-sync's lease/commit engine; structural changes (adding or
-// removing sections) live in draft-structure.ts.
 import { randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
@@ -29,7 +23,7 @@ import {
 } from './validate.ts';
 import { versionContentHash } from './version-hash.ts';
 
-/** @public — the store's error surface, thrown outward from ProtocolStore. */
+/** @public */
 export class ProtocolStoreError extends Error {}
 
 export type PublishResult =
@@ -61,12 +55,8 @@ export type DraftSections = {
   sections: Record<string, SectionDoc>;
 };
 
-/**
- * A lease-scoped sync command can rewrite any field of a section document —
- * including a stage's id, which assembly and the canonical validator cannot
- * see is out of step with the section's key. The publish gate (and
- * validateDraft) therefore re-checks key/document identity over the head.
- */
+// A lease-scoped command can rewrite a stage's own id, which neither assembly
+// nor the canonical validator can see is out of step with its section key.
 function sectionIdentityIssues(
   sections: Record<string, SectionDoc>,
 ): ProtocolValidationIssue[] {
@@ -114,11 +104,8 @@ export class ProtocolStore {
     this.db = db;
   }
 
-  /**
-   * Creates a protocol and its first draft from a full schema-conformant
-   * document. Every section is write-time validated; the document itself is
-   * NOT required to pass whole-protocol validation until publish.
-   */
+  // Sections are write-time validated; the document is not required to pass
+  // whole-protocol validation until publish.
   async createProtocol(params: {
     protocol: CurrentProtocol;
     protocolId?: string;
@@ -151,8 +138,6 @@ export class ProtocolStore {
     }
   }
 
-  /** Branch a new draft from a published version, structurally sharing every
-   * section (content-addressed rows already exist and are FK-pinned). */
   async createDraftFromVersion(params: {
     versionId: string;
     draftId?: string;
@@ -198,7 +183,6 @@ export class ProtocolStore {
     }
   }
 
-  /** The draft head's section map and documents, from one MVCC snapshot. */
   async getDraftSections(draftId: string): Promise<DraftSections> {
     const res = await this.db.query(
       `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes,
@@ -239,14 +223,11 @@ export class ProtocolStore {
     };
   }
 
-  /** Canonical assembly of the draft head — the getProtocolDocument contract. */
   async getDraftDocument(draftId: string): Promise<Record<string, unknown>> {
     const { sections } = await this.getDraftSections(draftId);
     return assembleProtocol(sections);
   }
 
-  /** Assembled-document validation with the canonical validator — the same
-   * check the publish gate runs, available without publishing. */
   async validateDraft(
     draftId: string,
   ): Promise<
@@ -264,14 +245,8 @@ export class ProtocolStore {
       : { valid: false, issues: result.error.issues };
   }
 
-  /**
-   * The publish gate (#1276): validate the assembled head document, then
-   * freeze the head manifest verbatim into an immutable version row in one
-   * transaction. Validation runs OUTSIDE the transaction; the head lock then
-   * proves the validated manifest is still the head, so a stale freeze is
-   * impossible. Identical content republishes as 'unchanged' — same content,
-   * same version, by content-addressed construction.
-   */
+  // Validation runs outside the transaction; the head lock below then proves
+  // the validated manifest is still the head, so a stale freeze is impossible.
   async publishDraft(params: {
     draftId: string;
     label?: string;
@@ -308,10 +283,12 @@ export class ProtocolStore {
         `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
         [params.draftId],
       );
-      const lockedRow = lockedHead.rows[0] as {
-        head_seq: string;
-        head_manifest_hash: string;
-      };
+      const lockedRow = lockedHead.rows[0] as
+        | { head_seq: string; head_manifest_hash: string }
+        | undefined;
+      if (lockedRow === undefined) {
+        throw new ProtocolStoreError(`no draft ${params.draftId}`);
+      }
       if (lockedRow.head_manifest_hash !== head.headManifestHash) {
         await client.query('ROLLBACK');
         return {
@@ -355,8 +332,6 @@ export class ProtocolStore {
         };
       }
 
-      // Migration provenance: the published draft was branched from an older-
-      // schema version, and the content being frozen is at a newer schema.
       let migratedFrom: string | null = null;
       if (draft.based_on_version_id !== null) {
         const basis = await client.query(
@@ -486,7 +461,6 @@ export class ProtocolStore {
     }));
   }
 
-  /** Structural diff from version A to version B. */
   async diffVersions(
     versionIdA: string,
     versionIdB: string,
@@ -509,8 +483,7 @@ export class ProtocolStore {
     });
   }
 
-  /** Discards a draft: leases, command log, manifests, membership, and the
-   * draft row. Section documents are left for garbage collection. */
+  // Section documents are left for garbage collection.
   async discardDraft(draftId: string): Promise<void> {
     const client = await this.db.connect();
     try {

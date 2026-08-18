@@ -1,10 +1,3 @@
-// Platform-migration lifecycle (#1276): a stored version at an older schema
-// version becomes a NEW draft at the current schema — the version row and its
-// verbatim manifest are never touched, so as-fielded provenance and hashes
-// survive upgrades by construction. The sole migrator is
-// @codaco/protocol-validation's existing chain. Publishing the resulting
-// draft records migrated_from_version_id (see ProtocolStore.publishDraft);
-// there is deliberately no auto-publish.
 import { randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
@@ -20,16 +13,11 @@ import { insertDraftRows } from './draft-rows.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 import { sectionId } from './taxonomy.ts';
 
-/** @public — the store's error surface, thrown outward from migrate. */
+/** @public */
 export class MigrationTargetError extends Error {}
 
-/**
- * Assembles a stored version exactly as fielded, migrates it to the current
- * schema version, re-sections the result, and seeds a new draft branched
- * from the version. The v7→v8 step takes the protocol name as a migration
- * dependency (v7 documents had no name field); the store's settings section
- * has always carried it.
- */
+// The version row is never touched, so as-fielded provenance and hashes
+// survive. The name is a migration dependency: v7 documents had no name field.
 export async function migrateStoredVersionToDraft(
   db: pg.Pool,
   params: { versionId: string; draftId?: string },

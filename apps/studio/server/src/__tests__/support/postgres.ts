@@ -9,10 +9,8 @@ const PROBE_TIMEOUT_MS = 3000;
 
 export async function reachableDb(): Promise<DbEnv | null> {
   const { db } = readEnv();
-  // Local only, the same refusal scripts/db-reset.ts makes: these suites create
-  // schemas, publish protocol versions, and run garbage collection's unqualified
-  // DELETEs. A gitignored .env pointing at a managed database must not be
-  // allowed to make `pnpm test` write to it.
+  // Local only, the same refusal scripts/db-reset.ts makes: these suites run
+  // garbage collection's unqualified DELETEs.
   if (!db || !isLocalDatabase(db.url)) return null;
   const pool = createPool(db);
   let timer: NodeJS.Timeout | undefined;
@@ -45,9 +43,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
  * An isolated Postgres schema with its own pool. Suites that write a
  * deliberately wrong fingerprint need this: doing that in the shared
  * `studio_dev` would leave the developer's next `pnpm dev` refusing to boot.
- * The protocol suites need it for isolation instead. Every statement in the
- * composed schema is unqualified — tables, plpgsql functions, and the triggers
- * that bind to them — so all of it lands here.
+ * Every statement in the composed schema is unqualified — tables, plpgsql
+ * functions, and the triggers that bind to them — so all of it lands here.
  */
 export async function createScratchSchema(
   db: DbEnv,
@@ -63,8 +60,7 @@ export async function createScratchSchema(
 
   // Not createPool: the search_path is the whole point, and the server's pool
   // deliberately never carries one.
-  // The protocol store's concurrency cases hold several clients at once; the
-  // timeout turns a leaked client into a fast failure rather than a hang.
+  // The timeout turns a leaked client into a fast failure rather than a hang.
   const pool = new pg.Pool({
     connectionString: db.url,
     options: `-c search_path=${name}`,

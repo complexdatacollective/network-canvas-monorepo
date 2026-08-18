@@ -1,10 +1,3 @@
-// Structural draft operations (#1276): adding and removing sections. The
-// sync engine's commit path deliberately refuses section ids absent from the
-// head manifest (membership is not a lease-scoped edit), so growing or
-// shrinking a draft is the store's job. Each operation advances the manifest
-// exactly once under the same per-draft head row lock the commit path uses;
-// none of them writes command_log rows — they are not commands, and resume
-// already tolerates arbitrary head movement by diffing per-section hashes.
 import type pg from 'pg';
 
 import {
@@ -84,16 +77,9 @@ function stageOrderOf(doc: SectionDoc): string[] {
   return order as string[];
 }
 
-/**
- * Structural edits rewrite or remove sections outside the lease/command
- * protocol, so any lease on an affected section must be fenced in the same
- * transaction: expire in place AND bump the epoch (expiry alone would let
- * the holder's already-queued commits race the expiry check; the epoch bump
- * rejects them outright, and epochs stay monotonic per #1247's release
- * semantics). Without this, a pending moveItem would apply against a
- * rewritten stage order, and a section removed and re-added while leased
- * would accept the old owner's stale edits (ABA).
- */
+// Expiry AND an epoch bump: expiring alone would let the holder's queued
+// commits race the expiry check, and a removed-then-re-added section would
+// accept the old owner's stale edits.
 async function fenceLeases(
   client: pg.PoolClient,
   draftId: string,
@@ -106,7 +92,6 @@ async function fenceLeases(
   );
 }
 
-/** Writes the changed sections and advances the manifest by one. */
 async function advanceManifest(
   client: pg.PoolClient,
   draftId: string,
@@ -174,7 +159,6 @@ function assertValidSection(id: string, doc: SectionDoc) {
   }
 }
 
-/** Inserts a stage section and its stageOrder entry in ONE manifest advance. */
 export async function addStage(
   db: pg.Pool,
   params: { draftId: string; stage: SectionDoc; index?: number },
@@ -220,8 +204,6 @@ export async function addStage(
   });
 }
 
-/** Removes a stage section and its stageOrder entry in ONE manifest advance.
- * The section document row survives for other referents and GC. */
 export async function removeStage(
   db: pg.Pool,
   params: { draftId: string; stageId: string },

@@ -1,17 +1,10 @@
-// Structural diff (#1276): schema-aware, typed change records computed from
-// two section-hash maps — "added/removed/moved directly, body diffs only
-// where hashes differ". Records carry ids, display names, stage types, and
-// paths; rendering them as human-readable summaries (and localizing that
-// text) is the consumer's concern, so no prose is produced here.
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 
 import { parseSectionId, sectionId } from './taxonomy.ts';
 
-/** sectionId -> content hash, as stored in a manifest or a version pin set. */
 export type SectionSet = Record<string, string>;
 
 export type FieldChange = {
-  /** Path within the section document. */
   path: (string | number)[];
   change: 'added' | 'removed' | 'changed';
 };
@@ -20,7 +13,6 @@ export type VariableChange = {
   variableId: string;
   name: string;
   change: 'added' | 'removed' | 'changed';
-  /** Top-level keys of the variable definition that differ (change: 'changed'). */
   changedKeys?: string[];
 };
 
@@ -83,11 +75,6 @@ function stageOrderOf(doc: SectionDoc | undefined): string[] {
     : [];
 }
 
-/**
- * Top-level key comparison, descending one level into prompts (an id-keyed
- * collection), so the canonical example — "prompt text changed" — carries the
- * path ['prompts', promptId, 'text'] rather than an opaque top-level change.
- */
 function diffBody(a: SectionDoc, b: SectionDoc): FieldChange[] {
   const changes: FieldChange[] = [];
   for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
@@ -191,9 +178,8 @@ function diffVariables(a: SectionDoc, b: SectionDoc): VariableChange[] {
   return changes;
 }
 
-/** Ids present in both orders whose relative order survived — the ones NOT
- * in the longest common subsequence are the moved set, so a single dragged
- * stage reports one move rather than shifting every neighbour. */
+// Ids outside the subsequence are the moved set, so one dragged stage reports
+// one move rather than a shift for every neighbour it passed.
 function longestCommonSubsequence(a: string[], b: string[]): Set<string> {
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
     Array.from({ length: b.length + 1 }, () => 0),
@@ -223,12 +209,7 @@ function longestCommonSubsequence(a: string[], b: string[]): Set<string> {
   return kept;
 }
 
-/**
- * Structural diff between two section sets (draft heads, version pin sets,
- * or one of each). getDoc must resolve every hash present in either set —
- * both sides' documents are content-addressed, so a shared store lookup
- * serves both.
- */
+// getDoc must resolve every hash in either set.
 export function diffProtocolSections(
   a: SectionSet,
   b: SectionSet,

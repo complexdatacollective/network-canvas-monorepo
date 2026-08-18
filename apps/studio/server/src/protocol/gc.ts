@@ -1,24 +1,3 @@
-// Garbage collection (#1276): "pruning is garbage collection of manifests
-// and sections unreferenced by versions or the retained draft window."
-// Version-pinned sections are FK-protected regardless — the predicates here
-// only decide what is ELIGIBLE; the schema guarantees pins survive.
-//
-// Command-log rows are the write path's idempotency records: a retransmitted
-// client_seq must keep finding its recorded result for as long as
-// retransmission is possible, or a lost acknowledgement turns into a double
-// apply (or a spurious rejection the client rolls back from). A row is
-// therefore prunable only when it is below the retained manifest window AND
-// its (owner, epoch) lease is no longer live AND the client-retry horizon
-// has passed. Manifests referenced by surviving command-log rows are kept,
-// because the dedup replay path reads them.
-//
-// The section grace window closes a race with concurrent writers. Every
-// section write is an upsert that refreshes created_at on conflict (see the
-// sections DDL in @codaco/studio-sync/schema): re-adopting an existing row
-// restarts the window AND takes a row lock, so a GC DELETE that blocks
-// behind it re-checks the refreshed timestamp and keeps the row — while a
-// writer that blocks behind GC's delete simply re-inserts the row after GC
-// commits. Scheduling is the caller's concern — this is a plain callable.
 import type pg from 'pg';
 
 export type GcResult = {
@@ -28,24 +7,29 @@ export type GcResult = {
 };
 
 export type GcOptions = {
-  /** Manifests kept per draft below the head (the retained draft window). */
+  /** Manifests kept per draft below the head. */
   retainManifestsPerDraft: number;
   /** Minimum age before an unreferenced section document is swept. */
   sectionGraceMs: number;
-  /** How long a client may still retransmit a lost-acknowledgement commit;
-   * command-log rows (and the manifests they reference) survive at least
-   * this long. */
+  /** How long a client may still retransmit a lost-acknowledgement commit. */
   commandRetryHorizonMs: number;
 };
 
+// A negative or non-finite bound would move a cutoff into the future, widening
+// deletion to everything eligible regardless of age.
 function assertNonNegativeFinite(name: string, value: number) {
-  // A negative or non-finite bound would move a cutoff into the future and
-  // widen deletion to everything eligible regardless of age.
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${name} must be a non-negative finite number`);
   }
 }
 
+// Version-pinned sections are FK-protected regardless; these predicates only
+// decide what is eligible. A command-log row survives while its (owner, epoch)
+// lease is live and until the retry horizon passes, because a retransmitted
+// client_seq must keep finding its recorded result — as must the manifest that
+// result names. The section grace window closes the race with a concurrent
+// writer adopting an existing row: every section write refreshes created_at on
+// conflict and takes a row lock, so a blocked GC delete re-checks it.
 export async function gcProtocolStore(
   db: pg.Pool,
   opts: GcOptions,

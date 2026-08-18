@@ -1,22 +1,11 @@
-// Splits a schema-conformant protocol document into the store's section
-// documents. Sectioning is Studio-internal storage topology (#1276): the
-// assembled document remains the contract, and assembleProtocol() is the
-// exact inverse of this function.
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { sectionId } from './taxonomy.ts';
 
-/** @public — the store's error surface, thrown outward from sectionize. */
+/** @public */
 export class SectionizeError extends Error {}
 
-/**
- * One record per section, keyed by section id. Canonicalization notes:
- * absent optional fields stay absent, and an empty codebook entity record
- * (`node: {}`) or empty asset manifest normalizes to absent — assembly
- * cannot distinguish "no sections" from "an empty record", and the schema
- * treats both identically.
- */
 export function sectionizeProtocol(
   protocol: CurrentProtocol,
 ): Record<string, SectionDoc> {
@@ -39,9 +28,6 @@ export function sectionizeProtocol(
 
   const stageIds: string[] = [];
   for (const stage of protocol.stages) {
-    // The canonical stage schema tolerates an empty id, but the taxonomy
-    // cannot address it (and neither could skip logic or diffs) — reject it
-    // here rather than emit an unparseable section id.
     if (stage.id === '') {
       throw new SectionizeError('stage id must be non-empty');
     }
@@ -68,11 +54,9 @@ export function sectionizeProtocol(
     sections[sectionId({ kind: 'codebookEgo' })] = protocol.codebook.ego;
   }
 
-  // Always present, even when empty: the sync engine refuses leases and
-  // commits for section ids absent from the head manifest, so a protocol
-  // created without assets must still be able to gain its first one through
-  // an ordinary section edit. Assembly normalizes an empty record back to
-  // the absent field.
+  // Present even when empty: the sync engine refuses commits to section ids
+  // absent from the head manifest, so a protocol created without assets could
+  // never gain its first one. Assembly normalizes empty back to absent.
   sections[sectionId({ kind: 'assets' })] = protocol.assetManifest ?? {};
 
   return sections;

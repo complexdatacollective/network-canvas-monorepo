@@ -46,9 +46,6 @@ describe('sectionize/assemble round trip', () => {
   });
 
   it('round-trips a __proto__ entity type id without losing it', () => {
-    // JSON-parsed documents carry __proto__ as an own property; a plain
-    // object assignment in assembly would invoke the prototype setter and
-    // silently drop the entity.
     const protocol = JSON.parse(
       JSON.stringify(baseProtocol()).replaceAll('"person"', '"__proto__"'),
     ) as ReturnType<typeof baseProtocol>;
@@ -67,9 +64,8 @@ describe('sectionize/assemble round trip', () => {
 });
 
 describe('golden hashes', () => {
-  // Pinned digests over an inline protocol: any change to canonical
-  // serialization, the section taxonomy, or the version-hash recipe fails
-  // here before it silently invalidates stored content hashes.
+  // Pinned digests: a change to canonical serialization, the taxonomy, or the
+  // version-hash recipe fails here before it invalidates stored content hashes.
   it('section and version hashes are stable', () => {
     const sections = sectionizeProtocol(baseProtocol());
     const sectionHashes = Object.fromEntries(

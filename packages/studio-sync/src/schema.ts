@@ -1,9 +1,6 @@
-// This module is on the Studio server's boot path: apps/studio/server's
-// src/db/schema.ts composes this SQL with its own and hashes the result as the
-// database fingerprint. Two consequences — whitespace counts, because
-// reformatting reads as a schema change and demands that every Studio database
-// be recreated; and nothing but the string belongs here, because whatever this
-// module imports ships in the server's production bundle.
+// On the Studio server's boot path, which hashes this SQL into the database
+// fingerprint: whitespace counts, and nothing but the string belongs here
+// because whatever this module imports ships in the server's production bundle.
 export const SCHEMA_SQL = `
 CREATE TABLE drafts (
   id uuid PRIMARY KEY,
@@ -11,12 +8,9 @@ CREATE TABLE drafts (
   head_manifest_hash text NOT NULL
 );
 
--- Immutable content-addressed section documents (#1276). created_at is not
--- part of a section's identity — it is the write-liveness timestamp garbage
--- collection (#1276) reads: every section write refreshes it on conflict
--- (never DO NOTHING), so re-adopting an existing row both restarts the GC
--- grace window and takes a row lock that forces a concurrent GC DELETE to
--- re-check the refreshed timestamp before removing the row.
+-- Immutable content-addressed section documents. created_at is not part of a
+-- section's identity: it is the write-liveness timestamp GC reads, and every
+-- section write must refresh it on conflict (never DO NOTHING).
 CREATE TABLE sections (
   hash text PRIMARY KEY,
   doc jsonb NOT NULL,
@@ -48,10 +42,7 @@ CREATE TABLE leases (
 );
 
 -- Command log: unique constraint delivers write-path idempotency. created_at
--- bounds garbage collection (#1276): a row may be pruned only after the
--- client-retry horizon has passed AND its (owner, epoch) lease is no longer
--- live, because a retransmitted client_seq must keep finding its recorded
--- result for as long as retransmission is possible.
+-- bounds GC, which may prune a row only once retransmission is impossible.
 CREATE TABLE command_log (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   draft_id uuid NOT NULL,

@@ -4,7 +4,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SyncServer } from '@codaco/studio-sync/server';
 
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
+import {
+  FIXTURES,
+  baseProtocol,
+  makeStoreSchema,
+  readFixtureProtocol,
+  storeDb,
+} from './helpers.ts';
 
 async function setDescription(
   db: pg.Pool,
@@ -56,7 +62,6 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       migratedFromVersionId: null,
     });
 
-    // The manifest column is the manifests row, verbatim.
     const stored = await db.query(
       `SELECT manifest FROM protocol_versions WHERE id = $1`,
       [result.versionId],
@@ -231,8 +236,6 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       db.query(`DELETE FROM sections WHERE hash = $1`, [pinnedHash]),
     ).rejects.toThrow(/violates foreign key/);
 
-    // Nor may a pin be ADDED after publication: that would change what the
-    // version assembles to while its frozen manifest and hash stay unchanged.
     await expect(
       db.query(
         `INSERT INTO version_sections (version_id, section_id, section_hash)
@@ -241,4 +244,32 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       ),
     ).rejects.toThrow(/immutable/);
   });
+
+  // Every other case here runs on the trimmed baseProtocol; these cover a real
+  // protocol's shape, and a document that has to survive jsonb.
+  for (const fixture of FIXTURES) {
+    it(`publishes ${fixture} and reads it back byte-identical`, async () => {
+      const protocol = readFixtureProtocol(fixture);
+      const { draftId } = await store.createProtocol({ protocol });
+      const sectionCount = Object.keys(
+        (await store.getDraftSections(draftId)).sections,
+      ).length;
+
+      const result = await store.publishDraft({ draftId });
+      if (result.status !== 'published') throw new Error(result.status);
+
+      expect(await store.getVersionDocument(result.versionId)).toEqual(
+        protocol,
+      );
+      const pins = await db.query<{ pins: number }>(
+        `SELECT count(*)::int AS pins FROM version_sections WHERE version_id = $1`,
+        [result.versionId],
+      );
+      expect(pins.rows[0]?.pins).toBe(sectionCount);
+      expect(await store.publishDraft({ draftId })).toMatchObject({
+        status: 'unchanged',
+        versionId: result.versionId,
+      });
+    });
+  }
 });

@@ -1,7 +1,3 @@
-// Internal (not exported from the package): the three inserts that establish
-// a draft — the same statements as SyncServer.createDraft, but composable
-// into a caller's transaction so protocol rows and draft rows land
-// atomically.
 import type pg from 'pg';
 
 import {

@@ -84,7 +84,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(result.manifestSeq).toBe(before.headSeq + 1n);
 
     const after = await store.getDraftSections(draftId);
-    // One new stage section, one new stageOrder doc; every other hash shared.
     for (const [id, hash] of Object.entries(before.sectionHashes)) {
       if (id !== 'stageOrder') expect(after.sectionHashes[id]).toBe(hash);
     }
@@ -213,9 +212,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       index: 0,
     });
 
-    // The pending moveItem described indices of the pre-insertion list; the
-    // fence (epoch bump + expiry) must reject it rather than apply it to the
-    // rewritten order.
+    // The pending moveItem describes indices of the pre-insertion list.
     await expect(
       sync.commit({
         draftId,

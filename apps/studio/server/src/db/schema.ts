@@ -7,14 +7,8 @@ import { SCHEMA_SQL as SYNC_SCHEMA_SQL } from '@codaco/studio-sync/schema';
 import { PROTOCOL_STORE_SCHEMA_SQL } from '../protocol/schema.ts';
 import { AUTH_SCHEMA_SQL } from './auth-schema.ts';
 
-// One database, one schema, one fingerprint. The three blocks live with their
-// owners — better-auth's generated tables in ./auth-schema.ts, the sync
-// engine's in @codaco/studio-sync, the protocol store's in ../protocol — and
-// are composed here because Studio applies them together or not at all.
-//
 // The order is load-bearing: version_sections.section_hash has a foreign key
-// into the sync engine's sections, and protocol_drafts.draft_id into its
-// drafts.
+// into the sync engine's sections, and protocol_drafts.draft_id into its drafts.
 const SCHEMA_SQL = [
   AUTH_SCHEMA_SQL,
   SYNC_SCHEMA_SQL,
@@ -55,9 +49,8 @@ const FINGERPRINT_TABLE_SQL = `
 create table if not exists "schemaFingerprint" ("id" boolean primary key default true check ("id"), "fingerprint" text not null, "appliedAt" timestamptz default CURRENT_TIMESTAMP not null);
 `;
 
-// Whitespace counts, in all three composed blocks. Reformatting any of them
-// reads as a schema change and demands a wipe; normalising first would be
-// cleverness the next reader has to take on trust.
+// Whitespace counts, in all three composed blocks: reformatting any of them
+// reads as a schema change and demands a wipe.
 const SCHEMA_FINGERPRINT = createHash('sha256')
   .update(SCHEMA_SQL)
   .digest('hex');
@@ -67,8 +60,8 @@ const SCHEMA_FINGERPRINT = createHash('sha256')
 // replica of a scaled-out deployment applies the schema at boot.
 //
 // The sync and protocol blocks are not idempotent at all (bare `CREATE TABLE`),
-// which is safe only because applySchema runs solely when the fingerprint row
-// is absent AND the SCHEMA_TABLES probe finds nothing — both inside this lock.
+// which is safe only because applySchema runs solely when the fingerprint row is
+// absent AND the SCHEMA_TABLES probe finds nothing — both inside this lock.
 const SCHEMA_LOCK_KEY = 4021775688147129;
 
 export type StaleSchema = {
