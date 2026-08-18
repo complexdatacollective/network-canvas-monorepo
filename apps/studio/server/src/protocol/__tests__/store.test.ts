@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { LeaseRejectedError, SyncServer } from '@codaco/studio-sync/server';
+import {
+  LeaseRejectedError,
+  SyncServer,
+  UnknownDraftError,
+  UnknownSectionError,
+} from '@codaco/studio-sync/server';
 
 import {
   DraftStructureError,
@@ -338,6 +343,42 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         commands: [{ op: 'set', key: 'name', value: 'Stale' }],
       }),
     ).rejects.toThrow(LeaseRejectedError);
+  });
+
+  it('refuses to take over a lease whose section has been removed', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    await sync.acquire(draftId, 'stage:sociogram1', 'editor-tab');
+    await removeStage(db, { draftId, stageId: 'sociogram1' });
+
+    await expect(
+      sync.takeover(draftId, 'stage:sociogram1', 'other-tab'),
+    ).rejects.toThrow(UnknownSectionError);
+  });
+
+  it('a discarded draft rejects a queued commit and refuses to resume', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(draftId, 'settings', 'editor-tab');
+    await store.discardDraft(draftId);
+
+    await expect(
+      sync.commit({
+        draftId,
+        sectionId: 'settings',
+        owner: 'editor-tab',
+        epoch: lease!.epoch,
+        clientSeq: 1n,
+        commands: [{ op: 'set', key: 'description', value: 'orphan' }],
+      }),
+    ).rejects.toThrow(LeaseRejectedError);
+    await expect(sync.resume(draftId, 'editor-tab')).rejects.toThrow(
+      UnknownDraftError,
+    );
   });
 
   it('discardDraft removes every draft row', async () => {

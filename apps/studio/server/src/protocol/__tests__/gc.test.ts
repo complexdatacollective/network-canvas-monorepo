@@ -31,13 +31,17 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
   return res.rowCount === 1;
 }
 
-async function backdateSections(db: pg.Pool): Promise<void> {
+async function ageQuarantine(db: pg.Pool): Promise<void> {
   await db.query(
-    `UPDATE sections SET created_at = created_at - interval '1 hour'`,
+    `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'`,
   );
 }
 
-const GRACE_MS = 60_000;
+const GC_OPTS = {
+  retainManifestsPerDraft: 0,
+  sectionGraceMs: 60_000,
+  commandRetryHorizonMs: 0,
+};
 
 describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
@@ -69,21 +73,22 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
     // Expire the live lease: this case is about the manifest/section window.
     await forceExpire(db, draftId, 'settings');
-    await backdateSections(db);
-    const result = await gcProtocolStore(db, {
-      retainManifestsPerDraft: 0,
-      sectionGraceMs: GRACE_MS,
-      commandRetryHorizonMs: 0,
-    });
+    const marked = await gcProtocolStore(db, GC_OPTS);
 
-    expect(result.manifestsDeleted).toBe(2);
-    expect(result.commandLogDeleted).toBe(1);
+    expect(marked.manifestsDeleted).toBe(2);
+    expect(marked.commandLogDeleted).toBe(1);
     const manifests = await db.query(
       `SELECT seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
       [draftId],
     );
     expect(manifests.rows).toEqual([{ seq: String(head.headSeq) }]);
 
+    expect(marked.sectionsDeleted).toBe(0);
+    expect(await sectionExists(db, intermediateSettingsHash)).toBe(true);
+
+    await ageQuarantine(db);
+    const swept = await gcProtocolStore(db, GC_OPTS);
+    expect(swept.sectionsDeleted).toBe(1);
     expect(await sectionExists(db, intermediateSettingsHash)).toBe(false);
     expect(await sectionExists(db, publishedSettingsHash)).toBe(true);
     for (const hash of Object.values(head.sectionHashes)) {
@@ -118,11 +123,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       commands: [{ op: 'set', key: 'description', value: 'second' }],
     });
 
-    const result = await gcProtocolStore(db, {
-      retainManifestsPerDraft: 0,
-      sectionGraceMs: GRACE_MS,
-      commandRetryHorizonMs: 0,
-    });
+    const result = await gcProtocolStore(db, GC_OPTS);
     expect(result.commandLogDeleted).toBe(0);
 
     const replay = await sync.commit({
@@ -144,45 +145,60 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     await commitDescription(db, draftId, 'kept', 30n);
     await forceExpire(db, draftId, 'settings');
     const result = await gcProtocolStore(db, {
-      retainManifestsPerDraft: 0,
-      sectionGraceMs: GRACE_MS,
+      ...GC_OPTS,
       commandRetryHorizonMs: 60_000,
     });
     expect(result.commandLogDeleted).toBe(0);
   });
 
-  it('re-adopting an existing section refreshes created_at, restarting the grace window', async () => {
+  it('a hash a client resumed on stays fetchable for the grace window', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    await commitDescription(db, draftId, 'the resumed head', 40n);
+    const sync = new SyncServer(db);
+    const resumed = (await sync.resume(draftId, 'reader-tab')).sectionHashes
+      .settings!;
+    await db.query(
+      `UPDATE sections SET created_at = created_at - interval '1 hour'`,
+    );
+    await commitDescription(db, draftId, 'superseding it', 41n);
+    await forceExpire(db, draftId, 'settings');
+
+    await gcProtocolStore(db, GC_OPTS);
+    expect(await sync.getSection(resumed)).toMatchObject({
+      description: 'the resumed head',
+    });
+  });
+
+  it('re-adopting a quarantined section clears its mark', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
     const hash = (await store.getDraftSections(draftId)).sectionHashes
       .settings!;
     await db.query(
-      `UPDATE sections SET created_at = now() - interval '1 hour' WHERE hash = $1`,
+      `UPDATE sections SET unreferenced_at = now() - interval '1 hour' WHERE hash = $1`,
       [hash],
     );
 
     await store.createProtocol({ protocol: baseProtocol() });
-    const age = await db.query(
-      `SELECT (now() - created_at) < interval '1 minute' AS fresh
-       FROM sections WHERE hash = $1`,
+    const mark = await db.query(
+      `SELECT unreferenced_at IS NULL AS cleared FROM sections WHERE hash = $1`,
       [hash],
     );
-    expect((age.rows[0] as { fresh: boolean }).fresh).toBe(true);
+    expect((mark.rows[0] as { cleared: boolean }).cleared).toBe(true);
+    expect((await gcProtocolStore(db, GC_OPTS)).sectionsDeleted).toBe(0);
   });
 
-  it('the grace window protects freshly written sections', async () => {
+  it('the grace window protects freshly unreferenced sections', async () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
     await commitDescription(db, draftId, 'about to be superseded', 10n);
     await commitDescription(db, draftId, 'head', 11n);
 
-    const result = await gcProtocolStore(db, {
-      retainManifestsPerDraft: 0,
-      sectionGraceMs: GRACE_MS,
-      commandRetryHorizonMs: 0,
-    });
+    const result = await gcProtocolStore(db, GC_OPTS);
     expect(result.sectionsDeleted).toBe(0);
   });
 
@@ -195,13 +211,21 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       .settings!;
     await commitDescription(db, draftId, 'newest', 21n);
 
-    await backdateSections(db);
-    await gcProtocolStore(db, {
-      retainManifestsPerDraft: 1,
-      sectionGraceMs: GRACE_MS,
-      commandRetryHorizonMs: 0,
-    });
+    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
+    await ageQuarantine(db);
+    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
     expect(await sectionExists(db, superseded)).toBe(true);
+  });
+
+  it('rejects an update to a stored section document', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const hash = (await store.getDraftSections(draftId)).sectionHashes
+      .settings!;
+    await expect(
+      db.query(`UPDATE sections SET doc = '{}'::jsonb WHERE hash = $1`, [hash]),
+    ).rejects.toThrow(/immutable/);
   });
 });
 

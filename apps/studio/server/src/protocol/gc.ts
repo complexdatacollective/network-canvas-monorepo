@@ -29,9 +29,7 @@ function assertNonNegativeFinite(name: string, value: number) {
 // decide what is eligible. A command-log row survives while its (owner, epoch)
 // lease is live and until the retry horizon passes, because a retransmitted
 // client_seq must keep finding its recorded result — as must the manifest that
-// result names. The section grace window closes the race with a concurrent
-// writer adopting an existing row: every section write refreshes created_at on
-// conflict and takes a row lock, so a blocked GC delete re-checks it.
+// result names.
 export async function gcProtocolStore(
   db: pg.Pool,
   opts: GcOptions,
@@ -99,17 +97,27 @@ export async function gcProtocolStore(
     });
   }
 
+  const referenced = `EXISTS (
+      SELECT 1 FROM version_sections vs WHERE vs.section_hash = s.hash
+    )
+    OR EXISTS (
+      SELECT 1 FROM manifests m
+      CROSS JOIN LATERAL jsonb_each_text(m.section_hashes) kv
+      WHERE kv.value = s.hash
+    )`;
+
+  await db.query(
+    `UPDATE sections s SET unreferenced_at = NULL
+     WHERE s.unreferenced_at IS NOT NULL AND (${referenced})`,
+  );
+  await db.query(
+    `UPDATE sections s SET unreferenced_at = clock_timestamp()
+     WHERE s.unreferenced_at IS NULL AND NOT (${referenced})`,
+  );
   const sections = await db.query(
     `DELETE FROM sections s
-     WHERE s.created_at < now() - make_interval(secs => $1::float / 1000)
-       AND NOT EXISTS (
-         SELECT 1 FROM version_sections vs WHERE vs.section_hash = s.hash
-       )
-       AND NOT EXISTS (
-         SELECT 1 FROM manifests m
-         CROSS JOIN LATERAL jsonb_each_text(m.section_hashes) kv
-         WHERE kv.value = s.hash
-       )`,
+     WHERE s.unreferenced_at < now() - make_interval(secs => $1::float / 1000)
+       AND NOT (${referenced})`,
     [sectionGraceMs],
   );
   result.sectionsDeleted = sections.rowCount ?? 0;

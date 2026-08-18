@@ -25,6 +25,18 @@ export class UnknownSectionError extends Error {
   }
 }
 
+export class UnknownDraftError extends Error {
+  constructor(draftId: string) {
+    super(`no draft ${draftId}`);
+  }
+}
+
+export class UnknownSectionDocumentError extends Error {
+  constructor(hash: string) {
+    super(`no section document ${hash}`);
+  }
+}
+
 // Lease lifetimes are wall-clock, so every expiry comparison below uses
 // clock_timestamp() rather than now(): now() is the transaction's start time,
 // and a transaction that waits on a row lock past the TTL would otherwise read
@@ -67,7 +79,8 @@ export class SyncServer {
         sectionHashes[sectionId] = hash;
         await client.query(
           `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-           ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
+           ON CONFLICT (hash) DO UPDATE
+           SET created_at = clock_timestamp(), unreferenced_at = NULL`,
           [hash, doc],
         );
       }
@@ -185,12 +198,15 @@ export class SyncServer {
          SET owner = $3, epoch = epoch + 1,
              expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
          WHERE draft_id = $1 AND section_id = $2
+           AND EXISTS (${SECTION_EXISTS})
          RETURNING epoch, expires_at`,
         [draftId, sectionId, owner, this.ttlMs],
       ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
-    return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
+    if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
+    await this.assertSectionExists(draftId, sectionId);
+    return null;
   }
 
   /** Heartbeat. A late heartbeat cannot resurrect an expired lease. */
@@ -258,10 +274,12 @@ export class SyncServer {
         `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
         [draftId],
       );
-      const headRow = head.rows[0] as {
-        head_seq: string;
-        head_manifest_hash: string;
-      };
+      const headRow = head.rows[0] as
+        | { head_seq: string; head_manifest_hash: string }
+        | undefined;
+      if (headRow === undefined) {
+        throw new LeaseRejectedError(`draft ${draftId} no longer exists`);
+      }
 
       // Idempotency BEFORE lease validation: a retransmitted client_seq
       // returns its original recorded result even when the lease has since
@@ -344,7 +362,8 @@ export class SyncServer {
       const newSectionHash = contentHash(newDoc);
       await client.query(
         `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-         ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
+         ON CONFLICT (hash) DO UPDATE
+           SET created_at = clock_timestamp(), unreferenced_at = NULL`,
         [newSectionHash, newDoc],
       );
 
@@ -427,11 +446,14 @@ export class SyncServer {
       );
       await client.query('COMMIT');
 
-      const row = head.rows[0] as {
-        head_seq: string;
-        head_manifest_hash: string;
-        section_hashes: Record<string, string>;
-      };
+      const row = head.rows[0] as
+        | {
+            head_seq: string;
+            head_manifest_hash: string;
+            section_hashes: Record<string, string>;
+          }
+        | undefined;
+      if (row === undefined) throw new UnknownDraftError(draftId);
       const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
         {};
       for (const r of acked.rows as {
@@ -465,7 +487,9 @@ export class SyncServer {
       `SELECT doc FROM sections WHERE hash = $1`,
       [hash],
     );
-    return (res.rows[0] as { doc: SectionDoc }).doc;
+    const row = res.rows[0] as { doc: SectionDoc } | undefined;
+    if (row === undefined) throw new UnknownSectionDocumentError(hash);
+    return row.doc;
   }
 
   /** The full manifest chain, oldest first — for linearity assertions. */

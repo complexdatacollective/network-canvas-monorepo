@@ -8,14 +8,25 @@ CREATE TABLE drafts (
   head_manifest_hash text NOT NULL
 );
 
--- Immutable content-addressed section documents. created_at is not part of a
--- section's identity: it is the write-liveness timestamp GC reads, and every
--- section write must refresh it on conflict (never DO NOTHING).
+-- Immutable content-addressed section documents.
 CREATE TABLE sections (
   hash text PRIMARY KEY,
   doc jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  unreferenced_at timestamptz
 );
+
+CREATE OR REPLACE FUNCTION sections_are_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'section documents are immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER sections_immutable
+  BEFORE UPDATE ON sections
+  FOR EACH ROW
+  WHEN (NEW.hash IS DISTINCT FROM OLD.hash OR NEW.doc IS DISTINCT FROM OLD.doc)
+  EXECUTE FUNCTION sections_are_immutable();
 
 -- Manifests: ordered map of section id -> section hash, one row per commit.
 -- seq is the per-draft monotonic order; hash identifies (#1247: "hashes
