@@ -50,11 +50,13 @@ vi.mock('~/utils/auth', () => ({
 // Use vi.hoisted to define mocks that can be referenced before module execution
 const {
   mockPrismaCreate,
+  mockProtocolFindUnique,
   mockGetAppSetting,
   mockSafeRevalidateTag,
   mockCaptureException,
 } = vi.hoisted(() => ({
   mockPrismaCreate: vi.fn(),
+  mockProtocolFindUnique: vi.fn(),
   mockGetAppSetting: vi.fn(),
   mockSafeRevalidateTag: vi.fn(),
   mockCaptureException: vi.fn(),
@@ -65,6 +67,9 @@ vi.mock('~/lib/db', () => ({
   prisma: {
     interview: {
       create: mockPrismaCreate,
+    },
+    protocol: {
+      findUnique: mockProtocolFindUnique,
     },
   },
 }));
@@ -127,6 +132,7 @@ type MockInterviewResult = {
 describe('createInterview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProtocolFindUnique.mockResolvedValue({ id: 'protocol-123' });
   });
 
   describe('with participantIdentifier provided', () => {
@@ -326,6 +332,33 @@ describe('createInterview', () => {
         "An operation failed because it depends on one or more records that were required but not found. No 'Protocol' record (needed to inline the relation on 'Interview' record(s)) was found for a nested connect on one-to-many relation 'InterviewToProtocol'.",
         { code: 'P2025', clientVersion: 'test' },
       );
+
+    it('should return a no-protocol error before consulting other settings', async () => {
+      mockProtocolFindUnique.mockResolvedValue(null);
+
+      const result = await createInterview({
+        protocolId: 'non-existent-protocol',
+      });
+
+      expect(result.errorType).toBe('no-protocol');
+      expect(result.error).toBe('Protocol not found');
+      expect(mockPrismaCreate).not.toHaveBeenCalled();
+    });
+
+    // A protocol that is gone makes the recruitment setting irrelevant, and
+    // reporting that setting instead sends the researcher after a fix that
+    // cannot help. Reaching the create is what used to decide this, so an
+    // earlier return hid the real cause.
+    it('should prefer no-protocol over no-anonymous-recruitment', async () => {
+      mockProtocolFindUnique.mockResolvedValue(null);
+      mockGetAppSetting.mockResolvedValue(false);
+
+      const result = await createInterview({
+        protocolId: 'non-existent-protocol',
+      });
+
+      expect(result.errorType).toBe('no-protocol');
+    });
 
     it('should return a no-protocol error when the protocol does not exist', async () => {
       const protocolId = 'non-existent-protocol';

@@ -147,11 +147,8 @@ export async function getIncompleteInterviewUrlData(
 /**
  * Prisma raises P2025 when a nested `connect` cannot resolve the record it
  * points at. For `createInterview` that can only be the protocol connect, so
- * it means the protocol id taken from the onboarding URL no longer exists.
- *
- * Checking the code rather than pre-reading the protocol keeps this to a
- * single round trip and stays correct when a protocol is deleted between the
- * check and the write.
+ * it means the protocol was deleted between the existence check below and the
+ * write — the one gap that check cannot close on its own.
  */
 function isMissingProtocol(error: unknown) {
   return (
@@ -182,6 +179,26 @@ export async function createInterview(
   }
 
   try {
+    // Establish this before anything else that can fail. A protocol that no
+    // longer exists makes every other consideration moot, and checking it only
+    // via the create below leaves it unreachable whenever an earlier condition
+    // returns first: an anonymous link to a deleted protocol, on an
+    // installation that does not allow anonymous recruitment, would report the
+    // recruitment setting and send the researcher after a fix that cannot
+    // help.
+    const protocol = await prisma.protocol.findUnique({
+      where: { id: protocolId },
+      select: { id: true },
+    });
+
+    if (!protocol) {
+      return {
+        errorType: 'no-protocol',
+        error: 'Protocol not found',
+        createdInterviewId: null,
+      };
+    }
+
     if (!validatedIdentifier) {
       const allowAnonymousRecruitment = await getAppSetting(
         'allowAnonymousRecruitment',
