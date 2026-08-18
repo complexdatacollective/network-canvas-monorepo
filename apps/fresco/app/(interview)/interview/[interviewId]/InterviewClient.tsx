@@ -16,7 +16,7 @@ import {
 } from '@codaco/interview';
 import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
-import { POSTHOG_APP_NAME } from '~/fresco.config';
+import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
 type Props = {
   payload: InterviewPayload;
@@ -108,6 +108,7 @@ export default function InterviewClient({
     () => ({
       installationId,
       hostApp: POSTHOG_APP_NAME,
+      hostVersion: POSTHOG_APP_VERSION,
     }),
     [installationId],
   );

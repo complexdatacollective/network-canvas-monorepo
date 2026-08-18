@@ -69,6 +69,7 @@ describe('AnalyticsProvider', () => {
       expect.objectContaining({
         foo: 'bar',
         app: 'Fresco',
+        $app_name: 'Fresco',
         installation_id: 'i1',
         protocol_hash: 'h-x',
         distinct_id: 'interview-42',

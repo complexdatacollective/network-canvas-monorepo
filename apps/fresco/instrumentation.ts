@@ -15,6 +15,7 @@ export const onRequestError: Instrumentation.onRequestError = async (
     const { getPostHogServer, shutdownPostHog } =
       await import('./lib/posthog-server');
     const { env } = await import('./env');
+    const { POSTHOG_APP_PROPERTIES } = await import('./fresco.config');
     const { prisma } = await import('./lib/db');
 
     const posthog = getPostHogServer();
@@ -32,6 +33,8 @@ export const onRequestError: Instrumentation.onRequestError = async (
 
     posthog.captureException(err, distinctId, {
       ...context,
+      ...POSTHOG_APP_PROPERTIES,
+      installation_id: distinctId,
       $source: 'server',
     });
 

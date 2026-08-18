@@ -3,7 +3,7 @@ import { PostHog } from 'posthog-node';
 
 import {
   POSTHOG_API_KEY,
-  POSTHOG_APP_NAME,
+  POSTHOG_APP_PROPERTIES,
   POSTHOG_PROXY_HOST,
 } from '~/fresco.config';
 
@@ -47,9 +47,9 @@ export async function captureEvent(
       distinctId,
       event,
       properties: {
-        app: POSTHOG_APP_NAME,
-        installation_id: distinctId,
         ...properties,
+        ...POSTHOG_APP_PROPERTIES,
+        installation_id: distinctId,
         $source: 'server',
       },
     });
@@ -70,7 +70,12 @@ export async function captureException(
     const distinctId = await resolveInstallationId();
     const posthog = getPostHogServer();
 
-    posthog.captureException(error, distinctId, properties);
+    posthog.captureException(error, distinctId, {
+      ...properties,
+      ...POSTHOG_APP_PROPERTIES,
+      installation_id: distinctId,
+      $source: 'server',
+    });
   } catch {
     // swallow
   }

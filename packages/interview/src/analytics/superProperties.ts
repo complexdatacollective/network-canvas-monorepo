@@ -11,12 +11,14 @@ export function computeSuperProperties(
 ): SuperProperties {
   const props: SuperProperties = {
     [SUPER_PROPS.APP]: metadata.hostApp,
+    [SUPER_PROPS.APP_NAME]: metadata.hostApp,
     [SUPER_PROPS.INSTALLATION_ID]: metadata.installationId,
     [SUPER_PROPS.PACKAGE_VERSION]: version,
     [SUPER_PROPS.PROTOCOL_HASH]: payload.protocol.hash,
   };
   if (metadata.hostVersion !== undefined) {
     props[SUPER_PROPS.HOST_VERSION] = metadata.hostVersion;
+    props[SUPER_PROPS.APP_VERSION] = metadata.hostVersion;
   }
   return props;
 }

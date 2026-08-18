@@ -1,4 +1,8 @@
-import { POSTHOG_API_KEY, POSTHOG_PROXY_HOST } from './fresco.config';
+import {
+  POSTHOG_API_KEY,
+  POSTHOG_APP_PROPERTIES,
+  POSTHOG_PROXY_HOST,
+} from './fresco.config';
 
 // Defer PostHog to a separate chunk loaded after the page is interactive.
 // The dynamic import creates a code-split point so posthog-js doesn't
@@ -10,4 +14,5 @@ void import('posthog-js').then(({ default: posthog }) => {
     capture_exceptions: true,
     autocapture: true,
   });
+  posthog.register(POSTHOG_APP_PROPERTIES);
 });

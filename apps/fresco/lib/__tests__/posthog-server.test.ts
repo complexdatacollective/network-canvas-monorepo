@@ -30,7 +30,12 @@ vi.mock('~/queries/appSettings', () => ({
 
 vi.mock('~/fresco.config', () => ({
   POSTHOG_API_KEY: 'test-api-key',
-  POSTHOG_APP_NAME: 'Fresco',
+  POSTHOG_APP_PROPERTIES: {
+    app: 'Fresco',
+    $app_name: 'Fresco',
+    host_version: '4.1.1',
+    $app_version: '4.1.1',
+  },
   POSTHOG_PROXY_HOST: 'https://test.example.com',
 }));
 
@@ -64,6 +69,9 @@ describe('posthog-server', () => {
         event: 'test-event',
         properties: {
           app: 'Fresco',
+          $app_name: 'Fresco',
+          host_version: '4.1.1',
+          $app_version: '4.1.1',
           installation_id: 'install-123',
           key: 'value',
           $source: 'server',
@@ -105,6 +113,12 @@ describe('posthog-server', () => {
 
       expect(mockCaptureException).toHaveBeenCalledWith(error, 'install-123', {
         extra: 'data',
+        app: 'Fresco',
+        $app_name: 'Fresco',
+        host_version: '4.1.1',
+        $app_version: '4.1.1',
+        installation_id: 'install-123',
+        $source: 'server',
       });
     });
 
