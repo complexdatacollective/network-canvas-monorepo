@@ -104,3 +104,15 @@ export function baseProtocol(): CurrentProtocol {
     // Branded reference fields make this literal uncastable directly.
   } as unknown as CurrentProtocol;
 }
+
+export async function waitForLockWait(db: pg.Pool): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const res = await db.query(
+      `SELECT count(*)::int AS waiting FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+    );
+    if ((res.rows[0] as { waiting: number }).waiting > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error('no backend ever blocked on a lock');
+}

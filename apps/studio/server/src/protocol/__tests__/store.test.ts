@@ -20,7 +20,12 @@ import {
 import { ProtocolStore } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
 import { SectionValidationFailedError } from '../validate.ts';
-import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
+import {
+  baseProtocol,
+  makeStoreSchema,
+  storeDb,
+  waitForLockWait,
+} from './helpers.ts';
 
 describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
   let db: pg.Pool;
@@ -343,6 +348,44 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         commands: [{ op: 'set', key: 'name', value: 'Stale' }],
       }),
     ).rejects.toThrow(LeaseRejectedError);
+  });
+
+  it('a structural op that waits for a commit sees the manifest that commit wrote', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = new SyncServer(db);
+    const lease = await sync.acquire(draftId, 'settings', 'commit-tab');
+
+    const blocker = await db.connect();
+    await blocker.query('BEGIN');
+    await blocker.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
+      draftId,
+    ]);
+    const head = await store.getDraftSections(draftId);
+    const advanced = { ...head.sectionHashes, settings: 'advanced-hash' };
+    await blocker.query(
+      `INSERT INTO sections (hash, doc) VALUES ('advanced-hash', '{}'::jsonb)`,
+    );
+    await blocker.query(
+      `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
+       VALUES ($1, $2, 'advanced-manifest', $3, $4)`,
+      [draftId, String(head.headSeq + 1n), head.headManifestHash, advanced],
+    );
+    await blocker.query(
+      `UPDATE drafts SET head_seq = $2, head_manifest_hash = 'advanced-manifest'
+       WHERE id = $1`,
+      [draftId, String(head.headSeq + 1n)],
+    );
+
+    const pending = removeStage(db, { draftId, stageId: 'sociogram1' });
+    await waitForLockWait(db);
+    await blocker.query('COMMIT');
+    blocker.release();
+
+    const result = await pending;
+    expect(result.manifestSeq).toBe(head.headSeq + 2n);
+    await sync.release(draftId, 'settings', 'commit-tab', lease!.epoch);
   });
 
   it('refuses to take over a lease whose section has been removed', async () => {

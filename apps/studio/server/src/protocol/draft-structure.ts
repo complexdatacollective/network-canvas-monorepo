@@ -25,27 +25,31 @@ async function lockHead(
   client: pg.PoolClient,
   draftId: string,
 ): Promise<HeadState> {
-  const head = await client.query(
-    `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
-     FROM drafts d
-     JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-     WHERE d.id = $1
-     FOR UPDATE OF d`,
+  const locked = await client.query(
+    `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
     [draftId],
   );
-  const row = head.rows[0] as
-    | {
-        head_seq: string;
-        head_manifest_hash: string;
-        section_hashes: Record<string, string>;
-      }
+  const draft = locked.rows[0] as
+    | { head_seq: string; head_manifest_hash: string }
     | undefined;
-  if (row === undefined) {
+  if (draft === undefined) {
     throw new DraftStructureError(`no draft ${draftId}`);
   }
+  const head = await client.query(
+    `SELECT section_hashes FROM manifests WHERE draft_id = $1 AND seq = $2`,
+    [draftId, draft.head_seq],
+  );
+  const row = head.rows[0] as
+    | { section_hashes: Record<string, string> }
+    | undefined;
+  if (row === undefined) {
+    throw new DraftStructureError(
+      `draft ${draftId} has no manifest at seq ${draft.head_seq}`,
+    );
+  }
   return {
-    headSeq: BigInt(row.head_seq),
-    headManifestHash: row.head_manifest_hash,
+    headSeq: BigInt(draft.head_seq),
+    headManifestHash: draft.head_manifest_hash,
     sectionHashes: { ...row.section_hashes },
   };
 }
