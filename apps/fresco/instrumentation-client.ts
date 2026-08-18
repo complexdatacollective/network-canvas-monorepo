@@ -13,6 +13,7 @@ void import('posthog-js').then(({ default: posthog }) => {
     defaults: '2026-01-30',
     capture_exceptions: true,
     autocapture: true,
+    tracing_headers: [window.location.hostname],
   });
   posthog.register(POSTHOG_APP_PROPERTIES);
 });

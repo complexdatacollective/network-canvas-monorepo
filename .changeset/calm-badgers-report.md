@@ -8,4 +8,5 @@
 Populate PostHog's built-in app name and version metadata across Architect,
 Interviewer, Fresco, and embedded interview events. Also load Architect's
 public project key from the environment and exclude its local development
-usage.
+usage. Correlate Fresco's server-side events with the originating browser
+session.
