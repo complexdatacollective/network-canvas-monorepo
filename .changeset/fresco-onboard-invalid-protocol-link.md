@@ -12,6 +12,8 @@ Activity that is recorded in the dashboard feed now reaches analytics again. The
 
 Feed entries are also no longer at risk of being lost. The entry was written without anything waiting for it, so a host that stops work once a response has been sent could discard it mid-write; the write is now held open until it completes.
 
+Reports could also be lost while handling a single request. Several reports can be queued to send once a response has gone out, and they share one connection to the analytics service; whichever finished first closed that connection, leaving the rest unsent. They now flush the connection instead of closing it, so every report is delivered whatever order they finish in.
+
 Analytics no longer receives the feed's written description of an activity, which names the researcher who acted and, for interview activity, the participant. Only the kind of activity and any counts are reported.
 
 Recording activity is no longer reachable from the browser. It accepts whatever description it is given and runs during interview and sign-in flows where no account is established yet, so it could not be restricted to signed-in researchers; it is now internal to the server instead, and can no longer be used to plant entries in a study's activity feed.
