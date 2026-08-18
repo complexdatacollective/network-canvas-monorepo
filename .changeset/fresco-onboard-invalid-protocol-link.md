@@ -7,3 +7,7 @@ An onboarding link whose protocol no longer exists now sends the participant to 
 Such a link is also no longer reported as an application error. Every one of these visits previously raised a database exception carrying internal schema detail, so the error reports that reach a deployment now describe faults worth investigating instead of routine dead links.
 
 Interview creation now reports why it failed using a fixed set of outcomes rather than passing the underlying database error message back to its caller.
+
+Activity that is recorded in the dashboard feed now reaches analytics again. The feed entry and the analytics report are made together, but the report was scheduled only once the entry had been saved — by which point the request that triggered it had usually finished, so the report was dropped without a trace. Only the two places that waited for the entry to save were unaffected, leaving most activity missing from analytics since Fresco moved to its current release process, and some of it never reported at all. Uninstalling a protocol is now recorded like every other activity, which matters because that is what invalidates recruitment URLs already given to participants.
+
+Analytics no longer receives the feed's written description of an activity, which names the researcher who acted and, for interview activity, the participant. Only the kind of activity and any counts are reported.

@@ -13,7 +13,7 @@ import { getStorageLayer } from '~/lib/storage/layers/StorageLayer';
 import { AssetStorage } from '~/lib/storage/services/AssetStorage';
 import { type protocolInsertSchema } from '~/schemas/protocol';
 
-import { addEvent } from './activityFeed';
+import { addEvent, addEvents } from './activityFeed';
 
 /**
  * Check if a protocol with the given hash already exists.
@@ -115,21 +115,17 @@ export async function deleteProtocols(hashes: string[]) {
       where: { hash: { in: hashes } },
     });
 
-    // insert an event for each protocol deleted
-    // eslint-disable-next-line no-console
-    console.log('inserting events for deleted protocols...');
-    const events = protocolsToBeDeleted.map((p) => {
-      return {
+    // One entry per protocol, matching how installation is recorded. This goes
+    // through addEvents rather than writing the rows directly so the deletion
+    // reaches analytics as well as the feed — an uninstalled protocol is what
+    // invalidates any recruitment URL already given to participants.
+    await addEvents(
+      protocolsToBeDeleted.map((p) => ({
         type: 'Protocol Uninstalled',
         message: `User ${session.user.username} uninstalled protocol "${p.name}"`,
-      };
-    });
+      })),
+    );
 
-    await prisma.events.createMany({
-      data: events,
-    });
-
-    safeUpdateTag('activityFeed');
     safeUpdateTag('summaryStatistics');
     safeUpdateTag('getProtocols');
     safeUpdateTag('getInterviews');
