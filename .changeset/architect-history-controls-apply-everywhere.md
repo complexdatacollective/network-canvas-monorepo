@@ -8,4 +8,10 @@ Architect still brings you to the page that shows the result, but does so in the
 
 Undo and Redo are also available on the Summary page, which previously offered no way to take back a change. Because the summary already shows the whole protocol, taking a change back there updates the report where you are reading it rather than moving you elsewhere. Summary remains a read-only report in every other respect.
 
+History controls now use the same dedicated toolbar at the bottom left of both
+the timeline and stage editor. The toolbar appears only while Undo or Redo is
+possible, keeps the unavailable direction disabled, and separates the two
+actions so they are easier to distinguish from the page actions at bottom
+right.
+
 If you had learned to press Undo twice, note that two presses now take back two changes.

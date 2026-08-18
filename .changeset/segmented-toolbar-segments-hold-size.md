@@ -19,3 +19,7 @@ stopped being square, shrinking the target under the finger.
 Toolbar segments now hold their size, and the lane scrolls as intended.
 Wherever a toolbar already fits its space nothing changes at all — the
 rendering is identical to the pixel.
+
+Disabled toolbar actions now also carry the same faded, not-allowed treatment
+as disabled buttons elsewhere, while retaining the toolbar's accessible focus
+and disabled semantics.

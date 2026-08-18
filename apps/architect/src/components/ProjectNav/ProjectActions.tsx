@@ -1,11 +1,4 @@
-import {
-  ArrowLeftToLine,
-  Check,
-  Download,
-  Redo,
-  Save,
-  Undo,
-} from 'lucide-react';
+import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
@@ -25,6 +18,7 @@ import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
 import ActionToolbar from './ActionToolbar';
+import { getHistoryToolbarItems } from './historyToolbarItems';
 
 /**
  * What this page is doing with the protocol, which decides which actions are
@@ -217,24 +211,12 @@ const ProjectActions = ({
       return [];
     }
 
-    return [
-      {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo />,
-        disabled: !canUndo,
-        onClick: handleUndo,
-      },
-      {
-        type: 'button',
-        id: 'redo',
-        label: 'Redo',
-        icon: <Redo />,
-        disabled: !canRedo,
-        onClick: handleRedo,
-      },
-    ];
+    return getHistoryToolbarItems({
+      canUndo,
+      canRedo,
+      onUndo: handleUndo,
+      onRedo: handleRedo,
+    });
   }, [canRecoverHistory, canRedo, canUndo, handleRedo, handleUndo]);
 
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {

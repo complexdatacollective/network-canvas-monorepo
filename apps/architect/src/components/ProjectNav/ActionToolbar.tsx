@@ -25,10 +25,8 @@ const ActionToolbar = ({
     <div className="phone-landscape:px-6 pointer-events-none fixed inset-x-0 bottom-5 z-20 px-4 print:hidden">
       <div
         className={cx(
-          'mx-auto flex max-w-7xl items-end gap-2',
-          hasLeadingItems
-            ? 'flex-col-reverse sm:flex-row sm:justify-between'
-            : 'justify-end',
+          'mx-auto flex max-w-7xl min-w-0 items-end gap-2',
+          hasLeadingItems ? 'justify-between' : 'justify-end',
         )}
       >
         {hasLeadingItems && (
@@ -36,14 +34,14 @@ const ActionToolbar = ({
             label={leadingAriaLabel}
             items={leadingItems}
             size="md"
-            className="pointer-events-auto self-start"
+            className="pointer-events-auto shrink-0 self-end"
           />
         )}
         <SegmentedToolbar
           label={ariaLabel}
           items={items}
           size="md"
-          className={cx('pointer-events-auto self-end', className)}
+          className={cx('pointer-events-auto min-w-0 self-end', className)}
         />
       </div>
     </div>

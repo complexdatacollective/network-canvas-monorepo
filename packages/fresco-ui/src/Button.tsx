@@ -28,12 +28,12 @@ const buttonSpecificVariants = cva({
     // (below), toolbar actions — say so with `shrink-0` at the call site.
     'max-w-full min-w-0',
     'items-center justify-center',
-    'disabled:cursor-not-allowed disabled:opacity-50',
+    'disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
     'aria-pressed:border-selected! aria-pressed:bg-selected! aria-pressed:text-selected-contrast!',
     'aria-expanded:border-selected! aria-expanded:bg-selected! aria-expanded:text-selected-contrast!',
     'focusable',
     'elevation-low',
-    'not-disabled:active:elevation-none not-disabled:active:translate-y-[2px]',
+    'not-disabled:not-aria-disabled:active:elevation-none not-disabled:not-aria-disabled:active:translate-y-[2px]',
     'transition-[background-color,border-color,border-width,color,box-shadow,opacity,translate] duration-150',
   ),
   variants: {
@@ -41,18 +41,18 @@ const buttonSpecificVariants = cva({
       'default': 'bg-(--component-text) text-(--component-bg)',
       'default-inverted': 'bg-white text-(--component-text)',
       'raised':
-        'not-disabled:hover:elevation-medium border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)] not-disabled:hover:-translate-y-0.5 not-disabled:active:border-b-transparent',
+        'not-disabled:not-aria-disabled:hover:elevation-medium border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)] not-disabled:not-aria-disabled:hover:-translate-y-0.5 not-disabled:not-aria-disabled:active:border-b-transparent',
       'outline':
-        'border-2 border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+        'border-2 border-(--component-text) text-(--component-text) not-aria-disabled:hover:enabled:bg-(--component-text) not-aria-disabled:hover:enabled:text-(--component-bg)',
       'text':
-        'text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+        'text-(--component-text) not-aria-disabled:hover:enabled:bg-(--component-text) not-aria-disabled:hover:enabled:text-(--component-bg)',
       'dashed':
-        'border-2 border-dashed border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+        'border-2 border-dashed border-(--component-text) text-(--component-text) not-aria-disabled:hover:enabled:bg-(--component-text) not-aria-disabled:hover:enabled:text-(--component-bg)',
       'glass':
-        'control-glass border-(--component-text) text-(--component-text) hover:enabled:bg-(--component-text) hover:enabled:text-(--component-bg)',
+        'control-glass border-(--component-text) text-(--component-text) not-aria-disabled:hover:enabled:bg-(--component-text) not-aria-disabled:hover:enabled:text-(--component-bg)',
       'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
-        'font-body elevation-none hover:elevation-none! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]!',
+        'font-body elevation-none hover:elevation-none! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none! disabled:[&>span]:bg-[length:0%_2px]! aria-disabled:[&>span]:bg-[length:0%_2px]!',
       ),
     },
     textStyle: {
@@ -107,7 +107,7 @@ const buttonSpecificVariants = cva({
       variant: ['outline', 'text', 'dashed', 'glass'],
       color: 'default',
       className:
-        'interview:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)] hover:enabled:[--component-text:var(--neutral)]',
+        'interview:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)] not-aria-disabled:hover:enabled:[--component-text:var(--neutral)]',
     },
     {
       variant: ['outline', 'dashed', 'glass'],
@@ -122,25 +122,25 @@ const buttonSpecificVariants = cva({
       variant: 'raised',
       size: 'sm',
       className:
-        'border-b-3 text-xs not-disabled:hover:border-b-4 not-disabled:active:translate-y-0.75 not-disabled:active:border-b-3',
+        'border-b-3 text-xs not-disabled:not-aria-disabled:hover:border-b-4 not-disabled:not-aria-disabled:active:translate-y-0.75 not-disabled:not-aria-disabled:active:border-b-3',
     },
     {
       variant: 'raised',
       size: 'md',
       className:
-        'border-b-4 text-sm not-disabled:hover:border-b-5 not-disabled:active:translate-y-1 not-disabled:active:border-b-4',
+        'border-b-4 text-sm not-disabled:not-aria-disabled:hover:border-b-5 not-disabled:not-aria-disabled:active:translate-y-1 not-disabled:not-aria-disabled:active:border-b-4',
     },
     {
       variant: 'raised',
       size: 'lg',
       className:
-        'border-b-5 text-base not-disabled:hover:border-b-6 not-disabled:active:translate-y-1.25 not-disabled:active:border-b-5',
+        'border-b-5 text-base not-disabled:not-aria-disabled:hover:border-b-6 not-disabled:not-aria-disabled:active:translate-y-1.25 not-disabled:not-aria-disabled:active:border-b-5',
     },
     {
       variant: 'raised',
       size: 'xl',
       className:
-        'border-b-6 text-lg not-disabled:hover:border-b-8 not-disabled:active:translate-y-1.5 not-disabled:active:border-b-6',
+        'border-b-6 text-lg not-disabled:not-aria-disabled:hover:border-b-8 not-disabled:not-aria-disabled:active:translate-y-1.5 not-disabled:not-aria-disabled:active:border-b-6',
     },
     {
       textStyle: 'uppercase',

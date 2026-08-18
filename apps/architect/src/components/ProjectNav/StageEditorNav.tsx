@@ -1,4 +1,4 @@
-import { Check, Eye, Loader2, Redo, Settings, Undo, X } from 'lucide-react';
+import { Check, Eye, Loader2, Settings, X } from 'lucide-react';
 import {
   createContext,
   type ReactNode,
@@ -22,6 +22,7 @@ import { getProtocolName } from '~/selectors/protocol';
 
 import ActionToolbar from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
+import { getHistoryToolbarItems } from './historyToolbarItems';
 import NavShell from './NavShell';
 
 const previewButtonClassName =
@@ -182,29 +183,23 @@ const StageEditorNav = ({
       ],
     );
 
+  const historyItems = useMemo<ToolbarSegment[]>(
+    () =>
+      getHistoryToolbarItems({
+        canUndo,
+        canRedo,
+        onUndo: undo,
+        onRedo: redo,
+      }),
+    [canRedo, canUndo, redo, undo],
+  );
+
   const toolbarItems = useMemo<ToolbarSegment[]>(() => {
     const items: ToolbarSegment[] = [
       ...(issuesSegment ? [issuesSegment] : []),
       ...(issuesSegment
-        ? [{ type: 'separator' as const, id: 'issues-history-separator' }]
+        ? [{ type: 'separator' as const, id: 'issues-editing-separator' }]
         : []),
-      {
-        type: 'button',
-        id: 'undo',
-        label: 'Undo',
-        icon: <Undo />,
-        disabled: !canUndo,
-        onClick: undo,
-      },
-      {
-        type: 'button',
-        id: 'redo',
-        label: 'Redo',
-        icon: <Redo />,
-        disabled: !canRedo,
-        onClick: redo,
-      },
-      { type: 'separator', id: 'history-actions-separator' },
       {
         type: 'button',
         id: 'cancel',
@@ -231,15 +226,7 @@ const StageEditorNav = ({
     });
 
     return items;
-  }, [
-    canRedo,
-    canUndo,
-    hasUnsavedChanges,
-    issuesSegment,
-    onCancel,
-    redo,
-    undo,
-  ]);
+  }, [hasUnsavedChanges, issuesSegment, onCancel]);
 
   return (
     <>
@@ -251,6 +238,7 @@ const StageEditorNav = ({
           <ActionToolbar
             aria-label="Stage editor actions"
             items={toolbarItems}
+            leadingItems={historyItems}
           />
         </PreviewSplitButtonContext.Provider>
       </OpenIssuesContext.Provider>

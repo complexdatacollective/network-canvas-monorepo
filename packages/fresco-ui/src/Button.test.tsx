@@ -16,11 +16,11 @@ describe('Button', () => {
       'bg-(--component-text)',
       'border-(--component-raised-edge)',
       'border-b-4',
-      'not-disabled:hover:border-b-5',
+      'not-disabled:not-aria-disabled:hover:border-b-5',
       '[--component-text:var(--success)]',
       '[--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
-      'not-disabled:hover:elevation-medium',
-      'not-disabled:active:translate-y-1',
+      'not-disabled:not-aria-disabled:hover:elevation-medium',
+      'not-disabled:not-aria-disabled:active:translate-y-1',
       'uppercase',
       'tracking-widest',
       'text-sm',
@@ -41,11 +41,11 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
       'border-b-3',
-      'not-disabled:hover:border-b-4',
+      'not-disabled:not-aria-disabled:hover:border-b-4',
     );
     expect(screen.getByRole('button', { name: 'Extra large' })).toHaveClass(
       'border-b-6',
-      'not-disabled:hover:border-b-8',
+      'not-disabled:not-aria-disabled:hover:border-b-8',
       'normal-case',
       'tracking-wide',
       'text-xl',
@@ -124,6 +124,24 @@ describe('Button', () => {
 
     expect(button).toBeDisabled();
     expect(button).toHaveClass('disabled:[&>span]:bg-[length:0%_2px]!');
+  });
+
+  it('excludes aria-disabled buttons from hover and press styling', () => {
+    render(
+      <Button variant="text" aria-disabled="true">
+        Unavailable action
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', {
+      name: 'Unavailable action',
+    });
+    expect(button).toHaveClass(
+      'aria-disabled:cursor-not-allowed',
+      'aria-disabled:opacity-50',
+      'not-aria-disabled:hover:enabled:bg-(--component-text)',
+      'not-disabled:not-aria-disabled:active:translate-y-[2px]',
+    );
   });
 
   it('supports a slotted link without forwarding button-only attributes', () => {

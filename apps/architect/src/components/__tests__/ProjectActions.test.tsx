@@ -1,5 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -160,30 +166,41 @@ describe('<ProjectActions />', () => {
     expect(redoMock).toHaveBeenCalledTimes(1);
   });
 
-  it('disables undo/redo when nothing is available', () => {
+  it('hides history actions when neither undo nor redo is available', () => {
     const store = createTestStore({ canUndo: false, canRedo: false });
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
-    expect(screen.getByRole('button', { name: /redo/i })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    expect(
+      screen.queryByRole('toolbar', { name: 'History actions' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps both history controls visible and disables only the unavailable action', () => {
+    const store = createTestStore({ canUndo: true, canRedo: false });
+    render(<ProjectActions />, { wrapper: wrap(store) });
+
+    const historyActions = screen.getByRole('toolbar', {
+      name: 'History actions',
+    });
+    expect(
+      within(historyActions).getByRole('button', { name: /undo/i }),
+    ).not.toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(historyActions).getByRole('button', { name: /redo/i }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(within(historyActions).getAllByRole('separator')).toHaveLength(1);
   });
 
   it('renders Return-to-start in its own page-action segment', () => {
     const store = createTestStore();
     render(<ProjectActions />, { wrapper: wrap(store) });
 
-    expect(
-      screen.getByRole('toolbar', { name: 'Page actions' }),
-    ).toContainElement(screen.getByRole('separator'));
-    expect(
-      screen.getByRole('toolbar', { name: 'History actions' }),
-    ).not.toContainElement(screen.getByRole('separator'));
+    const pageActions = screen.getByRole('toolbar', { name: 'Page actions' });
+    const historyActions = screen.getByRole('toolbar', {
+      name: 'History actions',
+    });
+    expect(within(pageActions).getAllByRole('separator')).toHaveLength(1);
+    expect(within(historyActions).getAllByRole('separator')).toHaveLength(1);
   });
 
   // The `report` mode gates authoring only. History recovery is not authoring,

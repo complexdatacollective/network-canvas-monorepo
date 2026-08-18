@@ -1,8 +1,10 @@
 import { validateProtocol } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
@@ -21,6 +23,13 @@ test('separates history controls and returns project subpages to the timeline', 
     name: 'History actions',
   });
 
+  await expect(historyActions).toHaveCount(0);
+  const protocolName = architectPage.getByRole('textbox', {
+    name: 'Protocol name',
+  });
+  await protocolName.fill('Project Toolbar Edited');
+  await protocolName.blur();
+
   await expect(
     pageActions.getByRole('button', { name: 'Return to Start Screen' }),
   ).toBeVisible();
@@ -30,8 +39,8 @@ test('separates history controls and returns project subpages to the timeline', 
   ).toBeVisible();
   await expect(
     historyActions.getByRole('button', { name: 'Redo' }),
-  ).toBeVisible();
-  await expect(historyActions.getByRole('separator')).toHaveCount(0);
+  ).toHaveAttribute('aria-disabled', 'true');
+  await expect(historyActions.getByRole('separator')).toHaveCount(1);
 
   const historyBox = await historyActions.boundingBox();
   const pageBox = await pageActions.boundingBox();
@@ -39,6 +48,10 @@ test('separates history controls and returns project subpages to the timeline', 
     throw new Error('both project action toolbars must be visible');
   }
   expect(historyBox.x).toBeLessThan(pageBox.x);
+  const viewport = architectPage.viewportSize();
+  if (!viewport) throw new Error('project toolbar test requires a viewport');
+  expect(viewport.width - (pageBox.x + pageBox.width)).toBeLessThan(64);
+  expect(viewport.height - (pageBox.y + pageBox.height)).toBeLessThan(64);
 
   for (const route of [
     '/protocol/assets',
@@ -51,6 +64,64 @@ test('separates history controls and returns project subpages to the timeline', 
       .click();
     await expect(architectPage).toHaveURL(/\/protocol$/);
   }
+});
+
+test('shares the separated history toolbar with the stage editor', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Information');
+
+  const stageActions = architectPage.getByRole('toolbar', {
+    name: 'Stage editor actions',
+  });
+  const historyActions = architectPage.getByRole('toolbar', {
+    name: 'History actions',
+  });
+  await expect(historyActions).toHaveCount(0);
+
+  await editor.setStageName('Shared History Toolbar');
+
+  await expect(historyActions).toBeVisible();
+  await expect(
+    historyActions.getByRole('button', { name: 'Undo' }),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+  const redo = historyActions.getByRole('button', { name: 'Redo' });
+  await expect(redo).toHaveAttribute('aria-disabled', 'true');
+  await expect(historyActions.getByRole('separator')).toHaveCount(1);
+  await expect(stageActions.getByRole('button', { name: 'Undo' })).toHaveCount(
+    0,
+  );
+  await expect(stageActions.getByRole('button', { name: 'Redo' })).toHaveCount(
+    0,
+  );
+
+  const restingDisabledStyle = await redo.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      color: style.color,
+      opacity: style.opacity,
+    };
+  });
+  await redo.hover();
+  // Button's colour transition is 150ms. Read after it would have completed so
+  // this cannot pass on the first frame while a forbidden hover is beginning.
+  await architectPage.waitForTimeout(200);
+  expect(
+    await redo.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+        opacity: style.opacity,
+      };
+    }),
+  ).toEqual(restingDisabledStyle);
 });
 
 test('downloads the active protocol as a .netcanvas', async ({

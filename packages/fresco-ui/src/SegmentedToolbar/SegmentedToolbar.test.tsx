@@ -60,6 +60,31 @@ describe('SegmentedToolbar — buttons & separators', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it('renders a disabled button segment with visible disabled styling', async () => {
+    const onClick = vi.fn();
+    const items: ToolbarSegment[] = [
+      {
+        type: 'button',
+        id: 'redo',
+        label: 'Redo',
+        icon: <Undo2 />,
+        disabled: true,
+        onClick,
+      },
+    ];
+    render(<SegmentedToolbar label="History" items={items} />);
+
+    const button = screen.getByRole('button', { name: 'Redo' });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveAttribute('data-disabled');
+    expect(button).toHaveClass(
+      'aria-disabled:cursor-not-allowed',
+      'aria-disabled:opacity-50',
+    );
+    await userEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it('renders visible text when there is no icon', () => {
     const items: ToolbarSegment[] = [
       { type: 'button', id: 'done', label: 'Done', onClick: vi.fn() },
@@ -338,7 +363,7 @@ describe('SegmentedToolbar — colour', () => {
     render(<SegmentedToolbar label="Tools" items={items} />);
 
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
-      'hover:enabled:bg-(--component-text)',
+      'not-aria-disabled:hover:enabled:bg-(--component-text)',
     );
   });
 
@@ -359,7 +384,9 @@ describe('SegmentedToolbar — colour', () => {
     const button = screen.getByRole('button', { name: 'Delete' });
     expect(button).toHaveClass('bg-tomato');
     expect(button).toHaveClass('text-white');
-    expect(button).not.toHaveClass('hover:enabled:bg-(--component-text)');
+    expect(button).not.toHaveClass(
+      'not-aria-disabled:hover:enabled:bg-(--component-text)',
+    );
   });
 
   it('forwards semantic colours to segment buttons', () => {

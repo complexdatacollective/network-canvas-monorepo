@@ -250,14 +250,13 @@ test('a refused import leaves the undo history exactly as it was', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await architectPage.goto('/protocol/assets');
 
-  const toolbar = new Toolbar(architectPage);
   // Nothing has been changed yet, so there is nothing to undo. This is the
-  // baseline the refusal must not move. `aria-disabled` rather than
-  // `toBeDisabled()`: ActionToolbar renders an inoperable item as an
-  // `aria-disabled` button that stays reachable, so this asserts the state the
-  // researcher's screen reader is actually told.
-  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
-  await expect(toolbar.button('redo')).toHaveAttribute('aria-disabled', 'true');
+  // baseline the refusal must not move. With neither operation available the
+  // shared history toolbar is absent altogether.
+  const historyActions = architectPage.getByRole('toolbar', {
+    name: 'History actions',
+  });
+  await expect(historyActions).toHaveCount(0);
   const manifestBefore = assetManifestOf(
     await readProtocolJson(architectPage),
   ).map((asset) => asset.name);
@@ -271,11 +270,9 @@ test('a refused import leaves the undo history exactly as it was', async ({
   await errorDialog.getByTestId('dialog-primary').click();
   await expect(errorDialog).toHaveCount(0);
 
-  // Undo enabled here means the refusal recorded a history point: activating
-  // it would announce "Change undone" and write a fresh `lastModified` while
-  // changing nothing the researcher can see.
-  await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
-  await expect(toolbar.button('redo')).toHaveAttribute('aria-disabled', 'true');
+  // A history toolbar appearing here means the refusal recorded a history
+  // point, even though it changed nothing the researcher can see.
+  await expect(historyActions).toHaveCount(0);
   expect(
     assetManifestOf(await readProtocolJson(architectPage)).map(
       (asset) => asset.name,
