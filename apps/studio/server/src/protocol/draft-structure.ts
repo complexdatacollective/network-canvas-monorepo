@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { VariableNameSchema } from '@codaco/shared-consts';
 import {
   type SectionDoc,
   contentHash,
@@ -7,11 +8,8 @@ import {
 } from '@codaco/studio-sync/apply';
 
 import { sectionId } from './taxonomy.ts';
-import {
-  SectionValidationFailedError,
-  validateSection,
-  validateStageSectionIdentity,
-} from './validate.ts';
+import { inTransaction } from './transaction.ts';
+import { assertSectionValid } from './validate.ts';
 
 export class DraftStructureError extends Error {}
 
@@ -108,7 +106,7 @@ async function advanceManifest(
     sectionHashes[id] = hash;
     await client.query(
       `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-       ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
+       ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
       [hash, doc],
     );
   }
@@ -132,33 +130,6 @@ async function advanceManifest(
   return { manifestSeq: newSeq, manifestHash: newManifestHash };
 }
 
-async function inTransaction<T>(
-  db: pg.Pool,
-  work: (client: pg.PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await work(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-function assertValidSection(id: string, doc: SectionDoc) {
-  const result = validateSection(id, doc);
-  if (!result.success) {
-    throw new SectionValidationFailedError([
-      { sectionId: id, issues: result.issues },
-    ]);
-  }
-}
-
 export async function addStage(
   db: pg.Pool,
   params: { draftId: string; stage: SectionDoc; index?: number },
@@ -168,13 +139,7 @@ export async function addStage(
     throw new DraftStructureError('stage document has no id');
   }
   const id = sectionId({ kind: 'stage', stageId });
-  assertValidSection(id, params.stage);
-  const identity = validateStageSectionIdentity(stageId, params.stage);
-  if (!identity.success) {
-    throw new SectionValidationFailedError([
-      { sectionId: id, issues: identity.issues },
-    ]);
-  }
+  assertSectionValid(id, params.stage);
 
   return inTransaction(db, async (client) => {
     const head = await lockHead(client, params.draftId);
@@ -188,7 +153,7 @@ export async function addStage(
     }
     const order = stageOrderOf(await loadDoc(client, orderHash));
     const index = params.index ?? order.length;
-    if (index < 0 || index > order.length) {
+    if (!Number.isInteger(index) || index < 0 || index > order.length) {
       throw new DraftStructureError(`stage index ${index} out of range`);
     }
     const newOrder = [...order];
@@ -238,6 +203,11 @@ export type CodebookEntityRef =
 
 function entitySectionId(ref: CodebookEntityRef): string {
   if (ref.entity === 'ego') return sectionId({ kind: 'codebookEgo' });
+  if (!VariableNameSchema.safeParse(ref.typeId).success) {
+    throw new DraftStructureError(
+      `codebook ${ref.entity} type id ${ref.typeId} is not a valid identifier`,
+    );
+  }
   return ref.entity === 'node'
     ? sectionId({ kind: 'codebookNode', typeId: ref.typeId })
     : sectionId({ kind: 'codebookEdge', typeId: ref.typeId });
@@ -252,7 +222,7 @@ export async function addCodebookEntity(
   },
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
-  assertValidSection(id, params.definition);
+  assertSectionValid(id, params.definition);
   return inTransaction(db, async (client) => {
     const head = await lockHead(client, params.draftId);
     if (head.sectionHashes[id] !== undefined) {

@@ -13,6 +13,7 @@ import {
   removeStage,
 } from '../draft-structure.ts';
 import { ProtocolStore } from '../store.ts';
+import { createProtocolSyncServer } from '../sync.ts';
 import { SectionValidationFailedError } from '../validate.ts';
 import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 
@@ -123,6 +124,21 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await expect(
       addStage(db, { draftId, stage: { id: 'bad', type: 'Information' } }),
     ).rejects.toThrow(SectionValidationFailedError);
+    for (const index of [1.5, Number.NaN]) {
+      await expect(
+        addStage(db, {
+          draftId,
+          stage: {
+            id: 'info3',
+            type: 'Information',
+            label: 'X',
+            title: 'X',
+            items: [{ id: 'item1', type: 'text', content: 'Y.' }],
+          },
+          index,
+        }),
+      ).rejects.toThrow(/out of range/);
+    }
   });
 
   it('removeStage drops the section from the manifest but keeps the row', async () => {
@@ -190,6 +206,71 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       codebook: { node: Record<string, unknown> };
     };
     expect(Object.keys(document.codebook.node)).toEqual(['person']);
+  });
+
+  it('refuses a codebook type id the assembled protocol could never validate', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    await expect(
+      addCodebookEntity(db, {
+        draftId,
+        ref: { entity: 'node', typeId: 'person type' },
+        definition: {
+          name: 'Person Type',
+          color: 'node-color-seq-3',
+          shape: { default: 'square' },
+        },
+      }),
+    ).rejects.toThrow(DraftStructureError);
+    const document = (await store.getDraftDocument(draftId)) as {
+      codebook: { node: Record<string, unknown> };
+    };
+    expect(Object.keys(document.codebook.node)).toEqual(['person']);
+  });
+
+  it('a validating sync server rejects a lease commit that would wedge the draft', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = createProtocolSyncServer(db);
+    const lease = await sync.acquire(draftId, 'stageOrder', 'tab-1');
+    const before = await store.getDraftSections(draftId);
+
+    await expect(
+      sync.commit({
+        draftId,
+        sectionId: 'stageOrder',
+        owner: 'tab-1',
+        epoch: lease!.epoch,
+        clientSeq: 1n,
+        commands: [{ op: 'unset', key: 'stages' }],
+      }),
+    ).rejects.toThrow(SectionValidationFailedError);
+
+    const after = await store.getDraftSections(draftId);
+    expect(after.headManifestHash).toBe(before.headManifestHash);
+    expect(await store.getDraftDocument(draftId)).toEqual(baseProtocol());
+  });
+
+  it('a validating sync server rejects a stage rename of its own id', async () => {
+    const { draftId } = await store.createProtocol({
+      protocol: baseProtocol(),
+    });
+    const sync = createProtocolSyncServer(db);
+    const lease = await sync.acquire(draftId, 'stage:sociogram1', 'tab-1');
+
+    await expect(
+      sync.commit({
+        draftId,
+        sectionId: 'stage:sociogram1',
+        owner: 'tab-1',
+        epoch: lease!.epoch,
+        clientSeq: 1n,
+        commands: [{ op: 'set', key: 'id', value: 'renamed' }],
+      }),
+    ).rejects.toThrow(SectionValidationFailedError);
+    expect(await store.validateDraft(draftId)).toEqual({ valid: true });
   });
 
   it('structural ops fence the stageOrder lease, rejecting stale positional commits', async () => {

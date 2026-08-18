@@ -3,6 +3,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
+import pg from 'pg';
+
 import { createPool } from '../src/db/pool.ts';
 import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
 import { seed } from '../src/db/seed.ts';
@@ -73,7 +75,9 @@ try {
     `select nspname from pg_namespace where nspname like 'studio\\_test\\_%'`,
   );
   for (const { nspname } of leftovers.rows) {
-    await pool.query(`drop schema if exists "${nspname}" cascade`);
+    await pool.query(
+      `drop schema if exists ${pg.escapeIdentifier(nspname)} cascade`,
+    );
   }
   if (leftovers.rowCount) {
     console.log(`Dropped ${leftovers.rowCount} leftover test schema(s).`);

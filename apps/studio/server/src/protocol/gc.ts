@@ -1,5 +1,7 @@
 import type pg from 'pg';
 
+import { inTransaction } from './transaction.ts';
+
 export type GcResult = {
   manifestsDeleted: number;
   sectionsDeleted: number;
@@ -43,63 +45,74 @@ export async function gcProtocolStore(
     throw new Error('retainManifestsPerDraft must be a non-negative integer');
   }
   assertNonNegativeFinite('sectionGraceMs', sectionGraceMs);
+  if (sectionGraceMs === 0) {
+    throw new Error('sectionGraceMs must be greater than zero');
+  }
   assertNonNegativeFinite('commandRetryHorizonMs', commandRetryHorizonMs);
 
-  const client = await db.connect();
-  try {
-    await client.query('BEGIN');
+  const result: GcResult = {
+    manifestsDeleted: 0,
+    sectionsDeleted: 0,
+    commandLogDeleted: 0,
+  };
 
-    const commandLog = await client.query(
-      `DELETE FROM command_log cl
-       USING drafts d
-       WHERE cl.draft_id = d.id
-         AND cl.manifest_seq < d.head_seq - $1
-         AND cl.created_at < now() - make_interval(secs => $2::float / 1000)
-         AND NOT EXISTS (
-           SELECT 1 FROM leases l
-           WHERE l.draft_id = cl.draft_id
-             AND l.section_id = cl.section_id
-             AND l.owner = cl.owner
-             AND l.epoch = cl.epoch
-             AND l.expires_at > clock_timestamp()
-         )`,
-      [retainManifestsPerDraft, commandRetryHorizonMs],
-    );
-    const manifests = await client.query(
-      `DELETE FROM manifests m
-       USING drafts d
-       WHERE m.draft_id = d.id
-         AND m.seq < d.head_seq - $1
-         AND NOT EXISTS (
-           SELECT 1 FROM command_log cl
-           WHERE cl.draft_id = m.draft_id AND cl.manifest_seq = m.seq
-         )`,
-      [retainManifestsPerDraft],
-    );
-    const sections = await client.query(
-      `DELETE FROM sections s
-       WHERE s.created_at < now() - make_interval(secs => $1::float / 1000)
-         AND NOT EXISTS (
-           SELECT 1 FROM version_sections vs WHERE vs.section_hash = s.hash
-         )
-         AND NOT EXISTS (
-           SELECT 1 FROM manifests m
-           CROSS JOIN LATERAL jsonb_each_text(m.section_hashes) kv
-           WHERE kv.value = s.hash
-         )`,
-      [sectionGraceMs],
-    );
+  const drafts = await db.query(`SELECT id FROM drafts ORDER BY id`);
+  for (const { id: draftId } of drafts.rows as { id: string }[]) {
+    await inTransaction(db, async (client) => {
+      const head = await client.query(
+        `SELECT head_seq FROM drafts WHERE id = $1 FOR UPDATE`,
+        [draftId],
+      );
+      const headRow = head.rows[0] as { head_seq: string } | undefined;
+      if (headRow === undefined) return;
+      const oldest = String(
+        BigInt(headRow.head_seq) - BigInt(retainManifestsPerDraft),
+      );
 
-    await client.query('COMMIT');
-    return {
-      manifestsDeleted: manifests.rowCount ?? 0,
-      sectionsDeleted: sections.rowCount ?? 0,
-      commandLogDeleted: commandLog.rowCount ?? 0,
-    };
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw err;
-  } finally {
-    client.release();
+      const commandLog = await client.query(
+        `DELETE FROM command_log cl
+         WHERE cl.draft_id = $1
+           AND cl.manifest_seq < $2::bigint
+           AND cl.created_at < now() - make_interval(secs => $3::float / 1000)
+           AND NOT EXISTS (
+             SELECT 1 FROM leases l
+             WHERE l.draft_id = cl.draft_id
+               AND l.section_id = cl.section_id
+               AND l.owner = cl.owner
+               AND l.epoch = cl.epoch
+               AND l.expires_at > clock_timestamp()
+           )`,
+        [draftId, oldest, commandRetryHorizonMs],
+      );
+      const manifests = await client.query(
+        `DELETE FROM manifests m
+         WHERE m.draft_id = $1
+           AND m.seq < $2::bigint
+           AND NOT EXISTS (
+             SELECT 1 FROM command_log cl
+             WHERE cl.draft_id = m.draft_id AND cl.manifest_seq = m.seq
+           )`,
+        [draftId, oldest],
+      );
+      result.commandLogDeleted += commandLog.rowCount ?? 0;
+      result.manifestsDeleted += manifests.rowCount ?? 0;
+    });
   }
+
+  const sections = await db.query(
+    `DELETE FROM sections s
+     WHERE s.created_at < now() - make_interval(secs => $1::float / 1000)
+       AND NOT EXISTS (
+         SELECT 1 FROM version_sections vs WHERE vs.section_hash = s.hash
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM manifests m
+         CROSS JOIN LATERAL jsonb_each_text(m.section_hashes) kv
+         WHERE kv.value = s.hash
+       )`,
+    [sectionGraceMs],
+  );
+  result.sectionsDeleted = sections.rowCount ?? 0;
+
+  return result;
 }

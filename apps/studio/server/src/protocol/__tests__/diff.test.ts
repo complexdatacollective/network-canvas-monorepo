@@ -125,6 +125,95 @@ describe('diffProtocolSections', () => {
     expect(changes[0]).toMatchObject({ kind: 'stage-moved' });
   });
 
+  it('reports a prompt reorder that leaves every prompt unchanged', () => {
+    const before = baseProtocol() as MutableProtocol;
+    before.stages[0]!.prompts = [
+      { id: 'prompt1', text: 'Who do you know?' },
+      { id: 'prompt2', text: 'Anyone else?' },
+    ];
+    const after = baseProtocol() as MutableProtocol;
+    after.stages[0]!.prompts = [
+      { id: 'prompt2', text: 'Anyone else?' },
+      { id: 'prompt1', text: 'Who do you know?' },
+    ];
+
+    const changes = diff(before, after);
+    expect(changes).toEqual([
+      {
+        kind: 'stage-changed',
+        stageId: 'nameGenerator1',
+        stageType: 'NameGenerator',
+        changes: [{ path: ['prompts'], change: 'changed' }],
+      },
+    ]);
+  });
+
+  it('classifies a variable named after a prototype member', () => {
+    const before = baseProtocol();
+    const after = baseProtocol();
+    const person = after.codebook.node!.person!;
+    person.variables = {
+      ...person.variables,
+      constructor: { name: 'constructor', type: 'boolean' },
+    } as typeof person.variables;
+
+    const changes = diff(before, after);
+    expect(changes).toEqual([
+      {
+        kind: 'entity-changed',
+        entity: 'node',
+        typeId: 'person',
+        name: 'Person',
+        changes: [],
+        variables: [
+          { variableId: 'constructor', name: 'constructor', change: 'added' },
+        ],
+      },
+    ]);
+  });
+
+  it('classifies an asset named after a prototype member', () => {
+    const before = baseProtocol();
+    const after = baseProtocol();
+    after.assetManifest = {
+      constructor: {
+        id: 'constructor',
+        type: 'image',
+        name: 'a.png',
+        source: 'a.png',
+      },
+    } as CurrentProtocol['assetManifest'];
+
+    expect(diff(before, after)).toEqual([
+      {
+        kind: 'assets-changed',
+        added: ['constructor'],
+        removed: [],
+        changed: [],
+      },
+    ]);
+  });
+
+  it('describes a full reversal with the endpoints that moved', () => {
+    const before = baseProtocol() as MutableProtocol;
+    const third = {
+      id: 'info1',
+      type: 'Information',
+      label: 'About this study',
+      title: 'About this study',
+      items: [{ id: 'item1', type: 'text', content: 'Welcome.' }],
+    } as unknown as MutableProtocol['stages'][number];
+    before.stages = [before.stages[0]!, before.stages[1]!, third];
+    const after = baseProtocol() as MutableProtocol;
+    after.stages = [third, before.stages[1]!, before.stages[0]!];
+
+    const changes = diff(before, after);
+    expect(changes).toEqual([
+      { kind: 'stage-moved', stageId: 'nameGenerator1', from: 0, to: 2 },
+      { kind: 'stage-moved', stageId: 'info1', from: 2, to: 0 },
+    ]);
+  });
+
   it('reports settings and asset changes', () => {
     const before = baseProtocol();
     before.assetManifest = {

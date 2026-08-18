@@ -89,6 +89,23 @@ export function validateSection(
   };
 }
 
+export function assertSectionValid(id: string, doc: SectionDoc): void {
+  const result = validateSection(id, doc);
+  if (!result.success) {
+    throw new SectionValidationFailedError([
+      { sectionId: id, issues: result.issues },
+    ]);
+  }
+  const ref = parseSectionId(id);
+  if (ref.kind !== 'stage') return;
+  const identity = validateStageSectionIdentity(ref.stageId, doc);
+  if (!identity.success) {
+    throw new SectionValidationFailedError([
+      { sectionId: id, issues: identity.issues },
+    ]);
+  }
+}
+
 export function validateStageSectionIdentity(
   stageId: string,
   doc: SectionDoc,

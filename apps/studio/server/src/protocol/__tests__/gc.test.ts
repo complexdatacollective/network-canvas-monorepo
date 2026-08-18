@@ -31,6 +31,14 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
   return res.rowCount === 1;
 }
 
+async function backdateSections(db: pg.Pool): Promise<void> {
+  await db.query(
+    `UPDATE sections SET created_at = created_at - interval '1 hour'`,
+  );
+}
+
+const GRACE_MS = 60_000;
+
 describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
   let dispose: () => Promise<void>;
@@ -61,9 +69,10 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
     // Expire the live lease: this case is about the manifest/section window.
     await forceExpire(db, draftId, 'settings');
+    await backdateSections(db);
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
-      sectionGraceMs: 0,
+      sectionGraceMs: GRACE_MS,
       commandRetryHorizonMs: 0,
     });
 
@@ -111,7 +120,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
-      sectionGraceMs: 0,
+      sectionGraceMs: GRACE_MS,
       commandRetryHorizonMs: 0,
     });
     expect(result.commandLogDeleted).toBe(0);
@@ -136,7 +145,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     await forceExpire(db, draftId, 'settings');
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
-      sectionGraceMs: 0,
+      sectionGraceMs: GRACE_MS,
       commandRetryHorizonMs: 60_000,
     });
     expect(result.commandLogDeleted).toBe(0);
@@ -171,7 +180,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
     const result = await gcProtocolStore(db, {
       retainManifestsPerDraft: 0,
-      sectionGraceMs: 60_000,
+      sectionGraceMs: GRACE_MS,
       commandRetryHorizonMs: 0,
     });
     expect(result.sectionsDeleted).toBe(0);
@@ -186,9 +195,10 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       .settings!;
     await commitDescription(db, draftId, 'newest', 21n);
 
+    await backdateSections(db);
     await gcProtocolStore(db, {
       retainManifestsPerDraft: 1,
-      sectionGraceMs: 0,
+      sectionGraceMs: GRACE_MS,
       commandRetryHorizonMs: 0,
     });
     expect(await sectionExists(db, superseded)).toBe(true);
@@ -216,16 +226,23 @@ describe('gcProtocolStore bounds', () => {
     await expect(
       gcProtocolStore(unconnected, {
         retainManifestsPerDraft: 0,
-        sectionGraceMs: 0,
+        sectionGraceMs: 1,
         commandRetryHorizonMs: -1,
       }),
     ).rejects.toThrow(/commandRetryHorizonMs/);
     await expect(
       gcProtocolStore(unconnected, {
         retainManifestsPerDraft: 0.5,
-        sectionGraceMs: 0,
+        sectionGraceMs: 1,
         commandRetryHorizonMs: 0,
       }),
     ).rejects.toThrow(/retainManifestsPerDraft/);
+    await expect(
+      gcProtocolStore(unconnected, {
+        retainManifestsPerDraft: 0,
+        sectionGraceMs: 0,
+        commandRetryHorizonMs: 0,
+      }),
+    ).rejects.toThrow(/sectionGraceMs/);
   });
 });

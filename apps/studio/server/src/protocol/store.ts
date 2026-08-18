@@ -488,6 +488,9 @@ export class ProtocolStore {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
+      await client.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
+        draftId,
+      ]);
       await client.query(`DELETE FROM leases WHERE draft_id = $1`, [draftId]);
       await client.query(`DELETE FROM command_log WHERE draft_id = $1`, [
         draftId,

@@ -37,6 +37,8 @@ const SECTION_EXISTS = `SELECT 1 FROM drafts d
 
 export type Lease = { epoch: bigint; expiresAt: Date };
 
+export type SectionValidator = (sectionId: string, doc: SectionDoc) => void;
+
 export type CommitResult = {
   deduped: boolean;
   manifestSeq: bigint;
@@ -47,10 +49,12 @@ export type CommitResult = {
 export class SyncServer {
   private db: pg.Pool;
   private ttlMs: number;
+  private validateSection: SectionValidator | undefined;
 
-  constructor(db: pg.Pool, ttlMs = 30_000) {
+  constructor(db: pg.Pool, ttlMs = 30_000, validateSection?: SectionValidator) {
     this.db = db;
     this.ttlMs = ttlMs;
+    this.validateSection = validateSection;
   }
 
   async createDraft(draftId: string, sections: Record<string, SectionDoc>) {
@@ -63,7 +67,7 @@ export class SyncServer {
         sectionHashes[sectionId] = hash;
         await client.query(
           `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-           ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
+           ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
           [hash, doc],
         );
       }
@@ -106,24 +110,26 @@ export class SyncServer {
     sectionId: string,
     owner: string,
   ): Promise<Lease | null> {
-    const res = await this.db.query(
-      `INSERT INTO leases (draft_id, section_id, owner, epoch, expires_at)
-       SELECT $1, $2, $3, 1,
-              clock_timestamp() + make_interval(secs => $4::float / 1000)
-       WHERE EXISTS (${SECTION_EXISTS})
-       ON CONFLICT (draft_id, section_id) DO UPDATE
-         SET owner = excluded.owner,
-             epoch = CASE
-               WHEN leases.owner = excluded.owner
-                 AND leases.expires_at > clock_timestamp()
-                 THEN leases.epoch
-               ELSE leases.epoch + 1
-             END,
-             expires_at = excluded.expires_at
-         WHERE leases.expires_at < clock_timestamp()
-            OR leases.owner = excluded.owner
-       RETURNING epoch, expires_at`,
-      [draftId, sectionId, owner, this.ttlMs],
+    const res = await this.lockedOnHead(draftId, (client) =>
+      client.query(
+        `INSERT INTO leases (draft_id, section_id, owner, epoch, expires_at)
+         SELECT $1, $2, $3, 1,
+                clock_timestamp() + make_interval(secs => $4::float / 1000)
+         WHERE EXISTS (${SECTION_EXISTS})
+         ON CONFLICT (draft_id, section_id) DO UPDATE
+           SET owner = excluded.owner,
+               epoch = CASE
+                 WHEN leases.owner = excluded.owner
+                   AND leases.expires_at > clock_timestamp()
+                   THEN leases.epoch
+                 ELSE leases.epoch + 1
+               END,
+               expires_at = excluded.expires_at
+           WHERE leases.expires_at < clock_timestamp()
+              OR leases.owner = excluded.owner
+         RETURNING epoch, expires_at`,
+        [draftId, sectionId, owner, this.ttlMs],
+      ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
     if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
@@ -131,6 +137,27 @@ export class SyncServer {
     // only the failure path pays for the distinction.
     await this.assertSectionExists(draftId, sectionId);
     return null;
+  }
+
+  private async lockedOnHead(
+    draftId: string,
+    work: (client: pg.PoolClient) => Promise<pg.QueryResult>,
+  ): Promise<pg.QueryResult> {
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT 1 FROM drafts WHERE id = $1 FOR SHARE`, [
+        draftId,
+      ]);
+      const res = await work(client);
+      await client.query('COMMIT');
+      return res;
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   private async assertSectionExists(draftId: string, sectionId: string) {
@@ -152,13 +179,15 @@ export class SyncServer {
     sectionId: string,
     owner: string,
   ): Promise<Lease | null> {
-    const res = await this.db.query(
-      `UPDATE leases
-       SET owner = $3, epoch = epoch + 1,
-           expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
-       WHERE draft_id = $1 AND section_id = $2
-       RETURNING epoch, expires_at`,
-      [draftId, sectionId, owner, this.ttlMs],
+    const res = await this.lockedOnHead(draftId, (client) =>
+      client.query(
+        `UPDATE leases
+         SET owner = $3, epoch = epoch + 1,
+             expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
+         WHERE draft_id = $1 AND section_id = $2
+         RETURNING epoch, expires_at`,
+        [draftId, sectionId, owner, this.ttlMs],
+      ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
     return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
@@ -311,10 +340,11 @@ export class SyncServer {
         (currentDoc.rows[0] as { doc: SectionDoc }).doc,
         commands,
       );
+      this.validateSection?.(sectionId, newDoc);
       const newSectionHash = contentHash(newDoc);
       await client.query(
         `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-         ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
+         ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
         [newSectionHash, newDoc],
       );
 

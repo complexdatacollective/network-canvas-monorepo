@@ -14,7 +14,7 @@ CREATE TABLE drafts (
 CREATE TABLE sections (
   hash text PRIMARY KEY,
   doc jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
 -- Manifests: ordered map of section id -> section hash, one row per commit.
@@ -52,7 +52,7 @@ CREATE TABLE command_log (
   client_seq bigint NOT NULL,
   commands jsonb NOT NULL,
   manifest_seq bigint NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   UNIQUE (draft_id, section_id, owner, epoch, client_seq)
 );
 `;

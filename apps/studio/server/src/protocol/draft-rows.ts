@@ -17,7 +17,7 @@ export async function insertDraftRows(
     sectionHashes[id] = hash;
     await client.query(
       `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-       ON CONFLICT (hash) DO UPDATE SET created_at = now()`,
+       ON CONFLICT (hash) DO UPDATE SET created_at = clock_timestamp()`,
       [hash, doc],
     );
   }

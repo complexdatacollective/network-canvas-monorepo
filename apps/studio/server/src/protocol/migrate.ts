@@ -30,11 +30,13 @@ export async function migrateStoredVersionToDraft(
   const draftId = params.draftId ?? randomUUID();
 
   const version = await db.query(
-    `SELECT protocol_id, schema_version FROM protocol_versions WHERE id = $1`,
+    `SELECT v.protocol_id, v.schema_version, p.name
+     FROM protocol_versions v JOIN protocols p ON p.id = v.protocol_id
+     WHERE v.id = $1`,
     [params.versionId],
   );
   const versionRow = version.rows[0] as
-    | { protocol_id: string; schema_version: number }
+    | { protocol_id: string; schema_version: number; name: string }
     | undefined;
   if (versionRow === undefined) {
     throw new MigrationTargetError(`no version ${params.versionId}`);
@@ -53,7 +55,10 @@ export async function migrateStoredVersionToDraft(
 
   const document = assembleProtocol(sections);
   const settings = sections[sectionId({ kind: 'settings' })];
-  const name = typeof settings?.name === 'string' ? settings.name : '';
+  const name =
+    typeof settings?.name === 'string' && settings.name !== ''
+      ? settings.name
+      : versionRow.name;
   const migrated = migrateProtocol(document, CURRENT_SCHEMA_VERSION, { name });
   const migratedSections = sectionizeProtocol(migrated);
 

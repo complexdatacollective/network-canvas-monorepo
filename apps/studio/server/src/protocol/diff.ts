@@ -78,11 +78,11 @@ function stageOrderOf(doc: SectionDoc | undefined): string[] {
 function diffBody(a: SectionDoc, b: SectionDoc): FieldChange[] {
   const changes: FieldChange[] = [];
   for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
-    if (!(key in a)) {
+    if (!Object.hasOwn(a, key)) {
       changes.push({ path: [key], change: 'added' });
       continue;
     }
-    if (!(key in b)) {
+    if (!Object.hasOwn(b, key)) {
       changes.push({ path: [key], change: 'removed' });
       continue;
     }
@@ -107,10 +107,23 @@ function promptsById(prompts: unknown[]): Map<string, SectionDoc> {
   return byId;
 }
 
+function promptOrderChanged(a: unknown[], b: unknown[]): boolean {
+  const aIds = [...promptsById(a).keys()];
+  const bIds = [...promptsById(b).keys()];
+  const inA = new Set(aIds);
+  const inB = new Set(bIds);
+  const aCommon = aIds.filter((id) => inB.has(id));
+  const bCommon = bIds.filter((id) => inA.has(id));
+  return aCommon.some((id, index) => id !== bCommon[index]);
+}
+
 function diffPrompts(a: unknown[], b: unknown[]): FieldChange[] {
   const aById = promptsById(a);
   const bById = promptsById(b);
   const changes: FieldChange[] = [];
+  if (promptOrderChanged(a, b)) {
+    changes.push({ path: ['prompts'], change: 'changed' });
+  }
   for (const id of new Set([...aById.keys(), ...bById.keys()])) {
     const aPrompt = aById.get(id);
     const bPrompt = bById.get(id);
@@ -146,8 +159,12 @@ function diffVariables(a: SectionDoc, b: SectionDoc): VariableChange[] {
     ...Object.keys(aVars),
     ...Object.keys(bVars),
   ])) {
-    const aVar = aVars[variableId];
-    const bVar = bVars[variableId];
+    const aVar = Object.hasOwn(aVars, variableId)
+      ? aVars[variableId]
+      : undefined;
+    const bVar = Object.hasOwn(bVars, variableId)
+      ? bVars[variableId]
+      : undefined;
     if (aVar === undefined && bVar !== undefined) {
       changes.push({
         variableId,
@@ -180,7 +197,12 @@ function diffVariables(a: SectionDoc, b: SectionDoc): VariableChange[] {
 
 // Ids outside the subsequence are the moved set, so one dragged stage reports
 // one move rather than a shift for every neighbour it passed.
-function longestCommonSubsequence(a: string[], b: string[]): Set<string> {
+function longestCommonSubsequence(
+  a: string[],
+  b: string[],
+  unmoved: (id: string) => boolean,
+): Set<string> {
+  const match = a.length + b.length + 1;
   const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
     Array.from({ length: b.length + 1 }, () => 0),
   );
@@ -188,7 +210,7 @@ function longestCommonSubsequence(a: string[], b: string[]): Set<string> {
     for (let j = b.length - 1; j >= 0; j--) {
       dp[i]![j] =
         a[i] === b[j]
-          ? dp[i + 1]![j + 1]! + 1
+          ? dp[i + 1]![j + 1]! + match + (unmoved(a[i]!) ? 1 : 0)
           : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
     }
   }
@@ -333,8 +355,8 @@ export function diffProtocolSections(
           ...Object.keys(aDoc),
           ...Object.keys(bDoc),
         ])) {
-          if (!(key in aDoc)) added.push(key);
-          else if (!(key in bDoc)) removed.push(key);
+          if (!Object.hasOwn(aDoc, key)) added.push(key);
+          else if (!Object.hasOwn(bDoc, key)) removed.push(key);
           else if (!equal(aDoc[key], bDoc[key])) changed.push(key);
         }
         changes.push({ kind: 'assets-changed', added, removed, changed });
@@ -347,15 +369,16 @@ export function diffProtocolSections(
 
   const commonA = aOrder.filter((stageId) => bOrder.includes(stageId));
   const commonB = bOrder.filter((stageId) => aOrder.includes(stageId));
-  const kept = longestCommonSubsequence(commonA, commonB);
+  const kept = longestCommonSubsequence(
+    commonA,
+    commonB,
+    (stageId) => aOrder.indexOf(stageId) === bOrder.indexOf(stageId),
+  );
   for (const stageId of commonA) {
-    if (!kept.has(stageId)) {
-      changes.push({
-        kind: 'stage-moved',
-        stageId,
-        from: aOrder.indexOf(stageId),
-        to: bOrder.indexOf(stageId),
-      });
+    const from = aOrder.indexOf(stageId);
+    const to = bOrder.indexOf(stageId);
+    if (!kept.has(stageId) && from !== to) {
+      changes.push({ kind: 'stage-moved', stageId, from, to });
     }
   }
 

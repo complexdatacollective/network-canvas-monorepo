@@ -1822,6 +1822,9 @@ importers:
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../../../packages/protocol-validation
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../../packages/shared-consts
       '@codaco/studio-rpc':
         specifier: workspace:^
         version: link:../../../packages/studio-rpc

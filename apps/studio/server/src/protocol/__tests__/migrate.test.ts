@@ -13,7 +13,7 @@ import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
 // Write-time validation pins new sections to the current schema, so a stored
 // schema-7 version has to be seeded through the sync engine directly.
 const V7_SECTIONS: Record<string, SectionDoc> = {
-  'settings': { name: 'Legacy Protocol', schemaVersion: 7 },
+  'settings': { schemaVersion: 7 },
   'stageOrder': { stages: [] },
   'codebook:node:person': {
     name: 'Person',
