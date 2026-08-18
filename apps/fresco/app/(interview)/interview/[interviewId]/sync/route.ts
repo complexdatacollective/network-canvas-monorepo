@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { ensureError } from '~/utils/ensureError';
 
@@ -19,7 +19,7 @@ const routeHandler = async (
   const invalidRequest = (error: unknown) => {
     after(async () => {
       await captureException(error, { interviewId });
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return NextResponse.json(
