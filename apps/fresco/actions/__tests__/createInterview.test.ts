@@ -345,16 +345,27 @@ describe('createInterview', () => {
       expect(mockPrismaCreate).not.toHaveBeenCalled();
     });
 
-    // A protocol that is gone makes the recruitment setting irrelevant, and
-    // reporting that setting instead sends the researcher after a fix that
-    // cannot help. Reaching the create is what used to decide this, so an
-    // earlier return hid the real cause.
+    // A protocol that is gone is the whole answer — every other reason sends
+    // the researcher after a fix that cannot help, whether that is enabling
+    // anonymous recruitment or correcting an identifier on a dead link. The
+    // create used to be what decided this, so any earlier return hid it.
     it('should prefer no-protocol over no-anonymous-recruitment', async () => {
       mockProtocolFindUnique.mockResolvedValue(null);
       mockGetAppSetting.mockResolvedValue(false);
 
       const result = await createInterview({
         protocolId: 'non-existent-protocol',
+      });
+
+      expect(result.errorType).toBe('no-protocol');
+    });
+
+    it('should prefer no-protocol over invalid-identifier', async () => {
+      mockProtocolFindUnique.mockResolvedValue(null);
+
+      const result = await createInterview({
+        protocolId: 'non-existent-protocol',
+        participantIdentifier: '   ',
       });
 
       expect(result.errorType).toBe('no-protocol');

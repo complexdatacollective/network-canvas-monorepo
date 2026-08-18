@@ -162,30 +162,13 @@ export async function createInterview(
 ): Promise<CreateInterviewResult> {
   const { participantIdentifier, protocolId } = data;
 
-  // The participant identifier may arrive unauthenticated via /onboard, so
-  // validate it (length, trim, non-whitespace) before it is persisted and
-  // later embedded in activity-feed messages and CSV exports.
-  let validatedIdentifier: string | undefined;
-  if (participantIdentifier !== undefined && participantIdentifier !== '') {
-    const parsed = participantIdentifierSchema.safeParse(participantIdentifier);
-    if (!parsed.success) {
-      return {
-        errorType: 'invalid-identifier',
-        error: 'Invalid participant identifier',
-        createdInterviewId: null,
-      };
-    }
-    validatedIdentifier = parsed.data;
-  }
-
   try {
-    // Establish this before anything else that can fail. A protocol that no
-    // longer exists makes every other consideration moot, and checking it only
-    // via the create below leaves it unreachable whenever an earlier condition
-    // returns first: an anonymous link to a deleted protocol, on an
-    // installation that does not allow anonymous recruitment, would report the
-    // recruitment setting and send the researcher after a fix that cannot
-    // help.
+    // A protocol that no longer exists is the whole answer: nothing else about
+    // the request can be acted on, and reporting any other reason sends the
+    // researcher after a fix that cannot help — enabling anonymous
+    // recruitment, or correcting an identifier on a link that is dead either
+    // way. So this precedes every other return, rather than being reached only
+    // when nothing else fails first.
     const protocol = await prisma.protocol.findUnique({
       where: { id: protocolId },
       select: { id: true },
@@ -197,6 +180,24 @@ export async function createInterview(
         error: 'Protocol not found',
         createdInterviewId: null,
       };
+    }
+
+    // The participant identifier may arrive unauthenticated via /onboard, so
+    // validate it (length, trim, non-whitespace) before it is persisted and
+    // later embedded in activity-feed messages and CSV exports.
+    let validatedIdentifier: string | undefined;
+    if (participantIdentifier !== undefined && participantIdentifier !== '') {
+      const parsed = participantIdentifierSchema.safeParse(
+        participantIdentifier,
+      );
+      if (!parsed.success) {
+        return {
+          errorType: 'invalid-identifier',
+          error: 'Invalid participant identifier',
+          createdInterviewId: null,
+        };
+      }
+      validatedIdentifier = parsed.data;
     }
 
     if (!validatedIdentifier) {
