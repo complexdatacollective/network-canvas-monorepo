@@ -6,12 +6,14 @@ const {
   mockFlush,
   mockGetDisableAnalytics,
   mockGetInstallationId,
+  mockHeaders,
 } = vi.hoisted(() => ({
   mockCapture: vi.fn(),
   mockCaptureException: vi.fn(),
   mockFlush: vi.fn().mockResolvedValue(undefined),
   mockGetDisableAnalytics: vi.fn(),
   mockGetInstallationId: vi.fn(),
+  mockHeaders: vi.fn(),
 }));
 
 vi.mock('posthog-node', () => {
@@ -28,9 +30,18 @@ vi.mock('~/queries/appSettings', () => ({
   getInstallationId: mockGetInstallationId,
 }));
 
+vi.mock('next/headers', () => ({
+  headers: mockHeaders,
+}));
+
 vi.mock('~/fresco.config', () => ({
   POSTHOG_API_KEY: 'test-api-key',
-  POSTHOG_APP_NAME: 'Fresco',
+  POSTHOG_APP_PROPERTIES: {
+    app: 'Fresco',
+    $app_name: 'Fresco',
+    host_version: '4.1.1',
+    $app_version: '4.1.1',
+  },
   POSTHOG_PROXY_HOST: 'https://test.example.com',
 }));
 
@@ -38,6 +49,7 @@ describe('posthog-server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockHeaders.mockResolvedValue(new Headers());
   });
 
   describe('captureEvent', () => {
@@ -64,11 +76,51 @@ describe('posthog-server', () => {
         event: 'test-event',
         properties: {
           app: 'Fresco',
+          $app_name: 'Fresco',
+          host_version: '4.1.1',
+          $app_version: '4.1.1',
           installation_id: 'install-123',
           key: 'value',
           $source: 'server',
         },
       });
+    });
+
+    it('adds the browser session ID to server events', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-posthog-session-id': 'browser-session-123' }),
+      );
+
+      const { captureEvent } = await import('../posthog-server');
+      await captureEvent('test-event');
+
+      expect(mockCapture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          distinctId: 'install-123',
+          properties: expect.objectContaining({
+            $session_id: 'browser-session-123',
+          }),
+        }),
+      );
+    });
+
+    it('still captures outside a browser request context', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockRejectedValue(new Error('no request context'));
+
+      const { captureEvent } = await import('../posthog-server');
+      await captureEvent('background-event');
+
+      expect(mockCapture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          properties: expect.not.objectContaining({
+            $session_id: expect.anything(),
+          }),
+        }),
+      );
     });
 
     it('swallows errors thrown by underlying lookups', async () => {
@@ -105,7 +157,33 @@ describe('posthog-server', () => {
 
       expect(mockCaptureException).toHaveBeenCalledWith(error, 'install-123', {
         extra: 'data',
+        app: 'Fresco',
+        $app_name: 'Fresco',
+        host_version: '4.1.1',
+        $app_version: '4.1.1',
+        installation_id: 'install-123',
+        $source: 'server',
       });
+    });
+
+    it('adds the browser session ID to server exceptions', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-posthog-session-id': 'browser-session-123' }),
+      );
+
+      const error = new Error('test error');
+      const { captureException } = await import('../posthog-server');
+      await captureException(error);
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        error,
+        'install-123',
+        expect.objectContaining({
+          $session_id: 'browser-session-123',
+        }),
+      );
     });
 
     it('swallows errors thrown by underlying lookups', async () => {

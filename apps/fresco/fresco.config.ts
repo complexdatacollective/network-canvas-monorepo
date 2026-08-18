@@ -1,8 +1,17 @@
+import pkg from './package.json' with { type: 'json' };
+
 export const PROTOCOL_EXTENSION = '.netcanvas';
 export const APP_SUPPORTED_SCHEMA_VERSIONS = [7, 8];
 
 // Analytics
 export const POSTHOG_APP_NAME = 'Fresco';
+export const POSTHOG_APP_VERSION = pkg.version;
+export const POSTHOG_APP_PROPERTIES = {
+  app: POSTHOG_APP_NAME,
+  $app_name: POSTHOG_APP_NAME,
+  host_version: POSTHOG_APP_VERSION,
+  $app_version: POSTHOG_APP_VERSION,
+} as const;
 export const POSTHOG_PROXY_HOST = 'https://ph-relay.networkcanvas.com';
 export const POSTHOG_API_KEY =
   'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';

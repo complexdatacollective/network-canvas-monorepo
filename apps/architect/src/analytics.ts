@@ -1,8 +1,11 @@
 import posthog from 'posthog-js';
 
-const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
+import { appVersion } from './utils/appVersion';
+
 const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 const INSTALLATION_ID_KEY = 'network-canvas-architect-installation-id';
+const APP_KEY = 'ArchitectWeb';
+const APP_NAME = 'Architect';
 
 function getOrCreateInstallationId(): string {
   const existing = localStorage.getItem(INSTALLATION_ID_KEY);
@@ -15,8 +18,22 @@ function getOrCreateInstallationId(): string {
   return id;
 }
 
-if (import.meta.env.VITE_DISABLE_ANALYTICS !== 'true') {
-  posthog.init(POSTHOG_API_KEY, {
+type AnalyticsEnvironment = {
+  apiKey?: string;
+  disabled: boolean;
+  isDevelopment: boolean;
+};
+
+export function initializeAnalytics({
+  apiKey,
+  disabled,
+  isDevelopment,
+}: AnalyticsEnvironment): void {
+  if (isDevelopment || disabled || !apiKey) {
+    return;
+  }
+
+  posthog.init(apiKey, {
     api_host: POSTHOG_HOST,
     capture_pageview: true,
     capture_pageleave: true,
@@ -35,16 +52,24 @@ if (import.meta.env.VITE_DISABLE_ANALYTICS !== 'true') {
     },
     cross_subdomain_cookie: false,
     persistence: 'localStorage+cookie',
+    // Architect has no user accounts. Keep its events anonymous rather than
+    // creating PostHog person profiles for random installation UUIDs.
+    person_profiles: 'identified_only',
   });
 
   posthog.register({
-    app: 'ArchitectWeb',
+    app: APP_KEY,
+    $app_name: APP_NAME,
     installation_id: getOrCreateInstallationId(),
+    host_version: appVersion,
+    $app_version: appVersion,
   });
-
-  if (import.meta.env.DEV) {
-    posthog.debug();
-  }
 }
+
+initializeAnalytics({
+  apiKey: import.meta.env.VITE_PUBLIC_POSTHOG_KEY,
+  disabled: import.meta.env.VITE_DISABLE_ANALYTICS === 'true',
+  isDevelopment: import.meta.env.DEV,
+});
 
 export { posthog };

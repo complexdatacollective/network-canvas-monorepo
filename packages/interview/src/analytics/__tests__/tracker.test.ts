@@ -4,6 +4,7 @@ import { createTracker, NULL_TRACKER } from '../tracker';
 
 const baseSuperProps = {
   app: 'Fresco',
+  $app_name: 'Fresco',
   installation_id: 'i1',
   package_version: '1',
   protocol_hash: 'h',
@@ -25,6 +26,7 @@ describe('createTracker', () => {
         node_id: 'n1',
         node_type: 'person',
         app: 'Fresco',
+        $app_name: 'Fresco',
         installation_id: 'i1',
         package_version: '1',
         protocol_hash: 'h',
@@ -61,6 +63,7 @@ describe('createTracker', () => {
       err,
       expect.objectContaining({
         feature: 'external-data',
+        $app_name: 'Fresco',
         distinct_id: 'session-1',
       }),
     );

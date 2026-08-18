@@ -3,11 +3,38 @@ import { PostHog } from 'posthog-node';
 
 import {
   POSTHOG_API_KEY,
-  POSTHOG_APP_NAME,
+  POSTHOG_APP_PROPERTIES,
   POSTHOG_PROXY_HOST,
 } from '~/fresco.config';
 
 let client: PostHog | null = null;
+
+export const POSTHOG_SESSION_ID_HEADER = 'x-posthog-session-id';
+
+const TRACING_HEADER_MAX_LENGTH = 1000;
+// Remove C0 controls, DEL, and C1 controls from tracing IDs received from the
+// browser before adding them to server-side events.
+// eslint-disable-next-line no-control-regex
+const TRACING_HEADER_CONTROL_CHARS_REGEX = /[\x00-\x1f\x7f-\x9f]/g;
+
+export function getPostHogSessionProperties(
+  value: string | string[] | null | undefined,
+): { $session_id?: string } {
+  const values = Array.isArray(value) ? value : [value];
+
+  for (const candidate of values) {
+    if (typeof candidate !== 'string') continue;
+
+    const sessionId = candidate
+      .replace(TRACING_HEADER_CONTROL_CHARS_REGEX, '')
+      .trim()
+      .slice(0, TRACING_HEADER_MAX_LENGTH);
+
+    if (sessionId) return { $session_id: sessionId };
+  }
+
+  return {};
+}
 
 export function getPostHogServer() {
   client ??= new PostHog(POSTHOG_API_KEY, {
@@ -31,6 +58,19 @@ async function isAnalyticsDisabled() {
   return getDisableAnalytics();
 }
 
+async function resolveBrowserSessionProperties() {
+  try {
+    const { headers } = await import('next/headers');
+    const requestHeaders = await headers();
+    return getPostHogSessionProperties(
+      requestHeaders.get(POSTHOG_SESSION_ID_HEADER),
+    );
+  } catch {
+    // Captures outside a request context have no browser session to correlate.
+    return {};
+  }
+}
+
 export async function captureEvent(
   event: string,
   properties?: Record<string, unknown>,
@@ -41,15 +81,17 @@ export async function captureEvent(
     if (await isAnalyticsDisabled()) return;
 
     const distinctId = await resolveInstallationId();
+    const browserSessionProperties = await resolveBrowserSessionProperties();
     const posthog = getPostHogServer();
 
     posthog.capture({
       distinctId,
       event,
       properties: {
-        app: POSTHOG_APP_NAME,
-        installation_id: distinctId,
         ...properties,
+        ...browserSessionProperties,
+        ...POSTHOG_APP_PROPERTIES,
+        installation_id: distinctId,
         $source: 'server',
       },
     });
@@ -68,9 +110,16 @@ export async function captureException(
     if (await isAnalyticsDisabled()) return;
 
     const distinctId = await resolveInstallationId();
+    const browserSessionProperties = await resolveBrowserSessionProperties();
     const posthog = getPostHogServer();
 
-    posthog.captureException(error, distinctId, properties);
+    posthog.captureException(error, distinctId, {
+      ...properties,
+      ...browserSessionProperties,
+      ...POSTHOG_APP_PROPERTIES,
+      installation_id: distinctId,
+      $source: 'server',
+    });
   } catch {
     // swallow
   }

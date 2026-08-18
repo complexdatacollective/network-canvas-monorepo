@@ -37,7 +37,10 @@ The app will be available at `http://localhost:5173`.
 
 Copy `.env.example` to `.env` and configure:
 
-- `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics key (optional for development)
+- `VITE_PUBLIC_POSTHOG_KEY` - Public PostHog project key. Analytics initializes
+  only in non-development builds when this is set.
+- `VITE_DISABLE_ANALYTICS` - Set to `true` to disable analytics explicitly in a
+  non-development build. Vite development mode always disables analytics.
 
 Protocols are previewed in a local browser tab using the bundled `@codaco/interview` runtime; no remote service is required.
 
