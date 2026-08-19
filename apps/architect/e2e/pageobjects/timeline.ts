@@ -57,6 +57,36 @@ export class Timeline {
     return this.rows().locator(':scope > div');
   }
 
+  /**
+   * The timeline's painted spine: the absolutely-positioned line the numbered
+   * badges must sit on.
+   *
+   * Located by the `bg-timeline` DESIGN TOKEN, deliberately, and by nothing
+   * else. Every other thing about the spine — that it is absolute, half-way
+   * across, one unit wide — is what the geometry assertions measure, so none of
+   * it may also be what finds it; and the token is the shared identity that
+   * makes the line and the badges read as one spine, which is the behaviour
+   * under test rather than a cosmetic class. The `:has(> ul…)` step scopes to
+   * the timeline wrapper, whose direct child the spine is, so the badges
+   * (which carry the same token inside the list) cannot match.
+   */
+  spine(): Locator {
+    return this.page.locator(
+      'div:has(> ul.justify-items-center) > .bg-timeline',
+    );
+  }
+
+  /**
+   * Each stage card's numbered badge, in timeline order — the disc carrying
+   * the position number. Same token as the spine, addressed within the card
+   * rather than by its index among the card's children: the card's grid is
+   * free to gain or reorder tracks, and a child index would then measure a
+   * different element while still passing.
+   */
+  stageBadges(): Locator {
+    return this.stageCards().locator(':scope > .bg-timeline');
+  }
+
   /** The row's own "open the stage editor" control (the thumbnail). */
   openControl(label: string): Locator {
     return this.stageRowByLabel(label).getByRole('button', {

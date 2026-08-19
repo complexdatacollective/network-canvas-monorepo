@@ -385,13 +385,19 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
     ).toBeUndefined();
   });
 
+  // The label's own picker drops this variable (the sibling case above), so
+  // reaching the gate at all means a stale draft or an imported protocol —
+  // and the refusal names the interface that claims it, rather than the
+  // generic cross-class wording, because a variable an interface slot OWNS is
+  // refused for that stronger reason. `findExclusiveVariableConflicts` reports
+  // the same pairing, so the editor and the schema agree.
   it('rejects a label pick an unvalidated structural writer already claims', () => {
     renderComponent({
       protocol: protocolWith([STRUCTURAL_PEDIGREE_STAGE]),
     });
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
-    ).toContain('is written without validation');
+    ).toContain('is set by the Family Pedigree interface');
   });
 
   it('allows a label pick this stage’s own form also validates', () => {

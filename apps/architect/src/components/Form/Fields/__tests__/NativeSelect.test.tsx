@@ -31,12 +31,23 @@ type SetupOptions = {
   allowPlaceholderSelect?: boolean;
   onCreateOption?: (value: string) => Promise<void> | void;
   onCreateNew?: () => void;
+  /** Labels already defined on the entity, for the duplicate check. */
+  existingOptions?: { label: string; value: string; disabled?: boolean }[];
+  /**
+   * Rules applied to the typed name. Defaulted to the NMToken rule most
+   * callers pass; a test about the duplicate check has to be able to drop it,
+   * because NMToken refuses any character outside `[a-zA-Z0-9._\-:]` and so
+   * short-circuits before the duplicate check is reached.
+   */
+  createValidation?: Record<string, unknown>;
 };
 
 const setup = ({
   allowPlaceholderSelect = false,
   onCreateOption,
   onCreateNew,
+  existingOptions = options,
+  createValidation = { allowedNMToken: 'choice name' },
 }: SetupOptions = {}) => {
   storeApi = null;
 
@@ -48,7 +59,7 @@ const setup = ({
         label="Choice"
         component={NativeSelect}
         validation={{ required: true }}
-        options={options}
+        options={existingOptions}
         reserved={[{ label: 'Reserved', value: 'reserved' }]}
         entity="person"
         placeholder="Choose one"
@@ -56,7 +67,7 @@ const setup = ({
         onCreateOption={onCreateOption}
         onCreateNew={onCreateNew}
         createInputLabel="New choice"
-        createValidation={{ allowedNMToken: 'choice name' }}
+        createValidation={createValidation}
       />
       <button type="submit">Save</button>
     </Form>,
@@ -143,6 +154,34 @@ describe('NativeSelect', () => {
 
     fireEvent.change(input, { target: { value: 'not allowed' } });
     expect(create).toBeDisabled();
+  });
+
+  /**
+   * The uniqueness question this control asks has to be the one every other
+   * Architect control asks — `normalizeForComparison`: case-insensitive AND
+   * Unicode-canonical. It compared raw case, so a label whose accented
+   * character was encoded the other way round was accepted as new here and
+   * then refused by the schema's `findDuplicateName` on save. The pair also
+   * reaches the participant as two choices nothing distinguishes.
+   */
+  it('refuses a created option that differs only in how an accent is encoded', async () => {
+    setup({
+      onCreateOption: vi.fn(),
+      existingOptions: [{ label: 'Caf\u00e9', value: 'cafe' }],
+      // No NMToken rule: it refuses any character outside
+      // `[a-zA-Z0-9._\\-:]` and would short-circuit before the duplicate check.
+      createValidation: {},
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: /Choice/ }), {
+      target: { value: '_create' },
+    });
+    const input = await screen.findByRole('textbox', { name: 'New choice' });
+
+    // The same text, spelled `e` + U+0301 rather than the precomposed U+00E9.
+    fireEvent.change(input, { target: { value: 'Cafe\u0301' } });
+
+    expect(screen.getByText(/already defined/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
   });
 
   it('submits a valid created option and returns to the select', async () => {

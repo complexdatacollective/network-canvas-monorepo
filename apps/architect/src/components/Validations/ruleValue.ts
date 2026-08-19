@@ -113,3 +113,78 @@ export const incompleteRuleIssue = (
   }
   return undefined;
 };
+
+// R1 (schema shape) rejects fractional values and values below these floors
+// with a generic Zod message. Gating them here — ahead of the schema — lets
+// the row editor disable the save and explain why, instead of surfacing that
+// generic message only after a failed protocol save.
+const RULE_FLOORS: Record<string, number> = {
+  minLength: 0,
+  maxLength: 0,
+  minSelected: 0,
+  maxSelected: 0,
+};
+
+const INTEGER_RULES = new Set([
+  'minLength',
+  'maxLength',
+  'minValue',
+  'maxValue',
+  'minSelected',
+  'maxSelected',
+]);
+
+export const floorIssue = (
+  ruleKey: string,
+  value: unknown,
+): string | undefined => {
+  if (
+    INTEGER_RULES.has(ruleKey) &&
+    typeof value === 'number' &&
+    !Number.isInteger(value)
+  ) {
+    return `${ruleKey} must be a whole number`;
+  }
+  const floor = RULE_FLOORS[ruleKey];
+  if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+  return value < floor ? `${ruleKey} must be at least ${floor}` : undefined;
+};
+
+/**
+ * Everything that can be decided about a rule map WITHOUT the codebook: an
+ * unanswered rule first (nothing else can be judged until it has a value),
+ * then a value the schema itself would reject. `complete` is the map with the
+ * unanswered rules dropped, which is the only form the contradiction analyser
+ * and any codebook write may see.
+ *
+ * This exists as one function because the same steps are run by two save
+ * gates — `makeFieldEditorValidate` in `contradictions.ts` and `ruleMapIssue`
+ * in `validateRuleMap.ts` — and they were written out twice. The copies had
+ * already begun to diverge (one swept the raw map for floor issues, the other
+ * the completed one), under a comment asserting that both called through one
+ * place. They do now.
+ *
+ * It lives here rather than beside either caller because `contradictions.ts`
+ * already imports this module: putting the shared step the other way round
+ * would make the two files mutually recursive. `floorIssue` moved here with
+ * it, for the same reason — it is a question about one rule's VALUE, which is
+ * what this module is.
+ */
+export const ruleMapPrecheck = (
+  rules: Record<string, unknown>,
+): { issue?: string; complete: Record<string, unknown> } => {
+  const incomplete = incompleteRuleIssue(rules);
+  // No `complete` map is offered alongside an incomplete-rule issue: a caller
+  // that ignored the issue and analysed the rest would be reasoning about a
+  // map the researcher has not finished writing.
+  if (incomplete) return { issue: incomplete, complete: {} };
+
+  const complete = completeRuleValues(rules);
+  const floor = Object.entries(complete)
+    .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
+    .find((message): message is string => message !== undefined);
+
+  return floor ? { issue: floor, complete } : { complete };
+};

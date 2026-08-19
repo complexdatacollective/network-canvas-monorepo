@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { readStoreCounts } from '../helpers/read-store.js';
 
 /**
  * Home's keyboard model and its protocol-import error copy (issue #1395).
@@ -186,41 +187,17 @@ test('dismissing the protocol gallery card moves focus to the Templates tab', as
 });
 
 test.describe('malformed protocol import', () => {
-  const readLibraryCounts = (page: import('@playwright/test').Page) =>
-    page.evaluate(async () => {
-      const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('ArchitectProtocolDB');
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
-      const count = (store: string) =>
-        new Promise<number>((resolve) => {
-          try {
-            const request = db
-              .transaction(store, 'readonly')
-              .objectStore(store)
-              .count();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => resolve(-1);
-          } catch {
-            resolve(-1);
-          }
-        });
-      const counts = {
-        protocols: await count('protocols'),
-        assets: await count('assets'),
-      };
-      db.close();
-      return counts;
-    });
-
   test('reports a non-archive in product copy, leaves the library untouched, and stays retry-ready', async ({
     architectPage,
     seed,
   }) => {
     await seedOneProtocol(seed, 'Untouched Study');
     await architectPage.goto('/');
-    const before = await readLibraryCounts(architectPage);
+    const before = await readStoreCounts(architectPage);
+    // Pin the "before" read to the state we just seeded. Without this the
+    // untouched-library assertion below is satisfied by any pair of equal
+    // reads — including two reads that found nothing.
+    expect(before).toEqual({ protocols: 1, assets: 0 });
 
     await architectPage.locator('input[type="file"]').setInputFiles({
       name: 'broken.netcanvas',
@@ -254,7 +231,7 @@ test.describe('malformed protocol import', () => {
     await dialog.getByTestId('dialog-primary').click();
     await expect(dialog).toHaveCount(0);
 
-    expect(await readLibraryCounts(architectPage)).toEqual(before);
+    expect(await readStoreCounts(architectPage)).toEqual(before);
     await expect(architectPage).toHaveURL(/\/$/);
     await expect(architectPage.getByText('Untouched Study')).toBeVisible();
   });

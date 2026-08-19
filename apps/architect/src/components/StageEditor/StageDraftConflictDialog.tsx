@@ -5,7 +5,10 @@ import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { Stage } from '@codaco/protocol-validation';
-import { useNestedDraftDirty } from '~/components/DialogForm/nestedDraftRegistry';
+import {
+  hasOpenNestedEditor,
+  useNestedEditorOpen,
+} from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolLockState,
@@ -64,17 +67,22 @@ const StageDraftConflictDialog = ({
   const reduxStore = useStore<RootState>();
   const { openDialog, closeDialog } = useDialog();
   const [, setLocation] = useLocation();
-  // A nested editor still holding unsaved work is asked about first
-  // (NestedDraftReclaimDialog): the download offered below builds its file from
-  // the stage draft, which does not contain that editor's in-progress values,
-  // so offering it here would hand the researcher a copy silently missing them.
-  // Once the inner editor is finished its values ARE in the draft, and this
-  // choice becomes the right one to ask.
-  const nestedDraftDirty = useNestedDraftDirty();
+  // An OPEN nested editor is asked about first (NestedDraftReclaimDialog): the
+  // download offered below builds its file from the stage draft, which does not
+  // contain that editor's values, so offering it here would hand the researcher
+  // a copy silently missing them. Once the inner editor is finished its values
+  // ARE in the draft, and this choice becomes the right one to ask.
+  //
+  // Open, not dirty, because that is the condition `useProtocolTabLock` itself
+  // stops on — an untouched editor is seeded from the buffer a reclaim
+  // replaces, so it is no safer (see `hasOpenNestedEditor`). Gating this on
+  // dirtiness instead put both dialogs on screen at once for a pristine open
+  // editor, each telling the researcher to do something different.
+  const nestedEditorOpen = useNestedEditorOpen();
   const conflictPending = useAppSelector(
     (state) => getProtocolLockState(state) === 'reclaim-blocked',
   );
-  const stageConflictPending = conflictPending && !nestedDraftDirty;
+  const stageConflictPending = conflictPending && !nestedEditorOpen;
   // Bumped by ProtocolLockBanner when the researcher asks to see the choice
   // again after dismissing it. A change re-runs the effect below, which closes
   // anything still open and asks afresh.
@@ -108,6 +116,14 @@ const StageDraftConflictDialog = ({
 
   useEffect(() => {
     if (!stageConflictPending) return;
+    // `useNestedEditorOpen` reads its snapshot during render, so an editor that
+    // registers in the same commit as this mount is still invisible to it when
+    // this effect runs — and `ask` opens its dialog synchronously, before the
+    // re-render carrying the true answer could take it away again. The live
+    // registry decides. Returning here is not a dead end: that re-render is
+    // already scheduled, and the close that eventually resolves the editor
+    // flips `stageConflictPending` back on and re-runs this.
+    if (hasOpenNestedEditor()) return;
     let cancelled = false;
 
     // The protocol as it stands in this tab, with the draft applied: the

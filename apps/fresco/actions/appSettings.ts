@@ -6,6 +6,7 @@ import { after } from 'next/server';
 import { type z } from 'zod';
 import { z as zm } from 'zod/mini';
 
+import { ensureError } from '@codaco/shared-consts';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
@@ -18,7 +19,6 @@ import {
   appSettingPreprocessedSchema,
   createUploadThingTokenFormSchema,
 } from '~/schemas/appSettings';
-import { ensureError } from '~/utils/ensureError';
 import { getStringValue } from '~/utils/serializeHelpers';
 
 const S3_SETTING_KEYS: AppSetting[] = [

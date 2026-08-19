@@ -142,6 +142,45 @@ describe('attribute-writer usage tags', () => {
     expect(relationship?.usage).toBe('unvalidatedAttribute');
   });
 
+  // Whether a Sociogram highlight writes is a property of the prompt, not of
+  // the field: the canvas colours nodes either way, but only a highlight the
+  // participant can tap dispatches an attribute change.
+  it.each([
+    { allowHighlighting: true, expected: 'unvalidatedAttribute' },
+    { allowHighlighting: false, expected: undefined },
+  ])(
+    'tags a Sociogram highlight variable per allowHighlighting: $allowHighlighting',
+    ({ allowHighlighting, expected }) => {
+      const protocol = {
+        ...createBaseProtocol(),
+        stages: [
+          {
+            id: 'sg1',
+            type: 'Sociogram',
+            label: 'Map',
+            subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 4 },
+            prompts: [
+              {
+                id: 'p1',
+                text: 'Place them',
+                layout: { layoutVariable: 'layoutPosition' },
+                highlight: { allowHighlighting, variable: 'strength' },
+              },
+            ],
+          },
+        ],
+      };
+      const highlightHits = hitsFor(protocol).filter(
+        (hit) =>
+          hit.path.includes('highlight') &&
+          hit.path[hit.path.length - 1] === 'variable',
+      );
+      expect(highlightHits).toHaveLength(1);
+      expect(highlightHits[0]?.usage).toBe(expected);
+    },
+  );
+
   it('leaves Narrative preset groupVariable and highlight references untagged (grouping/display slots never restrict a variable elsewhere)', () => {
     const protocol = {
       ...createBaseProtocol(),

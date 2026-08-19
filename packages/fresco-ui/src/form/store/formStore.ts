@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
@@ -344,6 +345,57 @@ type FormStoreState = {
 
   // Form reset
   resetForm: () => void;
+};
+
+/**
+ * Values that mean "nothing here". A field registered without an
+ * `initialValue` holds `undefined`; typing into it and then clearing it leaves
+ * `''` (or `[]`). Those are the same state to the person editing, so treating
+ * them as different would report a form dirty after an edit was undone.
+ */
+const isBlankFieldValue = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
+const hasFieldChanged = (field: FieldState): boolean => {
+  if (isBlankFieldValue(field.value) && isBlankFieldValue(field.initialValue)) {
+    return false;
+  }
+  return !isEqual(field.value, field.initialValue);
+};
+
+/**
+ * Whether the form currently holds values that differ from the ones its fields
+ * registered with.
+ *
+ * A LIVE comparison, and deliberately not the `isDirty` flag beside it in this
+ * same state. That flag is sticky — `setFieldValue` sets it and only `reset`
+ * clears it — so it never returns to false once anything has been typed.
+ * Anything guarding unsaved work on the sticky flag nags about a form the
+ * person had already restored by hand, and any normalisation write at mount (a
+ * markdown-to-rich-text conversion, an editor seeding itself) makes a freshly
+ * opened form claim to be dirty immediately.
+ *
+ * `dormantValues` counts: a field that unmounts (a collapsed section, a branch
+ * that stopped rendering) parks its value there, and an edit made before it
+ * unmounted is still an unsaved edit.
+ *
+ * Lives here, next to the state it reads, because more than one host needs the
+ * answer and a host-local copy freezes that host's idea of "blank" — Architect
+ * carried one for its nested-editor discard guard.
+ */
+export const selectIsFormDirty = (
+  state: Pick<FormStoreState, 'fields' | 'dormantValues'>,
+): boolean => {
+  for (const field of state.fields.values()) {
+    if (hasFieldChanged(field)) return true;
+  }
+  for (const field of state.dormantValues.values()) {
+    if (hasFieldChanged(field)) return true;
+  }
+  return false;
 };
 
 export type FormStore = FormStoreState &

@@ -10,7 +10,6 @@ import {
 import {
   type ComponentType,
   forwardRef,
-  type KeyboardEvent,
   type Ref,
   useCallback,
   useEffect,
@@ -22,6 +21,7 @@ import {
 import { MotionButton } from '../../../Button';
 import useDialog from '../../../dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '../../../dnd/useAccessibilityAnnouncements';
+import { useKeyboardReorder } from '../../../dnd/useKeyboardReorder';
 import {
   controlVariants,
   groupSpacingVariants,
@@ -40,7 +40,14 @@ import {
   type WithItemProperties,
 } from './useArrayFieldItems';
 
-export type { ArrayFieldOperation } from './useArrayFieldItems';
+export type {
+  ArrayFieldOperation,
+  WithItemProperties,
+} from './useArrayFieldItems';
+// Re-exported here because this module is the package's public entry for
+// ArrayField: an item reaching a consumer carries the managed properties, so
+// the consumer needs the same strip the hook uses rather than its own copy.
+export { stripManagedProperties } from './useArrayFieldItems';
 
 // Stable empty array to prevent infinite re-renders when value is undefined
 const EMPTY_ARRAY: never[] = [];
@@ -282,6 +289,24 @@ export type ArrayFieldDragHandleProps = {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
+/**
+ * TARGET SIZE DEPENDENCY — do not tighten the gap around the handle.
+ *
+ * The handle renders roughly 16 x 48 px, which is under WCAG 2.5.8's 24 x 24
+ * minimum. It is compliant only through that success criterion's SPACING
+ * EXCEPTION: the surrounding gap keeps a >= 24 px exclusion zone around its
+ * centre, because the nearest adjacent target sits ~12 px away.
+ *
+ * That is a deliberate, reviewed choice (the handle blends into the item panel
+ * by design — see the `bg-surface-3` item treatment it was rewritten for), NOT
+ * an oversight. But it means the compliance lives in the LAYOUT, not here: any
+ * change that brings a neighbouring control closer, or that packs items more
+ * tightly, breaks 2.5.8 with nothing in this file to warn you.
+ *
+ * If you tighten the spacing, widen the handle to >= 24 px in the same change —
+ * which is a pixel change, so it needs an E2E visual baseline regeneration
+ * (see the `regenerating-e2e-visual-snapshots` skill).
+ */
 const dragHandleVariants = compose(
   heightVariants,
   textSizeVariants,
@@ -300,63 +325,48 @@ export function ArrayFieldDragHandle({
   index,
   itemCount,
   onMove,
+  disabled = false,
   label = `Reorder item ${index + 1} of ${itemCount}`,
   className,
   size = 'md',
 }: ArrayFieldDragHandleProps) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const refocusAfterMoveRef = useRef(false);
-
-  // Committing a keyboard reorder repositions this handle in the DOM, which
-  // blurs it in browsers and drops focus to <body>. Restore focus on the next
-  // frame (after the reposition settles) so repeated arrow presses keep working
-  // without tabbing back to the handle each step.
-  useEffect(() => {
-    if (!refocusAfterMoveRef.current) return undefined;
-    refocusAfterMoveRef.current = false;
-    const frame = requestAnimationFrame(() => buttonRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [index]);
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
-    // Ignore presses that would run off either end: no move happens, so focus
-    // is never lost and no refocus should be scheduled.
-    if (targetIndex < 0 || targetIndex > itemCount - 1) return;
-
-    // Armed BEFORE the call, because `onMove` may commit synchronously and the
-    // effect above has to see the flag; disarmed again the moment the list says
-    // it refused. Leaving it armed after a refusal is not harmless: `index`
-    // never changes, so the flag survives until some UNRELATED reorder or
-    // deletion shifts this item — and focus is then yanked onto this handle out
-    // of nowhere, long after the arrow press that armed it.
-    refocusAfterMoveRef.current = true;
-    if (onMove(targetIndex) === false) {
-      refocusAfterMoveRef.current = false;
-    }
-  };
+  const { ref, ...keyboardReorder } = useKeyboardReorder({
+    index,
+    itemCount,
+    onMove,
+  });
 
   return (
     <button
-      ref={buttonRef}
+      ref={ref}
       type="button"
       aria-label={label}
-      aria-keyshortcuts="ArrowUp ArrowDown"
       title="Drag to reorder. Use the up and down arrow keys with the handle focused."
+      // A disabled or read-only list is not reorderable. Four call sites have
+      // always passed this; the handle used to drop it on the floor, leaving
+      // both the pointer drag and the arrow keys live in a form nobody was
+      // allowed to edit.
+      disabled={disabled}
       className={cx(
         dragHandleVariants({ size }),
+        // `focusable` is the design system's focus ring. Reordering with the
+        // keyboard is only usable if you can see which handle holds focus, and
+        // this is a control that MOVES while focused.
+        'focusable',
+        'ui-disabled:cursor-not-allowed ui-disabled:opacity-50',
         'cursor-grab touch-none active:cursor-grabbing',
         className,
       )}
       onClick={(event) => event.stopPropagation()}
-      onKeyDown={handleKeyDown}
+      // Guarded explicitly rather than left to the `disabled` attribute. A
+      // disabled button is unfocusable and swallows clicks, but whether it
+      // receives `pointerdown` is not something to bet a locked form on — and
+      // announcing `aria-keyshortcuts` for keys that do nothing is its own
+      // small lie.
+      {...(disabled ? {} : keyboardReorder)}
       onPointerDown={(event) => {
         event.stopPropagation();
+        if (disabled) return;
         dragControls.start(event);
       }}
     >

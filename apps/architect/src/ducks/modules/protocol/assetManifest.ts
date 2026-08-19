@@ -7,13 +7,18 @@ import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
+import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
 import {
   getProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
+import {
+  assetImportSurface,
+  refusedCommitMessage,
+  type RefusalMessage,
+} from '~/utils/protocolLockMessages';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 
@@ -50,11 +55,24 @@ type AddApiKeyAssetPayload = {
   value: string;
 };
 
-export type ImportAssetErrorInfo = {
-  filename: string;
-  message: string;
-  code?: string;
-};
+export type ImportAssetErrorInfo =
+  | {
+      filename: string;
+      message: string;
+      code?: string;
+    }
+  | {
+      filename: string;
+      /**
+       * This tab no longer holds the saved copy. The sentence has to come from
+       * `protocolLockMessages` — `RefusalMessage` is producible nowhere else,
+       * so this is a build error rather than a fourth set of hand-written
+       * sentences that says the same thing differently, which is exactly what
+       * this surface used to carry.
+       */
+      message: RefusalMessage;
+      code: 'PROTOCOL_NOT_OWNED_HERE';
+    };
 
 // Researcher-facing text for any import failure that is not one of the coded
 // validation errors. Those carry a `code` and a message already written for a
@@ -87,7 +105,7 @@ const getImportAssetErrorInfo = (
 export const importAssetAsync = createAsyncThunk<
   ImportAssetCompletePayload,
   File,
-  { state: Pick<RootState, 'app' | 'stageEditorDraft'> }
+  { state: Pick<RootState, 'app'> }
 >(
   'assetManifest/importAssetAsync',
   async (file, { dispatch, getState, rejectWithValue }) => {
@@ -98,25 +116,25 @@ export const importAssetAsync = createAsyncThunk<
     // exclusivity check of its own, so a tab that no longer owns the protocol
     // could drop a file into the owning tab's scope — a durable write from a
     // tab whose manifest entry naming it can never be saved. Refuse before
-    // anything is written, and say why — one whole message per situation,
-    // because what is true of the researcher's protocol, and the way out of
-    // it, are not the same in each.
+    // anything is written, and say why — in the words the other three refusing
+    // surfaces use, from the one table that holds them.
     //
     // A blocked reclaim has two shapes since #1387: an unresolved stage-draft
-    // choice, and an editor still open with unsaved changes in it. Naming the
-    // wrong one sends the researcher looking for a question nobody asked.
-    const state = getState();
-    const lockState = getProtocolLockState(state);
-    if (lockState !== 'owned') {
+    // choice, and an editor still open with unsaved changes in it. The blocker
+    // is what decides which dialog is on screen, so it is what the refusal is
+    // keyed on; asking whether a stage editor happens to be open instead named
+    // the wrong one, and sent the researcher looking for a question nobody was
+    // asking.
+    const lockState = getProtocolLockState(getState());
+    const refusal = refusedCommitMessage(
+      lockState,
+      assetImportSurface(hasOpenNestedEditor()),
+    );
+    if (refusal) {
       return rejectWithValue({
         filename: name,
         code: 'PROTOCOL_NOT_OWNED_HERE',
-        message:
-          lockState === 'reclaim-blocked'
-            ? getStageEditorCodebookTransactionOpen(state)
-              ? 'Nothing can be saved here until you choose what to do with your unsaved changes to this stage. Answer that question, then add the file again.'
-              : 'Nothing can be saved here until you finish or cancel the editor you still have open. Deal with that editor, then add the file again.'
-            : 'This protocol is open in another tab, which holds the saved copy. Close the other tab, then add the file again.',
+        message: refusal,
       } satisfies ImportAssetErrorInfo);
     }
 

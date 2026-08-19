@@ -12,9 +12,10 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   FAMILY_PEDIGREE_SLOTS,
-  type VariableOptions,
+  INTERFACE_OWNED_OPTION_SETS,
+  optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
+import { ensureError } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -22,7 +23,10 @@ import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
-import type { Entity } from '~/components/NewVariableWindow';
+import type {
+  Entity,
+  LockedVariableOptions,
+} from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
@@ -47,13 +51,7 @@ import {
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
-import {
-  crossClassPickIssue,
-  makeFieldEditorValidate,
-  unvalidatedElsewhereMessage,
-  validatedElsewhereMessage,
-  variableDisplayName,
-} from '~/components/Validations/contradictions';
+import { makeFieldEditorValidate } from '~/components/Validations/contradictions';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -73,17 +71,14 @@ import {
   roleMapKey,
 } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
-import {
-  excludeInterfaceOwned,
-  excludeUnvalidatedUses,
-  excludeValidatedUses,
-  interfaceOwnedPickIssue,
-} from '~/selectors/roleFilters';
-import { ensureError } from '~/utils/ensureError';
-import { optionsMatch } from '~/utils/variables';
 
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import NodeFormFieldPreview from './NodeFormFieldPreview';
+import {
+  draftFormFieldVariables,
+  makeSlotCrossClassValidator,
+  selectSlotPickerOptions,
+} from './slotWiring';
 
 // `FieldFields`/`NodeFormFieldPreview` carry their own specific prop types
 // rather than the array field's generic `Renderer` bag; DialogArrayField
@@ -120,7 +115,7 @@ type VariableWindowInitialProps = {
     name: string;
     type: string;
   };
-  lockedOptions: VariableOptions | null;
+  lockedOptions: LockedVariableOptions | null;
 };
 
 type VariableRowProps = {
@@ -194,9 +189,6 @@ const VariableRow = ({
     </div>
   );
 };
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /** nodeConfig slots that write structural attributes without validation. */
 const UNVALIDATED_NODE_SLOT_FIELDS = [
   'egoVariable',
@@ -408,82 +400,41 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     };
   }, [allVariables, hasUnvalidatedUse, resolvedFormViews, pedigreeFormFields]);
   const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
-  // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer):
-  // rejects a pick a form elsewhere in the saved document already collects,
-  // OR one this stage's own still-unsaved nodeConfig.form draft collects
-  // (both writer classes live on this one stage form, so the sync validator
-  // sees the sibling draft directly through `allValues`). Escapes the slot's
-  // own committed value so a pre-existing conflict (e.g. an imported
-  // protocol) stays saveable — the timeline alert handles it
-  // non-destructively.
-  const makeSlotValidator =
-    (slotField: (typeof UNVALIDATED_NODE_SLOT_FIELDS)[number]) =>
-    (value: unknown, allValues?: unknown): string | undefined => {
-      if (!nodeVariablesSubject) return undefined;
-      const variableId = typeof value === 'string' ? value : '';
-      if (!variableId) return undefined;
-      const committedRaw: unknown = isRecord(committedNodeConfig)
-        ? committedNodeConfig[slotField]
-        : undefined;
-      const committed = typeof committedRaw === 'string' ? committedRaw : '';
-      if (variableId === committed) return undefined;
-      // A variable another interface slot owns outright: the picker already
-      // drops it, so this only catches a stale draft or an imported protocol.
-      const ownedIssue = interfaceOwnedPickIssue(
-        exclusiveSlotMap,
-        nodeVariablesSubject,
-        variableId,
-        OWN_SLOT_BY_FIELD[slotField],
-      );
-      if (ownedIssue) return ownedIssue;
-      const draftFormFields: unknown = get(allValues, 'nodeConfig.form');
-      if (
-        Array.isArray(draftFormFields) &&
-        draftFormFields.some(
-          (field: unknown) => isRecord(field) && field.variable === variableId,
-        )
-      ) {
-        return validatedElsewhereMessage(
-          variableDisplayName(allVariables, variableId),
-        );
-      }
-      return crossClassPickIssue({
-        variableId,
-        originalVariableId: committed,
-        hasConflictingUse: (id) =>
-          (roleMap[roleMapKey(nodeVariablesSubject, id)]?.validated ?? 0) > 0,
-        allVariables,
-        message: validatedElsewhereMessage,
-      });
-    };
+  // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer).
+  // Both writer classes live on this one stage form, so the sync validator
+  // also sees the still-unsaved `nodeConfig.form` draft through `allValues`.
+  const makeSlotValidator = (
+    slotField: (typeof UNVALIDATED_NODE_SLOT_FIELDS)[number],
+  ) =>
+    makeSlotCrossClassValidator({
+      subject: nodeVariablesSubject,
+      committedConfig: committedNodeConfig,
+      committedKey: slotField,
+      ownSlot: OWN_SLOT_BY_FIELD[slotField],
+      exclusiveSlotMap,
+      roleMap,
+      allVariables,
+      writerClass: 'unvalidated',
+      draftConflictingVariables: draftFormFieldVariables,
+    });
   // The label is a validated Field whenever the pedigree collects a family
   // member (ego is rendered iconically and has no label value). It therefore
   // follows the same cross-class rule as QuickAdd: sharing with another
   // validated writer is safe, while sharing with a bin/highlight/structural
-  // writer would bypass the codebook rules on one path.
-  const nodeLabelCrossClassValidate = (value: unknown): string | undefined => {
-    if (!nodeVariablesSubject) return undefined;
-    const variableId = typeof value === 'string' ? value : '';
-    if (!variableId) return undefined;
-    const committedRaw: unknown = isRecord(committedNodeConfig)
-      ? committedNodeConfig.nodeLabelVariable
-      : undefined;
-    const committed = typeof committedRaw === 'string' ? committedRaw : '';
-    if (variableId === committed) return undefined;
-    if (draftUnvalidatedSlotVariables.includes(variableId)) {
-      return unvalidatedElsewhereMessage(
-        variableDisplayName(allVariables, variableId),
-      );
-    }
-    return crossClassPickIssue({
-      variableId,
-      originalVariableId: committed,
-      hasConflictingUse: (id) =>
-        (roleMap[roleMapKey(nodeVariablesSubject, id)]?.unvalidated ?? 0) > 0,
-      allVariables,
-      message: unvalidatedElsewhereMessage,
-    });
-  };
+  // writer would bypass the codebook rules on one path. It fills no interface
+  // slot of its own, so it passes none — a variable ANY slot owns is refused,
+  // which is what `findExclusiveVariableConflicts` reports for a second writer
+  // on an owned variable, and what its own picker already drops.
+  const nodeLabelCrossClassValidate = makeSlotCrossClassValidator({
+    subject: nodeVariablesSubject,
+    committedConfig: committedNodeConfig,
+    committedKey: 'nodeLabelVariable',
+    exclusiveSlotMap,
+    roleMap,
+    allVariables,
+    writerClass: 'validated',
+    draftConflictingVariables: () => draftUnvalidatedSlotVariables,
+  });
   const textNodeVariables = nodeVariableOptions.filter(
     (v) => v.type === 'text',
   );
@@ -494,11 +445,16 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // biological-sex set may be bound: the interview and genetics engine depend on
   // the exact values (female/male/…), so an existing categorical variable with a
   // different value set would silently degrade sex resolution. Mirrors the
-  // relationship-type picker in EdgeConfiguration.
+  // relationship-type picker in EdgeConfiguration, and asks the question with
+  // the protocol schema's OWN comparison so the picker cannot offer a variable
+  // the validator then rejects.
   const biologicalSexCompatible = nodeVariableOptions.filter(
     (v) =>
       v.type === 'categorical' &&
-      optionsMatch(v.options, BIOLOGICAL_SEX_OPTIONS),
+      optionsMatchInterfaceOwnedSet(
+        v.options,
+        INTERFACE_OWNED_OPTION_SETS.biologicalSex.options,
+      ),
   );
   // The label is a VALIDATED writer, so it excludes variables claimed by an
   // unvalidated path. Structural slots do the opposite. Each picker keeps its
@@ -510,66 +466,38 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // variables between two pedigrees over one node type is legitimate authoring,
   // and the protocol rule is slot-aware for exactly that reason.
   const nodeLabelVariableOptions = useSelector((state: RootState) =>
-    nodeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          nodeVariablesSubject,
-          excludeUnvalidatedUses(
-            state,
-            nodeVariablesSubject,
-            textNodeVariables,
-            nodeLabelDraft,
-          ),
-          nodeLabelDraft,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: nodeVariablesSubject,
+      options: textNodeVariables,
+      currentValue: nodeLabelDraft,
+      writerClass: 'validated',
+    }),
   );
   const egoVariableOptions = useSelector((state: RootState) =>
-    nodeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          nodeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            nodeVariablesSubject,
-            booleanNodeVariables,
-            egoDraft,
-          ),
-          egoDraft,
-          FAMILY_PEDIGREE_SLOTS.egoVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: nodeVariablesSubject,
+      options: booleanNodeVariables,
+      currentValue: egoDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.egoVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const relationshipVariableOptions = useSelector((state: RootState) =>
-    nodeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          nodeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            nodeVariablesSubject,
-            textNodeVariables,
-            relationshipDraft,
-          ),
-          relationshipDraft,
-          FAMILY_PEDIGREE_SLOTS.relationshipVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: nodeVariablesSubject,
+      options: textNodeVariables,
+      currentValue: relationshipDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.relationshipVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const biologicalSexVariableOptions = useSelector((state: RootState) =>
-    nodeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          nodeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            nodeVariablesSubject,
-            biologicalSexCompatible,
-            biologicalSexDraft,
-          ),
-          biologicalSexDraft,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: nodeVariablesSubject,
+      options: biologicalSexCompatible,
+      currentValue: biologicalSexDraft,
+      writerClass: 'unvalidated',
+    }),
   );
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [
@@ -612,7 +540,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         // Seed and lock the canonical value set — the interview and genetics
         // engine depend on these exact values, so the researcher may not edit
         // them (mirrors the relationship-type variable).
-        lockedOptions: BIOLOGICAL_SEX_OPTIONS,
+        lockedOptions: INTERFACE_OWNED_OPTION_SETS.biologicalSex.options,
       },
       { field: 'nodeConfig.biologicalSexVariable' },
     );

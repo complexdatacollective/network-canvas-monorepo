@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
+import { repairConfigurationConflicts } from '../../../utils/repairConfigurationConflicts.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 
 const field = (variable: string, prompt: string) => ({ variable, prompt });
+
+// The FamilyPedigree node form of the single stage in `pedigreeProtocol`.
+const valueAtNodeForm = (protocol: unknown): unknown => {
+  const stages = (protocol as { stages?: unknown[] }).stages ?? [];
+  const nodeConfig = (stages[0] as { nodeConfig?: { form?: unknown } })
+    .nodeConfig;
+  return nodeConfig?.form;
+};
 
 // Mirrors `narrative-pedigree.test.ts`'s pedigree fixture: FamilyPedigree
 // declares no top-level subject, so `nodeConfig.form` is the one form surface
@@ -165,6 +174,37 @@ describe('form field variable uniqueness', () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+
+  // The schema, the repair Architect offers, and the v7→v8 migration all ask
+  // one question, through `duplicateFormFieldIndices`. If they answered
+  // differently the repair would either drop a field the schema was happy with,
+  // or leave a protocol the schema still rejects — asking the researcher to
+  // approve a fix that fixes nothing every time they open it.
+  it('the schema and the repair name exactly the same repeated fields', () => {
+    const fields = [
+      field('age', 'First'),
+      field('name', 'Name?'),
+      field('age', 'Second'),
+      field('age', 'Third'),
+    ];
+    const protocol = pedigreeProtocol(fields);
+
+    const result = ProtocolSchemaV8.safeParse(protocol);
+    const flaggedBySchema = (result.error?.issues ?? [])
+      .filter(
+        (issue) =>
+          issue.message === 'Form fields contain duplicate attribute "age"',
+      )
+      .map((issue) => issue.path[issue.path.length - 2]);
+    expect(flaggedBySchema).toEqual([2, 3]);
+
+    const repaired = repairConfigurationConflicts(protocol);
+    expect(repaired.repairable).toBe(true);
+    const keptPrompts = (
+      valueAtNodeForm(repaired.protocol) as { prompt: string }[]
+    ).map((kept) => kept.prompt);
+    expect(keptPrompts).toEqual(['First', 'Name?']);
   });
 
   it('rejects an AlterForm that repeats a variable', () => {

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  floorIssue,
   formatCommitted,
   isRuleValueComplete,
   parseForRule,
+  ruleMapPrecheck,
 } from '../ruleValue';
 
 // `isRuleValueComplete` replaced a near-identical `isDraftComplete`, which
@@ -85,5 +87,76 @@ describe('formatCommitted', () => {
     expect(formatCommitted(true)).toBe('');
     expect(formatCommitted(null)).toBe('');
     expect(formatCommitted(undefined)).toBe('');
+  });
+});
+
+describe('floorIssue', () => {
+  const integerRules = [
+    'minLength',
+    'maxLength',
+    'minValue',
+    'maxValue',
+    'minSelected',
+    'maxSelected',
+  ];
+
+  it.each(integerRules)('rejects a fractional %s value', (rule) => {
+    expect(floorIssue(rule, 1.5)).toBe(`${rule} must be a whole number`);
+  });
+
+  it.each(integerRules)('accepts an integer %s value', (rule) => {
+    expect(floorIssue(rule, 2)).toBeUndefined();
+  });
+
+  it.each(['maxLength', 'maxSelected'])(
+    'accepts zero for an optional %s',
+    (rule) => {
+      expect(floorIssue(rule, 0)).toBeUndefined();
+    },
+  );
+
+  it.each(['maxLength', 'maxSelected'])('rejects a negative %s', (rule) => {
+    expect(floorIssue(rule, -1)).toBe(`${rule} must be at least 0`);
+  });
+});
+
+/**
+ * The one implementation of the codebook-free half of the rule-map save gate.
+ * Both gates — the `validation` field's own validator and the stage editors'
+ * `makeFieldEditorValidate` — call this rather than each writing it out, which
+ * is what stops the two from disagreeing about whether a map may be saved.
+ */
+describe('ruleMapPrecheck', () => {
+  it('reports an unanswered rule ahead of everything else', () => {
+    // The fractional value would be reported too, and the pair is inverted as
+    // well; neither can be judged until the switched-on rule has a value.
+    expect(ruleMapPrecheck({ sameAs: null, minValue: 1.5 }).issue).toBe(
+      'Choose a comparison attribute for "Same as", or switch the rule off.',
+    );
+  });
+
+  it('offers no completed map alongside an unanswered rule', () => {
+    expect(ruleMapPrecheck({ minValue: 5, maxValue: null }).complete).toEqual(
+      {},
+    );
+  });
+
+  it('reports a value the schema itself would reject', () => {
+    expect(ruleMapPrecheck({ minValue: 1.5 }).issue).toBe(
+      'minValue must be a whole number',
+    );
+    expect(ruleMapPrecheck({ maxLength: -1 }).issue).toBe(
+      'maxLength must be at least 0',
+    );
+  });
+
+  it('hands a finished map through with nothing to report', () => {
+    const { issue, complete } = ruleMapPrecheck({
+      minValue: 1,
+      maxValue: 10,
+      required: true,
+    });
+    expect(issue).toBeUndefined();
+    expect(complete).toEqual({ minValue: 1, maxValue: 10, required: true });
   });
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { assetReference } from '../asset-reference.ts';
 import {
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
@@ -35,7 +36,7 @@ const rosterColumnReference = () =>
 export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
-  dataSource: z.string().min(1),
+  dataSource: assetReference(),
   cardOptions: z
     .strictObject({
       additionalProperties: z

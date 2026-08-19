@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Reorder } from 'motion/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { INTERFACE_NAMES } from '~/config/interfaceNames';
+
 import TimelineStageRow, { type TimelineRowStage } from '../TimelineStageRow';
 
 const stages: TimelineRowStage[] = [
@@ -158,6 +160,69 @@ describe('TimelineStageRow', () => {
     fireEvent.click(deleteControl);
 
     expect(onDelete).toHaveBeenCalledWith('stage-2');
+  });
+
+  /**
+   * The interface name comes from `~/config/interfaceNames`, keyed by the
+   * schema's stage union — not from the New Stage screen's own option list,
+   * which this row used to reach across into and which named six interfaces
+   * differently from the stage editor registry.
+   */
+  it('names the interface from the shared interface-name map', () => {
+    render(
+      <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
+        <li>
+          <TimelineStageRow
+            stage={{ ...stages[0]!, type: 'TieStrengthCensus' }}
+            index={0}
+            stageCount={1}
+            onOpen={vi.fn()}
+            onMove={vi.fn(acceptMove)}
+            onDelete={vi.fn()}
+            onDragCommit={vi.fn()}
+            registerOpenControl={vi.fn()}
+          />
+        </li>
+      </Reorder.Group>,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: `Edit stage 1: Consent, ${INTERFACE_NAMES.TieStrengthCensus}`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * An imported protocol can name an interface this build has never heard of.
+   * The row still has to render — and the open control still has to be
+   * reachable and labelled — rather than taking the whole timeline down with
+   * it, which is what a registry lookup that throws on an unknown type would
+   * do here.
+   */
+  it('still renders a stage whose type this build does not know', () => {
+    expect(() =>
+      render(
+        <Reorder.Group axis="y" values={stages} onReorder={vi.fn()}>
+          <li>
+            <TimelineStageRow
+              stage={{ ...stages[0]!, type: 'SomeFutureInterface' }}
+              index={0}
+              stageCount={1}
+              onOpen={vi.fn()}
+              onMove={vi.fn(acceptMove)}
+              onDelete={vi.fn()}
+              onDragCommit={vi.fn()}
+              registerOpenControl={vi.fn()}
+            />
+          </li>
+        </Reorder.Group>,
+      ),
+    ).not.toThrow();
+
+    expect(
+      screen.getByRole('button', { name: 'Edit stage 1: Consent' }),
+    ).toBeInTheDocument();
   });
 
   it('falls back to a readable name when a stage has no label', () => {

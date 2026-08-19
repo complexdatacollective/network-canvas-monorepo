@@ -20,6 +20,7 @@ import {
   type StageType,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -41,13 +42,13 @@ import {
   guardState,
   stageDiscardDescriptions,
 } from '~/hooks/useProtocolNavGuard';
+import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
 import {
   getLiveStageDraftDirty,
   getLiveStageValues,
 } from '~/selectors/stageEditorDraft';
-import { ensureError } from '~/utils/ensureError';
 import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
@@ -364,7 +365,10 @@ const StageEditor = (props: StageEditorProps) => {
     };
   }, [reduxStore]);
 
-  const handlePreview = useCallback(async () => {
+  // Guarded by a latch of its own, not by the Preview button's `disabled` —
+  // see `useSingleFlight`. Two clicks in one tick would validate the protocol
+  // twice and open two preview windows.
+  const runPreview = useCallback(async () => {
     // Preview must show the stage as it is on screen, not as the mirror last
     // coalesced it.
     flushStageLiveValues();
@@ -453,6 +457,8 @@ const StageEditor = (props: StageEditorProps) => {
     useSyntheticData,
     respectSkipLogic,
   ]);
+  const handlePreview = useSingleFlight(runPreview);
+
   const sections = useMemo(
     () => getInterface(interfaceType).sections,
     [interfaceType],

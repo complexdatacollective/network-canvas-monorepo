@@ -32,9 +32,11 @@ const getLiveStageValues = (state: RootState) =>
  * Gets a key value object describing which variables are in use, including by
  * the stage currently being edited but not yet saved.
  *
- * Uses getVariableIndex (derived from collectEntityAttributeReferences) to ensure
- * consistency between "is used" checks and "where used" display. Both systems share the
- * same source of truth: the extractor-derived variable index.
+ * Uses getVariableIndex to ensure consistency between "is used" checks and the
+ * "where used" display: this reads the index's values, the display reads
+ * `getVariableUsageHits`, and both are derived from the one memoised
+ * `collectEntityAttributeReferences` walk, so they cannot disagree about which
+ * variables are referenced.
  *
  * The unsaved stage is matched by JSON string search, because the shape of a
  * stage's in-progress values is dynamic and cannot be walked at known paths.

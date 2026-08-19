@@ -25,6 +25,7 @@
     "@codaco/interface-images": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/sample-protocol": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@docsearch/css": "^4.6.3",
     "@docsearch/react": "^4.6.3",

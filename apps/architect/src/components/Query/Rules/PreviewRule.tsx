@@ -1,26 +1,22 @@
-import { compose } from 'react-recompose';
-
-import RuleText from './PreviewText';
-import withDisplayOptions from './withDisplayOptions';
+import RuleText, { type PreviewTextOptions } from './PreviewText';
 
 type PreviewRuleProps = {
   id?: string;
   type: string;
-  options: Record<string, unknown>;
-  codebook?: Record<string, unknown>;
+  /**
+   * Already resolved against the codebook — see `getRuleDisplayOptions`. This
+   * component only renders; the caller that HAS the codebook does the lookup.
+   */
+  options: PreviewTextOptions;
 };
 
-export const PreviewRule = ({ id, type, options }: PreviewRuleProps) => {
-  return (
-    <span
-      id={id}
-      className="block w-full min-w-0 leading-[2.5] text-wrap [&_.variable-pill]:zoom-[0.8]"
-    >
-      <RuleText type={type} options={options} />
-    </span>
-  );
-};
+const PreviewRule = ({ id, type, options }: PreviewRuleProps) => (
+  <span
+    id={id}
+    className="block w-full min-w-0 leading-[2.5] text-wrap [&_.variable-pill]:zoom-[0.8]"
+  >
+    <RuleText type={type} options={options} />
+  </span>
+);
 
-export default compose<PreviewRuleProps, Partial<PreviewRuleProps>>(
-  withDisplayOptions,
-)(PreviewRule);
+export default PreviewRule;

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useStore } from 'react-redux';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import { ensureError } from '@codaco/shared-consts';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
@@ -10,7 +11,6 @@ import {
 } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/modules/root';
 import { makeGetVariable } from '~/selectors/codebook';
-import { ensureError } from '~/utils/ensureError';
 
 import { COMPOSER_CODEBOOK_PROPERTIES } from './composerHelpers';
 import {

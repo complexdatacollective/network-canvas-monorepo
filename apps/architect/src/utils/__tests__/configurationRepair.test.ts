@@ -36,6 +36,27 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   ...overrides,
 });
 
+const disease = (
+  id: string,
+  label: string,
+  variable: string,
+  color = 'node-color-seq-1',
+): Stage => ({
+  id,
+  label,
+  color,
+  variable,
+  inheritancePattern: 'autosomalDominant',
+});
+
+const narrativePedigree = (diseases: Stage[]): Stage => ({
+  id: 'np1',
+  label: 'Narrative Pedigree',
+  type: 'NarrativePedigree',
+  sourceStageId: 'fp1',
+  diseases,
+});
+
 const protocolWith = (stages: Stage[]) => ({
   name: 'Pedigree protocol',
   schemaVersion: 8 as const,
@@ -112,6 +133,50 @@ describe('assessConfigurationRepair', () => {
       nominationPrompts?: unknown[];
     };
     expect(stage.nominationPrompts).toHaveLength(1);
+  });
+
+  /**
+   * The docstring on `assessConfigurationRepair` used to say this case could
+   * never be detected, because `diseases[].variable` carried no `usage` tag.
+   * It carries one now, so the conflict is reported and the row is dropped;
+   * this is what keeps that from being a claim in a comment again.
+   */
+  it('offers to drop a disease bound to a variable the pedigree owns', async () => {
+    const assessment = await assessConfigurationRepair(
+      protocolWith([
+        familyPedigree(),
+        narrativePedigree([
+          disease('d1', 'Condition X', 'hasConditionX'),
+          disease('d2', 'Ego marker', 'isEgo', 'node-color-seq-2'),
+        ]),
+      ]),
+    );
+
+    expect(assessment.status).toBe('repairable');
+    if (assessment.status !== 'repairable') return;
+    expect(assessment.problems).toHaveLength(1);
+    expect(assessment.problems[0]?.repair).toBeDefined();
+    const stage = assessment.protocol.stages[1] as {
+      diseases?: { id: string }[];
+    };
+    expect(stage.diseases?.map((row) => row.id)).toEqual(['d1']);
+  });
+
+  // Detected all the same — the repair is what is missing, because a Narrative
+  // Pedigree may not be left with no diseases at all. Reporting `unrepairable`
+  // names the problem without offering a fix that would not open.
+  it('reports the same conflict as unrepairable when it is the only disease', async () => {
+    const assessment = await assessConfigurationRepair(
+      protocolWith([
+        familyPedigree(),
+        narrativePedigree([disease('d1', 'Ego marker', 'isEgo')]),
+      ]),
+    );
+
+    expect(assessment.status).toBe('unrepairable');
+    if (assessment.status !== 'unrepairable') return;
+    expect(assessment.problems).toHaveLength(1);
+    expect(assessment.problems[0]?.problem).toContain('is_ego');
   });
 
   it('reports clean when a repair would not make the protocol open anyway', async () => {

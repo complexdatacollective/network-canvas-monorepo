@@ -102,10 +102,18 @@ const pathMatches =
 //    key goes, so an emptied `behaviours` is dropped too — same shape as
 //    rule 9. A `behaviours` with any surviving key still compares strictly.
 // 7. Filter/skip-logic presence rules' `options.value: ''` ≡ absent —
-//    withRuleChangeHandler unconditionally appends `value: ''` to every
-//    node/edge rule and prune keeps empty strings; the canonical
-//    EXISTS/NOT_EXISTS rules have no value key. Meaningful values are never
-//    empty strings, so this cannot mask a real difference.
+//    Historically `withRuleChangeHandler` unconditionally appended
+//    `value: ''` to every node/edge rule and prune kept empty strings, while
+//    the canonical EXISTS/NOT_EXISTS rules have no value key. Meaningful
+//    values are never empty strings, so this cannot mask a real difference.
+//
+//    LIKELY DEAD. That handler was deleted when the rule editor moved onto
+//    the form system, and a presence rule no longer writes the key at all —
+//    so this rule should now be a no-op. It is kept only because "the app
+//    never emits it" is a claim about RUNTIME output that no committed
+//    fixture can settle (this normalizes protocol JSON read back from
+//    IndexedDB, not a checked-in file). Confirm with a full Architect e2e
+//    run, then delete `RULE_OPTIONS_VALUE` and this entry together.
 // 8. RichText-backed strings — canonicalized on both sides (see
 //    `canonicalizeMarkdown`).
 // 9. Empty `variables: {}` on codebook entity types ≡ absent — the type

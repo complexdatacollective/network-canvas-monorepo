@@ -74,11 +74,13 @@ export const required = (parameter?: boolean | string) => () => {
 /**
  * Require that a string be shorter than a maximum length.
  *
- * Short-circuits on an unanswered field (undefined/null) so this optional rule
- * only applies once a value is present; `required` owns emptiness. An empty
- * string is a present value and is checked (it trivially satisfies any bound,
- * including a maxLength of 0). The bound is guarded on defined-ness rather than
- * truthiness so a maxLength of 0 is honoured.
+ * The one rule in this file that deliberately does NOT use `isUnanswered`:
+ * an empty string is a present value here and trivially satisfies any bound,
+ * including a maxLength of 0 (see the note in ./utils/isUnanswered). It
+ * short-circuits on a nullish value only, so this optional rule applies once
+ * a value of any length exists; `required` still owns emptiness. The bound is
+ * guarded on defined-ness rather than truthiness so a maxLength of 0 is
+ * honoured.
  */
 const maxLength: ValidationFunction<number> = (max) => () => {
   invariant(
@@ -110,9 +112,11 @@ const maxLength: ValidationFunction<number> = (max) => () => {
 /**
  * Require that a string be longer than a minimum length.
  *
- * Short-circuits on an empty/unanswered field (undefined/null/'') so this
- * optional rule only applies once a value is present; `required` owns
- * emptiness.
+ * Short-circuits on `isUnanswered` — the file's single definition of emptiness
+ * — so this optional rule only applies once a value is present; `required`
+ * owns emptiness. Whitespace-only text is unanswered to `required`, so it must
+ * be unanswered here too, or a blank field is told both to answer the question
+ * and to write more.
  */
 const minLength: ValidationFunction<number> = (min) => () => {
   invariant(
@@ -124,7 +128,7 @@ const minLength: ValidationFunction<number> = (min) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null || value === '') {
+      if (isUnanswered(value)) {
         return;
       }
       if (typeof value !== 'string') return;
@@ -144,9 +148,11 @@ const minLength: ValidationFunction<number> = (min) => () => {
 /**
  * Require that a number be greater than or equal to a minimum value.
  *
- * Short-circuits on an empty/unanswered field (undefined/null/'') so this
- * optional rule only applies once a value is present; `required` owns
- * emptiness. Coerces string inputs from HTML number inputs.
+ * Short-circuits on `isUnanswered` so this optional rule only applies once a
+ * value is present; `required` owns emptiness. The shared predicate has to run
+ * BEFORE the coercion below, because `Number('   ')` and `Number([])` are both
+ * `0` — an unanswered field would otherwise be reported as "too small".
+ * Coerces string inputs from HTML number inputs.
  */
 const minValue: ValidationFunction<number> = (min) => () => {
   invariant(
@@ -158,7 +164,7 @@ const minValue: ValidationFunction<number> = (min) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null || value === '') {
+      if (isUnanswered(value)) {
         return;
       }
       const numValue = Number(value);
@@ -179,9 +185,11 @@ const minValue: ValidationFunction<number> = (min) => () => {
 /**
  * Require that a number be less than or equal to a maximum value.
  *
- * Short-circuits on an empty/unanswered field (undefined/null/'') so this
- * optional rule only applies once a value is present; `required` owns
- * emptiness. The bound is guarded on defined-ness rather than truthiness so a
+ * Short-circuits on `isUnanswered` so this optional rule only applies once a
+ * value is present; `required` owns emptiness. As with `minValue`, the shared
+ * predicate has to run BEFORE the coercion below: `Number('   ')` and
+ * `Number([])` are both `0`, which a negative bound would report as "too
+ * large". The bound is guarded on defined-ness rather than truthiness so a
  * maxValue of 0 is honoured. Coerces string inputs from HTML number inputs.
  */
 const maxValue: ValidationFunction<number> = (max) => () => {
@@ -194,7 +202,7 @@ const maxValue: ValidationFunction<number> = (max) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null || value === '') {
+      if (isUnanswered(value)) {
         return;
       }
       const numValue = Number(value);
@@ -339,6 +347,12 @@ function formatBoundForDisplay(bound: string): string {
  * HTML-aligned minimum bound. Handles inputs whose `min` attribute is a
  * date/time ISO string (date, month, week, time, datetime-local) or a number
  * (number, range). Dispatches based on parameter type.
+ *
+ * Short-circuits on `isUnanswered` so this optional rule only applies once a
+ * value is present; `required` owns emptiness. Both branches below would
+ * otherwise mistake a blank for an answer: `Number('   ')` is `0`, and
+ * `compareDateStrings('   ', '2000-01-01')` truncates to three characters and
+ * sorts the spaces before the year.
  */
 const min: ValidationFunction<number | string> = (minParam) => () => {
   invariant(
@@ -357,7 +371,7 @@ const min: ValidationFunction<number | string> = (minParam) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null || value === '') {
+      if (isUnanswered(value)) {
         return;
       }
 
@@ -394,7 +408,8 @@ const min: ValidationFunction<number | string> = (minParam) => () => {
 };
 
 /**
- * HTML-aligned maximum bound. See `min` for dispatch rules.
+ * HTML-aligned maximum bound. See `min` for dispatch rules, and for why the
+ * shared `isUnanswered` short-circuit has to come before either branch.
  */
 const max: ValidationFunction<number | string> = (maxParam) => () => {
   invariant(
@@ -413,7 +428,7 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null || value === '') {
+      if (isUnanswered(value)) {
         return;
       }
 
@@ -452,8 +467,8 @@ const max: ValidationFunction<number | string> = (maxParam) => () => {
 /**
  * Require that an array have a minimum number of elements.
  *
- * Short-circuits on an empty/unanswered field (undefined/null or an empty
- * array) so this optional rule only applies once a selection has been made;
+ * Short-circuits on `isUnanswered`, which counts an empty array as unanswered,
+ * so this optional rule only applies once a selection has been made;
  * `required` owns emptiness. This is deliberate, not a gap, and has been
  * re-verified: `[]` is indistinguishable from "unanswered" at the value
  * level — CheckboxGroup (see CheckboxGroup.tsx `handleChange`) produces the
@@ -474,13 +489,10 @@ const minSelected: ValidationFunction<number> = (minParam) => () => {
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
-      if (value === undefined || value === null) {
+      if (isUnanswered(value)) {
         return;
       }
       if (!Array.isArray(value)) return;
-      if (value.length === 0) {
-        return;
-      }
       if (value.length < minParam) {
         ctx.addIssue({
           code: 'custom',
@@ -495,26 +507,39 @@ const minSelected: ValidationFunction<number> = (minParam) => () => {
 };
 
 /**
- * Require that an array have a maximum number of elements
+ * Require that an array have a maximum number of elements.
+ *
+ * Short-circuits on `isUnanswered`, like its `minSelected` sibling, and
+ * returns silently on a value that is not a selection at all. The earlier
+ * implementation parsed the value with `z.array(...)` behind a
+ * `z.prefault(…, [null × maxParam])`: the prefault existed only to stop an
+ * absent value being rejected, and every other shape that is not an array —
+ * `null` from a cleared control, a stray string — fell through to Zod's own
+ * "Invalid input: expected array, received null", which was shown to the
+ * participant verbatim.
  */
 const maxSelected: ValidationFunction<number> = (maxParam) => () => {
   invariant(typeof maxParam === 'number', 'Max items must be specified');
 
   const hint = `Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`;
 
-  return z
-    .prefault(
-      z
-        .array(z.unknown())
-        .check(
-          z.maxLength(
-            maxParam,
-            `Too many items selected. Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`,
-          ),
-        ),
-      Array.from({ length: maxParam }, () => null),
-    )
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) {
+        return;
+      }
+      if (!Array.isArray(value)) return;
+      if (value.length > maxParam) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: `Too many items selected. Select a maximum of ${maxParam} value${maxParam === 1 ? '' : 's'}.`,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 /**
@@ -967,12 +992,37 @@ const lessThanOrEqualToVariable: ValidationFunction<{
   );
 };
 
+/**
+ * Require that a value be a valid email address.
+ *
+ * Short-circuits on `isUnanswered`, exactly as `pattern` does: `required` owns
+ * emptiness. The earlier implementation wrapped the address check in
+ * `z.prefault(…, '')`, which substituted an empty string for an absent value
+ * and then tested THAT — so an untouched optional email field was rejected for
+ * being empty, and a required one reported "Enter a valid email address."
+ * alongside "You must answer this question before continuing.". A value that
+ * is not a string is left alone rather than surfacing Zod's own type error.
+ */
 const email = () => () => {
   const hint = 'Must be a valid email address.';
+  const message = 'Enter a valid email address.';
+  const address = z.email(message);
 
-  return z
-    .prefault(z.email('Enter a valid email address.'), '')
-    .check(z.meta({ hint }));
+  return z.unknown().check(
+    z.superRefine((value, ctx) => {
+      if (isUnanswered(value)) return;
+      if (typeof value !== 'string') return;
+      if (!address.safeParse(value).success) {
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message,
+          path: [],
+        });
+      }
+    }),
+    z.meta({ hint }),
+  );
 };
 
 const custom = () => () => void 0; // Placeholder for custom validation handled elsewhere

@@ -1,9 +1,10 @@
 import { get, isNil } from 'es-toolkit/compat';
-import { Fragment, type CSSProperties } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import type { VariableType } from '@codaco/protocol-validation';
 import { VariablePill } from '~/components/VariablePill';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
 
@@ -48,7 +49,13 @@ const formatValue = (value: string | number | boolean): string | number =>
 
 type JoinProps = {
   value?: string;
-  variant?: 'default' | 'list' | 'summary';
+  /**
+   * Required, and exactly the two layouts that render one. There was a third,
+   * `'default'`, left behind when the rule builder moved to the shared
+   * editable list — unreachable code that read as the live path because it was
+   * the fallback the other two branched away from.
+   */
+  variant: 'list' | 'summary';
 };
 
 /**
@@ -60,51 +67,48 @@ type JoinProps = {
  * reader, once per join. The geometry is unchanged: the line runs along the
  * top of the word, with the same gap around it and the same space beneath.
  */
-export const Join = ({ value = '', variant = 'default' }: JoinProps) =>
+export const Join = ({ value = '', variant }: JoinProps) =>
   variant === 'summary' ? (
     <div className="w-full py-5 text-center text-current/70 uppercase italic">
       {value.toLowerCase()}
     </div>
-  ) : variant === 'list' ? (
+  ) : (
     <span className="flex w-full items-center gap-3 py-2.5 text-sm font-semibold tracking-wide text-current/60 uppercase">
       <span className="h-0 flex-1 border-t border-current/20" />
       <span>{value.toLowerCase()}</span>
       <span className="h-0 flex-1 border-t border-current/20" />
-    </span>
-  ) : (
-    <span className="flex w-full items-start pb-10">
-      <span className="border-platinum h-0 flex-1 border-t-4" />
-      <span className="text-platinum-dark px-5 uppercase italic">
-        {value.toLowerCase()}
-      </span>
-      <span className="border-platinum h-0 flex-1 border-t-4" />
     </span>
   );
 
 /*
  * A rule reads as one sentence. Its entity chips are presentational because
  * this is a preview, not another set of controls inside the editable-list row.
+ *
+ * Every part below is rendered by BOTH layouts. They used to be written out
+ * once per layout, and the copies had already diverged: the printable
+ * summary's attribute pill lost the text that says what kind of attribute it
+ * is, leaving a coloured chip with nothing to read.
  */
 
 type VariableProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 const Variable = ({ children = '' }: VariableProps) => <span>{children}</span>;
 
-const RuleSubject = ({ children }: { children: React.ReactNode }) => (
+const RuleSubject = ({ children }: { children: ReactNode }) => (
   <span data-rule-part="subject" className="inline">
     {children}
   </span>
 );
 
-const RulePredicate = ({ children }: { children: React.ReactNode }) => (
+const RulePredicate = ({ children }: { children: ReactNode }) => (
   <span data-rule-part="predicate" className="inline">
     {children}
   </span>
 );
 
-const RulePresence = ({ children }: { children: React.ReactNode }) => (
+const RulePresence = ({ children }: { children: ReactNode }) => (
   <span data-rule-part="subject" className="inline whitespace-nowrap">
     {children}
   </span>
@@ -131,40 +135,69 @@ const TypeOperator = ({ value = '' }: TypeOperatorProps) => (
   </span>
 );
 
+/**
+ * Whether the operand on screen is authored prose rather than the literal
+ * string the interview compares.
+ *
+ * It is prose for exactly one shape of attribute: `getRuleDisplayOptions`
+ * substitutes the LABEL the researcher wrote for the stored option value of a
+ * categorical or ordinal variable, and those labels are Markdown everywhere
+ * else they are shown. Every other operand is compared verbatim by the
+ * interview runtime — a `contains` value is explicitly a regular expression
+ * (see `RuleEditor`'s hint) — and Markdown eats the very characters that make
+ * it one: `.*abc.*` reads back as `.abc.`, `^_id_[0-9]+$` as `^id[0-9]+$`.
+ * Rendering it that way states a rule the protocol does not hold, in the
+ * builder and in the archived protocol summary alike.
+ */
+const isAuthoredLabel = (variableType: VariableType | undefined) =>
+  variableType === 'categorical' || variableType === 'ordinal';
+
 type ValueProps = {
   value?: string | number | boolean | Array<string | number>;
   plain?: boolean;
+  markdown?: boolean;
 };
 
 type ValueTokenProps = {
   plain: boolean;
+  markdown: boolean;
   value: string | number | boolean;
 };
 
-const ValueToken = ({ plain, value }: ValueTokenProps) => (
-  <RenderMarkdown
-    render={
-      <span
-        className={
-          plain
-            ? 'max-w-full min-w-0 wrap-break-word whitespace-normal'
-            : 'border-sea-green max-w-full min-w-0 rounded-sm border-2 border-dashed box-decoration-clone px-2 py-1 wrap-break-word whitespace-normal'
-        }
-        data-rule-part="value"
-      />
-    }
-  >
-    {String(formatValue(value))}
-  </RenderMarkdown>
-);
+const valueTokenClassName = (plain: boolean) =>
+  plain
+    ? 'max-w-full min-w-0 wrap-break-word whitespace-normal'
+    : 'border-sea-green max-w-full min-w-0 rounded-sm border-2 border-dashed box-decoration-clone px-2 py-1 wrap-break-word whitespace-normal';
 
-const Value = ({ value = '', plain = false }: ValueProps) => {
+const ValueToken = ({ plain, markdown, value }: ValueTokenProps) => {
+  const text = String(formatValue(value));
+
+  if (!markdown) {
+    return (
+      <span className={valueTokenClassName(plain)} data-rule-part="value">
+        {text}
+      </span>
+    );
+  }
+
+  return (
+    <RenderMarkdown
+      render={
+        <span className={valueTokenClassName(plain)} data-rule-part="value" />
+      }
+    >
+      {text}
+    </RenderMarkdown>
+  );
+};
+
+const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
   const values = Array.isArray(value) ? value : [value];
 
   return values.map((item, index) => (
     <Fragment key={`${typeof item}-${String(item)}-${index}`}>
       {index > 0 && ', '}
-      <ValueToken plain={plain} value={item} />
+      <ValueToken plain={plain} markdown={markdown} value={item} />
     </Fragment>
   ));
 };
@@ -225,217 +258,181 @@ const RuleEntity = ({ type, color, shape, label }: RuleEntityProps) => {
   );
 };
 
+/** What an attribute of unknown type is described as. */
+const DEFAULT_ATTRIBUTE_TYPE: VariableType = 'text';
+
+type AttributePillProps = {
+  label: string;
+  type?: VariableType;
+  /** The summary's middle column gives the pill a column of its own. */
+  fill?: boolean;
+};
+
+/**
+ * The attribute a rule compares.
+ *
+ * `VariablePill` conveys the attribute's type through colour and an icon
+ * alone, so the wrapper says it in words. That wrapper belongs to this one
+ * component — when each layout owned its own copy, the printable summary's
+ * went missing and its pill read as a bare name.
+ */
+const AttributePill = ({ label, type, fill = false }: AttributePillProps) => (
+  <span
+    className={
+      fill ? 'flex min-w-0 flex-1' : 'inline-flex max-w-full align-middle'
+    }
+    aria-label={`${type ?? DEFAULT_ATTRIBUTE_TYPE} attribute ${label}`}
+  >
+    <VariablePill
+      label={label}
+      type={type ?? DEFAULT_ATTRIBUTE_TYPE}
+      {...(fill ? { minWidth: '0', width: '100%' } : {})}
+    />
+  </span>
+);
+
+/**
+ * A rule as three slots — who, how, and what — plus whether the summary can
+ * lay it out in its three columns.
+ *
+ * `value` is absent for a presence rule, which is a two-part sentence
+ * ("person exists") and reads as one unbroken phrase.
+ */
+type RuleSentence = {
+  subject: ReactNode;
+  operator: ReactNode;
+  value?: ReactNode;
+  columns: boolean;
+};
+
+const describeRule = (
+  type: string,
+  options: PreviewTextOptions,
+  fillPill: boolean,
+): RuleSentence => {
+  const isEgo = type === 'ego';
+  const entity = isEgo ? (
+    <EgoEntity />
+  ) : (
+    <RuleEntity
+      type={type}
+      color={options.typeColor ?? ''}
+      shape={options.typeShape}
+      label={options.typeLabel ?? ''}
+    />
+  );
+
+  // A presence rule names no attribute at all.
+  if (!isEgo && isNil(options.attribute)) {
+    return {
+      subject: entity,
+      operator: <TypeOperator value={options.operator} />,
+      columns: false,
+    };
+  }
+
+  // An alter rule whose operand has not been chosen yet reads with the
+  // attribute itself as the object of the sentence.
+  if (!isEgo && isNil(options.value)) {
+    return {
+      subject: entity,
+      operator: <Operator value={options.operator} />,
+      value: <Variable>{options.attribute}</Variable>,
+      columns: false,
+    };
+  }
+
+  return {
+    subject: (
+      <>
+        {entity} <Copy>{isEgo ? 'has' : 'where'}</Copy>{' '}
+        <AttributePill
+          label={options.attribute ?? ''}
+          type={options.variableType}
+          fill={fillPill}
+        />
+      </>
+    ),
+    operator: <Operator value={options.operator} isEgo={isEgo} />,
+    value: (
+      <Value
+        value={options.value}
+        plain={fillPill}
+        markdown={isAuthoredLabel(options.variableType)}
+      />
+    ),
+    columns: true,
+  };
+};
+
 const PreviewText = ({
   type,
   options,
   variant = 'default',
 }: PreviewTextProps) => {
   const isSummary = variant === 'summary';
-
-  if (type === 'ego') {
-    if (isSummary) {
-      return (
-        <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <EgoEntity />
-            <Copy>has</Copy>
-            <VariablePill
-              label={options.attribute ?? ''}
-              type={
-                (options.variableType as
-                  | 'number'
-                  | 'text'
-                  | 'boolean'
-                  | 'ordinal'
-                  | 'categorical'
-                  | 'scalar'
-                  | 'datetime'
-                  | 'layout'
-                  | 'location') ?? 'text'
-              }
-              minWidth="0"
-              width="100%"
-            />
-          </div>
-          <Operator value={options.operator} isEgo />
-          <Value value={options.value} plain />
-        </div>
-      );
-    }
-
-    return (
-      <>
-        <RuleSubject>
-          <EgoEntity /> <Copy>has</Copy>{' '}
-          <span
-            className="inline-flex max-w-full align-middle"
-            aria-label={`${options.variableType ?? 'text'} attribute ${options.attribute ?? ''}`}
-          >
-            <VariablePill
-              label={options.attribute ?? ''}
-              type={
-                (options.variableType as
-                  | 'number'
-                  | 'text'
-                  | 'boolean'
-                  | 'ordinal'
-                  | 'categorical'
-                  | 'scalar'
-                  | 'datetime'
-                  | 'layout'
-                  | 'location') ?? 'text'
-              }
-            />
-          </span>
-        </RuleSubject>{' '}
-        <RulePredicate>
-          <Operator value={options.operator} isEgo />{' '}
-          <Value value={options.value} />
-        </RulePredicate>
-      </>
-    );
-  }
-
-  if (isNil(options.attribute)) {
-    if (!isSummary) {
-      return (
-        <RulePresence>
-          <RuleEntity
-            type={type}
-            color={options.typeColor ?? ''}
-            shape={options.typeShape}
-            label={options.typeLabel ?? ''}
-          />{' '}
-          <TypeOperator value={options.operator} />
-        </RulePresence>
-      );
-    }
-
-    return (
-      <>
-        <RuleEntity
-          type={type}
-          color={options.typeColor ?? ''}
-          shape={options.typeShape}
-          label={options.typeLabel ?? ''}
-        />
-        <TypeOperator value={options.operator} />
-      </>
-    );
-  }
-  if (isNil(options.value)) {
-    if (!isSummary) {
-      return (
-        <>
-          <RuleSubject>
-            <RuleEntity
-              type={type}
-              color={options.typeColor ?? ''}
-              shape={options.typeShape}
-              label={options.typeLabel ?? ''}
-            />
-          </RuleSubject>{' '}
-          <RulePredicate>
-            <Operator value={options.operator} />{' '}
-            <Variable>{options.attribute}</Variable>
-          </RulePredicate>
-        </>
-      );
-    }
-
-    return (
-      <>
-        <RuleEntity
-          type={type}
-          color={options.typeColor ?? ''}
-          shape={options.typeShape}
-          label={options.typeLabel ?? ''}
-        />
-        <Operator value={options.operator} />
-        <Variable>{options.attribute}</Variable>
-      </>
-    );
-  }
+  const { subject, operator, value, columns } = describeRule(
+    type,
+    options,
+    isSummary,
+  );
 
   if (isSummary) {
-    return (
+    // The printable summary aligns rules under one another, so a rule with all
+    // three parts takes the three columns. A two-part rule has nothing to put
+    // in the third and reads better as a run of phrases.
+    return columns ? (
       <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <RuleEntity
-            type={type}
-            color={options.typeColor ?? ''}
-            shape={options.typeShape}
-            label={options.typeLabel ?? ''}
-          />
-          <Copy>where</Copy>
-          <VariablePill
-            label={options.attribute ?? ''}
-            type={
-              (options.variableType as
-                | 'number'
-                | 'text'
-                | 'boolean'
-                | 'ordinal'
-                | 'categorical'
-                | 'scalar'
-                | 'datetime'
-                | 'layout'
-                | 'location') ?? 'text'
-            }
-            minWidth="0"
-            width="100%"
-          />
-        </div>
-        <Operator value={options.operator} />
-        <Value value={options.value} plain />
+        <div className="flex min-w-0 items-center gap-3">{subject}</div>
+        {operator}
+        {/*
+          One cell, however many operands are in it. A multi-select rule
+          renders one token per selected option with ", " between them, and as
+          direct children of the grid every one of those — the bare separator
+          text included — became a grid item of its own and wrapped the tail of
+          the list onto a second row under the entity column.
+        */}
+        <div className="min-w-0">{value}</div>
       </div>
+    ) : (
+      <>
+        {subject}
+        {operator}
+        {value}
+      </>
+    );
+  }
+
+  if (value === undefined) {
+    return (
+      <RulePresence>
+        {subject} {operator}
+      </RulePresence>
     );
   }
 
   return (
     <>
-      <RuleSubject>
-        <RuleEntity
-          type={type}
-          color={options.typeColor ?? ''}
-          shape={options.typeShape}
-          label={options.typeLabel ?? ''}
-        />{' '}
-        <Copy>where</Copy>{' '}
-        <span
-          className="inline-flex max-w-full align-middle"
-          aria-label={`${options.variableType ?? 'text'} attribute ${options.attribute ?? ''}`}
-        >
-          <VariablePill
-            label={options.attribute ?? ''}
-            type={
-              (options.variableType as
-                | 'number'
-                | 'text'
-                | 'boolean'
-                | 'ordinal'
-                | 'categorical'
-                | 'scalar'
-                | 'datetime'
-                | 'layout'
-                | 'location') ?? 'text'
-            }
-          />
-        </span>
-      </RuleSubject>{' '}
+      <RuleSubject>{subject}</RuleSubject>{' '}
       <RulePredicate>
-        <Operator value={options.operator} /> <Value value={options.value} />
+        {operator} {value}
       </RulePredicate>
     </>
   );
 };
 
-type PreviewTextOptions = {
+export type PreviewTextOptions = {
   attribute?: string;
   operator?: string;
   type?: string;
   value?: string | number | boolean | Array<string | number>;
-  variableType?: string;
+  /**
+   * The schema's own variable-type union, not a hand-copy of it. The union was
+   * written out four times as an unchecked assertion, which is what hid the
+   * codebook lookup defaulting to `'string'` — a type the schema has never
+   * had, and which the pill rendered with the fallback colour and icon.
+   */
+  variableType?: VariableType;
   typeColor?: string;
   typeShape?: NodeShape;
   typeLabel?: string;

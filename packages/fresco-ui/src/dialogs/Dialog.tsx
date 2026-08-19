@@ -2,7 +2,7 @@
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import type React from 'react';
-import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import CloseButton from '../CloseButton';
 import { surfaceSpacingVariants } from '../layout/Surface';
@@ -11,12 +11,6 @@ import { ScrollArea } from '../ScrollArea';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
-import {
-  isUsableFinalFocusTarget,
-  normaliseFinalFocus,
-  type FinalFocusCloseType,
-  type FinalFocusResult,
-} from '../utils/finalFocus';
 import DialogPopup, { type DialogSize } from './DialogPopup';
 
 // TODO: These seem like they belong in a shared location.
@@ -98,70 +92,6 @@ export default function Dialog({
 }: DialogProps) {
   const titleId = useId();
 
-  /**
-   * Remember the control that was focused when this dialog opened, and return
-   * focus to it on close unless the caller names somewhere better.
-   *
-   * Every dialog in the app is controlled — none uses `Dialog.Trigger` — so
-   * Base UI has no `domReference` to go back to, and its remaining fallbacks
-   * resolve to `<body>` or to an unrelated control focused earlier in the
-   * session. Making the opener the default here fixes every direct `Dialog`
-   * caller at once, rather than asking each one to remember.
-   *
-   * Captured during the render that flips `open` to true. A layout effect would
-   * be too late: Base UI's focus manager lives BELOW this component, and child
-   * effects run first, so by then focus is already inside the popup. Reading
-   * `document` is guarded by that transition, so it never runs during SSR.
-   */
-  // Starts `false` even when `open` is already true, so a dialog that MOUNTS
-  // open still captures. Two of Architect's own dialogs do exactly that: they
-  // bump a `key` in the same render that shows them, so the whole subtree
-  // remounts with `open` already true and a transition-only capture would never
-  // fire for them.
-  const [wasOpen, setWasOpen] = useState(false);
-  const openerRef = useRef<HTMLElement | null>(null);
-
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open && typeof document !== 'undefined') {
-      const active = document.activeElement;
-      openerRef.current =
-        active instanceof HTMLElement &&
-        active !== document.body &&
-        active !== document.documentElement
-          ? active
-          : null;
-    }
-  }
-
-  const resolveFinalFocus = useCallback(
-    (closeType: FinalFocusCloseType): FinalFocusResult => {
-      const declared = normaliseFinalFocus(finalFocus, closeType);
-      // `true`/`false` are instructions, not targets, so they pass straight
-      // through.
-      if (typeof declared === 'boolean') return declared;
-      // Anything the caller actually answered with wins; `null` means "no
-      // opinion", which is where the remembered opener comes in. A named
-      // element only wins if it can still be focused — the caller's target is
-      // usually the control that opened the dialog, and a confirmed destructive
-      // action removes exactly that. An explicit target bypasses Base UI's own
-      // connectivity check, so handing over a detached node leaves focus on
-      // `<body>`: worse than falling through to the opener (or to Base UI's
-      // default).
-      if (declared !== null && isUsableFinalFocusTarget(declared)) {
-        return declared;
-      }
-
-      const opener = openerRef.current;
-      // A disconnected opener (the row this dialog was editing has been
-      // deleted) must not be handed over: an explicit target bypasses Base UI's
-      // own connectivity check, and focusing a detached node leaves focus on
-      // `<body>`.
-      return opener?.isConnected ? opener : null;
-    },
-    [finalFocus],
-  );
-
   return (
     <Modal
       open={open}
@@ -174,7 +104,12 @@ export default function Dialog({
       <DialogPopup
         key="dialog-popup"
         size={size}
-        finalFocus={resolveFinalFocus}
+        // Straight through: `ModalPopup` resolves it and falls back to the
+        // opener remembered by the enclosing `Modal`. That capture used to live
+        // here, which left every surface rendering `ModalPopup` inside a
+        // `Modal` directly — Architect's variable pill editor, variable
+        // spotlight and nav drawer, Fresco's mobile nav drawer — without one.
+        finalFocus={finalFocus}
         className={cx(
           // Accent overrides the primary hue so that nested primary buttons inherit color.
           // Override the primitives (--primary/--primary-contrast) because @theme inline

@@ -191,9 +191,9 @@ describe('Button', () => {
     for (const toggleButton of toggleButtons) {
       expect(toggleButton).toHaveAttribute('aria-pressed', 'true');
       expect(toggleButton).toHaveClass(
-        'aria-pressed:border-selected!',
-        'aria-pressed:bg-selected!',
-        'aria-pressed:text-selected-contrast!',
+        'aria-pressed:border-selected',
+        'aria-pressed:bg-selected',
+        'aria-pressed:text-selected-contrast',
       );
     }
   });
@@ -214,10 +214,37 @@ describe('Button', () => {
     for (const disclosureButton of disclosureButtons) {
       expect(disclosureButton).toHaveAttribute('aria-expanded', 'true');
       expect(disclosureButton).toHaveClass(
-        'aria-expanded:border-selected!',
-        'aria-expanded:bg-selected!',
-        'aria-expanded:text-selected-contrast!',
+        'aria-expanded:border-selected',
+        'aria-expanded:bg-selected',
+        'aria-expanded:text-selected-contrast',
       );
     }
+  });
+
+  it('renders the selected treatment from a prop, without claiming an ARIA state', () => {
+    render(<Button selected>Sorted column</Button>);
+
+    const button = screen.getByRole('button', { name: 'Sorted column' });
+    expect(button).toHaveClass(
+      'border-selected',
+      'bg-selected',
+      'text-selected-contrast',
+    );
+    // The whole point of the prop: a control that is visually selected but is
+    // not a toggle must not announce a pressed state.
+    expect(button).not.toHaveAttribute('aria-pressed');
+  });
+
+  it('lets a call site override the selected colours it did not choose', () => {
+    render(
+      <Button aria-pressed className="aria-pressed:bg-accent">
+        Custom pressed
+      </Button>,
+    );
+
+    // `!important` on the base rule made every call-site override dead code.
+    expect(
+      screen.getByRole('button', { name: 'Custom pressed' }),
+    ).not.toHaveClass('aria-pressed:bg-selected!');
   });
 });

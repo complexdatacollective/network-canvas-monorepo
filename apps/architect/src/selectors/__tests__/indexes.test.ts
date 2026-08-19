@@ -10,8 +10,10 @@ import type { RootState } from '~/ducks/modules/root';
 import {
   getAssetIndex,
   getEdgeIndex,
+  getEntityTypeUsageHitsById,
   getNodeIndex,
   getVariableIndex,
+  getVariableUsageHits,
   utils,
 } from '../indexes';
 
@@ -256,14 +258,12 @@ describe('indexes selectors', () => {
       );
     });
 
-    // `getIsUsed` reads this index's VALUES to gate deletion, and
-    // `getUsageAsStageMeta` parses its KEYS to say where the variable is used.
-    // A key in any other shape is therefore counted as usage and displayed as
-    // nothing — the "in use, cannot be deleted" row with a blank "Used In" cell
-    // that #1392 was filed for. Before the fix the sort-key entries arrived
-    // from `collectPaths` in a BRACKETED format (`stages[0].prompts[0]…`) that
-    // the display parser dropped on the floor.
-    it('keys every entry in the dotted-array format its consumers parse', () => {
+    // `getIsUsed` reads this index's VALUES to gate deletion. Nothing reads
+    // its keys any more — `getVariableUsageHits` carries the structured paths
+    // the "Used In" display needs — but one entry per reference SITE is still
+    // what makes the values a complete usage set, so the key format is pinned:
+    // a key in some other shape is a sign the collector changed under it.
+    it('keys every entry in the dotted-array format its collector produces', () => {
       const index = getVariableIndex(loadDevelopmentProtocolState());
 
       const malformed = Object.keys(index).filter(
@@ -333,11 +333,250 @@ describe('indexes selectors', () => {
     });
   });
 
+  describe('getVariableUsageHits()', () => {
+    // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
+    // (`VariableNameSchema`), so these ids are legal protocol content.
+    const dottedIdState = (): RootState =>
+      getMockState({
+        activeProtocol: {
+          present: {
+            schemaVersion: 8,
+            name: 'test',
+            codebook: {
+              node: {
+                person: {
+                  name: 'Person',
+                  color: 'node-color-seq-1',
+                  shape: { default: 'circle' },
+                  variables: {
+                    'owner.id': {
+                      name: 'owner',
+                      type: 'number',
+                      validation: { sameAs: 'target.id' },
+                    },
+                    'target.id': { name: 'target', type: 'number' },
+                  },
+                },
+              },
+            },
+            stages: [],
+          },
+        },
+      }) as unknown as RootState;
+
+    it('returns the collector hits for one variable, path and subject intact', () => {
+      const hits = getVariableUsageHits(dottedIdState(), 'target.id');
+
+      expect(hits).toHaveLength(1);
+      expect(hits[0]?.path).toEqual([
+        'codebook',
+        'node',
+        'person',
+        'variables',
+        'owner.id',
+        'validation',
+        'sameAs',
+      ]);
+      expect(hits[0]?.subject).toEqual({ entity: 'node', type: 'person' });
+    });
+
+    // The reason this selector exists. `getVariableIndex` joins that same path
+    // into `codebook.node.person.variables.owner.id.validation.sameAs`, in
+    // which the boundary after `owner.id` is gone: splitting on '.' recovers
+    // `owner`, which names no variable.
+    it('preserves a segment boundary the joined index destroys', () => {
+      const state = dottedIdState();
+      const joinedKey = Object.keys(getVariableIndex(state))[0];
+
+      expect(joinedKey).toBe(
+        'codebook.node.person.variables.owner.id.validation.sameAs',
+      );
+      expect(joinedKey?.split('.')).not.toEqual(
+        getVariableUsageHits(state, 'target.id')[0]?.path,
+      );
+    });
+
+    // Referential stability, not a claim about which memoisation strategy is
+    // used: the Codebook asks this once per variable per render, so an
+    // unmemoised `hits.filter(...)` would hand every consumer a new array each
+    // time and defeat any `useSelector`/`useMemo` equality guard downstream.
+    // Interleaved ids because that is the real access pattern — one row after
+    // another, hit and miss mixed.
+    it('hands back a stable array per variable, interleaved ids included', () => {
+      const state = dottedIdState();
+
+      const target = getVariableUsageHits(state, 'target.id');
+      const owner = getVariableUsageHits(state, 'owner.id');
+
+      expect(getVariableUsageHits(state, 'target.id')).toBe(target);
+      expect(owner).toEqual([]);
+      expect(getVariableUsageHits(state, 'owner.id')).toBe(owner);
+    });
+
+    it('answers nothing for a variable id that collides with an object prototype key', () => {
+      expect(getVariableUsageHits(dottedIdState(), 'constructor')).toEqual([]);
+      expect(getVariableUsageHits(dottedIdState(), 'toString')).toEqual([]);
+    });
+  });
+
+  describe('getEntityTypeUsageHitsById()', () => {
+    it('groups the structured type-reference hits by type id', () => {
+      const protocol = {
+        schemaVersion: 8,
+        name: 'test',
+        codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
+        stages: [
+          {
+            id: 's1',
+            type: 'NetworkComposer',
+            label: 'Composer',
+            subject: { entity: 'node', type: 'person-type-id' },
+            edges: [
+              {
+                id: 'composer-edge-1',
+                subject: { entity: 'edge', type: 'friendship-type-id' },
+              },
+            ],
+          },
+        ],
+      };
+      const state = getMockState({
+        activeProtocol: { present: protocol },
+      }) as unknown as RootState;
+
+      expect(
+        getEntityTypeUsageHitsById(state).get('friendship-type-id'),
+      ).toEqual([
+        {
+          path: ['stages', 0, 'edges', 0, 'subject', 'type'],
+          typeId: 'friendship-type-id',
+          entity: 'edge',
+        },
+      ]);
+    });
+  });
+
   describe('getAssetIndex()', () => {
     it('extracts asset references into index', () => {
       const subject = getAssetIndex(testState);
 
       expect(subject).toMatchSnapshot();
+    });
+
+    /**
+     * Every place a protocol may name an asset, each on the stage type whose
+     * SCHEMA declares that field. The index is derived from the schema's own
+     * `assetReference` tags now, so this doubles as the coverage check the
+     * hand-kept path list it replaced could never have: a site missing its tag
+     * reports its asset as unused, and the Resource Library offers an unused
+     * resource for deletion.
+     */
+    it.each([
+      [
+        'a roster data source',
+        {
+          id: 's1',
+          type: 'NameGeneratorRoster',
+          label: 'Roster',
+          subject: { entity: 'node', type: 'person' },
+          dataSource: 'asset-under-test',
+        },
+      ],
+      [
+        'a name generator panel data source',
+        {
+          id: 's1',
+          type: 'NameGenerator',
+          label: 'Generator',
+          subject: { entity: 'node', type: 'person' },
+          panels: [
+            { id: 'p1', title: 'Roster', dataSource: 'asset-under-test' },
+          ],
+        },
+      ],
+      [
+        'a sociogram background image',
+        {
+          id: 's1',
+          type: 'Sociogram',
+          label: 'Sociogram',
+          subject: { entity: 'node', type: 'person' },
+          background: { image: 'asset-under-test' },
+        },
+      ],
+      [
+        "the Geospatial map's token",
+        {
+          id: 's1',
+          type: 'Geospatial',
+          label: 'Map',
+          subject: { entity: 'node', type: 'person' },
+          mapOptions: { tokenAssetId: 'asset-under-test' },
+        },
+      ],
+      [
+        "the Geospatial map's data source",
+        {
+          id: 's1',
+          type: 'Geospatial',
+          label: 'Map',
+          subject: { entity: 'node', type: 'person' },
+          mapOptions: { dataSourceAssetId: 'asset-under-test' },
+        },
+      ],
+      [
+        'an Information asset item',
+        {
+          id: 's1',
+          type: 'Information',
+          label: 'Info',
+          title: 'Welcome',
+          items: [{ id: 'i1', type: 'asset', content: 'asset-under-test' }],
+        },
+      ],
+    ])('counts %s as used', (_label: string, stage: object) => {
+      const state = getMockState({
+        activeProtocol: {
+          present: {
+            schemaVersion: 8,
+            name: 'test',
+            codebook: { node: {} },
+            stages: [stage],
+          },
+        },
+      }) as unknown as RootState;
+
+      expect(Object.values(getAssetIndex(state))).toContain('asset-under-test');
+    });
+
+    /**
+     * `'existing'` sits in a panel's `dataSource` without being an asset id —
+     * it names the interview network. Indexing it would put a resource that
+     * cannot exist in the "in use" set.
+     */
+    it("does not index a panel's 'existing' data source as an asset", () => {
+      const state = getMockState({
+        activeProtocol: {
+          present: {
+            schemaVersion: 8,
+            name: 'test',
+            codebook: { node: {} },
+            stages: [
+              {
+                id: 's1',
+                type: 'NameGenerator',
+                label: 'Generator',
+                subject: { entity: 'node', type: 'person' },
+                panels: [
+                  { id: 'p1', title: 'Already added', dataSource: 'existing' },
+                ],
+              },
+            ],
+          },
+        },
+      }) as unknown as RootState;
+
+      expect(Object.values(getAssetIndex(state))).not.toContain('existing');
     });
 
     it('counts a FamilyPedigree intro-screen asset item as used', () => {
@@ -368,9 +607,9 @@ describe('indexes selectors', () => {
     // Save/Cancel/Undo" needed no code change: an item that becomes text stops
     // referencing its asset, so the asset is honestly reported as unused
     // rather than deleted or still counted. Pinned here so the filed
-    // description cannot silently become true — a change that made
-    // `mapAssetItems` read a text item's content would leave a researcher
-    // believing an orphaned resource is still in use.
+    // description cannot silently become true — an `assetReference` tag moved
+    // onto the shared item base (where it would cover the text branch too)
+    // would leave a researcher believing an orphaned resource is still in use.
     it.each([
       ['an Information', 'items'],
       ['a FamilyPedigree intro-screen', 'introScreen'],

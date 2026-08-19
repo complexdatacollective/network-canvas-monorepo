@@ -54,6 +54,27 @@ function FormHarness({ onSubmit }: { onSubmit: () => void }) {
   );
 }
 
+function DisabledHarness({
+  onMove,
+  dragStart,
+}: {
+  onMove: (targetIndex: number) => void | boolean;
+  dragStart: (event: React.PointerEvent) => void;
+}) {
+  const dragControls = useDragControls();
+  dragControls.start = dragStart;
+
+  return (
+    <ArrayFieldDragHandle
+      dragControls={dragControls}
+      index={1}
+      itemCount={5}
+      onMove={onMove}
+      disabled
+    />
+  );
+}
+
 const handle = () => screen.getByRole('button', { name: /^Reorder item/ });
 
 describe('ArrayFieldDragHandle', () => {
@@ -116,5 +137,39 @@ describe('ArrayFieldDragHandle', () => {
 
     fireEvent.keyDown(handle(), { key: 'ArrowUp' });
     expect(onMove).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Four call sites (Architect's node panels, dialog array field, option and
+   * multi-select editors) have always passed `disabled` for a read-only or
+   * locked form. The handle used to accept the prop and ignore it, leaving the
+   * whole list reorderable by keyboard AND by pointer in a form nobody was
+   * allowed to edit.
+   */
+  describe('when disabled', () => {
+    it('is disabled in the accessibility tree', () => {
+      render(<DisabledHarness onMove={vi.fn()} dragStart={vi.fn()} />);
+
+      expect(handle()).toBeDisabled();
+    });
+
+    it('does not move the item with the arrow keys', () => {
+      const onMove = vi.fn();
+      render(<DisabledHarness onMove={onMove} dragStart={vi.fn()} />);
+
+      fireEvent.keyDown(handle(), { key: 'ArrowDown' });
+      fireEvent.keyDown(handle(), { key: 'ArrowUp' });
+
+      expect(onMove).not.toHaveBeenCalled();
+    });
+
+    it('does not start a pointer drag', () => {
+      const dragStart = vi.fn();
+      render(<DisabledHarness onMove={vi.fn()} dragStart={dragStart} />);
+
+      fireEvent.pointerDown(handle());
+
+      expect(dragStart).not.toHaveBeenCalled();
+    });
   });
 });

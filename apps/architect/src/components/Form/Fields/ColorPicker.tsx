@@ -126,13 +126,12 @@ const ColorPicker = ({
               )}
               style={
                 {
-                  // The fallback only ever applies to the out-of-range swatch
-                  // above, whose theme variable does not exist: without it the
-                  // chip has no background at all and the researcher cannot
-                  // see the colour their protocol is holding.
-                  '--color': resolveProtocolColor(color.value, {
-                    fallback: 'var(--input-contrast)',
-                  }),
+                  // `resolveProtocolColor` carries its own fallback, which
+                  // only ever applies to the out-of-range swatch above whose
+                  // theme variable does not exist: without it the chip has no
+                  // background at all and the researcher cannot see the colour
+                  // their protocol is holding.
+                  '--color': resolveProtocolColor(color.value),
                 } as React.CSSProperties
               }
             />

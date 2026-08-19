@@ -29,8 +29,15 @@ const buttonSpecificVariants = cva({
     'max-w-full min-w-0',
     'items-center justify-center',
     'ui-disabled:cursor-not-allowed ui-disabled:opacity-50',
-    'aria-pressed:border-selected! aria-pressed:bg-selected! aria-pressed:text-selected-contrast!',
-    'aria-expanded:border-selected! aria-expanded:bg-selected! aria-expanded:text-selected-contrast!',
+    // Toggle and disclosure buttons carry their state in ARIA, so the selected
+    // look follows the attribute. Deliberately NOT `!important`: a call site
+    // that wants a different selected treatment must be able to say so with a
+    // class, and `!important` here is what made `CollectionSortButton`'s
+    // `bg-accent` dead code. A control whose selection is NOT an ARIA state —
+    // a menu trigger, which is `aria-expanded`/`aria-haspopup` and must never
+    // also claim to be a toggle — uses the `selected` prop instead.
+    'aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-selected-contrast',
+    'aria-expanded:border-selected aria-expanded:bg-selected aria-expanded:text-selected-contrast',
     'focusable',
     'elevation-low',
     'ui-enabled:active:elevation-none ui-enabled:active:translate-y-[2px]',
@@ -87,6 +94,20 @@ const buttonSpecificVariants = cva({
     iconPosition: {
       left: 'flex-row',
       right: 'flex-row-reverse',
+    },
+    /**
+     * Renders the selected treatment without claiming an ARIA state.
+     *
+     * For a control that IS selected in the accessibility tree, use
+     * `aria-pressed` (a toggle) or `aria-expanded` (a disclosure) and let the
+     * base rules above do the work. This variant is for the rest: a menu
+     * trigger that is visually "active" because its column is sorted is not a
+     * toggle button, and saying `aria-pressed` to get the colour announces a
+     * pressed state that activating it does not change.
+     */
+    selected: {
+      true: 'border-selected bg-selected text-selected-contrast',
+      false: '',
     },
   },
   defaultVariants: {
@@ -232,6 +253,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       icon,
       iconPosition = 'left',
+      selected,
       textStyle,
       type = 'button',
       ...props
@@ -244,6 +266,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       color,
       size,
       iconPosition,
+      selected,
       textStyle,
       className,
     });

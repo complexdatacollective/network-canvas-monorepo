@@ -12,6 +12,7 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ArrayField, {
   ArrayFieldDragHandle,
+  stripManagedProperties,
   type ArrayFieldItemProps,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -92,11 +93,6 @@ export const completeRows =
     )
       ? 'Every row needs a value in each column.'
       : undefined;
-
-const stripManagedProperties = (item: Partial<ItemValue>): ItemValue => {
-  const { _internalId, _draft, ...value } = item;
-  return value;
-};
 
 type MultiSelectContextValue = {
   arrayName: string;

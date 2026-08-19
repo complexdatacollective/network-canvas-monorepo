@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
 // Use the same responsive SVG that readers can download from the documentation
@@ -110,19 +111,11 @@ test('refuses to delete a resource that is used by a stage', async ({
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot delete resource',
   });
-  await expect(guardDialog).toBeVisible();
-  await expect(guardDialog.getByTestId('dialog-cancel')).toHaveCount(0);
-  await expect(guardDialog.getByTestId('dialog-primary')).toHaveText('OK');
 
-  // Dialog shown AND deletion did not proceed. The guard returns before any
-  // `deleteAsset` dispatch, so no store change happens; acknowledging then
-  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
-  // before
-  // asserting it did NOT — closing the "dialog shown but deletion silently
-  // proceeds anyway" gap, mirroring timeline.spec.ts's stage-delete guard
-  // test.
-  await guardDialog.getByTestId('dialog-primary').click();
-  await architectPage.waitForTimeout(1000);
+  // Refusal observed and acknowledged, then a settle window, so an
+  // erroneously-accepted delete would have reached IndexedDB by the read
+  // below. See `acknowledgeRefusal` for why the wait is the oracle here.
+  await acknowledgeRefusal(architectPage, guardDialog);
 
   await expect(
     assetList.getByRole('heading', { level: 4, name: 'Regions', exact: true }),

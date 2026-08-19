@@ -17,6 +17,7 @@ import {
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
+import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { getCanonicalProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
 import {
@@ -93,7 +94,16 @@ const ProjectActions = ({
   const handleUndo = useCallback(() => scopedUndo(), [scopedUndo]);
   const handleRedo = useCallback(() => scopedRedo(), [scopedRedo]);
 
-  const handleDownload = useCallback(async () => {
+  /*
+    Both of these run once at a time because `useSingleFlight` says so, not
+    because their button is disabled while they run. `disabled` is a rendering
+    of state the second click in a tick has not seen yet, it covers only the
+    one control, and each call's own `finally` would clear it while the other
+    was still going. Save-to-source overwrites the canonical protocol source
+    files in the repository; a download builds and writes a file. Neither is
+    something to run twice by accident.
+  */
+  const runDownload = useCallback(async () => {
     setIsExporting(true);
     try {
       const downloaded = await downloadActiveProtocol(dispatch, openDialog);
@@ -103,8 +113,9 @@ const ProjectActions = ({
       setIsExporting(false);
     }
   }, [dispatch, openDialog]);
+  const handleDownload = useSingleFlight(runDownload);
 
-  const handleSaveSource = useCallback(async () => {
+  const runSaveSource = useCallback(async () => {
     if (!activeProtocolId || !sourceRef || !protocol) {
       return;
     }
@@ -167,6 +178,7 @@ const ProjectActions = ({
       setIsSavingSource(false);
     }
   }, [activeProtocolId, openDialog, protocol, sourceRef]);
+  const handleSaveSource = useSingleFlight(runSaveSource);
 
   useEffect(() => {
     let cancelled = false;

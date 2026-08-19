@@ -568,15 +568,11 @@ export function materializeFamilyPedigree(
         person.biologicalSex,
       );
     }
-    // Structural values win. The schema forbids a NOMINATION PROMPT from
-    // naming one of the pedigree's own structural variables, but it does NOT
-    // forbid a disease mapping: NarrativePedigree's `diseases[].variable`
-    // carries no `usage` tag (schemas/8/stages/narrative-pedigree.ts), and
-    // `findExclusiveVariableConflicts` skips every untagged hit as a read. So
-    // this guard is not just belt-and-braces for protocols authored before the
-    // rule — it is the ONLY thing standing between a disease mapped onto the
-    // ego flag and a family with several participants in it. Do not remove it
-    // on the strength of the schema.
+    // Structural values win. The schema now rejects a disease mapped onto one
+    // of the pedigree's own structural variables (NarrativePedigree's
+    // `diseases[].variable` is tagged as a writer, so
+    // `findExclusiveVariableConflicts` reports it), so this is defence in
+    // depth for the unvalidated protocols this generator also accepts.
     for (const disease of diseases) {
       if (Object.hasOwn(fixed, disease.variable)) continue;
       fixed[disease.variable] = person.affectedVariables.has(disease.variable);

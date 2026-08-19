@@ -4,7 +4,12 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { Stage, VariableOptions } from '@codaco/protocol-validation';
+import {
+  INTERFACE_OWNED_OPTION_SETS,
+  optionsMatchInterfaceOwnedSet,
+  type Stage,
+  type VariableOptions,
+} from '@codaco/protocol-validation';
 import {
   RELATIONSHIP_TYPE_OPTIONS,
   RELATIONSHIP_TYPES,
@@ -19,7 +24,6 @@ import {
   useStageFormContext,
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
-import { optionsMatch } from '~/utils/variables';
 
 // The dialog EdgeConfiguration opens for "create a new variable" — irrelevant
 // to the reset-on-type-change behaviour below.
@@ -38,12 +42,19 @@ describe('EdgeConfiguration RELATIONSHIP_TYPE_OPTIONS', () => {
     ]);
   });
 
+  // Asked through the protocol schema's own comparison, so the picker cannot
+  // offer a variable the validator then rejects — and vice versa.
   it('matches a categorical variable carrying exactly the interview values', () => {
     const variableOptions: VariableOptions = RELATIONSHIP_TYPE_OPTIONS.map(
       ({ value, label }) => ({ value, label }),
     );
 
-    expect(optionsMatch(variableOptions, RELATIONSHIP_TYPE_OPTIONS)).toBe(true);
+    expect(
+      optionsMatchInterfaceOwnedSet(
+        variableOptions,
+        INTERFACE_OWNED_OPTION_SETS.relationshipType.options,
+      ),
+    ).toBe(true);
   });
 });
 

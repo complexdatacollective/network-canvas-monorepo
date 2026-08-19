@@ -200,7 +200,11 @@ export function DataViewToolbar({
                 size="md"
                 color={isFilterActive ? 'primary' : 'default'}
                 icon={<FilterIcon size={14} strokeWidth={2.5} aria-hidden />}
-                aria-pressed={isFilterActive}
+                // `selected`, not `aria-pressed`: PopoverTrigger already makes
+                // this a disclosure (`aria-expanded`/`aria-haspopup`), and a
+                // control must not also claim to be a toggle. That a filter is
+                // active is carried by the visible "· N" count in the label.
+                selected={isFilterActive}
                 data-testid="data-filter-trigger"
               >
                 Filter

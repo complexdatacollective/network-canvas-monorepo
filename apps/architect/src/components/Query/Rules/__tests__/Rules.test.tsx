@@ -1,9 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import Rules from '../Rules';
+
+const TWO_RULES = [
+  {
+    id: 'rule-1',
+    type: 'node',
+    options: { type: 'person', attribute: 'name', operator: 'EXISTS' },
+  },
+  {
+    id: 'rule-2',
+    type: 'node',
+    options: { type: 'person', attribute: 'age', operator: 'EXISTS' },
+  },
+];
 
 const renderRules = (allowEdgeRules?: boolean) =>
   render(
@@ -57,6 +70,32 @@ describe('Rules', () => {
       screen.getByRole('button', { name: 'Add new filter rule' }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^Add new/ })).toHaveLength(1);
+  });
+
+  /**
+   * "Rule Matching" is the control that sets this, and it is the only
+   * thing that said so — a researcher reading the cards had to reach the
+   * bottom of the list to learn whether they had asked for all of them or any
+   * of them. The chosen value belongs between the rules as well.
+   */
+  it('shows the chosen matching between the rules as well as under them', () => {
+    render(
+      <DialogProvider>
+        <Rules
+          codebook={{ node: {}, edge: {} }}
+          rules={TWO_RULES}
+          join="OR"
+          addRuleLabel="Add new filter rule"
+        />
+      </DialogProvider>,
+    );
+
+    const [first] = within(screen.getByRole('list')).getAllByRole('listitem');
+
+    expect(within(first!).getByText('or')).toBeVisible();
+    expect(
+      screen.getByRole('radio', { name: 'Any rule can match' }),
+    ).toBeChecked();
   });
 
   it('offers ego as a target only for skip logic', async () => {

@@ -333,13 +333,19 @@ describe('SegmentedToolbar — toggle groups', () => {
       </SegmentedToolbar>,
     );
 
-    expect(screen.getByRole('button', { name: 'List' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Grid' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 });
 
 describe('SegmentedToolbar — disabled behavior', () => {
-  it('uses native disabled semantics by default', async () => {
+  it('keeps a disabled control in the roving focus by default', async () => {
     const onClick = vi.fn();
     render(
       <SegmentedToolbar aria-label="Editing tools">
@@ -347,27 +353,6 @@ describe('SegmentedToolbar — disabled behavior', () => {
           aria-label="Undo"
           icon={<Undo2 />}
           disabled
-          onClick={onClick}
-        />
-      </SegmentedToolbar>,
-    );
-
-    const undo = screen.getByRole('button', { name: 'Undo' });
-    expect(undo).toBeDisabled();
-    expect(undo).not.toHaveAttribute('aria-disabled');
-    await userEvent.click(undo);
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('supports deliberate focus retention when disabled', async () => {
-    const onClick = vi.fn();
-    render(
-      <SegmentedToolbar aria-label="Editing tools">
-        <ToolbarIconButton
-          aria-label="Undo"
-          icon={<Undo2 />}
-          disabled
-          focusableWhenDisabled
           onClick={onClick}
         />
       </SegmentedToolbar>,
@@ -379,6 +364,61 @@ describe('SegmentedToolbar — disabled behavior', () => {
     undo.focus();
     await userEvent.keyboard('{Enter}');
     expect(undo).toHaveFocus();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  // The regression this default exists to prevent: a toolbar is a single tab
+  // stop, so a self-disabling command that leaves the roving focus takes the
+  // user's keyboard position to `<body>` the moment they activate it.
+  it('retains keyboard focus when a control disables itself on activation', async () => {
+    function SelfDisablingUndo() {
+      const [canUndo, setCanUndo] = useState(true);
+      return (
+        <SegmentedToolbar aria-label="Editing tools">
+          <ToolbarIconButton
+            aria-label="Undo"
+            icon={<Undo2 />}
+            disabled={!canUndo}
+            onClick={() => setCanUndo(false)}
+          />
+          <ToolbarIconButton aria-label="Redo" icon={<Redo2 />} />
+        </SegmentedToolbar>
+      );
+    }
+
+    render(<SelfDisablingUndo />);
+
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    undo.focus();
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => expect(undo).toHaveAttribute('aria-disabled', 'true'));
+    expect(undo).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+
+    // Focus is still inside the toolbar, so roving navigation still works.
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Redo' })).toHaveFocus();
+  });
+
+  it('opts out of the roving focus with focusableWhenDisabled={false}', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton
+          aria-label="Undo"
+          icon={<Undo2 />}
+          disabled
+          focusableWhenDisabled={false}
+          onClick={onClick}
+        />
+      </SegmentedToolbar>,
+    );
+
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo).toBeDisabled();
+    expect(undo).not.toHaveAttribute('aria-disabled');
+    await userEvent.click(undo);
     expect(onClick).not.toHaveBeenCalled();
   });
 
@@ -395,8 +435,14 @@ describe('SegmentedToolbar — disabled behavior', () => {
     expect(screen.getByRole('group', { name: 'History' })).toHaveAttribute(
       'data-disabled',
     );
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('disables every control in a toggle group', () => {
@@ -416,8 +462,14 @@ describe('SegmentedToolbar — disabled behavior', () => {
     expect(screen.getByRole('group', { name: 'View' })).toHaveAttribute(
       'data-disabled',
     );
-    expect(screen.getByRole('button', { name: 'List' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Grid' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Grid' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('propagates disabled state from the complete toolbar', () => {
@@ -428,8 +480,26 @@ describe('SegmentedToolbar — disabled behavior', () => {
       </SegmentedToolbar>,
     );
 
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
+  it('still marks every disabled control with data-disabled for styling', () => {
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} disabled />
+      </SegmentedToolbar>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveAttribute(
+      'data-disabled',
+    );
   });
 });
 
@@ -547,5 +617,79 @@ describe('SegmentedToolbar — dragging', () => {
     await userEvent.keyboard('{ArrowRight}{ArrowDown}');
 
     expect(onPositionChange).toHaveBeenLastCalledWith({ x: 4, y: 4 });
+  });
+
+  /**
+   * `aria-disabled` announces but does not prevent. When the default flipped to
+   * focus-retaining, these controls stopped emitting native `disabled`, and the
+   * caller's `onClick` became reachable by pointer — keyboard activation was
+   * still blocked by Base UI, which is why the existing `{Enter}` coverage did
+   * not notice. `disabled` is load-bearing as a re-entrancy and range guard, so
+   * a pointer click must not activate.
+   */
+  it('does not activate a disabled ToolbarIconButton on a mouse click', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton
+          aria-label="Undo"
+          disabled
+          icon={<Undo2 />}
+          onClick={onClick}
+        />
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not activate a disabled ToolbarButton on a mouse click', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarButton disabled onClick={onClick}>
+          Download
+        </ToolbarButton>
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download' }));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not activate a disabled control nested in a ToolbarGroup', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarGroup aria-label="History tools">
+          <ToolbarIconButton
+            aria-label="Redo"
+            disabled
+            icon={<Redo2 />}
+            onClick={onClick}
+          />
+        </ToolbarGroup>
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('still activates an ENABLED control on a mouse click', async () => {
+    const onClick = vi.fn();
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton
+          aria-label="Undo"
+          icon={<Undo2 />}
+          onClick={onClick}
+        />
+      </SegmentedToolbar>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

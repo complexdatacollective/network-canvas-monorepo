@@ -6,12 +6,14 @@ import {
   duplicateIdRefinement,
   findDuplicateId,
 } from '../../../utils/validation-helpers.ts';
+import { assetReference } from '../asset-reference.ts';
 import {
   FormFieldArraySchema,
   familyPedigreeNominationPromptSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
+import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
@@ -45,7 +47,12 @@ const introScreenBaseItem = z.strictObject({
 
 const IntroScreenItemSchema = z.discriminatedUnion('type', [
   introScreenBaseItem.extend({ type: z.literal('text') }),
-  introScreenBaseItem.extend({ type: z.literal('asset') }),
+  // `content` is the manifest asset id on this branch, and plain rendered text
+  // on the sibling one — so the tag lives here rather than on the shared base.
+  introScreenBaseItem.extend({
+    type: z.literal('asset'),
+    content: assetReference(),
+  }),
 ]);
 
 export type FamilyPedigreeIntroItem = z.infer<typeof IntroScreenItemSchema>;
@@ -145,7 +152,12 @@ export const EdgeConfigSchema = z.strictObject({
   }),
 });
 
-export const familyPedigreeStage = baseStageSchema.extend({
+// The pedigree names its alter node type on `nodeConfig` rather than as a
+// stage `subject`, so it declares that as its subject resolution: the node
+// form's fields and every nomination prompt resolve against it. The edge
+// config's own slots are sibling-resolved against `edgeConfig.type` and do not
+// use the stage subject.
+const familyPedigreeStageShape = baseStageSchema.extend({
   type: z.literal('FamilyPedigree'),
   nodeConfig: NodeConfigSchema,
   edgeConfig: EdgeConfigSchema,
@@ -203,6 +215,11 @@ export const familyPedigreeStage = baseStageSchema.extend({
       }
     }),
 });
+
+export const familyPedigreeStage = withStageSubjectResolution(
+  familyPedigreeStageShape,
+  { from: 'stagePath', path: ['nodeConfig', 'type'], entity: 'node' },
+);
 
 // Config types, the single source of truth for the FamilyPedigree stage shape.
 // Consumers (e.g. @codaco/protocol-utilities) derive from these rather than

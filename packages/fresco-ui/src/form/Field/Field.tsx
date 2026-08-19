@@ -7,6 +7,7 @@ import type { FieldValue } from '../store/types';
 import { filterValidationProps } from '../validation/helpers';
 import { BaseField } from './BaseField';
 import { FieldControllerProvider } from './FieldController';
+import { BASE_FIELD_ELEMENTS } from './fieldElements';
 import type { FieldProps, ValidFieldComponent } from './types';
 
 /**
@@ -52,6 +53,9 @@ export default function Field<C extends ValidFieldComponent>({
     // Presence only: it decides whether `aria-describedby` may name the hint
     // element, which BaseField renders from `hint ?? validationSummary`.
     hint,
+    // This is the component that renders the control inside a BaseField, so
+    // it is the one that may point `fieldProps` at BaseField's elements.
+    renderedElements: BASE_FIELD_ELEMENTS,
     validateOnChange,
     validateOnChangeDelay,
     validateOnControlBlur,

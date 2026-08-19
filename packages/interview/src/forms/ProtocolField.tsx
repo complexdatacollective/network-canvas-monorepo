@@ -20,6 +20,7 @@ import type { ComponentType, Variable } from '@codaco/protocol-validation';
 
 import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
+import { resolveRenderedControl } from './resolveRenderedControl';
 
 const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   Text: InputField,
@@ -71,12 +72,11 @@ export default function ProtocolField({
   autoFocus,
   validationContext,
 }: ProtocolFieldProps) {
-  const component =
-    field.type === 'boolean' &&
-    field.component === 'Toggle' &&
-    field.validation?.required === true
-      ? 'Boolean'
-      : field.component;
+  const { component, optionsApply } = resolveRenderedControl({
+    type: field.type,
+    component: field.component,
+    validation: field.validation,
+  });
 
   const props: {
     name: string;
@@ -121,11 +121,10 @@ export default function ProtocolField({
     );
   }
 
-  // A required Toggle resolves to the unselected Boolean control. Its options
-  // are deliberately omitted for the same reason as the interview metadata
-  // resolver: Toggle never rendered authored boolean labels, so carrying them
-  // across would change the question's answer domain.
-  if (field.options && component === field.component) {
+  // `optionsApply` is false for a control the resolver swapped: the
+  // replacement asks its own two-valued question, so the codebook's boolean
+  // options would change the question's answer domain.
+  if (field.options && optionsApply) {
     props.options = field.options;
     if (
       (component === 'CheckboxGroup' || component === 'RadioGroup') &&

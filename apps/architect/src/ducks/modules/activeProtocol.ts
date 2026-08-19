@@ -166,14 +166,29 @@ const NOT_APPLIED: TimelineOperationOutcome = {
 // applied AND brought into view in the same activation, while same-page,
 // experiments, Summary and legacy (path-less) entries apply in place without
 // moving the researcher.
-export const undoWithNavigation =
+//
+// Undo and redo differ only in which end of the history they read, so they are
+// two specs over one implementation rather than two copies of it: every guard,
+// the confirm-from-state probe and the navigation decision below are shared,
+// and a fix to any of them cannot land in one direction and not the other.
+type TimelineOperationSpec = {
+  /** Whether the history stack has an entry to apply in this direction. */
+  canPerform: (state: RootState) => boolean;
+  /** The page recorded against the entry about to be applied. */
+  getTargetPath: (state: RootState) => string;
+  /** The timeline action that applies it. */
+  createAction: () => UnknownAction;
+};
+
+const performTimelineOperation =
+  ({ canPerform, getTargetPath, createAction }: TimelineOperationSpec) =>
   () =>
   (
     dispatch: AppDispatch,
     getState: () => RootState,
   ): TimelineOperationOutcome => {
     const state = getState();
-    if (!getCanUndo(state)) return NOT_APPLIED;
+    if (!canPerform(state)) return NOT_APPLIED;
     // A tab that does not own the saved copy cannot persist a history
     // operation: the protocol would visibly rewind and the library write behind
     // it would be dropped (see `protocolValidationListener`). Refuse the whole
@@ -185,7 +200,7 @@ export const undoWithNavigation =
     // Resolve the destination before dispatching — undo pops the very entry
     // whose recorded page we need.
     const targetPage = resolveTimelineNavTarget(
-      getUndoTargetPath(state),
+      getTargetPath(state),
       currentPath(),
     );
     // The CANONICAL protocol, deliberately: the question this probe asks is
@@ -200,7 +215,7 @@ export const undoWithNavigation =
     // Reading the raw present has no cache to depend on.
     const previousProtocol = getCanonicalProtocol(state);
 
-    dispatch(timelineActions.undo());
+    dispatch(createAction());
 
     // Confirm from state rather than trusting the pre-flight check, so a
     // reducer that refuses can never be reported (or announced) as applied.
@@ -214,31 +229,14 @@ export const undoWithNavigation =
     return { applied: true, navigatedTo };
   };
 
-export const redoWithNavigation =
-  () =>
-  (
-    dispatch: AppDispatch,
-    getState: () => RootState,
-  ): TimelineOperationOutcome => {
-    const state = getState();
-    if (!getCanRedo(state)) return NOT_APPLIED;
-    if (!getProtocolOwnedHere(state)) return NOT_APPLIED;
+export const undoWithNavigation = performTimelineOperation({
+  canPerform: getCanUndo,
+  getTargetPath: getUndoTargetPath,
+  createAction: timelineActions.undo,
+});
 
-    const targetPage = resolveTimelineNavTarget(
-      getRedoTargetPath(state),
-      currentPath(),
-    );
-    // The canonical protocol, for the reason given on `undoWithNavigation`.
-    const previousProtocol = getCanonicalProtocol(state);
-
-    dispatch(timelineActions.redo());
-
-    if (getCanonicalProtocol(getState()) === previousProtocol) {
-      return NOT_APPLIED;
-    }
-
-    const navigatedTo = targetPage || null;
-    if (navigatedTo) navigate(navigatedTo);
-
-    return { applied: true, navigatedTo };
-  };
+export const redoWithNavigation = performTimelineOperation({
+  canPerform: getCanRedo,
+  getTargetPath: getRedoTargetPath,
+  createAction: timelineActions.redo,
+});

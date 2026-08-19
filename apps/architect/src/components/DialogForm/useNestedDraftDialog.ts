@@ -2,10 +2,12 @@ import { useCallback, useContext } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
-import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import {
+  FormStoreContext,
+  selectIsFormDirty,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import { confirmDiscardNestedDraft } from './confirmDiscardNestedDraft';
-import { isFormStoreDirty } from './formStoreDirty';
 import { useNestedDraft } from './nestedDraftRegistry';
 
 type NestedDraftDialogOptions = {
@@ -36,10 +38,10 @@ type NestedDraftDialogOptions = {
  * a backdrop click) live outside the `<form>` element, and they have to be able
  * to ask whether the fields inside it hold anything.
  *
- * Dirtiness is `isFormStoreDirty` — a live comparison against the values the
- * fields registered with, never the form store's own sticky `isDirty` flag,
- * which never returns to false once anything has been typed and would nag about
- * a form the researcher had already restored by hand.
+ * Dirtiness is fresco-ui's `selectIsFormDirty` — a live comparison against the
+ * values the fields registered with, never the form store's own sticky
+ * `isDirty` flag, which never returns to false once anything has been typed and
+ * would nag about a form the researcher had already restored by hand.
  */
 export const useNestedDraftDialog = ({
   open,
@@ -50,7 +52,7 @@ export const useNestedDraftDialog = ({
   const { isSubmitting } = useFormMeta();
 
   const isDirty = useCallback(
-    () => (storeApi ? isFormStoreDirty(storeApi) : false),
+    () => (storeApi ? selectIsFormDirty(storeApi.getState()) : false),
     [storeApi],
   );
 

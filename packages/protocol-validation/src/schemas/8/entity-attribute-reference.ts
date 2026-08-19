@@ -84,6 +84,20 @@ export type EntityAttributeReferenceDescriptor = {
    * protocols; the collector's hits inherit it from the matching site.
    */
   usage?: AttributeWriterUsage;
+  /**
+   * A sibling field, in the SAME object as this reference, that must be `true`
+   * before the write described by `usage` happens at all. Where it is not, the
+   * site is a READ and the collected hit carries no `usage`.
+   *
+   * The Sociogram's `highlight` is what this exists for. `highlight.variable`
+   * always colours nodes, but only a highlight the participant can TAP
+   * (`allowHighlighting: true`) writes the attribute back; with highlighting
+   * off the interface merely displays a value something else set — exactly the
+   * legitimate read `findExclusiveVariableConflicts` describes. Tagging the
+   * site unconditionally would forbid colouring a family pedigree's nodes by
+   * the participant marker the pedigree itself derives.
+   */
+  usageRequiresSibling?: string;
   /** See `ExclusiveSlotDescriptor`. */
   exclusive?: ExclusiveSlotDescriptor;
   /** See `InterfaceOwnedOptionSetKey`. */

@@ -1,31 +1,17 @@
 import { Trash2 } from 'lucide-react';
 import { Reorder, type Variants } from 'motion/react';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent,
-} from 'react';
+import { useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { interfaceDisplayName } from '~/config/interfaceNames';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
 
-import { INTERFACE_TYPES } from '../Screens/NewStageScreen/interfaceOptions';
 import StageTypeImage from '../StageTypeImage';
 import { timelineRowGrid } from './rowLayout';
-
-// The researcher-facing name of each interface, keyed by the stage `type` that
-// appears in the protocol. The row's thumbnail is what tells a sighted
-// researcher which interface a stage uses; naming the open control after it too
-// keeps a screen-reader researcher level with them.
-const INTERFACE_TITLES = new Map(
-  INTERFACE_TYPES.map((option) => [option.type as string, option.title]),
-);
 
 // Reveal Delete on row hover or when keyboard focus reaches the button itself.
 // Using the row's `focus-within` state would also react to pointer focus on the
@@ -102,15 +88,28 @@ const TimelineStageRow = ({
 }: TimelineStageRowProps) => {
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
-  const openControlRef = useRef<HTMLButtonElement>(null);
-  const refocusAfterMoveRef = useRef(false);
 
   const stageName = stage.label || 'Untitled stage';
   const position = index + 1;
-  const interfaceTitle = INTERFACE_TITLES.get(stage.type);
-  const openControlLabel = interfaceTitle
-    ? `Edit stage ${position}: ${stageName}, ${interfaceTitle}`
+  // The row's thumbnail is what tells a sighted researcher which interface a
+  // stage uses; naming the open control after it too keeps a screen-reader
+  // researcher level with them. `undefined` for a stage type this build does
+  // not know — an imported protocol can carry one — in which case the label
+  // says what it can rather than inventing a name.
+  const interfaceName = interfaceDisplayName(stage.type);
+  const openControlLabel = interfaceName
+    ? `Edit stage ${position}: ${stageName}, ${interfaceName}`
     : `Edit stage ${position}: ${stageName}`;
+
+  // The whole arrow-key reorder mechanism — bounds check, refusal channel, and
+  // the refocus a keyboard move otherwise loses — belongs to fresco-ui's
+  // `useKeyboardReorder`, which `ArrayFieldDragHandle` also consumes. This row
+  // hand-rolled its own copy of it.
+  const reorder = useKeyboardReorder({
+    index,
+    itemCount: stageCount,
+    onMove: (targetIndex) => onMove(stage.id, targetIndex),
+  });
 
   // Deliberately stable. An inline `ref={(el) => register(...)}` is a new
   // function on every render, so React unregisters it (calling it with `null`)
@@ -122,23 +121,16 @@ const TimelineStageRow = ({
   // rather than on unmount), so this is not what makes the focus return
   // correct. It keeps the registry from churning every keystroke, which is
   // reason enough on its own.
+  //
+  // The control has two owners — the timeline's focus-return registry and the
+  // reorder hook's own refocus — so this callback feeds both.
   const setOpenControl = useCallback(
     (element: HTMLButtonElement | null) => {
-      openControlRef.current = element;
+      reorder.ref.current = element;
       registerOpenControl(stage.id, element);
     },
-    [registerOpenControl, stage.id],
+    [reorder.ref, registerOpenControl, stage.id],
   );
-
-  // A keyboard reorder may reposition this control in the DOM and drop focus
-  // to <body>. Restore it after the row settles so repeated arrow presses keep
-  // moving the same stage.
-  useEffect(() => {
-    if (!refocusAfterMoveRef.current) return undefined;
-    refocusAfterMoveRef.current = false;
-    const frame = requestAnimationFrame(() => openControlRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [index]);
 
   const handleRowPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     pointerStart.current = { x: event.clientX, y: event.clientY };
@@ -156,23 +148,6 @@ const TimelineStageRow = ({
     // silently dead.
     if (event.detail !== 0 && didDrag.current) return;
     onOpen(stage.id);
-  };
-
-  const handleOpenControlKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-  ) => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const targetIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
-    if (targetIndex < 0 || targetIndex >= stageCount) return;
-
-    refocusAfterMoveRef.current = true;
-    if (!onMove(stage.id, targetIndex)) {
-      refocusAfterMoveRef.current = false;
-    }
   };
 
   return (
@@ -213,9 +188,9 @@ const TimelineStageRow = ({
         type="button"
         ref={setOpenControl}
         aria-label={openControlLabel}
-        aria-keyshortcuts="ArrowUp ArrowDown"
+        aria-keyshortcuts={reorder['aria-keyshortcuts']}
         onClick={handleOpenFromButton}
-        onKeyDown={handleOpenControlKeyDown}
+        onKeyDown={reorder.onKeyDown}
         className="focusable block w-full max-w-56 justify-self-end rounded-xs"
       >
         <StageTypeImage

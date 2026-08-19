@@ -62,10 +62,19 @@ export function defineToolbarChild<C extends React.ElementType>(
 
 type DisabledFocusBehavior = {
   /**
-   * Keep the control in the toolbar's roving focus when disabled. Enable this
-   * deliberately for commands that can become disabled while they hold focus,
-   * or whose discoverability while unavailable is important.
-   * @default false
+   * Keep the control in the toolbar's roving focus when disabled.
+   *
+   * A toolbar is a single tab stop, so a control that leaves the roving focus
+   * the moment it becomes unavailable drops keyboard focus to `<body>` — which
+   * is exactly what happens to every self-disabling command (undo, redo,
+   * next/previous, zoom in/out). WAI-ARIA's toolbar pattern therefore
+   * recommends keeping disabled items focusable, so that is the default here.
+   *
+   * Pass `focusableWhenDisabled={false}` for the rare control that must be
+   * genuinely unfocusable — e.g. one that is never the focused element when it
+   * becomes unavailable and whose presence in the roving focus would only add
+   * noise.
+   * @default true
    */
   focusableWhenDisabled?: boolean;
 };
@@ -325,17 +334,45 @@ function motionItemProps(reduceMotion: boolean): MotionProps {
 }
 
 /**
- * Base UI Toolbar.Button defaults disabled controls to remaining focusable.
- * Fresco deliberately uses native disabled semantics by default, with an
- * explicit opt-in for the rare command that must retain focus while disabled.
+ * Matches Base UI Toolbar.Button's own default: a disabled toolbar control
+ * stays in the roving focus and announces its state through `aria-disabled`
+ * rather than the native `disabled` attribute, so becoming unavailable never
+ * ejects keyboard focus from the toolbar. `focusableWhenDisabled={false}`
+ * opts a control back into native `disabled` semantics.
  */
 type DisabledAwareButtonProps = MotionSafeButtonProps &
   DisabledFocusBehavior & { ref?: React.Ref<HTMLButtonElement> };
 
+/**
+ * Activation guard for the `aria-disabled` branch.
+ *
+ * `aria-disabled` is an ANNOUNCEMENT, not a behaviour: unlike the native
+ * `disabled` attribute it does not stop a pointer activating the control. Base
+ * UI suppresses the keyboard path (`useFocusableWhenDisabled` preventDefaults
+ * non-Tab keydown) and its own toggle path, but a raw `onClick` reaching the
+ * rendered element through `mergeProps` is chained, not blocked — Base UI's own
+ * docs say event handlers returned by those functions are not automatically
+ * prevented.
+ *
+ * So the moment this component stopped emitting native `disabled`, every
+ * caller's `onClick` became reachable on a disabled control. That is not a
+ * cosmetic gap: `disabled` was load-bearing as a re-entrancy guard (Architect's
+ * Download and Save-to-source buttons hold no flag of their own) and as a range
+ * guard (Narrative's preset arrows compute `activePreset - 1` unclamped, so a
+ * click at index 0 unmounts the whole preset toolbar).
+ *
+ * Swallowing the click keeps the accessibility win — focus stays in the roving
+ * toolbar and the state is announced — without making `disabled` advisory.
+ */
+const swallowActivation = (event: React.MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
 function DisabledAwareButton({
   ref,
   disabled,
-  focusableWhenDisabled = false,
+  focusableWhenDisabled = true,
   'aria-disabled': ariaDisabled,
   ...props
 }: DisabledAwareButtonProps) {
@@ -344,7 +381,12 @@ function DisabledAwareButton({
 
   if (focusableWhenDisabled) {
     return (
-      <Button ref={ref} {...props} aria-disabled={isDisabled || undefined} />
+      <Button
+        ref={ref}
+        {...props}
+        aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? swallowActivation : props.onClick}
+      />
     );
   }
 
@@ -357,7 +399,7 @@ type DisabledAwareIconButtonProps = FrescoIconButtonProps &
 function DisabledAwareIconButton({
   ref,
   disabled,
-  focusableWhenDisabled = false,
+  focusableWhenDisabled = true,
   'aria-disabled': ariaDisabled,
   ...props
 }: DisabledAwareIconButtonProps) {
@@ -365,11 +407,14 @@ function DisabledAwareIconButton({
     disabled === true || ariaDisabled === true || ariaDisabled === 'true';
 
   if (focusableWhenDisabled) {
+    // See `swallowActivation`: `aria-disabled` announces but does not prevent,
+    // so the caller's `onClick` must be withheld or `disabled` becomes advisory.
     return (
       <IconButton
         ref={ref}
         {...props}
         aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? swallowActivation : props.onClick}
       />
     );
   }
@@ -384,7 +429,7 @@ type ToolbarControlBehavior = ToggleBehavior & DisabledFocusBehavior;
 
 function useToolbarControlBehavior({
   disabled,
-  focusableWhenDisabled = false,
+  focusableWhenDisabled = true,
   value,
   pressed,
   defaultPressed,
@@ -449,7 +494,7 @@ export function ToolbarButton({
   ref,
   className,
   disabled,
-  focusableWhenDisabled = false,
+  focusableWhenDisabled = true,
   value,
   pressed,
   defaultPressed,
@@ -487,7 +532,7 @@ export function ToolbarIconButton({
   ref,
   className,
   disabled,
-  focusableWhenDisabled = false,
+  focusableWhenDisabled = true,
   value,
   pressed,
   defaultPressed,

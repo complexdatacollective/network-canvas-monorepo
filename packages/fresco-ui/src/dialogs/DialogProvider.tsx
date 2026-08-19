@@ -20,7 +20,11 @@ import FormStoreProvider, {
 } from '../form/store/formStoreProvider';
 import SubmitButton from '../form/SubmitButton';
 import Paragraph from '../typography/Paragraph';
-import { resolveFinalFocus, type FinalFocusTarget } from '../utils/finalFocus';
+import {
+  asFinalFocusTarget,
+  resolveFinalFocus,
+  type FinalFocusTarget,
+} from '../utils/finalFocus';
 import { generatePublicId } from '../utils/generatePublicId';
 import Dialog from './Dialog';
 import type { DialogSize } from './DialogPopup';
@@ -348,13 +352,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   const openDialog = useCallback(
     <D extends AnyDialog>(dialogProps: D): Promise<DialogReturnType<D>> => {
       // Read BEFORE the deferral below — see DialogState.opener.
-      const activeElement = document.activeElement;
-      const opener =
-        activeElement instanceof HTMLElement &&
-        activeElement !== document.body &&
-        activeElement !== document.documentElement
-          ? activeElement
-          : null;
+      const opener = asFinalFocusTarget(document.activeElement);
 
       return new Promise((resolveCallback) => {
         // Defer to a microtask so callers in React lifecycle methods (e.g.

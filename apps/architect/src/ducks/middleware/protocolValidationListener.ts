@@ -8,10 +8,10 @@ import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { getCanonicalProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
-import { ensureError } from '~/utils/ensureError';
 import { enqueueProtocolValidationDialogEvent } from '~/utils/protocolValidationDialogQueue';
 
 import {

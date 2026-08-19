@@ -11,6 +11,8 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { buildFieldValidationProps } from '../forms/buildFieldValidationProps';
+import { authoredFieldLabel } from '../forms/buildVariableLabels';
+import { resolveRenderedControl } from '../forms/resolveRenderedControl';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { getNetwork, getStageSubject } from './session';
@@ -60,7 +62,15 @@ type FieldMetadata = Variable extends infer V
         component: ComponentType;
         parameters?: Record<string, unknown>;
         variable: string;
+        /** What the participant reads as this field's caption. */
         label: string;
+        /**
+         * The researcher-authored part of that caption, absent when nothing
+         * was authored and `label` fell back to the codebook variable's name.
+         * This — never `label` — is what may be repeated back to a participant
+         * away from the field itself, e.g. by a comparison validator.
+         */
+        authoredLabel?: string;
         hint?: string;
         showValidationHints?: boolean;
       }
@@ -76,40 +86,6 @@ const getCodebookEntry = (
   variables: Record<string, Variable>,
   variable: string,
 ): Variable | undefined => variables[variable];
-
-/**
- * The control a field actually renders with, given the one the protocol
- * authored (a NetworkComposer field's own choice, otherwise the codebook
- * variable's).
- *
- * A REQUIRED boolean never renders as a `Toggle`. A toggle is a
- * `role="switch"`, and ARIA gives a switch only `true`/`false` — there is no
- * "unset" — so an unanswered required boolean both looks and announces like a
- * definite "No" while `required` still refuses to let the participant
- * continue. The visible state, the stored value and the validation verdict
- * disagree, and the only way past it is to switch the control on and then off
- * again. `Boolean` asks the same two-valued question as a pair of radio cards
- * that genuinely start unselected, so every required boolean resolves to it
- * whatever the protocol authored.
- *
- * This is a rendering correction, not a protocol change: it applies to
- * protocols already in the field the moment they are loaded, with no schema
- * change, no migration and no revalidation. It also leaves the set of values
- * the question can produce exactly as it was — see `createFieldMetadata`,
- * which drops the codebook's boolean `options` for a swapped field so the
- * rendered choice stays the unconditional {Yes, No} a `Toggle` offers, and
- * nothing that reasons about a boolean's domain has to learn a new rule.
- */
-const resolveRenderedComponent = (
-  codebookEntry: Variable,
-  authoredComponent: ComponentType,
-): ComponentType => {
-  if (codebookEntry.type !== 'boolean') return authoredComponent;
-  if (authoredComponent !== 'Toggle') return authoredComponent;
-  return codebookEntry.validation?.required === true
-    ? 'Boolean'
-    : authoredComponent;
-};
 
 /**
  * Creates field metadata from form fields and codebook variables.
@@ -157,10 +133,14 @@ const createFieldMetadata = (
       authoredComponent !== undefined,
       'Missing component for form field',
     );
-    const component = resolveRenderedComponent(
-      codebookEntry,
-      authoredComponent,
-    );
+    const { component, optionsApply } = resolveRenderedControl({
+      type: codebookEntry.type,
+      component: authoredComponent,
+      // Not every variable variant carries a validation block (`layout` does
+      // not), and the resolver only ever reads `required`.
+      validation:
+        'validation' in codebookEntry ? codebookEntry.validation : undefined,
+    });
 
     const fieldParameters =
       'parameters' in field ? field.parameters : undefined;
@@ -168,28 +148,36 @@ const createFieldMetadata = (
       'parameters' in codebookEntry ? codebookEntry.parameters : undefined;
     const parameters = fieldParameters ?? codebookParameters;
 
-    // A required boolean swapped off `Toggle` renders `Boolean`'s own Yes/No
-    // pair rather than the codebook's `options`. A toggle never rendered those
-    // options — it is unconditionally two-valued — so carrying them into the
-    // swapped control would silently change the question: a variable whose
-    // options list only `{label: 'Yes', value: true}` would become a required
-    // question the participant can only answer one way. Dropping them keeps
-    // the rendered domain identical to the toggle's, which is what every other
-    // layer (protocol-validation's satisfiability analyser included) already
-    // assumes for a `Toggle`.
+    // `optionsApply` is false only for a control the resolver swapped, and it
+    // is the resolver — not this function — that decides what that costs the
+    // codebook's options.
+    // The `type` test is redundant at runtime — only a boolean is ever swapped
+    // — but it narrows the union so the spread below stays type-safe.
     const renderedEntry =
-      component === authoredComponent ||
+      optionsApply ||
       codebookEntry.type !== 'boolean' ||
       !('options' in codebookEntry)
         ? codebookEntry
         : { ...codebookEntry, options: undefined };
+
+    // The one rule for what this field is called. `authoredLabel` is the
+    // researcher's participant-facing caption, and it is what the
+    // variable-comparison validators may name this variable by; `label` adds
+    // the fallbacks a rendered control needs, which include the codebook
+    // variable's `name` — a researcher identifier that must not travel any
+    // further than the caption it is standing in for.
+    const authoredLabel = authoredFieldLabel({
+      label: fieldLabel,
+      prompt: fieldPrompt,
+    });
 
     return {
       ...renderedEntry,
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      label: fieldLabel ?? fieldPrompt ?? codebookEntry.name ?? variable,
+      label: authoredLabel ?? codebookEntry.name ?? variable,
+      authoredLabel,
       hint,
       showValidationHints,
     };

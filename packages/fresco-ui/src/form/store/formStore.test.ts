@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import type { FieldValue } from '../Field/types';
-import { createFormStore, type FormStore } from '../store/formStore';
+import {
+  createFormStore,
+  type FormStore,
+  selectIsFormDirty,
+} from '../store/formStore';
 import type { FieldConfig, FieldState, FormConfig } from '../store/types';
 import { validateFieldValue } from '../validation/helpers';
 
@@ -254,6 +258,67 @@ describe('FormStore', () => {
 
       // Now form should be valid (only field1 remains and it's valid)
       expect(store.getState().isValid).toBe(true);
+    });
+  });
+
+  /**
+   * The live answer to "does this form hold unsaved work?", which every guard
+   * that could destroy that work has to consult — Architect's nested-editor
+   * discard confirmation, its cross-tab lock. Deliberately NOT the `isDirty`
+   * flag beside it: that one is sticky, and each of these cases is a way the
+   * two disagree.
+   */
+  describe('selectIsFormDirty', () => {
+    it('is false for a form nothing has been typed into', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    it('is true once a field differs from what it registered with', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+
+      expect(selectIsFormDirty(store.getState())).toBe(true);
+    });
+
+    // The whole reason for a live comparison. The sticky flag stays true here,
+    // which is how a form the researcher had already put back by hand ended up
+    // being guarded as unsaved work.
+    it('returns to false when an edit is typed back to where it started', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+      store.getState().setFieldValue('email', 'a@b.c');
+
+      expect(store.getState().isDirty).toBe(true);
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    // A field registered without an initial value holds `undefined`; clearing
+    // it after typing leaves `''`. Same state to the person editing.
+    it.each([
+      ['', undefined],
+      [undefined, ''],
+      [[], undefined],
+    ])('treats %o and %o as the same emptiness', (value, initialValue) => {
+      store.getState().registerField({
+        name: 'field',
+        initialValue: initialValue as FieldValue,
+      });
+      store.getState().setFieldValue('field', value as FieldValue);
+
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    // A field that unmounts parks its value in `dormantValues`; an edit made
+    // before it unmounted is still an unsaved edit.
+    it('counts an edit parked by a field that has since unmounted', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+      store.getState().unregisterField('email');
+
+      expect(store.getState().fields.has('email')).toBe(false);
+      expect(selectIsFormDirty(store.getState())).toBe(true);
     });
   });
 

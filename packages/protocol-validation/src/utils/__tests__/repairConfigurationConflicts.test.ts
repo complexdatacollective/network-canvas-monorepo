@@ -301,6 +301,103 @@ describe('repairConfigurationConflicts', () => {
     ]);
   });
 
+  // The generated name has to dodge EVERY surviving row, not only the ones
+  // already walked past. Seeding the taken set as the walk went renamed this
+  // row onto row 3's existing label, so the repaired protocol still failed the
+  // duplicate-label rule and Architect looped the researcher back to the same
+  // offer.
+  it('does not rename a disease onto a label a later row already holds', async () => {
+    const result = await expectRepairsToValidate(
+      protocolWith([
+        familyPedigree(),
+        narrativePedigree([
+          disease('d1', 'Asthma', 'hasConditionX'),
+          disease('d2', 'Asthma', 'hadTesting', 'node-color-seq-2'),
+          disease('d3', 'Asthma (2)', 'hasAsthma', 'node-color-seq-3'),
+        ]),
+      ]),
+    );
+    const stage = (result.protocol as { stages: Stage[] }).stages[1] as {
+      diseases: { id: string; label: string }[];
+    };
+    expect(stage.diseases.map((row) => [row.id, row.label])).toEqual([
+      ['d1', 'Asthma'],
+      ['d2', 'Asthma (3)'],
+      ['d3', 'Asthma (2)'],
+    ]);
+    expect(result.problems[0]?.repair).toContain('Asthma (3)');
+  });
+
+  // A row leaving the list cannot make the row that stays a duplicate of
+  // anything. Renaming it produced a legend reading "Cancer (2)" with no
+  // "Cancer" anywhere, and a repair sentence describing a rename nothing
+  // required.
+  it('leaves a disease alone when the row it duplicated is being removed', async () => {
+    const result = await expectRepairsToValidate(
+      protocolWith([
+        familyPedigree(),
+        narrativePedigree([
+          disease('d1', 'Cancer', 'isEgo'),
+          disease('d2', 'Cancer', 'hadTesting', 'node-color-seq-2'),
+        ]),
+      ]),
+    );
+    const stage = (result.protocol as { stages: Stage[] }).stages[1] as {
+      diseases: { id: string; label: string }[];
+    };
+    expect(stage.diseases.map((row) => [row.id, row.label])).toEqual([
+      ['d2', 'Cancer'],
+    ]);
+    expect(result.problems).toHaveLength(1);
+    expect(result.problems[0]?.repair).toBe(
+      'The conflicting disease will be removed.',
+    );
+  });
+
+  // Only the highlight binding conflicts, so only it is removed. Dropping the
+  // whole prompt would take its text, its layout variable and its edge
+  // settings — and on a single-prompt Sociogram it cannot be dropped at all,
+  // which used to refuse the protocol outright.
+  it('removes only the offending highlight setting from a Sociogram prompt', async () => {
+    const result = await expectRepairsToValidate(
+      protocolWith([
+        familyPedigree(),
+        {
+          id: 'sg1',
+          label: 'Map your family',
+          type: 'Sociogram',
+          subject: { entity: 'node', type: 'family_member' },
+          background: { concentricCircles: 4 },
+          prompts: [
+            {
+              id: 'p1',
+              text: 'Place your family',
+              layout: { layoutVariable: 'fmLayout' },
+              highlight: { allowHighlighting: true, variable: 'isEgo' },
+            },
+          ],
+        },
+      ]),
+    );
+    expect(result.problems).toEqual([
+      {
+        problem:
+          '"is_ego" is set by the Family Pedigree interface, which marks the participant, but something else in this protocol also writes to it.',
+        repair: 'The conflicting tap-to-highlight setting will be removed.',
+      },
+    ]);
+    const stage = (result.protocol as { stages: Stage[] }).stages[1] as {
+      prompts: Record<string, unknown>[];
+    };
+    expect(stage.prompts).toEqual([
+      {
+        id: 'p1',
+        text: 'Place your family',
+        layout: { layoutVariable: 'fmLayout' },
+      },
+    ]);
+  });
+
   // The editors render interface-owned options read-only, so a protocol whose
   // options already drifted has no other way back.
   it('restores an interface-owned option set that was edited away', async () => {

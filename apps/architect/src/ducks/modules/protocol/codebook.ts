@@ -17,6 +17,7 @@ import {
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
+import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import prune from '~/utils/prune';
@@ -313,18 +314,50 @@ export const deleteVariableAsync = createAppAsyncThunk(
   },
 );
 
+/**
+ * Whether the protocol references this entity type anywhere — the same indexes
+ * the Codebook's "used in" tags are built from (`makeGetEntityWithUsage`), read
+ * again here at the moment of the write.
+ *
+ * Asked twice on purpose: a row's `inUse` prop is a render-time snapshot, so a
+ * Delete control can be live while the store has already moved on (the same
+ * gap #1392 was filed for on variables). `ego` has no types to delete.
+ */
+const getEntityTypeIsUsed = (
+  state: RootState,
+  entity: Entity,
+  type: string,
+): boolean => {
+  if (entity === 'ego') return false;
+  const typeIndex =
+    entity === 'node' ? getNodeIndex(state) : getEdgeIndex(state);
+  return utils.buildSearch([typeIndex]).has(type);
+};
+
 export const deleteTypeAsync = createAppAsyncThunk(
   'codebook/deleteTypeAsync',
   async (
     { entity, type }: { entity: Entity; type: string },
     { dispatch, getState },
   ) => {
+    const state = getState();
+
+    // REJECT rather than resolve, exactly as `deleteVariableAsync` does and for
+    // the same reason: a resolved thunk reads as success to every caller —
+    // `useDialog().confirm` closes its dialog and reports done — so the
+    // researcher was told a type had been deleted while it was still there
+    // (#1392, which fixed the variable path and left this one). The message is
+    // researcher-facing: it is rendered verbatim in the confirm dialog's error
+    // paragraph.
+    if (getEntityTypeIsUsed(state, entity, type)) {
+      throw new Error(
+        'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
+      );
+    }
+
     const payload: DeleteTypePayload = { entity, type };
     dispatch(
-      routeCodebookAction(
-        codebookSlice.actions.deleteType(payload),
-        getState(),
-      ),
+      routeCodebookAction(codebookSlice.actions.deleteType(payload), state),
     );
   },
 );

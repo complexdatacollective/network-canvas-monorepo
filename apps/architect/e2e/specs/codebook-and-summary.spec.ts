@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
-import { makeCapture } from '../helpers/visual.js';
+import { assertBaselinesCommitted, makeCapture } from '../helpers/visual.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
 // The summary cover prints "Document Created: <now>" from `new Date()` at
@@ -12,10 +12,26 @@ import { Toolbar } from '../pageobjects/toolbar.js';
 // asynchronous validation and persistence continue normally.
 const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 
+/**
+ * The printed document's own page structure. `SummaryPage.tsx` stamps
+ * `page-break-marker` on every element that begins a printed page — the cover,
+ * the contents, each stage, each codebook entity, and the resource library —
+ * so this is the document telling us where its sections are, not a selector
+ * guessing.
+ */
+const SECTION = '.page-break-marker';
+
+/** A baseline filename from a section's own identity. */
+const sectionSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 test(
   'renders the printable summary under print media',
   { tag: '@visual' },
-  async ({ architectPage, seed }) => {
+  async ({ architectPage, seed }, testInfo) => {
     const { protocol, assets } = loadAllInterfacesFixture();
     await seed(protocol, { name: 'All Interfaces', assets });
     await architectPage.clock.setFixedTime(FIXED_CLOCK);
@@ -29,7 +45,50 @@ test(
       architectPage.locator('#asset-roster_data').getByText('Attributes'),
     ).toBeVisible();
     await architectPage.emulateMedia({ media: 'print' });
-    await capture('summary-print', { fullPage: true });
+
+    // Captured PER SECTION rather than as one full-page image. The single
+    // baseline this replaces was 1280x20190: locating a change in it needed a
+    // row-diff script, and the commit that last adopted it recorded that its
+    // author could not find what had changed. Split, a failure names the
+    // section in the filename that failed, and each image is a page or two of
+    // reviewable document.
+    const sections = architectPage.locator(SECTION);
+
+    // Non-vacuity, asserted before anything is captured: this test's entire
+    // coverage is a loop over `sections`, so an empty or shortened list would
+    // otherwise pass having captured nothing. The count is derived from the
+    // fixture rather than hard-coded, so it tracks the protocol.
+    const entityCount =
+      (protocol.codebook.ego ? 1 : 0) +
+      Object.keys(protocol.codebook.node ?? {}).length +
+      Object.keys(protocol.codebook.edge ?? {}).length;
+    // cover + contents + one per stage + one per codebook entity + resources
+    const expectedSections = 2 + protocol.stages.length + entityCount + 1;
+    await expect(sections).toHaveCount(expectedSections);
+
+    // Each section names its own baseline: an `id` where the document has one
+    // (`stage-…`, `ego`, `entity-…`), otherwise its heading.
+    const names = await sections.evaluateAll((elements) =>
+      elements.map(
+        (element) =>
+          element.id ||
+          element.querySelector('h1, h2')?.textContent?.trim() ||
+          '',
+      ),
+    );
+    expect(names.filter((name) => name === '')).toEqual([]);
+    expect(new Set(names).size).toBe(names.length);
+
+    const baselines = names.map((name) => `summary-${sectionSlug(name)}`);
+    // One actionable failure instead of one opaque "a snapshot doesn't exist"
+    // per section. Derived from `names`, so it checks the exact set the loop
+    // below is about to capture and a partial deletion fails too. See
+    // assertBaselinesCommitted for why this is not a skip.
+    assertBaselinesCommitted(testInfo, baselines);
+
+    for (const [index, name] of baselines.entries()) {
+      await capture(name, { locator: sections.nth(index) });
+    }
   },
 );
 
@@ -80,7 +139,11 @@ test('fires window.print with a pdf-styled document title', async ({
 test(
   'renders the codebook with entity types and variables',
   { tag: '@visual' },
-  async ({ architectPage, seed }) => {
+  async ({ architectPage, seed }, testInfo) => {
+    // Same pre-flight as the summary test, so "the baseline is missing" is
+    // answered the same way wherever it happens. Inert while it exists.
+    const baseline = 'codebook';
+    assertBaselinesCommitted(testInfo, [baseline]);
     const { protocol, assets } = loadAllInterfacesFixture();
     await seed(protocol, { name: 'All Interfaces', assets });
     await architectPage.clock.setFixedTime(FIXED_CLOCK);
@@ -107,7 +170,7 @@ test(
     ).toBeVisible();
 
     const capture = makeCapture(architectPage);
-    await capture('codebook');
+    await capture(baseline);
   },
 );
 
@@ -160,7 +223,7 @@ test('lists roster data-source references in Used In', async ({
 // through several sites must still be named once — the fixture's roster names
 // `age` in cardOptions, sortOptions.sortOrder, sortOptions.sortableProperties
 // AND searchOptions, which is four references to one stage. This guards the
-// committed summary-print.png baseline as much as the page.
+// committed per-section `summary-*.png` baselines as much as the page.
 test('names each stage once in the printable summary Used In column', async ({
   architectPage,
   seed,

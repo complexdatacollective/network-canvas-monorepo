@@ -12,6 +12,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { normalizeForComparison } from '@codaco/shared-consts';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { useNestedDraftDialog } from '~/components/DialogForm/useNestedDraftDialog';
@@ -20,6 +21,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import { getProtocolLockState } from '~/ducks/modules/app';
 import { getAssetManifest } from '~/selectors/protocol';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
 
@@ -35,19 +37,10 @@ const DUPLICATE_NAME_MESSAGE =
 // file — exactly this refusal; this path was rewritten by #1394 from a base
 // that predated it and never gained one, so a tab that cannot save was still
 // told "API key X created and selected." before the key was discarded on
-// reclaim. Whole sentences per situation rather than one assembled from
-// clauses: what is true of the researcher's protocol, and the way out of it,
-// differ in each, and each has to be localisable on its own.
-const NOT_OWNED_ELSEWHERE_MESSAGE =
-  'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.';
-// A reclaim is blocked by whatever unsaved work stands in its way, and by the
-// time this is reached BOTH of this form's fields hold something — so this form
-// is itself one of the things it is waiting on (see `useNestedDraftDialog`
-// below). Pointing at the stage's unsaved changes instead, as this used to
-// while the form was invisible to the registry, sends the researcher to answer
-// a question that is not being asked and may not exist.
-const NOT_OWNED_RECLAIM_BLOCKED_MESSAGE =
-  'The other tab has closed, so the saved copy of this protocol has to be read back into this tab before anything can be saved here, and this form is holding that up. Cancel it to let the protocol be read back, then create the key again.';
+// reclaim. The wording itself comes from `protocolLockMessages`, which is the
+// only place any lock refusal is phrased — this surface used to hand-roll its
+// own pair of sentences, which is exactly the drift that module exists to
+// prevent.
 
 /**
  * What leaving this dialog with a key actually did, so the caller can say so
@@ -146,12 +139,17 @@ const APIKeyBrowserBody = ({
       if (!name) fieldErrors.keyName = [NAME_REQUIRED_MESSAGE];
       if (!value) fieldErrors.keyValue = [VALUE_REQUIRED_MESSAGE];
 
+      // `normalizeForComparison`, the one question every uniqueness check in
+      // Architect asks: case-insensitive AND Unicode-canonical. Comparing raw
+      // case here let two spellings of the same key name through, and the
+      // researcher has no way to tell the resulting cards apart.
+      const normalizedName = normalizeForComparison(name);
       const isDuplicateName = Object.values(
         getAssetManifest(store.getState()),
       ).some(
         (asset) =>
           asset.type === 'apikey' &&
-          asset.name.trim().toLowerCase() === name.toLowerCase(),
+          normalizeForComparison(asset.name.trim()) === normalizedName,
       );
       if (name && isDuplicateName) {
         fieldErrors.keyName = [DUPLICATE_NAME_MESSAGE];
@@ -167,18 +165,12 @@ const APIKeyBrowserBody = ({
       // dialog actually renders and `focusFirstError` can reach — a form-level
       // error would be refused in silence here, which is the defect, not the
       // fix.
-      const lockState = getProtocolLockState(store.getState());
-      if (lockState !== 'owned') {
-        return {
-          success: false,
-          fieldErrors: {
-            keyName: [
-              lockState === 'reclaim-blocked'
-                ? NOT_OWNED_RECLAIM_BLOCKED_MESSAGE
-                : NOT_OWNED_ELSEWHERE_MESSAGE,
-            ],
-          },
-        };
+      const refusal = refusedCommitMessage(
+        getProtocolLockState(store.getState()),
+        'api-key',
+      );
+      if (refusal) {
+        return { success: false, fieldErrors: { keyName: [refusal] } };
       }
 
       const action = addApiKeyAsset(name, value);

@@ -1,5 +1,5 @@
 ---
-'@codaco/protocol-validation': patch
+'@codaco/protocol-validation': major
 '@codaco/architect': patch
 '@codaco/interviewer': patch
 ---

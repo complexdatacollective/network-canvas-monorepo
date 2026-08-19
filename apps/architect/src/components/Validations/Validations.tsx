@@ -16,7 +16,6 @@ import ArchitectField from '../Form/ArchitectField';
 import {
   findDraftContradictions,
   findLegalReferenceTargets,
-  floorIssue,
 } from './contradictions';
 import {
   getGroupedValidationsForVariableType,
@@ -27,6 +26,7 @@ import {
 } from './options';
 import {
   completeRuleValues,
+  floorIssue,
   formatCommitted,
   incompleteRuleIssue,
   isRuleValueComplete,

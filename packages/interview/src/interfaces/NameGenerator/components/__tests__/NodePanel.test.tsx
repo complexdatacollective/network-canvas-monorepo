@@ -93,10 +93,26 @@ describe('NodePanel external-data status handling', () => {
     vi.clearAllMocks();
   });
 
+  // The first frame of every external panel, before the effect that reads the
+  // asset has run. Rendering the (empty) list here shows the participant a
+  // panel with nothing in it, which is a claim about the researcher's data
+  // made before any of it has been looked at.
+  it('renders a loading indicator before the read has started', () => {
+    externalDataMock.mockReturnValue({
+      externalData: null,
+      status: { state: 'idle' },
+    });
+
+    renderPanel();
+
+    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.queryByTestId('node-list')).toBeNull();
+  });
+
   it('renders a loading indicator while external data is loading', () => {
     externalDataMock.mockReturnValue({
       externalData: null,
-      status: { isLoading: true, error: null },
+      status: { state: 'loading' },
     });
 
     renderPanel();
@@ -108,7 +124,7 @@ describe('NodePanel external-data status handling', () => {
   it('renders an error message when external data fails to load', () => {
     externalDataMock.mockReturnValue({
       externalData: null,
-      status: { isLoading: false, error: new Error('Unknown asset id: xyz') },
+      status: { state: 'error', error: new Error('Unknown asset id: xyz') },
     });
 
     renderPanel();
@@ -123,7 +139,7 @@ describe('NodePanel external-data status handling', () => {
     const rows = [makeNode('a'), makeNode('b')];
     externalDataMock.mockReturnValue({
       externalData: rows,
-      status: { isLoading: false, error: null },
+      status: { state: 'ready' },
     });
     panelNodesSelector.mockReturnValue(rows);
 
@@ -142,7 +158,7 @@ describe('NodePanel node limit enforcement', () => {
   beforeEach(() => {
     externalDataMock.mockReturnValue({
       externalData: rows,
-      status: { isLoading: false, error: null },
+      status: { state: 'ready' },
     });
     panelNodesSelector.mockReturnValue(rows);
   });

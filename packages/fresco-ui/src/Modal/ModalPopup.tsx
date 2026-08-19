@@ -11,10 +11,13 @@ import { type ComponentProps, useEffect, useId, useRef } from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
 import {
+  asFinalFocusTarget,
+  isUsableFinalFocusTarget,
   normaliseFinalFocus,
   type FinalFocusCloseType,
   type FinalFocusResult,
 } from '../utils/finalFocus';
+import { useModalOpener } from './ModalOpener';
 
 /**
  * Makes the opacity property required in TargetAndTransition.
@@ -72,7 +75,9 @@ type ModalPopupProps = BaseModalPopupProps &
  * manager. They used to be spread onto the `motion.div` render target with the
  * rest of `props`, which put them on a DOM element instead of on the focus
  * manager — so no dialog in the app could declare a focus-return target, and
- * every close fell back to Base UI's last resort.
+ * every close fell back to Base UI's last resort. When `finalFocus` names
+ * nothing usable, focus returns to the control the enclosing `Modal`
+ * remembered as its opener; see `useModalOpener`.
  * @param props Animation props or layoutId, along with other Dialog.Popup props.
  */
 export default function ModalPopup({
@@ -89,6 +94,7 @@ export default function ModalPopup({
   const usesDeclarativeAnimation = hasLayoutId || hasCustomAnimation;
 
   const id = useId();
+  const openerRef = useModalOpener();
 
   // Determine animation: layoutId gets minimal opacity so that base-ui detects it,
   // custom props used as-is, otherwise default
@@ -196,17 +202,31 @@ export default function ModalPopup({
     const heldByThePage = !active?.closest?.('[data-base-ui-portal]');
 
     const focusHeldElsewhere =
-      active instanceof HTMLElement &&
-      active !== ownerDocument.body &&
-      active !== ownerDocument.documentElement &&
-      active.isConnected &&
+      asFinalFocusTarget(active) !== null &&
       (heldByAnotherDialog || heldByThePage);
 
     if (focusHeldElsewhere) return false;
 
-    // `null` asks Base UI for its own default, which is the behaviour a popup
-    // that declares nothing has always had.
-    return normaliseFinalFocus(finalFocus, closeType);
+    const declared = normaliseFinalFocus(finalFocus, closeType);
+    // `true`/`false` are instructions, not targets, so they pass straight
+    // through.
+    if (typeof declared === 'boolean') return declared;
+    // A named element only wins if it can still be focused. The caller's target
+    // is usually the control that opened the popup, and a confirmed destructive
+    // action removes exactly that. An explicit target bypasses Base UI's own
+    // connectivity check, so handing over a detached node leaves focus on
+    // `<body>`: worse than falling through to the remembered opener (or to Base
+    // UI's own default).
+    if (declared !== null && isUsableFinalFocusTarget(declared)) {
+      return declared;
+    }
+
+    // `null` from the caller means "no opinion", which is where the opener
+    // remembered by the enclosing `Modal` comes in. Answering `null` in turn
+    // asks Base UI for its own default, which is the behaviour a popup with no
+    // opinion and no remembered opener has always had.
+    const opener = openerRef?.current;
+    return isUsableFinalFocusTarget(opener) ? opener : null;
   };
 
   const popup = (

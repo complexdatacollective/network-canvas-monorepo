@@ -82,7 +82,7 @@ const seed = (): CountState => ({ count: 0 });
  * answer: a reducer that REBUILDS its state rather than mutating a draft
  * returns a new object every time, whether or not it changed anything.
  * `activeProtocol/updateProtocolName` (`{ ...state, name }`), every `codebook`
- * writer, and `stages/deletePrompt` are all this shape.
+ * writer, and `stages/deleteStage` are all this shape.
  */
 const rebuildingSlice = createSlice({
   name: 'rebuilding',

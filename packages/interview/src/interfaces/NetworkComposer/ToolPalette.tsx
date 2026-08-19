@@ -252,17 +252,12 @@ export default function ToolPalette({
           aria-label="Undo"
           icon={<UndoIcon />}
           disabled={!canUndo}
-          // Undo can exhaust the history while it holds focus. Keep it in the
-          // toolbar's roving focus so activation does not drop focus to <body>.
-          focusableWhenDisabled
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
           aria-label="Redo"
           icon={<RedoIcon />}
           disabled={!canRedo}
-          // Redo has the same dynamic-disable focus contract as Undo.
-          focusableWhenDisabled
           onClick={() => void undoStore.getState().redo()}
         />
       </ToolbarGroup>

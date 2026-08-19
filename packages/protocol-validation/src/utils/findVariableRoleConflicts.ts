@@ -1,9 +1,9 @@
 import type { AttributeWriterUsage } from '../schemas/8/entity-attribute-reference.ts';
 import { collectEntityAttributeReferences } from './collectEntityAttributeReferences.ts';
 import {
-  recoverHitSubject,
   stageIndexOf,
   subjectVariableKey,
+  toReferenceSubject,
   variableNameFor,
   type ReferenceSubject,
 } from './referenceSubjects.ts';
@@ -47,7 +47,7 @@ export function collectVariableRoleHits(
 
   for (const hit of collectEntityAttributeReferences(protocolRecord)) {
     if (hit.usage === undefined) continue;
-    const subject = recoverHitSubject(protocolRecord, hit);
+    const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
     const key = subjectVariableKey(subject, hit.variableId);
     let group = groups.get(key);

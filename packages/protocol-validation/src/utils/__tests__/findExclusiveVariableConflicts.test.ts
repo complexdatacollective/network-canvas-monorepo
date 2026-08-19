@@ -74,6 +74,7 @@ const protocolWith = (stages: Stage[]) => ({
           },
           hasConditionX: { name: 'hasConditionX', type: 'boolean' },
           hadTesting: { name: 'hadTesting', type: 'boolean' },
+          fmLayout: { name: 'fmLayout', type: 'layout' },
         },
       },
     },
@@ -142,16 +143,28 @@ describe('findExclusiveVariableConflicts', () => {
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
 
-  // A disease mapping READS an affected flag; it does not write one. Only a
-  // second WRITER can contradict the interface, and forbidding reads would
-  // reject the very uses these values exist for.
-  it('does not report a read of an interface-derived variable', () => {
+  // A disease row DECLARES what a variable means — "who is affected by this" —
+  // so pointing one at the pedigree's own participant marker contradicts the
+  // interface exactly as a second writer would, and paints the participant as
+  // affected in every interview.
+  it('reports a disease mapped onto an interface-owned slot', () => {
     const protocol = protocolWith([
       familyPedigree(),
       narrativePedigree('isEgo'),
     ]);
-    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
+    const conflicts = findExclusiveVariableConflicts(protocol);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.path).toEqual([
+      'stages',
+      1,
+      'diseases',
+      0,
+      'variable',
+    ]);
+    expect(conflicts[0]?.owner.slot).toBe(
+      'familyPedigree.nodeConfig.egoVariable',
+    );
+    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
 
   it('does not report a skip-logic filter rule that tests an interface-derived variable', () => {
@@ -182,6 +195,63 @@ describe('findExclusiveVariableConflicts', () => {
       },
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
+  });
+
+  // A Sociogram prompt that sets `highlight.variable` without
+  // `allowHighlighting` colours nodes by a value it never writes — the same
+  // kind of read as grouping a narrative map by relationship. Rejecting it
+  // would forbid showing the participant their own node on a map of the family
+  // the pedigree built.
+  it('accepts a display-only sociogram highlight on an interface-owned variable', () => {
+    const protocol = protocolWith([
+      familyPedigree(),
+      {
+        id: 'sg1',
+        label: 'Map your family',
+        type: 'Sociogram',
+        subject: { entity: 'node', type: 'family_member' },
+        background: { concentricCircles: 4 },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Place your family',
+            layout: { layoutVariable: 'fmLayout' },
+            highlight: { allowHighlighting: false, variable: 'isEgo' },
+          },
+        ],
+      },
+    ]);
+    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
+    const result = ProtocolSchemaV8.safeParse(protocol);
+    expect(result.success ? null : result.error.issues).toBeNull();
+  });
+
+  // The same field IS a writer once the participant can tap it: highlighting
+  // would let them turn the pedigree's own participant marker on and off.
+  it('still reports a tap-to-highlight sociogram prompt on an interface-owned variable', () => {
+    const protocol = protocolWith([
+      familyPedigree(),
+      {
+        id: 'sg1',
+        label: 'Map your family',
+        type: 'Sociogram',
+        subject: { entity: 'node', type: 'family_member' },
+        background: { concentricCircles: 4 },
+        prompts: [
+          {
+            id: 'p1',
+            text: 'Place your family',
+            layout: { layoutVariable: 'fmLayout' },
+            highlight: { allowHighlighting: true, variable: 'isEgo' },
+          },
+        ],
+      },
+    ]);
+    const conflicts = findExclusiveVariableConflicts(protocol);
+    expect(conflicts.map((conflict) => conflict.path)).toEqual([
+      ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
+    ]);
+    expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(false);
   });
 
   it('reports a form field bound to an exclusive structural variable', () => {

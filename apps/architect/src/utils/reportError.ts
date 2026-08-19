@@ -1,5 +1,5 @@
+import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
-import { ensureError } from '~/utils/ensureError';
 
 /**
  * Central error-reporting entry point for Architect.

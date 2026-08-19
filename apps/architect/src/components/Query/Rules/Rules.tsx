@@ -1,14 +1,11 @@
-import { useCallback, useMemo, type ComponentType } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import PreviewRules, { type RuleTypeOption } from './PreviewRules';
-import RuleField from './RuleField';
+import PreviewRules from './PreviewRules';
+import type { RuleTypeOption } from './ruleCodebook';
 import type { Rule } from './validateRule';
-
-const FrescoRadioGroupField = RadioGroupField as ComponentType<
-  Record<string, unknown>
->;
 
 /**
  * The identity `Field` hands its control, forwarded to the rule builder's
@@ -62,6 +59,11 @@ const EGO_RULE: RuleTypeOption = {
   label: 'Ego - match one of the ego attributes.',
   value: 'ego',
 };
+
+const JOIN_OPTIONS = [
+  { label: 'All rules must match', value: 'AND' },
+  { label: 'Any rule can match', value: 'OR' },
+];
 
 const Rules = ({
   allowEdgeRules = true,
@@ -124,20 +126,27 @@ const Rules = ({
         ruleTypes={ruleTypes}
         addButtonLabel={addRuleLabel}
         onChange={updateRules}
+        join={join}
         hasError={!!ariaInvalid}
       />
 
       {rules.length > 1 && (
-        <RuleField
-          component={FrescoRadioGroupField}
+        /*
+          The whole rule set is ONE value of the surrounding form (see
+          `RuleSetFields`), so its parts are not registered fields — hence
+          `UnconnectedField` rather than `ArchitectField`. It carries no rules
+          of its own either: a missing join is reported by `ruleValidator` on
+          the rule set itself, and the same message shown twice is worse than
+          shown once.
+        */
+        <UnconnectedField
+          name="join"
+          component={RadioGroupField}
           label="Rule Matching"
           hint="When you have multiple rules, how should matching work?"
-          options={[
-            { label: 'All rules must match', value: 'AND' },
-            { label: 'Any rule can match', value: 'OR' },
-          ]}
+          options={JOIN_OPTIONS}
           value={join}
-          onChange={(_event, value) => {
+          onChange={(value) => {
             if (typeof value === 'string') updateJoin(value);
           }}
         />

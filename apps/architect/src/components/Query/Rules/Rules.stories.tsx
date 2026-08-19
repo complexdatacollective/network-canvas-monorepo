@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useId, useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -293,7 +293,7 @@ const RuleFieldStory = ({ rules = [], join, ...props }: RulesOuterProps) => {
 };
 
 const meta = {
-  title: 'Components/Form/RuleField',
+  title: 'Components/Form/Rules',
   component: Rules,
   tags: ['autodocs'],
   parameters: {
@@ -301,16 +301,19 @@ const meta = {
     docs: {
       description: {
         component: `
-The Rule Field is Architect's editable list for skip-logic and network-filter
+The rule builder is Architect's editable list for skip-logic and network-filter
 rules. Each row presents a complete rule sentence with separate edit and delete
 actions; the shared ArrayField pattern owns adding, focus return, deletion and
-empty state behavior.
+empty state behavior, and the editor dialog is an ordinary Architect form.
 
 The **All rule types** story is an exhaustive visual inventory: it covers node
 and edge presence rules, node/edge/ego attribute rules, every attribute type,
 every operator the rule editor exposes, and multi-value categorical operands.
 The story remains fully interactive inside a keyboard-accessible scroll area,
 so each example can be edited, removed, or supplemented with a new rule.
+
+The **Authoring a rule** story drives the editor itself, in a real browser with
+the real dialog and form store behind it.
 `,
       },
     },
@@ -349,17 +352,74 @@ export const AllRuleTypes: Story = {
       canvas.getByRole('button', { name: 'Add new skip logic rule' }),
     ).toBeVisible();
 
-    const multiValueRule = canvas
-      .getByRole('button', {
+    const multiValueRule = canvas.getAllByRole('listitem').find((item) =>
+      within(item).queryByRole('button', {
         name: /^Edit rule: Ego has categorical attribute Selected groups that includes Family,/,
-      })
-      .closest('li');
+      }),
+    );
+
+    await expect(multiValueRule).toBeDefined();
     const values = multiValueRule?.querySelectorAll('[data-rule-part="value"]');
 
     await expect(values).toHaveLength(2);
     await expect(values?.[0]).toHaveTextContent('Family');
     await expect(values?.[1]).toHaveTextContent(
       'No. I decline to participate, and wish to immediately withdraw from this study.',
+    );
+  },
+};
+
+/**
+ * The editor is a form like every other Architect editor: it refuses an
+ * incomplete rule by naming the control that is missing — including one the
+ * researcher has never touched, which is the whole point of `required` — and
+ * commits exactly the rule the row then reads back.
+ */
+export const AuthoringARule: Story = {
+  args: { rules: [], join: undefined },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The dialog is portalled out of the story's own subtree.
+    const page = within(document.body);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Add new skip logic rule' }),
+    );
+    const dialog = await page.findByRole('dialog', {
+      name: 'Construct a Rule',
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Finish and Close' }),
+    );
+    await expect(
+      await within(dialog).findByText('This field is required.'),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(dialog).getByRole('radio', { name: /^Ego -/ }),
+    );
+    await userEvent.selectOptions(
+      await within(dialog).findByRole('combobox', { name: /Ego attribute/ }),
+      'consent',
+    );
+    await userEvent.selectOptions(
+      await within(dialog).findByRole('combobox', { name: /^Operator/ }),
+      'EXACTLY',
+    );
+    await userEvent.click(
+      await within(dialog).findByRole('radio', { name: 'Yes' }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Finish and Close' }),
+    );
+
+    await waitFor(async () =>
+      expect(
+        await canvas.findByRole('button', {
+          name: 'Edit rule: Ego has boolean attribute Consent given that is exactly equal to true',
+        }),
+      ).toBeVisible(),
     );
   },
 };

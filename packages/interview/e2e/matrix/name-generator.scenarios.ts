@@ -370,7 +370,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         stage.addPrompt({ text: 'Tell us about this person.' });
         return synth;
       },
-      run: async ({ page, stage, protocol, interview }) => {
+      run: async ({ stage, protocol, interview }) => {
         await stage.nameGenerator.openAddForm();
 
         await stage.form.fillText('v-text', 'Hello there');
@@ -379,18 +379,18 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         await stage.form.selectRadio('v-radio', 'Agree');
 
         // CheckboxGroup with 7 options renders every option (columns layout).
-        const checkField = page.locator('[data-field-name="v-check"]');
+        const checkField = stage.form.field('v-check');
         await expect(checkField.getByRole('checkbox')).toHaveCount(7);
         await stage.form.selectCheckbox('v-check', 'Family');
 
         // Boolean renders Yes/No as radios.
-        await page
-          .locator('[data-field-name="v-bool"]')
+        await stage.form
+          .field('v-bool')
           .getByRole('radio', { name: 'Yes' })
           .click();
 
         // VisualAnalogScale parameters render as min/max labels.
-        const vasField = page.locator('[data-field-name="v-vas"]');
+        const vasField = stage.form.field('v-vas');
         await expect(vasField.getByText('Not at all')).toBeVisible();
         await expect(vasField.getByText('Extremely')).toBeVisible();
         const slider = vasField.getByRole('slider');
@@ -400,10 +400,8 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         }
 
         // Parameter-bearing datetime pickers render their field containers.
-        await expect(page.locator('[data-field-name="v-date"]')).toBeVisible();
-        await expect(
-          page.locator('[data-field-name="v-reldate"]'),
-        ).toBeVisible();
+        await expect(stage.form.field('v-date')).toBeVisible();
+        await expect(stage.form.field('v-reldate')).toBeVisible();
 
         await stage.nameGenerator.submitForm();
 

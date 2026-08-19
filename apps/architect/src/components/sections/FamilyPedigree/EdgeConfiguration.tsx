@@ -5,18 +5,18 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   FAMILY_PEDIGREE_SLOTS,
-  type VariableOptions,
+  INTERFACE_OWNED_OPTION_SETS,
+  optionsMatchInterfaceOwnedSet,
 } from '@codaco/protocol-validation';
-import {
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
-import type { Entity } from '~/components/NewVariableWindow';
+import type {
+  Entity,
+  LockedVariableOptions,
+} from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
@@ -29,10 +29,6 @@ import {
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
-import {
-  crossClassPickIssue,
-  validatedElsewhereMessage,
-} from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/store';
 import {
   EMPTY_VARIABLES,
@@ -42,14 +38,12 @@ import {
 import {
   getExclusiveVariableSlotMap,
   getVariableRoleMap,
-  roleMapKey,
 } from '~/selectors/indexes';
+
 import {
-  excludeInterfaceOwned,
-  excludeValidatedUses,
-  interfaceOwnedPickIssue,
-} from '~/selectors/roleFilters';
-import { optionsMatch } from '~/utils/variables';
+  makeSlotCrossClassValidator,
+  selectSlotPickerOptions,
+} from './slotWiring';
 
 const edgeEntity: Entity = 'edge';
 
@@ -63,9 +57,6 @@ const EDGE_DEPENDENT_VARIABLE_FIELDS = [
   'edgeConfig.gameteRoleVariable',
 ];
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 type VariableWindowInitialProps = {
   entity: Entity;
   type: string;
@@ -73,7 +64,7 @@ type VariableWindowInitialProps = {
     name: string;
     type: string;
   };
-  lockedOptions: VariableOptions | null;
+  lockedOptions: LockedVariableOptions | null;
 };
 
 type VariableRowProps = {
@@ -211,46 +202,27 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     'edgeConfig.gameteRoleVariable',
   );
   // Save-time cross-class gate for an edgeConfig slot (an UNVALIDATED
-  // writer): rejects a pick a form elsewhere in the saved document already
-  // collects, escaping the slot's own committed value so a pre-existing
-  // conflict (e.g. an imported protocol) stays saveable — the timeline alert
-  // handles it non-destructively. Unlike NodeConfiguration's slots there is
-  // no intra-draft sibling to check: FamilyPedigree has no validated writer
-  // on its edge type.
+  // writer). Unlike NodeConfiguration's slots there is no intra-draft sibling
+  // to check: FamilyPedigree has no validated writer on its edge type.
   const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
-  const makeSlotValidator =
-    (slotField: keyof typeof FAMILY_PEDIGREE_SLOTS) =>
-    (value: unknown): string | undefined => {
-      if (!edgeVariablesSubject) return undefined;
-      const variableId = typeof value === 'string' ? value : '';
-      if (!variableId) return undefined;
-      const committedRaw: unknown = isRecord(committedEdgeConfig)
-        ? committedEdgeConfig[slotField]
-        : undefined;
-      const committed = typeof committedRaw === 'string' ? committedRaw : '';
-      if (variableId === committed) return undefined;
-      // A variable a DIFFERENT interface slot owns outright: the picker drops
-      // it, so this only catches a stale draft or an imported protocol.
-      const ownedIssue = interfaceOwnedPickIssue(
-        exclusiveSlotMap,
-        edgeVariablesSubject,
-        variableId,
-        FAMILY_PEDIGREE_SLOTS[slotField],
-      );
-      if (ownedIssue) return ownedIssue;
-      return crossClassPickIssue({
-        variableId,
-        originalVariableId: committed,
-        hasConflictingUse: (id) =>
-          (roleMap[roleMapKey(edgeVariablesSubject, id)]?.validated ?? 0) > 0,
-        allVariables,
-        message: validatedElsewhereMessage,
-      });
-    };
+  const makeSlotValidator = (slotField: keyof typeof FAMILY_PEDIGREE_SLOTS) =>
+    makeSlotCrossClassValidator({
+      subject: edgeVariablesSubject,
+      committedConfig: committedEdgeConfig,
+      committedKey: slotField,
+      ownSlot: FAMILY_PEDIGREE_SLOTS[slotField],
+      exclusiveSlotMap,
+      roleMap,
+      allVariables,
+      writerClass: 'unvalidated',
+    });
   const relationshipTypeCompatible = edgeVariableOptions.filter(
     (v) =>
       v.type === 'categorical' &&
-      optionsMatch(v.options, RELATIONSHIP_TYPE_OPTIONS),
+      optionsMatchInterfaceOwnedSet(
+        v.options,
+        INTERFACE_OWNED_OPTION_SETS.relationshipType.options,
+      ),
   );
   const booleanEdgeVariables = edgeVariableOptions.filter(
     (v) => v.type === 'boolean',
@@ -259,80 +231,56 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
   // gamete-role set may be bound: the interview writes these exact values
   // (egg/sperm) onto genetic parent edges, so an existing categorical variable
   // with a different value set would silently break inheritance tracing.
-  // Mirrors the relationship-type picker above.
+  // Mirrors the relationship-type picker above, and asks the question with the
+  // protocol schema's OWN comparison so the picker cannot offer a variable the
+  // validator then rejects.
   const gameteRoleCompatible = edgeVariableOptions.filter(
     (v) =>
-      v.type === 'categorical' && optionsMatch(v.options, GAMETE_ROLE_OPTIONS),
+      v.type === 'categorical' &&
+      optionsMatchInterfaceOwnedSet(
+        v.options,
+        INTERFACE_OWNED_OPTION_SETS.gameteRole.options,
+      ),
   );
-  // Each slot is an UNVALIDATED writer: drop options a form elsewhere already
-  // validates, keeping the slot's own current pick offered (the usual
-  // currentValue escape). Per-slot pools because two slots share a type pool
-  // but each escapes only its own value. Each additionally drops a variable a
-  // DIFFERENT interface slot owns, passing its own slot so a second Family
-  // Pedigree over the same edge type may still share it.
+  // Each slot is an UNVALIDATED writer. Per-slot pools because two slots share
+  // a type pool but each escapes only its own value, and each passes its own
+  // slot so a second Family Pedigree over the same edge type may still share
+  // the variable.
   const relationshipTypeVariableOptions = useSelector((state: RootState) =>
-    edgeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          edgeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            edgeVariablesSubject,
-            relationshipTypeCompatible,
-            relationshipTypeDraft,
-          ),
-          relationshipTypeDraft,
-          FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: edgeVariablesSubject,
+      options: relationshipTypeCompatible,
+      currentValue: relationshipTypeDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const isActiveVariableOptions = useSelector((state: RootState) =>
-    edgeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          edgeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            edgeVariablesSubject,
-            booleanEdgeVariables,
-            isActiveDraft,
-          ),
-          isActiveDraft,
-          FAMILY_PEDIGREE_SLOTS.isActiveVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: edgeVariablesSubject,
+      options: booleanEdgeVariables,
+      currentValue: isActiveDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.isActiveVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const isGestationalCarrierVariableOptions = useSelector((state: RootState) =>
-    edgeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          edgeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            edgeVariablesSubject,
-            booleanEdgeVariables,
-            isGestationalCarrierDraft,
-          ),
-          isGestationalCarrierDraft,
-          FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: edgeVariablesSubject,
+      options: booleanEdgeVariables,
+      currentValue: isGestationalCarrierDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const gameteRoleVariableOptions = useSelector((state: RootState) =>
-    edgeVariablesSubject
-      ? excludeInterfaceOwned(
-          state,
-          edgeVariablesSubject,
-          excludeValidatedUses(
-            state,
-            edgeVariablesSubject,
-            gameteRoleCompatible,
-            gameteRoleDraft,
-          ),
-          gameteRoleDraft,
-          FAMILY_PEDIGREE_SLOTS.gameteRoleVariable,
-        )
-      : [],
+    selectSlotPickerOptions(state, {
+      subject: edgeVariablesSubject,
+      options: gameteRoleCompatible,
+      currentValue: gameteRoleDraft,
+      ownSlot: FAMILY_PEDIGREE_SLOTS.gameteRoleVariable,
+      writerClass: 'unvalidated',
+    }),
   );
   const handleCreatedVariable = (...args: unknown[]) => {
     const [id, params] = args as [
@@ -357,7 +305,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     openVariableWindow(
       {
         initialValues: { name, type: 'categorical' },
-        lockedOptions: RELATIONSHIP_TYPE_OPTIONS,
+        lockedOptions: INTERFACE_OWNED_OPTION_SETS.relationshipType.options,
       },
       { field: 'edgeConfig.relationshipTypeVariable' },
     );
@@ -378,7 +326,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
         // Seed and lock the canonical value set — the interview writes these
         // exact values, so the researcher may not edit them (mirrors the
         // relationship-type variable).
-        lockedOptions: GAMETE_ROLE_OPTIONS,
+        lockedOptions: INTERFACE_OWNED_OPTION_SETS.gameteRole.options,
       },
       { field: 'edgeConfig.gameteRoleVariable' },
     );

@@ -714,7 +714,11 @@ export default function RichTextEditorField({
                       className={toolbarButtonStyles}
                       disabled={isDisabled}
                       aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
-                      aria-pressed={editorState.isLink}
+                      // No `aria-pressed`: PopoverTrigger makes this a
+                      // disclosure, and a disclosure must not also claim to be
+                      // a toggle. Whether a link is present is already carried
+                      // by the accessible name above; `data-pressed` drives the
+                      // selected styling without asserting an ARIA state.
                       data-pressed={editorState.isLink ? true : undefined}
                       onMouseDown={(event) => {
                         event.preventDefault();

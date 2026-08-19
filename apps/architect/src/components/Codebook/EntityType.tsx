@@ -8,6 +8,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ensureError } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -107,8 +108,22 @@ const EntityType = ({
       confirmLabel: 'Delete type',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => {
-        void dispatch(deleteTypeAsync({ entity, type }));
+      // `.unwrap()` re-throws a rejected thunk so `confirm` can surface the
+      // refusal in the dialog's error paragraph and keep the dialog open.
+      // Without it the dispatch promise RESOLVES even when the thunk rejected,
+      // and the dialog closes reporting a deletion that never happened — the
+      // same defect #1392 fixed on the sibling variable deletion.
+      //
+      // `ensureError` because `.unwrap()` throws Redux Toolkit's plain
+      // `SerializedError`, not an `Error` — and the dialog only shows a caught
+      // value's `message` when it `instanceof Error`, so without this the
+      // researcher gets "An error occurred" instead of the reason.
+      onConfirm: async () => {
+        try {
+          await dispatch(deleteTypeAsync({ entity, type })).unwrap();
+        } catch (error) {
+          throw ensureError(error);
+        }
       },
     });
   }, [confirm, dispatch, entity, inUse, name, openDialog, type]);

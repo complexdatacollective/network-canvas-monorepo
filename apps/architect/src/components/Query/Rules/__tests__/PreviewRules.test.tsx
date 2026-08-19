@@ -35,7 +35,7 @@ const RULES = [
   },
 ];
 
-const renderRules = (rules = RULES) =>
+const renderRules = (rules = RULES, join?: string) =>
   render(
     <DialogProvider>
       <PreviewRules
@@ -44,6 +44,7 @@ const renderRules = (rules = RULES) =>
         ruleTypes={[{ label: 'Node', value: 'node' }]}
         addButtonLabel="Add new rule"
         onChange={vi.fn()}
+        join={join}
       />
     </DialogProvider>,
   );
@@ -53,23 +54,55 @@ describe('PreviewRules', () => {
     renderRules();
 
     const list = screen.getByRole('list');
-    expect(list.tagName).toBe('UL');
-    expect(list).toHaveAttribute('role', 'list');
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
     expect(
       screen.getByRole('button', { name: 'Add new rule' }),
     ).toBeInTheDocument();
   });
 
-  it('does not render join elements between items', () => {
-    renderRules();
+  /**
+   * Whether a rule set means "all of these" or "any of these" is set by
+   * the Rule Matching control below the list, and it used to be read back
+   * between the rules as well. The separator was dropped in the move to the
+   * shared editable list, leaving three unconnected cards that say nothing
+   * about how they combine until the researcher reaches the bottom of the list.
+   */
+  it.each([
+    ['OR', 'or'],
+    ['AND', 'and'],
+  ])('reads a %s rule set as “%s” between its rules', (join, word) => {
+    renderRules(RULES, join);
 
     const [first, second] = within(screen.getByRole('list')).getAllByRole(
       'listitem',
     );
 
-    expect(first).not.toHaveTextContent(/\b(?:and|or)\b/i);
-    expect(second).not.toHaveTextContent(/\b(?:and|or)\b/i);
+    // Between the two rules, and only there — a separator after the last one
+    // would join it to nothing.
+    expect(within(first!).getByText(word)).toBeVisible();
+    expect(within(second!).queryByText(word)).toBeNull();
+  });
+
+  it.each([
+    ['a single rule has nothing to combine with', [RULES[0]!], 'OR'],
+    ['nothing has said how the rules combine yet', RULES, undefined],
+  ])('renders no separator when %s', (_name, rules, join) => {
+    renderRules(rules, join);
+
+    for (const item of within(screen.getByRole('list')).getAllByRole(
+      'listitem',
+    )) {
+      expect(within(item).queryByText('or')).toBeNull();
+      expect(within(item).queryByText('and')).toBeNull();
+    }
+  });
+
+  // The separator was a <fieldset>/<legend>, borrowed for the way a legend
+  // cuts a gap in a border. It announced a form group containing no controls
+  // to every screen reader, once per join.
+  it('does not announce the separator as a form group', () => {
+    renderRules(RULES, 'OR');
+
     expect(screen.queryByRole('group')).toBeNull();
   });
 
@@ -86,7 +119,7 @@ describe('PreviewRules', () => {
     }
   });
 
-  it('renders the preview beside separate edit and delete icon buttons', () => {
+  it('names each control from the rule it acts on', () => {
     renderRules([RULES[0]!]);
 
     const item = within(screen.getByRole('list')).getByRole('listitem');
@@ -97,27 +130,32 @@ describe('PreviewRules', () => {
       name: /^Delete rule:.*Dee$/,
     });
 
-    expect(edit.querySelector('.lucide-pencil')).toBeInTheDocument();
-    expect(remove.querySelector('.lucide-trash-2')).toBeInTheDocument();
-    expect(edit).not.toHaveTextContent('Dee');
     expect(edit).toHaveAccessibleName(
       'Edit rule: person where text attribute name is exactly equal to Dee',
     );
-    expect(edit).toHaveClass('h-12', 'bg-(--component-text)');
-    expect(edit).not.toHaveClass('elevation-none');
-    expect(edit).toHaveClass('text-current');
-    expect(remove).toHaveClass('h-12', 'bg-(--component-text)');
-    expect(remove).not.toHaveClass('elevation-none');
-    expect(remove).not.toHaveClass('opacity-0');
-    expect(edit.parentElement).not.toHaveClass('border-t', 'border-l');
-    expect(item).toHaveClass(
-      'publish-colors',
-      'bg-surface-3',
-      'elevation-low',
-      'rounded-sm',
+    expect(remove).toHaveAccessibleName(
+      'Delete rule: person where text attribute name is exactly equal to Dee',
     );
-    expect(item).not.toHaveClass('bg-transparent', 'p-0!', 'shadow-none');
-    expect(item.querySelector('[data-rule-surface]')).toBeNull();
+    // #1399: the sentence names the control without being inside it — the row
+    // used to BE the button, so the preview's own chips were controls nested
+    // inside a control.
+    expect(edit).not.toHaveTextContent('Dee');
+    for (const control of [edit, remove]) {
+      expect(
+        control.querySelectorAll(
+          'button, a, input, select, textarea, [tabindex]',
+        ),
+      ).toHaveLength(0);
+    }
+  });
+
+  it('raises each rule off the list surface', () => {
+    renderRules([RULES[0]!]);
+
+    // The one presentational choice this adapter makes about the shared list.
+    expect(within(screen.getByRole('list')).getByRole('listitem')).toHaveClass(
+      'elevation-low',
+    );
   });
 
   it('renders the editable-list empty state when there are no rules', () => {

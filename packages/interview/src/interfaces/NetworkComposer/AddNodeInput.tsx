@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fieldElementIds } from '@codaco/fresco-ui/form/Field/fieldElements';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -60,6 +61,11 @@ function AddNodeField({
     validateOnChange: true,
     validateOnChangeDelay: 0,
     validationContext,
+    // This field is not wrapped in a BaseField: the only element it renders
+    // around the control is its own FieldErrors region below, so that is the
+    // only one `fieldProps` may name. It takes its accessible name from
+    // `aria-label`, so there is no label element to point at either.
+    renderedElements: { error: true },
     ...validationProps,
   });
 
@@ -133,7 +139,7 @@ function AddNodeField({
         onKeyDown={handleKeyDown}
       />
       <FieldErrors
-        id={`${id}-error`}
+        id={fieldElementIds(id).error}
         name={targetVariable}
         errors={meta.errors}
         show={meta.shouldShowError}

@@ -1,43 +1,43 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import type { AssetRequestHandler } from '@codaco/interview';
+import {
+  type AssetRequestHandler,
+  type AssetUrlOwner,
+  createAssetUrlOwner,
+} from '@codaco/interview/contract';
 import { assetKey } from '~/utils/assetDB';
 import { getAssetById } from '~/utils/assetUtils';
+
+// The preview shows one generation of one protocol: assets cannot be replaced
+// underneath it, because re-opening the preview mounts a new host with a new
+// owner. So every request is the same generation, and a cached URL always
+// satisfies it.
+const PREVIEW_GENERATION = 'preview';
 
 export function useAssetResolver(
   protocolId: string | null,
 ): AssetRequestHandler {
-  // `urls` is the authoritative cache: an entry exists only for a URL this hook
-  // minted and still owns, and teardown revokes exactly its contents. `inflight`
-  // is a de-duplication index only — it never answers a request that `urls` can
-  // answer, and it holds a key only while that key's read is unresolved. Without
-  // it, two callers requesting the same asset before either read returns both
-  // miss the cache and both mint, and the second write orphans the first URL:
-  // nothing holds it, so nothing ever revokes it.
-  const urls = useRef<Map<string, string>>(new Map());
-  const inflight = useRef<Map<string, Promise<string>>>(new Map());
-  const tornDown = useRef(false);
+  // One owner per mount, so unmounting revokes exactly what this preview
+  // minted and nothing else — see the cleanup below.
+  const ownerRef = useRef<AssetUrlOwner | null>(null);
 
   useEffect(() => {
-    // Cleanup marks this resolver torn down; re-running the effect (a genuine
-    // remount of the same tree, which StrictMode also simulates) makes it
-    // usable again rather than leaving it wedged shut. Resetting here and not
-    // in the cleanup is deliberate: after a real unmount the handler can still
-    // be held by detached code, and it must refuse those calls rather than mint
-    // a URL with no owner. The preview entry mounts this once, without
-    // StrictMode, so in shipped code the cleanup is terminal.
-    tornDown.current = false;
-    const owned = urls.current;
-    const pending = inflight.current;
+    // A remount (a genuine one, which StrictMode also simulates) needs a live
+    // owner, because the previous run's cleanup latched the old one closed.
+    // Minting the replacement here and not in the cleanup is deliberate: after
+    // a real unmount the handler can still be held by detached code, and it
+    // must refuse those calls rather than mint a URL with no owner. The
+    // preview entry mounts this once, without StrictMode, so in shipped code
+    // the cleanup is terminal.
+    const existing = ownerRef.current;
+    const owner =
+      existing !== null && !existing.closed ? existing : createAssetUrlOwner();
+    ownerRef.current = owner;
+
     return () => {
-      tornDown.current = true;
-      for (const url of owned.values()) {
-        URL.revokeObjectURL(url);
-      }
-      owned.clear();
-      // These promises can only resolve to URLs we have just revoked (or to a
-      // rejection), so no later caller may be served from them.
-      pending.clear();
+      // Revokes every URL this mount minted, cancels the reads still running,
+      // and refuses everything afterwards.
+      owner.release();
     };
   }, []);
 
@@ -47,52 +47,31 @@ export function useAssetResolver(
         throw new Error(`Missing protocol scope for asset ${assetId}`);
       }
 
-      const key = assetKey(protocolId, assetId);
-      const cached = urls.current.get(key);
-      if (cached) return cached;
+      // Non-null from the first effect onwards. A request that beats the
+      // effect (a child's own effect runs first) creates the owner the effect
+      // then adopts; a request that arrives after teardown finds the closed
+      // owner still in place and is refused by it, never re-armed.
+      ownerRef.current ??= createAssetUrlOwner();
 
-      const pending = inflight.current.get(key);
-      if (pending) return pending;
-
-      const request = (async () => {
-        // Mirror the editor's resolver: IndexedDB first, then the in-memory
-        // store used when durable storage is unavailable (e.g. Safari private
-        // browsing).
-        const entry = await getAssetById(assetId, protocolId);
-        if (!entry || typeof entry.data === 'string') {
-          throw new Error(`Asset ${assetId} not found in local store`);
-        }
-
-        // The host tore down while this read was in flight. Everything from
-        // here to the cache write is synchronous, so checking now is enough:
-        // no one would render or revoke a URL minted after teardown, so don't
-        // mint one. Callers already treat a rejection as "asset unavailable".
-        if (tornDown.current) {
-          throw new Error(
-            `Preview closed before asset ${assetId} finished loading`,
-          );
-        }
-
-        const blob =
-          entry.data instanceof Blob ? entry.data : new Blob([entry.data]);
-        const url = URL.createObjectURL(blob);
-        urls.current.set(key, url);
-        return url;
-      })();
-
-      // Once the read settles the promise is redundant: a success is in `urls`,
-      // and a failure must not be replayed to a caller that could retry. Settle
-      // through a derived promise that always resolves, so this bookkeeping can
-      // never raise an unhandled rejection of its own.
-      const forget = () => {
-        if (inflight.current.get(key) === request) {
-          inflight.current.delete(key);
-        }
-      };
-      inflight.current.set(key, request);
-      void request.then(forget, forget);
-
-      return request;
+      return ownerRef.current.resolve({
+        key: assetKey(protocolId, assetId),
+        scope: PREVIEW_GENERATION,
+        read: async () => {
+          // Mirror the editor's resolver: IndexedDB first, then the in-memory
+          // store used when durable storage is unavailable (e.g. Safari
+          // private browsing).
+          const entry = await getAssetById(assetId, protocolId);
+          if (!entry || typeof entry.data === 'string') {
+            throw new Error(`Asset ${assetId} not found in local store`);
+          }
+          return entry.data instanceof Blob
+            ? entry.data
+            : new Blob([entry.data]);
+        },
+        // Callers already treat a rejection as "asset unavailable".
+        unavailable: () =>
+          new Error(`Preview closed before asset ${assetId} finished loading`),
+      });
     },
     [protocolId],
   );

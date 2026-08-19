@@ -92,6 +92,19 @@ export default function useProtocolForm({
     [subjectEntity, subjectType],
   );
 
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const subjectFieldsMetadata = useSelector((state) =>
+    stableSubject !== undefined
+      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
+      : null,
+  );
+  const fieldsMetadata = useMemo(
+    () =>
+      subjectFieldsMetadata ??
+      selectFieldMetadataFromVariables(stageVariables, fields),
+    [subjectFieldsMetadata, stageVariables, fields],
+  );
+
   /**
    * The participant-facing text for each variable this form asks about, for
    * the variable-comparison validators to name their target with. Shared with
@@ -99,8 +112,19 @@ export default function useProtocolForm({
    * categorical "other" input, a quick-add popover, the pedigree's name field),
    * so one comparison rule reads the same way wherever it is asked — see
    * `buildVariableLabels` for what may and may not go in it.
+   *
+   * Read off the SAME metadata the fields are rendered from, rather than
+   * recomputed from `fields`, so a validator can only name a field by the
+   * caption the participant is reading on this screen. `useVariableLabels`
+   * keys on content, so the fresh array mapped here does not destabilise
+   * `validationContext`.
    */
-  const variableLabels = useVariableLabels(fields);
+  const variableLabels = useVariableLabels(
+    fieldsMetadata.map((field) => ({
+      variable: field.variable,
+      label: field.authoredLabel,
+    })),
+  );
 
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
@@ -127,19 +151,6 @@ export default function useProtocolForm({
     stableSubject,
     variableLabels,
   ]);
-
-  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  const subjectFieldsMetadata = useSelector((state) =>
-    stableSubject !== undefined
-      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
-      : null,
-  );
-  const fieldsMetadata = useMemo(
-    () =>
-      subjectFieldsMetadata ??
-      selectFieldMetadataFromVariables(stageVariables, fields),
-    [subjectFieldsMetadata, stageVariables, fields],
-  );
 
   // Names of fields whose codebook variable is a number, so the submit
   // boundary can coerce their raw string values back to real numbers.

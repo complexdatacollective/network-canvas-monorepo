@@ -22,17 +22,49 @@ type ScrollMetrics = {
 
 /**
  * The document-level check ALONE is worthless here: `<html>` never reports the
- * overflow, because the app scrolls inside its own container
- * (`div.relative.h-full.overflow-y-auto`, the element `AppLayout` renders).
- * That container is where the horizontal scrollbar actually appeared — 873 vs
- * 753 on the timeline at tablet width, 432 vs 390 on the stage editor at phone
- * width — so both are measured and both are asserted.
+ * overflow, because the app scrolls inside its own container — the element
+ * `ProjectLayout` renders. That container is where the horizontal scrollbar
+ * actually appeared — 873 vs 753 on the timeline at tablet width, 432 vs 390
+ * on the stage editor at phone width — so both are measured and both are
+ * asserted.
+ *
+ * The container is found by BEHAVIOUR — it is the app's one outermost
+ * viewport-height vertical scroll port — rather than by the Tailwind utility
+ * it happens to be built from. `div.overflow-y-auto` used to name that class,
+ * which is exactly backwards: the class is a cosmetic detail free to be
+ * renamed without changing anything, while the scrolling it stands for is the
+ * behaviour this whole spec measures. Taking the FIRST such div in the
+ * document was worse still — a new scrolling panel anywhere earlier in the
+ * tree would silently redirect every assertion below onto the wrong box, and
+ * the spec would keep passing.
+ *
+ * Requiring exactly one is part of the oracle: the app scrolls in a single
+ * place, and a second full-height scroll port is itself the kind of layout
+ * regression these tests exist to catch.
  */
 async function readScrollMetrics(page: Page): Promise<ScrollMetrics> {
   return page.evaluate(() => {
-    const container = document.querySelector('div.overflow-y-auto');
-    if (!(container instanceof HTMLElement)) {
-      throw new Error('app scroll container not found');
+    const ports = Array.from(document.querySelectorAll('*')).filter(
+      (element): element is HTMLElement => {
+        if (!(element instanceof HTMLElement)) return false;
+        const { overflowY } = getComputedStyle(element);
+        if (overflowY !== 'auto' && overflowY !== 'scroll') return false;
+        // Half the viewport separates the app's own scroll port from the
+        // incidental ones inside it by an order of magnitude, at both widths
+        // under test: measured 647/844 and 929/1024 for the app container,
+        // against 114 for a description textarea and 58 for a toolbar strip.
+        return element.clientHeight >= window.innerHeight * 0.5;
+      },
+    );
+    const outermost = ports.filter(
+      (element) =>
+        !ports.some((other) => other !== element && other.contains(element)),
+    );
+    const [container] = outermost;
+    if (outermost.length !== 1 || !container) {
+      throw new Error(
+        `expected exactly one app-level vertical scroll port, found ${outermost.length}`,
+      );
     }
     return {
       documentScrollWidth: document.documentElement.scrollWidth,
@@ -76,15 +108,26 @@ for (const page of [
     });
     await expect(heading).toBeVisible();
 
+    // The page's content column, found by MEASUREMENT rather than by a fixed
+    // number of `parentElement` hops: walk out from the heading to the first
+    // ancestor that spans (nearly) the whole viewport. A wrapper added or
+    // removed around the header cannot silently change WHICH box gets
+    // asserted, which is exactly what a hop count would let happen.
     const bounds = await heading.evaluate((element) => {
-      const container = element.parentElement?.parentElement;
-      if (!(container instanceof HTMLElement)) {
-        throw new Error('page heading container not found');
-      }
-      const box = container.getBoundingClientRect();
+      const spansViewport = (node: Element) =>
+        node.getBoundingClientRect().width >= window.innerWidth * 0.6;
+      let column: Element | null = element;
+      while (column && !spansViewport(column)) column = column.parentElement;
+      if (!column) throw new Error('page content column not found');
+      const box = column.getBoundingClientRect();
       return { left: box.left, right: box.right, width: window.innerWidth };
     });
 
+    // Non-vacuity: the box asserted below really is the content column and not
+    // a short run of heading text that would clear both insets for free.
+    expect(bounds.right - bounds.left).toBeGreaterThanOrEqual(
+      bounds.width * 0.6,
+    );
     expect(bounds.left).toBeGreaterThanOrEqual(20);
     expect(bounds.right).toBeLessThanOrEqual(bounds.width - 20);
   });
@@ -229,8 +272,13 @@ for (const viewport of VIEWPORTS) {
     // The card, not its list item: the list item also spans the insertion
     // point above the card, and it is the card's own grid that puts the badge
     // on the spine.
-    const row = new Timeline(architectPage).stageCards().first();
+    const timeline = new Timeline(architectPage);
+    const row = timeline.stageCards().first();
+    const badge = timeline.stageBadges().first();
+    const spine = timeline.spine();
     await expect(row).toBeVisible();
+    await expect(badge).toBeVisible();
+    await expect(spine).toBeAttached();
 
     // The spine is one absolutely-positioned line at `left-1/2` of the
     // timeline wrapper. Each row's numbered badge only lands on it because the
@@ -238,32 +286,20 @@ for (const viewport of VIEWPORTS) {
     // at every width, with no content floor to push one side wider. A bare
     // `1fr` would let a long label or the trailing action cluster drift the
     // badge off the line, which no pixel-free assertion but this one notices.
-    const drift = await row.evaluate((element) => {
-      const badge = element.children[1];
-      if (!(badge instanceof HTMLElement)) {
-        throw new Error('row is missing its numbered badge');
-      }
-      const rowBox = element.getBoundingClientRect();
-      const badgeBox = badge.getBoundingClientRect();
-      const line = document.querySelector('div.bg-timeline.absolute');
-      if (!(line instanceof HTMLElement)) {
-        throw new Error('timeline spine not found');
-      }
-      const lineBox = line.getBoundingClientRect();
-      return {
-        badgeToRowCentre: Math.abs(
-          badgeBox.left + badgeBox.width / 2 - (rowBox.left + rowBox.width / 2),
-        ),
-        badgeToSpine: Math.abs(
-          badgeBox.left +
-            badgeBox.width / 2 -
-            (lineBox.left + lineBox.width / 2),
-        ),
-      };
-    });
+    const [rowBox, badgeBox, spineBox] = await Promise.all([
+      row.boundingBox(),
+      badge.boundingBox(),
+      spine.boundingBox(),
+    ]);
+    if (!rowBox || !badgeBox || !spineBox) {
+      throw new Error('timeline row, badge or spine has no box');
+    }
+    const centre = (box: { x: number; width: number }) => box.x + box.width / 2;
 
-    expect(drift.badgeToRowCentre).toBeLessThanOrEqual(1);
-    expect(drift.badgeToSpine).toBeLessThanOrEqual(1);
+    expect(Math.abs(centre(badgeBox) - centre(rowBox))).toBeLessThanOrEqual(1);
+    expect(Math.abs(centre(badgeBox) - centre(spineBox))).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   test(`stage editors fit a ${viewport.name} viewport`, async ({
@@ -487,17 +523,26 @@ for (const viewport of NAME_VIEWPORTS) {
     // Both growable regions at maximum. Measure the CARD, not just the name —
     // the issue title is about the editor viewport, and a bound on the name
     // alone would still let the pair of them fill the screen.
-    const cardHeight = await architectPage
-      .getByRole('textbox', { name: 'Protocol name' })
-      .evaluate((el) => {
-        const card = el.closest('.max-w-3xl');
-        if (!(card instanceof HTMLElement)) {
-          throw new Error('protocol info card not found');
-        }
-        return card.offsetHeight;
-      });
+    //
+    // The card is the innermost element holding BOTH growable controls, each
+    // located by role and accessible name. That is what "the card" means here,
+    // and unlike `closest('.max-w-3xl')` it survives the design system
+    // changing the width utility it happens to be capped with.
+    const card = architectPage
+      .locator('div')
+      .filter({
+        has: architectPage.getByRole('textbox', { name: 'Protocol name' }),
+      })
+      .filter({
+        has: architectPage.getByRole('textbox', {
+          name: 'Protocol description',
+        }),
+      })
+      .last();
+    const cardBox = await card.boundingBox();
+    if (!cardBox) throw new Error('protocol info card has no box');
 
-    expect(cardHeight).toBeLessThanOrEqual(viewport.height);
+    expect(cardBox.height).toBeLessThanOrEqual(viewport.height);
     expectNameWithinBound(await readNameControlMetrics(architectPage));
     expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
   });

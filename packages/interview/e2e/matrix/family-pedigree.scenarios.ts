@@ -11,6 +11,7 @@ import {
 
 import { FamilyPedigreeFixture } from '../fixtures/family-pedigree-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
+import { pedigreeField } from '../fixtures/pedigree-field-driver.js';
 import type { ProtocolFixture } from '../fixtures/protocol-fixture.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
@@ -353,12 +354,11 @@ function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
       // Egg-parent step: the disease field shows only its authored hint; the
       // notes field additionally surfaces its validation-requirement summary
       // (showValidationHints), which the disease field must NOT.
-      const diseaseField = fp.dialog.locator(
-        `[data-field-name="egg-parent.${diseaseVar.id}"]`,
+      const diseaseField = pedigreeField(
+        fp.dialog,
+        `egg-parent.${diseaseVar.id}`,
       );
-      const notesField = fp.dialog.locator(
-        `[data-field-name="egg-parent.${notesVar.id}"]`,
-      );
+      const notesField = pedigreeField(fp.dialog, `egg-parent.${notesVar.id}`);
       await expect(
         diseaseField.getByText('Leave blank if unsure'),
       ).toBeVisible();
@@ -1209,8 +1209,6 @@ function personEditorRoundTrip(): ScenarioDefinition {
     boundaries: BOUNDARIES_OFF,
   });
 
-  const nameField = '[data-field-name="name"]';
-
   return {
     id: 'person-editor-round-trip',
     covers: ['nodeConfig.form'],
@@ -1245,7 +1243,7 @@ function personEditorRoundTrip(): ScenarioDefinition {
       await fp.openNodeContextMenu('Linda');
       await fp.clickMenuItem('edit');
       await expect(
-        fp.dialog.locator(nameField).getByRole('textbox'),
+        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
       ).toHaveValue('Linda');
       await fp.setField('name', 'Discarded Name');
       await fp.clickDialogCancel();
@@ -1260,7 +1258,7 @@ function personEditorRoundTrip(): ScenarioDefinition {
       await fp.openNodeContextMenu('Linda');
       await fp.clickMenuItem('edit');
       await expect(
-        fp.dialog.locator(nameField).getByRole('textbox'),
+        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
       ).toHaveValue('Linda');
       await fp.setField('name', 'Linda Edited');
       await fp.setField(conditionVar.id, true);

@@ -7,6 +7,7 @@ import {
 } from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
+import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
@@ -308,15 +309,11 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot delete stage',
   });
-  await expect(guardDialog).toBeVisible();
 
-  // Dialog shown AND deletion did not proceed. The guard returns before any
-  // deleteStage dispatch, so no store change happens; acknowledging then
-  // waiting lets any (regression) erroneous accepted delete reach IndexedDB
-  // before we assert it did NOT — closing
-  // the "dialog shown but deletion silently proceeds anyway" gap.
-  await guardDialog.getByRole('button', { name: 'OK' }).click();
-  await architectPage.waitForTimeout(1000);
+  // Refusal observed and acknowledged, then a settle window, so an
+  // erroneously-accepted delete would have reached IndexedDB by the read
+  // below. See `acknowledgeRefusal` for why the wait is the oracle here.
+  await acknowledgeRefusal(architectPage, guardDialog);
   const after = stagesOf(await readProtocolJson(architectPage));
   expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
   expect(after.length).toBe(before.length);
@@ -577,14 +574,10 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot move stage',
   });
-  await expect(guardDialog).toBeVisible();
-  await guardDialog.getByRole('button', { name: 'OK' }).click();
 
-  // The refused move dispatches nothing, so there is no store change to wait
-  // for; give an erroneously-accepted one time to reach IndexedDB before
-  // asserting it did not, closing the "dialog shown but the move lands anyway"
-  // gap.
-  await architectPage.waitForTimeout(1000);
+  // Refusal observed and acknowledged, then a settle window, so an
+  // erroneously-accepted move would have reached IndexedDB by the read below.
+  await acknowledgeRefusal(architectPage, guardDialog);
   expect(
     stagesOf(await readProtocolJson(architectPage)).map((stage) => stage.id),
   ).toEqual(before.map((stage) => stage.id));

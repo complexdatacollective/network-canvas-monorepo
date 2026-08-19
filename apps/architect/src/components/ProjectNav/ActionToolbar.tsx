@@ -126,6 +126,13 @@ export const toolbarEnterExitSpring = {
   mass: 0.8,
 } satisfies Transition;
 
+/**
+ * The toolbar surface itself. Deliberately module-private: it is `fixed`, and
+ * two of them on one screen overlap. Every route publishes its controls through
+ * `useActionToolbar` instead, and the provider above is the only thing that
+ * renders this — so there is no second way to put a toolbar on screen for a
+ * route to reach for.
+ */
 const ActionToolbar = ({
   children,
   leadingActions,
@@ -180,5 +187,3 @@ const ActionToolbar = ({
     </motion.div>
   );
 };
-
-export default ActionToolbar;

@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { after } from 'next/server';
 
 import { createInitialNetwork } from '@codaco/interview/contract';
+import { ensureError } from '@codaco/shared-consts';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
@@ -19,7 +20,6 @@ import type {
   DeleteInterviews,
 } from '~/schemas/interviews';
 import { participantIdentifierSchema } from '~/schemas/participant';
-import { ensureError } from '~/utils/ensureError';
 
 export async function deleteInterviews(data: DeleteInterviews) {
   const session = await requireApiAuth();

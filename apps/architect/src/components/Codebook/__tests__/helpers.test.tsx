@@ -8,7 +8,10 @@ import { getMockState } from '~/__tests__/helpers';
 import type { RootState } from '~/ducks/modules/root';
 
 import { getAllVariablesByUUID } from '../../../selectors/codebook';
-import { getEntityProperties, getUsage, getUsageAsStageMeta } from '../helpers';
+import { getEntityProperties, getUsageAsStageMeta } from '../helpers';
+
+/** A reference hit, as the protocol-validation collectors emit them. */
+const at = (...path: (string | number)[]) => ({ path });
 
 // Every validation rule that holds a reference to another variable. A variable
 // referenced via any of these should be reported as "used as validation for X".
@@ -68,29 +71,11 @@ const state = {
   },
 };
 
-const index = {
-  'stages.0.foo.bar': 'fizz',
-  'stages.0.foo.bar.bazz': 'fizz',
-  'stages.1.foo.bar.bazz': 'fizz',
-  'stages.1.foo.bar': 'pop',
-  'stages.2.foo.bar': 'pop',
-};
-
-it('getUsage() ', () => {
-  const value = 'fizz';
-  const expectedResult = [
-    'stages.0.foo.bar',
-    'stages.0.foo.bar.bazz',
-    'stages.1.foo.bar.bazz',
-  ];
-  expect(getUsage(index, value)).toEqual(expectedResult);
-});
-
 it('getUsageAsStageMeta() produces stage links for stage-scoped paths', () => {
   const usage = [
-    'stages.0.foo.bar',
-    'stages.0.foo.bar.bazz',
-    'stages.1.foo.bar.bazz',
+    at('stages', 0, 'foo', 'bar'),
+    at('stages', 0, 'foo', 'bar', 'bazz'),
+    at('stages', 1, 'foo', 'bar', 'bazz'),
   ];
 
   const mockStageMetaByIndex = [
@@ -112,10 +97,13 @@ it('getUsageAsStageMeta() produces stage links for stage-scoped paths', () => {
   ).toEqual(expectedResult);
 });
 
-it('getUsageAsStageMeta() parses type-index paths (e.g. a composer edge type)', () => {
-  // Node/edge type usage comes from collectEntityTypeReferences, which keys
-  // with the same dotted-array notation as the variable index.
-  const usage = ['stages.1.edges.0.subject.type', 'stages.2.subject.type'];
+it('getUsageAsStageMeta() describes type-reference hits (e.g. a composer edge type)', () => {
+  // Node/edge type usage comes from collectEntityTypeReferences, whose hits
+  // carry a path array of exactly the same shape as the attribute collector's.
+  const usage = [
+    at('stages', 1, 'edges', 0, 'subject', 'type'),
+    at('stages', 2, 'subject', 'type'),
+  ];
 
   const mockStageMetaByIndex = [
     { label: 'foo', id: 'abcd' },
@@ -143,7 +131,15 @@ describe('getUsageAsStageMeta() with codebook validation references', () => {
         state.protocol.present.codebook,
       );
       const usage = [
-        `codebook.node.person.variables.2.validation.${validationKey}`,
+        at(
+          'codebook',
+          'node',
+          'person',
+          'variables',
+          '2',
+          'validation',
+          validationKey,
+        ),
       ];
 
       expect(getUsageAsStageMeta([], mockVariableMetaByIndex, usage)).toEqual([
@@ -151,39 +147,49 @@ describe('getUsageAsStageMeta() with codebook validation references', () => {
       ]);
     },
   );
+
+  it('labels an ego variable referenced via validation, which has no type segment', () => {
+    const mockVariableMetaByIndex = getAllVariablesByUUID(
+      state.protocol.present.codebook,
+    );
+
+    expect(
+      getUsageAsStageMeta([], mockVariableMetaByIndex, [
+        at('codebook', 'ego', 'variables', '1', 'validation', 'sameAs'),
+      ]),
+    ).toEqual([{ label: 'Used as validation for "name"' }]);
+  });
 });
 
-// A key shape this parser does not know about must still produce an entry.
-// It is fed by `getVariableIndex`, whose values simultaneously drive
-// `getIsUsed` — so a dropped key is a row that says "In use — cannot be
-// deleted" beside a blank "Used In" cell, which is the report in #1392.
+// A hit sitting somewhere this function has no wording for must still produce
+// an entry. The same reference walk simultaneously drives `getIsUsed` — so a
+// dropped hit is a row that says "In use — cannot be deleted" beside a blank
+// "Used In" cell, which is the report in #1392.
 describe('getUsageAsStageMeta() is total', () => {
   it.each([
-    // The exact shape the pre-#1392 sort-key entries arrived in: bracketed
-    // indices from `collectPaths`, whose first dot-segment is `stages[0]`.
+    ['a hit rooted somewhere new', at('assetManifest', 'roster', 'columns', 0)],
     [
-      'a bracketed collectPaths key',
-      'stages[0].prompts[0].binSortOrder[0].property',
+      'a codebook hit at an undescribed location',
+      at('codebook', 'node', 'person', 'icon'),
     ],
-    ['a key rooted somewhere new', 'assets.roster.columns.0'],
-    ['a stage index with no meta', 'stages.99.prompts.0.variable'],
-  ])('returns an entry for %s', (_label, key) => {
+    ['a stage index with no meta', at('stages', 99, 'prompts', 0, 'variable')],
+  ])('returns an entry for %s', (_label, hit) => {
     const result = getUsageAsStageMeta(
       [{ label: 'foo', id: 'abcd' }],
       getAllVariablesByUUID(state.protocol.present.codebook),
-      [key],
+      [hit],
     );
 
     expect(result).toHaveLength(1);
     expect(result[0]?.label).toBeTruthy();
   });
 
-  it('does not add the fallback when the keys were understood', () => {
+  it('does not add the fallback when the hits were described', () => {
     expect(
       getUsageAsStageMeta(
         [{ label: 'foo', id: 'abcd' }],
         getAllVariablesByUUID(state.protocol.present.codebook),
-        ['stages.0.prompts.0.variable'],
+        [at('stages', 0, 'prompts', 0, 'variable')],
       ),
     ).toEqual([{ label: 'foo', id: 'abcd' }]);
   });
@@ -257,5 +263,98 @@ describe('Codebook in-use status and Used In content agree', () => {
     // Guards the assertion against a protocol that happens to use nothing.
     expect(inUseCount).toBeGreaterThan(20);
     expect(disagreements).toEqual([]);
+  });
+});
+
+// A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
+// (`VariableNameSchema`, which keys the node/edge and variable records alike),
+// so a dot inside one is legal protocol content. Joining a reference path into
+// a dotted string and splitting it apart again cannot round-trip that: the
+// display used to read the first fragment of the id and, finding no codebook
+// entry for it, name the reference site "unknown". Reading the collector's own
+// path array names it.
+describe('Codebook usage labels survive a dot inside a codebook record key', () => {
+  it('names the owning variable of a validation reference whose id contains a dot', () => {
+    const testState = getMockState({
+      activeProtocol: {
+        present: {
+          schemaVersion: 8,
+          name: 'test',
+          codebook: {
+            node: {
+              person: {
+                name: 'Person',
+                color: 'node-color-seq-1',
+                shape: { default: 'circle' },
+                variables: {
+                  'owner.id': {
+                    name: 'Owner',
+                    type: 'number',
+                    validation: { sameAs: 'target.id' },
+                  },
+                  'target.id': { name: 'Target', type: 'number' },
+                },
+              },
+            },
+          },
+          stages: [],
+        },
+      },
+    }) as unknown as RootState;
+
+    const properties = getEntityProperties(testState, {
+      entity: 'node',
+      type: 'person',
+    });
+
+    expect(properties?.variables['target.id']?.inUse).toBe(true);
+    expect(properties?.variables['target.id']?.usage).toEqual([
+      { label: 'Used as validation for "Owner"' },
+    ]);
+  });
+
+  it('names the node type of a shape-mapping reference whose type id contains a dot', () => {
+    const testState = getMockState({
+      activeProtocol: {
+        present: {
+          schemaVersion: 8,
+          name: 'test',
+          codebook: {
+            node: {
+              'person.v2': {
+                name: 'Person',
+                color: 'node-color-seq-1',
+                shape: {
+                  default: 'circle',
+                  dynamic: {
+                    variable: 'category',
+                    type: 'discrete',
+                    map: [{ value: 'a', shape: 'square' }],
+                  },
+                },
+                variables: {
+                  category: {
+                    name: 'Category',
+                    type: 'categorical',
+                    options: [{ label: 'A', value: 'a' }],
+                  },
+                },
+              },
+            },
+          },
+          stages: [],
+        },
+      },
+    }) as unknown as RootState;
+
+    const properties = getEntityProperties(testState, {
+      entity: 'node',
+      type: 'person.v2',
+    });
+
+    expect(properties?.variables.category?.inUse).toBe(true);
+    expect(properties?.variables.category?.usage).toEqual([
+      { label: 'Used in shape settings for "Person"' },
+    ]);
   });
 });

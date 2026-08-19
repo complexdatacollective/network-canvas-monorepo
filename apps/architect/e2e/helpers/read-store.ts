@@ -134,6 +134,61 @@ export async function readAssetKeys(page: Page): Promise<string[]> {
   return Array.isArray(keys) ? keys.map(String) : [];
 }
 
+export type StoreCounts = { protocols: number; assets: number };
+
+const isStoreCounts = (value: unknown): value is StoreCounts =>
+  typeof value === 'object' &&
+  value !== null &&
+  'protocols' in value &&
+  'assets' in value &&
+  typeof value.protocols === 'number' &&
+  typeof value.assets === 'number';
+
+// How many rows each library store holds. This is the oracle behind "the
+// import was refused and the library is untouched", so every failure path
+// REJECTS rather than resolving to a sentinel: a read that resolved to -1 on
+// error compared -1 to -1 across the refusal and passed while reading nothing
+// at all. The only non-error absence — a store the app has not created in this
+// session — is genuinely a count of zero, and is reported as such.
+export async function readStoreCounts(page: Page): Promise<StoreCounts> {
+  const counts: unknown = await page.evaluate(async (dbName) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () =>
+        reject(new Error(`indexedDB.open(${dbName}) failed: ${req.error}`));
+    });
+    const count = (store: string) =>
+      new Promise<number>((resolve, reject) => {
+        if (!db.objectStoreNames.contains(store)) {
+          resolve(0);
+          return;
+        }
+        const req = db
+          .transaction(store, 'readonly')
+          .objectStore(store)
+          .count();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () =>
+          reject(new Error(`count("${store}") failed: ${req.error}`));
+      });
+    try {
+      return {
+        protocols: await count('protocols'),
+        assets: await count('assets'),
+      };
+    } finally {
+      db.close();
+    }
+  }, DB_NAME);
+  if (!isStoreCounts(counts)) {
+    throw new Error(
+      `readStoreCounts read a value that is not a count pair: ${JSON.stringify(counts)}`,
+    );
+  }
+  return counts;
+}
+
 type Stage = CurrentProtocol['stages'][number];
 
 // Poll until the accepted stage commit reaches the durable row. Existence alone

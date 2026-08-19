@@ -1,8 +1,13 @@
 import posthog from 'posthog-js';
 
+import {
+  buildAppSuperProperties,
+  POSTHOG_API_KEY,
+  POSTHOG_HOST,
+} from '@codaco/shared-consts';
+
 import { appVersion } from './utils/appVersion';
 
-const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 const INSTALLATION_ID_KEY = 'network-canvas-architect-installation-id';
 const APP_KEY = 'ArchitectWeb';
 const APP_NAME = 'Architect';
@@ -19,21 +24,23 @@ function getOrCreateInstallationId(): string {
 }
 
 type AnalyticsEnvironment = {
-  apiKey?: string;
   disabled: boolean;
   isDevelopment: boolean;
 };
 
 export function initializeAnalytics({
-  apiKey,
   disabled,
   isDevelopment,
 }: AnalyticsEnvironment): void {
-  if (isDevelopment || disabled || !apiKey) {
+  // The two ways analytics is off are both deliberate and both local: a Vite
+  // development server, or an explicit opt-out for e2e/preview builds. The
+  // project key is a compiled-in shared constant, so there is no third,
+  // accidental way — a release build that forgot to set something.
+  if (isDevelopment || disabled) {
     return;
   }
 
-  posthog.init(apiKey, {
+  posthog.init(POSTHOG_API_KEY, {
     api_host: POSTHOG_HOST,
     capture_pageview: true,
     capture_pageleave: true,
@@ -57,17 +64,17 @@ export function initializeAnalytics({
     person_profiles: 'identified_only',
   });
 
-  posthog.register({
-    app: APP_KEY,
-    $app_name: APP_NAME,
-    installation_id: getOrCreateInstallationId(),
-    host_version: appVersion,
-    $app_version: appVersion,
-  });
+  posthog.register(
+    buildAppSuperProperties({
+      appKey: APP_KEY,
+      appName: APP_NAME,
+      version: appVersion,
+      installationId: getOrCreateInstallationId(),
+    }),
+  );
 }
 
 initializeAnalytics({
-  apiKey: import.meta.env.VITE_PUBLIC_POSTHOG_KEY,
   disabled: import.meta.env.VITE_DISABLE_ANALYTICS === 'true',
   isDevelopment: import.meta.env.DEV,
 });

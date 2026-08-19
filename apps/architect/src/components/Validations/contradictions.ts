@@ -5,7 +5,7 @@ import {
 } from '@codaco/protocol-validation';
 import { getTypeForComponent } from '~/config/variables';
 
-import { completeRuleValues, incompleteRuleIssue } from './ruleValue';
+import { ruleMapPrecheck } from './ruleValue';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -597,44 +597,6 @@ export const findLegalReferenceTargets = ({
   return legal;
 };
 
-// R1 (schema shape) rejects fractional values and values below these floors
-// with a generic Zod message. Gating them here — ahead of the schema — lets
-// the row editor disable the save and explain why, instead of surfacing that
-// generic message only after a failed protocol save.
-const RULE_FLOORS: Record<string, number> = {
-  minLength: 0,
-  maxLength: 0,
-  minSelected: 0,
-  maxSelected: 0,
-};
-
-const INTEGER_RULES = new Set([
-  'minLength',
-  'maxLength',
-  'minValue',
-  'maxValue',
-  'minSelected',
-  'maxSelected',
-]);
-
-export const floorIssue = (
-  ruleKey: string,
-  value: unknown,
-): string | undefined => {
-  if (
-    INTEGER_RULES.has(ruleKey) &&
-    typeof value === 'number' &&
-    !Number.isInteger(value)
-  ) {
-    return `${ruleKey} must be a whole number`;
-  }
-  const floor = RULE_FLOORS[ruleKey];
-  if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
-    return undefined;
-  }
-  return value < floor ? `${ruleKey} must be at least ${floor}` : undefined;
-};
-
 /**
  * A stage-scoped override of a variable's rendering, keyed by variable id.
  * NetworkComposer stage fields carry their OWN `component`/`parameters`
@@ -952,16 +914,13 @@ export const makeFieldEditorValidate = (
     // A rule switched on but never answered carries `null` (see
     // `Validations.tsx`'s `handleToggle`). It has to be reported — dropping it
     // silently is the bug this gate exists to prevent — and it has to be kept
-    // away from the analyser, which would read the `null` as a bound. The same
-    // two steps run in the `validation` field's own validator; both call
-    // through here so they cannot drift.
-    const incomplete = incompleteRuleIssue(validation);
-    if (incomplete) return { validation: incomplete };
-    const completeValidation = completeRuleValues(validation);
-    const floor = Object.entries(completeValidation)
-      .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
-      .find((message): message is string => message !== undefined);
-    if (floor) return { validation: floor };
+    // away from the analyser, which would read the `null` as a bound. The
+    // `validation` field's own validator (`ruleMapIssue`) runs the same steps,
+    // by calling this same function — it is one implementation, not two that
+    // agree.
+    const { issue: precheckIssue, complete: completeValidation } =
+      ruleMapPrecheck(validation);
+    if (precheckIssue) return { validation: precheckIssue };
     // The edited variable's rendering IS determined by this form (the draft's
     // own component/parameters, layered on by `buildProspectiveVariables`),
     // so it always stays visible; every other cross-form-rendered variable is

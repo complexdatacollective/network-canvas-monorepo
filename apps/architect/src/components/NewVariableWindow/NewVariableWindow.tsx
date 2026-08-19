@@ -8,7 +8,8 @@ import type {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { Variable, VariableOptions } from '@codaco/protocol-validation';
+import type { Variable, VariableOption } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
@@ -25,11 +26,19 @@ import {
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import { ensureError } from '~/utils/ensureError';
 import { getFieldId } from '~/utils/issues';
 import safeName from '~/utils/safeName';
 
 const FORM_ID = 'create-new-variable';
+
+/**
+ * A seeded option list the researcher may not edit. `readonly` because the
+ * canonical interface-owned sets (`INTERFACE_OWNED_OPTION_SETS`) are declared
+ * that way in `@codaco/protocol-validation` and nothing here may mutate one —
+ * the alternative, copying each set at its call site, would put the canonical
+ * data back into several hands.
+ */
+export type LockedVariableOptions = readonly VariableOption[];
 
 /** Stable empty list: `initialValue` is a register-effect dependency. */
 const NO_OPTIONS: OptionValue[] = [];
@@ -68,7 +77,7 @@ type NewVariableFieldsProps = {
   variableTypeOptions: typeof VARIABLE_OPTIONS;
   initialValues: Record<string, unknown>;
   typeLocked: boolean;
-  lockedOptions: VariableOptions | null;
+  lockedOptions: LockedVariableOptions | null;
 };
 
 const NewVariableFields = ({
@@ -158,7 +167,7 @@ type NewVariableWindowProps = {
   onCancel: () => void;
   initialValues?: Record<string, unknown> | null;
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
-  lockedOptions?: VariableOptions | null;
+  lockedOptions?: LockedVariableOptions | null;
 };
 
 export default function NewVariableWindow({

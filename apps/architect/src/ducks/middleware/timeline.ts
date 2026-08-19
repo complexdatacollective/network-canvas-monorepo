@@ -340,8 +340,9 @@ const createTimelineReducer = <T>(
           // Reference equality alone only answers a reducer that MUTATES an
           // immer draft. Plenty of protocol reducers REBUILD instead —
           // `updateProtocolName` returns `{ ...state, name }`, every
-          // `codebook` writer returns a fresh codebook, `deletePrompt` maps
-          // the stage array, `deleteType`/`deleteVariable` `omit` from a copy —
+          // `codebook` writer returns a fresh codebook, `stages/deleteStage`
+          // filters the stage array, `deleteType`/`deleteVariable` `omit` from
+          // a copy —
           // and a rebuild that reproduces the state it was given is a new
           // object every time. Blurring the protocol-name field without typing
           // is exactly that, and it invented an undo step and destroyed a

@@ -4,6 +4,11 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import {
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
+
 import { useOnBeforeSaveTieStrengthPrompt } from '../useOnBeforeSavePrompt';
 
 // `a` carries the sameAs rule; `b` is a target-only variable — it never
@@ -226,6 +231,110 @@ describe('useOnBeforeSaveTieStrengthPrompt cross-class gate', () => {
       createEdge: 'friend',
       edgeVariable: 'strength',
       negativeLabel: 'None',
+    });
+  });
+});
+
+// A Family Pedigree derives its edge slots from the tree the participant
+// draws and reads their exact values back in its genetics engine, so a census
+// prompt may not write one — and, because the prompt names its own edge type,
+// the gate has to be scoped to THAT type rather than the stage's subject.
+const PROTOCOL_WITH_PEDIGREE_EDGE = {
+  schemaVersion: 8,
+  codebook: {
+    node: { person: { name: 'Person', color: 'c', variables: {} } },
+    edge: {
+      family_edge: {
+        name: 'Family edge',
+        color: 'c',
+        variables: {
+          relationshipType: {
+            name: 'Relationship type',
+            type: 'categorical',
+            options: RELATIONSHIP_TYPE_OPTIONS,
+          },
+          isActive: { name: 'Is active', type: 'boolean' },
+          isGestationalCarrier: {
+            name: 'Gestational carrier',
+            type: 'boolean',
+          },
+          gameteRole: {
+            name: 'Gamete role',
+            type: 'categorical',
+            options: GAMETE_ROLE_OPTIONS,
+          },
+          strength: {
+            name: 'Strength',
+            type: 'ordinal',
+            options: [
+              { label: 'Weak', value: 'weak' },
+              { label: 'Strong', value: 'strong' },
+            ],
+          },
+        },
+      },
+    },
+  },
+  stages: [
+    {
+      id: 'fp1',
+      type: 'FamilyPedigree',
+      label: 'Family Pedigree',
+      nodeConfig: {
+        type: 'person',
+        nodeLabelVariable: 'n1',
+        egoVariable: 'n2',
+        relationshipVariable: 'n3',
+        biologicalSexVariable: 'n4',
+      },
+      edgeConfig: {
+        type: 'family_edge',
+        relationshipTypeVariable: 'relationshipType',
+        isActiveVariable: 'isActive',
+        isGestationalCarrierVariable: 'isGestationalCarrier',
+        gameteRoleVariable: 'gameteRole',
+      },
+      censusPrompt: 'Build your family',
+      framing: { mode: 'fixed', value: 'gamete' },
+      boundaries: {
+        requireGrandparents: 'off',
+        requireChildrenContributors: 'off',
+      },
+    },
+  ],
+};
+
+describe('useOnBeforeSaveTieStrengthPrompt interface-owned gate', () => {
+  it('refuses an edgeVariable the pedigree derives structurally, naming the owner', async () => {
+    const onBeforeSave = renderOnBeforeSave(PROTOCOL_WITH_PEDIGREE_EDGE);
+    const result = await onBeforeSave({
+      createEdge: 'family_edge',
+      edgeVariable: 'relationshipType',
+      variableOptions: RELATIONSHIP_TYPE_OPTIONS,
+    });
+    expect(result).toMatchObject({
+      success: false,
+      fieldErrors: {
+        edgeVariable: [expect.stringContaining('cannot be used here')],
+      },
+    });
+  });
+
+  // The gate is scoped to the edge type the PROMPT names: an identically-named
+  // variable on a different edge type is a different attribute entirely.
+  it('leaves an ordinary variable on the same edge type saveable', async () => {
+    const onBeforeSave = renderOnBeforeSave(PROTOCOL_WITH_PEDIGREE_EDGE);
+    const result = await onBeforeSave({
+      createEdge: 'family_edge',
+      edgeVariable: 'strength',
+      variableOptions: [
+        { label: 'Weak', value: 'weak' },
+        { label: 'Strong', value: 'strong' },
+      ],
+    });
+    expect(result).toMatchObject({
+      edgeVariable: 'strength',
+      createEdge: 'family_edge',
     });
   });
 });

@@ -152,10 +152,11 @@ it uses no `globIgnores`.
 
 ## PostHog source maps
 
-The production and hotfix workflows pass the public PostHog project key from
-the `VITE_PUBLIC_POSTHOG_KEY` repository variable. Without it, the app builds
-successfully but does not initialize analytics. Local Vite development mode
-never initializes analytics, even if the variable is present.
+The public PostHog project key is a compiled-in constant shared by every
+Network Canvas product (`@codaco/shared-consts`), so no workflow variable
+configures it and no build can ship with analytics accidentally off. Local Vite
+development mode never initializes analytics, and `VITE_DISABLE_ANALYTICS=true`
+turns it off explicitly for e2e and preview builds.
 
 Only the production release job sets `POSTHOG_PERSONAL_API_KEY` and
 `POSTHOG_PROJECT_ID` (repository secrets shared with Interviewer and

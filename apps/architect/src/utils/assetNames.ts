@@ -25,6 +25,8 @@
  * pinned by tests in `__tests__/assetNames.test.ts`.
  */
 
+import { toCanonicalText } from '@codaco/shared-consts';
+
 /**
  * Splits a filename into the part a counter is inserted after, and its
  * extension. A leading dot is part of the name (`.gitignore`), not an
@@ -35,6 +37,27 @@ const splitExtension = (name: string): [stem: string, extension: string] => {
   if (index <= 0) return [name, ''];
   return [name.slice(0, index), name.slice(index)];
 };
+
+/**
+ * The key two stored names are "the same name" under, for collision purposes.
+ *
+ * Canonical form ONLY — `toCanonicalText` is NFC, never `normalizeForComparison`.
+ * The defect this closes is canonical equivalence: `Café.csv` with a precomposed
+ * U+00E9 and `Café.csv` written `e` + U+0301 are byte-different, render
+ * identically in every font, and are produced interchangeably by different
+ * sources (macOS filesystems hand back decomposed names where most other
+ * sources produce precomposed). Keyed raw, each counts as unique, both keep
+ * their stored name, and the library shows two cards nothing distinguishes —
+ * exactly what this module exists to prevent.
+ *
+ * DELIBERATELY NOT CASE-FOLDED. `normalizeForComparison` — the sibling helper
+ * used for uniqueness checks on researcher-authored names — also lowercases.
+ * That is wrong here: `People.csv` and `people.csv` are two names a researcher
+ * CAN tell apart on the card, so folding them would renumber one for no reason
+ * the researcher can see. Do not "upgrade" this to `normalizeForComparison`;
+ * `__tests__/assetNames.test.ts` pins the case-sensitivity on purpose.
+ */
+const collisionKey = (name: string): string => toCanonicalText(name);
 
 /** `people.csv` + 2 → `people (2).csv`. */
 export const suffixAssetName = (name: string, counter: number): string => {
@@ -72,17 +95,19 @@ export const deriveAssetDisplayNames = (
 
   const occurrences = new Map<string, number>();
   for (const [, asset] of entries) {
-    occurrences.set(asset.name, (occurrences.get(asset.name) ?? 0) + 1);
+    const key = collisionKey(asset.name);
+    occurrences.set(key, (occurrences.get(key) ?? 0) + 1);
   }
 
   const displayNames = new Map<string, string>();
   const taken = new Set<string>();
 
   // Pass 1: every stored name that nothing else shares is reserved as-is.
+  // Reserved under its collision key, but DISPLAYED as the researcher wrote it.
   for (const [id, asset] of entries) {
-    if (occurrences.get(asset.name) !== 1) continue;
+    if (occurrences.get(collisionKey(asset.name)) !== 1) continue;
     displayNames.set(id, asset.name);
-    taken.add(asset.name);
+    taken.add(collisionKey(asset.name));
   }
 
   // Pass 2: the colliding groups, in the order their cards render.
@@ -91,12 +116,16 @@ export const deriveAssetDisplayNames = (
 
     let candidate = asset.name;
     let counter = 1;
-    while (taken.has(candidate)) {
+    // Generated candidates are checked in the same canonical space as the
+    // stored names they compete with: `people (2).csv` must collide with a
+    // decomposed `people (2).csv` a researcher already has, or the loop hands
+    // out a name that is indistinguishable from one already on screen.
+    while (taken.has(collisionKey(candidate))) {
       counter += 1;
       candidate = suffixAssetName(asset.name, counter);
     }
 
-    taken.add(candidate);
+    taken.add(collisionKey(candidate));
     displayNames.set(id, candidate);
   }
 

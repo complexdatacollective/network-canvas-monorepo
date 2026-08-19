@@ -164,11 +164,14 @@ export const useFieldHandlers = ({
   // An interface that both writes and branches on a variable's exact values
   // fixes its option list, whoever else binds it. Derived from the protocol's
   // stage graph rather than the codebook's `readOnly` flag, which authored and
-  // imported protocols do not carry.
+  // imported protocols do not carry. The SET, not a boolean: `getLockedOptions`
+  // renders the canonical list the protocol rule enforces, which a boolean
+  // cannot name.
   const interfaceOwnedOptions = useSelector(getInterfaceOwnedOptionMap);
-  const hasInterfaceOwnedOptions =
-    variable !== undefined &&
-    interfaceOwnedOptions[roleMapKey(subject, variable)] !== undefined;
+  const interfaceOwnedOptionSet =
+    variable === undefined
+      ? undefined
+      : interfaceOwnedOptions[roleMapKey(subject, variable)];
 
   // Memoize the filtered and concatenated variable options
   const variableOptions = useMemo(() => {
@@ -353,7 +356,15 @@ export const useFieldHandlers = ({
     metaForType,
     existingVariables,
     isNewVariable,
-    hasInterfaceOwnedOptions,
+    interfaceOwnedOptionSet,
     handleNewVariable,
   };
 };
+
+/**
+ * What `useFieldHandlers` resolves. Both field editors pass the whole thing to
+ * `VariableDefinitionFields`, so the shared editor body cannot drift from the
+ * hook that feeds it: adding or renaming a member here is a build error at
+ * every consumer rather than a silently-missing control.
+ */
+export type FieldHandlers = ReturnType<typeof useFieldHandlers>;

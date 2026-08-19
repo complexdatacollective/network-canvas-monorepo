@@ -83,7 +83,7 @@ Pass controls and groups as children. Each group needs an accessible name. Separ
 
 Custom direct children must be registered with defineToolbarChild. The helper requires the component to declare a React 19 ref prop and that ref must be forwarded to one toolbar primitive.
 
-Disabled controls use native \`disabled\` semantics and leave keyboard focus by default. Set \`focusableWhenDisabled\` only when retaining focus is deliberate, such as Undo becoming unavailable immediately after activation.
+A toolbar is one tab stop, so disabled controls stay in its roving focus by default: they expose \`aria-disabled\` instead of the native \`disabled\` attribute, keeping keyboard focus inside the toolbar when a command such as Undo disables itself. Pass \`focusableWhenDisabled={false}\` for the rare control that must be genuinely unfocusable.
 
 ### Motion
 
@@ -534,13 +534,16 @@ export const DisabledGroups: Story = {
     const canvas = within(canvasElement);
     for (const name of ['Edit', 'Freeze layout', 'List', 'Grid']) {
       const control = canvas.getByRole('button', { name });
-      expect(control).toBeDisabled();
+      expect(control).toHaveAttribute('aria-disabled', 'true');
       expect(getComputedStyle(control).opacity).toBe('0.5');
     }
   },
 };
 
-/** Disabled focus retention remains a deliberate, per-control opt-in. */
+/**
+ * Disabled controls stay in the toolbar's roving focus by default, so a
+ * command that disables itself never drops keyboard focus to `<body>`.
+ */
 export const FocusableWhenDisabled: Story = {
   render: (args) => (
     <SegmentedToolbar {...args}>
@@ -548,7 +551,6 @@ export const FocusableWhenDisabled: Story = {
         aria-label="Undo"
         icon={<Undo2 />}
         disabled
-        focusableWhenDisabled
         onClick={noop}
       />
       <ToolbarIconButtonComponent
@@ -562,6 +564,36 @@ export const FocusableWhenDisabled: Story = {
     const undo = within(canvasElement).getByRole('button', { name: 'Undo' });
     expect(undo).not.toBeDisabled();
     expect(undo).toHaveAttribute('aria-disabled', 'true');
+    undo.focus();
+    expect(undo).toHaveFocus();
+  },
+};
+
+/**
+ * `focusableWhenDisabled={false}` opts a control back into native `disabled`
+ * semantics, removing it from the toolbar's roving focus entirely.
+ */
+export const UnfocusableWhenDisabled: Story = {
+  render: (args) => (
+    <SegmentedToolbar {...args}>
+      <ToolbarIconButtonComponent
+        aria-label="Undo"
+        icon={<Undo2 />}
+        disabled
+        focusableWhenDisabled={false}
+        onClick={noop}
+      />
+      <ToolbarIconButtonComponent
+        aria-label="Redo"
+        icon={<Redo2 />}
+        onClick={noop}
+      />
+    </SegmentedToolbar>
+  ),
+  play: async ({ canvasElement }) => {
+    const undo = within(canvasElement).getByRole('button', { name: 'Undo' });
+    expect(undo).toBeDisabled();
+    expect(undo).not.toHaveAttribute('aria-disabled');
   },
 };
 

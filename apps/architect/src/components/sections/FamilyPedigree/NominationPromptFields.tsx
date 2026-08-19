@@ -10,11 +10,9 @@ import NewVariableWindow, {
 import PromptText from '~/components/sections/PromptText';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
-import {
-  excludeInterfaceOwned,
-  excludeValidatedUses,
-} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
+
+import { selectSlotPickerOptions } from './slotWiring';
 
 type NominationPromptFieldsProps = {
   nodeType?: string;
@@ -49,19 +47,13 @@ const NominationPromptFields = ({
   // the participant operates, so it may never name a variable the pedigree
   // itself derives — the ego marker above all, which every completeness check
   // keys off. It fills no interface slot of its own, so no slot is exempt.
-  const subject = { entity: 'node', type: nodeType };
   const availableVariables = useAppSelector((state) =>
-    excludeInterfaceOwned(
-      state,
-      subject,
-      excludeValidatedUses(
-        state,
-        subject,
-        booleanVariables,
-        typeof variable === 'string' ? variable : undefined,
-      ),
-      typeof variable === 'string' ? variable : undefined,
-    ),
+    selectSlotPickerOptions(state, {
+      subject: nodeType ? { entity: 'node', type: nodeType } : null,
+      options: booleanVariables,
+      currentValue: typeof variable === 'string' ? variable : undefined,
+      writerClass: 'unvalidated',
+    }),
   );
 
   const handleCreatedNewVariable = (...args: unknown[]) => {

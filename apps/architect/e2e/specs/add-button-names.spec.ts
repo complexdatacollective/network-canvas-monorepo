@@ -78,14 +78,17 @@ const BUTTON_LINE = /^\s*-\s*button\s+"((?:[^"\\]|\\.)*)"/;
  * everything outside an open dialog inert) must not contribute names, and the
  * accessible name has to be the computed one rather than an attribute read.
  */
-async function addButtonNames(scope: Locator): Promise<string[]> {
+async function buttonNames(scope: Locator): Promise<string[]> {
   const snapshot = await scope.ariaSnapshot();
   return snapshot
     .split('\n')
     .map((line) => BUTTON_LINE.exec(line)?.[1])
     .filter((name): name is string => name !== undefined)
-    .map((name) => name.replaceAll(String.raw`\"`, '"'))
-    .filter((name) => ADD_BUTTON.test(name));
+    .map((name) => name.replaceAll(String.raw`\"`, '"'));
+}
+
+async function addButtonNames(scope: Locator): Promise<string[]> {
+  return (await buttonNames(scope)).filter((name) => ADD_BUTTON.test(name));
 }
 
 /** Sorted so a failure reads as a set, not in tree order. */
@@ -139,11 +142,20 @@ async function expandCollapsedSections(scope: Locator): Promise<void> {
  * each distinct name opens one representative dialog per list without walking
  * every row.
  */
-async function duplicateAddButtons(page: Page): Promise<string[]> {
+type AddButtonWalk = {
+  /** Every add-button collision found, editor and row editors together. */
+  failures: string[];
+  /** Every button name the walk read, whether or not it is an add button. */
+  buttonsSeen: number;
+};
+
+async function duplicateAddButtons(page: Page): Promise<AddButtonWalk> {
   const failures: string[] = [];
+  let buttonsSeen = 0;
   const body = page.locator('body');
 
   await expandCollapsedSections(body);
+  buttonsSeen += (await buttonNames(body)).length;
   for (const name of duplicated(await addButtonNames(body))) {
     failures.push(`stage editor: ${name}`);
   }
@@ -162,6 +174,7 @@ async function duplicateAddButtons(page: Page): Promise<string[]> {
 
     await expandCollapsedSections(dialog);
 
+    buttonsSeen += (await buttonNames(dialog)).length;
     for (const name of duplicated(await addButtonNames(dialog))) {
       failures.push(`"${label}" editor: ${name}`);
     }
@@ -170,10 +183,28 @@ async function duplicateAddButtons(page: Page): Promise<string[]> {
     await expect(dialog).toBeHidden();
   }
 
-  return failures;
+  return { failures, buttonsSeen };
 }
 
 const { protocol, assets } = loadAllInterfacesFixture();
+
+/**
+ * The test that guards the tests. Every assertion in this file lives inside a
+ * loop over the fixture's stages, so an empty (or truncated) fixture would
+ * produce a green file that asserted nothing at all — the exact failure this
+ * whole spec exists to prevent, one level up.
+ *
+ * The count is not pinned here: `all-interfaces` is meant to grow, and
+ * `responsive.spec.ts` already fails when a stage type joins it uncovered.
+ * What is pinned is that there IS a corpus, and that every generated title is
+ * distinct, so no two stages silently collapse into one reported test.
+ */
+test('every stage in the fixture generates its own test', () => {
+  expect(protocol.stages.length).toBeGreaterThan(0);
+  expect(new Set(protocol.stages.map((stage) => stage.type)).size).toBe(
+    protocol.stages.length,
+  );
+});
 
 for (const stage of protocol.stages) {
   test(`the ${stage.type} editor offers no two identically-named add buttons`, async ({
@@ -188,6 +219,13 @@ for (const stage of protocol.stages) {
       page.getByRole('textbox', { name: 'Stage name' }),
     ).toBeVisible();
 
-    expect((await duplicateAddButtons(page)).toSorted()).toEqual([]);
+    const { failures, buttonsSeen } = await duplicateAddButtons(page);
+
+    // Non-vacuity for the walk itself. `duplicated([])` is `[]`, so a snapshot
+    // that stopped yielding button lines — a changed YAML shape, a scope that
+    // resolved to nothing, an editor that failed to mount — would pass this
+    // test while reading no controls whatsoever.
+    expect(buttonsSeen).toBeGreaterThan(0);
+    expect(failures.toSorted()).toEqual([]);
   });
 }

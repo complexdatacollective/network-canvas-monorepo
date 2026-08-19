@@ -13,6 +13,8 @@ import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeInterfaceOwned } from '~/selectors/roleFilters';
 
+import { isVariableUsedBySibling } from '../Form/composerHelpers';
+
 const INHERITANCE_PATTERN_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
   value,
   label: startCase(value),
@@ -40,22 +42,6 @@ type DiseaseFieldsProps = {
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** Whether another disease row already maps this variable. */
-export const isVariableUsedByAnotherDisease = (
-  diseases: unknown,
-  variable: string,
-  excludeIndex?: number,
-): boolean => {
-  if (!Array.isArray(diseases) || variable === '') return false;
-  return diseases.some(
-    (row, index) =>
-      index !== excludeIndex && isRecord(row) && row.variable === variable,
-  );
-};
-
 const DiseaseFields = ({
   nodeType,
   siblingDiseases,
@@ -81,10 +67,12 @@ const DiseaseFields = ({
       currentVariable,
     );
   });
+  // The same predicate `Diseases.tsx`'s save-time gate applies, so the picker
+  // and the gate exclude exactly the same rows.
   const availableVariables = booleanNodeVariables.filter(
     (option) =>
       option.value === currentVariable ||
-      !isVariableUsedByAnotherDisease(siblingDiseases, option.value, editIndex),
+      !isVariableUsedBySibling(siblingDiseases, option.value, editIndex),
   );
 
   return (

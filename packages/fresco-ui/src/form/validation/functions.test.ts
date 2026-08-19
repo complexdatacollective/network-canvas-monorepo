@@ -1627,4 +1627,162 @@ describe('Validation Functions', () => {
       },
     );
   });
+
+  /**
+   * `isUnanswered` is the file's single definition of emptiness, and every
+   * OPTIONAL rule short-circuits on it so an unanswered field collects exactly
+   * one error — the `required` one — rather than a second, nonsensical one
+   * about a value the participant never supplied.
+   *
+   * The rules below used to hand-roll a weaker `undefined | null | ''` guard,
+   * which let whitespace-only text and an empty selection fall through to
+   * `Number(value)` — which coerces BOTH to `0` and then reports them as
+   * out of bounds. `maxSelected` and `email` went further and leaned on
+   * `z.prefault`, which surfaced raw Zod type errors ("expected array,
+   * received null") to participants and, for `email`, rejected an untouched
+   * optional field outright.
+   *
+   * `maxLength` is deliberately absent: an empty string is a present value
+   * for it and trivially satisfies any maximum (see isUnanswered.ts).
+   */
+  describe('optional rules short-circuit on the shared emptiness predicate', () => {
+    const NUMBERS_ONLY = {
+      regex: '^\\d+$',
+      errorMessage: 'Enter numbers only.',
+      hint: 'Numbers only.',
+    };
+
+    const optionalRules = [
+      {
+        name: 'minLength',
+        build: () => validations.minLength(5, createMockContext())({}),
+      },
+      {
+        name: 'minValue',
+        build: () => validations.minValue(10, createMockContext())({}),
+      },
+      {
+        // A negative bound, because `Number('   ')` and `Number([])` are both
+        // `0`, which any non-negative maximum would accept by accident.
+        name: 'maxValue',
+        build: () => validations.maxValue(-1, createMockContext())({}),
+      },
+      {
+        name: 'min (numeric)',
+        build: () => validations.min(10, createMockContext())({}),
+      },
+      {
+        name: 'min (date)',
+        build: () => validations.min('2000-01-01', createMockContext())({}),
+      },
+      {
+        name: 'max (numeric)',
+        build: () => validations.max(-1, createMockContext())({}),
+      },
+      {
+        name: 'max (date)',
+        build: () => validations.max('2000-01-01', createMockContext())({}),
+      },
+      {
+        name: 'minSelected',
+        build: () => validations.minSelected(2, createMockContext())({}),
+      },
+      {
+        name: 'maxSelected',
+        build: () => validations.maxSelected(2, createMockContext())({}),
+      },
+      {
+        name: 'pattern',
+        build: () => validations.pattern(NUMBERS_ONLY, createMockContext())({}),
+      },
+      {
+        name: 'email',
+        build: () => validations.email()(),
+      },
+    ];
+
+    const unansweredValues: unknown[] = [
+      undefined,
+      null,
+      '',
+      '   ',
+      [],
+      Number.NaN,
+    ];
+
+    const unansweredCases = optionalRules.flatMap((rule) =>
+      unansweredValues.map((value) => ({ ...rule, value })),
+    );
+
+    it.each(unansweredCases)(
+      '$name says nothing about the unanswered value $value',
+      ({ build, value }) => {
+        expect(build().safeParse(value).success).toBe(true);
+      },
+    );
+
+    it('maxSelected ignores a value that is not a selection', () => {
+      // Every other collection rule returns silently on a value of the wrong
+      // shape rather than showing a participant a Zod type error.
+      const validator = validations.maxSelected(2, createMockContext())({});
+
+      expect(validator.safeParse('abc').success).toBe(true);
+      expect(validator.safeParse(5).success).toBe(true);
+    });
+
+    it.each([
+      {
+        name: 'maxSelected',
+        build: () => validations.maxSelected(2, createMockContext())({}),
+        hint: 'Select a maximum of 2 values.',
+      },
+      {
+        name: 'email',
+        build: () => validations.email()(),
+        hint: 'Must be a valid email address.',
+      },
+    ])(
+      '$name still carries its hint metadata after dropping z.prefault',
+      ({ build, hint }) => {
+        // `makeValidationHints` reads the hint back off the returned schema, so
+        // moving these two off `z.prefault` must not move the metadata with it.
+        expect(z.globalRegistry.get(build())?.hint).toBe(hint);
+      },
+    );
+
+    it('email rejects a malformed address with the participant-facing message', () => {
+      const validator = validations.email()();
+
+      expect(validator.safeParse('someone@example.com').success).toBe(true);
+
+      const result = validator.safeParse('not-an-address');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Enter a valid email address.',
+        );
+      }
+    });
+
+    it('leaves an unanswered required numeric field with exactly one error', async () => {
+      // Through the same combiner a real Field uses, so the rules meet exactly
+      // as they do on screen. Whitespace-only text is unanswered, so only
+      // `required` has anything to say about it.
+      const validate = makeValidationFunction({
+        required: true,
+        minValue: 10,
+        minLength: 5,
+        validationContext: createMockContext(),
+      });
+
+      const result = await validate({}).safeParseAsync('   ');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'You must answer this question before continuing.',
+        ]);
+      }
+    });
+  });
 });

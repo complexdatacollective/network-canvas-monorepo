@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import activeProtocolReducer, { actionCreators } from '../activeProtocol';
 import { test as stagesTest } from '../protocol/stages';
@@ -299,11 +299,7 @@ describe('activeProtocol', () => {
 
     it('should not process sub-reducers when no protocol data', () => {
       // Try to dispatch an action that would normally be handled by sub-reducers
-      store.dispatch(
-        stagesTest.updateStage('test', {
-          label: 'Test Stage',
-        } as unknown as Stage),
-      );
+      store.dispatch(stagesTest.moveStage(0, 1));
 
       const state = store.getState().activeProtocol;
 

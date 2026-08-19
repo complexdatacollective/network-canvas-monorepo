@@ -1,5 +1,13 @@
 import type { Locator, Page } from '@playwright/test';
 
+// The one FamilyPedigree wizard driver, owned by the interview package's e2e
+// fixtures. Reached by relative path because `@codaco/interview-e2e` is a
+// private harness with no published entry point — it is a leaf module whose
+// only import is `@playwright/test`, so nothing else crosses the boundary.
+import {
+  setPedigreeField,
+  setPedigreePartnership,
+} from '../../../../../packages/interview/e2e/fixtures/pedigree-field-driver.js';
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { loadTemplateProtocol } from '../../helpers/load-fixture.js';
 import { appErrorBoundary, StagePreview } from '../../pageobjects/preview.js';
@@ -28,43 +36,17 @@ const CEGRM_TEMPLATE = 'eco-genetic-relationship-maps';
 const PEDIGREE_STAGE_LABEL = 'Family pedigree';
 
 /**
- * Fill one field of the open dialog by its `data-field-name`
- * (`fresco-ui/src/form/hooks/useField.ts`), namespaced e.g. `egg-parent.name`.
- * Ported from `packages/interview/e2e/fixtures/family-pedigree-fixture.ts`'s
- * `setField`, minus the branches this spec does not exercise: booleans are a
- * switch or a true/false radio pair, option fields match on `data-value`, and
- * everything else types into the text input.
+ * Fill one field of the open dialog. `setPedigreeField` is the SAME driver the
+ * interview package's FamilyPedigree matrix scenarios use — imported, not
+ * ported. The copy that used to live here had already lost the number and
+ * accessible-name branches, so a wizard change that touched either would have
+ * been caught in one suite and silently missed in this one.
  */
-async function setField(
+const setField = (
   dialog: Locator,
   fieldName: string,
-  value: boolean | string,
-): Promise<void> {
-  const container = dialog.locator(`[data-field-name="${fieldName}"]`);
-
-  if (typeof value === 'boolean') {
-    const toggle = container.getByRole('switch');
-    if (await toggle.count()) {
-      const isChecked = (await toggle.getAttribute('aria-checked')) === 'true';
-      if (isChecked !== value) await toggle.click();
-      return;
-    }
-    await container
-      .locator(`[role="radio"][data-value="${value ? 'true' : 'false'}"]`)
-      .click();
-    return;
-  }
-
-  const byValue = container.locator(
-    `[role="radio"][data-value="${value}"], [role="option"][data-value="${value}"]`,
-  );
-  if (await byValue.count()) {
-    await byValue.first().click();
-    return;
-  }
-
-  await container.getByRole('textbox').fill(value);
-}
+  value: boolean | string | number,
+) => setPedigreeField(dialog, fieldName, value);
 
 /**
  * Walk the quick-start wizard to a two-parent pedigree named Linda and Robert,
@@ -98,11 +80,7 @@ async function buildPedigree(preview: Page): Promise<void> {
   await setField(dialog, 'hasOtherParents', false);
   await next();
 
-  await dialog
-    .locator('[data-field-name="partnerships.egg-parent"]')
-    .getByRole('radiogroup', { name: 'Robert' })
-    .locator('[role="radio"][data-value="current"]')
-    .click();
+  await setPedigreePartnership(dialog, 'egg-parent', 'Robert', 'current');
   await next();
 
   await setField(dialog, 'hasPartner', false);

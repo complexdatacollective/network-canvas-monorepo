@@ -76,6 +76,20 @@ export const isUsableFinalFocusTarget = (
   return true;
 };
 
+/**
+ * Narrows an arbitrary node — in practice `document.activeElement`, which is
+ * typed `Element | null` — to a focus-return target worth naming, or `null`.
+ *
+ * The single place the "is this an HTMLElement, and is it usable?" pair is
+ * written. Every caller that reads the active element to remember it, or to ask
+ * whether focus has meaningfully moved, goes through here so the two halves
+ * cannot drift apart.
+ */
+export const asFinalFocusTarget = (
+  node: Node | null | undefined,
+): HTMLElement | null =>
+  node instanceof HTMLElement && isUsableFinalFocusTarget(node) ? node : null;
+
 const resolveOne = (target: FinalFocusTarget): HTMLElement | null => {
   if (!target) return null;
 

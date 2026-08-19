@@ -1,5 +1,7 @@
 import type { z } from 'zod';
 
+import { normalizeForComparison } from '@codaco/shared-consts';
+
 import type {
   Codebook,
   EntityDefinition,
@@ -113,19 +115,43 @@ export const duplicateIdRefinement =
     }
   };
 
-/**
- * Check for duplicate names in array
- */
-export const findDuplicateName = (names: string[]): string | null => {
+const findDuplicate = (
+  values: string[],
+  keyOf: (value: string) => string,
+): string | null => {
   const seen = new Set<string>();
-  for (const name of names) {
-    if (seen.has(name)) {
-      return name;
+  for (const value of values) {
+    const key = keyOf(value);
+    if (seen.has(key)) {
+      return value;
     }
-    seen.add(name);
+    seen.add(key);
   }
   return null;
 };
+
+/**
+ * The first repeated researcher-authored NAME in an array, in its original
+ * spelling so the message shows what was written.
+ *
+ * Keyed on `normalizeForComparison`, which is the SAME question Architect's
+ * editors ask as a name is typed and the same one the disease-label rule and
+ * its repair ask: two names that differ only in case, or only in how the same
+ * accented character was encoded, are one name to a reader. Comparing raw here
+ * let the editor refuse a name the schema then accepted, so a protocol built on
+ * one device could carry a pair of names Architect would never have let the
+ * researcher create.
+ */
+export const findDuplicateName = (names: string[]): string | null =>
+  findDuplicate(names, normalizeForComparison);
+
+/**
+ * The first exactly-repeated value in an array — for IDENTIFIERS (codebook
+ * keys, type ids), where two spellings are two different things and no folding
+ * may be applied.
+ */
+export const findDuplicateValue = (values: string[]): string | null =>
+  findDuplicate(values, (value) => value);
 
 /**
  * Get all entity names from codebook for duplicate checking

@@ -13,6 +13,43 @@ type ManagedProperties = {
  */
 export type WithItemProperties<T> = T & ManagedProperties;
 
+const MANAGED_PROPERTY_KEYS = [
+  '_internalId',
+  '_draft',
+] as const satisfies readonly (keyof ManagedProperties)[];
+
+type AssertNever<T extends never> = T;
+
+/**
+ * Compile-time exhaustiveness. A property added to `ManagedProperties` and not
+ * to `MANAGED_PROPERTY_KEYS` makes this a type error — which is what actually
+ * keeps a new managed key out of consumers' saved data, rather than a comment
+ * asking whoever adds one to remember.
+ */
+type _ManagedPropertyKeysAreExhaustive = AssertNever<
+  Exclude<keyof ManagedProperties, (typeof MANAGED_PROPERTY_KEYS)[number]>
+>;
+
+/**
+ * Removes the properties ArrayField manages, leaving the value the consumer's
+ * own schema describes.
+ *
+ * Exported because every consumer needs it: an item handed to an item
+ * component, an editor or a preview carries `_internalId` (and `_draft` while
+ * it is uncommitted), and neither belongs in whatever the consumer persists.
+ * A hand-rolled destructure at the call site freezes today's list of managed
+ * keys, so a key added here reaches consumers' saved data — which is why this
+ * lives beside `ManagedProperties` and is derived from it.
+ */
+export const stripManagedProperties = <T extends Record<string, unknown>>(
+  item: Partial<WithItemProperties<T>> | undefined,
+): T => {
+  if (!item) return {} as T;
+  const value: Record<string, unknown> = { ...item };
+  for (const key of MANAGED_PROPERTY_KEYS) delete value[key];
+  return value as T;
+};
+
 /**
  * Describes one committed mutation to an ArrayField value.
  *
@@ -292,10 +329,10 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     ) => {
       const confirmedItems = allItems
         .filter((item) => !item._draft)
-        .map(({ _internalId, _draft, ...rest }) => {
-          const stripped = rest as unknown as T;
+        .map((item) => {
+          const stripped = stripManagedProperties<T>(item);
           // Preserve the ID mapping for the stripped object so it's found on next render
-          idMapRef.current.set(stripped, _internalId);
+          idMapRef.current.set(stripped, item._internalId);
           return stripped;
         });
 

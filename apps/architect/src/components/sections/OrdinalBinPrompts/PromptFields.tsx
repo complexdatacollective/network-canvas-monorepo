@@ -4,7 +4,6 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -25,7 +24,6 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
 import {
   excludeInterfaceOwned,
   excludeValidatedUses,
@@ -35,6 +33,7 @@ import { getFieldId } from '~/utils/issues';
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
+import { useLockedOptions } from '../useLockedOptions';
 
 type SelectOption = {
   label: string;
@@ -120,14 +119,7 @@ const PromptFields = ({
   // An interface that branches on the variable's exact values owns its option
   // list, so the editor renders it read-only rather than offering an edit the
   // protocol rule would then reject.
-  const interfaceOwnedOptions = useSelector(getInterfaceOwnedOptionMap);
-  const ownedOptionSet =
-    subject && currentVariable
-      ? interfaceOwnedOptions[roleMapKey(subject, currentVariable)]
-      : undefined;
-  const lockedOptions = ownedOptionSet
-    ? INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options
-    : undefined;
+  const lockedOptions = useLockedOptions(subject, currentVariable);
 
   const optionsForCurrentVariable = useSelector((state: RootState) => {
     if (!subject || !currentVariable) return EMPTY_VARIABLE_OPTIONS;

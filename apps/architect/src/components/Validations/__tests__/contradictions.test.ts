@@ -6,7 +6,6 @@ import {
   crossClassPickIssue,
   draftVariableId,
   findDraftContradictions,
-  floorIssue,
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
@@ -1276,36 +1275,6 @@ describe('variableDisplayName', () => {
   it('falls back to the id when the variable or its name is absent', () => {
     expect(variableDisplayName({}, 'missing')).toBe('missing');
     expect(variableDisplayName({ a: { type: 'number' } }, 'a')).toBe('a');
-  });
-});
-
-describe('floorIssue', () => {
-  const integerRules = [
-    'minLength',
-    'maxLength',
-    'minValue',
-    'maxValue',
-    'minSelected',
-    'maxSelected',
-  ];
-
-  it.each(integerRules)('rejects a fractional %s value', (rule) => {
-    expect(floorIssue(rule, 1.5)).toBe(`${rule} must be a whole number`);
-  });
-
-  it.each(integerRules)('accepts an integer %s value', (rule) => {
-    expect(floorIssue(rule, 2)).toBeUndefined();
-  });
-
-  it.each(['maxLength', 'maxSelected'])(
-    'accepts zero for an optional %s',
-    (rule) => {
-      expect(floorIssue(rule, 0)).toBeUndefined();
-    },
-  );
-
-  it.each(['maxLength', 'maxSelected'])('rejects a negative %s', (rule) => {
-    expect(floorIssue(rule, -1)).toBe(`${rule} must be at least 0`);
   });
 });
 

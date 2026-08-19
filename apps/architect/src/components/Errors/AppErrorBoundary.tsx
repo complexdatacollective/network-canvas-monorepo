@@ -4,6 +4,7 @@ import { Component, type ReactNode, useCallback, useState } from 'react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
 type AppErrorBoundaryProps = {
   children?: ReactNode;
@@ -32,14 +33,6 @@ function CopyButton({ value }: { value: string }) {
 type AppErrorBoundaryState = {
   error: Error | null;
 };
-function ensureError(value: unknown): Error {
-  if (value instanceof Error) return value;
-  try {
-    return new Error(JSON.stringify(value));
-  } catch {
-    return new Error(String(value));
-  }
-}
 class AppErrorBoundary extends Component<
   AppErrorBoundaryProps,
   AppErrorBoundaryState

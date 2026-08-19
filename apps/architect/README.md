@@ -37,8 +37,6 @@ The app will be available at `http://localhost:5173`.
 
 Copy `.env.example` to `.env` and configure:
 
-- `VITE_PUBLIC_POSTHOG_KEY` - Public PostHog project key. Analytics initializes
-  only in non-development builds when this is set.
 - `VITE_DISABLE_ANALYTICS` - Set to `true` to disable analytics explicitly in a
   non-development build. Vite development mode always disables analytics.
 

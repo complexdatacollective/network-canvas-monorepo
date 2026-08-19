@@ -1,7 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { renderHook } from '@testing-library/react';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import appReducer, {
   getStorageUnavailable,
   setProtocolLockState,
@@ -10,6 +12,7 @@ import appReducer, {
 import stageEditorDraftReducer, {
   draftTimelineActions,
 } from '~/ducks/modules/stageEditorDraft';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
 
@@ -35,9 +38,9 @@ const createTestStore = () =>
     reducer: {
       app: appReducer,
       assetManifest: reducer,
-      // The refusal below distinguishes a blocked reclaim waiting on a stage
-      // draft from one waiting on an open editor, and reads this slice to
-      // tell them apart.
+      // Registered so a stage-draft transaction can be opened in the tests
+      // below. The refusal itself no longer reads this slice — that it once
+      // did, and answered "which blocker?" with it, is the bug they pin.
       stageEditorDraft: stageEditorDraftReducer,
     },
     middleware: (getDefaultMiddleware) =>
@@ -151,10 +154,42 @@ describe('protocol/assetManifest', () => {
       });
     });
 
-    // A blocked reclaim has two shapes: an unresolved stage-draft choice, and
-    // an editor still open with unsaved changes in it. Naming the wrong one
-    // sends the researcher looking for a question nobody asked.
-    it('names the stage-draft choice when that is what the reclaim is waiting on', async () => {
+    /*
+      A blocked reclaim has two shapes: an unresolved stage-draft choice, and a
+      nested editor still open. `useProtocolTabLock` checks the OPEN EDITOR
+      first, and that is the state in which `NestedDraftReclaimDialog` is the
+      dialog on screen and `StageDraftConflictDialog` is explicitly suppressed.
+      Refusing on any other question — "is a stage editor open?", say — names a
+      way out that is not the one being offered.
+    */
+    it('sends the researcher to the editor that is holding the reclaim', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      // A stage editor open, with a nested editor open inside it: the exact
+      // pair the old discriminator answered backwards.
+      store.dispatch(
+        draftTimelineActions.reset({
+          stage: { id: 'stage-1', type: 'Information', label: 'A' },
+          codebook: {},
+        }),
+      );
+      const nestedEditor = renderHook(() => useNestedDraft(true, () => true));
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      const result = await store.dispatch(
+        importAssetAsync(new File(['test'], 'roster.csv')),
+      );
+      nestedEditor.unmount();
+
+      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
+      expect(result.payload).toMatchObject({
+        message: refusedCommitMessage(
+          'reclaim-blocked',
+          'asset-import-nested-editor',
+        )!,
+      });
+    });
+
+    it('sends the researcher to the stage-draft choice when that is the blocker', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
       store.dispatch(
         draftTimelineActions.reset({
@@ -170,25 +205,10 @@ describe('protocol/assetManifest', () => {
 
       expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
       expect(result.payload).toMatchObject({
-        message: expect.stringContaining(
-          'your unsaved changes to this stage',
-        ) as unknown as string,
-      });
-    });
-
-    it('names the open editor when there is no stage draft to choose about', async () => {
-      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-      store.dispatch(setProtocolLockState('reclaim-blocked'));
-
-      const result = await store.dispatch(
-        importAssetAsync(new File(['test'], 'roster.csv')),
-      );
-
-      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
-      expect(result.payload).toMatchObject({
-        message: expect.stringContaining(
-          'finish or cancel the editor you still have open',
-        ) as unknown as string,
+        message: refusedCommitMessage(
+          'reclaim-blocked',
+          'asset-import-stage-draft',
+        )!,
       });
     });
 

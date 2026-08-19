@@ -35,9 +35,6 @@ export const HistoryToolbarControls = defineToolbarChild(
           aria-label="Undo"
           icon={<Undo />}
           disabled={!canUndo}
-          // Undo can exhaust the history while it holds focus. Keep it in the
-          // toolbar's roving focus so activation does not drop focus to <body>.
-          focusableWhenDisabled
           onClick={onUndo}
         />
         <ToolbarSeparator />
@@ -45,8 +42,6 @@ export const HistoryToolbarControls = defineToolbarChild(
           aria-label="Redo"
           icon={<Redo />}
           disabled={!canRedo}
-          // Redo has the same dynamic-disable focus contract as Undo.
-          focusableWhenDisabled
           onClick={onRedo}
         />
       </ToolbarGroup>

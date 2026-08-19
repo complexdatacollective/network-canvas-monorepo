@@ -119,7 +119,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      run: async ({ page }) => {
+      run: async ({ page, stage }) => {
         // introductionPanel renders as real markdown elements, not raw
         // `##`/`-` text (EgoForm.tsx:215-218, ALLOWED_MARKDOWN_SECTION_TAGS).
         await expect(
@@ -136,7 +136,7 @@ export const egoFormScenarios: InterfaceScenarios = {
 
         // Each field renders inside its own container (BaseField.tsx:62-83, the
         // `data-field-name` wrapper), in declaration order.
-        const fieldContainers = page.locator('[data-field-name]');
+        const fieldContainers = stage.form.fields();
         await expect(fieldContainers).toHaveCount(3);
         await expect(fieldContainers).toContainText([
           'Name?',
@@ -355,9 +355,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
         return synth;
       },
-      run: async ({ page, interview, protocol }) => {
-        const field = (prompt: string) =>
-          page.locator('[data-field-name]', { hasText: prompt });
+      run: async ({ page, interview, protocol, stage }) => {
+        const field = (prompt: string) => stage.form.fieldByText(prompt);
 
         await page.getByLabel('What is your name?').fill('Jordan');
         await page
@@ -497,10 +496,10 @@ export const egoFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
         return synth;
       },
-      run: async ({ page, interview, protocol }) => {
-        const radioGroup = page.locator('[data-field-name]', {
-          hasText: 'How many siblings do you have?',
-        });
+      run: async ({ page, interview, protocol, stage }) => {
+        const radioGroup = stage.form.fieldByText(
+          'How many siblings do you have?',
+        );
         // All 7 options render.
         await expect(radioGroup.getByRole('radio')).toHaveCount(7);
         // > 6 options switches on the container-query columns layout
@@ -722,10 +721,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
         return synth;
       },
-      run: async ({ page, interview, protocol }) => {
-        const group = page.locator('[data-field-name]', {
-          hasText: 'Where do you know them from?',
-        });
+      run: async ({ page, interview, protocol, stage }) => {
+        const group = stage.form.fieldByText('Where do you know them from?');
         const error = page.getByTestId(`${selectionVarId}-field-error`);
 
         // 1 selected → below minSelected. (An empty selection is `required`'s
@@ -1028,13 +1025,6 @@ export const egoFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
-        const focusIsInside = (fieldName: string) =>
-          page.evaluate(
-            (name) =>
-              !!document.activeElement?.closest(`[data-field-name="${name}"]`),
-            fieldName,
-          );
-
         // Each pass answers the topmost unanswered question, so the NEXT
         // family becomes the first invalid control on the following submit.
         const order = [
@@ -1054,9 +1044,9 @@ export const egoFormScenarios: InterfaceScenarios = {
           await expect(stage.form.getFieldError(fieldName)).toBeVisible();
           // Read focus immediately: an `expect(locator).toBeFocused()` would
           // retry for seconds and pass on the deferred focus this fixes.
-          expect(await focusIsInside(fieldName)).toBe(true);
+          expect(await stage.form.focusIsInside(fieldName)).toBe(true);
 
-          const field = page.locator(`[data-field-name="${fieldName}"]`);
+          const field = stage.form.field(fieldName);
           switch (key) {
             case 'text':
             case 'textarea':
@@ -1133,12 +1123,8 @@ export const egoFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
-        const booleanField = page.locator(
-          `[data-field-name="${unansweredBooleanVarId}"]`,
-        );
-        const vasField = page.locator(
-          `[data-field-name="${unansweredVasVarId}"]`,
-        );
+        const booleanField = stage.form.field(unansweredBooleanVarId);
+        const vasField = stage.form.field(unansweredVasVarId);
 
         // A required boolean is a choice with a genuine unselected state, not
         // a switch that can only say true or false.
@@ -1291,20 +1277,18 @@ export const egoFormScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      run: async ({ page }) => {
+      run: async ({ stage }) => {
         // The Text field's hint region (BaseField.tsx:84-89) carries the
         // generated requirement text from makeValidationHints (useField.ts).
-        const nameHint = page
-          .locator('[data-field-name]', { hasText: 'Name?' })
+        const nameHint = stage.form
+          .fieldByText('Name?')
           .locator('[id$="-hint"]');
         await expect(nameHint).toBeVisible();
         await expect(nameHint).not.toBeEmpty();
 
         // The Number field has no hint and no summary, so no hint region renders.
         await expect(
-          page
-            .locator('[data-field-name]', { hasText: 'Age?' })
-            .locator('[id$="-hint"]'),
+          stage.form.fieldByText('Age?').locator('[id$="-hint"]'),
         ).toHaveCount(0);
       },
     },
@@ -1335,9 +1319,9 @@ export const egoFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Done', text: 'Thank you.' });
         return synth;
       },
-      run: async ({ page, interview, protocol }) => {
-        const dateInput = page
-          .locator('[data-field-name]', { hasText: 'When did you last visit?' })
+      run: async ({ page, interview, protocol, stage }) => {
+        const dateInput = stage.form
+          .fieldByText('When did you last visit?')
           .locator('input[type="date"]');
         const error = page.getByTestId(`${relativeDateVarId}-field-error`);
 

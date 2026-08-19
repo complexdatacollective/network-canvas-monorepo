@@ -14,16 +14,34 @@ export type AuthoredField = {
 };
 
 /**
+ * What a field is called, as the researcher wrote it.
+ *
+ * The one rule. `createFieldMetadata` resolves the caption the participant
+ * reads from this, and `buildVariableLabels` decides what a validator may name
+ * the variable by from this, so the two cannot disagree about which text is
+ * the researcher's and which is a fallback the participant never authored.
+ *
+ * Whitespace-only text counts as nothing authored: a stray space must not
+ * produce `your answer to ''`, nor a field captioned with a blank.
+ */
+export const authoredFieldLabel = (field: {
+  label?: string;
+  prompt?: string;
+}): string | undefined => {
+  const authored = (field.label ?? field.prompt ?? '').trim();
+  return authored.length > 0 ? authored : undefined;
+};
+
+/**
  * The participant-facing text for each variable a screen asks about, for the
  * variable-comparison validators to name their target with.
  *
- * Built from the AUTHORED prompt or label only. A codebook variable's `name` is
- * the researcher's identifier for a column of data and must never reach a
+ * Built from `authoredFieldLabel` only. A codebook variable's `name` is the
+ * researcher's identifier for a column of data and must never reach a
  * participant, so a field with nothing authored is simply left out and the
  * validator falls back to a complete label-free sentence — which is also what a
  * comparison against a variable answered on an earlier stage gets, since it has
- * no caption on this screen. Whitespace-only text counts as nothing authored,
- * so a stray space cannot produce `your answer to ''`.
+ * no caption on this screen.
  *
  * ACCUMULATED THROUGH A MAP. `VariableNameSchema` is `/^[a-zA-Z0-9._:-]+$/`,
  * which admits `__proto__` as a codebook variable id, and
@@ -40,8 +58,8 @@ export const buildVariableLabels = (
 ): Readonly<Record<string, string>> => {
   const labels = new Map<string, string>();
   for (const field of fields) {
-    const authored = (field.label ?? field.prompt ?? '').trim();
-    if (authored.length > 0) labels.set(field.variable, authored);
+    const authored = authoredFieldLabel(field);
+    if (authored !== undefined) labels.set(field.variable, authored);
   }
   return Object.fromEntries(labels);
 };
@@ -61,7 +79,7 @@ export const useVariableLabels = (
   const contentKey = JSON.stringify(
     fields.map((field) => ({
       variable: field.variable,
-      label: (field.label ?? field.prompt ?? '').trim(),
+      label: authoredFieldLabel(field) ?? '',
     })),
   );
 

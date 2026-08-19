@@ -1,5 +1,5 @@
 ---
-'@codaco/protocol-validation': minor
+'@codaco/protocol-validation': major
 '@codaco/protocol-utilities': patch
 '@codaco/interview': patch
 '@codaco/architect': patch
@@ -30,9 +30,18 @@ Alongside that, three related gaps are closed:
   and left the researcher on a recovery screen whose only exit discarded the
   stage they had just created. The options are now shown read-only, with the
   reason.
+- A Sociogram can still colour its nodes by a variable an interface owns —
+  showing participants their own node on a map of the family they just drew is
+  exactly what such a variable is for — but it can no longer be set up so that
+  tapping a node turns that variable on and off. Where a prompt does, only its
+  tap-to-highlight setting is removed; the prompt's question, its layout and its
+  edge settings are kept.
 - A Narrative Pedigree can no longer record two diseases against one variable,
   or two diseases under the same name. Both were accepted silently, and left the
   pedigree with two contradictory answers for one set of affected relatives.
+  Where one of two diseases sharing a name is being removed anyway, the one that
+  stays keeps its name; where a name has to be changed, the new one is checked
+  against every disease on the stage rather than only those above it.
 
 Where a protocol already contains one of these problems, Architect now says so
 when the protocol is opened, lists each problem in plain language, and offers to

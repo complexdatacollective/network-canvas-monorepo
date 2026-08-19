@@ -13,6 +13,7 @@ import {
   type ProtocolValidationError,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
@@ -32,7 +33,7 @@ import {
   setExportInProgress,
   setImportInProgress,
 } from '~/utils/criticalOperation';
-import { ensureError } from '~/utils/ensureError';
+import { describeMigrationFailure } from '~/utils/describeMigrationFailure';
 import {
   assertCompressedSizeWithinLimit,
   loadGuardedNetcanvas,
@@ -422,10 +423,28 @@ const handleProtocolMigration = ({
         };
       }
 
-      const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
-        name,
-      });
-      return { status: 'ready', protocol: migratedProtocol as CurrentProtocol };
+      // `migrateProtocol` re-validates its output and THROWS when the result
+      // does not satisfy the current schema. Unhandled, that reached the
+      // researcher as a bare "Protocol migration failed." — their instrument
+      // would not open and nothing said why. See `describeMigrationFailure`.
+      try {
+        const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
+          name,
+        });
+        return {
+          status: 'ready',
+          protocol: migratedProtocol as CurrentProtocol,
+        };
+      } catch (caught) {
+        const { title, message } = describeMigrationFailure(
+          ensureError(caught),
+          protocol,
+        );
+        return {
+          status: 'needs-ui',
+          result: { status: 'error', title, message },
+        };
+      }
     }
     case schemaVersionStates.UPGRADE_APP:
       return {

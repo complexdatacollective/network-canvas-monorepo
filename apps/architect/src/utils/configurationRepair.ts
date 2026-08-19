@@ -20,13 +20,19 @@ export type ConfigurationRepairAssessment =
 /**
  * Whether a protocol that failed validation failed for reasons Architect can
  * offer to fix — a form collecting one variable twice, a prompt bound to a
- * variable an interface owns, two diseases on one variable, two diseases
- * sharing a name.
+ * variable an interface owns, a disease bound to one, two diseases on one
+ * variable, two diseases sharing a name.
  *
- * Not a disease bound to an interface-owned variable: that is never detected,
- * because `diseases[].variable` carries no `usage` tag and
- * `findExclusiveVariableConflicts` treats an untagged reference as a read.
- * Nothing here can offer a repair validation never asks for.
+ * Which of those it can offer is not decided here: it is whatever
+ * `repairConfigurationConflicts` schedules, and the list above is a reading of
+ * that function rather than a second statement of the rules. (It said until
+ * recently that a disease bound to an interface-owned variable could never be
+ * detected, because `diseases[].variable` carried no `usage` tag. It carries
+ * `usage: 'unvalidatedAttribute'` now, so `findExclusiveVariableConflicts`
+ * reports it and the repair drops the row — leaving `unrepairable` only where
+ * it was the stage's last disease, which a Narrative Pedigree may not be
+ * without. The comment had outlived its limitation and was telling readers a
+ * working repair did not exist.)
  *
  * Called only AFTER validation has failed, and never reports a repair it has
  * not proven: the repaired protocol is re-validated here, so accepting the fix

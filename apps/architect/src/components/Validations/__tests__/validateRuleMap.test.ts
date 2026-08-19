@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { makeFieldEditorValidate } from '../contradictions';
 import {
   completeRuleValues,
   incompleteRuleIssue,
@@ -144,5 +145,45 @@ describe('ruleMapIssue', () => {
         context({ variableType: '' }),
       ),
     ).toBeUndefined();
+  });
+});
+
+/**
+ * The rule map has TWO save gates: this one (the `validation` field's own
+ * validator) and `makeFieldEditorValidate`, which the stage editors run over
+ * the whole draft. They used to each write out the unanswered-rule check and
+ * the schema-floor sweep, under a comment claiming both called through one
+ * place — they did not, and the two sweeps had already diverged (one read the
+ * raw map, the other the completed one). Both call `ruleMapPrecheck` now, and
+ * this is what keeps saying so honest: a copy reintroduced in either gate has
+ * to keep producing the same sentence for every one of these maps.
+ */
+describe('the two rule-map save gates agree', () => {
+  const allVariables = {
+    subject: { name: 'Subject', type: 'number', component: 'Number' },
+  };
+
+  it.each([
+    ['an unanswered number rule', { minValue: 10, maxValue: 2, sameAs: null }],
+    ['an unanswered comparison rule', { sameAs: null }],
+    ['a fractional integer rule', { minValue: 1.5 }],
+    ['a negative floor', { maxSelected: -1 }],
+    [
+      'an unanswered rule ahead of a floor issue',
+      { maxSelected: null, minValue: 1.5 },
+    ],
+    ['a satisfiable map', { minValue: 1, maxValue: 10 }],
+  ])('produce the same verdict for %s', (_case, validation) => {
+    const fieldGate = ruleMapIssue(
+      validation,
+      context({ allVariables, currentVariableId: 'subject' }),
+    );
+    const editorGate = makeFieldEditorValidate(allVariables)({
+      variable: 'subject',
+      component: 'Number',
+      validation,
+    }).validation;
+
+    expect(editorGate ?? undefined).toBe(fieldGate);
   });
 });

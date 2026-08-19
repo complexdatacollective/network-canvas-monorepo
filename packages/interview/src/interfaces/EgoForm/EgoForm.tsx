@@ -16,6 +16,7 @@ import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FieldValue,
@@ -61,7 +62,12 @@ const EgoFormInner = (props: EgoFormProps) => {
     setInteractionCount((count) => count + 1);
   }, []);
 
-  const { isDirty: isFormDirty, isValid: isFormValid } = useFormMeta();
+  const { isValid: isFormValid } = useFormMeta();
+  // A live comparison against the values the fields registered with, not the
+  // store's sticky `isDirty`. The sticky flag never returns to false once
+  // anything has been typed, so a participant who changed an answer and then
+  // put it back was still asked whether to discard changes they no longer had.
+  const isFormDirty = useFormStore(selectIsFormDirty);
   const formStoreApi = useContext(FormStoreContext);
   const validateForm = useFormStore((s) => s.validateForm);
   const requestErrorFocus = useFormStore((s) => s.requestErrorFocus);

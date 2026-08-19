@@ -6,7 +6,6 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -26,7 +25,6 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
 import {
   excludeInterfaceOwned,
   excludeValidatedUses,
@@ -35,6 +33,7 @@ import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject } from '../SociogramPrompts/selectors';
+import { useLockedOptions } from '../useLockedOptions';
 
 type SelectOption = {
   label: string;
@@ -105,13 +104,7 @@ const PromptFields = ({
 
   // An interface that branches on the variable's exact values owns its option
   // list, so the editor renders it read-only.
-  const interfaceOwnedOptions = useAppSelector(getInterfaceOwnedOptionMap);
-  const ownedOptionSet = currentEdgeVariable
-    ? interfaceOwnedOptions[roleMapKey(edgeSubject, currentEdgeVariable)]
-    : undefined;
-  const lockedOptions = ownedOptionSet
-    ? INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options
-    : undefined;
+  const lockedOptions = useLockedOptions(edgeSubject, currentEdgeVariable);
   const optionsForCurrentEdgeVariable = useAppSelector((state) => {
     const variables = getVariablesForSubject(state, edgeSubject);
     const found = currentEdgeVariable

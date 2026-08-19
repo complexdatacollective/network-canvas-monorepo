@@ -1,38 +1,27 @@
-import { isEqual } from 'es-toolkit/compat';
 import { Pencil, Trash2 } from 'lucide-react';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useId,
-  useState,
-} from 'react';
-import { v4 as uuid } from 'uuid';
+import { createContext, useContext, useEffect, useId, useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ArrayField, {
+  stripManagedProperties,
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { confirmDiscardNestedDraft } from '~/components/DialogForm/confirmDiscardNestedDraft';
-import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 
-import EditRule from './EditRule';
 import RulePreview from './PreviewRule';
-import validateRule, { type Rule } from './validateRule';
-
-export type RuleTypeOption = {
-  label: string;
-  value: 'node' | 'edge' | 'ego';
-};
-
-type EditableRule = Rule & Record<string, unknown>;
+import { Join } from './PreviewText';
+import type { RuleTypeOption } from './ruleCodebook';
+import RuleEditor, { type EditableRule } from './RuleEditor';
+import type { Rule } from './validateRule';
+import { getRuleDisplayOptions } from './withDisplayOptions';
 
 type RuleListContextValue = {
   codebook: Record<string, unknown>;
   ruleTypes: RuleTypeOption[];
+  /** How the committed rules combine, or undefined while nothing says yet. */
+  join?: string;
+  /** How many rules are committed — a row being added is not one of them. */
+  ruleCount: number;
 };
 
 const RuleListContext = createContext<RuleListContextValue | null>(null);
@@ -44,19 +33,22 @@ const useRuleListContext = () => {
   return context;
 };
 
-const stripManagedProperties = (
-  item: Record<string, unknown> | undefined,
-): EditableRule => {
-  if (!item) return { type: '' };
-  const { _internalId, _draft, ...rule } = item;
-  return {
-    ...rule,
-    type: typeof rule.type === 'string' ? rule.type : '',
-  };
+/**
+ * The rule a row holds, without the list's own bookkeeping — which fresco-ui
+ * owns and strips, so a key it adds later cannot reach a saved protocol.
+ *
+ * A row still being added has no target yet, and every reader here treats an
+ * empty target as "not a rule": the row renders nothing and the editor opens
+ * on the Entity control.
+ */
+const toRule = (item: Record<string, unknown> | undefined): EditableRule => {
+  const rule = stripManagedProperties(item);
+  return { ...rule, type: typeof rule.type === 'string' ? rule.type : '' };
 };
 
 const RuleListItem = ({
   item,
+  committedIndex,
   isBeingEdited,
   onEdit,
   onDelete,
@@ -64,8 +56,8 @@ const RuleListItem = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<EditableRule>) => {
-  const { codebook } = useRuleListContext();
-  const rule = stripManagedProperties(item);
+  const { codebook, join, ruleCount } = useRuleListContext();
+  const rule = toRule(item);
   const textId = useId();
   const editActionId = useId();
   const deleteActionId = useId();
@@ -75,6 +67,18 @@ const RuleListItem = ({
   // matches every other dialog-edited ArrayField and gives the shared layout
   // animation a single source and destination rather than two copies.
   if (isBeingEdited || !rule.type) return null;
+
+  /*
+    How this rule combines with the next one, between the two of them.
+
+    The "Rule Matching" control below the list sets this, but a researcher
+    reading three cards down the page should not have to reach the bottom of
+    the list to learn whether they were asking for all of them or any of them.
+    Keyed on the COMMITTED position: a row still being added has no committed
+    index, and it is not something the rules before it combine with yet.
+  */
+  const showJoin =
+    !!join && committedIndex !== undefined && committedIndex < ruleCount - 1;
 
   return (
     <>
@@ -96,8 +100,11 @@ const RuleListItem = ({
             <RulePreview
               id={textId}
               type={rule.type}
-              options={rule.options ?? {}}
-              codebook={codebook}
+              options={getRuleDisplayOptions({
+                type: rule.type,
+                options: rule.options ?? {},
+                codebook,
+              })}
             />
           </div>
           <div className="flex shrink-0 items-center justify-end gap-3">
@@ -122,16 +129,18 @@ const RuleListItem = ({
             />
           </div>
         </div>
+        {showJoin ? <Join value={join} variant="list" /> : null}
       </div>
     </>
   );
 };
 
 type RuleEditorSession = {
+  /** Bumped per session; the `key` that gives each one a fresh field store. */
+  id: number;
   sourceId: string | null;
-  draft: EditableRule;
-  open: boolean;
   seed: EditableRule;
+  open: boolean;
 };
 
 const RuleListEditor = ({
@@ -141,13 +150,13 @@ const RuleListEditor = ({
   getEditorTrigger,
 }: ArrayFieldEditorProps<EditableRule>) => {
   const { codebook, ruleTypes } = useRuleListContext();
-  const { openDialog } = useDialog();
   const [session, setSession] = useState<RuleEditorSession | null>(null);
 
-  // ArrayField keeps one editor component mounted across sessions. Reset its
-  // local draft for every newly opened row, including reopening the same row
-  // after a cancelled edit; retaining the previous draft would resurrect work
-  // the researcher explicitly discarded.
+  // ArrayField keeps one editor component mounted across sessions. Every newly
+  // opened row — including reopening the same row after a cancelled edit —
+  // gets its own session id, and so its own field store: fresco-ui has no
+  // whole-form reinitialize, and a reused store would resurrect work the
+  // researcher explicitly discarded.
   useEffect(() => {
     if (!item) {
       setSession((previous) =>
@@ -160,66 +169,26 @@ const RuleListEditor = ({
       if (previous?.open && previous.sourceId === item._internalId) {
         return previous;
       }
-      const rule = stripManagedProperties(item);
       return {
+        id: (previous?.id ?? 0) + 1,
         sourceId: item._internalId,
-        draft: rule,
+        seed: toRule(item),
         open: true,
-        seed: rule,
       };
     });
   }, [item]);
 
-  const isDraftDirty = useCallback(
-    () => !!session && !isEqual(session.draft, session.seed),
-    [session],
-  );
-  useNestedDraft(!!item && !!session?.open, isDraftDirty);
-
-  const handleCancel = useCallback(() => {
-    if (!isDraftDirty()) {
-      onCancel();
-      return;
-    }
-
-    void confirmDiscardNestedDraft(openDialog).then((confirmed) => {
-      if (confirmed) onCancel();
-      return confirmed;
-    });
-  }, [isDraftDirty, onCancel, openDialog]);
-
-  const handleSave = useCallback(() => {
-    const draft = session?.draft;
-    if (!draft || !validateRule(draft)) {
-      void openDialog({
-        type: 'acknowledge',
-        intent: 'warning',
-        title: 'Please complete all fields',
-        description:
-          'To create your rule, all fields are required. Please complete all fields before clicking save, or use cancel to abandon this rule.',
-        actions: { primary: { label: 'OK', value: true } },
-      });
-      return;
-    }
-
-    onSave?.({ ...draft, id: draft.id ?? uuid() });
-  }, [onSave, openDialog, session?.draft]);
+  if (!session) return null;
 
   return (
-    <EditRule
-      open={!!item && !!session?.open}
-      rule={session?.draft}
+    <RuleEditor
+      key={session.id}
+      open={!!item && session.open}
+      seed={session.seed}
       ruleTypes={ruleTypes}
       codebook={codebook}
-      onChange={(draft) =>
-        setSession((previous) =>
-          previous
-            ? { ...previous, draft: stripManagedProperties(draft) }
-            : previous,
-        )
-      }
-      onCancel={handleCancel}
-      onSave={handleSave}
+      onSave={(rule) => onSave?.(rule)}
+      onCancel={onCancel}
       finalFocus={getEditorTrigger}
     />
   );
@@ -231,6 +200,8 @@ type PreviewRulesProps = {
   ruleTypes: RuleTypeOption[];
   addButtonLabel: string;
   onChange: (rules: Rule[]) => void;
+  /** How the rules combine — shown between them. See `RuleListItem`. */
+  join?: string;
   hasError?: boolean;
 };
 
@@ -249,9 +220,12 @@ const PreviewRules = ({
   ruleTypes,
   addButtonLabel,
   onChange,
+  join,
   hasError = false,
 }: PreviewRulesProps) => (
-  <RuleListContext.Provider value={{ codebook, ruleTypes }}>
+  <RuleListContext.Provider
+    value={{ codebook, ruleTypes, join, ruleCount: rules.length }}
+  >
     <ArrayField<EditableRule>
       value={rules as EditableRule[]}
       onChange={(nextRules) => onChange(nextRules ?? [])}

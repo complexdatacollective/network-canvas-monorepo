@@ -1,10 +1,18 @@
-import { normalizeForComparison } from '@codaco/shared-consts';
-
+import { duplicateFormFieldIndices } from '../schemas/8/common/forms.ts';
 import {
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
 } from '../schemas/8/interface-owned-options.ts';
+// The CURRENT protocol schema, imported from its own module rather than
+// through `../schemas/index.ts` — see the note in
+// `collectEntityAttributeReferences.ts` for why that indirection cannot be
+// used from a module the schema's own validation reaches.
+import CurrentProtocolSchema from '../schemas/8/schema.ts';
+import {
+  diseaseLabelKey,
+  duplicateDiseaseRows,
+} from '../schemas/8/stages/narrative-pedigree.ts';
 import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
@@ -44,45 +52,43 @@ export type RepairResult = {
 };
 
 /**
- * The array containers a conflicting reference can be removed from, with the
- * minimum length the schema requires. A reference outside this set has no
- * removable container — a required slot on a stage, for example — and is
- * reported as unrepairable rather than guessed at.
+ * The array containers a conflicting reference can be removed from, keyed to
+ * the word a researcher would use for one of their entries. A reference
+ * outside this set has no removable container — a required slot on a stage,
+ * for example — and is reported as unrepairable rather than guessed at.
+ *
+ * How SHORT each container may become is deliberately absent: that is the
+ * schema's answer, and the only one that stays right. It is read back from the
+ * schema by re-parsing the repaired protocol (see `repairBrokeStructure`)
+ * rather than copied here, where `fields` alone would need a NetworkComposer
+ * special case and every future array a new entry nobody would remember to add.
  */
-const REMOVABLE_CONTAINERS: Record<string, { minLength: number }> = {
-  fields: { minLength: 1 },
+const REMOVABLE_CONTAINERS: Record<string, string> = {
+  fields: 'form field',
   // FamilyPedigree holds its node form as a bare, optional array.
-  form: { minLength: 0 },
-  diseases: { minLength: 1 },
-  prompts: { minLength: 1 },
-  nominationPrompts: { minLength: 0 },
-  additionalAttributes: { minLength: 0 },
+  form: 'form field',
+  diseases: 'disease',
+  prompts: 'prompt',
+  nominationPrompts: 'nomination prompt',
+  additionalAttributes: 'automatically-set attribute',
 };
 
 /**
- * How short the schema lets a removable container become.
+ * Optional object properties a conflicting reference can be removed WITH, keyed
+ * to the word a researcher would use for one. Preferred over dropping the
+ * enclosing array entry, and searched first: a Sociogram prompt whose highlight
+ * names a variable an interface owns still has its text, its layout and its
+ * edge settings, and dropping the prompt would take all three — or, on a
+ * single-prompt stage, refuse the protocol outright, because `prompts` may not
+ * be emptied.
  *
- * `fields` is the one key whose answer depends on where it sits:
- * `FormSchema`/`TitlelessFormSchema` require at least one field, while
- * NetworkComposer's `nodeForm.fields` and each edge form's `fields` are
- * optional and may be empty (a composer stage can legitimately have no
- * editable attributes).
+ * A property listed here must be OPTIONAL in the schema. That is not asserted
+ * from a hand-written copy of the schema's shape: the repaired protocol is
+ * re-parsed, and a deletion the schema complains about at the property's own
+ * path declines the whole repair (see `repairBrokeStructure`).
  */
-const minLengthFor = (
-  protocol: UnknownRecord,
-  containerPath: readonly (string | number)[],
-  key: string,
-): number => {
-  if (key === 'fields') {
-    const stageIndex = containerPath[1];
-    const stages = protocol.stages;
-    const stage =
-      typeof stageIndex === 'number' && Array.isArray(stages)
-        ? stages[stageIndex]
-        : undefined;
-    if (isRecord(stage) && stage.type === 'NetworkComposer') return 0;
-  }
-  return REMOVABLE_CONTAINERS[key]?.minLength ?? 1;
+const REMOVABLE_PROPERTIES: Record<string, string> = {
+  highlight: 'tap-to-highlight setting',
 };
 
 const cloneProtocol = (protocol: unknown): unknown => structuredClone(protocol);
@@ -96,46 +102,99 @@ const valueAt = (root: unknown, path: readonly (string | number)[]): unknown =>
     return undefined;
   }, root);
 
+type RepairTarget =
+  /** Drop one entry from an array. */
+  | {
+      kind: 'entry';
+      containerPath: (string | number)[];
+      key: string;
+      index: number;
+    }
+  /** Delete one optional property. */
+  | { kind: 'property'; propertyPath: (string | number)[]; key: string };
+
 /**
- * The removable array element enclosing a reference: the LAST array index in
- * its path below the stage index. `stages[3].diseases[1].variable` yields the
- * `diseases` array and index 1; `stages[3].nodeConfig.egoVariable` yields
- * nothing, because removing a required slot is not a repair.
+ * The smallest thing that can be removed to unbind a reference: walking OUT
+ * from the reference, the first removable optional property (`REMOVABLE_
+ * PROPERTIES`) or, failing that, the enclosing array element (the last array
+ * index in the path below the stage index).
+ *
+ * `stages[3].diseases[1].variable` yields the `diseases` array and index 1;
+ * `stages[3].prompts[0].highlight.variable` yields the `highlight` property,
+ * because the binding is that property and nothing else in the prompt is
+ * implicated; `stages[3].nodeConfig.egoVariable` yields nothing, because
+ * removing a required slot is not a repair.
  */
-const removableContainerOf = (
+const repairTargetOf = (
   path: readonly (string | number)[],
-): {
-  containerPath: (string | number)[];
-  key: string;
-  index: number;
-} | null => {
+): RepairTarget | null => {
   for (let position = path.length - 1; position >= 2; position -= 1) {
     const step = path[position];
-    if (typeof step !== 'number') continue;
+    if (typeof step !== 'number') {
+      if (typeof step === 'string' && Object.hasOwn(REMOVABLE_PROPERTIES, step))
+        return {
+          kind: 'property',
+          propertyPath: path.slice(0, position + 1),
+          key: step,
+        };
+      continue;
+    }
     const key = path[position - 1];
     if (typeof key !== 'string') return null;
     if (!Object.hasOwn(REMOVABLE_CONTAINERS, key)) return null;
-    return { containerPath: path.slice(0, position), key, index: step };
+    return {
+      kind: 'entry',
+      containerPath: path.slice(0, position),
+      key,
+      index: step,
+    };
   }
   return null;
 };
 
 type PendingRemoval = {
   containerPath: (string | number)[];
-  key: string;
   indices: Set<number>;
 };
 
-const removalKey = (containerPath: readonly (string | number)[]): string =>
-  JSON.stringify(containerPath);
+const removalKey = (containerPath: readonly PropertyKey[]): string =>
+  JSON.stringify(containerPath.map(String));
 
-const containerLabel: Record<string, string> = {
-  fields: 'form field',
-  form: 'form field',
-  diseases: 'disease',
-  prompts: 'prompt',
-  nominationPrompts: 'nomination prompt',
-  additionalAttributes: 'automatically-set attribute',
+/**
+ * Which of `paths` the schema complains about at the path itself — a too-short
+ * or now-missing array, a property that turned out not to be optional.
+ */
+const brokenPaths = (
+  protocol: unknown,
+  paths: ReadonlySet<string>,
+): Set<string> => {
+  const broken = new Set<string>();
+  const result = CurrentProtocolSchema.safeParse(protocol);
+  if (result.success) return broken;
+  for (const issue of result.error.issues) {
+    const key = removalKey(issue.path);
+    if (paths.has(key)) broken.add(key);
+  }
+  return broken;
+};
+
+/**
+ * True when a removal left one of the places it touched in a state the schema
+ * rejects — a shortened array below its minimum, a deleted property the schema
+ * requires. Compared against the SAME complaint on the original, so a problem
+ * that place already had is never blamed on the repair.
+ */
+const repairBrokeStructure = (
+  source: unknown,
+  repaired: unknown,
+  touched: readonly (readonly (string | number)[])[],
+): boolean => {
+  const paths = new Set(touched.map(removalKey));
+  if (paths.size === 0) return false;
+  const after = brokenPaths(repaired, paths);
+  if (after.size === 0) return false;
+  const before = brokenPaths(source, paths);
+  return [...after].some((key) => !before.has(key));
 };
 
 /** Every `form.fields`-shaped array in a protocol, with its path. */
@@ -212,15 +271,27 @@ const asDiseaseRows = (
  * still satisfies the schema — a removal that would empty an array the schema
  * requires is NOT performed, and the whole protocol is reported unrepairable
  * instead, so accepting a repair can never lead to a second dead end.
+ *
+ * That last sentence is CHECKED, not merely intended: the repaired protocol is
+ * put back through this same pass, and a repair that leaves any problem this
+ * module recognises declines the whole protocol instead of offering a fix the
+ * researcher would be asked to accept again the next time they opened it.
  */
-export const repairConfigurationConflicts = (
-  protocol: unknown,
-): RepairResult => {
+export const repairConfigurationConflicts = (protocol: unknown): RepairResult =>
+  runRepair(protocol, true);
+
+/**
+ * `verify` runs the repaired protocol back through one more pass to prove the
+ * repair actually cleared what it described. False in that second pass, so the
+ * check is one level deep rather than recursive.
+ */
+const runRepair = (protocol: unknown, verify: boolean): RepairResult => {
   const source = isRecord(protocol) ? protocol : null;
   if (!source) return { protocol, problems: [], repairable: true };
 
   const problems: ConfigurationProblem[] = [];
   const removals = new Map<string, PendingRemoval>();
+  const propertyDeletions = new Map<string, (string | number)[]>();
   const labelRenames: { path: (string | number)[]; label: string }[] = [];
   const optionRestorations: {
     path: (string | number)[];
@@ -233,41 +304,49 @@ export const repairConfigurationConflicts = (
     describeProblem: string,
     describeRepair: (what: string) => string,
   ): void => {
-    const container = removableContainerOf(path);
-    if (!container) {
+    const target = repairTargetOf(path);
+    if (!target) {
       problems.push({ problem: describeProblem });
       unrepairable = true;
       return;
     }
-    const key = removalKey(container.containerPath);
+    if (target.kind === 'property') {
+      propertyDeletions.set(removalKey(target.propertyPath), [
+        ...target.propertyPath,
+      ]);
+      problems.push({
+        problem: describeProblem,
+        repair: describeRepair(REMOVABLE_PROPERTIES[target.key] ?? 'setting'),
+      });
+      return;
+    }
+    const key = removalKey(target.containerPath);
     const pending = removals.get(key) ?? {
-      containerPath: container.containerPath,
-      key: container.key,
+      containerPath: target.containerPath,
       indices: new Set<number>(),
     };
-    pending.indices.add(container.index);
+    pending.indices.add(target.index);
     removals.set(key, pending);
     problems.push({
       problem: describeProblem,
-      repair: describeRepair(containerLabel[container.key] ?? 'entry'),
+      repair: describeRepair(REMOVABLE_CONTAINERS[target.key] ?? 'entry'),
     });
   };
 
-  // 1. A form may not collect one variable twice.
+  // 1. A form may not collect one variable twice. `duplicateFormFieldIndices`
+  //    is the schema's own finder, so the repair keeps exactly the fields the
+  //    schema would accept.
   for (const { path, fields } of formFieldArrays(source)) {
-    const seen = new Set<string>();
-    fields.forEach((field, index) => {
-      if (!isRecord(field) || typeof field.variable !== 'string') return;
-      if (!seen.has(field.variable)) {
-        seen.add(field.variable);
-        return;
-      }
+    for (const index of duplicateFormFieldIndices(fields)) {
+      const field = fields[index];
+      const variable = isRecord(field) ? field.variable : undefined;
+      if (typeof variable !== 'string') continue;
       scheduleRemoval(
         [...path, index, 'variable'],
-        `A form collects the same attribute ("${variableDisplayName(source, field.variable)}") more than once.`,
+        `A form collects the same attribute ("${variableDisplayName(source, variable)}") more than once.`,
         () => 'The repeated form field will be removed.',
       );
-    });
+    }
   }
 
   // 2. A variable an interface owns outright may not be named elsewhere.
@@ -287,52 +366,67 @@ export const repairConfigurationConflicts = (
     const diseases = asDiseaseRows(stage.diseases);
     if (!diseases) return;
 
-    const firstLabelForVariable = new Map<string, string>();
-    const droppedIndices = new Set<number>();
-    diseases.forEach((disease, index) => {
-      if (typeof disease.variable !== 'string') return;
-      const label =
-        typeof disease.label === 'string' ? disease.label : disease.variable;
-      const firstLabel = firstLabelForVariable.get(disease.variable);
-      if (firstLabel === undefined) {
-        firstLabelForVariable.set(disease.variable, label);
-        return;
-      }
+    // The SAME finder the schema uses (`narrative-pedigree.ts`), so the repair
+    // cannot judge a duplicate differently from the rule it is repairing.
+    const { variableDuplicates } = duplicateDiseaseRows(diseases);
+    const labelOf = (index: number): string => {
+      const row = diseases[index];
+      if (typeof row?.label === 'string') return row.label;
+      return typeof row?.variable === 'string' ? row.variable : '';
+    };
+    // Every row this pass is dropping: the variable duplicates found just
+    // above, PLUS any row step 2 already scheduled for removal because it
+    // bound a variable an interface owns. Both leave the list, so neither may
+    // force a rename on a row that stays — a disease left alone after the
+    // other was deleted would otherwise be renamed "X (2)" with no "X".
+    const droppedIndices = new Set(variableDuplicates);
+    for (const index of removals.get(
+      removalKey(['stages', stageIndex, 'diseases']),
+    )?.indices ?? []) {
       droppedIndices.add(index);
+    }
+    for (const index of variableDuplicates) {
+      const variable = diseases[index]?.variable;
+      const firstIndex = diseases.findIndex(
+        (candidate) => candidate.variable === variable,
+      );
       scheduleRemoval(
         ['stages', stageIndex, 'diseases', index, 'variable'],
-        `A Narrative Pedigree records two diseases ("${firstLabel}" and "${label}") against the same attribute.`,
-        () => `The second disease ("${label}") will be removed.`,
+        `A Narrative Pedigree records two diseases ("${labelOf(firstIndex)}" and "${labelOf(index)}") against the same attribute.`,
+        () => `The second disease ("${labelOf(index)}") will be removed.`,
       );
-    });
+    }
 
     // Labels are compared across the rows that SURVIVE the variable dedupe, so
     // a row about to be removed never forces a rename of a row that stays.
+    const { labelDuplicates } = duplicateDiseaseRows(diseases, droppedIndices);
+    const renameIndices = new Set(labelDuplicates);
+    // Seeded from EVERY surviving row before renaming starts, not accumulated
+    // as the walk goes: a name generated for row 1 has to avoid row 2's as
+    // much as row 0's. Accumulating let "Asthma", "Asthma", "Asthma (2)"
+    // rename row 1 to a name row 2 already held, so the repaired protocol
+    // still failed the rule it had just been repaired for.
     const seenLabels = new Set<string>();
     diseases.forEach((disease, index) => {
       if (droppedIndices.has(index)) return;
+      if (typeof disease.label === 'string')
+        seenLabels.add(diseaseLabelKey(disease.label));
+    });
+    diseases.forEach((disease, index) => {
+      if (droppedIndices.has(index)) return;
       if (typeof disease.label !== 'string') return;
-      // The SAME comparison the schema makes (`narrative-pedigree.ts`), by the
-      // same helper. A repair that judged duplicates differently from the
-      // schema would either rename rows the schema was happy with, or leave a
-      // protocol the schema still rejects — asking the researcher to approve a
-      // repair that fixes nothing, every time they open it.
-      const normalized = normalizeForComparison(disease.label.trim());
-      if (!seenLabels.has(normalized)) {
-        seenLabels.add(normalized);
-        return;
-      }
+      if (!renameIndices.has(index)) return;
       // Renaming rather than removing: two rows sharing a label may map
       // different variables, and both mappings are meaningful — only the name
       // the participant sees has to be made distinct.
       const base = disease.label.trim();
       let suffix = 2;
       let candidate = `${base} (${suffix})`;
-      while (seenLabels.has(normalizeForComparison(candidate))) {
+      while (seenLabels.has(diseaseLabelKey(candidate))) {
         suffix += 1;
         candidate = `${base} (${suffix})`;
       }
-      seenLabels.add(normalizeForComparison(candidate));
+      seenLabels.add(diseaseLabelKey(candidate));
       labelRenames.push({
         path: ['stages', stageIndex, 'diseases', index],
         label: candidate,
@@ -381,29 +475,28 @@ export const repairConfigurationConflicts = (
     return { protocol, problems, repairable: true };
   }
 
-  // A removal that would empty an array the schema requires is not a repair.
-  for (const pending of removals.values()) {
-    const container = valueAt(source, pending.containerPath);
-    if (!Array.isArray(container)) {
-      unrepairable = true;
-      continue;
-    }
-    const minLength = minLengthFor(source, pending.containerPath, pending.key);
-    if (container.length - pending.indices.size < minLength) {
-      unrepairable = true;
-    }
-  }
+  // One unrepairable problem refuses the WHOLE protocol: fixing only the rest
+  // would still leave a protocol that cannot be opened. Drop every `repair` so
+  // the result cannot be read as a partial offer.
+  const decline = (): RepairResult => ({
+    protocol,
+    problems: problems.map(({ problem }) => ({ problem })),
+    repairable: false,
+  });
 
-  if (unrepairable) {
-    // One unrepairable problem refuses the WHOLE protocol: fixing only the
-    // rest would still leave a protocol that cannot be opened. Drop every
-    // `repair` so the result cannot be read as a partial offer.
-    return {
-      protocol,
-      problems: problems.map(({ problem }) => ({ problem })),
-      repairable: false,
-    };
+  // A container that is not an array cannot have an entry removed from it, and
+  // a property whose owner is not an object cannot be deleted from it.
+  for (const pending of removals.values()) {
+    if (!Array.isArray(valueAt(source, pending.containerPath))) {
+      unrepairable = true;
+    }
   }
+  for (const propertyPath of propertyDeletions.values()) {
+    if (!isRecord(valueAt(source, propertyPath.slice(0, -1)))) {
+      unrepairable = true;
+    }
+  }
+  if (unrepairable) return decline();
 
   const repaired = cloneProtocol(source);
   // Renames FIRST: their paths carry the index the row had BEFORE anything was
@@ -416,6 +509,13 @@ export const repairConfigurationConflicts = (
   for (const optionFix of optionRestorations) {
     const variable = valueAt(repaired, optionFix.path);
     if (isRecord(variable)) variable.options = optionFix.options;
+  }
+  // Property deletions before entry removals, for the same reason renames go
+  // first: their paths carry pre-removal indices.
+  for (const propertyPath of propertyDeletions.values()) {
+    const owner = valueAt(repaired, propertyPath.slice(0, -1));
+    const property = propertyPath[propertyPath.length - 1];
+    if (isRecord(owner) && typeof property === 'string') delete owner[property];
   }
   for (const pending of removals.values()) {
     const container = valueAt(repaired, pending.containerPath);
@@ -434,6 +534,28 @@ export const repairConfigurationConflicts = (
     } else {
       parent[property] = kept;
     }
+  }
+
+  // A removal that leaves an array shorter than the schema allows — or deletes
+  // a property the schema turns out to require — is not a repair. The SCHEMA
+  // owns those answers: one field is required on a NameGenerator form and none
+  // on a NetworkComposer's, and `highlight` is optional on a Sociogram prompt.
+  // So ask it, rather than keeping a hand-written copy here that a new array,
+  // a new property or a new stage type would silently outdate.
+  if (
+    repairBrokeStructure(source, repaired, [
+      ...[...removals.values()].map((pending) => pending.containerPath),
+      ...propertyDeletions.values(),
+    ])
+  ) {
+    return decline();
+  }
+
+  // Finally, prove the repair did what it said. Anything this module still
+  // recognises in its own output is a fix that would be offered again the next
+  // time the researcher opened the protocol, which is worse than declining.
+  if (verify && runRepair(repaired, false).problems.length > 0) {
+    return decline();
   }
 
   return { protocol: repaired, problems, repairable: true };

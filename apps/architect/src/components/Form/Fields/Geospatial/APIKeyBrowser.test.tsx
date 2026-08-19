@@ -16,6 +16,7 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import assetManifestReducer, {
   type Asset,
 } from '~/ducks/modules/protocol/assetManifest';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 /**
  * The Resource Library listing is a shared, separately tested component, and
@@ -261,6 +262,41 @@ describe('API key creation', () => {
     expect(dialog).toBeInTheDocument();
   });
 
+  /**
+   * The uniqueness question every other Architect control asks — the array
+   * field validators, the schema's `findDuplicateName`, the disease-label rule
+   * — is `normalizeForComparison`: case-insensitive AND Unicode-canonical.
+   * This control asked a case-only one, so a name whose accented character was
+   * encoded the other way round was accepted as new. The two cards then render
+   * identically and nothing on screen tells the researcher which key is which.
+   */
+  it('refuses a name that differs only in how an accent is encoded', async () => {
+    const { store, openBrowser } = setup({
+      'existing-key': {
+        id: 'existing-key',
+        type: 'apikey',
+        name: 'Café Mapbox',
+        value: 'pk.existing',
+      },
+    });
+    const dialog = await openBrowser();
+
+    fillAndSubmit(dialog, {
+      // The same text, spelled `e` + U+0301 rather than the precomposed U+00E9.
+      name: 'Cafe\u0301 Mapbox',
+      value: 'pk.duplicate',
+    });
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText(
+          'A key with this name already exists. Choose a different name.',
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(apiKeyAssets(store)).toHaveLength(1);
+  });
+
   it('refuses to create a key in a tab that cannot save, and says why', async () => {
     // #1396 gave the sibling write — dropping a resource file — this refusal;
     // this path was rewritten by #1394 from a base that predated it and never
@@ -272,10 +308,14 @@ describe('API key creation', () => {
 
     fillAndSubmit(dialog, { name: 'Mapbox', value: 'pk.blocked' });
 
+    // Read from `protocolLockMessages`, not retyped: the wording of every lock
+    // refusal lives there, and this surface used to hand-roll its own copy of
+    // it. Asserting the shared sentence is what keeps a re-hand-rolled one from
+    // passing.
     await waitFor(() =>
       expect(
         within(dialog).getByText(
-          'This protocol is open in another tab, which holds the saved copy. Close the other tab, then create the key again.',
+          refusedCommitMessage('open-elsewhere', 'api-key')!,
         ),
       ).toBeInTheDocument(),
     );
@@ -306,9 +346,14 @@ describe('API key creation', () => {
     await waitFor(() =>
       expect(
         within(dialog).getByText(
-          'The other tab has closed, so the saved copy of this protocol has to be read back into this tab before anything can be saved here, and this form is holding that up. Cancel it to let the protocol be read back, then create the key again.',
+          refusedCommitMessage('reclaim-blocked', 'api-key')!,
         ),
       ).toBeInTheDocument(),
+    );
+    // The surface-specific half is the way OUT — cancelling this form, not
+    // resolving a stage's unsaved changes.
+    expect(refusedCommitMessage('reclaim-blocked', 'api-key')).toMatch(
+      /Cancel this form/,
     );
     expect(apiKeyAssets(store)).toHaveLength(0);
   });

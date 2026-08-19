@@ -7,8 +7,8 @@ import {
   type EntityAttributeReferenceHit,
 } from './collectEntityAttributeReferences.ts';
 import {
-  recoverHitSubject,
   subjectVariableKey,
+  toReferenceSubject,
   variableNameFor,
   type ReferenceSubject,
 } from './referenceSubjects.ts';
@@ -44,7 +44,7 @@ export const findExclusiveVariableSlots = (
   const slots: ExclusiveVariableSlot[] = [];
   for (const hit of hits ?? collectEntityAttributeReferences(protocolRecord)) {
     if (!hit.exclusive) continue;
-    const subject = recoverHitSubject(protocolRecord, hit);
+    const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
     slots.push({
       subject,
@@ -79,10 +79,18 @@ export type ExclusiveVariableConflict = {
  *
  * Only writers conflict. A reference that merely READS an interface-derived
  * value is exactly what such a value is for: grouping a narrative map by each
- * person's relationship to the participant, highlighting the participant's own
- * node, or skipping a stage when nobody is marked. Those references carry no
- * `usage` tag, and forbidding them would reject protocols that are not only
- * valid but the reason the interface records the value at all.
+ * person's relationship to the participant, colouring the participant's own
+ * node on a sociogram, or skipping a stage when nobody is marked. Those
+ * references carry no `usage` tag, and forbidding them would reject protocols
+ * that are not only valid but the reason the interface records the value at
+ * all.
+ *
+ * Read or write is a property of the SITE, not of the field name: a Sociogram
+ * prompt's `highlight.variable` colours nodes either way, but writes the
+ * attribute back only when the participant can tap them
+ * (`allowHighlighting: true`), and only then is it a conflict. The schema says
+ * which by tagging that site `usageRequiresSibling: 'allowHighlighting'`; this
+ * function reads the answer off the collected hit and never re-derives it.
  *
  * `hits` lets the protocol schema's own refinement pass the references it has
  * already collected — both to avoid a second walk of the whole protocol, and
@@ -110,7 +118,7 @@ export const findExclusiveVariableConflicts = (
   const groups = new Map<string, Group>();
 
   for (const hit of references) {
-    const subject = recoverHitSubject(protocolRecord, hit);
+    const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
     const key = subjectVariableKey(subject, hit.variableId);
     let group = groups.get(key);
@@ -194,7 +202,7 @@ export const findInterfaceOwnedOptionBindings = (
   const bindings: InterfaceOwnedOptionBinding[] = [];
   for (const hit of hits ?? collectEntityAttributeReferences(protocolRecord)) {
     if (!hit.ownedOptions) continue;
-    const subject = recoverHitSubject(protocolRecord, hit);
+    const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
     bindings.push({
       subject,

@@ -124,3 +124,60 @@ describe('deriveAssetDisplayNames', () => {
     ]);
   });
 });
+
+describe('deriveAssetDisplayNames — Unicode canonical equivalence', () => {
+  // `Café.csv`, precomposed (U+00E9) and decomposed (e + U+0301). These render
+  // identically in every font. macOS filesystems hand back the decomposed form
+  // while most other sources produce the precomposed one, so a researcher who
+  // imports the same file from a Mac and from elsewhere holds both.
+  const PRECOMPOSED = 'Caf\u00e9.csv';
+  const DECOMPOSED = 'Cafe\u0301.csv';
+
+  it('treats canonically equivalent names as colliding', () => {
+    const names = deriveAssetDisplayNames(
+      manifest(['a', PRECOMPOSED], ['b', DECOMPOSED]),
+    );
+
+    expect(names.a).toBe(PRECOMPOSED);
+    expect(names.b).not.toBe(DECOMPOSED);
+    expect(names.b).toBe(`Cafe\u0301 (2).csv`);
+  });
+
+  it('returns the researcher\u2019s own spelling, never a normalised one', () => {
+    // The stored name is decomposed and unique; it must come back byte-identical.
+    const names = deriveAssetDisplayNames(manifest(['a', DECOMPOSED]));
+
+    expect(names.a).toBe(DECOMPOSED);
+    expect(names.a).not.toBe(PRECOMPOSED);
+  });
+
+  it('still treats a case-only difference as two distinct names', () => {
+    // Deliberate: `toCanonicalText` (NFC) and NOT `normalizeForComparison`,
+    // which also case-folds. A researcher can tell these two cards apart, so
+    // renumbering one would be a change they cannot account for.
+    const names = deriveAssetDisplayNames(
+      manifest(['a', 'People.csv'], ['b', 'people.csv']),
+    );
+
+    expect(names.a).toBe('People.csv');
+    expect(names.b).toBe('people.csv');
+  });
+
+  it('does not hand out a generated name that collides with a decomposed one', () => {
+    // Two colliding `Café.csv` need a suffix; the researcher already stores a
+    // decomposed `Café (2).csv`, so the generated one must skip to (3).
+    const names = deriveAssetDisplayNames(
+      manifest(
+        ['a', PRECOMPOSED],
+        ['b', PRECOMPOSED],
+        ['c', 'Cafe\u0301 (2).csv'],
+      ),
+    );
+
+    expect(names.c).toBe('Cafe\u0301 (2).csv');
+    expect(names.b).toBe('Caf\u00e9 (3).csv');
+    expect(
+      new Set(Object.values(names).map((n) => n.normalize('NFC'))).size,
+    ).toBe(3);
+  });
+});

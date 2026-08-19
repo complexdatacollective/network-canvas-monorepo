@@ -1,5 +1,5 @@
 import { ArrowLeft, FlaskConical } from 'lucide-react';
-import { useId } from 'react';
+import { useCallback, useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -8,7 +8,7 @@ import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout } from '~/components/EditorLayout';
-import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
+import { useActionToolbar } from '~/components/ProjectNav/ActionToolbar';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
@@ -19,9 +19,30 @@ const ExperimentsPage = () => {
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
   const experiments = useSelector(getExperiments) ?? {};
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     setLocation('/protocol');
-  };
+  }, [setLocation]);
+  // Published to the one toolbar surface the workspace owns rather than
+  // rendered here, so leaving this page animates these controls out as the next
+  // route's animate in — and so two fixed toolbars can never share a screen.
+  // Memoised because `useActionToolbar` re-registers on every new props
+  // identity.
+  const toolbarProps = useMemo(
+    () => ({
+      'aria-label': 'Experiments actions',
+      'children': [
+        <ToolbarButton
+          key="go-back"
+          icon={<ArrowLeft />}
+          onClick={handleGoBack}
+        >
+          Go Back
+        </ToolbarButton>,
+      ],
+    }),
+    [handleGoBack],
+  );
+  useActionToolbar(toolbarProps);
   const handleToggleExperiment = (key: string, checked: boolean) => {
     dispatch(
       actionCreators.updateProtocol({
@@ -85,11 +106,6 @@ const ExperimentsPage = () => {
           </div>
         </div>
       </Layout>
-      <ActionToolbar aria-label="Experiments actions">
-        <ToolbarButton icon={<ArrowLeft />} onClick={handleGoBack}>
-          Go Back
-        </ToolbarButton>
-      </ActionToolbar>
     </div>
   );
 };

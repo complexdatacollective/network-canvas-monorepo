@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -26,7 +25,6 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import { getInterfaceOwnedOptionMap, roleMapKey } from '~/selectors/indexes';
 import {
   excludeInterfaceOwned,
   excludeUnvalidatedUses,
@@ -38,6 +36,7 @@ import { VariablePickerControl as VariablePicker } from '../../Form/Fields/Varia
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
+import { useLockedOptions } from '../useLockedOptions';
 import { getSortOrderOptionGetter } from './optionGetters';
 
 type VariableOption = {
@@ -161,17 +160,9 @@ const PromptFields = ({
     shallowEqual,
   );
   // The interview and genetics engine branch on these exact values, so the
-  // list is fixed however the variable is reached.
-  const interfaceOwnedOptions = useAppSelector(getInterfaceOwnedOptionMap);
-  const ownedOptionSet =
-    currentVariable === undefined
-      ? undefined
-      : interfaceOwnedOptions[roleMapKey(subject, currentVariable)];
-  // The canonical set, not the variable's own: it is what the protocol rule
-  // enforces, so it is what the researcher must be shown.
-  const lockedOptions = ownedOptionSet
-    ? INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options
-    : undefined;
+  // list is fixed however the variable is reached — and a variable the
+  // new-variable window stamped `readOnly` is fixed for its own reason.
+  const lockedOptions = useLockedOptions(subject, currentVariable);
   const otherVariableTextOptions = useAppSelector(
     (state) =>
       excludeUnvalidatedUses(

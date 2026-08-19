@@ -1,6 +1,8 @@
 import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
@@ -76,6 +78,8 @@ export {
 } from './utils/repairConfigurationConflicts.ts';
 export {
   asEntityAttributeReference,
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   describeProtocolFileError,

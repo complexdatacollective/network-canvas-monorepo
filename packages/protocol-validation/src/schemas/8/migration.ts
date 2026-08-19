@@ -3,6 +3,7 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
+import { duplicateFormFieldIndices } from './common/forms.ts';
 import { ordinalColorSequence } from './common/prompts.ts';
 import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
 import {
@@ -991,20 +992,14 @@ const migrationV7toV8 = createMigration({
           // duplicate was never functional: every field registers under
           // `field.variable`, so both rows already shared one form value and
           // the later registration silently replaced the earlier — the second
-          // field collected nothing of its own. Keep the first occurrence in
-          // authored array order and drop the rest, which is what Architect's
-          // `repairConfigurationConflicts` does for an already-v8 protocol.
-          // Array position, not object key order, picks the survivor, so the
-          // repair is deterministic. A field whose `variable` is not a string
-          // is passed through untouched for the schema to reject as before.
-          const seenVariables = new Set<string>();
-          const deduplicated = renderable.filter((field) => {
-            const variable = asRecord(field)?.variable;
-            if (typeof variable !== 'string') return true;
-            if (seenVariables.has(variable)) return false;
-            seenVariables.add(variable);
-            return true;
-          });
+          // field collected nothing of its own. `duplicateFormFieldIndices` is
+          // the schema's own finder, so the migration keeps exactly the fields
+          // the schema would accept — and the same ones Architect's
+          // `repairConfigurationConflicts` keeps for an already-v8 protocol.
+          const repeats = new Set(duplicateFormFieldIndices(renderable));
+          const deduplicated = renderable.filter(
+            (_field, index) => !repeats.has(index),
+          );
           form.fields = deduplicated;
           for (const field of deduplicated) {
             const typedField = asRecord(field);

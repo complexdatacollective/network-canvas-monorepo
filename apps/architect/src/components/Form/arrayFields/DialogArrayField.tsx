@@ -1,13 +1,3 @@
-/**
- * COMPOSITION: this is a *field component*, rendered as
- * `<ArchitectArrayField name="prompts" component={DialogArrayField} … />`.
- * It receives the whole array as one `value`/`onChange` pair and never
- * registers per-index leaves, which is the governing rule for every array in
- * the stage form: a deleted row's dormant value must not be able to resurrect
- * itself in `getFormValues()`. Making it a field component rather than a
- * self-contained `name`-taking section keeps ONE owner of the field name, the
- * validation adapter and the Issues anchor (`ArchitectArrayField`).
- */
 import { cloneDeep, isEqual, set, unset } from 'es-toolkit/compat';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
@@ -31,18 +21,29 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ArrayField, {
   ArrayFieldDragHandle,
+  stripManagedProperties,
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+/**
+ * COMPOSITION: this is a *field component*, rendered as
+ * `<ArchitectArrayField name="prompts" component={DialogArrayField} … />`.
+ * It receives the whole array as one `value`/`onChange` pair and never
+ * registers per-index leaves, which is the governing rule for every array in
+ * the stage form: a deleted row's dormant value must not be able to resurrect
+ * itself in `getFormValues()`. Making it a field component rather than a
+ * self-contained `name`-taking section keeps ONE owner of the field name, the
+ * validation adapter and the Issues anchor (`ArchitectArrayField`).
+ */
+import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import type { FormLevelValidate } from '~/components/DialogForm/formLevelValidate';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import type { StageFormStoreApi } from '~/components/StageEditor/stageFormContext';
 import type { RootState } from '~/ducks/modules/root';
-import { ensureError } from '~/utils/ensureError';
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -132,14 +133,6 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   onBeforeSave?: (value: unknown) => unknown;
   /** DOM id of the editor dialog's `<form>` (`SubmitButton form={…}`). */
   requestedEditFormName?: string;
-};
-
-const stripManagedProperties = (
-  item: Partial<ArrayItem> | undefined,
-): ArrayItem => {
-  if (!item) return {};
-  const { _internalId, _draft, ...value } = item;
-  return value;
 };
 
 const isRecord = (value: unknown): value is ArrayItem =>

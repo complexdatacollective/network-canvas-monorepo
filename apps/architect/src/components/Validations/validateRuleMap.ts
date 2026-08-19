@@ -1,9 +1,5 @@
-import { findDraftContradictions, floorIssue } from './contradictions';
-import {
-  completeRuleValues,
-  incompleteRuleIssue,
-  isValidationMap,
-} from './ruleValue';
+import { findDraftContradictions } from './contradictions';
+import { isValidationMap, ruleMapPrecheck } from './ruleValue';
 
 /**
  * The inputs a rule map has to be judged against: the codebook it lives in,
@@ -40,13 +36,13 @@ export const ruleMapIssue = (
 ): string | undefined => {
   if (!isValidationMap(value)) return undefined;
 
-  const incomplete = incompleteRuleIssue(value);
-  if (incomplete) return incomplete;
-
-  const floor = Object.entries(value)
-    .map(([ruleKey, ruleValue]) => floorIssue(ruleKey, ruleValue))
-    .find((message): message is string => message !== undefined);
-  if (floor) return floor;
+  // The unanswered-rule and floor checks, and the completed map the analyser
+  // has to be given, all come from `ruleMapPrecheck` — the same call the stage
+  // editor's save gate (`makeFieldEditorValidate`) makes. Written out here as
+  // well, the two copies drifted: this one swept the RAW map for floor issues
+  // while the other swept the completed one.
+  const { issue, complete } = ruleMapPrecheck(value);
+  if (issue) return issue;
 
   if (!context.variableType) return undefined;
 
@@ -54,7 +50,7 @@ export const ruleMapIssue = (
     allVariables: context.allVariables,
     currentVariableId: context.currentVariableId,
     variableType: context.variableType,
-    validation: completeRuleValues(value),
+    validation: complete,
     options: context.options,
     component: context.component,
     parameters: context.parameters,

@@ -74,21 +74,17 @@ const notifyRegistrationChange = () => {
 /**
  * Re-renders the caller whenever a nested editor opens or closes, reporting
  * whether one is open now.
+ *
+ * The only subscription this registry offers, deliberately. There is no
+ * `useNestedDraftDirty`: a keystroke changes dirtiness without notifying
+ * anything here, so a rendered gate keyed on it would be arbitrarily stale —
+ * and a reclaim gate that disagreed with `hasOpenNestedEditor` put two
+ * contradictory modal dialogs on screen at once
+ * (`StageEditor/__tests__/StageDraftConflictDialog.test.tsx`). Dirtiness is
+ * read imperatively at ask time, by `hasDirtyNestedDraft`.
  */
 export const useNestedEditorOpen = (): boolean =>
   useSyncExternalStore(subscribeNestedDrafts, hasOpenNestedEditor);
-
-/**
- * Re-renders the caller whenever a nested editor opens or closes, reporting
- * whether any of them holds unsaved work now.
- *
- * The answer can change between notifications (a keystroke), so this is not a
- * complete subscription and is not treated as one: every consumer uses it to
- * decide whether to KEEP blocking, where a stale `true` costs nothing and is
- * cleared by the close that follows.
- */
-export const useNestedDraftDirty = (): boolean =>
-  useSyncExternalStore(subscribeNestedDrafts, hasDirtyNestedDraft);
 
 const handleBeforeUnload = (event: BeforeUnloadEvent) => {
   if (!hasDirtyNestedDraft()) return;

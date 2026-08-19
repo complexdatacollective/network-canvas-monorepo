@@ -9,6 +9,21 @@
  * taken, and no prop opts into it). Two things follow, both observed in
  * Architect:
  *
+ * UPSTREAM LIMITATION (checked against @base-ui/react 1.7). `markOthers` does
+ * take an `{ inert: true }` option, so the work is already written — but it is
+ * a private module that `@base-ui/react`'s exports map does not expose, and
+ * nothing on `FloatingFocusManager` opts into it. Importing the original is
+ * therefore not available; this reimplementation is. If a released version ever
+ * exposes either the module or a prop, delete this file and use it.
+ *
+ * DRIFT. The catalogue pins `@base-ui/react` as `~1.7.0`, so any patch release
+ * can move the portal structure, the marker attributes or the mount ordering
+ * this file mirrors. `inertOthers.test.ts` cannot see that — it pins the
+ * algorithm against hand-built synthetic HTML that no upgrade can invalidate.
+ * `inertOthers.baseui.test.tsx` drives real nested Base UI dialogs for exactly
+ * that reason; keep it passing, and read a failure there as "Base UI moved",
+ * not as "the test is flaky".
+ *
  * 1. `aria-hidden` hides a subtree from assistive technology but leaves its
  *    controls tabbable. Architect's "Return to start screen" button sits inside
  *    an `aria-hidden="true"` ancestor while a dialog is open and is still

@@ -4,6 +4,8 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -106,6 +108,30 @@ const renderDialog = (store: TestStore) =>
       />
     </Provider>,
   );
+
+// A variable, entity-type, array-row or rule editor, open with its own values
+// in its own form store. `dirty` says whether anything has been typed into it.
+const NestedEditor = ({ dirty }: { dirty: boolean }) => {
+  useNestedDraft(true, () => dirty);
+  return null;
+};
+
+// Both reclaim questions mounted together, exactly as `ViewManager/views/App`
+// and `StageEditor` mount them: only one of them may ever be on screen.
+const renderBothReclaimDialogs = (store: TestStore, nestedDirty: boolean) =>
+  render(
+    <Provider store={store}>
+      <NestedEditor dirty={nestedDirty} />
+      <StageDraftConflictDialog
+        stageId="stage-1"
+        withStageIdentity={withStageIdentity}
+      />
+      <NestedDraftReclaimDialog />
+    </Provider>,
+  );
+
+const openedDialogTitles = () =>
+  openDialogMock.mock.calls.map((call) => (call[0] as { title: string }).title);
 
 const lastChoiceDialog = () =>
   openDialogMock.mock.calls.at(-1)?.[0] as {
@@ -274,6 +300,75 @@ describe('StageDraftConflictDialog', () => {
     await waitFor(() => {
       expect(openDialogMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  // Both questions are about the same blocked reclaim, and the lock stops at
+  // the FIRST thing it cannot resolve: an open nested editor, whether or not
+  // anything has been typed into it (`useProtocolTabLock`). So whenever that
+  // dialog can fire, this one must defer — otherwise the researcher gets two
+  // modal dialogs stacked on one another giving contradictory instructions.
+  describe.each([
+    { dirty: false, label: 'with nothing typed into it' },
+    { dirty: true, label: 'holding unsaved values' },
+  ])('while a nested editor is open $label', ({ dirty }) => {
+    it('leaves the reclaim question to NestedDraftReclaimDialog alone', async () => {
+      openDirtyStageDraft(store);
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+      openDialogMock.mockReturnValue(new Promise(() => undefined));
+
+      renderBothReclaimDialogs(store, dirty);
+
+      await waitFor(() => {
+        expect(openDialogMock).toHaveBeenCalledTimes(1);
+      });
+      expect(openedDialogTitles()).toEqual(['An editor is still open']);
+      // Give the other dialog's effect every chance to fire late.
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(openDialogMock).toHaveBeenCalledTimes(1);
+      expect(openedDialogTitles()).not.toContain(
+        'Choose what to do with your unsaved changes',
+      );
+    });
+  });
+
+  // …and the deferral has to end: once the inner editor is gone, the stage
+  // choice is the right question and nothing else will ask it.
+  it('asks the stage question once the nested editor closes', async () => {
+    openDirtyStageDraft(store);
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+    openDialogMock.mockReturnValue(new Promise(() => undefined));
+
+    const view = renderBothReclaimDialogs(store, false);
+    await waitFor(() => {
+      expect(openedDialogTitles()).toEqual(['An editor is still open']);
+    });
+
+    view.rerender(
+      <Provider store={store}>
+        <StageDraftConflictDialog
+          stageId="stage-1"
+          withStageIdentity={withStageIdentity}
+        />
+        <NestedDraftReclaimDialog />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(openedDialogTitles()).toContain(
+        'Choose what to do with your unsaved changes',
+      );
+    });
+    // The explanation that no longer applies is taken off the screen rather
+    // than left stacked underneath.
+    const reclaim = openDialogMock.mock.calls[0]?.[0] as
+      | { id: string }
+      | undefined;
+    // Named, so a missing first call cannot make the next line pass on
+    // `undefined`.
+    expect(reclaim?.id).toEqual(expect.any(String));
+    expect(closeDialogMock).toHaveBeenCalledWith(reclaim?.id, null);
   });
 
   it('takes the question away when the other tab re-claims the protocol', async () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { findDuplicateName } from '../../../utils/validation-helpers.ts';
+import { findDuplicateValue } from '../../../utils/validation-helpers.ts';
 import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
@@ -152,7 +152,8 @@ export const networkComposerStage = baseStageSchema.extend({
       }),
     )
     .superRefine((edges, ctx) => {
-      const duplicateType = findDuplicateName(
+      // Edge TYPE IDS, not names: compared exactly, never case-folded.
+      const duplicateType = findDuplicateValue(
         edges.map((edge) => edge.subject.type),
       );
       if (duplicateType) {

@@ -1,11 +1,14 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
+import {
+  NcNetworkSchema,
+  ensureError,
+  StageMetadataSchema,
+} from '@codaco/shared-consts';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
-import { ensureError } from '~/utils/ensureError';
 
 /**
  * Handle post requests from the client to store the current interview state.

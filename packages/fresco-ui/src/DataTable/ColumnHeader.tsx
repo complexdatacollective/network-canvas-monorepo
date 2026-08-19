@@ -132,7 +132,12 @@ export function DataTableColumnHeader<TData, TValue>({
           render={
             <Button
               className="-mx-4 min-w-max px-4!"
-              aria-pressed={isActive}
+              // NOT `aria-pressed`: this is a menu trigger — it already carries
+              // `aria-haspopup="menu"` and `aria-expanded` — and a button cannot
+              // be a menu button and a toggle button at once. `aria-pressed`
+              // was here only to reach the selected colours, which announced a
+              // pressed state that opening the menu does not change.
+              selected={isActive}
               variant="text"
               color="dynamic"
               iconPosition="right"

@@ -9,6 +9,7 @@ import {
   filterRuleEntityExists,
   findDuplicateId,
   findDuplicateName,
+  findDuplicateValue,
   getAllEntityNames,
   getFilterRuleVariableType,
   getVariableNames,
@@ -311,10 +312,30 @@ describe('Validation Helpers', () => {
       expect(result).toBeNull();
     });
 
-    it('handles case sensitive duplicates', () => {
-      const names = ['Name', 'name', 'NAME'];
-      const result = findDuplicateName(names);
-      expect(result).toBeNull(); // These are different strings
+    // The same question Architect's editors ask as a name is typed: two names
+    // that differ only in case are one name to a reader, and the editor has
+    // always refused the second.
+    it('treats names differing only in case as duplicates', () => {
+      expect(findDuplicateName(['Name', 'name', 'NAME'])).toBe('name');
+    });
+
+    // Two spellings of the same accented text render identically, so they are
+    // one name however the keyboard encoded them.
+    it('treats canonically equivalent spellings as duplicates', () => {
+      const precomposed = 'Caf\u00e9';
+      const decomposed = 'Cafe\u0301';
+      expect(findDuplicateName([precomposed, decomposed])).toBe(decomposed);
+    });
+  });
+
+  describe('findDuplicateValue', () => {
+    it('returns the first exactly-repeated value', () => {
+      expect(findDuplicateValue(['a', 'b', 'a'])).toBe('a');
+    });
+
+    // Identifiers are compared exactly: two spellings are two different keys.
+    it('does not fold case', () => {
+      expect(findDuplicateValue(['Type', 'type'])).toBeNull();
     });
   });
 

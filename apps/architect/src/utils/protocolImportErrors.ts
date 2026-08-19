@@ -1,6 +1,6 @@
 import { describeProtocolFileError } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 
-import { ensureError } from './ensureError';
 import { isStorageUnavailableError } from './storageErrors';
 
 /**

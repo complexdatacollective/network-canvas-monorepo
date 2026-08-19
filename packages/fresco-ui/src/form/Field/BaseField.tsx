@@ -6,6 +6,7 @@ import { cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
 import Hint from '../Hint';
+import { fieldElementIds } from './fieldElements';
 
 // Exclude event handlers that conflict with Framer Motion
 type ExcludeMotionConflicts<T> = Omit<
@@ -66,6 +67,7 @@ export function BaseField({
   containerProps,
 }: BaseFieldProps) {
   const hasVisibleHint = Boolean(hint ?? validationSummary);
+  const elementIds = fieldElementIds(id);
   return (
     <div
       {...containerProps}
@@ -107,7 +109,7 @@ export function BaseField({
             )}
           >
             <FieldLabel
-              id={`${id}-label`}
+              id={elementIds.label}
               htmlFor={id}
               required={required}
               className={labelHidden ? 'sr-only' : undefined}
@@ -115,12 +117,12 @@ export function BaseField({
               {label}
             </FieldLabel>
             {required && (
-              <span id={`${id}-required`} className="sr-only">
+              <span id={elementIds.required} className="sr-only">
                 Required
               </span>
             )}
             {(hint ?? validationSummary) && (
-              <Hint id={`${id}-hint`}>
+              <Hint id={elementIds.hint}>
                 {hint}
                 {validationSummary}
               </Hint>
@@ -130,7 +132,7 @@ export function BaseField({
         </div>
       </div>
       <FieldErrors
-        id={`${id}-error`}
+        id={elementIds.error}
         name={name}
         errors={errors}
         show={showErrors}

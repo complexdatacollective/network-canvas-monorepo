@@ -18,6 +18,7 @@ import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -205,7 +206,13 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       validate: async () =>
         storeApi ? storeApi.getState().validateForm() : false,
       submit: async () => (storeApi ? submitRegisteredForm(storeApi) : false),
-      isDirty: () => storeApi?.getState().isDirty ?? false,
+      // A live comparison against the values the fields registered with, not
+      // the store's sticky `isDirty`. The sticky flag never returns to false
+      // once anything has been typed, so a participant who changed an answer
+      // and then put it back was still asked whether to discard changes they
+      // no longer had.
+      isDirty: () =>
+        storeApi ? selectIsFormDirty(storeApi.getState()) : false,
       requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
         buildProtocolFieldErrors(

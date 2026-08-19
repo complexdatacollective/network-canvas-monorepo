@@ -1,44 +1,23 @@
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { Section } from '~/components/EditorLayout';
-import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
-import Options, {
-  optionsValidation,
-  type OptionValue,
-} from '~/components/Form/arrayFields/Options';
-import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
-import { getLockedOptions } from '~/components/Options/getLockedOptions';
-import LockedOptions from '~/components/Options/LockedOptions';
-import Parameters from '~/components/Parameters';
-import { asParameterValues } from '~/components/Parameters/parameterValues';
-import {
-  isBooleanWithOptions,
-  isOrdinalOrCategoricalType,
-  isVariableTypeWithParameters,
-} from '~/config/variables';
 import { getFieldId } from '~/utils/issues';
 
-import BooleanChoice from '../BooleanChoice';
-import ExternalLink from '../ExternalLink';
-import { asValidationMap, toSelectOptions } from '../sections/Form/helpers';
+import { asValidationMap } from '../sections/Form/helpers';
+import VariableDefinitionFields, {
+  VariablePickerSection,
+} from '../sections/Form/VariableDefinitionFields';
 import {
   CREATE_NEW_VARIABLE_FIELD,
   HiddenFieldValue,
   useFieldHandlers,
 } from '../sections/Form/withFieldsHandlers';
 
-/** Stable empty list: `initialValue` is a register-effect dependency. */
-const NO_OPTIONS: OptionValue[] = [];
-
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
-
-const asOptions = (value: unknown): OptionValue[] =>
-  Array.isArray(value) ? (value as OptionValue[]) : NO_OPTIONS;
 
 /**
  * The contradiction check for this editor is a form-level validate
@@ -98,27 +77,12 @@ const ComposerAttributeFields = ({
   editIndex,
   item = {},
 }: ComposerAttributeFieldsProps) => {
-  const {
-    variable,
-    variableType,
-    isNewVariable,
-    variableOptions,
-    component,
-    componentOptions,
-    existingVariables,
-    hasInterfaceOwnedOptions,
-    handleNewVariable,
-  } = useFieldHandlers({
+  const fields = useFieldHandlers({
     entity: entity ?? '',
     type: type ?? '',
     siblingFields: composerFields,
     editIndex,
   });
-  const lockedOptions = getLockedOptions(
-    existingVariables,
-    variable,
-    hasInterfaceOwnedOptions,
-  );
 
   return (
     <>
@@ -135,26 +99,20 @@ const ComposerAttributeFields = ({
         initialValue={asValidationMap(item.validation) ?? undefined}
       />
       <ContradictionAlert />
-      <Section layout="vertical" id={getFieldId('variable')} title="Attribute">
-        <ArchitectField
-          name="variable"
-          label="Attribute"
-          hint="Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute."
-          component={VariablePickerControl}
-          initialValue={asString(item.variable)}
-          validation={{ required: true }}
-          entity={entity ?? undefined}
-          type={type ?? undefined}
-          options={variableOptions}
-          onCreateOption={handleNewVariable}
-        />
-      </Section>
+      <VariablePickerSection
+        entity={entity}
+        type={type}
+        item={item}
+        fields={fields}
+        withSectionTitles
+        hint="Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute."
+      />
 
       <Section
         layout="vertical"
         id={getFieldId('label')}
         title="Label"
-        disabled={!variable}
+        disabled={!fields.variable}
       >
         <ArchitectField
           name="label"
@@ -167,106 +125,13 @@ const ComposerAttributeFields = ({
         />
       </Section>
 
-      <Section
-        layout="vertical"
-        id={getFieldId('component')}
-        title="Input Control"
-        disabled={!variable}
-      >
-        <ArchitectField
-          name="component"
-          label="Input control"
-          hint={
-            <>
-              How the answer is collected. For detailed information about these
-              options, see our{' '}
-              <ExternalLink href="https://documentation.networkcanvas.com/key-concepts/input-controls/">
-                documentation
-              </ExternalLink>
-              .
-            </>
-          }
-          component={NativeSelectField}
-          initialValue={asString(item.component)}
-          validation={{ required: true }}
-          placeholder="Select an input control"
-          // As in FieldFields: authored order while the variable is still
-          // being defined, alphabetical (within group) once it is a lookup.
-          options={toSelectOptions(componentOptions, {
-            sorted: !isNewVariable,
-          })}
-        />
-        {isNewVariable && variableType && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              The selected input control will cause this attribute to be defined
-              as type <strong>{variableType}</strong>. Once set, this cannot be
-              changed (although you may change the input control within this
-              type).
-            </AlertDescription>
-          </Alert>
-        )}
-        {!isNewVariable && variableType && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>Attribute type is locked</AlertTitle>
-            <AlertDescription>
-              A pre-existing attribute is currently selected. You cannot change
-              an attribute type after it has been created, so only{' '}
-              <strong>{variableType}</strong> compatible input controls can be
-              selected above. If you would like to use a different input control
-              type, you will need to create a new attribute.
-            </AlertDescription>
-          </Alert>
-        )}
-      </Section>
-
-      {isOrdinalOrCategoricalType(variableType) && (
-        <Section
-          layout="vertical"
-          id={getFieldId('options')}
-          title="Categorical/Ordinal options"
-        >
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
-          ) : (
-            <ArchitectArrayField
-              name="options"
-              label="Options"
-              hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
-              component={Options}
-              addButtonLabel="Create new option"
-              initialValue={asOptions(item.options)}
-              validation={optionsValidation}
-            />
-          )}
-        </Section>
-      )}
-      {isBooleanWithOptions(component) && (
-        // BooleanChoice writes to the `options` field, so anchor it there (it is
-        // mutually exclusive with the Categorical/Ordinal options section
-        // above, so the shared id never collides at runtime).
-        <Section
-          layout="vertical"
-          id={getFieldId('options')}
-          title="BooleanChoice Options"
-        >
-          <BooleanChoice initialValue={asOptions(item.options)} />
-        </Section>
-      )}
-      {isVariableTypeWithParameters(variableType) && (
-        <Section
-          layout="vertical"
-          id={getFieldId('parameters')}
-          title="Input Options"
-        >
-          <Parameters
-            type={variableType}
-            component={component ?? ''}
-            name="parameters"
-            initialParameters={asParameterValues(item.parameters)}
-          />
-        </Section>
-      )}
+      <VariableDefinitionFields
+        entity={entity}
+        type={type}
+        item={item}
+        fields={fields}
+        withSectionTitles
+      />
     </>
   );
 };

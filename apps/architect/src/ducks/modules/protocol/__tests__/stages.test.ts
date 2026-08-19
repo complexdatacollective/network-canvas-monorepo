@@ -28,22 +28,6 @@ const mockStages = [
   { id: '5', type: 'OrdinalBin', label: 'Baz' },
 ] as Stage[];
 
-// Create a test store for async actions
-const createTestStore = (initialStages: Stage[] = []) => {
-  return configureStore({
-    reducer: {
-      stages: reducer,
-      // Mock other reducers that might be needed
-      protocol: () => ({
-        present: {
-          stages: initialStages,
-        },
-      }),
-    },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
-  });
-};
-
 describe('protocol.stages', () => {
   describe('reducer', () => {
     // Stage creation happens only as half of the stage editor's atomic
@@ -72,33 +56,6 @@ describe('protocol.stages', () => {
           }),
         );
         expect(addStageToExistingState[1]).toMatchObject({ ...newStage });
-      });
-    });
-
-    describe('updateStage', () => {
-      it('Merges properties by default', () => {
-        const updatedStage = { label: 'Hello world' };
-
-        const updatedStages = reducer(
-          mockStages,
-          test.updateStage('9', updatedStage),
-        );
-
-        expect(updatedStages[1]).toMatchObject({
-          label: 'Hello world',
-          type: 'NameGenerator',
-        });
-      });
-
-      it('Replaces stage object if overwrite is true', () => {
-        const updatedStage = { something: 'different' } as unknown as Stage;
-
-        const updatedStages = reducer(
-          mockStages,
-          test.updateStage('9', updatedStage, true),
-        );
-
-        expect(updatedStages[1]).toEqual({ id: '9', something: 'different' });
       });
     });
 
@@ -214,75 +171,6 @@ describe('protocol.stages', () => {
         expect(
           getFamilyPedigreeNodeTypeChangeBlock(withoutDependent, 'fp'),
         ).toEqual([]);
-      });
-    });
-
-    describe('deletePrompt', () => {
-      it('Deletes the prompt with promptId', () => {
-        const updatedStages = reducer(mockStages, test.deletePrompt('9', '3'));
-
-        expect(updatedStages).toEqual([
-          { id: '3', type: 'Information', label: 'Foo' },
-          {
-            id: '9',
-            type: 'NameGenerator',
-            label: 'Bar',
-            prompts: [
-              { id: '7', text: 'prompt' },
-              { id: '5', text: 'prompt3' },
-            ],
-          },
-          { id: '5', type: 'OrdinalBin', label: 'Baz' },
-        ]);
-      });
-
-      it('deletes an unreferenced stage when its final prompt is removed', () => {
-        const stages = [
-          {
-            id: 'target',
-            type: 'NameGenerator',
-            label: 'Target',
-            prompts: [{ id: 'only', text: 'Only prompt' }],
-          },
-        ] as Stage[];
-
-        const updatedStages = reducer(
-          stages,
-          test.deletePrompt('target', 'only', true),
-        );
-
-        expect(updatedStages).toEqual([]);
-      });
-
-      it('rejects removing the final prompt from a referenced skip destination', () => {
-        const stages = [
-          {
-            id: 'source',
-            type: 'Information',
-            label: 'Source',
-            skipLogic: {
-              action: 'SKIP',
-              filter: { join: 'AND', rules: [] },
-              destination: { type: 'stage', stageId: 'target' },
-            },
-          },
-          {
-            id: 'target',
-            type: 'NameGenerator',
-            label: 'Target',
-            prompts: [{ id: 'only', text: 'Only prompt' }],
-          },
-        ] as Stage[];
-
-        const updatedStages = reducer(
-          stages,
-          test.deletePrompt('target', 'only', true),
-        );
-
-        expect(updatedStages).toEqual(stages);
-        expect(updatedStages[1]).toMatchObject({
-          prompts: [{ id: 'only', text: 'Only prompt' }],
-        });
       });
     });
   });
@@ -444,32 +332,10 @@ describe('protocol.stages', () => {
   });
 
   describe('sync action creators', () => {
-    it('updateStage', () => {
-      const _store = createTestStore();
-
-      const action = actionCreators.updateStage('9', { label: 'new label' });
-      expect(action.type).toBe('stages/updateStage');
-      expect(action.payload).toEqual({
-        stageId: '9',
-        stage: { label: 'new label' },
-        overwrite: false,
-      });
-    });
-
     it('moveStage', () => {
       const action = actionCreators.moveStage(2, 1);
       expect(action.type).toBe('stages/moveStage');
       expect(action.payload).toEqual({ oldIndex: 2, newIndex: 1 });
-    });
-
-    it('deletePrompt', () => {
-      const action = actionCreators.deletePrompt('9', '3');
-      expect(action.type).toBe('stages/deletePrompt');
-      expect(action.payload).toEqual({
-        stageId: '9',
-        promptId: '3',
-        deleteEmptyStage: false,
-      });
     });
   });
 });
