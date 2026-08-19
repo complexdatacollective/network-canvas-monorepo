@@ -428,6 +428,23 @@ jobs:
     # carries the release jobs.
     continue-on-error: true
     runs-on: ubuntu-latest
+    # The `test` task includes the studio-sync and studio-server conformance
+    # suites, which refuse to skip under CI. Without this they abort the whole
+    # `turbo run`, and the job seeds no cache at all — see the `test` job, whose
+    # service this mirrors.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: spike
+          POSTGRES_DB: studio_dev
+        ports:
+          - 54318:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
