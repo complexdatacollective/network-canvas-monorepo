@@ -1,5 +1,9 @@
 import { useId, type KeyboardEvent } from 'react';
 
+import {
+  fieldDescribedBy,
+  fieldElementIds,
+} from '@codaco/fresco-ui/form/Field/fieldElements';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -52,18 +56,19 @@ const ValidationRule = ({
   onValueExit,
 }: ValidationRuleProps) => {
   const rowId = useId();
-  const labelId = `${rowId}-label`;
-  const hintId = `${rowId}-hint`;
-  const errorId = `${rowId}-error`;
+  // This row is not a BaseField, but it names the same elements around its
+  // controls, so it takes both the IDs and the reference list from fresco-ui's
+  // one owner of them rather than assembling `${rowId}-…` itself. `required`
+  // is omitted because the row renders no such marker.
+  const ids = fieldElementIds(rowId);
 
   const hasIssues = issues.length > 0;
   const takesNumber = isValidationWithNumberValue(ruleKey);
   const takesTarget = isValidationWithListValue(ruleKey);
 
   const describedBy =
-    [hint ? hintId : null, hasIssues ? errorId : null]
-      .filter(Boolean)
-      .join(' ') || undefined;
+    fieldDescribedBy(rowId, { hint: Boolean(hint), error: hasIssues }) ||
+    undefined;
 
   const handleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
@@ -80,7 +85,7 @@ const ValidationRule = ({
           value={isOn}
           readOnly={isUnavailable}
           aria-disabled={isUnavailable || undefined}
-          aria-labelledby={labelId}
+          aria-labelledby={ids.label}
           aria-describedby={describedBy}
           onChange={(nextState) => {
             if (isUnavailable) {
@@ -89,7 +94,7 @@ const ValidationRule = ({
             onToggle(ruleKey, !!nextState);
           }}
         />
-        <span id={labelId}>{label}</span>
+        <span id={ids.label}>{label}</span>
       </div>
 
       {isOn && takesNumber && (
@@ -139,13 +144,13 @@ const ValidationRule = ({
 
       {hint && (
         <div className="w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
-          <Hint id={hintId}>{hint}</Hint>
+          <Hint id={ids.hint}>{hint}</Hint>
         </div>
       )}
 
       {hasIssues && (
         <div className="mt-2 w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
-          <FieldErrors id={errorId} errors={issues} show variant="box" />
+          <FieldErrors id={ids.error} errors={issues} show variant="box" />
         </div>
       )}
     </div>

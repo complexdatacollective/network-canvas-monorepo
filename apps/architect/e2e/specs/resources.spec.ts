@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
-import { readProtocolJson } from '../helpers/read-store.js';
+import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
@@ -112,10 +112,20 @@ test('refuses to delete a resource that is used by a stage', async ({
     name: 'Cannot delete resource',
   });
 
-  // Refusal observed and acknowledged, then a settle window, so an
-  // erroneously-accepted delete would have reached IndexedDB by the read
-  // below. See `acknowledgeRefusal` for why the wait is the oracle here.
-  await acknowledgeRefusal(architectPage, guardDialog);
+  await acknowledgeRefusal(guardDialog);
+
+  // Import a resource of our own and wait for THAT to reach IndexedDB, so an
+  // erroneously-accepted delete has provably landed by the read below rather
+  // than merely having been given time to. An import is the persisting edit
+  // this screen offers: it writes the filename into the asset manifest, which
+  // is part of the protocol row (see `settleAfterRefusal`).
+  await settleAfterRefusal(architectPage, async (token) => {
+    await fileInputOf(architectPage).setInputFiles({
+      name: `${token}.csv`,
+      mimeType: 'text/csv',
+      buffer: Buffer.from('name,age\nAda,36\n'),
+    });
+  });
 
   await expect(
     assetList.getByRole('heading', { level: 4, name: 'Regions', exact: true }),

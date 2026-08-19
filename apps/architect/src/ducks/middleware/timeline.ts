@@ -30,6 +30,40 @@ type TimelineState<T = unknown> = {
   futureTimeline: Locus[];
 };
 
+/**
+ * The fields the undo/redo guards read, widened to `unknown` so both the
+ * reducer's own immer draft and a selector's view of the wrapped slice satisfy
+ * it. `past` and `future` are optional because rehydrated state predates them:
+ * the default case below initialises `future` and optional-chains `past` for
+ * exactly that reason.
+ */
+type UndoableState = {
+  past?: readonly unknown[];
+  present?: unknown;
+  future?: readonly unknown[];
+};
+
+/**
+ * Whether undo is possible — the ONE statement of that rule.
+ *
+ * The `undo` case below refuses when this is false, and `getCanUndo` in
+ * `~/selectors/protocol` refuses to offer the control when it is false. Asking
+ * the same question in two places is how a control comes to advertise — and
+ * `undoWithNavigation` to announce — an operation the reducer silently drops,
+ * so there is exactly one place to ask it. `getCanUndo` layers a further
+ * refusal of its own on top; it does not restate this one.
+ *
+ * Tolerates a missing slice because unit-test stores register only the slices
+ * under test, and a selector reached from a mounted component there must
+ * resolve to "nothing to undo" rather than throw.
+ */
+export const canUndo = (state: UndoableState | undefined): boolean =>
+  (state?.past?.length ?? 0) > 0 && Boolean(state?.present);
+
+/** Whether redo is possible. Same contract as `canUndo`. */
+export const canRedo = (state: UndoableState | undefined): boolean =>
+  (state?.future?.length ?? 0) > 0;
+
 type TimelineOptions = {
   name?: string;
   limit?: number;
@@ -97,7 +131,7 @@ const createTimelineReducer = <T>(
             futureTimeline = [],
           } = state;
 
-          if (past.length === 0 || !present) {
+          if (!canUndo(state)) {
             return;
           }
 
@@ -166,8 +200,7 @@ const createTimelineReducer = <T>(
             timeline,
           } = state;
 
-          // Need at least one item in future to redo
-          if (!future || future.length === 0) {
+          if (!canRedo(state)) {
             return;
           }
 

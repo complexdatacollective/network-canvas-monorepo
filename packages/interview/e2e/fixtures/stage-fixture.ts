@@ -88,8 +88,13 @@ async function navigateDndToTarget(
  * Form fixture for EgoForm/AlterForm/NameGenerator stages.
  *
  * Provides methods to interact with form fields using their data-field-name attribute.
+ *
+ * Exported so the per-interface fixtures that live in their own modules
+ * (anonymisation-fixture.ts, network-composer-fixture.ts) can reach `field()`
+ * instead of restating the selector — they are not hung off StageFixture, so
+ * `stage.form` is not available to them.
  */
-class FormFixture {
+export class FormFixture {
   readonly page: Page;
 
   constructor(page: Page) {
@@ -105,9 +110,14 @@ class FormFixture {
    * hand, so the markup contract lived in dozens of places and the fixture
    * that owns it went unused. Reach for this instead of writing
    * `[data-field-name="…"]` in a scenario.
+   *
+   * `scope` narrows the lookup to a sub-tree, for the forms that are not the
+   * only form on screen — NetworkComposer renders its attribute form inside
+   * the inspector panel, so it searches there. Defaults to the whole page.
    */
-  field(fieldName: string): Locator {
-    return this.page.locator(`[data-field-name="${fieldName}"]`);
+  field(fieldName: string, scope?: Locator): Locator {
+    const root = scope ?? this.page;
+    return root.locator(`[data-field-name="${fieldName}"]`);
   }
 
   /**

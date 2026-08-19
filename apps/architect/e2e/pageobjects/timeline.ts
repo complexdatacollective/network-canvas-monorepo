@@ -1,13 +1,17 @@
 import { type Locator, type Page } from '@playwright/test';
 
-// No `data-testid` seam is added to Timeline.tsx for this — `data-field-name`
-// is the suite's sole deliberately-added app-source seam. Instead this locks
-// onto the real, framer-motion-driven DOM structure (verified from
+// The timeline's real DOM, as every locator below reads it (verified from
 // Timeline.tsx / TimelineStageRow.tsx):
 // - `Reorder.Group` defaults its `as` prop to `"ul"` and Timeline.tsx doesn't
-//   override it, so the stage list renders as a `<ul>` carrying the
-//   `justify-items-center` class — unique among the app's `ul`s (grepped), so
-//   it scopes to this list without an ancestor `div` false-matching.
+//   override it, so the stage list renders as a `<ul>` — found here by its
+//   accessible name. That name is not a test-only handle: Timeline.tsx states
+//   `role="list"` and `aria-label="Protocol stages"` because Tailwind's
+//   preflight strips list styling and WebKit then drops the list role, and
+//   `timeline.spec.ts` asserts both against the accessibility tree. So the
+//   name is a user-facing contract, and a rename that breaks this locator is
+//   a change that should break it. It replaces `ul.justify-items-center`,
+//   which named a grid utility the list carries and each of its `<li>`s
+//   carries too — only the tag qualifier kept that selector off the items.
 // - That `<ul>` holds exactly one `<li>` per stage and nothing else, so
 //   `rows()` is a stage count. Each `<li>` holds the insertion point that sits
 //   above the stage (a `<button>` — InsertButton.tsx) and then the stage's own
@@ -28,7 +32,7 @@ export class Timeline {
   }
 
   private container() {
-    return this.page.locator('ul.justify-items-center');
+    return this.page.getByRole('list', { name: 'Protocol stages' });
   }
 
   /** The stage list's items — one per stage, and nothing else in the list. */
@@ -61,30 +65,31 @@ export class Timeline {
    * The timeline's painted spine: the absolutely-positioned line the numbered
    * badges must sit on.
    *
-   * Located by the `bg-timeline` DESIGN TOKEN, deliberately, and by nothing
-   * else. Every other thing about the spine — that it is absolute, half-way
-   * across, one unit wide — is what the geometry assertions measure, so none of
-   * it may also be what finds it; and the token is the shared identity that
-   * makes the line and the badges read as one spine, which is the behaviour
-   * under test rather than a cosmetic class. The `:has(> ul…)` step scopes to
-   * the timeline wrapper, whose direct child the spine is, so the badges
-   * (which carry the same token inside the list) cannot match.
+   * A named seam stamped on it in Timeline.tsx, because the spine is
+   * decorative and so offers nothing else to address it by: no text, no role,
+   * no accessible name. Everything it does have — absolute, half-way across,
+   * one unit wide — is what the geometry assertions measure, so none of it may
+   * also be what finds it. The seam replaces a structural walk
+   * (`div:has(> ul…) > .bg-timeline`) whose whole job was to scope past the
+   * badges, which carry the same `bg-timeline` token inside the list.
    */
   spine(): Locator {
-    return this.page.locator(
-      'div:has(> ul.justify-items-center) > .bg-timeline',
-    );
+    return this.page.getByTestId('timeline-spine');
   }
 
   /**
    * Each stage card's numbered badge, in timeline order — the disc carrying
-   * the position number. Same token as the spine, addressed within the card
-   * rather than by its index among the card's children: the card's grid is
-   * free to gain or reorder tracks, and a child index would then measure a
-   * different element while still passing.
+   * the position number.
+   *
+   * A named seam stamped in TimelineStageRow.tsx, for the same reason as the
+   * spine: the `bg-timeline` token this used to match is shared with the line
+   * and is itself under measurement, so it cannot also be what finds the
+   * badge. Scoped to the card rather than taken page-wide, because the card's
+   * grid is free to gain or reorder tracks and this must keep pairing each
+   * badge with its own row.
    */
   stageBadges(): Locator {
-    return this.stageCards().locator(':scope > .bg-timeline');
+    return this.stageCards().getByTestId('timeline-stage-badge');
   }
 
   /** The row's own "open the stage editor" control (the thumbnail). */

@@ -311,8 +311,17 @@ const Timeline = () => {
       <div className="@container relative flex w-full flex-col items-center gap-1 pt-10">
         {/* Line — clipped from below on initial mount so it reveals top-to-bottom.
             clip-path doesn't share the transform property with Tailwind's
-            -translate-x-1/2, so there's no positioning conflict. */}
+            -translate-x-1/2, so there's no positioning conflict.
+
+            The `data-testid` is how the e2e suite finds this element
+            (`e2e/pageobjects/timeline.ts`), and it is the only way in: the line
+            is decorative, so it has no text, no role and no accessible name to
+            be addressed by. Every visual property it does have — absolute,
+            half-way across, one unit wide — is what `responsive.spec.ts`
+            measures the badges against, which disqualifies all of it from also
+            being what locates it. */}
         <motion.div
+          data-testid="timeline-spine"
           className="bg-timeline pointer-events-none absolute top-0 left-1/2 h-[calc(100%-1.25rem)] w-1 -translate-x-1/2"
           initial={animate ? { clipPath: 'inset(0 0 100% 0)' } : false}
           animate={{ clipPath: 'inset(0 0 0% 0)' }}

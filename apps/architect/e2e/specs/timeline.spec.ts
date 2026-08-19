@@ -6,7 +6,7 @@ import {
   recordAnnouncements,
 } from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
-import { readProtocolJson } from '../helpers/read-store.js';
+import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
@@ -43,6 +43,18 @@ function stagesOf(protocol: Record<string, unknown>): Stage[] {
   }
   return stages.map((value: unknown) => toStage(value));
 }
+
+// The persisting edit this route offers `settleAfterRefusal`: ProtocolInfoCard
+// sits above the timeline, and its description field commits on blur. It
+// touches nothing the refusal specs assert on — stage order, stage count, and
+// the announcements they read are all untouched by a description change.
+const editDescription = (page: Page) => async (token: string) => {
+  const description = page.getByRole('textbox', {
+    name: 'Protocol description',
+  });
+  await description.fill(token);
+  await description.blur();
+};
 
 test('shows the skip-logic icon without a destination note', async ({
   architectPage,
@@ -310,10 +322,11 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
     name: 'Cannot delete stage',
   });
 
-  // Refusal observed and acknowledged, then a settle window, so an
-  // erroneously-accepted delete would have reached IndexedDB by the read
-  // below. See `acknowledgeRefusal` for why the wait is the oracle here.
-  await acknowledgeRefusal(architectPage, guardDialog);
+  await acknowledgeRefusal(guardDialog);
+  // Then commit an edit of our own and wait for THAT to reach IndexedDB, so an
+  // erroneously-accepted delete has provably landed by the read below rather
+  // than merely having been given time to (see `settleAfterRefusal`).
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
   const after = stagesOf(await readProtocolJson(architectPage));
   expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
   expect(after.length).toBe(before.length);
@@ -575,9 +588,25 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
     name: 'Cannot move stage',
   });
 
-  // Refusal observed and acknowledged, then a settle window, so an
-  // erroneously-accepted move would have reached IndexedDB by the read below.
-  await acknowledgeRefusal(architectPage, guardDialog);
+  await acknowledgeRefusal(guardDialog);
+  // Focus first: dismissing the dialog is what has to return focus to the open
+  // control, and the settle below deliberately moves focus into the
+  // description field to make its edit.
+  await expect(openControl).toBeFocused();
+  // Sampled twice, either side of a real round-trip. The regression this
+  // guards is a LATE focus claim — the reorder handle used to take focus on
+  // the NEXT index change from any cause, arriving a frame or more after the
+  // interaction that caused it — and `toBeFocused` stops retrying the moment
+  // it first passes, so one sample taken immediately cannot see one land. The
+  // store read is the wait, rather than a timeout: it is real work with a real
+  // answer, so it cannot pass by being slow.
+  await readProtocolJson(architectPage);
+  await expect(openControl).toBeFocused();
+
+  // Then commit an edit of our own and wait for THAT to reach IndexedDB, so an
+  // erroneously-accepted move has provably landed by the read below rather
+  // than merely having been given time to (see `settleAfterRefusal`).
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
   expect(
     stagesOf(await readProtocolJson(architectPage)).map((stage) => stage.id),
   ).toEqual(before.map((stage) => stage.id));
@@ -588,8 +617,6 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
       message.startsWith('Moved stage'),
     ),
   ).toEqual([]);
-
-  await expect(openControl).toBeFocused();
 });
 
 test('reveals the delete control when it takes focus', async ({

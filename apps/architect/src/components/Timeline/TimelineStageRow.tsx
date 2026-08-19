@@ -201,7 +201,18 @@ const TimelineStageRow = ({
           className="pointer-events-none w-full rounded-xs shadow transition-transform duration-300 ease-in-out select-none group-hover:scale-105"
         />
       </button>
-      <div className="bg-timeline text-timeline-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110">
+      {/* Position badge. The `data-testid` pairs with the spine's
+          (`Timeline.tsx`): `responsive.spec.ts` measures each badge's centre
+          against the line, so the `bg-timeline` token that used to locate it
+          is one of the things under measurement — and it is shared with the
+          line itself, which is why the old locator needed a structural walk to
+          scope past it. The number inside is not an alternative: it is the
+          stage's position, so addressing by it would encode the ordering the
+          reorder tests change. */}
+      <div
+        data-testid="timeline-stage-badge"
+        className="bg-timeline text-timeline-contrast flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-300 ease-in-out group-hover:scale-110"
+      >
         {position}
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">

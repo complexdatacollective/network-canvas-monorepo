@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { FormFixture } from './stage-fixture.js';
+
 /**
  * NetworkComposer fixture: single-screen free-form network canvas.
  *
@@ -13,9 +15,11 @@ import type { Locator, Page } from '@playwright/test';
  */
 export class NetworkComposerFixture {
   readonly page: Page;
+  private readonly form: FormFixture;
 
   constructor(page: Page) {
     this.page = page;
+    this.form = new FormFixture(page);
   }
 
   get root(): Locator {
@@ -248,10 +252,11 @@ export class NetworkComposerFixture {
   }
 
   /**
-   * Attribute-form field container, keyed by the codebook variable id — the
-   * same `data-field-name` convention the shared form fixture uses.
+   * Attribute-form field container, keyed by the codebook variable id. Routed
+   * through the shared form fixture's `field()` seam, scoped to the inspector
+   * panel because that is where NetworkComposer renders the attribute form.
    */
   getField(variableId: string): Locator {
-    return this.inspectorPanel.locator(`[data-field-name="${variableId}"]`);
+    return this.form.field(variableId, this.inspectorPanel);
   }
 }

@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex, reduce } from 'es-toolkit/compat';
 
 import type { Asset } from '@codaco/protocol-validation';
+import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
 
@@ -194,21 +195,19 @@ export const getRedoTargetPath = (state: RootState): string => {
 
 // Undo/redo selectors
 export const getCanUndo = (state: RootState): boolean => {
+  // The reducer's own refusal, asked rather than restated, so the control can
+  // never advertise — and `undoWithNavigation` never announce — an operation
+  // the reducer would silently drop.
+  if (!canUndo(state.activeProtocol)) return false;
+
+  // Strictly stricter than the reducer, deliberately: it would happily make a
+  // null past entry the present, and that is not a protocol the editor can
+  // show. This term is `getCanUndo`'s alone — it is layered on top of the
+  // shared rule, never a restatement of it.
   const past = state.activeProtocol?.past || [];
-  if (past.length === 0) return false;
-
-  // The undo reducer refuses without a `present` too (see the timeline
-  // middleware). Mirror its guards here so the control never advertises — and
-  // `undoWithNavigation` never announces — an operation the reducer would
-  // silently drop.
-  if (!state.activeProtocol?.present) return false;
-
-  // Don't allow undo if it would take us back to a null state
   const wouldBePresent = past[past.length - 1];
   return wouldBePresent !== null && wouldBePresent !== undefined;
 };
 
-export const getCanRedo = (state: RootState): boolean => {
-  const future = state.activeProtocol?.future || [];
-  return future.length > 0;
-};
+export const getCanRedo = (state: RootState): boolean =>
+  canRedo(state.activeProtocol);

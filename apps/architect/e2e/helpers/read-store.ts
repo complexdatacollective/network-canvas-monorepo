@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { expect, type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -100,6 +102,42 @@ export async function readProtocolJson(
     throw new Error('no canonical protocol row in ArchitectProtocolDB');
   }
   return protocol;
+}
+
+// A refused edit writes nothing, so a caller asserting "nothing was written"
+// has no state change of its own to wait for — every such condition is already
+// true at 0 ms. Rather than sleep, make a write that DOES persist and wait for
+// that: `mutate` puts `token` somewhere in the protocol through the UI (a
+// description, a name, a resource filename), and this returns once the token is
+// readable from the canonical row.
+//
+// That makes the caller's assertion conclusive rather than hopeful, because the
+// row carrying the token is a snapshot of the protocol AS IT STOOD AFTER the
+// refusal, not a patch: `protocolValidationListener.ts` captures each canonical
+// change as an immutable FIFO candidate carrying the whole protocol, and
+// `protocolLibraryListener.ts` writes accepted snapshots under a per-protocol
+// lock that preserves that order. A write the guard should have refused is
+// therefore inside the very row the caller then reads.
+//
+// This synchronises on the guard's own decision point: all three guards it
+// serves (AssetBrowser's `handleDelete`, Timeline's `handleDeleteStage` and
+// `commitReorder`) decide SYNCHRONOUSLY within the interaction that opened the
+// dialog — a click for the first two, an ArrowUp for the reorder guard — and
+// return before dispatching. A path that deferred its destructive dispatch
+// behind its own await would land after the token and would need its own
+// synchronisation.
+export async function settleAfterRefusal(
+  page: Page,
+  mutate: (token: string) => Promise<void>,
+): Promise<void> {
+  const token = `refusal-settle-${randomUUID()}`;
+  await mutate(token);
+  // Field-agnostic on purpose, so each caller can use whatever persisting edit
+  // its own screen already offers: a token this unique matches nothing else in
+  // the protocol, wherever `mutate` chose to put it.
+  await readProtocolJson(page, (protocol) =>
+    JSON.stringify(protocol).includes(token),
+  );
 }
 
 // Every key in the `assets` store, across all protocols (`${protocolId}::${assetId}`
