@@ -21,6 +21,65 @@ const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
  */
 const SECTION = '.page-break-marker';
 
+/**
+ * The width the summary's content actually gets on paper, in CSS pixels.
+ *
+ * This document is designed to be printed, so a baseline captured at the
+ * browser's desktop viewport shows a layout no researcher ever sees. Worse, it
+ * is not even the screen layout: `.page-break-marker`'s `width: 21cm` and
+ * `padding: 1.5cm` live in `protocol-summary.css`'s `@media screen` block, so
+ * `emulateMedia({ media: 'print' })` switches them OFF and the section then
+ * stretches to whatever the viewport happens to be — 1280px, with the content
+ * flush to both edges. Neither paper nor screen.
+ *
+ * On paper the `@page` margin sits outside the content box, so the width
+ * available to content is the sheet minus both margins. Sizing the viewport to
+ * that makes each captured section exactly the column a researcher holds.
+ *
+ * Both numbers are READ FROM THE DOCUMENT rather than restated here: the sheet
+ * from `--page-size-width` (architect-theme.css) and the margin from
+ * `--margin` (protocol-summary.css). Hard-coding either would put a third copy
+ * of the paper size in the tree, free to drift from the two that already
+ * exist — which is the defect class this branch spent its time removing.
+ */
+const CSS_PX_PER_CM = 96 / 2.54;
+
+const printableWidthPx = async (page: {
+  evaluate: <T>(fn: () => T) => Promise<T>;
+}): Promise<{ width: number; height: number }> => {
+  const { pageWidthCm, pageHeightCm, marginCm } = await page.evaluate(() => {
+    const read = (name: string) =>
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(name),
+      );
+    return {
+      pageWidthCm: read('--page-size-width'),
+      pageHeightCm: read('--page-size-height'),
+      marginCm: read('--margin'),
+    };
+  });
+
+  // A missing or non-cm custom property would silently produce NaN and a
+  // nonsense viewport, so refuse rather than capture a meaningless baseline.
+  for (const [name, value] of [
+    ['--page-size-width', pageWidthCm],
+    ['--page-size-height', pageHeightCm],
+    ['--margin', marginCm],
+  ] as const) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(
+        `[visual] ${name} did not resolve to a positive cm value (got ${value}). ` +
+          'The printable-summary baselines size their viewport from it.',
+      );
+    }
+  }
+
+  return {
+    width: Math.round((pageWidthCm - marginCm * 2) * CSS_PX_PER_CM),
+    height: Math.round((pageHeightCm - marginCm * 2) * CSS_PX_PER_CM),
+  };
+};
+
 /** A baseline filename from a section's own identity. */
 const sectionSlug = (name: string) =>
   name
@@ -45,6 +104,16 @@ test(
       architectPage.locator('#asset-roster_data').getByText('Attributes'),
     ).toBeVisible();
     await architectPage.emulateMedia({ media: 'print' });
+    // Size the viewport to the paper, not the desktop. See `printableWidthPx`:
+    // print media switches off the screen-only paper-card width, so without
+    // this every section is captured at the browser's 1280px, which is a
+    // layout the printed document never has.
+    const paper = await printableWidthPx(architectPage);
+    await architectPage.setViewportSize(paper);
+    // Re-settle after the resize: a narrower column re-wraps headings and can
+    // change how many rows a table needs, and capturing mid-reflow would bake
+    // a transient layout into the baseline.
+    await expect(architectPage.locator(SECTION).first()).toBeVisible();
 
     // Captured PER SECTION rather than as one full-page image. The single
     // baseline this replaces was 1280x20190: locating a change in it needed a
