@@ -114,46 +114,54 @@ every variable is catalogued under [Environment](#environment) below.
 ### Changing the schema
 
 There is deliberately no migration system yet. Pre-release, a schema change
-means recreating the database rather than migrating it — see the comment at the
-top of `server/src/db/schema.ts` for the reasoning and for when that stops being
-true.
+means reconciling or recreating the database rather than migrating it —
+`drizzle-kit push` semantics. Real migrations (`drizzle-kit generate`, from
+the same table definitions) must land before a release carries data worth
+keeping.
 
-Studio has one schema, composed from three blocks that live with their owners:
-better-auth's generated tables in `server/src/db/auth-schema.ts`, the sync
-engine's drafts, sections, manifests, leases and command log in
+Studio has one schema, defined as Drizzle tables in three modules that live
+with their owners: better-auth's tables in `server/src/db/auth-schema.ts`, the
+sync engine's drafts, sections, manifests, leases and command log in
 `packages/studio-sync/src/schema.ts`, and the protocol store's versioning
-tables in `server/src/protocol/schema.ts`. `server/src/db/schema.ts` joins them
-in that order — the protocol store's foreign keys point into the sync engine's
-tables — and applies them together or not at all.
+tables in `server/src/protocol/schema.ts`. The PL/pgSQL immutability functions
+and triggers, which Drizzle cannot express, ride in raw-SQL sidecar exports
+beside their tables. `server/src/db/schema.ts` collects all of it into the
+`SCHEMA` and `SIDECARS` exports that `server/scripts/apply.ts` applies.
 
-Applying that SQL to a database that already has the tables would not
-reliably fail: the auth block is `create table if not exists` throughout, so a
-stale database would boot clean and fail later inside better-auth. Boot
-therefore records a fingerprint — the hash of the composed SQL that built the
-database — and compares it on every subsequent start. Editing _any_ of the
-three blocks, whitespace included, changes it. A mismatch stops the server with
-the remedy:
+The server never applies schema — it only verifies. Application is
+`drizzle-kit push`, run programmatically by `apply-schema` and `db:reset` from
+a repo checkout: it introspects the live database, applies whatever delta
+brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
+the hash of the DDL that describes this build. Boot compares that stamp
+against the fingerprint committed in `server/src/db/fingerprint.generated.ts`;
+after any schema or sidecar change, resync it (a test fails if you forget):
+
+```bash
+pnpm --filter @codaco/studio-server sync-fingerprint
+```
+
+A mismatch stops the server with the remedies: `apply-schema` reconciles the
+database in place, or
 
 ```bash
 pnpm --filter @codaco/studio-server db:reset
 ```
 
-which drops the schema, rebuilds it, and seeds. It refuses to touch a
-non-loopback database unless you pass `--force`. It reads `.env` first and
-adds the committed development defaults only when the target is local, so a
-forced reset of a managed database never picks up the development marker. It
-also sweeps up any `studio_test_*` schemas an interrupted test run left behind.
+drops the schema, rebuilds it, and seeds. It refuses to touch a non-loopback
+database unless you pass `--force`. It reads `.env` first and adds the
+committed development defaults only when the target is local, so a forced
+reset of a managed database never picks up the development marker. It also
+sweeps up any `studio_test_*` schemas and databases an interrupted test run
+left behind.
 
-It is the command to run the first time you start the server after this check
-was introduced: databases
-created before it carry the tables but no fingerprint, and an unstamped
-database is indistinguishable from one built by older SQL, so it is refused
-rather than adopted.
+A database carrying the tables but no fingerprint is refused rather than
+adopted by boot — the SQL that built it is unknown — and `db:reset` (or a
+deliberate `apply-schema`, which reconciles whatever it finds) is the remedy.
 
-The fingerprint compares the database against the SQL this build composes. It
-cannot tell you that a `better-auth` upgrade expects a shape that SQL no longer
-describes — the regeneration procedure in `auth-schema.ts` remains the only
-control for that.
+The fingerprint compares the database against the DDL this build renders. It
+cannot tell you that a `better-auth` upgrade expects a shape these definitions
+no longer describe — the regeneration procedure in `auth-schema.ts` remains
+the only control for that.
 
 ### Protocol storage
 
@@ -329,16 +337,19 @@ pnpm --filter @codaco/studio-server apply-schema
 pnpm --filter @codaco/studio-server seed
 ```
 
-Both are idempotent, both refuse against a database whose fingerprint does not
-match this build, and both are identical in every topology. Three things are
-worth knowing before you rely on them:
+Both are idempotent and identical in every topology: `apply-schema` is
+`drizzle-kit push` — it reconciles the database to this build's definitions
+and stamps the fingerprint — and `seed` refuses against a database whose
+fingerprint does not match. Three things are worth knowing before you rely on
+them:
 
-- **The persistent Node process needs neither.** `src/index.ts` runs the same
-  schema check at boot, under an advisory lock so replicas starting together
-  cannot race. `apply-schema` exists for deployments that have no boot. A
-  configured database it cannot reach fails that boot: only the development
-  lane comes up anyway and keeps retrying, because only there is the cause a
-  container that has not finished starting.
+- **Every lane needs `apply-schema`, and it runs from a repo checkout.** The
+  server only verifies the fingerprint at boot — drizzle-kit cannot ship in
+  the server bundle, so no deployment applies schema by booting. A stale or
+  never-provisioned database stops the boot with the remedy; a configured
+  database it cannot reach fails it too. Only the development lane comes up
+  anyway and keeps retrying, because only there is the cause a container that
+  has not finished starting or a first `db:reset` that has not run yet.
 - **The Netlify lane has no automation.** Its build command does not touch the
   database and its function has no boot, so `apply-schema` is a manual step
   there — and consequently the only place that lane ever detects a stale

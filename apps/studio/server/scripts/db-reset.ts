@@ -6,9 +6,9 @@ import { parseArgs } from 'node:util';
 import pg from 'pg';
 
 import { createPool } from '../src/db/pool.ts';
-import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
 import { seed } from '../src/db/seed.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
+import { applySchema } from './apply.ts';
 
 // It drops the schema rather than the database — unlike packages/studio-sync's
 // test helper — so it needs no second connection to the maintenance database
@@ -83,12 +83,21 @@ try {
     console.log(`Dropped ${leftovers.rowCount} leftover test schema(s).`);
   }
 
-  const state = await ensureSchema(pool);
-  if (state.kind === 'stale') {
-    console.error(staleSchemaMessage(state));
-    process.exit(1);
+  // The apply-routine suite builds scratch databases the same way a crashed
+  // run leaves schemas behind.
+  const dbLeftovers = await pool.query<{ datname: string }>(
+    `select datname from pg_database where datname like 'studio\\_test\\_db\\_%'`,
+  );
+  for (const { datname } of dbLeftovers.rows) {
+    await pool.query(
+      `drop database if exists ${pg.escapeIdentifier(datname)} with (force)`,
+    );
+  }
+  if (dbLeftovers.rowCount) {
+    console.log(`Dropped ${dbLeftovers.rowCount} leftover test database(s).`);
   }
 
+  await applySchema(pool);
   await seed(pool);
   console.log('Database reset.');
 } finally {

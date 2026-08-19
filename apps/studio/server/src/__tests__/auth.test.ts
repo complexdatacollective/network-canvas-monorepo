@@ -8,9 +8,12 @@ import type { contract } from '@codaco/studio-rpc';
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
-import { ensureSchema } from '../db/schema.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
-import { createScratchSchema, reachableDb } from './support/postgres.ts';
+import {
+  createScratchSchema,
+  provisionScratchSchema,
+  reachableDb,
+} from './support/postgres.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -171,7 +174,7 @@ describe.skipIf(!db)('magic-link sign-in', () => {
       // (5/60s per IP) is durable in Postgres and vitest always resolves to
       // the same localhost key, so counters left by an earlier run in a
       // shared table would 429 this one.
-      await ensureSchema(pool);
+      await provisionScratchSchema(pool);
 
       const sent: { email: string; url: string }[] = [];
       const auth = createBetterAuthService(env.auth, pool, {

@@ -7,12 +7,13 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 
 import { createPool } from '../src/db/pool.ts';
-import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
+import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import { ProtocolStore } from '../src/protocol/store.ts';
 import { parseSectionId, sectionId } from '../src/protocol/taxonomy.ts';
+import { applySchema } from './apply.ts';
 
 // Shows what a protocol looks like inside the store, because no RPC procedure
 // or screen reaches it yet. Verification belongs to src/protocol's suites, not
@@ -142,10 +143,13 @@ const url = new URL(env.db.url);
 const pool = createPool(env.db);
 
 try {
-  const schema = await ensureSchema(pool);
+  const schema = await checkSchema(pool);
   if (schema.kind === 'stale') {
-    console.error(staleSchemaMessage(schema));
+    console.error(schemaProblemMessage(schema));
     process.exit(1);
+  }
+  if (schema.kind === 'absent') {
+    await applySchema(pool);
   }
 
   console.log(

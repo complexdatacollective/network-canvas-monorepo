@@ -15,6 +15,7 @@
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "node --env-file-if-exists=.env scripts/apply-schema.ts",
+    "sync-fingerprint": "node scripts/sync-fingerprint.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:reset": "node scripts/db-reset.ts",
     "protocol-demo": "node scripts/protocol-demo.ts",
@@ -38,6 +39,7 @@
     "@orpc/zod": "2.0.0-beta.26",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
     "hono": "^4.13.0",
     "nodemailer": "9.0.5",
     "pg": "^8.22.0",
@@ -52,6 +54,7 @@
     "@types/pg": "^8.20.4",
     "@types/ws": "^8.18.1",
     "concurrently": "^10.0.4",
+    "drizzle-kit": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

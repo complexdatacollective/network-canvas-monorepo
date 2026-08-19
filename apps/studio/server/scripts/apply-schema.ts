@@ -1,11 +1,12 @@
 import { createPool } from '../src/db/pool.ts';
-import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
 import { readEnv } from '../src/env.ts';
+import { applySchema } from './apply.ts';
 
-// src/index.ts applies the schema at every boot. A serverless deployment has
-// no boot, so the same step runs here, out of band, against whatever
-// DATABASE_URL points at. On that lane this is also the only place a stale
-// schema is ever detected.
+// The server never applies schema — it only verifies (src/db/schema.ts). This
+// is the application step for every lane: run once against whatever
+// DATABASE_URL points at, after a deploy that changes the schema. drizzle-kit
+// push semantics: it reconciles a live database in place rather than refusing
+// a mismatch.
 
 const env = readEnv();
 
@@ -17,14 +18,18 @@ if (!env.db) {
 const pool = createPool(env.db);
 
 try {
-  const state = await ensureSchema(pool);
-  if (state.kind === 'stale') {
-    console.error(staleSchemaMessage(state));
-    process.exit(1);
+  const outcome = await applySchema(pool);
+  for (const { hint, statement } of outcome.hints) {
+    console.warn(`hint: ${hint}${statement ? `\n  ${statement}` : ''}`);
   }
-  console.log(
-    state.kind === 'created' ? 'Schema applied.' : 'Schema already current.',
-  );
+  if (outcome.statements.length === 0) {
+    console.log('Schema already current.');
+  } else {
+    for (const statement of outcome.statements) {
+      console.log(statement);
+    }
+    console.log(`Schema applied (${outcome.statements.length} statements).`);
+  }
 } finally {
   await pool.end();
 }

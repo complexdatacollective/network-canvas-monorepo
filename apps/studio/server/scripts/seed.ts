@@ -1,5 +1,5 @@
 import { createPool } from '../src/db/pool.ts';
-import { ensureSchema, staleSchemaMessage } from '../src/db/schema.ts';
+import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { seed } from '../src/db/seed.ts';
 import { readEnv } from '../src/env.ts';
 
@@ -16,9 +16,9 @@ if (!env.db) {
 const pool = createPool(env.db);
 
 try {
-  const state = await ensureSchema(pool);
-  if (state.kind === 'stale') {
-    console.error(staleSchemaMessage(state));
+  const state = await checkSchema(pool);
+  if (state.kind !== 'current') {
+    console.error(schemaProblemMessage(state));
     process.exit(1);
   }
   await seed(pool);
