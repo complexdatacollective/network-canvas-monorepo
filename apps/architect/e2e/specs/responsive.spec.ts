@@ -57,6 +57,39 @@ const VIEWPORTS = [
   { name: 'tablet', width: 768, height: 1024 },
 ] as const;
 
+for (const page of [
+  { path: '/protocol/assets', heading: 'Resource Library' },
+  { path: '/protocol/codebook', heading: 'Codebook' },
+] as const) {
+  test(`${page.heading} content keeps a horizontal inset at phone width`, async ({
+    architectPage,
+    seed,
+  }) => {
+    await seed(emptyProtocol(), { name: 'Inset test' });
+    await architectPage.setViewportSize(VIEWPORTS[0]);
+    await gotoProtocol(architectPage);
+    await architectPage.goto(page.path);
+
+    const heading = architectPage.getByRole('heading', {
+      name: page.heading,
+      level: 1,
+    });
+    await expect(heading).toBeVisible();
+
+    const bounds = await heading.evaluate((element) => {
+      const container = element.parentElement?.parentElement;
+      if (!(container instanceof HTMLElement)) {
+        throw new Error('page heading container not found');
+      }
+      const box = container.getBoundingClientRect();
+      return { left: box.left, right: box.right, width: window.innerWidth };
+    });
+
+    expect(bounds.left).toBeGreaterThanOrEqual(20);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.width - 20);
+  });
+}
+
 /**
  * Every stage type the all-interfaces fixture carries.
  *

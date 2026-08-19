@@ -1,12 +1,15 @@
 - main:
   - toolbar "Network composer tools":
-    - button "Select" [pressed]
-    - button "Add node"
+    - group "Editing tools":
+      - button "Select" [pressed]
+      - button "Add node"
     - separator
-    - button "Automatic layout"
+    - group "Layout tools":
+      - button "Automatic layout"
     - separator
-    - button "Undo" [disabled]
-    - button "Redo" [disabled]
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
   - application:
     - button "Pat"
   - navigation:

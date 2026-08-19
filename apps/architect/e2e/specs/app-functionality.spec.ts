@@ -59,9 +59,7 @@ test('separates history controls and returns project subpages to the timeline', 
     '/protocol/summary',
   ]) {
     await architectPage.goto(route);
-    await pageActions
-      .getByRole('button', { name: 'Return to Timeline' })
-      .click();
+    await pageActions.getByRole('button', { name: 'Return to Stages' }).click();
     await expect(architectPage).toHaveURL(/\/protocol$/);
   }
 });

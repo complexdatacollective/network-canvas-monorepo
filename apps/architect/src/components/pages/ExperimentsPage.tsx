@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout } from '~/components/EditorLayout';
@@ -33,16 +33,6 @@ const ExperimentsPage = () => {
   // with no protocol home before this page renders, so a second, weaker guard
   // here would only be another place for the two to disagree.
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
-  const toolbarItems: ToolbarSegment[] = [
-    {
-      type: 'button',
-      id: 'go-back',
-      label: 'Go Back',
-      icon: <ArrowLeft />,
-      showLabel: true,
-      onClick: handleGoBack,
-    },
-  ];
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
@@ -95,7 +85,11 @@ const ExperimentsPage = () => {
           </div>
         </div>
       </Layout>
-      <ActionToolbar aria-label="Experiments actions" items={toolbarItems} />
+      <ActionToolbar aria-label="Experiments actions">
+        <ToolbarButton icon={<ArrowLeft />} onClick={handleGoBack}>
+          Go Back
+        </ToolbarButton>
+      </ActionToolbar>
     </div>
   );
 };

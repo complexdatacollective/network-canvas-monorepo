@@ -1,15 +1,12 @@
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import {
-  SegmentedToolbar,
-  type ToolbarSegment,
-} from '@codaco/fresco-ui/SegmentedToolbar';
+import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';
-import { useIssuesToolbarSegment } from '../Issues';
+import { useIssuesToolbarControl } from '../Issues';
 import { renderStageForm } from '../StageEditor/__tests__/stageFormTestHarness';
 
 vi.mock('../../utils/scrollTo', () => ({ default: vi.fn() }));
@@ -21,39 +18,14 @@ const fieldErrors = {
   'baz[0].beep': ['boop'],
 };
 
-// The live segment, so a test can read the contract the toolbar is handed
-// rather than reaching into Base UI's focus manager.
-let capturedSegment: ToolbarSegment | null = null;
-
 function IssuesHarness() {
-  const { segment } = useIssuesToolbarSegment();
-  capturedSegment = segment;
-  return segment ? (
-    <SegmentedToolbar label="Stage editor actions" items={[segment]} />
+  const { control } = useIssuesToolbarControl();
+  return control ? (
+    <SegmentedToolbar aria-label="Stage editor actions">
+      {control}
+    </SegmentedToolbar>
   ) : null;
 }
-
-const popoverSegment = () => {
-  if (!capturedSegment || capturedSegment.type !== 'popover') {
-    throw new Error('the issues popover segment is not rendered');
-  }
-  return capturedSegment;
-};
-
-/**
- * The segment's `finalFocus` as this hook always supplies it — a function, so
- * the answer can follow the researcher's last row click. Narrowed here rather
- * than at each call site: Base UI's prop also admits a boolean and a ref, and
- * an implementation that switched to either would fail this cast rather than
- * silently changing what the popover does on close.
- */
-const resolveFinalFocus = (closeType: 'mouse' | 'keyboard') => {
-  const { finalFocus } = popoverSegment();
-  if (typeof finalFocus !== 'function') {
-    throw new Error('finalFocus is expected to be a function');
-  }
-  return finalFocus(closeType);
-};
 
 describe('<Issues />', () => {
   it('renders nothing while the form has no errors', () => {
@@ -75,7 +47,7 @@ describe('<Issues />', () => {
     expect(await screen.findAllByTestId('issue')).toHaveLength(3);
   });
 
-  it('uses the semantic warning colour for its toolbar segment', () => {
+  it('uses the semantic warning colour and unpadded popover surface', () => {
     const view = renderStageForm({ children: <IssuesHarness /> });
 
     act(() => {
@@ -83,14 +55,10 @@ describe('<Issues />', () => {
       view.getContext().markSubmitFailed();
     });
 
-    expect(popoverSegment()).toMatchObject({
-      color: 'warning',
-      popoverClassName: 'p-0',
-      showArrow: true,
-    });
     expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
       'focus:outline-warning',
     );
+    expect(screen.getByRole('dialog')).toHaveClass('p-0');
     expect(screen.getByRole('dialog').lastElementChild).toHaveClass(
       'overflow-hidden',
       'rounded-[inherit]',
@@ -330,13 +298,13 @@ describe('<Issues /> focus', () => {
     await renderTwoInvalidFields();
 
     clickRow(1);
-    expect(resolveFinalFocus('mouse')).toBe(controlFor(TEXT));
+    expect(document.activeElement).toBe(controlFor(TEXT));
 
-    act(() => {
-      popoverSegment().onOpenChange(true);
-    });
+    const trigger = screen.getByRole('button', { name: 'Issues (2)' });
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(resolveFinalFocus('keyboard')).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it('falls back to the anchor when the errored field has no control on screen', async () => {

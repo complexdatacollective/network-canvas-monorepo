@@ -5,14 +5,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  ToolbarButton,
+  ToolbarPopover,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
 import { useStageFormContext } from './StageEditor/stageFormContext';
 
-type UseIssuesToolbarSegmentResult = {
-  segment: ToolbarSegment | null;
+type UseIssuesToolbarControlResult = {
+  control: React.ReactNode;
   openIssues: () => void;
   hasIssues: boolean;
 };
@@ -27,7 +30,7 @@ const resolveTarget = (field: string): HTMLElement | null => {
   return null;
 };
 
-export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
+export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   // The stage form's field errors are already flat and keyed by field name;
   // `submitFailed` is tracked by the stage form bridge because the panel only
   // surfaces issues once a save has been attempted.
@@ -140,25 +143,30 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     });
   }, [flatIssues, harvestLabel, open]);
 
-  const segment = useMemo<ToolbarSegment | null>(() => {
+  const control = useMemo<React.ReactNode>(() => {
     if (!hasIssues || !submitFailed) return null;
 
-    return {
-      type: 'popover',
-      id: 'issues',
-      label: `Issues (${issueCount})`,
-      icon: <TriangleAlert />,
-      showLabel: true,
-      color: 'warning',
-      className:
-        'aria-expanded:border-warning! aria-expanded:bg-warning! aria-expanded:text-warning-contrast!',
-      open,
-      onOpenChange: setPanelOpen,
-      side: 'top',
-      popoverClassName: 'p-0',
-      showArrow: true,
-      finalFocus: () => finalFocusRef.current ?? true,
-      children: (
+    return (
+      <ToolbarPopover
+        key="stage-issues"
+        open={open}
+        onOpenChange={setPanelOpen}
+        contentProps={{
+          side: 'top',
+          className: 'p-0',
+          showArrow: true,
+          finalFocus: () => finalFocusRef.current ?? true,
+        }}
+        trigger={
+          <ToolbarButton
+            icon={<TriangleAlert />}
+            color="warning"
+            className="aria-expanded:border-warning! aria-expanded:bg-warning! aria-expanded:text-warning-contrast!"
+          >
+            Issues ({issueCount})
+          </ToolbarButton>
+        }
+      >
         <div className="flex flex-col overflow-hidden rounded-[inherit]">
           <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
@@ -194,8 +202,8 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
             })}
           </ol>
         </div>
-      ),
-    };
+      </ToolbarPopover>
+    );
   }, [
     flatIssues,
     handleClickIssue,
@@ -207,5 +215,5 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     submitFailed,
   ]);
 
-  return { segment, openIssues, hasIssues };
+  return { control, openIssues, hasIssues };
 }

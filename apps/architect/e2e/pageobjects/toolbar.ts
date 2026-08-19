@@ -1,17 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
-// Accessible names verified against the real ToolbarSegment definitions:
-// - `return-to-start`/`download`/`print`/`finished-editing` all set
-//   `showLabel: true` (ProjectActions.tsx, PrintProtocolAction.tsx,
-//   StageEditorNav.tsx), so SegmentedToolbar renders the label as visible
-//   text and leaves `aria-label` unset — the accessible name comes from the
-//   button's text content.
-// - `undo`/`redo` don't set `showLabel`, so SegmentedToolbar's
-//   `isLabelVisible` (`showLabel ?? !icon`) hides the text and falls back to
-//   `aria-label={label}` (icon-only + tooltip) — the accessible name is the
-//   aria-label.
+// Accessible names follow the composed toolbar controls: text buttons such as
+// Return, Download, Print, and Finished Editing derive their names from their
+// visible content; icon-only Undo/Redo buttons provide explicit aria-labels.
 // `print` only renders on `/protocol/summary` (ProjectLayout.tsx passes it as
-// an `additionalItems` entry gated on that route); `finished-editing` only
+// an additional action gated on that route); `finished-editing` only
 // renders in the stage editor once there are unsaved changes.
 export class Toolbar {
   private readonly page: Page;
@@ -21,8 +14,7 @@ export class Toolbar {
   }
 
   button(id: string) {
-    // ActionToolbar (SegmentedToolbar) renders items with aria-label = label
-    // (icon-only) or visible text; target by accessible name either way.
+    // Target either an icon button's aria-label or a text button's content.
     return this.page
       .getByRole('toolbar')
       .getByRole('button', { name: this.labelFor(id) });
@@ -34,7 +26,7 @@ export class Toolbar {
       'undo': 'Undo',
       'redo': 'Redo',
       'return-to-start': 'Return to Start Screen',
-      'return-to-timeline': 'Return to Timeline',
+      'return-to-timeline': 'Return to Stages',
       'print': 'Print',
       'finished-editing': 'Finished Editing',
     };

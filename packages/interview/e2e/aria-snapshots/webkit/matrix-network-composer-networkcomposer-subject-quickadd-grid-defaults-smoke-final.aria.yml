@@ -1,15 +1,24 @@
 - main:
   - toolbar "Network composer tools":
-    - button "Select"
-    - button "Add node" [expanded]
-    - dialog:
-      - textbox "Person name":
-        - /placeholder: Type a name, then press Enter
+    - group "Editing tools":
+      - button "Select"
+      - button
+      - button "Add node" [expanded] [pressed]
+      - button
+      - button
+      - button
+      - dialog:
+        - textbox "Person name":
+          - /placeholder: Type a name, then press Enter
+      - button
+      - button
     - separator
-    - button "Automatic layout"
+    - group "Layout tools":
+      - button "Automatic layout"
     - separator
-    - button "Undo"
-    - button "Redo" [disabled]
+    - group "History tools":
+      - button "Undo"
+      - button "Redo" [disabled]
   - application:
     - button "Alice"
     - button "Bob"

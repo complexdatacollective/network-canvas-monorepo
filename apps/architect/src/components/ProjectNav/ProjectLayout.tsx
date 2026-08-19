@@ -8,7 +8,7 @@ import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { cx } from '~/utils/cva';
 import { getScrollPosition, setScrollPosition } from '~/utils/scrollPositions';
 
-import { usePrintProtocolAction } from './PrintProtocolAction';
+import { PrintProtocolAction } from './PrintProtocolAction';
 import ProjectActions, { type ProjectActionsMode } from './ProjectActions';
 
 type ProjectLayoutProps = {
@@ -47,7 +47,6 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
         ? 'report'
         : 'authoring';
   const presenting = mode !== 'authoring';
-  const printAction = usePrintProtocolAction();
 
   return (
     <div
@@ -63,7 +62,7 @@ const ProjectLayout = ({ children, className }: ProjectLayoutProps) => {
       {children}
       <ProjectActions
         mode={mode}
-        additionalItems={presenting ? [printAction] : undefined}
+        additionalActions={presenting ? <PrintProtocolAction /> : undefined}
       />
     </div>
   );

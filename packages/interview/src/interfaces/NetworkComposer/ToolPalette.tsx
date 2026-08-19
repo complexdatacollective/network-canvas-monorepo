@@ -11,11 +11,19 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@codaco/fresco-ui/DropdownMenu';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import {
   SegmentedToolbar,
-  type ToolbarSegment,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarMenu,
+  ToolbarPopover,
+  ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import AddNodeInput from './AddNodeInput';
@@ -129,124 +137,135 @@ export default function ToolPalette({
   const groupButtonClass =
     activeGroupIndex >= 0 ? GROUP_BG_CLASS[activeGroupIndex + 1] : undefined;
 
-  const items: ToolbarSegment[] = [
-    {
-      type: 'toggle',
-      id: 'select',
-      label: 'Select',
-      icon: <SelectIcon />,
-      pressed: activeTool.kind === 'select',
-      onPressedChange: () => setActiveTool({ kind: 'select' }),
-    },
-    // Adding a node opens a name field in a popover next to this button; the
-    // button stays pressed while it is open. Closing it returns to select mode.
-    {
-      type: 'popover',
-      id: 'add-node',
-      label: 'Add node',
-      icon: <AddNodeIcon />,
-      pressed: activeTool.kind === 'addNode',
-      open: activeTool.kind === 'addNode',
-      onOpenChange: (open) =>
-        setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' }),
-      children: (
-        <AddNodeInput
-          entityLabel={nodeLabel}
-          targetVariable={quickAddTargetVariable}
-          onCreate={onAddNode}
-          validationContext={quickAddValidationContext}
-          {...quickAddValidationProps}
-        />
-      ),
-    },
-    // Every edge type shares the link icon, so a single edge button opens a menu
-    // to pick the type rather than crowding the toolbar with identical buttons.
-    // Hidden entirely when the stage defines no edge types.
-    ...(edges.length > 0
-      ? [
-          {
-            type: 'menu' as const,
-            id: 'edge',
-            label: 'Draw edge',
-            icon: <EdgeIcon />,
-            pressed: activeTool.kind === 'edge',
-            value: activeEdgeType,
-            className: edgeButtonClass,
-            options: edges.map(({ edgeType, label }) => ({
-              value: edgeType,
-              label,
-            })),
-            onSelect: (edgeType: string) =>
-              setActiveTool({ kind: 'edge', edgeType }),
-          },
-        ]
-      : []),
-    // A single Groups button opens a popover to pick the active group value;
-    // tapping nodes then toggles their convex-hull membership.
-    ...(groupVariable !== null
-      ? [
-          {
-            type: 'popover' as const,
-            id: 'groups',
-            label: 'Groups',
-            icon: <GroupsIcon />,
-            pressed: activeTool.kind === 'group',
-            className: groupButtonClass,
-            open: groupsOpen,
-            onOpenChange: setGroupsOpen,
-            children: (
-              <GroupPicker
-                variable={groupVariable}
-                active={activeGroup}
-                onSelect={(variable, value) => {
-                  onSelectGroup(variable, value);
-                  setGroupsOpen(false);
-                }}
-              />
-            ),
-          },
-        ]
-      : []),
-    { type: 'separator', id: 'sep-layout' },
-    {
-      type: 'toggle',
-      id: 'auto-layout',
-      label: 'Automatic layout',
-      icon: <AutoLayoutIcon />,
-      pressed: automaticLayout,
-      onPressedChange: onToggleAutomaticLayout,
-    },
-    { type: 'separator', id: 'sep-history' },
-    {
-      type: 'button',
-      id: 'undo',
-      label: 'Undo',
-      icon: <UndoIcon />,
-      disabled: !canUndo,
-      // Undo can exhaust the history while it holds focus. Keep it in the
-      // toolbar's roving focus so activation does not drop focus to <body>.
-      focusableWhenDisabled: true,
-      onClick: () => void undoStore.getState().undo(),
-    },
-    {
-      type: 'button',
-      id: 'redo',
-      label: 'Redo',
-      icon: <RedoIcon />,
-      disabled: !canRedo,
-      // Redo has the same dynamic-disable focus contract as Undo.
-      focusableWhenDisabled: true,
-      onClick: () => void undoStore.getState().redo(),
-    },
-  ];
-
   return (
     <SegmentedToolbar
-      label="Network composer tools"
-      items={items}
+      aria-label="Network composer tools"
       orientation="vertical"
       size="lg"
       className="absolute top-1/2 left-4 z-10 -translate-y-1/2"
-    />
+    >
+      <ToolbarGroup aria-label="Editing tools">
+        <ToolbarIconButton
+          aria-label="Select"
+          icon={<SelectIcon />}
+          pressed={activeTool.kind === 'select'}
+          onPressedChange={() => setActiveTool({ kind: 'select' })}
+        />
+
+        {/* Adding a node opens a name field next to this button. Closing the
+            popover returns to select mode. */}
+        <ToolbarPopover
+          open={activeTool.kind === 'addNode'}
+          onOpenChange={(open) =>
+            setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' })
+          }
+          trigger={
+            <ToolbarIconButton
+              aria-label="Add node"
+              aria-pressed={activeTool.kind === 'addNode'}
+              icon={<AddNodeIcon />}
+            />
+          }
+        >
+          <AddNodeInput
+            entityLabel={nodeLabel}
+            targetVariable={quickAddTargetVariable}
+            onCreate={onAddNode}
+            validationContext={quickAddValidationContext}
+            {...quickAddValidationProps}
+          />
+        </ToolbarPopover>
+
+        {/* One edge button opens a menu instead of crowding the toolbar with
+            identical link icons. */}
+        {edges.length > 0 ? (
+          <ToolbarMenu
+            trigger={
+              <ToolbarIconButton
+                aria-label="Draw edge"
+                aria-pressed={activeTool.kind === 'edge'}
+                icon={<EdgeIcon />}
+                className={edgeButtonClass}
+              />
+            }
+          >
+            <DropdownMenuRadioGroup
+              value={activeEdgeType}
+              onValueChange={(edgeType) =>
+                setActiveTool({ kind: 'edge', edgeType })
+              }
+            >
+              {edges.map(({ edgeType, label }) => (
+                <DropdownMenuRadioItem
+                  key={edgeType}
+                  value={edgeType}
+                  closeOnClick
+                >
+                  {label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </ToolbarMenu>
+        ) : null}
+
+        {/* A single Groups button opens the active group value picker. */}
+        {groupVariable !== null ? (
+          <ToolbarPopover
+            open={groupsOpen}
+            onOpenChange={setGroupsOpen}
+            trigger={
+              <ToolbarIconButton
+                aria-label="Groups"
+                aria-pressed={activeTool.kind === 'group'}
+                icon={<GroupsIcon />}
+                className={groupButtonClass}
+              />
+            }
+          >
+            <GroupPicker
+              variable={groupVariable}
+              active={activeGroup}
+              onSelect={(variable, value) => {
+                onSelectGroup(variable, value);
+                setGroupsOpen(false);
+              }}
+            />
+          </ToolbarPopover>
+        ) : null}
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      <ToolbarGroup aria-label="Layout tools">
+        <ToolbarIconButton
+          aria-label="Automatic layout"
+          icon={<AutoLayoutIcon />}
+          pressed={automaticLayout}
+          onPressedChange={onToggleAutomaticLayout}
+        />
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      <ToolbarGroup aria-label="History tools">
+        <ToolbarIconButton
+          aria-label="Undo"
+          icon={<UndoIcon />}
+          disabled={!canUndo}
+          // Undo can exhaust the history while it holds focus. Keep it in the
+          // toolbar's roving focus so activation does not drop focus to <body>.
+          focusableWhenDisabled
+          onClick={() => void undoStore.getState().undo()}
+        />
+        <ToolbarIconButton
+          aria-label="Redo"
+          icon={<RedoIcon />}
+          disabled={!canRedo}
+          // Redo has the same dynamic-disable focus contract as Undo.
+          focusableWhenDisabled
+          onClick={() => void undoStore.getState().redo()}
+        />
+      </ToolbarGroup>
+    </SegmentedToolbar>
   );
 }

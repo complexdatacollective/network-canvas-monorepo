@@ -4,11 +4,9 @@ import type { Locator, Page } from '@playwright/test';
  * NetworkComposer fixture: single-screen free-form network canvas.
  *
  * Toolbar buttons are icon-only (aria-label only, no visible text) — see
- * packages/interview/src/interfaces/NetworkComposer/ToolPalette.tsx and the
- * SegmentedToolbar `segmentButton` helper (aria-label = the segment's label).
- * The add-node and groups segments are Base UI popovers whose trigger button
- * carries no `aria-pressed`, so open-state is detected via the popover contents
- * being visible rather than an attribute on the button.
+ * packages/interview/src/interfaces/NetworkComposer/ToolPalette.tsx. The
+ * add-node and groups controls compose Base UI popovers with toolbar buttons;
+ * open-state can be observed through their pressed state or popup contents.
  *
  * Owned by the NetworkComposer matrix scenarios; instantiated directly in each
  * scenario's run() rather than hung off StageFixture.

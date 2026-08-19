@@ -10,15 +10,17 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
+import { ActionToolbarProvider } from '../ProjectNav/ActionToolbar';
 import ProjectActions from '../ProjectNav/ProjectActions';
 
 const mockNavigate = vi.fn();
 const mockLocation = vi.fn(() => '/protocol');
 
 vi.mock('wouter', async () => {
-  const actual = await vi.importActual<typeof import('wouter')>('wouter');
+  const actual = await vi.importActual<Record<string, unknown>>('wouter');
   return {
     ...actual,
     useLocation: () => [mockLocation(), mockNavigate],
@@ -130,7 +132,9 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 const wrap = (store: TestStore) => {
   return ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <Provider store={store}>
+      <ActionToolbarProvider>{children}</ActionToolbarProvider>
+    </Provider>
   );
 };
 
@@ -278,14 +282,9 @@ describe('<ProjectActions />', () => {
     const store = createTestStore();
     render(
       <ProjectActions
-        additionalItems={[
-          {
-            type: 'button',
-            id: 'print',
-            label: 'Print',
-            onClick: vi.fn(),
-          },
-        ]}
+        additionalActions={
+          <ToolbarButton onClick={vi.fn()}>Print</ToolbarButton>
+        }
       />,
       { wrapper: wrap(store) },
     );
@@ -348,7 +347,7 @@ describe('<ProjectActions />', () => {
       render(<ProjectActions />, { wrapper: wrap(store) });
 
       fireEvent.click(
-        screen.getByRole('button', { name: /return to timeline/i }),
+        screen.getByRole('button', { name: /Return to Stages/i }),
       );
       expect(mockNavigate).toHaveBeenCalledWith('/protocol');
       expect(

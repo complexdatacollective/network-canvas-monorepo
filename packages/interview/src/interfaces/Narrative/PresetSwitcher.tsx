@@ -11,15 +11,13 @@ import {
   AccordionTrigger,
 } from '@codaco/fresco-ui/Accordion';
 import { RadioItem } from '@codaco/fresco-ui/form/fields/RadioGroup';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@codaco/fresco-ui/Popover';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   SegmentedToolbar,
-  type ToolbarSegment,
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type {
   Stage,
@@ -202,135 +200,123 @@ export default function PresetSwitcher({
 
   if (!currentPreset) return null;
 
-  // The centre label is the Popover trigger that opens the legend: it is hosted
-  // inside the toolbar via the segment `render` escape hatch so its trigger
-  // wiring composes with the toolbar's roving focus. Prev/next are icon-only
-  // buttons (tooltip + aria-label).
-  const items: ToolbarSegment[] = [
-    {
-      type: 'button',
-      id: 'previous',
-      label: 'Previous preset',
-      icon: <ChevronLeft />,
-      disabled: activePreset === 0,
-      onClick: () => onChangePreset(activePreset - 1),
-    },
-    {
-      type: 'button',
-      id: 'label',
-      label: currentPreset.label,
-      showLabel: true,
-      render: <PopoverTrigger />,
-    },
-    {
-      type: 'button',
-      id: 'next',
-      label: 'Next preset',
-      icon: <ChevronRight />,
-      disabled: activePreset + 1 === presets.length,
-      onClick: () => onChangePreset(activePreset + 1),
-    },
-  ];
-
   return (
-    <Popover
-      open={popoverOpen}
-      onOpenChange={(open, event) => {
-        if (!open && event.reason !== 'trigger-press') return;
-        setPopoverOpen(open);
-      }}
+    <SegmentedToolbar
+      aria-label="Presets"
+      size="lg"
+      draggable
+      dragConstraints={dragConstraints}
+      dragHandleLabel="Drag to reposition"
+      className="absolute right-10 bottom-10 z-10"
     >
-      <SegmentedToolbar
-        label="Presets"
-        items={items}
-        size="lg"
-        draggable
-        dragConstraints={dragConstraints}
-        dragHandleLabel="Drag to reposition"
-        className="absolute right-10 bottom-10 z-10"
-      />
-      <PopoverContent align="center" sideOffset={14} className="min-w-2xs">
-        <Accordion
-          multiple
-          value={accordionValue}
-          onValueChange={handleAccordionValueChange}
+      <ToolbarGroup aria-label="Preset navigation">
+        <ToolbarIconButton
+          aria-label="Previous preset"
+          icon={<ChevronLeft />}
+          disabled={activePreset === 0}
+          onClick={() => onChangePreset(activePreset - 1)}
+        />
+        <ToolbarPopover
+          open={popoverOpen}
+          onOpenChange={(open, event) => {
+            if (!open && event.reason !== 'trigger-press') return;
+            setPopoverOpen(open);
+          }}
+          trigger={<ToolbarButton>{currentPreset.label}</ToolbarButton>}
+          contentProps={{
+            align: 'center',
+            sideOffset: 14,
+            className: 'min-w-2xs',
+          }}
         >
-          {hasHighlights && (
-            <AccordionItem value={SECTION_ATTRIBUTES}>
-              <AccordionHeader>
-                <AccordionTrigger>Attributes</AccordionTrigger>
-              </AccordionHeader>
-              <AccordionPanel>
-                <RadioGroup
-                  value={String(highlightIndex)}
-                  onValueChange={(v) => onChangeHighlightIndex(Number(v))}
-                  className="flex flex-col gap-2"
-                >
-                  {highlightLabels.map((label, index) => {
-                    const radioId = `highlight-radio-${index}`;
-                    return (
-                      <RadioItem
+          <Accordion
+            multiple
+            value={accordionValue}
+            onValueChange={handleAccordionValueChange}
+          >
+            {hasHighlights && (
+              <AccordionItem value={SECTION_ATTRIBUTES}>
+                <AccordionHeader>
+                  <AccordionTrigger>Attributes</AccordionTrigger>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <RadioGroup
+                    value={String(highlightIndex)}
+                    onValueChange={(v) => onChangeHighlightIndex(Number(v))}
+                    className="flex flex-col gap-2"
+                  >
+                    {highlightLabels.map((label, index) => {
+                      const radioId = `highlight-radio-${index}`;
+                      return (
+                        <RadioItem
+                          key={index}
+                          id={radioId}
+                          value={String(index)}
+                          label={label}
+                        />
+                      );
+                    })}
+                  </RadioGroup>
+                </AccordionPanel>
+              </AccordionItem>
+            )}
+
+            {hasEdges && (
+              <AccordionItem value={SECTION_LINKS}>
+                <AccordionHeader>
+                  <AccordionTrigger>Links</AccordionTrigger>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div className="flex flex-col gap-2">
+                    {edges.map((edge, index) => (
+                      <div
                         key={index}
-                        id={radioId}
-                        value={String(index)}
-                        label={label}
-                      />
-                    );
-                  })}
-                </RadioGroup>
-              </AccordionPanel>
-            </AccordionItem>
-          )}
+                        className="flex items-center gap-4 text-base"
+                      >
+                        <EdgeSwatch color={edge.color} />
+                        {edge.label}
+                      </div>
+                    ))}
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            )}
 
-          {hasEdges && (
-            <AccordionItem value={SECTION_LINKS}>
-              <AccordionHeader>
-                <AccordionTrigger>Links</AccordionTrigger>
-              </AccordionHeader>
-              <AccordionPanel>
-                <div className="flex flex-col gap-2">
-                  {edges.map((edge, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-4 text-base"
-                    >
-                      <EdgeSwatch color={edge.color} />
-                      {edge.label}
-                    </div>
-                  ))}
-                </div>
-              </AccordionPanel>
-            </AccordionItem>
-          )}
-
-          {hasGroups && (
-            <AccordionItem value={SECTION_GROUPS}>
-              <AccordionHeader>
-                <AccordionTrigger>Groups</AccordionTrigger>
-              </AccordionHeader>
-              <AccordionPanel>
-                <div className="flex flex-col gap-2">
-                  {groupLegend.map((entry, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-4 text-base"
-                    >
-                      <span
-                        className="inline-block size-3 rounded-full"
-                        style={{
-                          backgroundColor: `var(--cat-${entry.colorIndex})`,
-                        }}
-                      />
-                      <RenderMarkdown>{entry.label}</RenderMarkdown>
-                    </div>
-                  ))}
-                </div>
-              </AccordionPanel>
-            </AccordionItem>
-          )}
-        </Accordion>
-      </PopoverContent>
-    </Popover>
+            {hasGroups && (
+              <AccordionItem value={SECTION_GROUPS}>
+                <AccordionHeader>
+                  <AccordionTrigger>Groups</AccordionTrigger>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div className="flex flex-col gap-2">
+                    {groupLegend.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-4 text-base"
+                      >
+                        <span
+                          className="inline-block size-3 rounded-full"
+                          style={{
+                            backgroundColor: `var(--cat-${entry.colorIndex})`,
+                          }}
+                        />
+                        <RenderMarkdown>{entry.label}</RenderMarkdown>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            )}
+          </Accordion>
+        </ToolbarPopover>
+        <ToolbarIconButton
+          aria-label="Next preset"
+          icon={<ChevronRight />}
+          disabled={activePreset + 1 === presets.length}
+          onClick={() => onChangePreset(activePreset + 1)}
+        />
+      </ToolbarGroup>
+    </SegmentedToolbar>
   );
 }
 

@@ -1,9 +1,19 @@
 import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
@@ -17,8 +27,8 @@ import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
-import ActionToolbar from './ActionToolbar';
-import { getHistoryToolbarItems } from './historyToolbarItems';
+import { useActionToolbar } from './ActionToolbar';
+import { HistoryToolbarControls } from './historyToolbarItems';
 
 /**
  * What this page is doing with the protocol, which decides which actions are
@@ -41,12 +51,12 @@ import { getHistoryToolbarItems } from './historyToolbarItems';
 export type ProjectActionsMode = 'authoring' | 'report' | 'locked';
 
 type ProjectActionsProps = {
-  additionalItems?: ToolbarSegment[];
+  additionalActions?: ReactNode;
   mode?: ProjectActionsMode;
 };
 
 const ProjectActions = ({
-  additionalItems = [],
+  additionalActions,
   mode = 'authoring',
 }: ProjectActionsProps) => {
   const dispatch = useAppDispatch();
@@ -67,7 +77,7 @@ const ProjectActions = ({
   ].includes(location);
   const returnDestination = returnsToTimeline ? '/protocol' : '/';
   const returnLabel = returnsToTimeline
-    ? 'Return to Timeline'
+    ? 'Return to Stages'
     : 'Return to Start Screen';
   const handleReturn = useCallback(
     () => setLocation(returnDestination),
@@ -168,15 +178,16 @@ const ProjectActions = ({
       };
     }
 
-    void getStoredProtocol(activeProtocolId)
-      .then((row) => {
+    void (async () => {
+      try {
+        const row = await getStoredProtocol(activeProtocolId);
         if (!cancelled) {
           setSourceRef(row?.sourceRef ?? null);
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error) {
         reportError(error);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -184,13 +195,13 @@ const ProjectActions = ({
   }, [activeProtocolId]);
 
   useEffect(() => {
-    if (!downloadSuccess) return;
+    if (!downloadSuccess) return undefined;
     const timer = setTimeout(() => setDownloadSuccess(false), 2000);
     return () => clearTimeout(timer);
   }, [downloadSuccess]);
 
   useEffect(() => {
-    if (!sourceSaveSuccess) return;
+    if (!sourceSaveSuccess) return undefined;
     const timer = setTimeout(() => setSourceSaveSuccess(false), 2000);
     return () => clearTimeout(timer);
   }, [sourceSaveSuccess]);
@@ -205,90 +216,89 @@ const ProjectActions = ({
   // A history operation is a protocol mutation, so it belongs to the tab that
   // owns the saved copy — and only to it. See `ProjectActionsMode`.
   const canRecoverHistory = mode !== 'locked';
+  const showHistoryActions = canRecoverHistory && (canUndo || canRedo);
 
-  const historyItems = useMemo<ToolbarSegment[]>(() => {
-    if (!canRecoverHistory) {
-      return [];
-    }
-
-    return getHistoryToolbarItems({
-      canUndo,
+  const toolbarProps = useMemo(
+    () => ({
+      leadingActions: showHistoryActions ? (
+        <HistoryToolbarControls
+          key="history-controls"
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+        />
+      ) : undefined,
+      children: [
+        <ToolbarGroup key="project-navigation" aria-label="Navigation actions">
+          <ToolbarButton icon={<ArrowLeftToLine />} onClick={handleReturn}>
+            {returnLabel}
+          </ToolbarButton>
+        </ToolbarGroup>,
+        <ToolbarSeparator key="project-navigation-separator" />,
+        additionalActions ? (
+          <ToolbarGroup key="additional" aria-label="Additional actions">
+            {additionalActions}
+          </ToolbarGroup>
+        ) : null,
+        additionalActions ? (
+          <ToolbarSeparator key="additional-separator" />
+        ) : null,
+        <ToolbarGroup key="download" aria-label="Download actions">
+          <ToolbarButton
+            icon={downloadSuccess ? <Check /> : <Download />}
+            variant="default"
+            className="bg-sea-green text-white"
+            disabled={isExporting}
+            onClick={handleDownload}
+          >
+            {downloadSuccess
+              ? 'Downloaded'
+              : isExporting
+                ? 'Downloading...'
+                : 'Download'}
+          </ToolbarButton>
+        </ToolbarGroup>,
+        canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
+        canSaveToSource ? (
+          <ToolbarGroup key="source" aria-label="Source actions">
+            <ToolbarButton
+              icon={sourceSaveSuccess ? <Check /> : <Save />}
+              disabled={isSavingSource}
+              onClick={handleSaveSource}
+            >
+              {sourceSaveSuccess
+                ? 'Saved'
+                : isSavingSource
+                  ? 'Saving...'
+                  : 'Save to source'}
+            </ToolbarButton>
+          </ToolbarGroup>
+        ) : null,
+      ],
+    }),
+    [
+      additionalActions,
       canRedo,
-      onUndo: handleUndo,
-      onRedo: handleRedo,
-    });
-  }, [canRecoverHistory, canRedo, canUndo, handleRedo, handleUndo]);
+      canSaveToSource,
+      canUndo,
+      downloadSuccess,
+      handleDownload,
+      handleRedo,
+      handleReturn,
+      handleSaveSource,
+      handleUndo,
+      isExporting,
+      isSavingSource,
+      returnLabel,
+      showHistoryActions,
+      sourceSaveSuccess,
+    ],
+  );
 
-  const toolbarItems = useMemo<ToolbarSegment[]>(() => {
-    const items: ToolbarSegment[] = [
-      {
-        type: 'button',
-        id: 'return-to-start',
-        label: returnLabel,
-        icon: <ArrowLeftToLine />,
-        showLabel: true,
-        onClick: handleReturn,
-      },
-      { type: 'separator', id: 'project-return-separator' },
-    ];
+  useActionToolbar(toolbarProps);
 
-    if (additionalItems.length > 0) {
-      items.push(...additionalItems, {
-        type: 'separator',
-        id: 'project-download-separator',
-      });
-    }
-
-    items.push({
-      type: 'button',
-      id: 'download',
-      label: downloadSuccess
-        ? 'Downloaded'
-        : isExporting
-          ? 'Downloading...'
-          : 'Download',
-      icon: downloadSuccess ? <Check /> : <Download />,
-      showLabel: true,
-      variant: 'default',
-      className: 'bg-sea-green text-white',
-      disabled: isExporting,
-      onClick: handleDownload,
-    });
-
-    if (canSaveToSource) {
-      items.push(
-        { type: 'separator', id: 'project-source-separator' },
-        {
-          type: 'button',
-          id: 'save-to-source',
-          label: sourceSaveSuccess
-            ? 'Saved'
-            : isSavingSource
-              ? 'Saving...'
-              : 'Save to source',
-          icon: sourceSaveSuccess ? <Check /> : <Save />,
-          showLabel: true,
-          disabled: isSavingSource,
-          onClick: handleSaveSource,
-        },
-      );
-    }
-
-    return items;
-  }, [
-    additionalItems,
-    canSaveToSource,
-    downloadSuccess,
-    handleDownload,
-    handleReturn,
-    handleSaveSource,
-    isExporting,
-    isSavingSource,
-    returnLabel,
-    sourceSaveSuccess,
-  ]);
-
-  return <ActionToolbar items={toolbarItems} leadingItems={historyItems} />;
+  return null;
 };
 
 export default ProjectActions;

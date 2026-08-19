@@ -30,12 +30,12 @@ const CodebookPage = () => {
 
   return (
     <>
-      <Layout>
+      <Layout className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
         <PageHeading
           title="Codebook"
           description="Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted."
         />
-        <div className="mx-29 w-full max-w-6xl">
+        <div className="mx-auto w-full max-w-6xl">
           <UnusedVariablesAlert />
           <Codebook onEditEntity={handleOpenEntityDialog} />
         </div>

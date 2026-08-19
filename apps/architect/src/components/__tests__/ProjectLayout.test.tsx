@@ -15,6 +15,7 @@ import protocolValidation from '~/ducks/modules/protocolValidation';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { getCanUndo } from '~/selectors/protocol';
 
+import { ActionToolbarProvider } from '../ProjectNav/ActionToolbar';
 import ProjectLayout from '../ProjectNav/ProjectLayout';
 
 const { mockLocation } = vi.hoisted(() => ({
@@ -69,9 +70,11 @@ const openProtocolWithHistory = (store: TestStore) => {
 const renderLayout = (store: TestStore) =>
   render(
     <Provider store={store}>
-      <ProjectLayout>
-        <div data-testid="page">Page</div>
-      </ProjectLayout>
+      <ActionToolbarProvider>
+        <ProjectLayout>
+          <div data-testid="page">Page</div>
+        </ProjectLayout>
+      </ActionToolbarProvider>
     </Provider>,
   );
 

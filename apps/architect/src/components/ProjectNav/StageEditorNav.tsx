@@ -1,28 +1,26 @@
 import { Check, Eye, Loader2, Settings, X } from 'lucide-react';
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type {
-  ComponentSegmentRenderProps,
-  ToolbarSegment,
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import {
+  defineToolbarChild,
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarPopover,
+  ToolbarSeparator,
+  type ToolbarButtonProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import SplitButton from '@codaco/fresco-ui/SplitButton';
-import { useIssuesToolbarSegment } from '~/components/Issues';
+import { useIssuesToolbarControl } from '~/components/Issues';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import { useStageDraftHistory } from '~/components/StageEditor/useStageDraftHistory';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { getProtocolName } from '~/selectors/protocol';
 
-import ActionToolbar from './ActionToolbar';
+import { useActionToolbar } from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
-import { getHistoryToolbarItems } from './historyToolbarItems';
+import { HistoryToolbarControls } from './historyToolbarItems';
 import NavShell from './NavShell';
 
 const previewButtonClassName =
@@ -39,68 +37,6 @@ type StageEditorNavProps = {
   hasUnsavedChanges: boolean;
 };
 
-type PreviewSplitButtonContextValue = Pick<
-  StageEditorNavProps,
-  | 'onPreview'
-  | 'previewLabel'
-  | 'previewOptionsContent'
-  | 'isStageInvalid'
-  | 'isOpeningPreview'
-> & {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-};
-
-const PreviewSplitButtonContext =
-  createContext<PreviewSplitButtonContextValue | null>(null);
-
-function PreviewSplitButtonSegment({ size }: ComponentSegmentRenderProps) {
-  const preview = useContext(PreviewSplitButtonContext);
-
-  if (!preview) {
-    throw new Error(
-      'PreviewSplitButtonSegment must be rendered within PreviewSplitButtonContext.',
-    );
-  }
-
-  return (
-    <SplitButton
-      className={previewButtonClassName}
-      disabled={preview.isOpeningPreview || preview.isStageInvalid}
-      icon={
-        preview.isOpeningPreview ? (
-          <Loader2 className="animate-spin" />
-        ) : (
-          <Eye />
-        )
-      }
-      onClick={preview.onPreview}
-      onOpenChange={preview.onOpenChange}
-      open={preview.open}
-      popover={{
-        content: preview.previewOptionsContent,
-        side: 'top',
-        align: 'end',
-      }}
-      segment={{
-        'aria-label': 'Preview settings',
-        'className': previewButtonClassName,
-        'disabled': !preview.previewOptionsContent,
-        'icon': <Settings />,
-      }}
-      size={size}
-      variant="text"
-    >
-      {preview.isOpeningPreview ? preview.previewLabel : 'Preview'}
-    </SplitButton>
-  );
-}
-
-// `useIssuesToolbarSegment` owns the popover's open state, so the submit
-// segment has to be handed the same instance's opener rather than calling the
-// hook again (which would give it a second, unconnected popover state).
-const OpenIssuesContext = createContext<(() => void) | null>(null);
-
 /**
  * "Finished Editing" submits the stage form. The gating is the browser's:
  * `useForm` validates every registered field and only calls `onSubmit` when
@@ -108,39 +44,38 @@ const OpenIssuesContext = createContext<(() => void) | null>(null);
  * Opening the issues panel here covers a repeat attempt, where `submitFailed`
  * and the error set are unchanged so the auto-open effect does not re-fire.
  */
-function FinishedEditingSegment({ size }: ComponentSegmentRenderProps) {
-  const openIssues = useContext(OpenIssuesContext);
-  // A tab demoted while it was in the stage editor keeps that editor (see
-  // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
-  // able to commit: this is the one action that claims to make work durable,
-  // and the library write behind it would be dropped.
-  // ProtocolLockBanner sits directly above and names the ways forward.
-  const canCommit = useProtocolAccessMode() === 'editable';
+type FinishedEditingControlProps = {
+  openIssues: () => void;
+  isSubmitting: boolean;
+  canCommit: boolean;
+  ref?: ToolbarButtonProps['ref'];
+};
 
-  if (!openIssues) {
-    throw new Error(
-      'FinishedEditingSegment must be rendered within OpenIssuesContext.',
+const FinishedEditingControl = defineToolbarChild(
+  function FinishedEditingControl({
+    openIssues,
+    isSubmitting,
+    canCommit,
+    ref,
+  }: FinishedEditingControlProps) {
+    return (
+      <ToolbarButton
+        ref={ref}
+        form={STAGE_FORM_ID}
+        type="submit"
+        variant="default"
+        color="primary"
+        icon={isSubmitting ? <Loader2 className="animate-spin" /> : <Check />}
+        className="bg-sea-green rounded-full text-white"
+        disabled={!canCommit || isSubmitting}
+        aria-busy={isSubmitting}
+        onClick={openIssues}
+      >
+        Finished Editing
+      </ToolbarButton>
     );
-  }
-
-  return (
-    <SubmitButton
-      form={STAGE_FORM_ID}
-      size={size}
-      variant="default"
-      icon={<Check />}
-      className="bg-sea-green rounded-full text-white"
-      // Spread rather than `disabled={!canCommit}`: SubmitButton sets its own
-      // `disabled={isSubmitting}` BEFORE spreading props, so passing the prop
-      // unconditionally would hand `false` back during an in-flight submit and
-      // re-open the double-submit that guard exists to stop.
-      {...(canCommit ? {} : { disabled: true })}
-      onClick={openIssues}
-    >
-      Finished Editing
-    </SubmitButton>
-  );
-}
+  },
+);
 
 const StageEditorNav = ({
   stageName,
@@ -154,96 +89,109 @@ const StageEditorNav = ({
 }: StageEditorNavProps) => {
   const protocolName = useSelector(getProtocolName);
   const { canUndo, canRedo, undo, redo } = useStageDraftHistory();
-  const { segment: issuesSegment, openIssues } = useIssuesToolbarSegment();
+  const { control: issuesControl, openIssues } = useIssuesToolbarControl();
   const [previewOptionsOpen, setPreviewOptionsOpen] = useState(false);
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+  // A tab demoted while it was in the stage editor keeps that editor (see
+  // ProtocolRouteGuard) so the draft is not thrown away, but it must not be
+  // able to commit: this is the one action that claims to make work durable,
+  // and the library write behind it would be dropped.
+  // ProtocolLockBanner sits directly above and names the ways forward.
+  const canCommit = useProtocolAccessMode() === 'editable';
 
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: protocolName ?? 'Untitled protocol', onClick: onCancel },
     { label: stageName },
   ];
 
-  const previewSplitButtonContextValue =
-    useMemo<PreviewSplitButtonContextValue>(
-      () => ({
-        onPreview,
-        previewLabel,
-        previewOptionsContent,
-        isStageInvalid,
-        isOpeningPreview,
-        open: previewOptionsOpen,
-        onOpenChange: setPreviewOptionsOpen,
-      }),
-      [
-        isOpeningPreview,
-        isStageInvalid,
-        onPreview,
-        previewLabel,
-        previewOptionsContent,
-        previewOptionsOpen,
-      ],
-    );
+  const showHistoryActions = canUndo || canRedo;
 
-  const historyItems = useMemo<ToolbarSegment[]>(
-    () =>
-      getHistoryToolbarItems({
-        canUndo,
-        canRedo,
-        onUndo: undo,
-        onRedo: redo,
-      }),
-    [canRedo, canUndo, redo, undo],
-  );
-
-  const toolbarItems = useMemo<ToolbarSegment[]>(() => {
-    const items: ToolbarSegment[] = [
-      ...(issuesSegment ? [issuesSegment] : []),
-      ...(issuesSegment
-        ? [{ type: 'separator' as const, id: 'issues-editing-separator' }]
-        : []),
-      {
-        type: 'button',
-        id: 'cancel',
-        label: 'Cancel',
-        icon: <X />,
-        showLabel: true,
-        onClick: onCancel,
-      },
-    ];
-
-    if (hasUnsavedChanges) {
-      items.push({
-        type: 'component',
-        id: 'finished-editing',
-        component: FinishedEditingSegment,
-      });
-    }
-
-    items.push({ type: 'separator', id: 'preview-separator' });
-    items.push({
-      type: 'component',
-      id: 'preview',
-      component: PreviewSplitButtonSegment,
-    });
-
-    return items;
-  }, [hasUnsavedChanges, issuesSegment, onCancel]);
-
-  return (
-    <>
-      <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />
-      <OpenIssuesContext.Provider value={openIssues}>
-        <PreviewSplitButtonContext.Provider
-          value={previewSplitButtonContextValue}
+  const toolbarProps = useMemo(
+    () => ({
+      'aria-label': 'Stage editor actions',
+      'leadingActions': showHistoryActions ? (
+        <HistoryToolbarControls
+          key="history-controls"
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      ) : undefined,
+      'children': [
+        issuesControl,
+        issuesControl ? <ToolbarSeparator key="issues-separator" /> : null,
+        <ToolbarGroup key="stage-editing" aria-label="Editing actions">
+          <ToolbarButton icon={<X />} onClick={onCancel}>
+            Cancel
+          </ToolbarButton>
+          {hasUnsavedChanges ? (
+            <FinishedEditingControl
+              key="finished-editing"
+              openIssues={openIssues}
+              isSubmitting={isSubmitting}
+              canCommit={canCommit}
+            />
+          ) : null}
+        </ToolbarGroup>,
+        <ToolbarSeparator key="stage-preview-separator" />,
+        <ToolbarGroup
+          key="stage-preview"
+          aria-label="Preview actions"
+          className="gap-[0.16em]"
         >
-          <ActionToolbar
-            aria-label="Stage editor actions"
-            items={toolbarItems}
-            leadingItems={historyItems}
-          />
-        </PreviewSplitButtonContext.Provider>
-      </OpenIssuesContext.Provider>
-    </>
+          <ToolbarButton
+            className={`${previewButtonClassName} relative rounded-r-none! focus-visible:z-10`}
+            disabled={isOpeningPreview || isStageInvalid}
+            icon={
+              isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
+            }
+            onClick={onPreview}
+          >
+            {isOpeningPreview ? previewLabel : 'Preview'}
+          </ToolbarButton>
+          <ToolbarPopover
+            open={previewOptionsOpen}
+            onOpenChange={setPreviewOptionsOpen}
+            contentProps={{ side: 'top', align: 'end' }}
+            trigger={
+              <ToolbarIconButton
+                aria-label="Preview settings"
+                className={`${previewButtonClassName} relative rounded-l-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5`}
+                disabled={!previewOptionsContent}
+                icon={<Settings />}
+              />
+            }
+          >
+            {previewOptionsContent}
+          </ToolbarPopover>
+        </ToolbarGroup>,
+      ],
+    }),
+    [
+      canCommit,
+      canRedo,
+      canUndo,
+      hasUnsavedChanges,
+      isOpeningPreview,
+      isStageInvalid,
+      isSubmitting,
+      issuesControl,
+      onCancel,
+      onPreview,
+      openIssues,
+      previewLabel,
+      previewOptionsContent,
+      previewOptionsOpen,
+      redo,
+      showHistoryActions,
+      undo,
+    ],
   );
+
+  useActionToolbar(toolbarProps);
+
+  return <NavShell leading={<Breadcrumb items={breadcrumbItems} />} />;
 };
 
 export default StageEditorNav;

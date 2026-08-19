@@ -100,7 +100,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       )}
 
       <div className="mb-14">
-        <Heading level="h2" margin="none" className="mb-5">
+        <Heading level="h2" margin="none" className="mb-5!">
           Ego
         </Heading>
         <Section layout="vertical" required={false}>

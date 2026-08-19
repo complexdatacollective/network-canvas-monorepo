@@ -5,7 +5,9 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   SegmentedToolbar,
-  type ToolbarSegment,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import {
@@ -126,33 +128,6 @@ export default function ZoomableViewport({
     setScrollNonce((nonce) => nonce + 1);
   };
 
-  const items: ToolbarSegment[] = [
-    {
-      type: 'button',
-      id: 'zoom-out',
-      label: 'Zoom out',
-      icon: <ZoomOut />,
-      disabled: !canZoomOut(zoom),
-      onClick: () => changeZoom(zoomOut(zoom)),
-    },
-    {
-      type: 'button',
-      id: 'zoom-in',
-      label: 'Zoom in',
-      icon: <ZoomIn />,
-      disabled: !canZoomIn(zoom),
-      onClick: () => changeZoom(zoomIn(zoom)),
-    },
-    { type: 'separator', id: 'zoom-separator' },
-    {
-      type: 'button',
-      id: 'reset-zoom',
-      label: 'Reset zoom',
-      icon: <LocateFixed />,
-      onClick: handleReset,
-    },
-  ];
-
   return (
     <>
       <div
@@ -181,11 +156,33 @@ export default function ZoomableViewport({
         </div>
       </div>
       <SegmentedToolbar
-        label={toolbarLabel}
+        aria-label={toolbarLabel}
         size="lg"
-        items={items}
         className="absolute right-4 bottom-4 z-10"
-      />
+      >
+        <ToolbarGroup aria-label="Zoom controls">
+          <ToolbarIconButton
+            aria-label="Zoom out"
+            icon={<ZoomOut />}
+            disabled={!canZoomOut(zoom)}
+            onClick={() => changeZoom(zoomOut(zoom))}
+          />
+          <ToolbarIconButton
+            aria-label="Zoom in"
+            icon={<ZoomIn />}
+            disabled={!canZoomIn(zoom)}
+            onClick={() => changeZoom(zoomIn(zoom))}
+          />
+        </ToolbarGroup>
+        <ToolbarSeparator />
+        <ToolbarGroup aria-label="Viewport controls">
+          <ToolbarIconButton
+            aria-label="Reset zoom"
+            icon={<LocateFixed />}
+            onClick={handleReset}
+          />
+        </ToolbarGroup>
+      </SegmentedToolbar>
     </>
   );
 }

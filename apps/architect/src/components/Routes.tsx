@@ -8,6 +8,7 @@ import {
   StageEditorPage,
   SummaryPage,
 } from '~/components/pages';
+import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
 import Protocol from '~/components/Protocol';
 import ProtocolRouteGuard from '~/components/ProtocolRouteGuard';
@@ -23,7 +24,7 @@ import RouteFocus from '~/components/RouteFocus';
 // Every route below owns a `data-route-focus-target` heading for it to land on.
 const Routes = () => {
   return (
-    <>
+    <ActionToolbarProvider>
       <RouteFocus />
       <ProtocolRouteGuard>
         <Switch>
@@ -53,7 +54,7 @@ const Routes = () => {
           <Route path="/" component={Home} />
         </Switch>
       </ProtocolRouteGuard>
-    </>
+    </ActionToolbarProvider>
   );
 };
 
