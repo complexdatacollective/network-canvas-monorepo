@@ -26,7 +26,7 @@
     "@codaco/protocols": "workspace:^",
     "@codaco/sample-protocol": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
-    "@docsearch/css": "^4.6.3",
+    "@docsearch/css": "^5.0.2",
     "@docsearch/react": "^4.6.3",
     "@next/bundle-analyzer": "catalog:",
     "@next/third-parties": "catalog:",
