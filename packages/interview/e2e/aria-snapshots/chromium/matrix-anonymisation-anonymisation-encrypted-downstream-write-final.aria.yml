@@ -3,7 +3,8 @@
     - heading "Add a person (this will be encrypted)" [level=2]
   - listbox "Added Nodes":
     - option "Alice"
-  - textbox "Type a label and press enter..."
+  - textbox "Person 1 name":
+    - /placeholder: Type a label and press enter...
   - button "Quick add input" [pressed]
   - navigation:
     - button "Previous Step"
