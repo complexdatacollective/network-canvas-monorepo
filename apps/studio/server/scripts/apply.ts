@@ -58,6 +58,14 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const lock = await pool.connect();
   try {
     await lock.query(`select pg_advisory_lock(${SCHEMA_LOCK_KEY})`);
+    // A matching stamp must not survive a failed apply: a drifted database
+    // would keep reading `current`. Cleared here, restored only on success.
+    const stamped = await lock.query<{ present: boolean }>(
+      `select to_regclass('"schemaFingerprint"') is not null as present`,
+    );
+    if (stamped.rows[0]?.present) {
+      await lock.query('delete from "schemaFingerprint"');
+    }
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }));
     await push.apply();
     await lock.query(SIDECARS.join('\n'));

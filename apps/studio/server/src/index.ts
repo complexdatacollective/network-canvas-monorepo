@@ -28,8 +28,8 @@ const pool = env.db ? createPool(env.db) : undefined;
 
 // Stale everywhere and absent-in-production are resolved answers, not
 // transient failures: retrying re-reads the same fingerprint every three
-// seconds. The development lane waits for a db:reset the same way it waits
-// for the dev-pg container.
+// seconds. The development lane waits for dev-pg's provision (or a manual
+// db:reset) the same way it waits for the container itself.
 function exitIfFatal(state: SchemaState): void {
   if (state.kind === 'stale' || (state.kind === 'absent' && !env.devDefaults)) {
     // oxlint-disable-next-line no-console -- boot diagnostics

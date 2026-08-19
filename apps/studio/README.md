@@ -349,7 +349,8 @@ them:
   never-provisioned database stops the boot with the remedy; a configured
   database it cannot reach fails it too. Only the development lane comes up
   anyway and keeps retrying, because only there is the cause a container that
-  has not finished starting or a first `db:reset` that has not run yet.
+  has not finished starting or a `dev-pg` schema provision that has not
+  landed yet (`dev-pg` applies the schema itself when the database has none).
 - **The Netlify lane has no automation.** Its build command does not touch the
   database and its function has no boot, so `apply-schema` is a manual step
   there — and consequently the only place that lane ever detects a stale

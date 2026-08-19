@@ -6,7 +6,9 @@ import process from 'node:process';
 
 import pg from 'pg';
 
-import { DEV } from '../src/env/catalogue.ts';
+import { checkSchema } from '../src/db/schema.ts';
+import { DEV, DEV_DATABASE_URL } from '../src/env/catalogue.ts';
+import { applySchema } from './apply.ts';
 
 const IMAGE = 'postgres:18';
 const HOST_PORT = DEV.pgPort;
@@ -145,6 +147,20 @@ async function ensureDatabase(): Promise<void> {
   console.log(`Created database '${DATABASE}'`);
 }
 
+// Absent only: a stale schema is a human decision (the boot message names the
+// remedies), and auto-reconciling it here could destroy dev data.
+async function ensureSchemaProvisioned(): Promise<void> {
+  const pool = new pg.Pool({ connectionString: DEV_DATABASE_URL });
+  try {
+    if ((await checkSchema(pool)).kind === 'absent') {
+      await applySchema(pool);
+      console.log(`Applied the Studio schema to '${DATABASE}'`);
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
 function followLogs(): void {
   const child = spawn('docker', ['logs', '-f', containerName], {
     stdio: 'inherit',
@@ -179,6 +195,7 @@ async function main(): Promise<void> {
       `Postgres already reachable on port ${HOST_PORT} (externally managed)`,
     );
     await ensureDatabase();
+    await ensureSchemaProvisioned();
     console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
     // Stay alive under `concurrently -k` without a container to tail: an
     // unsettled top-level await with an empty event loop makes Node exit 13.
@@ -204,6 +221,7 @@ async function main(): Promise<void> {
   console.log('Waiting for Postgres to become ready...');
   await waitForReady();
   await ensureDatabase();
+  await ensureSchemaProvisioned();
   console.log(`Postgres ready — database '${DATABASE}' on port ${HOST_PORT}`);
   followLogs();
 }
