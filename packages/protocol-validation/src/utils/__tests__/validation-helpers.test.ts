@@ -312,19 +312,27 @@ describe('Validation Helpers', () => {
       expect(result).toBeNull();
     });
 
-    // The same question Architect's editors ask as a name is typed: two names
-    // that differ only in case are one name to a reader, and the editor has
-    // always refused the second.
-    it('treats names differing only in case as duplicates', () => {
-      expect(findDuplicateName(['Name', 'name', 'NAME'])).toBe('name');
+    // Folding here decides whether an existing protocol may be OPENED, and
+    // there is no editor on that path to repair it in: a real protocol in the
+    // validation corpus carries `gender` and `GENDER`, and folding stopped it
+    // migrating at all. Architect refuses to CREATE such a pair; the schema
+    // does not refuse to READ one.
+    it('does not fold case', () => {
+      expect(findDuplicateName(['Name', 'name', 'NAME'])).toBeNull();
     });
 
-    // Two spellings of the same accented text render identically, so they are
-    // one name however the keyboard encoded them.
-    it('treats canonically equivalent spellings as duplicates', () => {
+    // Same reason. `Café` typed two ways is one name to a reader, and the
+    // editor treats it as one — but a protocol already carrying both must
+    // still open.
+    it('does not fold Unicode form', () => {
       const precomposed = 'Caf\u00e9';
       const decomposed = 'Cafe\u0301';
-      expect(findDuplicateName([precomposed, decomposed])).toBe(decomposed);
+      expect(findDuplicateName([precomposed, decomposed])).toBeNull();
+    });
+
+    // The rule it does still enforce.
+    it('catches an exact repeat', () => {
+      expect(findDuplicateName(['Gender', 'Age', 'Gender'])).toBe('Gender');
     });
   });
 

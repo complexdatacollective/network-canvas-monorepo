@@ -3,14 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { describeMigrationFailure } from '../describeMigrationFailure';
 
 /**
- * The failure this exists for: schema 8 compares codebook names without regard
- * to case or Unicode composition, so a protocol authored under an older
- * Architect can hold `name` and `NAME` on one entity. `migrateProtocol`
- * re-validates and throws, and the researcher used to see only "Protocol
- * migration failed." — an instrument that will not open, with no way forward.
+ * The failure this exists for: two attributes on one entity carry the SAME
+ * name. Schema 8 rejects that, `migrateProtocol` re-validates and throws, and
+ * the researcher used to see only "Protocol migration failed." — an instrument
+ * that will not open, with no way forward.
+ *
+ * Exactly the same name, not two spellings of one: the schema compares names
+ * exactly (see `findDuplicateName`, which documents why it must not fold), so
+ * `name` and `NAME` are two different attributes and a protocol holding both
+ * opens normally.
  */
 const duplicateNameError = new Error(
-  'Migration resulted in invalid protocol: Duplicate attribute name "NAME" at codebook.node.abc.variables',
+  'Migration resulted in invalid protocol: Duplicate attribute name "Gender" at codebook.node.abc.variables',
 );
 
 const protocolWithCollision = {
@@ -19,8 +23,8 @@ const protocolWithCollision = {
       abc: {
         name: 'Person',
         variables: {
-          v1: { name: 'name', type: 'text' },
-          v2: { name: 'NAME', type: 'text' },
+          v1: { name: 'Gender', type: 'text' },
+          v2: { name: 'Gender', type: 'text' },
         },
       },
     },
@@ -28,14 +32,14 @@ const protocolWithCollision = {
 };
 
 describe('describeMigrationFailure', () => {
-  it('names both spellings and where they live', () => {
+  it('names the attribute and where it lives', () => {
     const { title, message } = describeMigrationFailure(
       duplicateNameError,
       protocolWithCollision,
     );
 
     expect(title).toBe('Two attributes share a name');
-    expect(message).toContain('"name" and "NAME"');
+    expect(message).toContain('"Gender"');
     expect(message).toContain('"Person"');
   });
 
@@ -50,24 +54,13 @@ describe('describeMigrationFailure', () => {
     expect(message).not.toBe('Protocol migration failed.');
   });
 
-  it('reports the researchers own spellings, not a folded key', () => {
-    // The comparison folds to `name`; describing the fold would name a string
-    // they never typed.
-    const { message } = describeMigrationFailure(
-      duplicateNameError,
-      protocolWithCollision,
-    );
-
-    expect(message).toContain('NAME');
-  });
-
   it('finds a collision on the interviewee', () => {
     const { message } = describeMigrationFailure(duplicateNameError, {
       codebook: {
         ego: {
           variables: {
-            v1: { name: 'name', type: 'text' },
-            v2: { name: 'NAME', type: 'text' },
+            v1: { name: 'Gender', type: 'text' },
+            v2: { name: 'Gender', type: 'text' },
           },
         },
       },
@@ -76,39 +69,34 @@ describe('describeMigrationFailure', () => {
     expect(message).toContain('the interviewee');
   });
 
-  it('treats canonically equivalent names as the same name', () => {
-    // Precomposed U+00E9 vs decomposed e + U+0301. These render identically and
-    // fold to the same key, which is exactly why the schema now rejects them —
-    // so the message must find BOTH and show the two spellings as stored.
-    const precomposed = 'Caf\u00e9';
-    const decomposed = 'Cafe\u0301';
-    expect(precomposed).not.toBe(decomposed);
-
-    const { message } = describeMigrationFailure(
-      new Error(`Duplicate attribute name "${decomposed}"`),
-      {
-        codebook: {
-          node: {
-            abc: {
-              name: 'Person',
-              variables: {
-                v1: { name: precomposed, type: 'text' },
-                v2: { name: decomposed, type: 'text' },
-              },
+  // The regression this pins: folding here would send the researcher looking
+  // at entries the schema never objected to. `GENDER` is not part of the pair.
+  it('does not point at names the schema treats as different', () => {
+    const { message } = describeMigrationFailure(duplicateNameError, {
+      codebook: {
+        node: {
+          abc: {
+            name: 'Person',
+            variables: {
+              v1: { name: 'GENDER', type: 'text' },
+              v2: { name: 'gender', type: 'text' },
             },
           },
         },
       },
-    );
+    });
 
-    expect(message).toContain(`"${precomposed}" and "${decomposed}"`);
+    // No entity is named, because no entity holds two attributes called
+    // "Gender" — the case-variants are two different attributes.
+    expect(message).not.toContain('"Person"');
+    expect(message).toContain('"Gender"');
   });
 
   it('still names the attribute when the collision cannot be located', () => {
     const { title, message } = describeMigrationFailure(duplicateNameError, {});
 
     expect(title).toBe('Two attributes share a name');
-    expect(message).toContain('"NAME"');
+    expect(message).toContain('"Gender"');
   });
 
   it('surfaces the underlying reason for an unrecognised failure', () => {

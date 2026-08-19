@@ -30,9 +30,3 @@ Two further rules are tightened for the same reason:
   the relationship to the participant, or the kind of each relationship. Doing
   so painted the participant, or every relative, as affected by that condition
   in every interview.
-- Two names that differ only in capitalisation, or only in how the same accented
-  character was typed, are now one name for the purpose of rejecting duplicates
-  in the codebook — entity names and attribute names alike. This is the
-  comparison Architect's editors have always made as a name is typed, so a
-  protocol built on one device can no longer carry a pair of names Architect
-  would never have let you create.

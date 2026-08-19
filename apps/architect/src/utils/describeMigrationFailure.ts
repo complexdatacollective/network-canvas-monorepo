@@ -1,5 +1,3 @@
-import { normalizeForComparison } from '@codaco/shared-consts';
-
 /**
  * Turns a thrown migration failure into something a researcher can act on.
  *
@@ -30,44 +28,44 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const DUPLICATE_NAME = /Duplicate attribute name "([^"]+)"/;
 
 /**
- * Every stored spelling on `owner` that collides with `name` under the schema's
- * comparison, in codebook order. Returns the researcher's own spellings, not
- * the folded key — naming the fold would describe a string they never typed.
+ * How many attributes on `owner` carry exactly this name.
+ *
+ * EXACT, because that is how the schema compares them (`findDuplicateName` in
+ * `@codaco/protocol-validation`, which documents why it does not fold). A
+ * describer that folded would point the researcher at entries the schema never
+ * objected to — `GENDER` named alongside a genuine `Gender`/`Gender` pair —
+ * and this message exists to tell them which entries to go and look at.
  */
-const collidingNames = (owner: unknown, name: string): string[] => {
+const countNamed = (owner: unknown, name: string): number => {
   const variables = isRecord(owner) ? owner.variables : undefined;
-  if (!isRecord(variables)) return [];
+  if (!isRecord(variables)) return 0;
 
-  const target = normalizeForComparison(name);
-  const found: string[] = [];
+  let found = 0;
   for (const variable of Object.values(variables)) {
     const candidate = isRecord(variable) ? variable.name : undefined;
-    if (typeof candidate !== 'string') continue;
-    if (normalizeForComparison(candidate) === target) found.push(candidate);
+    if (candidate === name) found += 1;
   }
   return found;
 };
 
-/** Where in the codebook a colliding pair lives, phrased for a researcher. */
+/** Where in the codebook the repeated name lives, phrased for a researcher. */
 const locateCollision = (
   protocol: unknown,
   name: string,
-): { where: string; spellings: string[] } | undefined => {
+): string | undefined => {
   const codebook = isRecord(protocol) ? protocol.codebook : undefined;
   if (!isRecord(codebook)) return undefined;
 
-  const ego = collidingNames(codebook.ego, name);
-  if (ego.length > 1) return { where: 'the interviewee', spellings: ego };
+  if (countNamed(codebook.ego, name) > 1) return 'the interviewee';
 
   for (const entity of ['node', 'edge'] as const) {
     const types = codebook[entity];
     if (!isRecord(types)) continue;
     for (const type of Object.values(types)) {
-      const spellings = collidingNames(type, name);
-      if (spellings.length > 1) {
+      if (countNamed(type, name) > 1) {
         const label =
           isRecord(type) && typeof type.name === 'string' ? type.name : entity;
-        return { where: `"${label}"`, spellings };
+        return `"${label}"`;
       }
     }
   }
@@ -89,14 +87,14 @@ export const describeMigrationFailure = (
 
   if (duplicate?.[1]) {
     const name = duplicate[1];
-    const collision = locateCollision(protocol, name);
-    const pair = collision?.spellings.map((s) => `"${s}"`).join(' and ');
+    const where = locateCollision(protocol, name);
+    const subject = where
+      ? `Two attributes on ${where} are both named "${name}"`
+      : `Two attributes are both named "${name}"`;
 
     return {
       title: 'Two attributes share a name',
-      message: collision
-        ? `${pair} on ${collision.where} count as the same name, because names are compared without regard to capitalisation or accents. They were allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.`
-        : `Two attributes named "${name}" count as the same name, because names are compared without regard to capitalisation or accents. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.`,
+      message: `${subject}. That was allowed when this protocol was made, but they cannot both exist now — a researcher reading a dropdown could not tell them apart. Open this protocol in the version of Architect that created it, rename one of them, then open it here again.`,
     };
   }
 

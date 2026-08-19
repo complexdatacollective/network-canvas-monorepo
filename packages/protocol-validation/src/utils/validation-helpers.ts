@@ -1,7 +1,5 @@
 import type { z } from 'zod';
 
-import { normalizeForComparison } from '@codaco/shared-consts';
-
 import type {
   Codebook,
   EntityDefinition,
@@ -131,19 +129,26 @@ const findDuplicate = (
 };
 
 /**
- * The first repeated researcher-authored NAME in an array, in its original
- * spelling so the message shows what was written.
+ * The first exactly-repeated researcher-authored NAME in an array.
  *
- * Keyed on `normalizeForComparison`, which is the SAME question Architect's
- * editors ask as a name is typed and the same one the disease-label rule and
- * its repair ask: two names that differ only in case, or only in how the same
- * accented character was encoded, are one name to a reader. Comparing raw here
- * let the editor refuse a name the schema then accepted, so a protocol built on
- * one device could carry a pair of names Architect would never have let the
- * researcher create.
+ * EXACT, and deliberately NOT case-folded. Architect's editors do fold case and
+ * Unicode form as a name is typed, so no protocol authored there can gain a
+ * pair like `gender`/`GENDER`. Applying that same fold in the SCHEMA is a
+ * different act: it decides whether an existing protocol may be OPENED, and
+ * `migrateProtocol` throws on a schema failure — so a protocol that trips it
+ * cannot be recovered, because there is no editor on that path to repair it in.
+ *
+ * Not hypothetical. Folding here was tried, and a real protocol in the
+ * validation corpus stopped migrating: two ego attributes spelled `gender` and
+ * `GENDER`, authored long before either rule existed.
+ *
+ * The schema's job is to describe what a protocol may CONTAIN. Keeping a
+ * researcher from creating a confusable pair is the editor's job, where there
+ * is somewhere to put the refusal. The asymmetry is intended and runs in the
+ * safe direction; do not "restore consistency" by folding here.
  */
 export const findDuplicateName = (names: string[]): string | null =>
-  findDuplicate(names, normalizeForComparison);
+  findDuplicate(names, (name) => name);
 
 /**
  * The first exactly-repeated value in an array — for IDENTIFIERS (codebook
