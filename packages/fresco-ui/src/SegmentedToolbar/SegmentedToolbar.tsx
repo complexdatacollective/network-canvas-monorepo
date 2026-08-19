@@ -48,6 +48,16 @@ export type SegmentContent = {
   className?: string;
 };
 
+type DisabledFocusBehavior = {
+  /**
+   * Keep the item in the toolbar's roving focus when disabled. Enable this
+   * deliberately for commands that can become disabled while they hold focus,
+   * or whose discoverability while unavailable is important.
+   * @default false
+   */
+  focusableWhenDisabled?: boolean;
+};
+
 export type ButtonSegment = {
   type: 'button';
   id: string;
@@ -61,7 +71,8 @@ export type ButtonSegment = {
    * comes from the wrapper rather than `onClick`.
    */
   render?: React.ReactElement<{ render?: React.ReactElement }>;
-} & SegmentContent;
+} & SegmentContent &
+  DisabledFocusBehavior;
 
 export type ToggleSegment = {
   type: 'toggle';
@@ -73,7 +84,8 @@ export type ToggleSegment = {
     pressed: boolean,
     eventDetails: Toggle.ChangeEventDetails,
   ) => void;
-} & SegmentContent;
+} & SegmentContent &
+  DisabledFocusBehavior;
 
 export type GroupSegment = {
   type: 'group';
@@ -85,7 +97,10 @@ export type GroupSegment = {
     value: string[],
     eventDetails: ToggleGroup.ChangeEventDetails,
   ) => void;
-  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
+  options: Array<
+    SegmentContent &
+      DisabledFocusBehavior & { value: string; disabled?: boolean }
+  >;
 };
 
 export type SeparatorSegment = {
@@ -106,7 +121,8 @@ export type MenuSegment = {
   value?: string;
   options: Array<SegmentContent & { value: string; disabled?: boolean }>;
   onSelect: (value: string) => void;
-} & SegmentContent;
+} & SegmentContent &
+  DisabledFocusBehavior;
 
 /**
  * A pressed-able button that anchors a popover next to itself, rendering
@@ -135,7 +151,8 @@ export type PopoverSegment = {
    */
   finalFocus?: React.ComponentProps<typeof PopoverContent>['finalFocus'];
   children: React.ReactNode;
-} & SegmentContent;
+} & SegmentContent &
+  DisabledFocusBehavior;
 
 export type SegmentSize = 'sm' | 'md' | 'lg';
 export type ToolbarOrientation = 'horizontal' | 'vertical';
@@ -216,30 +233,38 @@ function isLabelVisible(content: SegmentContent): boolean {
 }
 
 /**
- * A disabled toolbar segment stays focusable — the APG toolbar behaviour Base
- * UI's roving focus already implements via `focusableWhenDisabled`, so a
- * keyboard user can still reach a segment to learn it is unavailable.
+ * Base UI defaults toolbar items to focusable when disabled. SegmentedToolbar
+ * deliberately reverses that default: ordinary disabled segments keep native
+ * button semantics, while an explicit `focusableWhenDisabled` opt-in uses
+ * `aria-disabled` so the item can remain in the toolbar's roving focus.
  *
- * A native `disabled` attribute is incompatible with that: browsers blur a
- * focused element the instant it becomes disabled, so a keyboard user who
- * exhausts an action — pressing Undo until there is nothing left to undo —
- * loses focus to the document body. Base UI does delete the attribute again,
- * but only in a layout effect, one commit after React has written it to the
- * DOM and the browser has already taken focus away.
- *
- * So swallow `disabled` before it reaches the DOM and let `aria-disabled`
- * carry the state (it is what Base UI converges on anyway). Activation is
- * already blocked in Base UI's own click/keydown/pointerdown handlers, which
- * close over the disabled state rather than reading the attribute.
+ * For the opt-in case, swallow `disabled` before it reaches the DOM. Nested
+ * Base UI render composition otherwise applies the native attribute for one
+ * commit and removes it in a layout effect, but that brief attribute is enough
+ * for the browser to discard focus. Base UI's handlers still block activation
+ * because they close over the disabled state rather than reading the DOM.
  */
-const SegmentControl = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  function SegmentControl({ disabled, ...props }, ref) {
+type SegmentControlProps = ButtonProps & DisabledFocusBehavior;
+
+const SegmentControl = React.forwardRef<HTMLButtonElement, SegmentControlProps>(
+  function SegmentControl(
+    {
+      disabled,
+      focusableWhenDisabled = false,
+      'aria-disabled': ariaDisabled,
+      ...props
+    },
+    ref,
+  ) {
     // The composite item and the inner trigger each contribute a signal, and
     // whichever renders last wins the merge — so treat either as disabled.
     const isDisabled =
-      disabled === true ||
-      props['aria-disabled'] === true ||
-      props['aria-disabled'] === 'true';
+      disabled === true || ariaDisabled === true || ariaDisabled === 'true';
+
+    if (!focusableWhenDisabled) {
+      return <Button ref={ref} {...props} disabled={isDisabled || undefined} />;
+    }
+
     return (
       <Button ref={ref} {...props} aria-disabled={isDisabled || undefined} />
     );
@@ -256,6 +281,7 @@ function segmentButton(
   content: SegmentContent,
   size: SegmentSize,
   extraClassName?: string,
+  focusableWhenDisabled = false,
 ) {
   const labelVisible = isLabelVisible(content);
   return (
@@ -265,6 +291,7 @@ function segmentButton(
       size={size}
       icon={content.icon}
       aria-label={labelVisible ? undefined : content.label}
+      focusableWhenDisabled={focusableWhenDisabled}
       className={cx(
         'rounded-full',
         // A segment must hold its size. `Button` gave up `shrink-0` in #1392 so
@@ -320,7 +347,13 @@ function ToolbarButtonSegment({
   size: SegmentSize;
   orientation: ToolbarOrientation;
 }) {
-  const styledButton = segmentButton(segment, size);
+  const focusableWhenDisabled = segment.focusableWhenDisabled ?? false;
+  const styledButton = segmentButton(
+    segment,
+    size,
+    undefined,
+    focusableWhenDisabled,
+  );
   // When a caller hosts the segment in their own element (e.g. a Popover
   // trigger), the styled button becomes that element's render target so the
   // overlay wiring composes with the toolbar button — mirroring the
@@ -331,6 +364,7 @@ function ToolbarButtonSegment({
   const button = (
     <Toolbar.Button
       disabled={segment.disabled}
+      focusableWhenDisabled={focusableWhenDisabled}
       onClick={segment.onClick}
       render={control}
     />
@@ -361,19 +395,25 @@ function ToolbarToggleSegment({
   const isUncontrollable =
     segment.pressed !== undefined && !segment.onPressedChange;
   const disabled = segment.disabled || isUncontrollable;
-  // `disabled` also goes on the composite item, not just the inner Toggle:
-  // that is what tells Base UI's roving focus the segment is disabled-but-
-  // focusable, and keeps its `aria-disabled` in step with the Toggle's.
+  const focusableWhenDisabled = segment.focusableWhenDisabled ?? false;
+  // `disabled` also goes on the composite item, not just the inner Toggle, so
+  // Base UI's roving focus applies the segment's chosen disabled-focus policy.
   const toggle = (
     <Toolbar.Button
       disabled={disabled}
+      focusableWhenDisabled={focusableWhenDisabled}
       render={
         <Toggle
           pressed={segment.pressed}
           defaultPressed={segment.defaultPressed}
           onPressedChange={segment.onPressedChange}
           disabled={disabled}
-          render={segmentButton(segment, size, pressedClasses)}
+          render={segmentButton(
+            segment,
+            size,
+            pressedClasses,
+            focusableWhenDisabled,
+          )}
         />
       }
     />
@@ -418,14 +458,21 @@ function ToolbarGroupSegment({
         // fold it in here too — the composite item is outside that context and
         // would otherwise treat the option as enabled.
         const disabled = option.disabled || isUncontrollable;
+        const focusableWhenDisabled = option.focusableWhenDisabled ?? false;
         const toggle = (
           <Toolbar.Button
             disabled={disabled}
+            focusableWhenDisabled={focusableWhenDisabled}
             render={
               <Toggle
                 value={option.value}
                 disabled={disabled}
-                render={segmentButton(option, size, pressedClasses)}
+                render={segmentButton(
+                  option,
+                  size,
+                  pressedClasses,
+                  focusableWhenDisabled,
+                )}
               />
             }
           />
@@ -466,13 +513,20 @@ function ToolbarMenuSegment({
     : segment.pressed
       ? menuActiveClasses
       : undefined;
+  const focusableWhenDisabled = segment.focusableWhenDisabled ?? false;
   const trigger = (
     <Toolbar.Button
       disabled={segment.disabled}
+      focusableWhenDisabled={focusableWhenDisabled}
       render={
         <DropdownMenuTrigger
           disabled={segment.disabled}
-          render={segmentButton(segment, size, activeClasses)}
+          render={segmentButton(
+            segment,
+            size,
+            activeClasses,
+            focusableWhenDisabled,
+          )}
         />
       }
     />
@@ -526,13 +580,20 @@ function ToolbarPopoverSegment({
     : segment.pressed
       ? menuActiveClasses
       : undefined;
+  const focusableWhenDisabled = segment.focusableWhenDisabled ?? false;
   const trigger = (
     <Toolbar.Button
       disabled={segment.disabled}
+      focusableWhenDisabled={focusableWhenDisabled}
       render={
         <PopoverTrigger
           disabled={segment.disabled}
-          render={segmentButton(segment, size, activeClasses)}
+          render={segmentButton(
+            segment,
+            size,
+            activeClasses,
+            focusableWhenDisabled,
+          )}
         />
       }
     />

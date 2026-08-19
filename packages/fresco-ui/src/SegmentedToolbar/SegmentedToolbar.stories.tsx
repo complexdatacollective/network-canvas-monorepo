@@ -32,7 +32,16 @@ const meta = {
   title: 'Components/SegmentedToolbar',
   component: SegmentedToolbar,
   decorators: [withTooltipProvider],
-  parameters: { layout: 'centered' },
+  parameters: {
+    layout: 'centered',
+    docs: {
+      description: {
+        component: `A Base UI toolbar rendered as a floating segmented surface. Supply its controls through the \`items\` array; button, toggle, group-option, menu, and popover items all accept \`disabled\` and \`focusableWhenDisabled\`.
+
+Disabled items use native \`<button disabled>\` semantics and leave keyboard focus by default. Set \`focusableWhenDisabled: true\` only when retaining focus is intentional—for example, Undo or Redo can become unavailable immediately after activation. Opted-in items remain in the toolbar's roving focus, expose \`aria-disabled="true"\`, and cannot be activated.`,
+      },
+    },
+  },
   tags: ['autodocs'],
   argTypes: {
     orientation: {
@@ -345,9 +354,9 @@ export const Colours: Story = {
 };
 
 /**
- * Disabled segments dim but stay focusable, so a keyboard user can still reach
- * one and hear that it is unavailable — the APG toolbar behaviour. They keep
- * their tooltip too, which for an icon-only segment is its only visible label.
+ * Disabled segments use native button semantics and leave keyboard focus by
+ * default. Set `focusableWhenDisabled` only where retaining focus or announcing
+ * an unavailable command is deliberately more important, as with Undo here.
  */
 export const Disabled: Story = {
   args: {
@@ -359,6 +368,7 @@ export const Disabled: Story = {
         label: 'Undo',
         icon: <Undo2 />,
         disabled: true,
+        focusableWhenDisabled: true,
         onClick: noop,
       },
       {
@@ -401,6 +411,23 @@ export const Disabled: Story = {
       },
     ],
   },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+
+    await step('uses native disabled semantics by default', async () => {
+      const freeze = await canvas.findByRole('button', {
+        name: 'Freeze layout',
+      });
+      expect(freeze).toBeDisabled();
+      expect(freeze).not.toHaveAttribute('aria-disabled');
+    });
+
+    await step('supports deliberate focus retention', async () => {
+      const undo = await canvas.findByRole('button', { name: 'Undo' });
+      expect(undo).not.toBeDisabled();
+      expect(undo).toHaveAttribute('aria-disabled', 'true');
+    });
+  },
 };
 
 /**
@@ -423,6 +450,7 @@ export const KeepsFocusWhenDisabled: Story = {
         label: 'Undo',
         icon: <Undo2 />,
         disabled: steps === 0,
+        focusableWhenDisabled: true,
         onClick: () => setSteps((remaining) => Math.max(0, remaining - 1)),
       },
       {
