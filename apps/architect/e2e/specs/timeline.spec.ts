@@ -13,6 +13,42 @@ import { Toolbar } from '../pageobjects/toolbar.js';
 
 type Stage = { id: string; label: string; type: string };
 
+/**
+ * A skip-logic filter the protocol schema actually accepts.
+ *
+ * `{ join: 'AND', rules: [] }` does not: `FilterSchema` requires at least one
+ * rule. That matters far more than it looks. Seeding writes straight to
+ * IndexedDB, so Architect opens an invalid protocol quite happily — but
+ * `protocolValidationListener` then rejects every candidate it produces, so
+ * NOTHING the test does afterwards is persisted. A "nothing changed"
+ * assertion is therefore true whatever the guard under test does, and the
+ * test cannot fail. `settleAfterRefusal` is what exposed it: waiting for a
+ * write of its own to become durable is impossible in a protocol that cannot
+ * write at all, where the old one-second sleep simply expired and passed.
+ *
+ * The rule's content is irrelevant to these tests — the reorder and delete
+ * guards read `skipLogic.destination`, not the filter — so this asks the
+ * cheapest true question available: does any node of the first codebook type
+ * exist. Read from the fixture rather than hardcoded, so a codebook change
+ * fails here rather than seeding another unwritable protocol.
+ */
+const anyNodeOfFirstType = (protocol: {
+  codebook: { node?: Record<string, unknown> };
+}) => {
+  const [nodeType] = Object.keys(protocol.codebook.node ?? {});
+  if (!nodeType) throw new Error('fixture has no node type to filter on');
+  return {
+    join: 'AND' as const,
+    rules: [
+      {
+        type: 'node' as const,
+        id: 'skip-when-any-node-exists',
+        options: { type: nodeType, operator: 'EXISTS' as const },
+      },
+    ],
+  };
+};
+
 // Narrow one element of the protocol JSON's `stages` array with a real
 // runtime guard (mirroring `isRow` in helpers/read-store.ts) rather than an
 // `as` cast, so a drifted/malformed stage throws here instead of silently
@@ -65,7 +101,7 @@ test('shows the skip-logic icon without a destination note', async ({
   if (!firstStage) throw new Error('fixture has no stages');
   firstStage.skipLogic = {
     action: 'SKIP',
-    filter: { join: 'AND', rules: [] },
+    filter: anyNodeOfFirstType(protocol),
   };
 
   await seed(protocol, { name: 'All Interfaces', assets });
@@ -570,7 +606,7 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   if (!source || !destination) throw new Error('fixture needs two stages');
   source.skipLogic = {
     action: 'SKIP',
-    filter: { join: 'AND', rules: [] },
+    filter: anyNodeOfFirstType(protocol),
     destination: { type: 'stage', stageId: destination.id },
   };
 
