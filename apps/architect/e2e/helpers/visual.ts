@@ -77,6 +77,22 @@ export function assertBaselinesCommitted(
   testInfo: TestInfo,
   names: readonly string[],
 ): void {
+  // Stand aside during an explicit regeneration run, or this guard deadlocks
+  // the very workflow it points at: it throws before the first capture, so
+  // `--update-snapshots` never reaches the code that would WRITE the baselines
+  // it is complaining are absent. (Observed exactly that on run 32273797683.)
+  //
+  // Gated on the EXPLICIT modes only. Playwright's default is `'missing'`,
+  // which is the normal-run case this guard exists for — under it a missing
+  // baseline is written and the test still fails, non-retriably, which is the
+  // pile of opaque per-image errors we are replacing with one message. Passing
+  // `--update-snapshots` sets `'changed'` (or `'all'` with an argument), and
+  // only those mean "I am here to produce baselines".
+  const regenerating =
+    testInfo.config.updateSnapshots === 'all' ||
+    testInfo.config.updateSnapshots === 'changed';
+  if (regenerating) return;
+
   const missing = names
     .map((name) => testInfo.snapshotPath(`${name}.png`, { kind: 'screenshot' }))
     .filter((path) => !existsSync(path));
