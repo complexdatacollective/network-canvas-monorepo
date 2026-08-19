@@ -13,9 +13,9 @@
   "prompts": [
     {
       "edgeVariable": "id-3",
-      "createEdge": "id-4",
-      "id": "id-5",
+      "id": "id-4",
       "text": "How close are you?",
+      "createEdge": "id-5",
       "negativeLabel": "We are not close"
     }
   ]
