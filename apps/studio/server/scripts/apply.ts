@@ -9,17 +9,27 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
-import { SCHEMA, SCHEMA_LOCK_KEY, SIDECARS } from '../src/db/schema.ts';
+import {
+  SCHEMA,
+  SCHEMA_LOCK_KEY,
+  SIDECARS,
+  stampFingerprint,
+} from '../src/db/schema.ts';
 
 // Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
 // the server or Netlify bundles.
 
-export async function renderSchemaStatements(): Promise<string[]> {
-  const statements = await generateMigration(
-    await generateDrizzleJson({}),
-    await generateDrizzleJson(SCHEMA),
-  );
-  return [...statements, ...SIDECARS];
+let rendered: Promise<string[]> | undefined;
+
+export function renderSchemaStatements(): Promise<string[]> {
+  rendered ??= (async () => {
+    const statements = await generateMigration(
+      await generateDrizzleJson({}),
+      await generateDrizzleJson(SCHEMA),
+    );
+    return [...statements, ...SIDECARS];
+  })();
+  return rendered;
 }
 
 export async function computeSchemaFingerprint(): Promise<string> {
@@ -51,11 +61,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }));
     await push.apply();
     await lock.query(SIDECARS.join('\n'));
-    await lock.query(
-      `insert into "schemaFingerprint" ("fingerprint") values ($1)
-       on conflict ("id") do update set "fingerprint" = excluded."fingerprint", "appliedAt" = CURRENT_TIMESTAMP`,
-      [fingerprint],
-    );
+    await stampFingerprint(lock, fingerprint);
     return { statements: push.sqlStatements, hints: push.hints };
   } finally {
     await lock

@@ -6,6 +6,7 @@ import pg from 'pg';
 import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { createPool } from '../../db/pool.ts';
+import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
@@ -102,22 +103,8 @@ export async function createScratchSchema(
  * push path is exercised by the scratch-database suite instead.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
-  const statements = await renderSchemaStatements();
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(statements.join('\n'));
-    await client.query(
-      'insert into "schemaFingerprint" ("fingerprint") values ($1)',
-      [SCHEMA_FINGERPRINT],
-    );
-    await client.query('commit');
-  } catch (error) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  await pool.query((await renderSchemaStatements()).join('\n'));
+  await stampFingerprint(pool, SCHEMA_FINGERPRINT);
 }
 
 /** Needs CREATEDB; a crashed run's leftovers are swept by db-reset. */

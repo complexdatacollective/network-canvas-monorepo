@@ -6,20 +6,12 @@ import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
-import {
-  account,
-  rateLimit,
-  session,
-  user,
-  verification,
-} from '../db/auth-schema.ts';
+import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { MagicLinkMailer } from './email.ts';
 import type { AuthService } from './service.ts';
 
 // The only module that imports 'better-auth' (#1245).
-
-const authSchema = { user, session, account, verification, rateLimit };
 
 export function createBetterAuthInstance(
   env: AuthEnv,
@@ -32,7 +24,7 @@ export function createBetterAuthInstance(
     secret: env.secret,
     database: drizzleAdapter(drizzle({ client: pool }), {
       provider: 'pg',
-      schema: authSchema,
+      schema: AUTH_TABLES,
     }),
     // better-auth's own CSRF for /api/auth/*; the rest of the cookie plane
     // is covered by src/auth/csrf.ts (#1248).

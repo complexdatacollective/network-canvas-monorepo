@@ -33,7 +33,7 @@ export const sections = pgTable('sections', {
 // Manifests: ordered map of section id -> section hash, one row per commit.
 // seq is the per-draft monotonic order; hash identifies (#1247: "hashes
 // identify, sequences order").
-export const manifests = pgTable(
+const manifests = pgTable(
   'manifests',
   {
     draftId: uuid('draft_id')
@@ -50,7 +50,7 @@ export const manifests = pgTable(
 // Lease table: owner is a connection/tab-scoped session id, never a user id.
 // The draft reference is a real constraint: a lease for a draft that does not
 // exist can only ever be dead weight.
-export const leases = pgTable(
+const leases = pgTable(
   'leases',
   {
     draftId: uuid('draft_id')
@@ -68,7 +68,7 @@ export const leases = pgTable(
 // created_at bounds GC, which may prune a row only once retransmission is
 // impossible. draft_id deliberately carries no foreign key: log rows must
 // survive their draft.
-export const commandLog = pgTable(
+const commandLog = pgTable(
   'command_log',
   {
     id: bigint('id', { mode: 'bigint' })
@@ -95,6 +95,14 @@ export const commandLog = pgTable(
     ),
   ],
 );
+
+export const SYNC_TABLES = {
+  drafts,
+  sections,
+  manifests,
+  leases,
+  commandLog,
+};
 
 // Hashed into the schema fingerprint — whitespace counts.
 export const SYNC_SIDECAR_SQL = `

@@ -10,7 +10,6 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import { checkSchema } from '../../db/schema.ts';
 
 export const storeDb = await reachableDb();
 
@@ -22,10 +21,6 @@ export async function makeStoreSchema(): Promise<{
   const scratch = await createScratchSchema(storeDb);
   try {
     await provisionScratchSchema(scratch.pool);
-    const state = await checkSchema(scratch.pool);
-    if (state.kind !== 'current') {
-      throw new Error(`scratch schema is not current: ${state.kind}`);
-    }
   } catch (error) {
     await scratch.dispose();
     throw error;

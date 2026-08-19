@@ -12,7 +12,7 @@ import {
 
 import { drafts, sections } from '@codaco/studio-sync/schema';
 
-export const protocols = pgTable('protocols', {
+const protocols = pgTable('protocols', {
   id: uuid('id').primaryKey(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
@@ -23,7 +23,7 @@ export const protocols = pgTable('protocols', {
     .defaultNow(),
 });
 
-export const protocolVersions = pgTable(
+const protocolVersions = pgTable(
   'protocol_versions',
   {
     id: uuid('id').primaryKey(),
@@ -53,7 +53,7 @@ export const protocolVersions = pgTable(
 
 // The GC pin set: the FK into sections makes sweeping a pinned section
 // structurally impossible.
-export const versionSections = pgTable(
+const versionSections = pgTable(
   'version_sections',
   {
     versionId: uuid('version_id')
@@ -67,7 +67,7 @@ export const versionSections = pgTable(
   (table) => [primaryKey({ columns: [table.versionId, table.sectionId] })],
 );
 
-export const protocolDrafts = pgTable('protocol_drafts', {
+const protocolDrafts = pgTable('protocol_drafts', {
   draftId: uuid('draft_id')
     .primaryKey()
     .references(() => drafts.id),
@@ -81,6 +81,13 @@ export const protocolDrafts = pgTable('protocol_drafts', {
     .notNull()
     .defaultNow(),
 });
+
+export const PROTOCOL_TABLES = {
+  protocols,
+  protocolVersions,
+  versionSections,
+  protocolDrafts,
+};
 
 // Hashed into the schema fingerprint — whitespace counts. CREATE OR REPLACE
 // because DROP TABLE CASCADE leaves functions behind, and an `already exists`

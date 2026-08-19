@@ -11,6 +11,7 @@ import {
   type StaleSchema,
   schemaProblemMessage,
 } from '../db/schema.ts';
+import type { DbEnv } from '../env.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -40,23 +41,24 @@ describe('fingerprint constant', () => {
   });
 });
 
+async function withScratch(
+  make: (db: DbEnv) => Promise<{ pool: pg.Pool; dispose: () => Promise<void> }>,
+  run: (pool: pg.Pool) => Promise<void>,
+): Promise<void> {
+  if (!db) throw new Error('unreachable: probe guaranteed db');
+  const scratch = await make(db);
+  try {
+    await run(scratch.pool);
+  } finally {
+    await scratch.dispose();
+  }
+}
+
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
-  async function withScratch(
-    run: (pool: pg.Pool) => Promise<void>,
-  ): Promise<void> {
-    if (!db) throw new Error('unreachable: probe guaranteed db');
-    const scratch = await createScratchSchema(db);
-    try {
-      await run(scratch.pool);
-    } finally {
-      await scratch.dispose();
-    }
-  }
-
   it('reads current on a provisioned schema carrying every table', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
 
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
@@ -82,8 +84,6 @@ describe.skipIf(!db)('schema verification', () => {
         'verification',
         'version_sections',
       ]);
-      // The unstamped probe asks about SCHEMA_TABLES by name; a table in the
-      // definitions and not in that list would be invisible to it.
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
         tables.rows
           .map((r) => r.table_name)
@@ -97,13 +97,13 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('reports a never-provisioned database as absent', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       expect(await checkSchema(pool)).toEqual({ kind: 'absent' });
     });
   });
 
   it('detects a database built from different SQL', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
       await pool.query('update "schemaFingerprint" set "fingerprint" = $1', [
         'deadbeef'.repeat(8),
@@ -119,7 +119,7 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('refuses a database carrying the tables with no fingerprint', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
 
@@ -132,7 +132,7 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('treats an empty fingerprint table as unstamped', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
       await pool.query('delete from "schemaFingerprint"');
 
@@ -144,7 +144,7 @@ describe.skipIf(!db)('schema verification', () => {
   });
 
   it('refuses an unstamped database that kept only some of the tables', async () => {
-    await withScratch(async (pool) => {
+    await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
       await pool.query('drop table "schemaFingerprint"');
       // Leaves "verification" and "rateLimit" behind: a database no longer
@@ -161,20 +161,8 @@ describe.skipIf(!db)('schema verification', () => {
 
 // drizzle-kit push introspects `public`, so these run in scratch databases.
 describe.skipIf(!db)('schema application', () => {
-  async function withScratchDatabase(
-    run: (pool: pg.Pool) => Promise<void>,
-  ): Promise<void> {
-    if (!db) throw new Error('unreachable: probe guaranteed db');
-    const scratch = await createScratchDatabase(db);
-    try {
-      await run(scratch.pool);
-    } finally {
-      await scratch.dispose();
-    }
-  }
-
   it('provisions and stamps a fresh database', async () => {
-    await withScratchDatabase(async (pool) => {
+    await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);
       expect(outcome.statements.length).toBeGreaterThan(0);
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
@@ -182,7 +170,7 @@ describe.skipIf(!db)('schema application', () => {
   });
 
   it('is a no-op on a current database', async () => {
-    await withScratchDatabase(async (pool) => {
+    await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
@@ -191,7 +179,7 @@ describe.skipIf(!db)('schema application', () => {
   });
 
   it('reconciles a drifted database in place', async () => {
-    await withScratchDatabase(async (pool) => {
+    await withScratch(createScratchDatabase, async (pool) => {
       await applySchema(pool);
       await pool.query('alter table "protocols" drop column "name"');
 
@@ -208,7 +196,7 @@ describe.skipIf(!db)('schema application', () => {
   });
 
   it('serialises concurrent application', async () => {
-    await withScratchDatabase(async (pool) => {
+    await withScratch(createScratchDatabase, async (pool) => {
       await Promise.all([applySchema(pool), applySchema(pool)]);
 
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });

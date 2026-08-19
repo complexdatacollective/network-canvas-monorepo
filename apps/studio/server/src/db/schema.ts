@@ -2,29 +2,10 @@ import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import type pg from 'pg';
 
-import {
-  commandLog,
-  drafts,
-  leases,
-  manifests,
-  sections,
-  SYNC_SIDECAR_SQL,
-} from '@codaco/studio-sync/schema';
+import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
-import {
-  PROTOCOL_SIDECAR_SQL,
-  protocolDrafts,
-  protocols,
-  protocolVersions,
-  versionSections,
-} from '../protocol/schema.ts';
-import {
-  account,
-  rateLimit,
-  session,
-  user,
-  verification,
-} from './auth-schema.ts';
+import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
+import { AUTH_TABLES } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
 // Managed like every other table: push diffs the whole public schema, so an
@@ -42,20 +23,9 @@ const schemaFingerprint = pgTable(
 );
 
 export const SCHEMA = {
-  user,
-  session,
-  account,
-  verification,
-  rateLimit,
-  drafts,
-  sections,
-  manifests,
-  leases,
-  commandLog,
-  protocols,
-  protocolVersions,
-  versionSections,
-  protocolDrafts,
+  ...AUTH_TABLES,
+  ...SYNC_TABLES,
+  ...PROTOCOL_TABLES,
   schemaFingerprint,
 };
 
@@ -92,11 +62,18 @@ export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
  * answer.
  */
 export async function checkSchema(pool: pg.Pool): Promise<SchemaState> {
-  const stampTable = await pool.query<{ present: boolean }>(
-    `select to_regclass('"schemaFingerprint"') is not null as present`,
+  const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
+    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+            ${SCHEMA_TABLES.map(
+              (table) => `to_regclass('"${table}"') is not null`,
+            ).join(' or ')} as tables`,
   );
+  const { stamped, tables } = probe.rows[0] ?? {
+    stamped: false,
+    tables: false,
+  };
 
-  if (stampTable.rows[0]?.present) {
+  if (stamped) {
     const recorded = await pool.query<{
       fingerprint: string;
       appliedAt: Date;
@@ -117,16 +94,22 @@ export async function checkSchema(pool: pg.Pool): Promise<SchemaState> {
 
   // Tables but no fingerprint: adopting it would launder exactly the
   // staleness this exists to catch.
-  const probe = await pool.query<{ present: boolean }>(
-    `select ${SCHEMA_TABLES.map(
-      (table) => `to_regclass('"${table}"') is not null`,
-    ).join(' or ')} as present`,
-  );
-  if (probe.rows[0]?.present) {
+  if (tables) {
     return { kind: 'stale', reason: 'unstamped', found: null, appliedAt: null };
   }
 
   return { kind: 'absent' };
+}
+
+export async function stampFingerprint(
+  db: pg.Pool | pg.PoolClient,
+  fingerprint: string,
+): Promise<void> {
+  await db.query(
+    `insert into "schemaFingerprint" ("fingerprint") values ($1)
+     on conflict ("id") do update set "fingerprint" = excluded."fingerprint", "appliedAt" = CURRENT_TIMESTAMP`,
+    [fingerprint],
+  );
 }
 
 export function schemaProblemMessage(state: SchemaProblem): string {

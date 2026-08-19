@@ -30,13 +30,12 @@ const pool = env.db ? createPool(env.db) : undefined;
 // transient failures: retrying re-reads the same fingerprint every three
 // seconds. The development lane waits for a db:reset the same way it waits
 // for the dev-pg container.
-function verdict(state: SchemaState): SchemaState {
+function exitIfFatal(state: SchemaState): void {
   if (state.kind === 'stale' || (state.kind === 'absent' && !env.devDefaults)) {
     // oxlint-disable-next-line no-console -- boot diagnostics
     console.error(schemaProblemMessage(state));
     process.exit(1);
   }
-  return state;
 }
 
 // A configured database that cannot be reached is a deployment mistake and
@@ -55,7 +54,8 @@ if (pool) {
       attempting = true;
       void checkSchema(pool)
         .then((state) => {
-          if (verdict(state).kind === 'current') {
+          exitIfFatal(state);
+          if (state.kind === 'current') {
             clearInterval(retry);
             // oxlint-disable-next-line no-console -- boot diagnostics
             console.log('Database schema current.');
@@ -71,7 +71,9 @@ if (pool) {
   };
 
   try {
-    if (verdict(await checkSchema(pool)).kind === 'absent') {
+    const state = await checkSchema(pool);
+    exitIfFatal(state);
+    if (state.kind === 'absent') {
       // oxlint-disable-next-line no-console -- boot diagnostics
       console.warn(
         'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset',

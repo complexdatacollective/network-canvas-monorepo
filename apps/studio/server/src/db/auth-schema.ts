@@ -11,7 +11,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 
-export const user = pgTable('user', {
+const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -25,7 +25,7 @@ export const user = pgTable('user', {
     .defaultNow(),
 });
 
-export const session = pgTable(
+const session = pgTable(
   'session',
   {
     id: text('id').primaryKey(),
@@ -44,7 +44,7 @@ export const session = pgTable(
   (table) => [index('session_userId_idx').on(table.userId)],
 );
 
-export const account = pgTable(
+const account = pgTable(
   'account',
   {
     id: text('id').primaryKey(),
@@ -72,7 +72,7 @@ export const account = pgTable(
   (table) => [index('account_userId_idx').on(table.userId)],
 );
 
-export const verification = pgTable(
+const verification = pgTable(
   'verification',
   {
     id: text('id').primaryKey(),
@@ -89,9 +89,17 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-export const rateLimit = pgTable('rateLimit', {
+const rateLimit = pgTable('rateLimit', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),
   count: integer('count').notNull(),
   lastRequest: bigint('lastRequest', { mode: 'number' }).notNull(),
 });
+
+export const AUTH_TABLES = {
+  user,
+  session,
+  account,
+  verification,
+  rateLimit,
+};

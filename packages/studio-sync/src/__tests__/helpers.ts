@@ -7,14 +7,7 @@ import {
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
-import {
-  commandLog,
-  drafts,
-  leases,
-  manifests,
-  sections as sectionsTable,
-  SYNC_SIDECAR_SQL,
-} from '../schema.ts';
+import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import { SyncServer } from '../server.ts';
 import { CI, PGPORT } from './test-env.ts';
 
@@ -50,13 +43,7 @@ async function createSyncDatabase(port: number, name: string) {
   });
   const statements = await generateMigration(
     await generateDrizzleJson({}),
-    await generateDrizzleJson({
-      drafts,
-      sections: sectionsTable,
-      manifests,
-      leases,
-      commandLog,
-    }),
+    await generateDrizzleJson(SYNC_TABLES),
   );
   await db.query([...statements, SYNC_SIDECAR_SQL].join('\n'));
   return db;
