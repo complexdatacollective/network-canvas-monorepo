@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Writing an Oracle That Can Fail'
+  short_description: 'Prove the test goes red when the behaviour breaks'
+  default_prompt: 'Use $writing-an-oracle-that-can-fail to verify this assertion actually fails when the behaviour it guards breaks.'

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Adopting a Test Baseline'
+  short_description: 'Diff and explain a baseline before committing it'
+  default_prompt: 'Use $adopting-a-test-baseline to establish what changed in this regenerated baseline and why it is correct.'
