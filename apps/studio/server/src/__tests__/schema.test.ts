@@ -37,13 +37,24 @@ describe.skipIf(!db)('schema fingerprint', () => {
         `select table_name from information_schema.tables
          where table_schema = current_schema()`,
       );
+      // All three composed blocks — auth, sync engine, protocol store — land
+      // in one schema under one fingerprint.
       expect(tables.rows.map((r) => r.table_name).toSorted()).toEqual([
         'account',
+        'command_log',
+        'drafts',
+        'leases',
+        'manifests',
+        'protocol_drafts',
+        'protocol_versions',
+        'protocols',
         'rateLimit',
         'schemaFingerprint',
+        'sections',
         'session',
         'user',
         'verification',
+        'version_sections',
       ]);
       // The unstamped probe asks about SCHEMA_TABLES by name; a table added to
       // the SQL and not to that list would be invisible to it.

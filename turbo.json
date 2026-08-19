@@ -351,7 +351,8 @@
         "vitest.setup.*",
         "config/vitest/**",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -452,7 +453,8 @@
         "vitest.config.*",
         "vite.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -470,7 +472,8 @@
         "vitest.config.*",
         "vitest.setup.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -487,7 +490,8 @@
         "__tests__/**",
         "vitest.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -506,7 +510,8 @@
         "vitest.config.*",
         "vite.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",

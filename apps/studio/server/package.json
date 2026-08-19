@@ -11,12 +11,13 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=package.json src/index.ts\"",
+    "dev": "concurrently -k -n s3,pg,server \"node scripts/dev-s3.ts\" \"node scripts/dev-pg.ts\" \"node --env-file-if-exists=.env.development --env-file-if-exists=.env --watch --watch-path=src --watch-path=../../../packages/studio-rpc/src --watch-path=../../../packages/studio-sync/src --watch-path=../../../packages/shared-consts/src --watch-path=../../../packages/protocol-validation/src --watch-path=package.json src/index.ts\"",
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "apply-schema": "node --env-file-if-exists=.env scripts/apply-schema.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
     "db:reset": "node scripts/db-reset.ts",
+    "protocol-demo": "node scripts/protocol-demo.ts",
     "generate:env-docs": "node scripts/generate-env-docs.ts",
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
@@ -25,8 +26,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-rpc": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
     "@hono/node-server": "^2.1.0",
+    "@noble/hashes": "^2.3.0",
     "@orpc/contract": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",
     "@orpc/server": "2.0.0-beta.26",
@@ -40,6 +45,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@orpc/client": "2.0.0-beta.26",
     "@types/nodemailer": "8.0.1",

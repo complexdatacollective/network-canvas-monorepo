@@ -1,5 +1,6 @@
-import pg from 'pg';
-
+// On the Studio server's boot path, which hashes this SQL into the database
+// fingerprint: whitespace counts, and nothing but the string belongs here
+// because whatever this module imports ships in the server's production bundle.
 export const SCHEMA_SQL = `
 CREATE TABLE drafts (
   id uuid PRIMARY KEY,
@@ -7,11 +8,25 @@ CREATE TABLE drafts (
   head_manifest_hash text NOT NULL
 );
 
--- Immutable content-addressed section documents (#1276).
+-- Immutable content-addressed section documents.
 CREATE TABLE sections (
   hash text PRIMARY KEY,
-  doc jsonb NOT NULL
+  doc jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  unreferenced_at timestamptz
 );
+
+CREATE OR REPLACE FUNCTION sections_are_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'section documents are immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER sections_immutable
+  BEFORE UPDATE ON sections
+  FOR EACH ROW
+  WHEN (NEW.hash IS DISTINCT FROM OLD.hash OR NEW.doc IS DISTINCT FROM OLD.doc)
+  EXECUTE FUNCTION sections_are_immutable();
 
 -- Manifests: ordered map of section id -> section hash, one row per commit.
 -- seq is the per-draft monotonic order; hash identifies (#1247: "hashes
@@ -37,7 +52,8 @@ CREATE TABLE leases (
   PRIMARY KEY (draft_id, section_id)
 );
 
--- Command log: unique constraint delivers write-path idempotency.
+-- Command log: unique constraint delivers write-path idempotency. created_at
+-- bounds GC, which may prune a row only once retransmission is impossible.
 CREATE TABLE command_log (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   draft_id uuid NOT NULL,
@@ -47,31 +63,7 @@ CREATE TABLE command_log (
   client_seq bigint NOT NULL,
   commands jsonb NOT NULL,
   manifest_seq bigint NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   UNIQUE (draft_id, section_id, owner, epoch, client_seq)
 );
 `;
-
-export async function createSyncDatabase(port: number, name: string) {
-  const admin = new pg.Client({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: 'postgres',
-  });
-  await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
-  await admin.query(`CREATE DATABASE ${name}`);
-  await admin.end();
-
-  const db = new pg.Pool({
-    host: '127.0.0.1',
-    port,
-    user: 'postgres',
-    password: 'spike',
-    database: name,
-    max: 20,
-  });
-  await db.query(SCHEMA_SQL);
-  return db;
-}

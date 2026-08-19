@@ -1,15 +1,29 @@
 import { randomUUID } from 'node:crypto';
+import process from 'node:process';
 
 import pg from 'pg';
 
 import { createPool } from '../../db/pool.ts';
-import { type DbEnv, readEnv } from '../../env.ts';
+import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
 
+/* oxlint-disable-next-line node/no-process-env -- the boundary for this flag */
+const CI = process.env.CI === 'true';
+
+function unavailable(reason: string): null {
+  if (CI) throw new Error(`the Studio database suites cannot run: ${reason}`);
+  return null;
+}
+
 export async function reachableDb(): Promise<DbEnv | null> {
   const { db } = readEnv();
-  if (!db) return null;
+  // Local only, the same refusal scripts/db-reset.ts makes: these suites run
+  // garbage collection's unqualified DELETEs.
+  if (!db) return unavailable('DATABASE_URL is not set');
+  if (!isLocalDatabase(db.url)) {
+    return unavailable(`${db.url} is not a local database`);
+  }
   const pool = createPool(db);
   let timer: NodeJS.Timeout | undefined;
   try {
@@ -28,8 +42,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
       }),
     ]);
     return db;
-  } catch {
-    return null;
+  } catch (err) {
+    return unavailable(`${db.url} is unreachable (${String(err)})`);
   } finally {
     // Otherwise the timer keeps the suite alive for the rest of its window.
     clearTimeout(timer);
@@ -41,7 +55,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
  * An isolated Postgres schema with its own pool. Suites that write a
  * deliberately wrong fingerprint need this: doing that in the shared
  * `studio_dev` would leave the developer's next `pnpm dev` refusing to boot.
- * Every statement in AUTH_SCHEMA_SQL is unqualified, so it lands here.
+ * Every statement in the composed schema is unqualified — tables, plpgsql
+ * functions, and the triggers that bind to them — so all of it lands here.
  */
 export async function createScratchSchema(
   db: DbEnv,
@@ -57,9 +72,12 @@ export async function createScratchSchema(
 
   // Not createPool: the search_path is the whole point, and the server's pool
   // deliberately never carries one.
+  // The timeout turns a leaked client into a fast failure rather than a hang.
   const pool = new pg.Pool({
     connectionString: db.url,
     options: `-c search_path=${name}`,
+    max: 20,
+    connectionTimeoutMillis: 10_000,
   });
 
   return {
