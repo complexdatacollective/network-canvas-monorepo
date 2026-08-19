@@ -1,3 +1,4 @@
+import { holdsFocus } from '../../utils/finalFocus';
 import { scrollParent } from '../../utils/scrollParent';
 import type { FlattenedErrors } from '../store/types';
 
@@ -287,11 +288,12 @@ export const focusFirstError = (
   // happens when the submit button that held it is disabled for the submit and
   // the browser blurs it. That must never read as "leave it alone"; it is the
   // case this function exists for.
+  //
+  // `holdsFocus` is the shared answer to that question, and the reason it is
+  // shared: it is the STATE predicate, so it admits anything that can hold
+  // focus rather than only the `HTMLElement`s a focus-RETURN target must be.
   const active = ownerDocument.activeElement;
-  const focusWasLost =
-    active === null ||
-    active === ownerDocument.body ||
-    active === ownerDocument.documentElement;
+  const focusWasLost = !holdsFocus(active);
   const personIsMidCorrection =
     !focusWasLost && focusTarget !== undefined && focusTarget.contains(active);
 

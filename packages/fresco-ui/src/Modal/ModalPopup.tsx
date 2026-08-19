@@ -11,7 +11,7 @@ import { type ComponentProps, useEffect, useId, useRef } from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
 import {
-  asFinalFocusTarget,
+  holdsFocus,
   isUsableFinalFocusTarget,
   normaliseFinalFocus,
   type FinalFocusCloseType,
@@ -201,9 +201,16 @@ export default function ModalPopup({
       !!activeDialog && !boundary?.contains(activeDialog);
     const heldByThePage = !active?.closest?.('[data-base-ui-portal]');
 
+    // `holdsFocus`, not `asFinalFocusTarget`: this asks whether something is
+    // HOLDING focus, not whether it would make a good return target. The
+    // destination predicate additionally requires an `HTMLElement`, because
+    // that is what Base UI's `finalFocus` accepts — so it answers "nothing is
+    // focused" for a focused SVG or MathML control, and this popup would then
+    // take focus back off someone who was using it. Latent rather than
+    // observed: nothing in this repo focuses a non-HTML element today. It is
+    // still the wrong question to ask, and this is a published component.
     const focusHeldElsewhere =
-      asFinalFocusTarget(active) !== null &&
-      (heldByAnotherDialog || heldByThePage);
+      holdsFocus(active) && (heldByAnotherDialog || heldByThePage);
 
     if (focusHeldElsewhere) return false;
 

@@ -18,13 +18,11 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import {
-  getVariableRoleMapOutsideStage,
-  roleMapKey,
-} from '~/selectors/indexes';
+import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
 import {
   excludeInterfaceOwned,
   excludeValidatedUses,
+  hasValidatedUse,
 } from '~/selectors/roleFilters';
 
 /**
@@ -168,8 +166,7 @@ const PromptFields = ({
         committedVariableIds,
         draftValidatedVariables,
         hasValidatedUseElsewhere: (variableId) =>
-          subject !== null &&
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+          subject !== null && hasValidatedUse(roleMap, subject, variableId),
       }),
     [
       allVariables,

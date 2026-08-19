@@ -9,7 +9,11 @@ import {
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/shared-consts';
 
-import { useOnBeforeSaveTieStrengthPrompt } from '../useOnBeforeSavePrompt';
+import { useCrossClassEditorValidate } from '../../useCrossClassEditorValidate';
+import {
+  tieStrengthPromptSubject,
+  useOnBeforeSaveTieStrengthPrompt,
+} from '../useOnBeforeSavePrompt';
 
 // `a` carries the sameAs rule; `b` is a target-only variable — it never
 // configures rules of its own, so it has no `validation` key at all.
@@ -93,11 +97,9 @@ describe('useOnBeforeSaveTieStrengthPrompt options contradiction', () => {
   });
 });
 
-// The save-time cross-class gate — this census prompt (an UNVALIDATED
-// writer) may not save an edgeVariable a form elsewhere already collects.
-// `strength` is written both by an AlterEdgeForm field (validated, stage s1)
-// and by this very TieStrengthCensus prompt (unvalidated, stage s2), scoped
-// to the edge type ('friend') this PROMPT'S OWN createEdge names.
+// A census prompt over an edge type that also carries a form field. The
+// cross-class gate itself is `useCrossClassEditorValidate`'s; what this
+// fixture exercises is the commit's own row bookkeeping.
 const PROTOCOL_WITH_FORM_CONFLICT = {
   schemaVersion: 8,
   codebook: {
@@ -149,65 +151,8 @@ const PROTOCOL_WITH_FORM_CONFLICT = {
   ],
 };
 
-describe('useOnBeforeSaveTieStrengthPrompt cross-class gate', () => {
-  it('fails at edgeVariable with the mirror message', async () => {
-    const onBeforeSave = renderOnBeforeSave(PROTOCOL_WITH_FORM_CONFLICT);
-    const result = await onBeforeSave({
-      createEdge: 'friend',
-      edgeVariable: 'strength',
-      variableOptions: [
-        { label: 'Weak', value: 'weak' },
-        { label: 'Strong', value: 'strong' },
-      ],
-    });
-    expect(result).toEqual({
-      success: false,
-      fieldErrors: {
-        edgeVariable: [
-          '"Strength" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
-        ],
-      },
-    });
-  });
-
-  it('escapes when the pick equals the prompt’s original committed edgeVariable', async () => {
-    const onBeforeSave = renderOnBeforeSave(PROTOCOL_WITH_FORM_CONFLICT);
-    const result = await onBeforeSave({
-      createEdge: 'friend',
-      edgeVariable: 'strength',
-      _originalEdgeVariable: 'strength',
-      variableOptions: [
-        { label: 'Weak', value: 'weak' },
-        { label: 'Strong', value: 'strong' },
-      ],
-    });
-    expect(result).toMatchObject({
-      edgeVariable: 'strength',
-      createEdge: 'friend',
-    });
-  });
-
-  it('allows a save with no cross-class conflict', async () => {
-    const censusOnly = {
-      ...PROTOCOL_WITH_FORM_CONFLICT,
-      stages: [PROTOCOL_WITH_FORM_CONFLICT.stages[1]],
-    };
-    const onBeforeSave = renderOnBeforeSave(censusOnly);
-    const result = await onBeforeSave({
-      createEdge: 'friend',
-      edgeVariable: 'strength',
-      variableOptions: [
-        { label: 'Weak', value: 'weak' },
-        { label: 'Strong', value: 'strong' },
-      ],
-    });
-    expect(result).toMatchObject({
-      edgeVariable: 'strength',
-      createEdge: 'friend',
-    });
-  });
-
-  it('strips variableOptions and _originalEdgeVariable from the saved prompt', async () => {
+describe('useOnBeforeSaveTieStrengthPrompt saved row', () => {
+  it('strips the editor-only variableOptions from the saved prompt', async () => {
     const censusOnly = {
       ...PROTOCOL_WITH_FORM_CONFLICT,
       stages: [PROTOCOL_WITH_FORM_CONFLICT.stages[1]],
@@ -219,7 +164,6 @@ describe('useOnBeforeSaveTieStrengthPrompt cross-class gate', () => {
       createEdge: 'friend',
       edgeVariable: 'strength',
       negativeLabel: 'None',
-      _originalEdgeVariable: 'strength',
       variableOptions: [
         { label: 'Weak', value: 'weak' },
         { label: 'Strong', value: 'strong' },
@@ -336,5 +280,64 @@ describe('useOnBeforeSaveTieStrengthPrompt interface-owned gate', () => {
       edgeVariable: 'strength',
       createEdge: 'family_edge',
     });
+  });
+});
+
+// The editor's two save-time surfaces share `tieStrengthPromptSubject`
+// precisely so they cannot judge one row against different edge types. Wired
+// here with the REAL function rather than a stand-in lambda: a subject
+// derivation that stopped reading `createEdge` would leave both the
+// cross-class gate and the codebook write pointing at an edge type that has
+// no variables, and every UI-level assertion would still pass — the gate
+// would simply never fire.
+describe('tieStrengthPromptSubject', () => {
+  const renderValidate = (protocol: unknown) => {
+    const store = configureStore({
+      reducer: { activeProtocol: (state = { present: protocol }) => state },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
+    const { result } = renderHook(
+      () =>
+        useCrossClassEditorValidate({
+          picks: [{ path: 'edgeVariable', writerClass: 'unvalidated' }],
+          subjectForRow: tieStrengthPromptSubject,
+        }),
+      { wrapper },
+    );
+    return result.current;
+  };
+
+  it('scopes the gate to the edge type the ROW names', () => {
+    const validate = renderValidate(PROTOCOL_WITH_FORM_CONFLICT);
+    expect(
+      validate({ createEdge: 'friend', edgeVariable: 'strength' }),
+    ).toEqual({
+      edgeVariable:
+        '"Strength" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    });
+  });
+
+  it('does not carry that conflict onto another edge type', () => {
+    const validate = renderValidate({
+      ...PROTOCOL_WITH_FORM_CONFLICT,
+      codebook: {
+        ...PROTOCOL_WITH_FORM_CONFLICT.codebook,
+        edge: {
+          ...PROTOCOL_WITH_FORM_CONFLICT.codebook.edge,
+          rival: {
+            name: 'Rival',
+            color: 'c',
+            variables: {
+              strength: { name: 'Rival Strength', type: 'ordinal' },
+            },
+          },
+        },
+      },
+    });
+    expect(
+      validate({ createEdge: 'rival', edgeVariable: 'strength' }),
+    ).toBeUndefined();
   });
 });

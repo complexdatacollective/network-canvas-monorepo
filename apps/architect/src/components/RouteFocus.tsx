@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { holdsFocus } from '@codaco/fresco-ui/utils/finalFocus';
+
 /**
  * Marks the element a route change should land on — the route's own `<h1>`.
  *
@@ -22,15 +24,20 @@ export const routeFocusTargetProps = {
  * link that the new route unmounts (every "Used In" link in the Codebook) drops
  * focus to `<body>`, and the next Tab restarts at the top of the document — the
  * header logo — instead of continuing into the page the researcher asked for.
+ *
+ * `holdsFocus` is fresco-ui's STATE predicate, and specifically not
+ * `asFinalFocusTarget`. That one answers whether a node is usable as a focus
+ * return DESTINATION, so it additionally requires an `HTMLElement` — Base UI's
+ * `finalFocus` is typed to one — while an `<a>` or `tabindex` inside an inline
+ * `<svg>` focuses as an `SVGElement`. Architect renders no such control today,
+ * so the two agree on everything currently on screen; the point is that focus
+ * sitting on one is still focus, and the destination predicate would call a
+ * real focus owner "lost" and drag the researcher to the heading — exactly the
+ * fighting-another-owner behaviour the component comment below rules out.
+ * `RouteFocus.test.tsx` pins that case and fails if this is rewritten in terms
+ * of the destination helper.
  */
-const focusWasLost = () => {
-  const active = document.activeElement;
-  return (
-    active === null ||
-    active === document.body ||
-    active === document.documentElement
-  );
-};
+const focusWasLost = () => !holdsFocus(document.activeElement);
 
 /**
  * Route-change focus and announcement, mounted once above the router.

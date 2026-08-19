@@ -7,11 +7,13 @@ import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/Dial
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import { useOnBeforeSavePrompt } from '~/components/sections/CategoricalBinPrompts/useOnBeforeSavePrompt';
 import PromptPreview from '~/components/sections/NameGeneratorPrompts/PromptPreview';
+import { useCrossClassEditorValidate } from '~/components/sections/useCrossClassEditorValidate';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useStageInitialValue,
   useSubject,
 } from '~/components/StageEditor/stageFormHooks';
+import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
 import { getOptionsForVariable } from '~/selectors/codebook';
 
 import PromptFields from './PromptFields';
@@ -27,10 +29,7 @@ type Prompt = Record<string, unknown>;
 
 /**
  * Enriches the row being edited with its variable's live codebook options
- * (the deleted `CategoricalBinPrompts/helpers.tsx` `itemSelector`), plus the
- * row's PRE-EDIT `variable` under a distinct key — `useOnBeforeSavePrompt`'s
- * unchanged-pick escape reads it from there, since `DialogArrayField` no
- * longer surfaces a dialog-form `initialValues` prop separately from the row.
+ * (the deleted `CategoricalBinPrompts/helpers.tsx` `itemSelector`).
  */
 const makeItemSelector =
   (
@@ -46,20 +45,29 @@ const makeItemSelector =
       variable,
     });
 
-    return {
-      ...prompt,
-      variableOptions,
-      _originalVariable: prompt.variable,
-    };
+    return { ...prompt, variableOptions };
   };
+
+/**
+ * An ordinal bin writes through drag-and-drop, with no validation of its own.
+ * Unlike CategoricalBin it has no follow-up "other" attribute, so it declares
+ * no VALIDATED pick.
+ */
+const PROMPT_PICKS = [
+  { path: 'variable', writerClass: 'unvalidated' },
+] as const satisfies readonly CrossClassPick[];
 
 const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   // Shared verbatim with CategoricalBin (as the `withPromptChangeHandler` HOC
-  // it replaces was). Its "other variable" gate is a no-op here: OrdinalBin
-  // prompts have no follow-up option.
+  // it replaces was): both bins commit an option list against the stage's own
+  // subject in exactly the same way.
   const onBeforeSave = useOnBeforeSavePrompt(entity, type);
+  const editorValidate = useCrossClassEditorValidate({
+    picks: PROMPT_PICKS,
+    subjectForRow: () => (type ? { entity, type } : null),
+  });
 
   return (
     <Section
@@ -93,6 +101,7 @@ const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
         editorDialogSize="editor"
         itemTemplate={template}
         onBeforeSave={onBeforeSave}
+        editorValidate={editorValidate}
         itemSelector={makeItemSelector(entity, type)}
         editorProps={{ entity, type }}
         requestedEditFormName="editable-list-form"

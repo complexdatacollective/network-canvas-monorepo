@@ -57,24 +57,55 @@ export type FinalFocusTarget =
  * explicit `finalFocus` bypasses Base UI's own connectivity check, so a target
  * that has since been removed is strictly worse than answering "no opinion".
  */
+/**
+ * Whether `node` is something meaningfully HOLDING focus right now.
+ *
+ * The STATE question, and deliberately separate from the destination question
+ * below. "Is anyone holding focus?" and "may I hand Base UI this element as a
+ * focus-return target?" differ in exactly one way, and it matters: a target has
+ * to be an `HTMLElement`, because that is what Base UI's `finalFocus` accepts —
+ * but plenty of things that are not `HTMLElement`s can legitimately hold focus.
+ * An `<a href>` or a `tabindex` inside an inline `<svg>` focuses as an
+ * `SVGElement`, as does a `tabindex` on MathML.
+ *
+ * Asking the destination question about live focus therefore reports a real
+ * focus owner as "nothing is focused", and whoever asked then moves focus away
+ * from someone who was using it. No interface in this repo focuses a non-HTML
+ * element today, so the two predicates currently agree on every element the
+ * products actually render — but this is a published library, a consumer can
+ * render one, and the two callers below ask the STATE question, so they get
+ * the predicate that answers it rather than the one that happens to agree.
+ *
+ * `body` and `documentElement` are rejected for the same reason the destination
+ * predicate rejects them: the browser parks focus there when nothing owns it.
+ */
+export const holdsFocus = (node: Node | null | undefined): node is Element =>
+  node instanceof Element &&
+  node.isConnected &&
+  node !== node.ownerDocument.body &&
+  node !== node.ownerDocument.documentElement;
+
+/**
+ * Whether `element` is worth handing to Base UI as a focus-return target.
+ *
+ * The DESTINATION question: `holdsFocus` plus the `HTMLElement` typing Base
+ * UI's `finalFocus` requires. Composed rather than restated, so the shared
+ * half — the `body`/`documentElement`/disconnected rejections — cannot drift
+ * between the two.
+ *
+ * Why those rejections: a disconnected node cannot be focused, and
+ * `document.body` is worse than nothing — Base UI resolves a return target
+ * through `getFirstTabbableElement`, which for `body` yields the FIRST TABBABLE
+ * ELEMENT IN THE DOCUMENT. Handing it `body` would send focus to the page
+ * header on every close, exactly the "focus restarts at the header" symptom
+ * this exists to remove. Base UI's own default path excludes `body` for the
+ * same reason, and an explicit target bypasses that check. `<html>` is as bad,
+ * and for the same reason: not tabbable itself, so it resolves to the
+ * document's first tabbable element.
+ */
 export const isUsableFinalFocusTarget = (
   element: HTMLElement | null | undefined,
-): element is HTMLElement => {
-  if (!element) return false;
-  // A disconnected node cannot be focused, and `document.body` is worse than
-  // nothing: Base UI resolves a return target through `getFirstTabbableElement`,
-  // which for `body` yields the FIRST TABBABLE ELEMENT IN THE DOCUMENT. Handing
-  // it `body` would send focus to the page header on every close — exactly the
-  // "focus restarts at the header" symptom this is meant to remove. Base UI's
-  // own default path excludes `body` for the same reason, and an explicit
-  // target bypasses that check.
-  if (!element.isConnected) return false;
-  // `<html>` is as bad as `<body>`, and for the same reason: it is not tabbable
-  // itself, so Base UI resolves it to the document's first tabbable element.
-  if (element === element.ownerDocument.body) return false;
-  if (element === element.ownerDocument.documentElement) return false;
-  return true;
-};
+): element is HTMLElement => holdsFocus(element);
 
 /**
  * Narrows an arbitrary node — in practice `document.activeElement`, which is

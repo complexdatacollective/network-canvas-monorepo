@@ -94,7 +94,6 @@ const renderCommit = () => {
     () =>
       useVariableOptionsCommit({
         variableField: 'variable',
-        originalVariableField: '_originalVariable',
         optionsField: 'variableOptions',
         subjectForRow: () => ({ entity: 'node', type: 'family_member' }),
       }),

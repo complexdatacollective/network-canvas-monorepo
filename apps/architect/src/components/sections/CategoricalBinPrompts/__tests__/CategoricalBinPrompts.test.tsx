@@ -491,4 +491,76 @@ describe('CategoricalBinPrompts', () => {
       'unvalidated_elsewhere',
     );
   });
+
+  /**
+   * The unchanged-pick escape, end to end through the real
+   * `DialogArrayField` → `editorValidate(values, {initialValues})` path that
+   * replaced the row's `_originalVariable`/`_originalOtherVariable` marker
+   * fields.
+   *
+   * BOTH picks here are pre-existing cross-class conflicts, the shape an
+   * imported protocol arrives with: `validated_elsewhere` is collected by
+   * `form-stage`, and `unvalidated_elsewhere` is written by `pedigree-stage`.
+   * Neither picker offers them any more, so the researcher cannot repair the
+   * row from inside this dialog — editing the prompt's text has to remain
+   * possible, or the timeline alert that reports such a protocol would be
+   * pointing at a dialog that refuses to close.
+   */
+  it('re-saves a prompt whose existing picks both conflict, when this edit did not touch them', async () => {
+    const { getPrompts } = renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Group these',
+          variable: 'validated_elsewhere',
+          otherVariable: 'unvalidated_elsewhere',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Please specify',
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+    fireEvent.change(await screen.findByLabelText('text'), {
+      target: { value: 'Sort these' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForSave('Save');
+
+    expect(getPrompts()).toMatchObject([
+      {
+        text: 'Sort these',
+        variable: 'validated_elsewhere',
+        otherVariable: 'unvalidated_elsewhere',
+      },
+    ]);
+  });
+
+  // The marker fields the escape used to travel on were stripped by the
+  // commit; nothing may put an editor-only key back on a saved prompt.
+  it('saves no editor-only bookkeeping keys on the row', async () => {
+    const { getPrompts } = renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Group these', variable: 'group' }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+    fireEvent.change(await screen.findByLabelText('text'), {
+      target: { value: 'Sort these' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForSave('Save');
+
+    const prompts = getPrompts() as Record<string, unknown>[];
+    expect(prompts).toHaveLength(1);
+    const [prompt] = prompts;
+    expect(prompt).toBeDefined();
+    expect(
+      Object.keys(prompt ?? {}).filter((key) => key.startsWith('_')),
+    ).toEqual([]);
+    expect(prompt).not.toHaveProperty('variableOptions');
+  });
 });

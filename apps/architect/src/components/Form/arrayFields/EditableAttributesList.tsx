@@ -28,8 +28,9 @@ import {
   getVariablesForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getVariableRoleMap } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 
 import DialogArrayField, {
   type DialogArrayItemSelector,
@@ -186,9 +187,9 @@ const EditableAttributesList = ({
   // Backs makeFieldEditorValidate's save-time gate: a composer attribute may
   // not pick a variable some bin/highlight/census/etc. elsewhere already
   // writes.
-  const hasUnvalidatedUse = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
-      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0 ||
+      hasUnvalidatedUse(roleMap, subject, variableId) ||
       (siblingUnvalidatedVariableIds?.includes(variableId) ?? false),
     [roleMap, subject, siblingUnvalidatedVariableIds],
   );
@@ -262,7 +263,7 @@ const EditableAttributesList = ({
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
           crossFormRendered,
-          hasUnvalidatedUse,
+          hasUnvalidatedUseForSubject,
           [...resolvedSharedViews, ...resolvedComposerViews],
           'current-form',
         )(composerDraftValues(values), props);
@@ -274,7 +275,7 @@ const EditableAttributesList = ({
       allVariables,
       composerFields,
       crossFormRendered,
-      hasUnvalidatedUse,
+      hasUnvalidatedUseForSubject,
       resolvedComposerViews,
       resolvedSharedViews,
     ],

@@ -1,5 +1,4 @@
-import { useCallback, useMemo, type ComponentType } from 'react';
-import { useSelector } from 'react-redux';
+import { useMemo, type ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
@@ -10,25 +9,24 @@ import {
   useStageInitialValue,
   useSubject,
 } from '~/components/StageEditor/stageFormHooks';
-import {
-  crossClassPickIssue,
-  validatedElsewhereMessage,
-} from '~/components/Validations/contradictions';
-import type { RootState } from '~/ducks/modules/root';
-import {
-  EMPTY_VARIABLES,
-  getVariablesForSubjectSelector,
-} from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
 
 import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequired';
+import { useCrossClassEditorValidate } from '../useCrossClassEditorValidate';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
 
 type Prompt = Record<string, unknown>;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+/**
+ * Cross-class exclusivity gate: the geospatial selection is an UNVALIDATED
+ * writer, so its variable may not be one a form elsewhere already collects
+ * (the save-time backstop for a stale draft that bypassed the picker
+ * exclusion — see the shared withVariableOptions' excludeValidatedUses call).
+ */
+const PROMPT_PICKS = [
+  { path: 'variable', writerClass: 'unvalidated' },
+] as const satisfies readonly CrossClassPick[];
 
 const isSubjectEntity = (
   value: string | undefined,
@@ -60,45 +58,10 @@ const GeospatialPrompts = ({
     () => (isSubjectEntity(entity) && type ? { entity, type } : null),
     [entity, type],
   );
-  const allVariables = useSelector((state: RootState) =>
-    subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
-  );
-  const roleMap = useSelector(getVariableRoleMap);
-  // Cross-class exclusivity gate: the geospatial selection is an UNVALIDATED
-  // writer, so its variable may not be one a form elsewhere already collects
-  // (the save-time backstop for a stale draft that bypassed the picker
-  // exclusion — see the shared withVariableOptions' excludeValidatedUses
-  // call). Implemented as `editorValidate` rather than `onBeforeSave`: only
-  // the dialog's own `initialValues` context (the row's pre-edit value) can
-  // supply the "picked before this edit" escape hatch — `onBeforeSave`
-  // receives the already-merged post-edit value with no way to tell an
-  // unchanged pick from a changed one.
-  const editorValidate = useCallback(
-    (
-      values: Record<string, unknown>,
-      context?: { initialValues?: unknown },
-    ) => {
-      if (!subject) return undefined;
-      const variable =
-        typeof values.variable === 'string' ? values.variable : '';
-      const original =
-        isRecord(context?.initialValues) &&
-        typeof context.initialValues.variable === 'string'
-          ? context.initialValues.variable
-          : '';
-      const issue = crossClassPickIssue({
-        variableId: variable,
-        originalVariableId: original,
-        hasConflictingUse: (variableId) =>
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
-        allVariables,
-        message: validatedElsewhereMessage,
-      });
-      if (!issue) return undefined;
-      return { variable: issue };
-    },
-    [subject, roleMap, allVariables],
-  );
+  const editorValidate = useCrossClassEditorValidate({
+    picks: PROMPT_PICKS,
+    subjectForRow: () => subject,
+  });
 
   return (
     <Section

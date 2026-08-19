@@ -62,6 +62,7 @@
     "./typography/UnorderedList": "./src/typography/UnorderedList.tsx",
     "./utils/ariaIdReferences": "./src/utils/ariaIdReferences.ts",
     "./utils/cva": "./src/utils/cva.ts",
+    "./utils/finalFocus": "./src/utils/finalFocus.ts",
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/NoSSRWrapper": "./src/utils/NoSSRWrapper.tsx",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
@@ -351,6 +352,10 @@
       "./utils/cva": {
         "types": "./dist/utils/cva.d.ts",
         "default": "./dist/utils/cva.js"
+      },
+      "./utils/finalFocus": {
+        "types": "./dist/utils/finalFocus.d.ts",
+        "default": "./dist/utils/finalFocus.js"
       },
       "./utils/composeEventHandlers": {
         "types": "./dist/utils/composeEventHandlers.d.ts",

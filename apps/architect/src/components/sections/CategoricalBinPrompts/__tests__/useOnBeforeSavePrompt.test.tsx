@@ -121,109 +121,10 @@ describe('useOnBeforeSavePrompt options contradiction', () => {
   });
 });
 
-// The save-time cross-class gate — this bin (an UNVALIDATED writer) may not
-// save a variable a form elsewhere already collects. `cat` is written both
-// by an AlterForm field (validated, stage s1) and by this very
-// CategoricalBin prompt (unvalidated, stage s2).
-const PROTOCOL_WITH_FORM_CONFLICT = {
-  schemaVersion: 8,
-  codebook: {
-    node: {
-      person: {
-        name: 'Person',
-        color: 'c',
-        variables: {
-          cat: {
-            name: 'Cat',
-            type: 'categorical',
-            options: [
-              { label: 'A', value: 'a' },
-              { label: 'B', value: 'b' },
-            ],
-          },
-        },
-      },
-    },
-  },
-  stages: [
-    {
-      id: 's1',
-      type: 'AlterForm',
-      label: 'F',
-      subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'T', text: 'X' },
-      form: { fields: [{ variable: 'cat', prompt: 'P' }] },
-    },
-    {
-      id: 's2',
-      type: 'CategoricalBin',
-      label: 'B',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'T', variable: 'cat' }],
-    },
-  ],
-};
-
-describe('useOnBeforeSavePrompt cross-class gate', () => {
-  it('fails at variable with the mirror message', async () => {
-    const onBeforeSave = renderOnBeforeSave(
-      undefined,
-      PROTOCOL_WITH_FORM_CONFLICT,
-    );
-    const result = await onBeforeSave({
-      variable: 'cat',
-      variableOptions: [
-        { label: 'A', value: 'a' },
-        { label: 'B', value: 'b' },
-      ],
-    });
-    expect(result).toEqual({
-      success: false,
-      fieldErrors: {
-        variable: [
-          '"Cat" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
-        ],
-      },
-    });
-  });
-
-  it('escapes when the pick equals the prompt’s original committed variable (editing without changing)', async () => {
-    const onBeforeSave = renderOnBeforeSave(
-      undefined,
-      PROTOCOL_WITH_FORM_CONFLICT,
-    );
-    const result = await onBeforeSave({
-      variable: 'cat',
-      _originalVariable: 'cat',
-      variableOptions: [
-        { label: 'A', value: 'a' },
-        { label: 'B', value: 'b' },
-      ],
-    });
-    expect(result).toMatchObject({ variable: 'cat' });
-  });
-
-  it('allows a save with no cross-class conflict', async () => {
-    const formOnly = {
-      ...PROTOCOL_WITH_FORM_CONFLICT,
-      stages: [PROTOCOL_WITH_FORM_CONFLICT.stages[1]],
-    };
-    const onBeforeSave = renderOnBeforeSave(undefined, formOnly);
-    const result = await onBeforeSave({
-      variable: 'cat',
-      variableOptions: [
-        { label: 'A', value: 'a' },
-        { label: 'B', value: 'b' },
-      ],
-    });
-    expect(result).toMatchObject({ variable: 'cat' });
-  });
-});
-
-// `otherVariable` is a VALIDATED writer (its follow-up input honours the
-// referenced variable's codebook validation), so it carries the MIRROR gate:
-// reject a pick a bin/highlight/census/etc. elsewhere already writes without
-// validation.
+// `otherVariable` is CategoricalBin's follow-up "other" attribute. Its
+// cross-class gate now lives in `useCrossClassEditorValidate`; what remains
+// here is the commit's own bookkeeping — an absent optional key must stay
+// absent in the saved row.
 const OTHER_VARIABLE_CODEBOOK = {
   node: {
     person: {
@@ -244,16 +145,6 @@ const OTHER_VARIABLE_CODEBOOK = {
   },
 };
 
-// `relationshipVariable` is one of the pedigree's unvalidated node slots. The
-// node label is NOT: it writes through validation, so it would not trip this
-// gate.
-const OTHER_UNVALIDATED_STAGE = {
-  id: 's2',
-  type: 'FamilyPedigree',
-  label: 'P',
-  nodeConfig: { type: 'person', relationshipVariable: 'other' },
-};
-
 const otherVariableProtocol = (stages: unknown[]) => ({
   schemaVersion: 8,
   codebook: OTHER_VARIABLE_CODEBOOK,
@@ -269,35 +160,7 @@ const OTHER_PROMPT_VALUE = {
   otherVariable: 'other',
 };
 
-describe('useOnBeforeSavePrompt otherVariable mirror gate', () => {
-  it('fails at otherVariable with the mirror message', async () => {
-    const onBeforeSave = renderOnBeforeSave(
-      undefined,
-      otherVariableProtocol([OTHER_UNVALIDATED_STAGE]),
-    );
-    const result = await onBeforeSave(OTHER_PROMPT_VALUE);
-    expect(result).toEqual({
-      success: false,
-      fieldErrors: {
-        otherVariable: [
-          '"Other" is written without validation by another stage, so it cannot be used as a form field',
-        ],
-      },
-    });
-  });
-
-  it('escapes when the pick equals the prompt’s original committed otherVariable', async () => {
-    const onBeforeSave = renderOnBeforeSave(
-      undefined,
-      otherVariableProtocol([OTHER_UNVALIDATED_STAGE]),
-    );
-    const result = await onBeforeSave({
-      ...OTHER_PROMPT_VALUE,
-      _originalOtherVariable: 'other',
-    });
-    expect(result).toMatchObject({ otherVariable: 'other' });
-  });
-
+describe('useOnBeforeSavePrompt optional otherVariable key', () => {
   it('never re-adds an absent otherVariable key (a brand new row, "Other" never touched)', async () => {
     const onBeforeSave = renderOnBeforeSave(
       undefined,

@@ -1,45 +1,27 @@
 import { get } from 'es-toolkit/compat';
 
 import {
+  crossClassConflictMessage,
   crossClassPickIssue,
-  unvalidatedElsewhereMessage,
-  validatedElsewhereMessage,
   variableDisplayName,
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/store';
-import { type ExclusiveSlotClaim, roleMapKey } from '~/selectors/indexes';
+import {
+  type ExclusiveSlotClaim,
+  type VariableRoleMap,
+} from '~/selectors/indexes';
 import {
   excludeInterfaceOwned,
   excludeUnvalidatedUses,
   excludeValidatedUses,
+  hasConflictingUse,
   interfaceOwnedPickIssue,
+  type WriterClass,
 } from '~/selectors/roleFilters';
 
 type Subject = { entity: 'node' | 'edge'; type: string };
 
 type Option = { value: string; label: string; type?: string };
-
-type RoleMap = Record<string, { validated: number; unvalidated: number }>;
-
-/**
- * Which class of writer a Family Pedigree picker itself is.
- *
- * A structural slot writes its variable from the tree the participant draws,
- * with no validation of its own (`unvalidated`); the node label is collected
- * through a validated form field (`validated`). The two classes exclude
- * opposite things, so this one value decides BOTH the picker's exclusion and
- * the save-time gate's direction — pass the same value to
- * `selectSlotPickerOptions` and `makeSlotCrossClassValidator` and they cannot
- * disagree about which picks are legal.
- */
-type WriterClass = 'validated' | 'unvalidated';
-
-/** The refusal each class earns when the OTHER class already claims the pick. */
-const CONFLICT_MESSAGE: Record<WriterClass, (variableName: string) => string> =
-  {
-    unvalidated: validatedElsewhereMessage,
-    validated: unvalidatedElsewhereMessage,
-  };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -59,6 +41,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Both keep `currentValue` offered, so an imported protocol's existing pick
  * never vanishes from its own picker; the save-time gate is what explains
  * such a pick to the researcher.
+ *
+ * A structural slot writes its variable from the tree the participant draws,
+ * with no validation of its own (`unvalidated`); the node label is collected
+ * through a validated form field (`validated`). Pass the SAME `writerClass`
+ * here and to `makeSlotCrossClassValidator` and the picker and the gate
+ * cannot disagree about which picks are legal.
  */
 export const selectSlotPickerOptions = <T extends Option>(
   state: RootState,
@@ -129,7 +117,7 @@ export const makeSlotCrossClassValidator =
     /** The interface slot this picker itself fills, if any. */
     ownSlot?: string;
     exclusiveSlotMap: Record<string, ExclusiveSlotClaim>;
-    roleMap: RoleMap;
+    roleMap: VariableRoleMap;
     allVariables: Record<string, unknown>;
     writerClass: WriterClass;
     /**
@@ -159,18 +147,16 @@ export const makeSlotCrossClassValidator =
     );
     if (ownedIssue) return ownedIssue;
 
-    const message = CONFLICT_MESSAGE[writerClass];
+    const message = crossClassConflictMessage[writerClass];
     if (draftConflictingVariables?.(allValues).includes(variableId)) {
       return message(variableDisplayName(allVariables, variableId));
     }
 
-    const conflictingRole =
-      writerClass === 'validated' ? 'unvalidated' : 'validated';
     return crossClassPickIssue({
       variableId,
       originalVariableId: committed,
       hasConflictingUse: (id) =>
-        (roleMap[roleMapKey(subject, id)]?.[conflictingRole] ?? 0) > 0,
+        hasConflictingUse(roleMap, subject, id, writerClass),
       allVariables,
       message,
     });

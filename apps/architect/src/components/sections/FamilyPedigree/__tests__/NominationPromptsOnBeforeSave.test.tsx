@@ -140,6 +140,32 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
     expect(onBeforeSave(value)).toBe(value);
   });
 
+  // The anchor is THIS prompt's committed variable, found by row id — not
+  // "some prompt on this stage committed it". It is why this editor keeps its
+  // own escape instead of the shared `useCrossClassEditorValidate`, whose
+  // anchor is the row the dialog opened on: a researcher who changed p2 away
+  // and back within one unsaved stage session can still restore what the
+  // protocol already holds, while p2 may not help itself to p1's escape.
+  it('does not lend one prompt’s committed variable to another row', () => {
+    const onBeforeSave = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT, [
+      { id: 'p1', text: 'T', variable: 'flagged' },
+      { id: 'p2', text: 'T', variable: 'other' },
+    ]);
+
+    expect(onBeforeSave({ id: 'p2', text: 'T', variable: 'flagged' })).toEqual({
+      success: false,
+      fieldErrors: {
+        variable: [
+          '"Flagged" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+        ],
+      },
+    });
+    // A brand new row has no committed variable at all, so nothing escapes.
+    expect(onBeforeSave({ text: 'T', variable: 'flagged' })).toMatchObject({
+      success: false,
+    });
+  });
+
   // A nomination toggle writes through a per-node control the participant
   // operates; the pedigree derives its ego marker from the structure instead.
   // Two writers on one variable put several participants in one family.

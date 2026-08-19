@@ -132,11 +132,15 @@ export function DataTableColumnHeader<TData, TValue>({
           render={
             <Button
               className="-mx-4 min-w-max px-4!"
-              // NOT `aria-pressed`: this is a menu trigger — it already carries
-              // `aria-haspopup="menu"` and `aria-expanded` — and a button cannot
-              // be a menu button and a toggle button at once. `aria-pressed`
-              // was here only to reach the selected colours, which announced a
-              // pressed state that opening the menu does not change.
+              // NOT `aria-pressed`, because of what `isActive` MEANS here. ARIA
+              // does permit `aria-pressed` alongside `aria-expanded`, so a menu
+              // trigger that is genuinely a toggle could carry both — but
+              // `isActive` is mostly not about this button. Two of its four
+              // terms (`isSorted`, `isFiltered`) describe the COLUMN's data
+              // state, so `aria-pressed` would announce "pressed" for a column
+              // that is merely sorted with the menu shut, implying that
+              // activating it would un-press it. It opens a menu instead, and
+              // `aria-expanded` already carries the open/closed half.
               selected={isActive}
               variant="text"
               color="dynamic"

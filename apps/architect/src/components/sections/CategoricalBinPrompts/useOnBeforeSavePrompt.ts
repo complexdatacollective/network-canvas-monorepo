@@ -7,15 +7,11 @@ import { useVariableOptionsCommit } from '../useVariableOptionsCommit';
  * `withPromptChangeHandler` HOC. Shared with `OrdinalBinPrompts`, exactly as
  * that HOC was.
  *
- * A prompt row's PRE-EDIT `variable`/`otherVariable` no longer arrive as a
- * dialog-form `initialValues` prop — `CategoricalBinPrompts.tsx`'s
- * `itemSelector` stashes them on the row under `_originalVariable`/
- * `_originalOtherVariable` (distinct from the real field names, so a save
- * cannot resurrect them), which is where the shared commit reads its
- * unchanged-pick escape from.
- *
- * `otherVariable`'s mirror gate is a no-op for OrdinalBin prompts, which have
- * no follow-up option: the field is simply never present on the row.
+ * It owns the OPTION LIST half of a bin prompt's save: the draft's
+ * contradiction check, the interface-owned option refusal, and the codebook
+ * write. The cross-class exclusivity gates on the prompt's own variable picks
+ * are `useCrossClassEditorValidate`'s, wired as `editorValidate` in each
+ * section — see `CategoricalBinPrompts.tsx`.
  */
 export function useOnBeforeSavePrompt(
   entity: 'node' | 'edge' | 'ego',
@@ -28,13 +24,8 @@ export function useOnBeforeSavePrompt(
 
   return useVariableOptionsCommit({
     variableField: 'variable',
-    originalVariableField: '_originalVariable',
     optionsField: 'variableOptions',
     // The bin writes the stage's own subject, fixed for the whole editor.
     subjectForRow: () => subject,
-    validatedPick: {
-      field: 'otherVariable',
-      originalField: '_originalOtherVariable',
-    },
   });
 }

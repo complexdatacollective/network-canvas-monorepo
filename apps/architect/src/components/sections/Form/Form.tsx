@@ -14,11 +14,9 @@ import {
 } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
-import {
-  getVariableRoleMapOutsideStage,
-  roleMapKey,
-} from '~/selectors/indexes';
+import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 
 import {
   draftUnvalidatedElsewhereMessage,
@@ -109,14 +107,14 @@ const Form = ({
   );
   // Backs makeFieldEditorValidate's save-time gate: other stages' saved roles
   // and this stage's live prompt roles replace this stage's stale saved roles.
-  const hasUnvalidatedUse = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string): boolean | string => {
       if (draftUnvalidatedVariables.has(variableId)) {
         return draftUnvalidatedElsewhereMessage(
           variableDisplayName(allVariables, variableId),
         );
       }
-      return (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0;
+      return hasUnvalidatedUse(roleMap, subject, variableId);
     },
     [roleMap, subject, draftUnvalidatedVariables, allVariables],
   );
@@ -134,7 +132,7 @@ const Form = ({
       allVariables,
       undefined,
       undefined,
-      hasUnvalidatedUse,
+      hasUnvalidatedUseForSubject,
       resolvedFormViews,
     );
     return (
@@ -166,7 +164,12 @@ const Form = ({
       }
       return validateField(values, props);
     };
-  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, formFields]);
+  }, [
+    allVariables,
+    hasUnvalidatedUseForSubject,
+    resolvedFormViews,
+    formFields,
+  ]);
 
   const editorProps = useMemo(
     () => ({ type, entity, currentStageIndex, siblingFields: formFields }),

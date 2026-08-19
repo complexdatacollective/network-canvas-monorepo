@@ -68,9 +68,9 @@ import {
 import {
   getExclusiveVariableSlotMap,
   getVariableRoleMap,
-  roleMapKey,
 } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import NodeFormFieldPreview from './NodeFormFieldPreview';
@@ -334,7 +334,8 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     'nodeConfig.biologicalSexVariable',
   );
   // Memoized on the structural scalar picks (NOT the whole assembled form
-  // values, whose identity changes on every keystroke) so `hasUnvalidatedUse`
+  // values, whose identity changes on every keystroke) so
+  // `hasUnvalidatedUseForSubject`
   // — and through it `editorValidate` and its per-dialog-session baseline
   // cache — keeps a stable identity while unrelated fields are edited.
   const draftUnvalidatedSlotVariables = useMemo(
@@ -348,7 +349,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // a variable some bin/highlight/census/etc. elsewhere already writes.
   // Identical wiring shape to Form.tsx (direct `makeFieldEditorValidate(...)`
   // passthrough, no wrapping closure) — mount-level coverage of this exact
-  // shape (real role-map subscription, real roleMapKey subject scoping, the
+  // shape (real role-map subscription, real subject scoping, the
   // escape) lives in Form/__tests__/Form.crossClassGate.test.tsx rather than
   // being duplicated here; only the subject derivation differs (`nodeType`
   // from this stage's own form value vs. Form.tsx's `withSubject`).
@@ -358,12 +359,11 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // on the same unsaved stage form as the form-field dialog, so a slot pick
   // that has not reached the saved document yet still rejects the same
   // variable here.
-  const hasUnvalidatedUse = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
       (draftUnvalidatedSlotVariables.includes(variableId) ||
-        (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
-          0) > 0),
+        hasUnvalidatedUse(roleMap, nodeVariablesSubject, variableId)),
     [roleMap, nodeVariablesSubject, draftUnvalidatedSlotVariables],
   );
   const editorValidate = useMemo(() => {
@@ -371,7 +371,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       allVariables,
       undefined,
       undefined,
-      hasUnvalidatedUse,
+      hasUnvalidatedUseForSubject,
       resolvedFormViews,
     );
     return (
@@ -398,7 +398,12 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
       }
       return validateField(values, props);
     };
-  }, [allVariables, hasUnvalidatedUse, resolvedFormViews, pedigreeFormFields]);
+  }, [
+    allVariables,
+    hasUnvalidatedUseForSubject,
+    resolvedFormViews,
+    pedigreeFormFields,
+  ]);
   const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Save-time cross-class gate for a nodeConfig slot (an UNVALIDATED writer).
   // Both writer classes live on this one stage form, so the sync validator

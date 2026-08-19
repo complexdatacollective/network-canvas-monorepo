@@ -14,20 +14,11 @@ import { getVariablesForSubject } from '~/selectors/codebook';
 import {
   getExclusiveVariableSlotMap,
   getInterfaceOwnedOptionMap,
-  getVariableRoleMap,
   roleMapKey,
 } from '~/selectors/indexes';
-import {
-  hasValidatedUse,
-  interfaceOwnedPickIssue,
-} from '~/selectors/roleFilters';
+import { interfaceOwnedPickIssue } from '~/selectors/roleFilters';
 
-import {
-  crossClassPickIssue,
-  findDraftContradictions,
-  unvalidatedElsewhereMessage,
-  validatedElsewhereMessage,
-} from '../Validations/contradictions';
+import { findDraftContradictions } from '../Validations/contradictions';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -51,12 +42,6 @@ type OptionsCommitSubject = {
 type VariableOptionsCommitConfig = {
   /** Row field naming the codebook variable whose options this editor writes. */
   variableField: string;
-  /**
-   * Row field holding that pick's PRE-EDIT value, which is the unchanged-pick
-   * escape for the cross-class gate. The row's `itemSelector` stashes it under
-   * a key distinct from the real field name, so a save cannot resurrect it.
-   */
-  originalVariableField: string;
   /** Row field holding the draft option list. */
   optionsField: string;
   /**
@@ -65,15 +50,6 @@ type VariableOptionsCommitConfig = {
    * this cannot be fixed at mount for every caller.
    */
   subjectForRow: (row: UnknownRecord) => OptionsCommitSubject;
-  /**
-   * A second pick the same editor makes as a VALIDATED writer
-   * (CategoricalBin's follow-up "other" attribute), gated in the mirror
-   * direction. Omitted where the editor has no such field.
-   */
-  validatedPick?: {
-    field: string;
-    originalField: string;
-  };
 };
 
 /** Narrows an unknown draft list to the shape the option comparison reads. */
@@ -94,9 +70,15 @@ const asOptionList = (
  * replacement for the deleted `withPromptChangeHandler` HOC, which the same
  * editors shared for the same reason.
  *
- * The editors differ only in which row fields carry the pick, its pre-edit
- * value and the draft options, and in how the subject is reached, so those are
- * parameters rather than a second copy of the gates.
+ * The editors differ only in which row fields carry the pick and the draft
+ * options, and in how the subject is reached, so those are parameters rather
+ * than a second copy of the gates.
+ *
+ * Scope: everything here is about the OPTION LIST and the codebook write.
+ * The cross-class exclusivity gates on the row's variable picks are
+ * `useCrossClassEditorValidate`'s, because only the dialog's own
+ * `initialValues` can supply their unchanged-pick escape — the merged row
+ * this receives cannot tell an unchanged pick from a changed one.
  *
  * The returned callback keeps one identity for the life of the editor: it runs
  * on save rather than on render, so it reads the latest config through a ref
@@ -116,25 +98,20 @@ export function useVariableOptionsCommit(config: VariableOptionsCommitConfig) {
     > => {
       if (!isRecord(value)) return value as UnknownRecord;
 
-      const {
-        variableField,
-        originalVariableField,
-        optionsField,
-        subjectForRow,
-        validatedPick,
-      } = configRef.current;
+      const { variableField, optionsField, subjectForRow } = configRef.current;
 
+      // `optionsField` is the editor's own working copy of the codebook
+      // variable's options; the row itself never carries it, so it is dropped
+      // here and the pick is written back explicitly below.
+      //
       // Turning an optional section off clears its fields explicitly, which
       // `DialogArrayField`'s `mergeEditedRow` turns into a deletion of those
       // keys — so an absent optional pick here genuinely means "off" rather
       // than "the section happened to be collapsed", and needs no marker
-      // field of its own. The editor's own bookkeeping keys never reach the
-      // saved row.
+      // field of its own.
       const rest: UnknownRecord = { ...value };
       delete rest[variableField];
       delete rest[optionsField];
-      delete rest[originalVariableField];
-      if (validatedPick) delete rest[validatedPick.originalField];
 
       const rawVariable = value[variableField];
       const variableId = typeof rawVariable === 'string' ? rawVariable : '';
@@ -192,51 +169,6 @@ export function useVariableOptionsCommit(config: VariableOptionsCommitConfig) {
           success: false,
           fieldErrors: { [variableField]: [ownedIssue] },
         };
-      }
-
-      // Cross-class exclusivity gate: this prompt is an UNVALIDATED writer, so
-      // it may not save a variable a form elsewhere already collects (the
-      // save-time backstop for a stale draft that bypassed the picker
-      // exclusion).
-      const rawOriginalVariable = value[originalVariableField];
-      const crossClassIssue = crossClassPickIssue({
-        variableId,
-        originalVariableId:
-          typeof rawOriginalVariable === 'string' ? rawOriginalVariable : '',
-        hasConflictingUse: (id) => hasValidatedUse(state, subject, id),
-        allVariables,
-        message: validatedElsewhereMessage,
-      });
-      if (crossClassIssue) {
-        return {
-          success: false,
-          fieldErrors: { [variableField]: [crossClassIssue] },
-        };
-      }
-
-      // The mirror gate for a VALIDATED writer the same editor owns: reject a
-      // pick a bin/highlight/census/etc. elsewhere already writes without
-      // validation. `~/selectors/roleFilters` exports only the validated
-      // direction, so the mirror is read from the same role map here.
-      if (validatedPick) {
-        const roleMap = getVariableRoleMap(state);
-        const rawPick = value[validatedPick.field];
-        const rawOriginalPick = value[validatedPick.originalField];
-        const pickIssue = crossClassPickIssue({
-          variableId: typeof rawPick === 'string' ? rawPick : '',
-          originalVariableId:
-            typeof rawOriginalPick === 'string' ? rawOriginalPick : '',
-          hasConflictingUse: (id) =>
-            (roleMap[roleMapKey(subject, id)]?.unvalidated ?? 0) > 0,
-          allVariables,
-          message: unvalidatedElsewhereMessage,
-        });
-        if (pickIssue) {
-          return {
-            success: false,
-            fieldErrors: { [validatedPick.field]: [pickIssue] },
-          };
-        }
       }
 
       // An interface that both writes and branches on the variable's exact

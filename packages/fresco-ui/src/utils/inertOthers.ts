@@ -65,8 +65,14 @@
  * this to the implicit live-region roles did exactly that to `Alert`
  * (`role="status"`/`role="alert"` with no `aria-live`), leaving the install
  * banner's buttons tabbable from inside an open dialog.
+ *
+ * `output` was in this list for the same reason and had the same fault: it
+ * carries an implicit `role="status"`, which Base UI does not exempt. It also
+ * bought nothing — the one `<output>` this repo renders outside tests
+ * (`SegmentedToolbar`'s reorder announcer) declares `aria-live` explicitly, so
+ * the narrower selector already matches it.
  */
-const LIVE_REGION_SELECTOR = '[aria-live], output';
+const LIVE_REGION_SELECTOR = '[aria-live]';
 
 /**
  * Live regions belonging to a DIFFERENT dialog are not exempt.

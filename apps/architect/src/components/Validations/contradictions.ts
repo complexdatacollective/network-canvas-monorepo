@@ -4,6 +4,7 @@ import {
   type ValidationContradiction,
 } from '@codaco/protocol-validation';
 import { getTypeForComponent } from '~/config/variables';
+import type { WriterClass } from '~/selectors/roleFilters';
 
 import { ruleMapPrecheck } from './ruleValue';
 
@@ -730,6 +731,20 @@ export const validatedElsewhereMessage = (variableName: string): string =>
  */
 export const unvalidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
+
+/**
+ * The refusal a picker earns when the OPPOSITE writer class already claims
+ * its pick, keyed by the picker's OWN class. Pairing the two messages with
+ * `hasConflictingUse`'s direction here means a gate cannot show the mirror
+ * message by picking the wrong one by hand.
+ */
+export const crossClassConflictMessage: Record<
+  WriterClass,
+  (variableName: string) => string
+> = {
+  unvalidated: validatedElsewhereMessage,
+  validated: unvalidatedElsewhereMessage,
+};
 
 export const draftValidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;

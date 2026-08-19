@@ -74,6 +74,8 @@ import {
 } from '~/components/Validations/contradictions';
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import { roleMapKey } from '~/selectors/indexes';
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import { hasValidatedUse } from '~/selectors/roleFilters';
 
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -160,8 +162,7 @@ const setup = (
             committedVariableIds,
             draftValidatedVariables,
             hasValidatedUseElsewhere: (variableId) =>
-              (roleMap.map[roleMapKey(SUBJECT, variableId)]?.validated ?? 0) >
-              0,
+              hasValidatedUse(roleMap.map, SUBJECT, variableId),
           })}
         />
         <button type="submit">Save</button>

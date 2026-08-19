@@ -30,3 +30,14 @@ in. They now share one implementation each, with these visible effects:
   until the stage was saved.
 - The Network Composer attribute editor's "input controls" documentation link
   was broken, and now points where the Form editor's does.
+
+Underneath, the rule that a prompt may not write to an attribute a form already
+collects (and the reverse) is now one implementation shared by every prompt
+editor that needs it, applied through the editing dialog itself. Editors that
+had been carrying a hidden copy of each attribute's pre-edit value around in
+the prompt in order to tell "I changed this" from "this was already like that"
+no longer need to: the dialog already knows which row it opened on. Re-saving a
+prompt whose attribute the edit did not touch is never refused for a problem
+the edit did not introduce — including in a protocol that arrived with one,
+which is reported on the timeline rather than by trapping the researcher in a
+dialog that will not close.

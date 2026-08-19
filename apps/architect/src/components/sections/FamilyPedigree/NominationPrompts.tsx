@@ -21,9 +21,11 @@ import { EMPTY_VARIABLES, getVariablesForSubject } from '~/selectors/codebook';
 import {
   getExclusiveVariableSlotMap,
   getVariableRoleMap,
-  roleMapKey,
 } from '~/selectors/indexes';
-import { interfaceOwnedPickIssue } from '~/selectors/roleFilters';
+import {
+  hasValidatedUse,
+  interfaceOwnedPickIssue,
+} from '~/selectors/roleFilters';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
@@ -65,10 +67,18 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
   // exclusion — see NominationPromptFields.tsx's excludeValidatedUses call).
-  // The row's PRE-EDIT committed variable is looked up by id in the stage's
-  // own committed `nominationPrompts` — the array-field successor to reading
-  // `getFormInitialValues('editable-list-form')`, since `onBeforeSave` is
-  // owned by the stage form, not the row dialog.
+  //
+  // DELIBERATELY not converted to the shared `useCrossClassEditorValidate`
+  // (CategoricalBin/OrdinalBin/TieStrengthCensus/Sociogram/Geospatial). Its
+  // escape is anchored to the row the DIALOG opened on; this one is anchored
+  // to the stage's own COMMITTED `nominationPrompts`, found by row id. The
+  // two differ once a prompt has been edited more than once within a single
+  // unsaved stage session, and only the committed anchor keeps a variable the
+  // protocol ALREADY binds here restorable — a pre-existing conflict an
+  // import introduced, which the timeline alert reports non-destructively
+  // rather than trapping the researcher. `NominationPromptsOnBeforeSave.test`
+  // pins both halves: the committed pick escapes, and no row borrows
+  // another's.
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!nodeType || !isRecord(value)) return value;
@@ -95,7 +105,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         variableId: variable,
         originalVariableId: originalVariable,
         hasConflictingUse: (variableId) =>
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+          hasValidatedUse(roleMap, subject, variableId),
         allVariables,
         message: validatedElsewhereMessage,
       });

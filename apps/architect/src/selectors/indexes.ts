@@ -175,7 +175,12 @@ export const roleMapKey = (
   variableId: string,
 ): string => JSON.stringify([subject.entity, subject.type ?? null, variableId]);
 
-type VariableRoleMap = Record<
+/**
+ * Writer-role counts per subject-scoped variable, keyed by `roleMapKey`.
+ * Exported because every consumer reads it through `~/selectors/roleFilters`'s
+ * predicates rather than indexing it by hand — see `hasValidatedUse`.
+ */
+export type VariableRoleMap = Record<
   string,
   { validated: number; unvalidated: number }
 >;

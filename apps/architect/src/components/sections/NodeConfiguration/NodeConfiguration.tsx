@@ -34,10 +34,12 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getVariableRoleMap } from '~/selectors/indexes';
 import {
   excludeUnvalidatedUses,
   excludeValidatedUses,
+  hasUnvalidatedUse,
+  hasValidatedUse,
 } from '~/selectors/roleFilters';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -156,15 +158,13 @@ export const NodeConfigurationComponent = ({
   const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
-        0) > 0,
+      hasUnvalidatedUse(roleMap, nodeVariablesSubject, variableId),
     [roleMap, nodeVariablesSubject],
   );
   const hasValidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.validated ?? 0) >
-        0,
+      hasValidatedUse(roleMap, nodeVariablesSubject, variableId),
     [roleMap, nodeVariablesSubject],
   );
   const originalQuickAdd = initialQuickAdd ?? '';
