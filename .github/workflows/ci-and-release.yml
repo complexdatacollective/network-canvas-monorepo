@@ -509,6 +509,10 @@ jobs:
         id: changesets
         continue-on-error: true
         run: pnpm check:changesets
+      - name: Check compat protocol packages match their canonical source
+        id: compat-protocols
+        continue-on-error: true
+        run: pnpm check:compat-protocols
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
@@ -526,6 +530,7 @@ jobs:
         env:
           KNIP_OUTCOME: ${{ steps.knip.outcome }}
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
+          COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
@@ -534,6 +539,7 @@ jobs:
           for result in \
             "knip=$KNIP_OUTCOME" \
             "changesets=$CHANGESETS_OUTCOME" \
+            "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
