@@ -176,6 +176,10 @@ const DialogFormBody = ({
       }
     >
       {aside ? (
+        // Keep every responsive rule below anchored to Dialog's container.
+        // Making this panel a container would make its descendants query the
+        // narrower inner width while the panel itself still queries Dialog,
+        // desynchronising the split layout and the handle's visibility.
         <ResizableFlexPanel
           storageKey={`${formId}-workspace-split`}
           defaultBasis={50}
@@ -183,7 +187,7 @@ const DialogFormBody = ({
           max={70}
           stickyHandle
           aria-label="Resize form and preview panes"
-          className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 @container w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
+          className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
         >
           <Layout className="min-w-0 @min-[60rem]:pr-4">
             <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>

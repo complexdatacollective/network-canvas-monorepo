@@ -90,6 +90,57 @@ for (const page of [
   });
 }
 
+test('the field editor keeps its resize handle throughout the split-pane breakpoint', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const egoForm = protocol.stages.find((stage) => stage.type === 'EgoForm');
+  if (!egoForm) throw new Error('fixture has no Ego Form stage');
+
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.setViewportSize({ width: 1024, height: 900 });
+  await gotoProtocol(architectPage);
+  await architectPage.goto(`/protocol/stage/${egoForm.id}`);
+  await architectPage
+    .getByRole('button', { name: 'Edit field', exact: true })
+    .click();
+
+  const dialog = architectPage.getByRole('dialog', { name: 'Edit Field' });
+  const handle = dialog.getByRole('slider', {
+    name: 'Resize form and preview panes',
+  });
+  await expect(dialog).toBeVisible();
+  await expect(handle).toBeVisible();
+
+  const layout = await handle.evaluate((element) => {
+    const panel = element.parentElement;
+    const dialogElement = element.closest('[role="dialog"]');
+    if (
+      !(panel instanceof HTMLElement) ||
+      !(dialogElement instanceof HTMLElement)
+    ) {
+      throw new Error('field editor split-pane structure not found');
+    }
+
+    return {
+      dialogWidth: dialogElement.getBoundingClientRect().width,
+      panelWidth: panel.getBoundingClientRect().width,
+      flexDirection: getComputedStyle(panel).flexDirection,
+      handleDisplay: getComputedStyle(element).display,
+    };
+  });
+
+  // This is the exact range that regressed: the workspace dialog has crossed
+  // the 60rem split-pane threshold, while its padded inner panel has not. A
+  // nested container made those two elements evaluate the same query against
+  // different widths, leaving the panes side-by-side but hiding the handle.
+  expect(layout.dialogWidth).toBeGreaterThanOrEqual(960);
+  expect(layout.panelWidth).toBeLessThan(960);
+  expect(layout.flexDirection).toBe('row');
+  expect(layout.handleDisplay).toBe('flex');
+});
+
 /**
  * Every stage type the all-interfaces fixture carries.
  *
