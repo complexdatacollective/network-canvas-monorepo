@@ -14,8 +14,6 @@ import { checkSchema } from '../../db/schema.ts';
 
 export const storeDb = await reachableDb();
 
-// Provisioned from the same rendered statements scripts/apply.ts pushes, and
-// verified through the same check boot makes.
 export async function makeStoreSchema(): Promise<{
   db: pg.Pool;
   dispose: () => Promise<void>;

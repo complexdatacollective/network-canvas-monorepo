@@ -19,8 +19,6 @@ import type { AuthService } from './service.ts';
 
 // The only module that imports 'better-auth' (#1245).
 
-// Model names resolve against these keys; the physical shape is pinned by
-// src/db/auth-schema.ts.
 const authSchema = { user, session, account, verification, rateLimit };
 
 export function createBetterAuthInstance(

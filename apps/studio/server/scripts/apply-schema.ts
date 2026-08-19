@@ -2,11 +2,8 @@ import { createPool } from '../src/db/pool.ts';
 import { readEnv } from '../src/env.ts';
 import { applySchema } from './apply.ts';
 
-// The server never applies schema — it only verifies (src/db/schema.ts). This
-// is the application step for every lane: run once against whatever
-// DATABASE_URL points at, after a deploy that changes the schema. drizzle-kit
-// push semantics: it reconciles a live database in place rather than refusing
-// a mismatch.
+// The server only verifies; this is the application step for every lane, run
+// once against whatever DATABASE_URL points at.
 
 const env = readEnv();
 

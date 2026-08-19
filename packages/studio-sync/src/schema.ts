@@ -1,7 +1,6 @@
-// Ships in the Studio server's production bundle: nothing beyond
-// drizzle-orm/pg-core belongs in this module's import graph. Keep every
-// definition schema-unqualified (no pgSchema()) — test isolation relies on
-// unqualified DDL landing in the connection's search_path.
+// Ships in the server's production bundle: import nothing beyond
+// drizzle-orm/pg-core. No pgSchema() — scratch-schema test isolation relies
+// on unqualified DDL.
 import { sql } from 'drizzle-orm';
 import {
   bigint,
@@ -97,8 +96,7 @@ export const commandLog = pgTable(
   ],
 );
 
-// Drizzle has no DDL surface for functions or triggers; applied after the
-// tables, and hashed into the schema fingerprint — whitespace counts.
+// Hashed into the schema fingerprint — whitespace counts.
 export const SYNC_SIDECAR_SQL = `
 CREATE OR REPLACE FUNCTION sections_are_immutable() RETURNS trigger AS $$
 BEGIN

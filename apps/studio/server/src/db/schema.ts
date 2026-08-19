@@ -27,11 +27,8 @@ import {
 } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
-// The fingerprint is the staleness detector: the hash of the DDL that built a
-// database, recorded in it. Managed like every other table — drizzle-kit push
-// diffs the whole public schema, so an unmanaged table would read as
-// droppable. checkSchema tolerates its absence, so it needs no special
-// bootstrap ordering.
+// Managed like every other table: push diffs the whole public schema, so an
+// unmanaged stamp table would read as droppable.
 const schemaFingerprint = pgTable(
   'schemaFingerprint',
   {
@@ -44,10 +41,6 @@ const schemaFingerprint = pgTable(
   (table) => [check('schemaFingerprint_id_check', sql`${table.id}`)],
 );
 
-// Every table the schema owns, keyed for drizzle-kit's snapshot/push API.
-// scripts/apply.ts renders and applies exactly this set; a table defined but
-// omitted here is caught by the information_schema assertion in
-// src/__tests__/schema.test.ts.
 export const SCHEMA = {
   user,
   session,
@@ -66,18 +59,14 @@ export const SCHEMA = {
   schemaFingerprint,
 };
 
-// Applied after the tables, in this order, and hashed into the fingerprint.
 export const SIDECARS = [SYNC_SIDECAR_SQL, PROTOCOL_SIDECAR_SQL];
 
-// The unstamped probe below reads this list; finding any one table is enough
-// to know the database was built by something other than this build. The
-// fingerprint table is excluded: its presence alone says nothing about which
-// build's tables sit beside it.
+// The stamp table is excluded from the unstamped probe: its presence alone
+// says nothing about which build's tables sit beside it.
 export const SCHEMA_TABLES = Object.values(SCHEMA)
   .map(getTableName)
   .filter((name) => name !== getTableName(schemaFingerprint));
 
-// Serialises schema application across replicas and concurrent script runs.
 export const SCHEMA_LOCK_KEY = 4021775688147129;
 
 export type StaleSchema = {
@@ -97,9 +86,7 @@ export type SchemaState =
 export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
 
 /**
- * Read-only verdict on whether the database was provisioned from this build's
- * schema. Application lives in scripts/apply.ts (drizzle-kit push), which
- * cannot ship in the server bundle — boot only verifies. A problem is
+ * Read-only verdict; application lives in scripts/apply.ts. A problem is
  * returned rather than thrown so callers can tell a verdict from a connection
  * failure: anything this throws is transient, and everything it returns is an
  * answer.
@@ -128,9 +115,8 @@ export async function checkSchema(pool: pg.Pool): Promise<SchemaState> {
     }
   }
 
-  // Tables but no fingerprint: either a database predating this guard or one
-  // whose provisioning failed partway, and the two are indistinguishable.
-  // Stamping it would launder exactly the staleness this exists to catch.
+  // Tables but no fingerprint: adopting it would launder exactly the
+  // staleness this exists to catch.
   const probe = await pool.query<{ present: boolean }>(
     `select ${SCHEMA_TABLES.map(
       (table) => `to_regclass('"${table}"') is not null`,

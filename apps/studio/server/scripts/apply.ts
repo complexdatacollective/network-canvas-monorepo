@@ -11,12 +11,9 @@ import type pg from 'pg';
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import { SCHEMA, SCHEMA_LOCK_KEY, SIDECARS } from '../src/db/schema.ts';
 
-// The schema application half of src/db/schema.ts, kept out of src/ so
-// drizzle-kit (and its esbuild binary) can never reach the server or Netlify
-// bundles. The server only verifies; everything that provisions or reconciles
-// a database goes through here, from a repo checkout.
+// Kept out of src/ so drizzle-kit (and its esbuild binary) can never reach
+// the server or Netlify bundles.
 
-/** The canonical DDL: the tables as drizzle-kit renders them, then the sidecars. */
 export async function renderSchemaStatements(): Promise<string[]> {
   const statements = await generateMigration(
     await generateDrizzleJson({}),
@@ -37,11 +34,8 @@ export type ApplyOutcome = {
 };
 
 /**
- * drizzle-kit push: introspects the live database, applies whatever delta
- * brings it to the definitions, re-runs the sidecars (CREATE OR REPLACE), and
- * stamps the fingerprint. Not transactional — a failure partway leaves an
- * unstamped database, which checkSchema reports as stale and db:reset
- * remedies. The advisory lock serialises concurrent runs.
+ * Not transactional — a push failure partway leaves an unstamped database,
+ * which checkSchema reports as stale and db:reset remedies.
  */
 export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const fingerprint = await computeSchemaFingerprint();

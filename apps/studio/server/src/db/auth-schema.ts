@@ -1,9 +1,6 @@
-// better-auth's tables, as drizzle definitions with the exact physical shape
-// the CLI's SQL emits for this config (timestamptz everywhere; quoted
-// camelCase names). On a better-auth version bump: run
-// `npx -y @better-auth/cli@latest generate --config scripts/auth-cli-config.ts`
-// against the drizzle adapter, diff the emitted schema against this, and fold
-// in changes without altering existing physical names or types.
+// On a better-auth bump: `npx -y @better-auth/cli@latest generate --config
+// scripts/auth-cli-config.ts`, diff, and fold in changes without altering
+// existing physical names or types.
 import {
   bigint,
   boolean,
@@ -92,7 +89,6 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-// lastRequest stores Date.now() milliseconds, hence number mode.
 export const rateLimit = pgTable('rateLimit', {
   id: text('id').primaryKey(),
   key: text('key').notNull().unique(),

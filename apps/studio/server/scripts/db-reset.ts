@@ -83,8 +83,6 @@ try {
     console.log(`Dropped ${leftovers.rowCount} leftover test schema(s).`);
   }
 
-  // The apply-routine suite builds scratch databases the same way a crashed
-  // run leaves schemas behind.
   const dbLeftovers = await pool.query<{ datname: string }>(
     `select datname from pg_database where datname like 'studio\\_test\\_db\\_%'`,
   );

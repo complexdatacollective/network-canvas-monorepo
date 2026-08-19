@@ -97,10 +97,8 @@ export async function createScratchSchema(
 }
 
 /**
- * Builds the full Studio schema inside a scratch schema's search_path from
- * the same rendered statements scripts/apply.ts pushes, and stamps the
- * committed fingerprint so checkSchema reads `current`. drizzle-kit push
- * itself cannot target a scratch schema — it introspects `public` — so the
+ * Builds the schema from the same statements scripts/apply.ts pushes; push
+ * itself cannot target a scratch schema (it introspects `public`), so the
  * push path is exercised by the scratch-database suite instead.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
@@ -122,11 +120,7 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   }
 }
 
-/**
- * A whole scratch database, for suites that exercise drizzle-kit push
- * against `public`. Needs CREATEDB on the dev/CI Postgres; a crashed run's
- * leftovers are swept by scripts/db-reset.ts.
- */
+/** Needs CREATEDB; a crashed run's leftovers are swept by db-reset. */
 export async function createScratchDatabase(
   db: DbEnv,
 ): Promise<{ db: DbEnv; pool: pg.Pool; dispose: () => Promise<void> }> {

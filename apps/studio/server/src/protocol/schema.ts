@@ -82,13 +82,9 @@ export const protocolDrafts = pgTable('protocol_drafts', {
     .defaultNow(),
 });
 
-// Drizzle has no DDL surface for functions or triggers; applied after the
-// tables, and hashed into the schema fingerprint — whitespace counts.
-//
-// CREATE OR REPLACE because DROP TABLE CASCADE leaves functions behind, and
-// an `already exists` error thrown while applying reads as transient to the
-// boot retry loop — which would spin forever instead of reporting a stale
-// database.
+// Hashed into the schema fingerprint — whitespace counts. CREATE OR REPLACE
+// because DROP TABLE CASCADE leaves functions behind, and an `already exists`
+// error reads as transient to the boot retry loop.
 export const PROTOCOL_SIDECAR_SQL = `
 CREATE OR REPLACE FUNCTION protocol_versions_are_immutable() RETURNS trigger AS $$
 BEGIN

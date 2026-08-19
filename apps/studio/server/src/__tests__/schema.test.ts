@@ -27,8 +27,6 @@ function readManifestScripts(): Record<string, string> {
   return manifest.scripts;
 }
 
-// Runs without a database: the committed fingerprint is what boot verifies
-// against, so it must track the definitions and the sidecars exactly.
 describe('fingerprint constant', () => {
   it('matches the schema definitions', async () => {
     expect(
@@ -220,8 +218,6 @@ describe.skipIf(!db)('schema application', () => {
   });
 });
 
-// Runs without a database: the guard's remedies are only useful if the
-// commands it names still exist.
 describe('schema problem message', () => {
   const stale: StaleSchema = {
     kind: 'stale',
