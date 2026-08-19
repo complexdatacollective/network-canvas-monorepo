@@ -1,7 +1,7 @@
 // Harness for `npx @better-auth/cli generate` — not part of the server
 // runtime. Builds the same instance shape as src/auth/better-auth.ts so the
-// emitted schema covers exactly the configured plugin set; the output is
-// reviewed into src/db/schema.ts (see that file for the regeneration
+// emitted drizzle schema covers exactly the configured plugin set; the output
+// is reviewed into src/db/auth-schema.ts (see that file for the regeneration
 // procedure).
 import pg from 'pg';
 
