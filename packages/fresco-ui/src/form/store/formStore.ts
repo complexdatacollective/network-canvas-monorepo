@@ -492,6 +492,14 @@ export const createFormStore = (): FormStoreApi => {
           const dormant = dormantRecords.get(fieldName);
           const hasDormantValue = dormant !== undefined;
           const value = hasDormantValue ? dormant.value : config.initialValue;
+          const standingErrors = Object.hasOwn(
+            state.errors.fieldErrors,
+            fieldName,
+          )
+            ? state.errors.fieldErrors[fieldName]
+            : undefined;
+          const hasStandingErrors =
+            Array.isArray(standingErrors) && standingErrors.length > 0;
 
           if (hasDormantValue) {
             dormantRecords.delete(fieldName);
@@ -508,10 +516,10 @@ export const createFormStore = (): FormStoreApi => {
             value,
             meta: {
               isValidating: false,
-              isTouched: hasDormantValue,
-              isBlurred: false,
-              isDirty: hasDormantValue,
-              isValid: !config.validation,
+              isTouched: hasDormantValue || hasStandingErrors,
+              isBlurred: hasStandingErrors,
+              isDirty: hasDormantValue || hasStandingErrors,
+              isValid: hasStandingErrors ? false : !config.validation,
             },
           };
 

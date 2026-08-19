@@ -1,7 +1,6 @@
 import { get, isEqual, pickBy } from 'es-toolkit/compat';
 import { useMemo, useRef } from 'react';
 
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -129,21 +128,14 @@ const ValidationSection = ({
   // Validations field is unmounted — and `validateForm` only fails a submit
   // over errors on REGISTERED fields, so the collapsed section wouldn't just
   // hide the message, it would let the contradictory save through entirely.
-  // Forcing the section open while the error stands both registers the field
-  // (so the save is actually blocked) and renders the message when that save
-  // fails.
+  // Forcing the section open while the error stands registers the field (so
+  // the save is actually blocked). The ArchitectField rendered by
+  // `Validations` owns displaying the error once mounted.
   const fieldErrors = useFormStore(
     (store) => store.errors.fieldErrors.validation,
   );
   const hasValidationSyncError =
     Array.isArray(fieldErrors) && fieldErrors.length > 0;
-  // fresco-ui's own `FieldErrors` slot on the `validation` Field only shows
-  // once that field is both dirty AND blurred — correct for a field the user
-  // is actively editing, but this error can attach to `validation` before it
-  // has ever registered (the section was collapsed), and a freshly-mounted
-  // field is neither dirty nor blurred. Rendering the message here directly,
-  // keyed only on the error existing, is what surfaces it at all.
-  const validationErrorsId = getFieldId('validation-sync-error');
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
       onExplicitClose();
@@ -184,11 +176,6 @@ const ValidationSection = ({
         draftParameters={draftParameters}
         draftVariableName={draftVariableName}
         commitsImmediately={commitsImmediately}
-      />
-      <FieldErrors
-        id={validationErrorsId}
-        errors={fieldErrors ?? undefined}
-        show={hasValidationSyncError}
       />
     </Section>
   );

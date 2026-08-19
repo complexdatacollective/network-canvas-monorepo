@@ -337,6 +337,8 @@ const RuleList = ({
           className={cx(
             variants(),
             'relative my-4 flex w-full min-w-0 flex-col overflow-visible whitespace-normal',
+            // When last item, remove bottom margin to avoid double spacing with the next section
+            'last:mb-0',
           )}
         >
           <legend className="bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']">

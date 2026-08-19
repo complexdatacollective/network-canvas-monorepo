@@ -147,6 +147,30 @@ describe('FormStore', () => {
       expect(field?.initialValue).toBeUndefined();
     });
 
+    it('makes a standing field error visible when its field registers', () => {
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { email: ['Already invalid'] },
+      });
+
+      store.getState().registerField({
+        name: 'email',
+        initialValue: '',
+        validation: z.optional(z.string()),
+      });
+
+      expect(store.getState().getFieldErrors('email')).toEqual([
+        'Already invalid',
+      ]);
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+      expect(store.getState().isValid).toBe(false);
+    });
+
     it('should unregister a field', () => {
       const fieldConfig: FieldConfig = {
         name: 'email',

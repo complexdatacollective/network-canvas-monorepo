@@ -135,7 +135,7 @@ describe('ValidationSection with a target-only contradiction', () => {
     );
 
     // No rules of its own and no contradiction yet: the section starts
-    // collapsed, so its children (the rule list and its FieldErrors) are
+    // collapsed, so its children, including the validation field, are
     // unmounted.
     expect(
       screen.queryByRole('group', { name: 'Requirements' }),
@@ -162,9 +162,12 @@ describe('ValidationSection with a target-only contradiction', () => {
     // `useForm`'s submit handler is async (it awaits `validateForm()` before
     // running the form-level validate), so the error — and the section
     // opening in response to it — land after a microtask tick.
-    expect(
-      await screen.findByText(/different resolutions/),
-    ).toBeInTheDocument();
+    const message = await screen.findByText(/different resolutions/);
+    expect(message).toBeInTheDocument();
+    expect(screen.getByTestId('validation-field-error')).toContainElement(
+      message,
+    );
+    expect(screen.getAllByText(/different resolutions/)).toHaveLength(1);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(
       screen.getByRole('group', { name: 'Requirements' }),
