@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api-postgres';
+import {
+  generateDrizzleJson,
+  generateMigration,
+} from 'drizzle-kit/api-postgres';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
@@ -9,7 +12,7 @@ import {
   drafts,
   leases,
   manifests,
-  sections,
+  sections as sectionsTable,
   SYNC_SIDECAR_SQL,
 } from '../schema.ts';
 import { SyncServer } from '../server.ts';
@@ -47,7 +50,13 @@ async function createSyncDatabase(port: number, name: string) {
   });
   const statements = await generateMigration(
     await generateDrizzleJson({}),
-    await generateDrizzleJson({ drafts, sections, manifests, leases, commandLog }),
+    await generateDrizzleJson({
+      drafts,
+      sections: sectionsTable,
+      manifests,
+      leases,
+      commandLog,
+    }),
   );
   await db.query([...statements, SYNC_SIDECAR_SQL].join('\n'));
   return db;
