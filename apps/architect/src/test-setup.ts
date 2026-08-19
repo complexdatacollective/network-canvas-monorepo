@@ -1,5 +1,24 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
+
+/**
+ * How long a `waitFor`/`findBy*` may poll before it gives up.
+ *
+ * Testing Library's default is 1000ms, which is generous on a developer
+ * machine and marginal in CI: this suite is 274 files run in parallel
+ * workers, so any one test can be starved for far longer than the work it is
+ * actually waiting on takes. `NodePanels.identity` failed exactly that way in
+ * August 2026 — its first assertion, that the section's toggle is on after
+ * mount, timed out on a loaded runner and passed on an unchanged re-run. The
+ * whole test takes ~156ms locally.
+ *
+ * This is not a sleep and does not make a wrong assertion pass: `waitFor`
+ * polls a real condition and still fails when the condition never holds. The
+ * only thing a larger budget costs is how long a genuinely broken test takes
+ * to go red.
+ */
+configure({ asyncUtilTimeout: 5_000 });
 
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 
