@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.4.1
+
+### Patch Changes
+
+- Populate PostHog's built-in app name and version metadata for Website events.
+
 ## 0.4.0
 
 ### Minor Changes
