@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink, organization } from 'better-auth/plugins';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
@@ -115,6 +116,7 @@ export function createBetterAuthService(
   mailer: MagicLinkMailer,
 ): AuthService {
   const auth = createBetterAuthInstance(env, pool, mailer);
+  const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),
     getSession: async (headers) => {
@@ -130,14 +132,23 @@ export function createBetterAuthService(
       };
     },
     getMembership: async (userId, workspaceId) => {
-      // Raw pg like every other runtime query: the plugin's api surface is
-      // session-header-driven, and this check is (userId, workspaceId)-keyed.
-      const result = await pool.query<{ role: string }>(
-        'select role from workspace_members where user_id = $1 and workspace_id = $2',
-        [userId, workspaceId],
-      );
-      const row = result.rows[0];
-      return row ? { workspaceId, role: row.role } : null;
+      // Through the drizzle definitions rather than a raw SQL string: the
+      // adapter already queries these tables via drizzle, and this keeps the
+      // physical names single-sourced in auth-schema.ts. The plugin's own api
+      // surface is session-header-driven; this check is (userId, workspaceId)-
+      // keyed, so it queries directly.
+      const members = AUTH_TABLES.workspace_members;
+      const rows = await db
+        .select({ role: members.role })
+        .from(members)
+        .where(
+          and(
+            eq(members.user_id, userId),
+            eq(members.workspace_id, workspaceId),
+          ),
+        )
+        .limit(1);
+      return rows[0] ?? null;
     },
   };
 }

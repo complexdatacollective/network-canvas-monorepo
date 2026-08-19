@@ -123,9 +123,15 @@ const workspace_members = pgTable(
     role: text('role').default('member').notNull(),
     created_at: timestamp('created_at', { withTimezone: true }).notNull(),
   },
+  // Composite rather than the generated single-column user_id index: the
+  // membership check filters on both columns, and the user_id prefix still
+  // serves "workspaces for this user".
   (table) => [
     index('workspace_members_workspace_id_idx').on(table.workspace_id),
-    index('workspace_members_user_id_idx').on(table.user_id),
+    index('workspace_members_user_id_workspace_id_idx').on(
+      table.user_id,
+      table.workspace_id,
+    ),
   ],
 );
 

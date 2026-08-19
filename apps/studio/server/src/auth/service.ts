@@ -14,13 +14,13 @@ export type SessionPrincipal = {
 export type Principal = SessionPrincipal;
 
 /**
- * A user's standing in one workspace. Roles are the organization plugin's
- * ('owner' | 'admin' | 'member' by default); #1257's RBAC taxonomy maps onto
- * them later. Kept behind AuthService so better-auth stays replaceable
- * (#1245) — no other module may read the membership tables.
+ * A user's standing in the workspace they were resolved against. Roles are
+ * the organization plugin's ('owner' | 'admin' | 'member' by default);
+ * #1257's RBAC taxonomy maps onto them later. Kept behind AuthService so
+ * better-auth stays replaceable (#1245) — no other module may read the
+ * membership tables.
  */
 export type WorkspaceMembership = {
-  workspaceId: string;
   role: string;
 };
 
