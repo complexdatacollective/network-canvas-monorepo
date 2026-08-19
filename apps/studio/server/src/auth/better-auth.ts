@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { magicLink } from 'better-auth/plugins';
+import { magicLink, organization } from 'better-auth/plugins';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
@@ -75,6 +75,36 @@ export function createBetterAuthInstance(
         storeToken: 'hashed',
         sendMagicLink: ({ email, url }) => mailer.sendMagicLink({ email, url }),
       }),
+      // Workspaces are better-auth organizations (#1249). The tenant boundary
+      // tables keep domain names and snake_case: they are domain tables that
+      // better-auth happens to manage. session stays camelCase like the rest
+      // of the auth core. Invitation email delivery lands with #1256.
+      organization({
+        schema: {
+          session: { fields: { activeOrganizationId: 'activeWorkspaceId' } },
+          organization: {
+            modelName: 'workspaces',
+            fields: { createdAt: 'created_at' },
+          },
+          member: {
+            modelName: 'workspace_members',
+            fields: {
+              organizationId: 'workspace_id',
+              userId: 'user_id',
+              createdAt: 'created_at',
+            },
+          },
+          invitation: {
+            modelName: 'workspace_invitations',
+            fields: {
+              organizationId: 'workspace_id',
+              inviterId: 'inviter_id',
+              expiresAt: 'expires_at',
+              createdAt: 'created_at',
+            },
+          },
+        },
+      }),
     ],
   });
 }
@@ -98,6 +128,16 @@ export function createBetterAuthService(
         name: result.user.name,
         sessionId: result.session.id,
       };
+    },
+    getMembership: async (userId, workspaceId) => {
+      // Raw pg like every other runtime query: the plugin's api surface is
+      // session-header-driven, and this check is (userId, workspaceId)-keyed.
+      const result = await pool.query<{ role: string }>(
+        'select role from workspace_members where user_id = $1 and workspace_id = $2',
+        [userId, workspaceId],
+      );
+      const row = result.rows[0];
+      return row ? { workspaceId, role: row.role } : null;
     },
   };
 }

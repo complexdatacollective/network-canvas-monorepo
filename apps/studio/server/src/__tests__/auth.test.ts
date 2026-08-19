@@ -42,6 +42,7 @@ describe('principal resolution', () => {
     const auth: AuthService = {
       handler: () => Promise.resolve(Response.json({})),
       getSession: () => Promise.resolve(PRINCIPAL),
+      getMembership: () => Promise.resolve(null),
     };
     const client = createRpcClient(createApp(readEnv(), { auth }));
     const me = await client.me();
@@ -57,6 +58,7 @@ describe('principal resolution', () => {
     const auth: AuthService = {
       handler: () => Promise.resolve(Response.json({})),
       getSession: () => Promise.resolve(null),
+      getMembership: () => Promise.resolve(null),
     };
     const client = createRpcClient(createApp(readEnv(), { auth }));
     const { error } = await safe(client.me());
@@ -71,6 +73,7 @@ describe('principal resolution', () => {
         getSessionCalls += 1;
         return Promise.resolve(PRINCIPAL);
       },
+      getMembership: () => Promise.resolve(null),
     };
     const app = createApp(readEnv(), { auth });
 
@@ -210,6 +213,64 @@ describe.skipIf(!db)('magic-link sign-in', () => {
 
       const { error } = await safe(createRpcClient(app).me());
       expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    } finally {
+      await scratch.dispose();
+    }
+  });
+});
+
+describe.skipIf(!db)('workspaces (organization plugin)', () => {
+  it('creates a workspace and resolves the creator membership', async () => {
+    if (!db || !env.auth) throw new Error('dev env must configure auth');
+    const scratch = await createScratchSchema(db);
+    const pool = scratch.pool;
+    try {
+      await provisionScratchSchema(pool);
+
+      const sent: { email: string; url: string }[] = [];
+      const auth = createBetterAuthService(env.auth, pool, {
+        sendMagicLink: (input) => {
+          sent.push(input);
+          return Promise.resolve();
+        },
+      });
+      const app = createApp(env, { auth });
+      const email = `owner-${Date.now()}@example.com`;
+
+      const send = await app.request('/api/auth/sign-in/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+        },
+        body: JSON.stringify({ email, callbackURL: '/' }),
+      });
+      expect(send.status).toBe(200);
+      const verify = await app.request(sent[0]!.url);
+      const cookie = (verify.headers.get('set-cookie') ?? '').split(';')[0]!;
+      const me = await createRpcClient(app, { cookie }).me();
+
+      // Through the plugin's own endpoint: exercises the drizzle adapter
+      // against the folded workspace tables end to end.
+      const create = await app.request('/api/auth/organization/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+          cookie,
+        },
+        body: JSON.stringify({ name: 'My Study Group', slug: 'my-studies' }),
+      });
+      expect(create.status).toBe(200);
+      const workspace = (await create.json()) as { id: string; slug: string };
+      expect(workspace.slug).toBe('my-studies');
+
+      expect(await auth.getMembership(me.userId, workspace.id)).toEqual({
+        workspaceId: workspace.id,
+        role: 'owner',
+      });
+      expect(await auth.getMembership(me.userId, 'not-a-workspace')).toBeNull();
+      expect(await auth.getMembership('someone-else', workspace.id)).toBeNull();
     } finally {
       await scratch.dispose();
     }

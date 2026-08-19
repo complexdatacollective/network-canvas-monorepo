@@ -60,6 +60,7 @@ function signedInApp(override?: StudioEnv) {
   const auth: AuthService = {
     handler: () => Promise.resolve(Response.json({})),
     getSession: () => Promise.resolve(PRINCIPAL),
+    getMembership: () => Promise.resolve(null),
   };
   return createApp(override ?? readEnv(), { auth });
 }
@@ -83,6 +84,7 @@ describe('asset upload authorisation', () => {
     const auth: AuthService = {
       handler: () => Promise.resolve(Response.json({})),
       getSession: () => Promise.resolve(null),
+      getMembership: () => Promise.resolve(null),
     };
     const app = createApp(readEnv(), { auth });
     const res = await app.request('/storage', spaUpload('bytes', 'text/plain'));
@@ -100,6 +102,7 @@ describe('asset upload authorisation', () => {
         lookups += 1;
         return Promise.resolve(PRINCIPAL);
       },
+      getMembership: () => Promise.resolve(null),
     };
     const app = createApp(readEnv(), { auth });
     const res = await app.request('/storage', {
@@ -119,6 +122,7 @@ describe.skipIf(!reachable)('asset retrieval authorisation', () => {
     let lookups = 0;
     const auth: AuthService = {
       handler: () => Promise.resolve(Response.json({})),
+      getMembership: () => Promise.resolve(null),
       getSession: () => {
         lookups += 1;
         return Promise.resolve(null);

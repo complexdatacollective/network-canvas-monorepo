@@ -13,10 +13,26 @@ export type SessionPrincipal = {
 
 export type Principal = SessionPrincipal;
 
+/**
+ * A user's standing in one workspace. Roles are the organization plugin's
+ * ('owner' | 'admin' | 'member' by default); #1257's RBAC taxonomy maps onto
+ * them later. Kept behind AuthService so better-auth stays replaceable
+ * (#1245) — no other module may read the membership tables.
+ */
+export type WorkspaceMembership = {
+  workspaceId: string;
+  role: string;
+};
+
 export type AuthService = {
   handler(request: Request): Promise<Response>;
   /** Cookie-session lookup; null when absent, expired, or auth is disabled. */
   getSession(headers: Headers): Promise<SessionPrincipal | null>;
+  /** Null when the user is not a member of the workspace (or auth is disabled). */
+  getMembership(
+    userId: string,
+    workspaceId: string,
+  ): Promise<WorkspaceMembership | null>;
 };
 
 export function createDisabledAuthService(): AuthService {
@@ -32,5 +48,6 @@ export function createDisabledAuthService(): AuthService {
         ),
       ),
     getSession: () => Promise.resolve(null),
+    getMembership: () => Promise.resolve(null),
   };
 }

@@ -83,6 +83,9 @@ describe.skipIf(!db)('schema verification', () => {
         'user',
         'verification',
         'version_sections',
+        'workspace_invitations',
+        'workspace_members',
+        'workspaces',
       ]);
       expect([...SCHEMA_TABLES].toSorted()).toEqual(
         tables.rows

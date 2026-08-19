@@ -8,6 +8,7 @@ function fakeAuthService(): AuthService {
   return {
     handler: () => Promise.resolve(Response.json({})),
     getSession: () => Promise.resolve(null),
+    getMembership: () => Promise.resolve(null),
   };
 }
 
