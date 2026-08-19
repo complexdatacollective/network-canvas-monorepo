@@ -69,6 +69,7 @@ const publications: Publication[] = [
     source: 'Example Journal',
     authors: 'Example Researcher',
     href: 'https://example.com/publication',
+    year: '2024',
   },
 ];
 

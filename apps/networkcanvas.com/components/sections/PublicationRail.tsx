@@ -220,6 +220,10 @@ export function PublicationRail({
                       className="font-heading text-surface-3-contrast/55 mt-4 text-xs font-bold tracking-widest uppercase"
                     >
                       {publication.source}
+                      <span aria-hidden="true"> · </span>
+                      <time dateTime={publication.year} className="font-normal">
+                        {publication.year}
+                      </time>
                     </Paragraph>
                     <Paragraph
                       margin="none"

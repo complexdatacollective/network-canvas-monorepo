@@ -12,9 +12,14 @@ export const onRequestError: Instrumentation.onRequestError = async (
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Dynamic imports to avoid pulling Prisma (node:path, node:url, etc.)
     // into the Edge Instrumentation bundle
-    const { getPostHogServer, shutdownPostHog } =
-      await import('./lib/posthog-server');
+    const {
+      flushPostHog,
+      getPostHogServer,
+      getPostHogSessionProperties,
+      POSTHOG_SESSION_ID_HEADER,
+    } = await import('./lib/posthog-server');
     const { env } = await import('./env');
+    const { POSTHOG_APP_PROPERTIES } = await import('./fresco.config');
     const { prisma } = await import('./lib/db');
 
     const posthog = getPostHogServer();
@@ -32,9 +37,14 @@ export const onRequestError: Instrumentation.onRequestError = async (
 
     posthog.captureException(err, distinctId, {
       ...context,
+      ...getPostHogSessionProperties(
+        request.headers[POSTHOG_SESSION_ID_HEADER],
+      ),
+      ...POSTHOG_APP_PROPERTIES,
+      installation_id: distinctId,
       $source: 'server',
     });
 
-    await shutdownPostHog();
+    await flushPostHog();
   }
 };

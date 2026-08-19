@@ -299,10 +299,7 @@ test('a refused import does not throw away a pending redo', async ({
     .toBe(true);
 
   await toolbar.undo();
-  await expect(toolbar.button('redo')).toHaveAttribute(
-    'aria-disabled',
-    'false',
-  );
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
 
   await fileInputOf(architectPage).setInputFiles(REFUSED_IMPORT);
   const errorDialog = architectPage.getByRole('dialog', {
@@ -314,10 +311,7 @@ test('a refused import does not throw away a pending redo', async ({
 
   // The refusal used to clear the redo stack before recording itself, so the
   // resource the researcher had just undone became unrecoverable.
-  await expect(toolbar.button('redo')).toHaveAttribute(
-    'aria-disabled',
-    'false',
-  );
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
   await toolbar.redo();
   await expect
     .poll(async () =>

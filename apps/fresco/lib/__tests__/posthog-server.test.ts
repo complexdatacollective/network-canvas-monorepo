@@ -3,22 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   mockCapture,
   mockCaptureException,
-  mockShutdown,
+  mockFlush,
   mockGetDisableAnalytics,
   mockGetInstallationId,
+  mockHeaders,
 } = vi.hoisted(() => ({
   mockCapture: vi.fn(),
   mockCaptureException: vi.fn(),
-  mockShutdown: vi.fn().mockResolvedValue(undefined),
+  mockFlush: vi.fn().mockResolvedValue(undefined),
   mockGetDisableAnalytics: vi.fn(),
   mockGetInstallationId: vi.fn(),
+  mockHeaders: vi.fn(),
 }));
 
 vi.mock('posthog-node', () => {
   const MockPostHog = vi.fn(function (this: Record<string, unknown>) {
     this.capture = mockCapture;
     this.captureException = mockCaptureException;
-    this.shutdown = mockShutdown;
+    this.flush = mockFlush;
   });
   return { PostHog: MockPostHog };
 });
@@ -28,9 +30,18 @@ vi.mock('~/queries/appSettings', () => ({
   getInstallationId: mockGetInstallationId,
 }));
 
+vi.mock('next/headers', () => ({
+  headers: mockHeaders,
+}));
+
 vi.mock('~/fresco.config', () => ({
   POSTHOG_API_KEY: 'test-api-key',
-  POSTHOG_APP_NAME: 'Fresco',
+  POSTHOG_APP_PROPERTIES: {
+    app: 'Fresco',
+    $app_name: 'Fresco',
+    host_version: '4.1.1',
+    $app_version: '4.1.1',
+  },
   POSTHOG_PROXY_HOST: 'https://test.example.com',
 }));
 
@@ -38,6 +49,7 @@ describe('posthog-server', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockHeaders.mockResolvedValue(new Headers());
   });
 
   describe('captureEvent', () => {
@@ -64,11 +76,51 @@ describe('posthog-server', () => {
         event: 'test-event',
         properties: {
           app: 'Fresco',
+          $app_name: 'Fresco',
+          host_version: '4.1.1',
+          $app_version: '4.1.1',
           installation_id: 'install-123',
           key: 'value',
           $source: 'server',
         },
       });
+    });
+
+    it('adds the browser session ID to server events', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-posthog-session-id': 'browser-session-123' }),
+      );
+
+      const { captureEvent } = await import('../posthog-server');
+      await captureEvent('test-event');
+
+      expect(mockCapture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          distinctId: 'install-123',
+          properties: expect.objectContaining({
+            $session_id: 'browser-session-123',
+          }),
+        }),
+      );
+    });
+
+    it('still captures outside a browser request context', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockRejectedValue(new Error('no request context'));
+
+      const { captureEvent } = await import('../posthog-server');
+      await captureEvent('background-event');
+
+      expect(mockCapture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          properties: expect.not.objectContaining({
+            $session_id: expect.anything(),
+          }),
+        }),
+      );
     });
 
     it('swallows errors thrown by underlying lookups', async () => {
@@ -105,7 +157,33 @@ describe('posthog-server', () => {
 
       expect(mockCaptureException).toHaveBeenCalledWith(error, 'install-123', {
         extra: 'data',
+        app: 'Fresco',
+        $app_name: 'Fresco',
+        host_version: '4.1.1',
+        $app_version: '4.1.1',
+        installation_id: 'install-123',
+        $source: 'server',
       });
+    });
+
+    it('adds the browser session ID to server exceptions', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-posthog-session-id': 'browser-session-123' }),
+      );
+
+      const error = new Error('test error');
+      const { captureException } = await import('../posthog-server');
+      await captureException(error);
+
+      expect(mockCaptureException).toHaveBeenCalledWith(
+        error,
+        'install-123',
+        expect.objectContaining({
+          $session_id: 'browser-session-123',
+        }),
+      );
     });
 
     it('swallows errors thrown by underlying lookups', async () => {
@@ -120,25 +198,61 @@ describe('posthog-server', () => {
     });
   });
 
-  describe('shutdownPostHog', () => {
-    it('calls shutdown and allows re-initialization', async () => {
+  describe('flushPostHog', () => {
+    it('flushes what has been captured', async () => {
       mockGetDisableAnalytics.mockResolvedValue(false);
       mockGetInstallationId.mockResolvedValue('install-123');
 
-      const { captureEvent, shutdownPostHog } =
-        await import('../posthog-server');
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
 
-      // Initialize the client by making a call
       await captureEvent('init-event');
       expect(mockCapture).toHaveBeenCalledTimes(1);
 
-      // Shutdown
-      await shutdownPostHog();
-      expect(mockShutdown).toHaveBeenCalledTimes(1);
+      await flushPostHog();
+      expect(mockFlush).toHaveBeenCalledTimes(1);
+    });
 
-      // Re-initialize by making another call
-      await captureEvent('post-shutdown-event');
-      expect(mockCapture).toHaveBeenCalledTimes(2);
+    // One request can queue several `after` callbacks — a route's telemetry
+    // alongside activity recorded by the action it called — and Next runs them
+    // concurrently against one shared client. Tearing that client down let
+    // whichever finished first strand the other's event; every flush must
+    // reach the client that holds it.
+    it('flushes for every caller sharing the client', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
+
+      // Two callbacks capture against the one shared client...
+      await captureEvent('route-event');
+      await captureEvent('activity-event');
+
+      // ...and each then flushes what it captured. Under a teardown the first
+      // would drop the shared client, and the second would find nothing to
+      // flush and return with its event still queued.
+      await flushPostHog();
+      await flushPostHog();
+
+      expect(mockFlush).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not throw when the client has nothing to flush', async () => {
+      const { flushPostHog } = await import('../posthog-server');
+
+      await expect(flushPostHog()).resolves.toBeUndefined();
+      expect(mockFlush).not.toHaveBeenCalled();
+    });
+
+    it('swallows a failing flush', async () => {
+      mockGetDisableAnalytics.mockResolvedValue(false);
+      mockGetInstallationId.mockResolvedValue('install-123');
+      mockFlush.mockRejectedValueOnce(new Error('network down'));
+
+      const { captureEvent, flushPostHog } = await import('../posthog-server');
+
+      await captureEvent('init-event');
+
+      await expect(flushPostHog()).resolves.toBeUndefined();
     });
   });
 });

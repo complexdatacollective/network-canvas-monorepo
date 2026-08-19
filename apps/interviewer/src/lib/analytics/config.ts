@@ -8,6 +8,8 @@
 export const POSTHOG_API_KEY =
   'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
 export const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
+export const POSTHOG_APP_KEY = 'interviewer';
+export const POSTHOG_APP_NAME = 'Interviewer';
 
 // Distinct instance name so this app's posthog-js client never collides with
 // the one the `@codaco/interview` Shell may lazily create for itself. We pass

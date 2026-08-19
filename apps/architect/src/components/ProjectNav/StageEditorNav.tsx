@@ -26,7 +26,7 @@ import { getHistoryToolbarItems } from './historyToolbarItems';
 import NavShell from './NavShell';
 
 const previewButtonClassName =
-  'bg-slate-blue! text-white! hover:enabled:bg-slate-blue! hover:enabled:text-white!';
+  'bg-slate-blue! text-white! ui-enabled:hover:bg-slate-blue! ui-enabled:hover:text-white!';
 
 type StageEditorNavProps = {
   stageName: string;

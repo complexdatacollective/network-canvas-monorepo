@@ -49,6 +49,12 @@ Objects are keyed by content hash, so `/storage/:hash` responses are
 immutable-cacheable by construction. Files ride plain HTTP rather than the
 RPC surface — uploads must stream, retrievals must cache.
 
+Uploading is session-gated and same-origin-gated exactly like `/rpc`: a write
+is 100 MB of someone else's bucket, and the SPA is its only caller.
+Retrieval is open — a content address is unguessable, interview stimuli are
+fetched from contexts that carry no cookie, and a session lookup per request
+would put the database on the delivery path.
+
 Uploaded bytes are untrusted and `/storage` is the app's own origin, so
 retrieval never reflects the uploaded `Content-Type` blindly: only media a
 browser cannot turn into script (the common image, audio, and video types) is
@@ -77,6 +83,166 @@ container and volume, port 9100, bucket auto-created — mirroring Fresco's
 service. Docker must be running. The server's asset integration tests run
 against this MinIO and skip when no object store is reachable.
 
+The dev script likewise provisions **Postgres in Docker** (`dev-pg` — port
+54318, `studio_dev` database auto-created). The port and credentials match
+what `packages/studio-sync`'s conformance suite expects, so the one container
+serves both; an externally managed Postgres already answering on the port is
+used as-is. The server's database integration tests skip when no Postgres is
+reachable. In production the connection comes from `DATABASE_URL`; when it is
+unset the server still boots and database-backed surfaces refuse, mirroring
+the S3 degradation contract.
+
+### Signing in during development
+
+Authentication (better-auth behind the `src/auth` seam, per #1245/#1255) is
+active by default in development: the auth schema is applied to the dev
+Postgres at boot, and magic-link email is delivered to the **server console**
+— submit the sign-in form, copy the printed link into the browser. To
+exercise real email instead, run [Mailpit](https://mailpit.axllent.org)
+(`docker run -d -p 8025:8025 -p 1025:1025 axllent/mailpit`) and start the
+server with `SMTP_URL=smtp://localhost:1025`; sent mail appears at
+`http://localhost:8025`.
+
+Auth configuration follows the same all-or-nothing, fail-fast shape as S3;
+every variable is catalogued under [Environment](#environment) below.
+
+### Changing the schema
+
+There is deliberately no migration system yet. Pre-release, a schema change
+means recreating the database rather than migrating it — see the comment at the
+top of `server/src/db/schema.ts` for the reasoning and for when that stops being
+true.
+
+Because every statement in the schema is `create table if not exists`, applying
+it to a database that already has the tables changes nothing, so a stale
+database would otherwise boot clean and fail later inside better-auth. Boot
+therefore records a fingerprint — the hash of the SQL that built the database —
+and compares it on every subsequent start. A mismatch stops the server with the
+remedy:
+
+```bash
+pnpm --filter @codaco/studio-server db:reset
+```
+
+which drops the schema, rebuilds it, and seeds. It refuses to touch a
+non-loopback database unless you pass `--force`. It reads `.env` first and
+adds the committed development defaults only when the target is local, so a
+forced reset of a managed database never picks up the development marker.
+
+It is the command to run the first time you start the server after this check
+was introduced: databases
+created before it carry the tables but no fingerprint, and an unstamped
+database is indistinguishable from one built by older SQL, so it is refused
+rather than adopted.
+
+The fingerprint compares the database against `AUTH_SCHEMA_SQL`. It cannot tell
+you that a `better-auth` upgrade expects a shape that SQL no longer describes —
+the regeneration procedure in `schema.ts` remains the only control for that.
+
+## Environment
+
+`apps/studio/server/src/env.ts` is the only module in the server that reads
+`process.env` — the repo-wide oxlint `no-process-env` rule enforces that, and
+everything else takes a resolved `StudioEnv`. It validates in two layers:
+`src/env/variables.ts` declares a schema per variable, and `src/env/resolve.ts`
+applies the rules that span several at once (all-or-nothing `S3_*`, the
+`SMTP_URL`/`EMAIL_FROM` pairing, the mailer's three-way resolution).
+
+Three files carry values, and the dev script loads them in this order, so a
+later one wins:
+
+| File                      | Committed          | Loaded by                   |
+| ------------------------- | ------------------ | --------------------------- |
+| `server/.env.development` | yes — deliberately | `pnpm dev` only             |
+| `server/.env`             | no, gitignored     | `pnpm dev` and `pnpm start` |
+| `server/.env.example`     | yes, as a template | nothing; copy it to `.env`  |
+
+**Development needs no setup.** `.env.development` is committed, so a fresh
+clone runs `pnpm --filter @codaco/studio-server dev` and gets a working stack
+— its credentials are intentional test values pointing at the Docker
+containers the dev script provisions. Put personal overrides (real SMTP
+credentials, say) in a gitignored `.env` beside it.
+
+Both files yield to the surrounding environment — Node's env-file loader never
+overwrites a variable that is already set — so an exported value beats either
+of them.
+
+No deployment path loads `.env.development`: the Docker image never copies it,
+Netlify injects variables into the process instead, and `pnpm start` reads
+only `.env`. That is what makes it safe to key the development conveniences —
+the console mailer, and tolerating an unpaired `EMAIL_FROM` — to the
+`STUDIO_DEV_DEFAULTS` marker that file sets.
+
+Two rules keep that marker honest, because it licenses a publicly-known
+signing secret, a mailer that prints sign-in links, and a boot that applies
+the schema to whatever `DATABASE_URL` names:
+
+- It is refused unless `NODE_ENV` is `development` or `test`, so forgetting
+  `NODE_ENV=production` cannot downgrade a deployment to development
+  behaviour.
+- It is refused unless `DATABASE_URL` points at this machine. An exported
+  `DATABASE_URL` outranks the committed file, so otherwise the development
+  lane could quietly aim all of the above at someone's real database.
+
+To work against a remote database, leave the lane for that process rather than
+editing the committed file: `STUDIO_DEV_DEFAULTS= pnpm ...`.
+
+Because the schema carries no defaults, no development credential is compiled
+into the server bundle.
+
+The table below, `.env.development`, and `.env.example` are all generated from
+`src/env/catalogue.ts` by
+`pnpm --filter @codaco/studio-server generate:env-docs`. A vitest guard fails
+if any of them drifts from it, and a variable added without a catalogue entry
+fails `pnpm typecheck`.
+
+<!-- generated:env start -->
+
+<!-- Generated by `pnpm --filter @codaco/studio-server generate:env-docs` from src/env/catalogue.ts. Do not edit by hand. -->
+
+### Process
+
+| Variable              | What it is                                                                               | Development default | Real deployment                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`            | Runtime mode. Anything other than `production` leaves development affordances available. | `development`       | Set to `production` by the Docker image and by Netlify.                                                               |
+| `STUDIO_DEV_DEFAULTS` | Marks the process as running against the committed development defaults.                 | `1`                 | Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.                                        |
+| `PORT`                | TCP port the HTTP server listens on.                                                     | —                   | Unset ⇒ 3000.                                                                                                         |
+| `HOST`                | Interface the HTTP server binds to.                                                      | —                   | Unset ⇒ `0.0.0.0`.                                                                                                    |
+| `CLIENT_DIST`         | Directory of built client assets to serve, resolved against the working directory.       | —                   | Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client. |
+
+### Object storage
+
+| Variable               | What it is                                                    | Development default     | Real deployment                                |
+| ---------------------- | ------------------------------------------------------------- | ----------------------- | ---------------------------------------------- |
+| `S3_ENDPOINT`          | S3-compatible endpoint holding content-addressed asset bytes. | `http://localhost:9100` | Required with the other four `S3_*` variables. |
+| `S3_REGION`            | Region passed to the S3 client.                               | `us-east-1`             | Required with the other four `S3_*` variables. |
+| `S3_BUCKET`            | Bucket asset objects are written to and read from.            | `studio-dev`            | Required with the other four `S3_*` variables. |
+| `S3_ACCESS_KEY_ID`     | Access key for the object store.                              | `minioadmin`            | Required with the other four `S3_*` variables. |
+| `S3_SECRET_ACCESS_KEY` | Secret key for the object store.                              | `minioadmin`            | Required with the other four `S3_*` variables. |
+
+### Database
+
+| Variable       | What it is                                             | Development default                                    | Real deployment                                                         |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. |
+
+### Authentication
+
+| Variable                  | What it is                                                                                                    | Development default                    | Real deployment                                                                                                                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`      | Signing secret for sessions and magic-link tokens.                                                            | `studio-dev-secret-not-for-production` | Required whenever `DATABASE_URL` is set. Generate one with `openssl rand -base64 32`.                                                                                                                                                          |
+| `PUBLIC_URL`              | The browser-facing origin. Cookies and magic-link URLs are minted against it.                                 | `http://localhost:5173`                | Required whenever `DATABASE_URL` is set.                                                                                                                                                                                                       |
+| `SMTP_URL`                | SMTP transport magic-link email is sent through.                                                              | —                                      | Unset ⇒ magic-link sends refuse. A sign-in link is never written to the log outside development.                                                                                                                                               |
+| `EMAIL_FROM`              | From address on magic-link email.                                                                             | `studio-dev@localhost`                 | Required alongside `SMTP_URL`, and refused without it.                                                                                                                                                                                         |
+| `GOOGLE_CLIENT_ID`        | OAuth client ID for "Continue with Google" sign-in (#1255).                                                   | —                                      | Required with `GOOGLE_CLIENT_SECRET`; unset ⇒ Google sign-in is not offered. Create a Web application OAuth client in the Google Cloud Console with `<PUBLIC_URL>/api/auth/callback/google` as an authorized redirect URI.                     |
+| `GOOGLE_CLIENT_SECRET`    | OAuth client secret paired with `GOOGLE_CLIENT_ID`.                                                           | —                                      | Required with `GOOGLE_CLIENT_ID`, and refused without it.                                                                                                                                                                                      |
+| `MICROSOFT_CLIENT_ID`     | Entra application (client) ID for "Continue with Microsoft" sign-in (#1255).                                  | —                                      | Required with `MICROSOFT_CLIENT_SECRET`; unset ⇒ Microsoft sign-in is not offered. Register an application in Microsoft Entra with `<PUBLIC_URL>/api/auth/callback/microsoft` as a Web redirect URI.                                           |
+| `MICROSOFT_CLIENT_SECRET` | Client secret paired with `MICROSOFT_CLIENT_ID`.                                                              | —                                      | Required with `MICROSOFT_CLIENT_ID`, and refused without it.                                                                                                                                                                                   |
+| `MICROSOFT_TENANT_ID`     | Entra tenant to accept sign-ins from, for single-tenant registrations.                                        | —                                      | Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.                                                                               |
+| `TRUSTED_PROXIES`         | Comma-separated proxy addresses or CIDRs whose `X-Forwarded-For` may be trusted when resolving the client IP. | —                                      | Unset ⇒ forwarded headers are not read at all, which is safe but shares one rate-limit bucket across every client. List only your own proxies, and only where each one overwrites the header rather than appending to a client-supplied value. |
+
+<!-- generated:env end -->
+
 ## Production
 
 ```bash
@@ -92,6 +258,35 @@ contains the server bundle plus the built client assets:
 docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
+
+### Database schema and seeding
+
+Two steps, run **once per deployment** against `DATABASE_URL` — not once per
+replica, which is why they are commands rather than boot work:
+
+```bash
+pnpm --filter @codaco/studio-server apply-schema
+pnpm --filter @codaco/studio-server seed
+```
+
+Both are idempotent, both refuse against a database whose fingerprint does not
+match this build, and both are identical in every topology. Three things are
+worth knowing before you rely on them:
+
+- **The persistent Node process needs neither.** `src/index.ts` runs the same
+  schema check at boot, under an advisory lock so replicas starting together
+  cannot race. `apply-schema` exists for deployments that have no boot. A
+  configured database it cannot reach fails that boot: only the development
+  lane comes up anyway and keeps retrying, because only there is the cause a
+  container that has not finished starting.
+- **The Netlify lane has no automation.** Its build command does not touch the
+  database and its function has no boot, so `apply-schema` is a manual step
+  there — and consequently the only place that lane ever detects a stale
+  schema.
+- **`seed` currently writes nothing.** Studio has no domain entities yet; the
+  first workspace owner and the default workspace land with workspace
+  invitations (#1256). The step is documented now so the procedure does not
+  change when it starts doing something.
 
 ## Deployment topologies
 
@@ -160,7 +355,7 @@ graph LR
 The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
 none (partial configuration fails fast). Unset means asset routes refuse
-with 503; outside production, unset defaults to the dev MinIO.
+with 503. See [Environment](#environment).
 
 ### What deploys when
 

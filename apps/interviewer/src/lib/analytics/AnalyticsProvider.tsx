@@ -16,6 +16,7 @@ import { getSettings, updateSettings } from '~/lib/db/api';
 import { getInstallationId } from '~/lib/installationId';
 
 import { getAnalyticsClient } from './client';
+import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from './config';
 
 export type AnalyticsContextValue = {
   // Current opt-in state, sourced from StoredSettings.analyticsEnabled.
@@ -51,9 +52,11 @@ const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
 function registerSuperProperties(client: PostHog) {
   client.register({
     // No Electron/Capacitor host remains; this app is the only host.
-    app: 'interviewer',
+    app: POSTHOG_APP_KEY,
+    $app_name: POSTHOG_APP_NAME,
     installation_id: getInstallationId(),
     host_version: APP_VERSION,
+    $app_version: APP_VERSION,
   });
 }
 

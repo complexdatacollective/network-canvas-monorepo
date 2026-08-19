@@ -9,7 +9,22 @@ import { z } from 'zod';
 // schemas are also the serialization allowlist: fields not named here are
 // stripped before they reach the wire.
 
+export const SOCIAL_PROVIDERS = ['google', 'microsoft'] as const;
+export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+
 export const StatusSchema = z.object({
   name: z.string(),
   version: z.string(),
+  auth: z.object({
+    enabled: z.boolean(),
+    magicLink: z.boolean(),
+    socialProviders: z.array(z.enum(SOCIAL_PROVIDERS)),
+  }),
+});
+
+export const MeSchema = z.object({
+  userId: z.string(),
+  email: z.string(),
+  emailVerified: z.boolean(),
+  name: z.string(),
 });

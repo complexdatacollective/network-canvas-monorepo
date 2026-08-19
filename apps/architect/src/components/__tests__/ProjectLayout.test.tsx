@@ -93,9 +93,8 @@ describe('ProjectLayout', () => {
     renderLayout(store);
 
     expect(getCanUndo(store.getState())).toBe(true);
-    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /undo/i })).not.toHaveAttribute(
       'aria-disabled',
-      'false',
     );
     expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
@@ -137,9 +136,8 @@ describe('ProjectLayout', () => {
 
     renderLayout(store);
 
-    expect(screen.getByRole('button', { name: /undo/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /undo/i })).not.toHaveAttribute(
       'aria-disabled',
-      'false',
     );
     expect(screen.queryByRole('button', { name: /print/i })).toBeNull();
   });

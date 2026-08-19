@@ -8,10 +8,13 @@ import type { contract } from '@codaco/studio-rpc';
 import { createApp } from '../app.ts';
 
 // The contract-typed client the SPA uses, bridged straight into the Hono app.
+// oRPC calls are POSTs, so the cookie plane's CSRF check (#1248) applies:
+// the client asserts same-origin the way a browser would.
 function createRpcClient(app: ReturnType<typeof createApp>) {
   const link = new RPCLink({
     origin: 'http://studio.test',
     url: '/rpc',
+    headers: { 'sec-fetch-site': 'same-origin' },
     fetch: async (url, init) => app.request(url, init),
   });
   return createORPCClient(link) as RouterContractClient<typeof contract>;
@@ -32,6 +35,9 @@ describe('studio server', () => {
     const body = (await res.json()) as { name: string; version: string };
     expect(body.name).toBe('Network Canvas Studio');
     expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
+    // The public surface's output schema is the serialization allowlist
+    // (#1248): the SPA-facing auth capability block must never leak here.
+    expect(body).not.toHaveProperty('auth');
   });
 
   it('publishes an OpenAPI 3.1 document describing the API', async () => {
@@ -73,7 +79,10 @@ describe('studio server', () => {
 
   it('does not serve unknown RPC paths', async () => {
     const app = createApp();
-    const res = await app.request('/rpc/nope', { method: 'POST' });
+    const res = await app.request('/rpc/nope', {
+      method: 'POST',
+      headers: { 'sec-fetch-site': 'same-origin' },
+    });
     expect(res.status).toBe(404);
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',

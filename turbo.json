@@ -13,7 +13,8 @@
     "VITE_FRESCO_PREVIEW_URL",
     "VITE_FRESCO_PREVIEW_API_TOKEN",
     "VITE_DISABLE_ANALYTICS",
-    "VITE_DISABLE_ANIMATIONS"
+    "VITE_DISABLE_ANIMATIONS",
+    "VITE_PUBLIC_POSTHOG_KEY"
   ],
   "tasks": {
     "topo": {
@@ -121,6 +122,7 @@
         "VITE_FRESCO_PREVIEW_API_TOKEN",
         "VITE_DISABLE_ANALYTICS",
         "VITE_DISABLE_ANIMATIONS",
+        "VITE_PUBLIC_POSTHOG_KEY",
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID"
       ],
@@ -427,6 +429,18 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
+    "@codaco/studio-server#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
     "@codaco/architect#test": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -498,6 +512,20 @@
         "PROTOCOL_ENCRYPTION_KEY",
         "PROTOCOL_ENCRYPTION_IV",
         "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/studio-server#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "vitest.config.*",
+        "package.json",
+        ".env",
+        ".env.development",
+        ".env.example",
+        "$TURBO_ROOT$/apps/studio/README.md"
       ],
       "outputs": []
     },

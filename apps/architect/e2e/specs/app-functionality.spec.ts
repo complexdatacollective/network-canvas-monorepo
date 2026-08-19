@@ -408,20 +408,14 @@ test('clicking into the protocol name and out again is not a change', async ({
   await toolbar.undo();
   await expect(nameField).toHaveValue('No Op Seed');
   await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
-  await expect(toolbar.button('redo')).toHaveAttribute(
-    'aria-disabled',
-    'false',
-  );
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
 
   // The whole interaction under test: focus the field, type nothing, leave.
   await nameField.focus();
   await nameField.blur();
 
   await expect(toolbar.button('undo')).toHaveAttribute('aria-disabled', 'true');
-  await expect(toolbar.button('redo')).toHaveAttribute(
-    'aria-disabled',
-    'false',
-  );
+  await expect(toolbar.button('redo')).not.toHaveAttribute('aria-disabled');
 
   // And the redo still leads where it did.
   await toolbar.redo();

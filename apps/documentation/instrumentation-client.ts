@@ -1,6 +1,7 @@
 import posthog from 'posthog-js';
 
 import { isProductionHost } from '~/lib/analytics/isProductionHost';
+import { POSTHOG_APP_PROPERTIES } from '~/lib/analytics/posthogMetadata';
 
 const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
 const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
@@ -24,7 +25,7 @@ if (isProductionHost(window.location.hostname)) {
   });
 
   posthog.register({
-    app: 'Documentation',
+    ...POSTHOG_APP_PROPERTIES,
     installation_id: 'documentation-production',
   });
 }

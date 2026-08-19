@@ -2,9 +2,7 @@
 // Branch-scoped MinIO for local development, mirroring Fresco's dev-s3
 // script (apps/fresco/scripts/dev-s3.ts): development never touches
 // third-party services (#1246, 2026-08-11). Runs under `concurrently` from
-// the package's dev script. Port 9100 so Fresco's dev MinIO (9000) and
-// Studio's can run simultaneously. Constants here must match the
-// non-production defaults in src/env.ts.
+// the package's dev script.
 import { spawn, spawnSync } from 'node:child_process';
 import process from 'node:process';
 
@@ -14,20 +12,24 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
+import { DEV } from '../src/env/catalogue.ts';
+
 const IMAGE = 'minio/minio:latest';
-const HOST_PORT = 9100;
+const HOST_PORT = DEV.s3Port;
 const CONTAINER_PORT = 9000;
-const BUCKET = 'studio-dev';
-const REGION = 'us-east-1';
-const ACCESS_KEY_ID = 'minioadmin';
-const SECRET_ACCESS_KEY = 'minioadmin';
+const BUCKET = DEV.s3Bucket;
+const REGION = DEV.s3Region;
+const ACCESS_KEY_ID = DEV.s3AccessKeyId;
+const SECRET_ACCESS_KEY = DEV.s3SecretAccessKey;
 const READY_MAX_ATTEMPTS = 30;
 const READY_INTERVAL_MS = 1000;
 
 const branch =
-  spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-    encoding: 'utf8',
-  }).stdout.trim() || 'default';
+  (
+    spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      encoding: 'utf8',
+    }).stdout ?? ''
+  ).trim() || 'default';
 
 const safeBranch = branch
   .toLowerCase()
@@ -115,6 +117,20 @@ function createS3Client(): S3Client {
   });
 }
 
+async function minioReachable(client: S3Client): Promise<boolean> {
+  try {
+    await Promise.race([
+      client.send(new ListBucketsCommand({})),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('probe timeout')), 1500),
+      ),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function waitForReady(client: S3Client): Promise<void> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= READY_MAX_ATTEMPTS; attempt++) {
@@ -173,6 +189,29 @@ function followLogs(): void {
 
 async function main(): Promise<void> {
   const alreadyRunning = containerExists() && containerIsRunning();
+
+  // A MinIO already answering on the port without our container managing it —
+  // typically another branch's still-running dev container (branch-scoped
+  // names, fixed port). Use it rather than failing the port bind; the
+  // credentials and bucket are the same across branches.
+  if (!alreadyRunning) {
+    const probe = createS3Client();
+    if (await minioReachable(probe)) {
+      console.log(
+        `MinIO already reachable on port ${HOST_PORT} (externally managed)`,
+      );
+      await ensureBucket(probe);
+      console.log(
+        `MinIO ready — bucket '${BUCKET}' at http://localhost:${HOST_PORT}`,
+      );
+      // Stay alive under `concurrently -k` without a container to tail: an
+      // unsettled top-level await with an empty event loop makes Node exit.
+      setInterval(() => {
+        // Keep the event loop non-empty.
+      }, 60_000);
+      return;
+    }
+  }
 
   if (containerExists() && !alreadyRunning) {
     removeContainer();

@@ -374,7 +374,8 @@ const Navigation = ({
         )}
         <NavigationButton
           className={cx(
-            pulseNext && 'bg-success hover:enabled:bg-success outline-success',
+            pulseNext &&
+              'bg-success ui-enabled:hover:bg-success outline-success',
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
           wrapperClassName={

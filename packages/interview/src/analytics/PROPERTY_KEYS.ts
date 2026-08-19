@@ -11,6 +11,8 @@ export const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
 // Super-property keys (snake_case for PostHog convention).
 export const SUPER_PROPS = {
   APP: 'app',
+  APP_NAME: '$app_name',
+  APP_VERSION: '$app_version',
   INSTALLATION_ID: 'installation_id',
   HOST_VERSION: 'host_version',
   PACKAGE_VERSION: 'package_version',
@@ -22,6 +24,8 @@ export const SUPER_PROPS = {
 
 export type SuperProperties = {
   [SUPER_PROPS.APP]: string;
+  [SUPER_PROPS.APP_NAME]: string;
+  [SUPER_PROPS.APP_VERSION]?: string;
   [SUPER_PROPS.INSTALLATION_ID]: string;
   [SUPER_PROPS.HOST_VERSION]?: string;
   [SUPER_PROPS.PACKAGE_VERSION]: string;
