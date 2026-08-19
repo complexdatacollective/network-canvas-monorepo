@@ -25,7 +25,6 @@
     "./assets/*": "./assets/*"
   },
   "scripts": {
-    "prepare": "node ../protocols/scripts/sync-compat-package.mjs sample .",
     "prepack": "node ../protocols/scripts/sync-compat-package.mjs sample ."
   },
   "engines": {
