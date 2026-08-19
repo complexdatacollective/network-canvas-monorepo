@@ -91,6 +91,12 @@ catalog:
   chromatic: ^18.1.0
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
+  # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit
+  # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
+  # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
+  # range once 1.0.0 stable ships.
+  drizzle-kit: 1.0.0-rc.4
+  drizzle-orm: 1.0.0-rc.4
   effect: ^3.22.1
   electron: ^43.0.0
   electron-builder: ^26.15.2

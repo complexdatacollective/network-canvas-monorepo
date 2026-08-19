@@ -1,9 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
+import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api-postgres';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
-import { SCHEMA_SQL } from '../schema.ts';
+import {
+  commandLog,
+  drafts,
+  leases,
+  manifests,
+  sections,
+  SYNC_SIDECAR_SQL,
+} from '../schema.ts';
 import { SyncServer } from '../server.ts';
 import { CI, PGPORT } from './test-env.ts';
 
@@ -37,7 +45,11 @@ async function createSyncDatabase(port: number, name: string) {
     database: name,
     max: 20,
   });
-  await db.query(SCHEMA_SQL);
+  const statements = await generateMigration(
+    await generateDrizzleJson({}),
+    await generateDrizzleJson({ drafts, sections, manifests, leases, commandLog }),
+  );
+  await db.query([...statements, SYNC_SIDECAR_SQL].join('\n'));
   return db;
 }
 
