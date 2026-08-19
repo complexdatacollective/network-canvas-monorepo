@@ -45,19 +45,30 @@ const SECTION = '.page-break-marker';
 const CSS_PX_PER_CM = 96 / 2.54;
 
 const printableWidthPx = async (page: {
-  evaluate: <T>(fn: () => T) => Promise<T>;
+  evaluate: <T>(fn: (selector: string) => T, arg: string) => Promise<T>;
 }): Promise<{ width: number; height: number }> => {
-  const { pageWidthCm, pageHeightCm, marginCm } = await page.evaluate(() => {
-    const read = (name: string) =>
-      Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue(name),
-      );
-    return {
-      pageWidthCm: read('--page-size-width'),
-      pageHeightCm: read('--page-size-height'),
-      marginCm: read('--margin'),
-    };
-  });
+  // Read from a SECTION, not from `document.documentElement`. `--margin` is on
+  // `:root`, but `--page-size-width`/`--page-size-height` come from the
+  // `protocol-summary-surface` Tailwind utility, which is applied to an element
+  // inside the document — so they are absent on `<html>` and resolve to NaN
+  // there. Custom properties inherit, and a `.page-break-marker` sits inside
+  // that surface, so it sees all three. (The first attempt read the root and
+  // the guard below caught it: run 32275600864.)
+  const { pageWidthCm, pageHeightCm, marginCm } = await page.evaluate(
+    (selector: string) => {
+      const section = document.querySelector(selector);
+      if (!section) throw new Error(`no ${selector} to read page metrics from`);
+      const styles = getComputedStyle(section);
+      const read = (name: string) =>
+        Number.parseFloat(styles.getPropertyValue(name));
+      return {
+        pageWidthCm: read('--page-size-width'),
+        pageHeightCm: read('--page-size-height'),
+        marginCm: read('--margin'),
+      };
+    },
+    SECTION,
+  );
 
   // A missing or non-cm custom property would silently produce NaN and a
   // nonsense viewport, so refuse rather than capture a meaningless baseline.
