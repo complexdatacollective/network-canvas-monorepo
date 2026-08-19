@@ -1,68 +1,43 @@
-import { createHash } from 'node:crypto';
-
+import { getTableName, sql } from 'drizzle-orm';
+import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import type pg from 'pg';
 
-import { SCHEMA_SQL as SYNC_SCHEMA_SQL } from '@codaco/studio-sync/schema';
+import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
-import { PROTOCOL_STORE_SCHEMA_SQL } from '../protocol/schema.ts';
-import { AUTH_SCHEMA_SQL } from './auth-schema.ts';
+import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
+import { AUTH_TABLES } from './auth-schema.ts';
+import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
-// The order is load-bearing: version_sections.section_hash has a foreign key
-// into the sync engine's sections, and protocol_drafts.draft_id into its drafts.
-const SCHEMA_SQL = [
-  AUTH_SCHEMA_SQL,
-  SYNC_SCHEMA_SQL,
-  PROTOCOL_STORE_SCHEMA_SQL,
-].join('\n');
+// Managed like every other table: push diffs the whole public schema, so an
+// unmanaged stamp table would read as droppable.
+const schemaFingerprint = pgTable(
+  'schemaFingerprint',
+  {
+    id: boolean('id').primaryKey().default(true),
+    fingerprint: text('fingerprint').notNull(),
+    appliedAt: timestamp('appliedAt', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [check('schemaFingerprint_id_check', sql`${table.id}`)],
+);
 
-// The unstamped probe below reads this list; finding any one table is enough
-// to know the database was built by something other than this build.
-export const SCHEMA_TABLES = [
-  // ./auth-schema.ts
-  'user',
-  'session',
-  'account',
-  'verification',
-  'rateLimit',
-  // @codaco/studio-sync/schema
-  'drafts',
-  'sections',
-  'manifests',
-  'leases',
-  'command_log',
-  // ../protocol/schema.ts
-  'protocols',
-  'protocol_versions',
-  'version_sections',
-  'protocol_drafts',
-] as const;
+export const SCHEMA = {
+  ...AUTH_TABLES,
+  ...SYNC_TABLES,
+  ...PROTOCOL_TABLES,
+  schemaFingerprint,
+};
 
-// The auth block is `if not exists` throughout, so applying it to a database
-// that already has the tables succeeds while changing nothing — a stale schema
-// would boot clean and fail later inside better-auth. The fingerprint is the
-// detector: the hash of the SQL that built a database, recorded in it.
-//
-// This table's own DDL is deliberately outside the hashed string, because the
-// fingerprint has to be readable before we decide whether to apply the schema.
-// It is therefore unguarded, and must stay frozen.
-const FINGERPRINT_TABLE_SQL = `
-create table if not exists "schemaFingerprint" ("id" boolean primary key default true check ("id"), "fingerprint" text not null, "appliedAt" timestamptz default CURRENT_TIMESTAMP not null);
-`;
+export const SIDECARS = [SYNC_SIDECAR_SQL, PROTOCOL_SIDECAR_SQL];
 
-// Whitespace counts, in all three composed blocks: reformatting any of them
-// reads as a schema change and demands a wipe.
-const SCHEMA_FINGERPRINT = createHash('sha256')
-  .update(SCHEMA_SQL)
-  .digest('hex');
+// The stamp table is excluded from the unstamped probe: its presence alone
+// says nothing about which build's tables sit beside it.
+export const SCHEMA_TABLES = Object.values(SCHEMA)
+  .map(getTableName)
+  .filter((name) => name !== getTableName(schemaFingerprint));
 
-// `create table if not exists` is not concurrency-safe in Postgres — parallel
-// executions race on pg_type and one raises a duplicate-key error — and every
-// replica of a scaled-out deployment applies the schema at boot.
-//
-// The sync and protocol blocks are not idempotent at all (bare `CREATE TABLE`),
-// which is safe only because applySchema runs solely when the fingerprint row is
-// absent AND the SCHEMA_TABLES probe finds nothing — both inside this lock.
-const SCHEMA_LOCK_KEY = 4021775688147129;
+export const SCHEMA_LOCK_KEY = 4021775688147129;
 
 export type StaleSchema = {
   kind: 'stale';
@@ -73,35 +48,39 @@ export type StaleSchema = {
 };
 
 export type SchemaState =
-  | { kind: 'created' }
   | { kind: 'current' }
+  /** A database with no Studio tables and no fingerprint: never provisioned. */
+  | { kind: 'absent' }
   | StaleSchema;
 
-async function applySchema(client: pg.PoolClient): Promise<void> {
-  await client.query(SCHEMA_SQL);
-}
+export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
 
 /**
- * A mismatch is returned rather than thrown so callers can tell a verdict from
- * a connection failure: anything this throws is transient, and everything it
- * returns is an answer.
+ * Read-only verdict; application lives in scripts/apply.ts. A problem is
+ * returned rather than thrown so callers can tell a verdict from a connection
+ * failure: anything this throws is transient, and everything it returns is an
+ * answer.
  */
-export async function ensureSchema(pool: pg.Pool): Promise<SchemaState> {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(`select pg_advisory_xact_lock(${SCHEMA_LOCK_KEY})`);
-    await client.query(FINGERPRINT_TABLE_SQL);
+export async function checkSchema(pool: pg.Pool): Promise<SchemaState> {
+  const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
+    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+            ${SCHEMA_TABLES.map(
+              (table) => `to_regclass('"${table}"') is not null`,
+            ).join(' or ')} as tables`,
+  );
+  const { stamped, tables } = probe.rows[0] ?? {
+    stamped: false,
+    tables: false,
+  };
 
-    const recorded = await client.query<{
+  if (stamped) {
+    const recorded = await pool.query<{
       fingerprint: string;
       appliedAt: Date;
     }>('select "fingerprint", "appliedAt" from "schemaFingerprint"');
     const row = recorded.rows[0];
-
     if (row) {
       if (row.fingerprint !== SCHEMA_FINGERPRINT) {
-        await client.query('rollback');
         return {
           kind: 'stale',
           reason: 'mismatch',
@@ -109,46 +88,40 @@ export async function ensureSchema(pool: pg.Pool): Promise<SchemaState> {
           appliedAt: row.appliedAt,
         };
       }
-      await client.query('commit');
       return { kind: 'current' };
     }
-
-    // Tables but no fingerprint: either a database predating this guard or one
-    // built from older SQL, and the two are indistinguishable. Recording the
-    // current hash would launder exactly the staleness this exists to catch,
-    // so it refuses — the one-time wipe is what the no-migrations posture
-    // already asks for.
-    const probe = await client.query<{ present: boolean }>(
-      `select ${SCHEMA_TABLES.map(
-        (table) => `to_regclass('"${table}"') is not null`,
-      ).join(' or ')} as present`,
-    );
-    if (probe.rows[0]?.present) {
-      await client.query('rollback');
-      return {
-        kind: 'stale',
-        reason: 'unstamped',
-        found: null,
-        appliedAt: null,
-      };
-    }
-
-    await applySchema(client);
-    await client.query(
-      'insert into "schemaFingerprint" ("fingerprint") values ($1)',
-      [SCHEMA_FINGERPRINT],
-    );
-    await client.query('commit');
-    return { kind: 'created' };
-  } catch (error) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
   }
+
+  // Tables but no fingerprint: adopting it would launder exactly the
+  // staleness this exists to catch.
+  if (tables) {
+    return { kind: 'stale', reason: 'unstamped', found: null, appliedAt: null };
+  }
+
+  return { kind: 'absent' };
 }
 
-export function staleSchemaMessage(state: StaleSchema): string {
+export async function stampFingerprint(
+  db: pg.Pool | pg.PoolClient,
+  fingerprint: string,
+): Promise<void> {
+  await db.query(
+    `insert into "schemaFingerprint" ("fingerprint") values ($1)
+     on conflict ("id") do update set "fingerprint" = excluded."fingerprint", "appliedAt" = CURRENT_TIMESTAMP`,
+    [fingerprint],
+  );
+}
+
+export function schemaProblemMessage(state: SchemaProblem): string {
+  if (state.kind === 'absent') {
+    return [
+      'The database has no Studio schema.',
+      'Create it and start again:',
+      '  pnpm --filter @codaco/studio-server db:reset        (local development)',
+      '  pnpm --filter @codaco/studio-server apply-schema    (a deployed database)',
+    ].join('\n');
+  }
+
   const detail =
     state.reason === 'unstamped'
       ? 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
@@ -157,8 +130,9 @@ export function staleSchemaMessage(state: StaleSchema): string {
   return [
     'The database was not built from the schema in this build.',
     detail,
-    'Studio has no migration system yet: pre-release, a schema change means recreating the database.',
-    'Recreate it and start again:',
-    '  pnpm --filter @codaco/studio-server db:reset',
+    'Studio has no migration system yet: pre-release, drizzle-kit push reconciles the schema in place, or recreate the database.',
+    'Then start again:',
+    '  pnpm --filter @codaco/studio-server apply-schema    (reconcile in place)',
+    '  pnpm --filter @codaco/studio-server db:reset        (recreate)',
   ].join('\n');
 }

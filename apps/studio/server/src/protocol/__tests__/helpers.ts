@@ -7,24 +7,23 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import {
   createScratchSchema,
+  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import { ensureSchema } from '../../db/schema.ts';
 
 export const storeDb = await reachableDb();
 
-// Applied through ensureSchema rather than raw DDL, so every DB test exercises
-// the same path boot does.
 export async function makeStoreSchema(): Promise<{
   db: pg.Pool;
   dispose: () => Promise<void>;
 }> {
   if (!storeDb) throw new Error('unreachable: probe guaranteed a database');
   const scratch = await createScratchSchema(storeDb);
-  const state = await ensureSchema(scratch.pool);
-  if (state.kind !== 'created') {
+  try {
+    await provisionScratchSchema(scratch.pool);
+  } catch (error) {
     await scratch.dispose();
-    throw new Error(`scratch schema was not created: ${state.kind}`);
+    throw error;
   }
   return { db: scratch.pool, dispose: scratch.dispose };
 }

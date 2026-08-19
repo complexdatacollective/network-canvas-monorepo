@@ -3,7 +3,10 @@ import process from 'node:process';
 
 import pg from 'pg';
 
+import { renderSchemaStatements } from '../../../scripts/apply.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { createPool } from '../../db/pool.ts';
+import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
@@ -87,6 +90,51 @@ export async function createScratchSchema(
       const cleanup = createPool(db);
       try {
         await cleanup.query(`drop schema if exists "${name}" cascade`);
+      } finally {
+        await cleanup.end();
+      }
+    },
+  };
+}
+
+/**
+ * Builds the schema from the same statements scripts/apply.ts pushes; push
+ * itself cannot target a scratch schema (it introspects `public`), so the
+ * push path is exercised by the scratch-database suite instead.
+ */
+export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
+  await pool.query((await renderSchemaStatements()).join('\n'));
+  await stampFingerprint(pool, SCHEMA_FINGERPRINT);
+}
+
+/** Needs CREATEDB; a crashed run's leftovers are swept by db-reset. */
+export async function createScratchDatabase(
+  db: DbEnv,
+): Promise<{ db: DbEnv; pool: pg.Pool; dispose: () => Promise<void> }> {
+  const name = `studio_test_db_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+
+  const admin = createPool(db);
+  try {
+    await admin.query(`create database ${pg.escapeIdentifier(name)}`);
+  } finally {
+    await admin.end();
+  }
+
+  const url = new URL(db.url);
+  url.pathname = `/${name}`;
+  const scratchDb = { url: url.toString() };
+  const pool = createPool(scratchDb);
+
+  return {
+    db: scratchDb,
+    pool,
+    dispose: async () => {
+      await pool.end();
+      const cleanup = createPool(db);
+      try {
+        await cleanup.query(
+          `drop database if exists ${pg.escapeIdentifier(name)} with (force)`,
+        );
       } finally {
         await cleanup.end();
       }

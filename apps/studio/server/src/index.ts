@@ -9,9 +9,9 @@ import { WebSocketServer } from 'ws';
 import { createApp } from './app.ts';
 import { createPool } from './db/pool.ts';
 import {
-  ensureSchema,
+  checkSchema,
   type SchemaState,
-  staleSchemaMessage,
+  schemaProblemMessage,
 } from './db/schema.ts';
 import { readEnv } from './env.ts';
 import { STUDIO_VERSION } from './version.ts';
@@ -26,58 +26,40 @@ import { STUDIO_VERSION } from './version.ts';
 const env = readEnv();
 const pool = env.db ? createPool(env.db) : undefined;
 
-// A stale database is a resolved answer, not a transient failure: retrying it
-// re-reads the same wrong fingerprint every three seconds. So it exits in both
-// modes, while reachability keeps the existing production/development split.
-function handleSchemaState(state: SchemaState): void {
-  if (state.kind === 'stale') {
+// Stale everywhere and absent-in-production are resolved answers, not
+// transient failures: retrying re-reads the same fingerprint every three
+// seconds. The development lane waits for dev-pg's provision (or a manual
+// db:reset) the same way it waits for the container itself.
+function exitIfFatal(state: SchemaState): void {
+  if (state.kind === 'stale' || (state.kind === 'absent' && !env.devDefaults)) {
     // oxlint-disable-next-line no-console -- boot diagnostics
-    console.error(staleSchemaMessage(state));
+    console.error(schemaProblemMessage(state));
     process.exit(1);
-  }
-  if (state.kind === 'created') {
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.log('Database schema applied.');
   }
 }
 
-// The schema is applied and fingerprinted at every boot — there is no
-// migration system yet, deliberately (pre-release; see src/db/schema.ts).
 // A configured database that cannot be reached is a deployment mistake and
-// fails the boot. The one exception is the development lane, where the server
-// comes up and auth surfaces fail until the dev Postgres is available.
-//
-// Keyed on the development marker rather than `NODE_ENV`, because the retry
-// below exists for one situation — losing the race against the dev-pg
-// container — and a deployment that forgot `NODE_ENV=production` would
-// otherwise inherit it and boot green with no database.
+// fails the boot; only the development lane comes up anyway. Keyed on the
+// development marker rather than `NODE_ENV`, so a deployment that forgot
+// `NODE_ENV=production` does not inherit the retry and boot green with no
+// database.
 if (pool) {
-  try {
-    handleSchemaState(await ensureSchema(pool));
-  } catch (error) {
-    if (!env.devDefaults) throw error;
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.warn(
-      `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
-    );
-    // In dev the server may win the race against the dev-pg container
-    // (image pull + initdb on a fresh volume); keep trying so sign-in
-    // starts working without a manual restart. The listener is already up by
-    // then, so a mismatch found here still takes the process down.
-    //
-    // One attempt at a time: an attempt against an unreachable host can
-    // outlive its tick, and stacking them would exhaust the pool and let two
-    // winners both report.
+  // One attempt at a time: an attempt against an unreachable host can
+  // outlive its tick, and stacking them would exhaust the pool. A mismatch
+  // found mid-retry still takes the process down.
+  const waitUntilCurrent = () => {
     let attempting = false;
     const retry = setInterval(() => {
       if (attempting) return;
       attempting = true;
-      void ensureSchema(pool)
+      void checkSchema(pool)
         .then((state) => {
-          clearInterval(retry);
-          // oxlint-disable-next-line no-console -- boot diagnostics
-          console.log('Database reachable.');
-          handleSchemaState(state);
+          exitIfFatal(state);
+          if (state.kind === 'current') {
+            clearInterval(retry);
+            // oxlint-disable-next-line no-console -- boot diagnostics
+            console.log('Database schema current.');
+          }
           return undefined;
         })
         .catch(() => undefined)
@@ -86,6 +68,25 @@ if (pool) {
         });
     }, 3000);
     retry.unref();
+  };
+
+  try {
+    const state = await checkSchema(pool);
+    exitIfFatal(state);
+    if (state.kind === 'absent') {
+      // oxlint-disable-next-line no-console -- boot diagnostics
+      console.warn(
+        'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset',
+      );
+      waitUntilCurrent();
+    }
+  } catch (error) {
+    if (!env.devDefaults) throw error;
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.warn(
+      `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
+    );
+    waitUntilCurrent();
   }
 }
 

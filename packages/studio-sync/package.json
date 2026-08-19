@@ -23,11 +23,13 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.3.0",
+    "drizzle-orm": "catalog:",
     "pg": "^8.22.0"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
     "@types/pg": "^8.20.4",
+    "drizzle-kit": "catalog:",
     "fast-check": "^4.9.0",
     "typescript": "catalog:",
     "vitest": "catalog:"

@@ -84,10 +84,18 @@ catalog:
   '@vitest/browser': ^4.1.10
   '@vitest/browser-playwright': ^4.1.10
   '@vitest/coverage-v8': ^4.1.10
-  better-auth: 1.6.27
+  # Pinned: 1.7.1 is the first release whose peer range admits the pinned
+  # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
+  better-auth: 1.7.1
   chromatic: ^18.1.0
   csvtojson: ^2.0.14
   dotenv: ^17.4.2
+  # Pinned to the 1.0 RC, exactly (the rc dist-tag moves): stable drizzle-kit
+  # 0.31.x `push` silently drops RLS policy USING/WITH CHECK expressions, which
+  # #1249's tenancy layer depends on. Keep both in lock-step; unpin to a normal
+  # range once 1.0.0 stable ships.
+  drizzle-kit: 1.0.0-rc.4
+  drizzle-orm: 1.0.0-rc.4
   effect: ^3.22.1
   electron: ^43.0.0
   electron-builder: ^26.15.2
@@ -178,14 +186,6 @@ minimumReleaseAgeExclude:
   - '@codaco/shared-consts@5.5.0'
   - '@tanstack/react-router@1.170.22'
   - '@tanstack/router-core@1.171.19'
-  - '@better-auth/core@1.6.27'
-  - '@better-auth/drizzle-adapter@1.6.27'
-  - '@better-auth/kysely-adapter@1.6.27'
-  - '@better-auth/memory-adapter@1.6.27'
-  - '@better-auth/mongo-adapter@1.6.27'
-  - '@better-auth/prisma-adapter@1.6.27'
-  - '@better-auth/telemetry@1.6.27'
-  - better-auth@1.6.27
   # The Changesets v3 majors, published 2026-08-11 — pinned only so this PR's
   # own CI could install before they aged out at 2026-08-12T12:11Z. Inert since,
   # and safe to delete in any passing sweep.
