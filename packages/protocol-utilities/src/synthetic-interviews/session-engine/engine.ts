@@ -41,7 +41,9 @@ export type SessionDraft = {
   lastUpdated: string;
 };
 
-const isCensusTuple = (entry: unknown): entry is [number, string, string, boolean] =>
+const isCensusTuple = (
+  entry: unknown,
+): entry is [number, string, string, boolean] =>
   Array.isArray(entry) && entry.length === 4;
 
 /**
@@ -99,7 +101,10 @@ export class SessionEngine {
     this.trace = captureTrace ? [] : null;
     this.draft = {
       network: {
-        ego: { [entityPrimaryKeyProperty]: egoUid, [entityAttributesProperty]: {} },
+        ego: {
+          [entityPrimaryKeyProperty]: egoUid,
+          [entityAttributesProperty]: {},
+        },
         nodes: [],
         edges: [],
       },
@@ -159,7 +164,10 @@ export class SessionEngine {
     };
   }
 
-  private variablesFor(entity: 'node' | 'edge', type: string): Record<string, unknown> {
+  private variablesFor(
+    entity: 'node' | 'edge',
+    type: string,
+  ): Record<string, unknown> {
     return this.codebook[entity]?.[type]?.variables ?? {};
   }
 
@@ -192,7 +200,11 @@ export class SessionEngine {
   }
 
   /** The runtime's undirected same-type match (session.ts `edgeExists`). */
-  private existingEdgeId(from: string, to: string, edgeType: string): string | null {
+  private existingEdgeId(
+    from: string,
+    to: string,
+    edgeType: string,
+  ): string | null {
     const match = this.draft.network.edges.find(
       (edge) =>
         edge.type === edgeType &&
@@ -222,8 +234,13 @@ export class SessionEngine {
     allowUnknownAttributes?: boolean;
     currentStep: number;
   }): NcNode {
-    const { nodeType, uid, attributeData, allowUnknownAttributes, currentStep } =
-      payload;
+    const {
+      nodeType,
+      uid,
+      attributeData,
+      allowUnknownAttributes,
+      currentStep,
+    } = payload;
     const attributes: Record<string, VariableValue> = {};
     for (const [key, value] of Object.entries(attributeData)) {
       if (value !== null && value !== undefined) attributes[key] = value;
@@ -290,7 +307,8 @@ export class SessionEngine {
       let resolved: boolean | undefined;
       for (const remainingPrompt of remaining) {
         const attributes = this.promptAttributesById.get(remainingPrompt);
-        if (attributes && variable in attributes) resolved = attributes[variable];
+        if (attributes && variable in attributes)
+          resolved = attributes[variable];
       }
       if (resolved === undefined) unset.push(variable);
       else set[variable] = resolved;
@@ -350,7 +368,11 @@ export class SessionEngine {
     to: string;
     currentStep: number;
   }): string | null {
-    const existing = this.existingEdgeId(payload.from, payload.to, payload.edgeType);
+    const existing = this.existingEdgeId(
+      payload.from,
+      payload.to,
+      payload.edgeType,
+    );
     if (existing) {
       this.deleteEdge({ edgeId: existing });
       return null;
@@ -376,10 +398,16 @@ export class SessionEngine {
     this.touch();
   }
 
-  updateEdge(payload: { edgeId: string; attributePatch: AttributePatch }): void {
+  updateEdge(payload: {
+    edgeId: string;
+    attributePatch: AttributePatch;
+  }): void {
     const edge = this.edge(payload.edgeId);
     this.assertKnownKeys(
-      [...Object.keys(payload.attributePatch.set), ...payload.attributePatch.unset],
+      [
+        ...Object.keys(payload.attributePatch.set),
+        ...payload.attributePatch.unset,
+      ],
       this.variablesFor('edge', edge.type),
       `edge attributes for type "${edge.type}"`,
     );
@@ -392,7 +420,10 @@ export class SessionEngine {
     const egoVariables = this.codebook.ego?.variables;
     invariant(egoVariables, 'ego variables not defined in protocol codebook');
     this.assertKnownKeys(
-      [...Object.keys(payload.attributePatch.set), ...payload.attributePatch.unset],
+      [
+        ...Object.keys(payload.attributePatch.set),
+        ...payload.attributePatch.unset,
+      ],
       egoVariables,
       'ego attributes',
     );
@@ -410,7 +441,10 @@ export class SessionEngine {
   }): void {
     const node = this.node(payload.nodeId);
     this.assertKnownKeys(
-      [...Object.keys(payload.attributePatch.set), ...payload.attributePatch.unset],
+      [
+        ...Object.keys(payload.attributePatch.set),
+        ...payload.attributePatch.unset,
+      ],
       this.variablesFor('node', node.type),
       `node attributes for type "${node.type}"`,
     );

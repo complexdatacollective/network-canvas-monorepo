@@ -32,13 +32,13 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
-    "zod": "catalog:",
     "@codaco/network-query": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@faker-js/faker": "catalog:",
     "es-toolkit": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",

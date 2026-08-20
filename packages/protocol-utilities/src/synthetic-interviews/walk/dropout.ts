@@ -30,7 +30,8 @@ export const determineDropout = (
     0,
   );
 
-  const dropoutProbability = 1 - Math.exp(-DROPOUT_HAZARD_RATE * cumulativeBurden);
+  const dropoutProbability =
+    1 - Math.exp(-DROPOUT_HAZARD_RATE * cumulativeBurden);
 
   return streams.draw('dropout') < dropoutProbability;
 };

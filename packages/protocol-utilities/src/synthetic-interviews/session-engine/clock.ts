@@ -54,7 +54,9 @@ export const createSessionClock = (
 
   const startMs =
     anchorMs -
-    Math.floor(streams.draw('clock') * SYNTHETIC_START_WINDOW_DAYS * MS_PER_DAY);
+    Math.floor(
+      streams.draw('clock') * SYNTHETIC_START_WINDOW_DAYS * MS_PER_DAY,
+    );
   let nowMs = startMs;
 
   // Median multiplier 1 (mu = 0); sigma is the schema's calibration.
@@ -66,12 +68,16 @@ export const createSessionClock = (
     now: () => new Date(nowMs).toISOString(),
     advanceThroughStage: (responseBurden) => {
       nowMs += Math.round(
-        responseBurden * SYNTHETIC_SECONDS_PER_BURDEN * MS_PER_SECOND * jitter(),
+        responseBurden *
+          SYNTHETIC_SECONDS_PER_BURDEN *
+          MS_PER_SECOND *
+          jitter(),
       );
     },
     finishInstant: () =>
       new Date(
-        nowMs + Math.round(SYNTHETIC_FINISH_BEAT_SECONDS * MS_PER_SECOND * jitter()),
+        nowMs +
+          Math.round(SYNTHETIC_FINISH_BEAT_SECONDS * MS_PER_SECOND * jitter()),
       ).toISOString(),
   };
 };

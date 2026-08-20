@@ -76,7 +76,9 @@ export const createSessionStreams = (
   seed: number,
   index: number,
 ): SessionStreams => {
-  const sessionState = splitmix32(splitmix32(seed >>> 0) ^ splitmix32(index >>> 0));
+  const sessionState = splitmix32(
+    splitmix32(seed >>> 0) ^ splitmix32(index >>> 0),
+  );
   const generators = new Map<StreamName, () => number>(
     STREAM_NAMES.map((name) => [
       name,
@@ -96,7 +98,12 @@ export const createSessionStreams = (
     uuid: () => {
       let id = '';
       for (let position = 0; position < 36; position += 1) {
-        if (position === 8 || position === 13 || position === 18 || position === 23) {
+        if (
+          position === 8 ||
+          position === 13 ||
+          position === 18 ||
+          position === 23
+        ) {
           id += '-';
         } else if (position === 14) {
           id += '4';

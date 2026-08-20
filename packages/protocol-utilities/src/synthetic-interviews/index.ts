@@ -20,7 +20,11 @@ import { walkSession } from './walk/walk';
 
 export type { SyntheticSessionAction } from './session-engine/actions';
 export type { SyntheticInterviewResult } from './session-engine/envelope';
-export type { AssetData, SimulationContext, StageSimulator } from './simulators/types';
+export type {
+  AssetData,
+  SimulationContext,
+  StageSimulator,
+} from './simulators/types';
 
 /**
  * The one simulator per interface type (spec rule 1). A type absent here
@@ -77,7 +81,9 @@ export const generateInterviewsOptions = z
     }
   });
 
-export type GenerateInterviewsOptions = z.input<typeof generateInterviewsOptions>;
+export type GenerateInterviewsOptions = z.input<
+  typeof generateInterviewsOptions
+>;
 
 /**
  * Generate `count` synthetic interviews for a PARSED protocol, walking it
@@ -178,7 +184,11 @@ export const generateInterviews = (
       Math.ceil(options.count * options.minimumCompletedRatio),
     );
     let completed = results.filter((result) => !result.droppedOut).length;
-    for (let index = 0; index < options.count && completed < minimumCompleted; index += 1) {
+    for (
+      let index = 0;
+      index < options.count && completed < minimumCompleted;
+      index += 1
+    ) {
       if (!results[index]?.droppedOut) continue;
       results[index] = generateOne(index, false);
       completed += 1;

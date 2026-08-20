@@ -94,7 +94,11 @@ export type ToggleEdgeAction = {
 
 export type UpdateNodeAction = {
   type: 'updateNode';
-  payload: { nodeId: string; attributePatch: AttributePatch; currentStep: number };
+  payload: {
+    nodeId: string;
+    attributePatch: AttributePatch;
+    currentStep: number;
+  };
 };
 
 export type UpdateEdgeAction = {
@@ -112,13 +116,25 @@ export type ToggleNodeAttributesAction = {
   payload: { nodeId: string; attributePatch: AttributePatch };
 };
 
-export type DeleteNodeAction = { type: 'deleteNode'; payload: { nodeId: string } };
+export type DeleteNodeAction = {
+  type: 'deleteNode';
+  payload: { nodeId: string };
+};
 
-export type DeleteEdgeAction = { type: 'deleteEdge'; payload: { edgeId: string } };
+export type DeleteEdgeAction = {
+  type: 'deleteEdge';
+  payload: { edgeId: string };
+};
 
-export type UpdatePromptAction = { type: 'updatePrompt'; payload: { promptIndex: number } };
+export type UpdatePromptAction = {
+  type: 'updatePrompt';
+  payload: { promptIndex: number };
+};
 
-export type TransitionStageAction = { type: 'transitionStage'; payload: Record<never, never> };
+export type TransitionStageAction = {
+  type: 'transitionStage';
+  payload: Record<never, never>;
+};
 
 export type UpdateStageMetadataAction = {
   type: 'updateStageMetadata';

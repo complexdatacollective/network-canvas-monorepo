@@ -1,4 +1,7 @@
-import { buildStageAvailabilityMap, type RoutableStage } from '@codaco/network-query';
+import {
+  buildStageAvailabilityMap,
+  type RoutableStage,
+} from '@codaco/network-query';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 /**
