@@ -28,3 +28,26 @@ export const MeSchema = z.object({
   emailVerified: z.boolean(),
   name: z.string(),
 });
+
+// Every workspace-scoped procedure names its workspace explicitly — the authz
+// input is never the session's active workspace (#1248: every route is
+// workspace-scoped by construction).
+export const WorkspaceScopedSchema = z.object({
+  workspaceId: z.string().min(1),
+});
+
+export const ProtocolSummarySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateProtocolInputSchema = WorkspaceScopedSchema.extend({
+  name: z.string().min(1),
+});
+
+export const CreateProtocolResultSchema = z.object({
+  protocolId: z.uuid(),
+  draftId: z.uuid(),
+});

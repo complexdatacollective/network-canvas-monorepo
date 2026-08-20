@@ -1,6 +1,14 @@
 import { oc } from '@orpc/contract';
+import { z } from 'zod';
 
-import { MeSchema, StatusSchema } from './schemas.ts';
+import {
+  CreateProtocolInputSchema,
+  CreateProtocolResultSchema,
+  MeSchema,
+  ProtocolSummarySchema,
+  StatusSchema,
+  WorkspaceScopedSchema,
+} from './schemas.ts';
 
 export { SOCIAL_PROVIDERS, type SocialProvider } from './schemas.ts';
 
@@ -23,4 +31,17 @@ export const contract = {
   status: oc.output(StatusSchema),
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
+  /**
+   * Workspace-scoped procedures: every input carries a workspaceId, checked
+   * against the caller's membership (FORBIDDEN for non-members and unknown
+   * workspaces alike — no existence oracle).
+   */
+  protocols: {
+    create: oc
+      .input(CreateProtocolInputSchema)
+      .output(CreateProtocolResultSchema),
+    list: oc
+      .input(WorkspaceScopedSchema)
+      .output(z.array(ProtocolSummarySchema)),
+  },
 };

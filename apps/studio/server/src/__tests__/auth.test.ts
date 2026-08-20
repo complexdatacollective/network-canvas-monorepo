@@ -1,10 +1,6 @@
-import { createORPCClient, safe } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterContractClient } from '@orpc/contract';
+import { safe } from '@orpc/client';
 import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
-
-import type { contract } from '@codaco/studio-rpc';
 
 import { createApp } from '../app.ts';
 import { createBetterAuthService } from '../auth/better-auth.ts';
@@ -16,6 +12,7 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from './support/postgres.ts';
+import { createRpcClient } from './support/rpc.ts';
 
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
@@ -25,19 +22,6 @@ const PRINCIPAL: SessionPrincipal = {
   name: 'Researcher',
   sessionId: 'session-1',
 };
-
-function createRpcClient(
-  app: ReturnType<typeof createApp>,
-  headers: Record<string, string> = {},
-) {
-  const link = new RPCLink({
-    origin: 'http://studio.test',
-    url: '/rpc',
-    headers: { 'sec-fetch-site': 'same-origin', ...headers },
-    fetch: async (url, init) => app.request(url, init),
-  });
-  return createORPCClient(link) as RouterContractClient<typeof contract>;
-}
 
 describe('principal resolution', () => {
   it('resolves the cookie session into the RPC context', async () => {
