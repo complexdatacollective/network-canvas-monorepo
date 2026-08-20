@@ -5,6 +5,9 @@ import type {
 } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
+import type { EntityConstraintCache } from '../constraints/entityConstraintCache';
+import type { UniqueRegistry } from '../constraints/uniqueRegistry';
+import type { ValueGenerator } from '../constraints/ValueGenerator';
 import type { SessionEngine } from '../session-engine/engine';
 import type { SessionStreams } from '../session-engine/streams';
 
@@ -23,9 +26,10 @@ export type AssetData = {
  * Everything a simulator may read. Simulators WRITE only through
  * `context.engine`'s primitives (spec rule 3).
  *
- * The constraint machinery's handles (the descriptor-driven value generator
- * and the cross-entity unique registry) join this type with the Phase-2
- * simulator port; the walk itself needs none of them.
+ * The constraint machinery's handles — the descriptor-driven value generator,
+ * the cross-entity unique registry, and the per-scope constraint analysis they
+ * both read — are session-scoped, so they live here rather than being rebuilt
+ * per stage. The walk itself needs none of them.
  */
 export type SimulationContext = {
   engine: SessionEngine;
@@ -35,6 +39,24 @@ export type SimulationContext = {
   /** The session's own date (its startTime's day), for relative windows. */
   today: string;
   interfaceRules: InterfaceImpliedRules;
+  /**
+   * The descriptor-driven draw, seeded per session. Values are the one thing
+   * NOT drawn from `streams`: the constraint machinery needs personas (names,
+   * places, occupations) rather than uniform bits.
+   */
+  valueGen: ValueGenerator;
+  /**
+   * Values already issued for `unique` variables. Shared across the whole
+   * session rather than per entity or per stage: a `unique` variable is unique
+   * within its scope for the whole interview.
+   */
+  uniqueRegistry: UniqueRegistry;
+  /**
+   * Per-scope constraints, built once per session. The same analysis the
+   * pre-walk reservation pass reads, so a hold and the draw it steers can
+   * never disagree about which slot a value belongs to.
+   */
+  entityConstraints: EntityConstraintCache;
 };
 
 /**
@@ -49,4 +71,13 @@ export type StageSimulator<T extends Stage = Stage> = (
   promptBound?: number,
 ) => void;
 
-export type SimulatorRegistry = Partial<Record<Stage['type'], StageSimulator>>;
+/**
+ * The one simulator per interface type. Keyed as a mapped type rather than a
+ * `Record` so each entry is typed against ITS OWN stage: a simulator declared
+ * `StageSimulator<EgoFormStage>` may only be filed under `EgoForm`, and one
+ * written against the whole union (the content stages' shared no-op) still
+ * fits everywhere.
+ */
+export type SimulatorRegistry = {
+  [K in Stage['type']]?: StageSimulator<Extract<Stage, { type: K }>>;
+};

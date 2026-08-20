@@ -1,0 +1,145 @@
+import type { VariableValue } from '@codaco/shared-consts';
+
+/**
+ * Serialise a value into a comparison key. Arrays of primitives are sorted
+ * first, because the runtime's `isMatchingValue` compares categorical
+ * selections as an order-insensitive multiset — two orderings of the same
+ * options are the same value and must not both be issued.
+ *
+ * Exported because `differentFrom` must judge sameness by the same rule:
+ * comparing raw JSON would call ['a','b'] and ['b','a'] different, and the
+ * runtime would then reject the value the generator thought was fine.
+ */
+export function valueKey(value: VariableValue): string {
+  if (Array.isArray(value)) {
+    const primitives = value.every(
+      (item) =>
+        typeof item === 'string' ||
+        typeof item === 'number' ||
+        typeof item === 'boolean',
+    );
+    if (primitives) {
+      // Compared by codepoint, not collation: `localeCompare` reports 0 for
+      // strings that differ only by an ignorable character (a soft hyphen,
+      // say), and a stable sort then leaves those in whichever order they
+      // arrived in — so two orderings of one selection would key differently.
+      return JSON.stringify(
+        value.toSorted((a, b) => {
+          const left = `${typeof a}:${String(a)}`;
+          const right = `${typeof b}:${String(b)}`;
+          if (left < right) return -1;
+          return left > right ? 1 : 0;
+        }),
+      );
+    }
+  }
+  return JSON.stringify(value ?? null);
+}
+
+export class UniqueRegistry {
+  private readonly used = new Map<string, Set<string>>();
+  private readonly reserved = new Map<string, Map<string, number>>();
+  private readonly sequences = new Map<string, number>();
+
+  private slot(scope: string, variableId: string): string {
+    return JSON.stringify([scope, variableId]);
+  }
+
+  isTaken(scope: string, variableId: string, value: VariableValue): boolean {
+    return (
+      this.used.get(this.slot(scope, variableId))?.has(valueKey(value)) ?? false
+    );
+  }
+
+  /**
+   * How many values a slot currently holds.
+   *
+   * Read by the draw as the allowance for walking past sequence positions a
+   * value already occupies. Within one pass of the distinct-value sequence
+   * each of the slot's values can turn a position away at most once, so this
+   * count is exactly the number of such refusals a draw can meet before the
+   * sequence has offered everything it has. It is a size rather than a
+   * traversal, so what a run draws never depends on the order values were
+   * claimed in.
+   */
+  claimedCount(scope: string, variableId: string): number {
+    return this.used.get(this.slot(scope, variableId))?.size ?? 0;
+  }
+
+  claim(scope: string, variableId: string, value: VariableValue): void {
+    const slot = this.slot(scope, variableId);
+    const values = this.used.get(slot) ?? new Set<string>();
+    values.add(valueKey(value));
+    this.used.set(slot, values);
+  }
+
+  /**
+   * Gives a slot's value back, for an entity about to replace the one it holds.
+   *
+   * No holder is recorded. For a value the registry issued that is safe: a slot
+   * issues each of its values once, so the entity handing one back is the only
+   * one that was ever given it, and an equal value in another slot or another
+   * scope is keyed separately and left alone. It does not hold for values
+   * written onto an entity from outside the registry and claimed after the fact
+   * — a roster row's, a prompt's `additionalAttributes`, a binning stage's —
+   * where two entities can hold one value and releasing frees a value the other
+   * still holds. That can only propagate a duplicate the outside writer already
+   * created, never create the first one.
+   *
+   * Callers must release before drawing the replacement, so a redraw that lands
+   * on the same value reclaims it rather than being refused it.
+   */
+  release(scope: string, variableId: string, value: VariableValue): void {
+    this.used.get(this.slot(scope, variableId))?.delete(valueKey(value));
+  }
+
+  /**
+   * Holds a value back from generated draws without issuing it, for an entity
+   * the run may still create. A roster row that can still be drawn reserves the
+   * values it carries, so no node fabricated before it is issued one of them
+   * and leaves the row's own node holding a duplicate. A value a prompt fixes
+   * is held for the whole run, for the same reason.
+   *
+   * Softer than a claim: a draw left with nothing else takes a reserved value
+   * anyway. A row that is never drawn holds nothing, and refusing a value on
+   * account of an entity that may never exist is worse than the duplicate the
+   * reservation guards against.
+   *
+   * Holds are counted rather than kept in a set, because two of them can want
+   * the same value at once — a roster row carrying what a prompt elsewhere
+   * fixes, or two rows carrying one value — and a set would let whichever hold
+   * ended first give away a value the other still needed.
+   */
+  reserve(scope: string, variableId: string, value: VariableValue): void {
+    const slot = this.slot(scope, variableId);
+    const holds = this.reserved.get(slot) ?? new Map<string, number>();
+    const key = valueKey(value);
+    holds.set(key, (holds.get(key) ?? 0) + 1);
+    this.reserved.set(slot, holds);
+  }
+
+  unreserve(scope: string, variableId: string, value: VariableValue): void {
+    const holds = this.reserved.get(this.slot(scope, variableId));
+    if (holds === undefined) return;
+
+    const key = valueKey(value);
+    const held = holds.get(key);
+    if (held === undefined) return;
+    if (held > 1) holds.set(key, held - 1);
+    else holds.delete(key);
+  }
+
+  isReserved(scope: string, variableId: string, value: VariableValue): boolean {
+    return (
+      this.reserved.get(this.slot(scope, variableId))?.has(valueKey(value)) ??
+      false
+    );
+  }
+
+  nextSeq(scope: string, variableId: string): number {
+    const slot = this.slot(scope, variableId);
+    const next = this.sequences.get(slot) ?? 0;
+    this.sequences.set(slot, next + 1);
+    return next;
+  }
+}

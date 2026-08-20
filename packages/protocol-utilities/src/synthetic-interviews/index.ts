@@ -6,6 +6,13 @@ import {
 } from '@codaco/protocol-validation';
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from './constants';
+import { createEntityConstraintCache } from './constraints/entityConstraintCache';
+import {
+  reservePromptFixedValues,
+  reserveRosterValues,
+} from './constraints/reservations';
+import { UniqueRegistry } from './constraints/uniqueRegistry';
+import { ValueGenerator } from './constraints/ValueGenerator';
 import { createSessionClock } from './session-engine/clock';
 import { SessionEngine } from './session-engine/engine';
 import {
@@ -13,7 +20,12 @@ import {
   type SyntheticInterviewResult,
 } from './session-engine/envelope';
 import { createSessionStreams } from './session-engine/streams';
+import { simulateCategoricalBin } from './simulators/CategoricalBin';
 import { simulateContentStage } from './simulators/contentStages';
+import { simulateEgoForm } from './simulators/EgoForm';
+import { simulateNameGenerator } from './simulators/NameGenerator';
+import { simulateNameGeneratorQuickAdd } from './simulators/NameGeneratorQuickAdd';
+import { simulateOrdinalBin } from './simulators/OrdinalBin';
 import type { AssetData, SimulatorRegistry } from './simulators/types';
 import { invariant } from './utils/invariant';
 import { walkSession } from './walk/walk';
@@ -29,13 +41,17 @@ export type {
 /**
  * The one simulator per interface type (spec rule 1). A type absent here
  * makes the walk throw a structured error — never a silent fallthrough. The
- * per-interface simulators register as their phases land; the content stages
- * are the complete Phase-2 set.
+ * remaining fourteen interfaces register as Phase 3 lands them.
  */
 const REGISTRY: SimulatorRegistry = {
   Anonymisation: simulateContentStage,
+  CategoricalBin: simulateCategoricalBin,
+  EgoForm: simulateEgoForm,
   Information: simulateContentStage,
+  NameGenerator: simulateNameGenerator,
+  NameGeneratorQuickAdd: simulateNameGeneratorQuickAdd,
   Narrative: simulateContentStage,
+  OrdinalBin: simulateOrdinalBin,
 };
 
 export const generateInterviewsOptions = z
@@ -139,6 +155,26 @@ export const generateInterviews = (
       captureTrace: options.captureTrace,
     });
 
+    const today = clock.startTime.slice(0, 10);
+    // Values are the one thing NOT drawn from the session's substreams: the
+    // constraint machinery needs personas rather than uniform bits, so it
+    // keeps its own faker, seeded from the same batch seed and this session's
+    // position in it.
+    const valueGen = new ValueGenerator(options.seed + index, today);
+    const uniqueRegistry = new UniqueRegistry();
+    const entityConstraints = createEntityConstraintCache({
+      codebook: protocol.codebook,
+      today,
+      interfaceRules,
+    });
+
+    // Before the first stage runs, so a value a later prompt fixes — or one a
+    // roster row is carrying — is out of the way of the draws that come
+    // before it.
+    const handles = { entityConstraints, uniqueRegistry };
+    reservePromptFixedValues(handles, protocol.stages);
+    reserveRosterValues(handles, protocol.stages, assetData);
+
     const outcome = walkSession({
       stages: protocol.stages,
       registry: REGISTRY,
@@ -147,8 +183,11 @@ export const generateInterviews = (
         streams,
         protocol,
         assetData,
-        today: clock.startTime.slice(0, 10),
+        today,
         interfaceRules,
+        valueGen,
+        uniqueRegistry,
+        entityConstraints,
       },
       clock,
       streams,
