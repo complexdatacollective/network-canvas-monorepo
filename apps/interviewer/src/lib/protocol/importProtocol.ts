@@ -11,6 +11,7 @@ import {
   loadNetcanvasArchive,
   migrateProtocol,
   validateProtocol,
+  type VersionedProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
@@ -85,9 +86,14 @@ export async function peekProtocolName(
   }
 }
 
+// `extractProtocolFromZip` genuinely returns a `VersionedProtocol` (asserted
+// where it parses `protocol.json`, validated below); this wrapper used to widen
+// it back to `unknown`, which is what forced the hash to be taken from the
+// parse output. Keeping the type is what lets the document be hashed as it
+// arrived.
 async function extractZip(
   buffer: Uint8Array,
-): Promise<{ protocol: unknown; assets: ExtractedAsset[] }> {
+): Promise<{ protocol: VersionedProtocol; assets: ExtractedAsset[] }> {
   const zip = await loadNetcanvasArchive(buffer);
   return extractProtocolFromZip(zip);
 }
@@ -107,7 +113,7 @@ function describeImportFailure(cause: unknown, fallback: string): string {
 }
 
 async function importParsedProtocol(
-  document: unknown,
+  document: VersionedProtocol,
   assets: ExtractedAsset[],
   sourceName: string,
   onProgress?: OnImportProgress,
@@ -115,7 +121,7 @@ async function importParsedProtocol(
 ): Promise<ImportProtocolResult> {
   const version = detectSchemaVersion(document);
 
-  let migratedDocument: unknown = document;
+  let migratedDocument: VersionedProtocol = document;
   let didMigrate = false;
   if (version !== APP_SCHEMA_VERSION) {
     const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
@@ -175,7 +181,14 @@ async function importParsedProtocol(
   }
 
   const validated: CurrentProtocol = validation.data;
-  const hash = hashProtocol(validated);
+  // Hashed from the document as it arrived (post-migration, pre-validation),
+  // never from `validation.data`. A researcher's authored `synthetic` blocks
+  // live in the file and must move the hash; defaults the schema injects during
+  // parsing must not (spec decision 15). The hash is this protocol's Dexie row
+  // id and the prefix of every one of its asset row ids, so a hash that drifted
+  // with the schema would turn a re-import of an installed protocol into a
+  // second row and orphan the sessions pointing at the first.
+  const hash = hashProtocol(migratedDocument);
 
   onProgress?.({ phase: 'saving' });
 
@@ -204,7 +217,7 @@ async function importFromBuffer(
 ): Promise<ImportProtocolResult> {
   onProgress?.({ phase: 'extracting' });
 
-  let extracted: { protocol: unknown; assets: ExtractedAsset[] };
+  let extracted: { protocol: VersionedProtocol; assets: ExtractedAsset[] };
   try {
     extracted = await extractZip(buffer);
   } catch (cause) {
@@ -238,7 +251,11 @@ export async function importProtocolFromFile(
 }
 
 export function importBundledProtocol(
-  bundled: { document: unknown; assets: ExtractedAsset[]; name: string },
+  bundled: {
+    document: VersionedProtocol;
+    assets: ExtractedAsset[];
+    name: string;
+  },
   onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
   onProgress?.({ phase: 'extracting' });

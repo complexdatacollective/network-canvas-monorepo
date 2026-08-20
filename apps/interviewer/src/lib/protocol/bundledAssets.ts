@@ -1,10 +1,15 @@
 import {
   type ExtractedAsset,
   getAssetMimeType,
+  type VersionedProtocol,
 } from '@codaco/protocol-validation';
 
 export type BundledProtocol = {
-  document: unknown;
+  // The same shape `extractProtocolFromZip` returns for an imported archive:
+  // asserted where the JSON module is loaded, validated by the import flow.
+  // Typing it honestly here is what lets the import flow hash the document it
+  // was handed rather than the schema's parse of it.
+  document: VersionedProtocol;
   assets: ExtractedAsset[];
   name: string;
 };

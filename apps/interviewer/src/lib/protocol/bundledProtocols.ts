@@ -1,3 +1,4 @@
+import { type VersionedProtocol } from '@codaco/protocol-validation';
 import sampleProtocolJson from '@codaco/protocols/sample';
 
 import { type BundledProtocol, resolveAssets } from './bundledAssets';
@@ -12,7 +13,13 @@ const sampleAssetBytes = import.meta.glob<ArrayBuffer>(
 );
 
 export function loadBundledSampleProtocol(): Promise<BundledProtocol> {
-  const document: unknown = sampleProtocolJson;
+  // The single assertion boundary for this document, matching
+  // `extractProtocolFromZip`'s treatment of an archive's `protocol.json`:
+  // asserted here, validated by the import flow, never re-asserted downstream.
+  // A JSON module's inferred literal type cannot describe the discriminated
+  // union, so the widening step is unavoidable — it belongs here and nowhere
+  // else.
+  const document = sampleProtocolJson as unknown as VersionedProtocol;
   return Promise.resolve({
     document,
     assets: resolveAssets(document, sampleAssetBytes),

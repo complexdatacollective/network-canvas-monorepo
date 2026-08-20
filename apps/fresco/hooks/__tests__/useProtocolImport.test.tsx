@@ -8,6 +8,7 @@ import { hashProtocol } from '@codaco/protocol-validation';
 
 type InsertProtocolInput = {
   protocol: { codebook: unknown; stages: unknown };
+  protocolHash: string;
   protocolName: string;
   newAssets: unknown[];
   existingAssetIds: string[];
@@ -111,14 +112,6 @@ const SYNTHETIC_SHOWCASE = path.resolve(
   '../../../../packages/protocols/e2e/synthetic-showcase/protocol.json',
 );
 
-/**
- * `protocolHash` joins `insertProtocol`'s input in Phase 1 (plan §1.3), when
- * the dedupe hash is threaded through instead of being recomputed server-side.
- * Reading it through a helper keeps this file compiling against today's shape.
- */
-const storedHash = (input: InsertProtocolInput | undefined) =>
-  (input as { protocolHash?: string } | undefined)?.protocolHash;
-
 /** A zip stand-in exposing only what the import flow reads from one. */
 const zipContaining = (document: unknown) => ({
   file: (name: string) =>
@@ -143,7 +136,7 @@ const runImport = async (document: unknown) => {
   });
 };
 
-describe('hash boundary (activated in Phase 1 — plan §1.3)', () => {
+describe('hash boundary (plan §1.3)', () => {
   beforeEach(() => {
     getProtocolByHash.mockResolvedValue(null);
     getNewAssetIds.mockResolvedValue([]);
@@ -165,9 +158,7 @@ describe('hash boundary (activated in Phase 1 — plan §1.3)', () => {
     vi.clearAllMocks();
   });
 
-  // Activated in Phase 1 (plan §1.3): remove .skip when the synthetic schema
-  // and pre-parse hashing land.
-  it.skip("dedupe hash and stored hash agree and equal the raw document's", async () => {
+  it("dedupe hash and stored hash agree and equal the raw document's", async () => {
     await runImport(MINIMAL_PROTOCOL);
 
     // One computation, threaded: the hash a duplicate is detected by and the
@@ -176,11 +167,20 @@ describe('hash boundary (activated in Phase 1 — plan §1.3)', () => {
     // defaults the current schema resolves onto it.
     const rawHash = hashProtocol(MINIMAL_PROTOCOL);
     expect(getProtocolByHash).toHaveBeenCalledWith(rawHash);
-    expect(storedHash(insertProtocol.mock.calls[0]?.[0])).toBe(rawHash);
+    expect(insertProtocol.mock.calls[0]?.[0]?.protocolHash).toBe(rawHash);
+
+    // Paired with the equality above so neither half can pass vacuously: the
+    // parse output this protocol validates to is a different document, so a
+    // hash taken from it — at either site — would be a different number.
+    const parsed = insertProtocol.mock.calls[0]?.[0]?.protocol;
+    expect(parsed).toBeDefined();
+    if (!parsed) return;
+    expect(hashProtocol(parsed)).not.toBe(rawHash);
   });
 
-  // Activated in Phase 1 (plan §1.3): remove .skip when the synthetic schema
-  // and pre-parse hashing land.
+  // Still skipped after Phase 1.3: the showcase protocol this reads lands in
+  // the parallel §1.5 workstream. Un-skip when integrating that work — the
+  // hash boundary it depends on is already in place.
   it.skip('imports a protocol carrying authored synthetic blocks cleanly', async () => {
     const showcase: unknown = JSON.parse(
       readFileSync(SYNTHETIC_SHOWCASE, 'utf8'),

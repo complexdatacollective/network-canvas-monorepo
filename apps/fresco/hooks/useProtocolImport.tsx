@@ -194,7 +194,15 @@ export const useProtocolImport = () => {
 
       // Phase: Checking duplicates
       updateToastPhase(toastId, 'checking-duplicates');
-      const protocolHash = hashProtocol(validatedProtocol);
+      // Computed once, here, and threaded to `insertProtocol` below. The hash a
+      // duplicate is detected by and the hash a protocol is stored under have
+      // to be the same number — two independent computations of "the protocol's
+      // hash" would silently stop agreeing the moment their inputs diverged,
+      // and duplicate detection would fail open. It is taken from the document
+      // as validated rather than as parsed so that a researcher's authored
+      // content moves it and the schema's injected defaults do not (spec
+      // decision 15).
+      const protocolHash = hashProtocol(validationResult.documentForHashing);
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
@@ -303,6 +311,7 @@ export const useProtocolImport = () => {
       updateToastPhase(toastId, 'saving');
       const result = await insertProtocol({
         protocol: validatedProtocol,
+        protocolHash,
         protocolName: fileName,
         newAssets: [...newAssetsWithCombinedMetadata, ...newApikeyAssets],
         existingAssetIds: existingAssetIds,

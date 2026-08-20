@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { type VersionedProtocol } from '@codaco/protocol-validation';
+
 import { loadBundledSampleProtocol } from '../bundledProtocols';
 import { importBundledProtocol } from '../importProtocol';
 
@@ -24,9 +26,8 @@ describe('bundled sample protocol', () => {
 
   it('loads the bundled sample document and its assets without network', async () => {
     const bundled = await loadBundledSampleProtocol();
-    const doc = bundled.document as { schemaVersion: number; name: string };
 
-    expect(doc.schemaVersion).toBe(8);
+    expect(bundled.document.schemaVersion).toBe(8);
     expect(bundled.name).toBe('Sample Protocol');
     // Sample protocol ships media assets; they must be resolved to Blobs.
     expect(bundled.assets.length).toBeGreaterThan(0);
@@ -66,12 +67,16 @@ describe('bundled sample protocol', () => {
     const result = await importBundledProtocol({
       name: 'Invalid Protocol',
       assets: [],
+      // Deliberately malformed. `BundledProtocol.document` is typed as the
+      // document a loader asserts it has — the same assertion the archive
+      // reader makes — so a document that is *not* one can only be described
+      // here by widening, which is exactly the runtime path under test.
       document: {
         schemaVersion: 8,
         name: 'Invalid Protocol',
         codebook: {},
         stages: 'not an array',
-      },
+      } as unknown as VersionedProtocol,
     });
 
     expect(result.success).toBe(false);

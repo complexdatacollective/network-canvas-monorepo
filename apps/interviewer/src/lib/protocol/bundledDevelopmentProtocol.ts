@@ -1,3 +1,4 @@
+import { type VersionedProtocol } from '@codaco/protocol-validation';
 import developmentProtocolJson from '@codaco/protocols/development';
 
 import { type BundledProtocol, resolveAssets } from './bundledAssets';
@@ -15,7 +16,9 @@ const developmentAssetBytes = import.meta.glob<ArrayBuffer>(
 );
 
 export function loadBundledDevelopmentProtocol(): Promise<BundledProtocol> {
-  const document: unknown = developmentProtocolJson;
+  // The single assertion boundary for this document — see the equivalent note
+  // in bundledProtocols.ts.
+  const document = developmentProtocolJson as unknown as VersionedProtocol;
   return Promise.resolve({
     document,
     assets: resolveAssets(document, developmentAssetBytes),
