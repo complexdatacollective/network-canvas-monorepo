@@ -31,13 +31,6 @@ import {
 } from './generateNetwork/attributes';
 import { resolveGenerationConfig } from './generateNetwork/config';
 import { buildVariableConstraints } from './generateNetwork/constraints/buildConstraints';
-import {
-  COMPOSER_RENDERING_CONFLICT,
-  type ComposerField,
-  type ComposerRendering,
-  type ComposerRenderings,
-  resolveComposerRenderings,
-} from './synthetic-interviews/constraints/composerRenderings';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
 import {
   type ConstraintConflict,
@@ -61,6 +54,13 @@ import {
   crossRuleBrokenByFixedValues,
   ownRuleBrokenByFixedValues,
 } from './generateNetwork/nodes';
+import {
+  COMPOSER_RENDERING_CONFLICT,
+  type ComposerField,
+  type ComposerRendering,
+  type ComposerRenderings,
+  resolveComposerRenderings,
+} from './synthetic-interviews/constraints/composerRenderings';
 import type {
   AddCategoricalBinPromptInput,
   AddDiseaseNominationStepInput,

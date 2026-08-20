@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  CurrentProtocolSchema,
   DEFAULT_RESPONSE_BURDEN,
   DROPOUT_HAZARD_RATE,
   type StageType,
@@ -50,42 +54,26 @@ const observedDropoutRate = (
   return dropouts / trials;
 };
 
-// The sample protocol's stage sequence, which DROPOUT_HAZARD_RATE is
-// calibrated against. Kept as bare types rather than pulled from
-// @codaco/protocols: the calibration depends only on the burden profile, and
-// the dropout model has no other use for the protocol itself.
-const SAMPLE_PROTOCOL_STAGE_TYPES: StageType[] = [
-  'Information',
-  'Information',
-  'Information',
-  'EgoForm',
-  'EgoForm',
-  'Information',
-  'NameGeneratorQuickAdd',
-  'Information',
-  'NameGeneratorQuickAdd',
-  'Information',
-  'NameGenerator',
-  'Information',
-  'NameGeneratorRoster',
-  'NameGeneratorRoster',
-  'AlterForm',
-  'Information',
-  'Sociogram',
-  'Sociogram',
-  'Information',
-  'Sociogram',
-  'DyadCensus',
-  'Information',
-  'Information',
-  'Sociogram',
-  'OrdinalBin',
-  'CategoricalBin',
-  'Information',
-  'CategoricalBin',
-  'Information',
-  'Narrative',
-];
+// The sample protocol itself — the burden profile DROPOUT_HAZARD_RATE is
+// calibrated against — parsed through the schema exactly as a host would, so
+// every stage carries the burden parsing resolved for it. Read by relative
+// path following `schemaOwnsParameters.test.ts`: packages/protocols is pure
+// data with no test runner of its own.
+const SAMPLE_PROTOCOL_BURDENS: CompletedStage[] = (
+  CurrentProtocolSchema.parse(
+    JSON.parse(
+      readFileSync(
+        path.resolve(
+          import.meta.dirname,
+          '../../../../../protocols/sample/protocol.json',
+        ),
+        'utf8',
+      ),
+    ),
+  ).stages as unknown as CompletedStage[]
+).map((stage) => ({
+  synthetic: { responseBurden: stage.synthetic.responseBurden },
+}));
 
 describe('determineDropout', () => {
   it('never ends a session before any stage has been completed', () => {
@@ -217,20 +205,33 @@ describe('determineDropout', () => {
     expect(rolled).toEqual(undisturbed);
   });
 
-  it('loses roughly one participant in ten across the sample protocol', () => {
-    // The calibration DROPOUT_HAZARD_RATE exists to hit. Each interview gets
-    // its own session streams, exactly as a batch from generateInterviews
-    // would.
-    const interviews = 5000;
-    let abandoned = 0;
+  it('matches the closed form within 1.5 points over 50k sample walks (C8)', () => {
+    // The docblock on DROPOUT_HAZARD_RATE derives the completion probability
+    // as exp(-rate * S), S being the sum of the cumulative burden at each
+    // stage. This measures the same quantity by simulation over the REAL
+    // parsed sample protocol — 50,000 seeded walks' worth of dropout rolls —
+    // and holds the two within one and a half percentage points. A drift in
+    // the schema's burden table, the sample protocol, or the roll itself
+    // moves the measured rate away from the closed form and fails here.
+    let S = 0;
+    let cumulative = 0;
+    for (const stage of SAMPLE_PROTOCOL_BURDENS) {
+      cumulative += stage.synthetic.responseBurden;
+      S += cumulative;
+    }
+    const closedForm = 1 - Math.exp(-DROPOUT_HAZARD_RATE * S);
 
+    // The calibration target the docblock states: roughly one in ten.
+    expect(closedForm).toBeGreaterThan(0.08);
+    expect(closedForm).toBeLessThan(0.12);
+
+    const interviews = 50000;
+    let abandoned = 0;
     for (let interview = 0; interview < interviews; interview += 1) {
       const streams = createSessionStreams(TEST_SEED, interview);
       const completedStages: CompletedStage[] = [];
-
-      for (const type of SAMPLE_PROTOCOL_STAGE_TYPES) {
-        completedStages.push(completed(type));
-
+      for (const stage of SAMPLE_PROTOCOL_BURDENS) {
+        completedStages.push(stage);
         if (determineDropout(completedStages, streams)) {
           abandoned += 1;
           break;
@@ -238,9 +239,7 @@ describe('determineDropout', () => {
       }
     }
 
-    const rate = abandoned / interviews;
-
-    expect(rate).toBeGreaterThan(0.07);
-    expect(rate).toBeLessThan(0.14);
+    const measured = abandoned / interviews;
+    expect(Math.abs(measured - closedForm)).toBeLessThan(0.015);
   });
 });

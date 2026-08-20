@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { buildStageAvailabilityMap } from '@codaco/network-query';
@@ -14,8 +17,12 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import {
+  BIOLOGICAL_SEX_OPTIONS,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  GAMETE_ROLE_OPTIONS,
+  isFamilyPedigreeStageMetadata,
+  RELATIONSHIP_TYPE_OPTIONS,
   type SessionPayload,
 } from '@codaco/shared-consts';
 
@@ -1090,4 +1097,413 @@ describe('replay parity (C1) — edge-heavy interfaces', () => {
     expect(result.session.stageMetadata?.['2']).toBeDefined();
     expect(result.session.stageMetadata?.['4']).toBeUndefined();
   });
+});
+
+// ---------------------------------------------------------------------------
+// The last data-writing interfaces: NetworkComposer's palette (nodes at grid
+// positions, per-type topology, inspector and edge forms), Geospatial's
+// area selections from host-resolved candidates, and FamilyPedigree's
+// whole-family commit (foreign-shaped attributes, plain edges, object
+// metadata) with its NarrativePedigree companion.
+// ---------------------------------------------------------------------------
+
+const composerGeoProtocol = (): CurrentProtocol =>
+  CurrentProtocolSchema.parse({
+    name: 'Replay parity: composer and geospatial',
+    schemaVersion: 8,
+    assetManifest: {
+      'mapbox-token': {
+        id: 'mapbox-token',
+        name: 'Mapbox token',
+        type: 'apikey',
+        value: 'pk.test',
+      },
+      'regions': {
+        id: 'regions',
+        name: 'Regions',
+        type: 'geojson',
+        source: 'regions.geojson',
+      },
+    },
+    codebook: {
+      ego: {
+        variables: {
+          consent: { name: 'consent', type: 'boolean', component: 'Toggle' },
+        },
+      },
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: {
+              name: 'name',
+              type: 'text',
+              component: 'Text',
+              validation: { required: true, unique: true },
+            },
+            layout: { name: 'layout', type: 'layout' },
+            age: {
+              name: 'age',
+              type: 'number',
+              component: 'Number',
+              validation: { minValue: 18, maxValue: 90 },
+            },
+          },
+        },
+        venue: {
+          name: 'Venue',
+          color: 'node-color-seq-2',
+          shape: { default: 'square' },
+          variables: {
+            title: { name: 'title', type: 'text', component: 'Text' },
+            location: { name: 'location', type: 'location' },
+          },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'strength',
+              type: 'ordinal',
+              options: [
+                { label: 'Strong', value: 3 },
+                { label: 'Middling', value: 2 },
+                { label: 'Weak', value: 1 },
+              ],
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'composer',
+        type: 'NetworkComposer',
+        label: 'Compose the network',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: asEntityAttributeReference('name'),
+        layoutVariable: asEntityAttributeReference('layout'),
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        synthetic: {
+          count: { distribution: 'constant', value: 3 },
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.6 },
+          },
+        },
+        nodeForm: {
+          fields: [
+            {
+              variable: asEntityAttributeReference('age'),
+              component: 'Number',
+            },
+          ],
+        },
+        edges: [
+          {
+            id: 'friend-entry',
+            subject: { entity: 'edge', type: 'friend' },
+            form: {
+              fields: [
+                {
+                  variable: asEntityAttributeReference('strength'),
+                  component: 'LikertScale',
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: 'venues',
+        type: 'NameGeneratorQuickAdd',
+        label: 'Venues',
+        quickAdd: asEntityAttributeReference('title'),
+        subject: { entity: 'node', type: 'venue' },
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+        prompts: [{ id: 'v-1', text: 'Where do you go?' }],
+      },
+      {
+        id: 'geospatial',
+        type: 'Geospatial',
+        label: 'Places',
+        subject: { entity: 'node', type: 'venue' },
+        mapOptions: {
+          tokenAssetId: 'mapbox-token',
+          style: 'mapbox://styles/mapbox/standard',
+          center: [-74, 40.7],
+          initialZoom: 10,
+          dataSourceAssetId: 'regions',
+          color: '#3399ff',
+          targetFeatureProperty: 'name',
+        },
+        prompts: [
+          {
+            id: 'geo-1',
+            text: 'Where is it?',
+            variable: asEntityAttributeReference('location'),
+          },
+        ],
+      },
+    ],
+  }) as CurrentProtocol;
+
+const composerGeoAssetData: AssetData = {
+  geojsonPropertyValues: { geospatial: ['Downtown', 'Harbor', 'Hills'] },
+};
+
+const pedigreeProtocol = (): CurrentProtocol =>
+  CurrentProtocolSchema.parse({
+    name: 'Replay parity: family pedigree',
+    schemaVersion: 8,
+    codebook: {
+      ego: {
+        variables: {
+          consent: { name: 'consent', type: 'boolean', component: 'Toggle' },
+        },
+      },
+      node: {
+        'family-member': {
+          name: 'Family member',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: {
+              name: 'name',
+              type: 'text',
+              component: 'Text',
+              validation: { unique: true },
+            },
+            isEgo: { name: 'isEgo', type: 'boolean' },
+            relationship: { name: 'relationship', type: 'text' },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: [...BIOLOGICAL_SEX_OPTIONS],
+            },
+            condition: { name: 'condition', type: 'boolean' },
+          },
+        },
+      },
+      edge: {
+        'family-edge': {
+          name: 'Family edge',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'relationshipType',
+              type: 'categorical',
+              options: [...RELATIONSHIP_TYPE_OPTIONS],
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+            gameteRole: {
+              name: 'gameteRole',
+              type: 'categorical',
+              options: [...GAMETE_ROLE_OPTIONS],
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'family-stage',
+        type: 'FamilyPedigree',
+        label: 'Your family',
+        nodeConfig: {
+          type: 'family-member',
+          nodeLabelVariable: asEntityAttributeReference('name'),
+          egoVariable: asEntityAttributeReference('isEgo'),
+          relationshipVariable: asEntityAttributeReference('relationship'),
+          biologicalSexVariable: asEntityAttributeReference('biologicalSex'),
+        },
+        edgeConfig: {
+          type: 'family-edge',
+          relationshipTypeVariable:
+            asEntityAttributeReference('relationshipType'),
+          isActiveVariable: asEntityAttributeReference('isActive'),
+          isGestationalCarrierVariable: asEntityAttributeReference(
+            'isGestationalCarrier',
+          ),
+          gameteRoleVariable: asEntityAttributeReference('gameteRole'),
+        },
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'required',
+          requireChildrenContributors: 'off',
+        },
+        censusPrompt: 'Build your family.',
+        nominationPrompts: [
+          {
+            id: 'condition-prompt',
+            text: 'Who has this?',
+            variable: asEntityAttributeReference('condition'),
+          },
+        ],
+      },
+      {
+        id: 'narrative-stage',
+        type: 'NarrativePedigree',
+        label: 'The condition',
+        sourceStageId: 'family-stage',
+        showAtRiskStatuses: true,
+        diseases: [
+          {
+            id: 'condition',
+            label: 'Condition',
+            color: '#cc0000',
+            variable: asEntityAttributeReference('condition'),
+            inheritancePattern: 'autosomalDominant',
+          },
+        ],
+      },
+    ],
+  }) as CurrentProtocol;
+
+describe('replay parity (C1) — composer, geospatial, pedigree', () => {
+  it.each([42, 7])(
+    'composer and geospatial hold across seed %d',
+    async (seed) => {
+      await assertReplayParity(
+        composerGeoProtocol(),
+        {
+          seed,
+          startWindow: '2026-08-20T12:00:00.000Z',
+          count: 1,
+          respectSkipLogic: true,
+          simulateDropOut: false,
+        },
+        composerGeoAssetData,
+      );
+    },
+  );
+
+  it('geospatial holds with no resolved candidates (all-sentinel)', async () => {
+    await assertReplayParity(composerGeoProtocol(), {
+      ...PINNED,
+      count: 1,
+      respectSkipLogic: true,
+    });
+  });
+
+  it.each([42, 7])('the pedigree pair holds across seed %d', async (seed) => {
+    await assertReplayParity(pedigreeProtocol(), {
+      seed,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      count: 1,
+      respectSkipLogic: true,
+      simulateDropOut: false,
+    });
+  });
+
+  it('is not vacuous: a family, its edges, and located venues all land', () => {
+    const [composerRun] = generateInterviews(
+      composerGeoProtocol(),
+      {
+        seed: 42,
+        startWindow: '2026-08-20T12:00:00.000Z',
+        count: 1,
+        simulateDropOut: false,
+      },
+      composerGeoAssetData,
+    );
+    const [familyRun] = generateInterviews(pedigreeProtocol(), {
+      seed: 42,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      count: 1,
+      simulateDropOut: false,
+    });
+    expect(composerRun).toBeDefined();
+    expect(familyRun).toBeDefined();
+    if (!composerRun || !familyRun) throw new Error('unreachable');
+
+    const composed = composerRun.session.network;
+    const persons = (composed?.nodes ?? []).filter(
+      (node) => node.type === 'person',
+    );
+    expect(persons.length).toBe(3);
+    for (const person of persons) {
+      expect(person[entityAttributesProperty]['layout']).toBeDefined();
+    }
+    const venues = (composed?.nodes ?? []).filter(
+      (node) => node.type === 'venue',
+    );
+    expect(venues.length).toBe(3);
+    for (const venue of venues) {
+      expect([
+        'Downtown',
+        'Harbor',
+        'Hills',
+        'outside-selectable-areas',
+      ]).toContain(venue[entityAttributesProperty]['location']);
+    }
+    // Density 0.6 over three people = 1.8 -> a whole number of friend ties.
+    expect(
+      (composed?.edges ?? []).filter((edge) => edge.type === 'friend').length,
+    ).toBeGreaterThan(0);
+
+    const family = familyRun.session.network;
+    expect(
+      (family?.nodes ?? []).filter((node) => node.type === 'family-member')
+        .length,
+    ).toBeGreaterThan(2);
+    expect(
+      (family?.edges ?? []).filter((edge) => edge.type === 'family-edge')
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      isFamilyPedigreeStageMetadata(familyRun.session.stageMetadata?.['0']),
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Full-protocol legs: the bundled protocols researchers actually run, parsed
+// through the schema as a host would and replayed whole. Roster and geojson
+// pools stay unresolved — a legal host outcome (D18) whose sessions must
+// replay like any other.
+// ---------------------------------------------------------------------------
+
+const bundledProtocol = (file: string): CurrentProtocol =>
+  CurrentProtocolSchema.parse(
+    JSON.parse(
+      readFileSync(
+        path.resolve(import.meta.dirname, '../../protocols', file),
+        'utf8',
+      ),
+    ),
+  ) as CurrentProtocol;
+
+describe('replay parity (C1) — the bundled protocols, whole', () => {
+  it.each([
+    ['development', 'development/protocol.json'],
+    ['sample', 'sample/protocol.json'],
+    ['synthetic showcase', 'e2e/synthetic-showcase/protocol.json'],
+  ])(
+    'the %s protocol replays end to end',
+    async (_name, file) => {
+      const result = await assertReplayParity(bundledProtocol(file), {
+        seed: 42,
+        startWindow: '2026-08-20T12:00:00.000Z',
+        count: 1,
+        respectSkipLogic: true,
+        simulateDropOut: false,
+      });
+      // Not vacuous: a real protocol's walk produces people.
+      expect(result?.session.network?.nodes.length ?? 0).toBeGreaterThan(0);
+    },
+    // A whole-protocol replay dispatches hundreds of thunks; under a full
+    // parallel suite the default five seconds is not a statement about
+    // correctness.
+    60_000,
+  );
 });

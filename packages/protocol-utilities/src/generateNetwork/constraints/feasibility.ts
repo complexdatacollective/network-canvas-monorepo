@@ -13,12 +13,12 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { ResolvedGenerationConfig } from '../config';
-import { isContentStage } from '../contentStages';
 import {
   PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
   type ResolvedFamilyPedigreeGenerationOptions,
 } from '../../synthetic-interviews/simulators/familyPedigree/types';
+import type { ResolvedGenerationConfig } from '../config';
+import { isContentStage } from '../contentStages';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,

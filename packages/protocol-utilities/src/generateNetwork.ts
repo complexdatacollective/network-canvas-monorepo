@@ -14,10 +14,6 @@ import {
 } from './generateNetwork/config';
 import { collectBinOnlyVariables } from './generateNetwork/constraints/binOnlyVariables';
 import { buildEntityConstraints } from './generateNetwork/constraints/buildConstraints';
-import {
-  applyComposerRenderings,
-  COMPOSER_RENDERING_CONFLICT,
-} from './synthetic-interviews/constraints/composerRenderings';
 import { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
 import { analyseFeasibility } from './generateNetwork/constraints/feasibility';
 import { reachableStagesForFeasibility } from './generateNetwork/constraints/reachableStages';
@@ -28,11 +24,6 @@ import type {
   GenerationContext,
   NetworkDraft,
 } from './generateNetwork/context';
-import { materializeFamilyPedigree } from './synthetic-interviews/simulators/familyPedigree/materializeFamilyPedigree';
-import { resolveFamilyPedigreeGenerationOptions } from './synthetic-interviews/simulators/familyPedigree/referencePopulation';
-import { reserveFamilyPedigreeFixedValues } from './synthetic-interviews/simulators/familyPedigree/reservations';
-import { familyPedigreeSeed } from './synthetic-interviews/simulators/familyPedigree/seed';
-import type { FamilyPedigreeGenerationOptions } from './synthetic-interviews/simulators/familyPedigree/types';
 import { buildCurrentNetwork } from './generateNetwork/filtering';
 import { markStageInProgress } from './generateNetwork/inProgress';
 import {
@@ -53,6 +44,15 @@ import {
   handleSociogram,
   handleTieStrengthCensus,
 } from './generateNetwork/stageHandlers';
+import {
+  applyComposerRenderings,
+  COMPOSER_RENDERING_CONFLICT,
+} from './synthetic-interviews/constraints/composerRenderings';
+import { materializeFamilyPedigree } from './synthetic-interviews/simulators/familyPedigree/materializeFamilyPedigree';
+import { resolveFamilyPedigreeGenerationOptions } from './synthetic-interviews/simulators/familyPedigree/referencePopulation';
+import { reserveFamilyPedigreeFixedValues } from './synthetic-interviews/simulators/familyPedigree/reservations';
+import { familyPedigreeSeed } from './synthetic-interviews/simulators/familyPedigree/seed';
+import type { FamilyPedigreeGenerationOptions } from './synthetic-interviews/simulators/familyPedigree/types';
 import { ValueGenerator } from './ValueGenerator';
 
 export type GenerateNetworkParams = {

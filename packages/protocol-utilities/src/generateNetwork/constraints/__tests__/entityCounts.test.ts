@@ -14,8 +14,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork';
-import { resolveGenerationConfig } from '../../config';
 import { resolveFamilyPedigreeGenerationOptions } from '../../../synthetic-interviews/simulators/familyPedigree/referencePopulation';
+import { resolveGenerationConfig } from '../../config';
 import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,

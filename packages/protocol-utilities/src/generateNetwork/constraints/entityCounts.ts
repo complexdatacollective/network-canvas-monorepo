@@ -11,13 +11,13 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { GenerationConfig } from '../config';
-import type { StageOfType } from '../context';
 import {
   attainableFamilyPedigreeNodeCeiling,
   canAttainFamilyPedigreeEgoChildBranch,
 } from '../../synthetic-interviews/simulators/familyPedigree/generateFamilyPedigree';
 import type { ResolvedFamilyPedigreeGenerationOptions } from '../../synthetic-interviews/simulators/familyPedigree/types';
+import type { GenerationConfig } from '../config';
+import type { StageOfType } from '../context';
 import {
   fabricatedPromptNodeCeiling,
   getNodeCountBounds,
