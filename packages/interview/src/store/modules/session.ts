@@ -227,19 +227,31 @@ export const addNode = createAppAsyncThunk(
   },
 );
 
+type AddEdgeArgs = {
+  from: NcNode[EntityPrimaryKey];
+  to: NcNode[EntityPrimaryKey];
+  type: NcNode['type'];
+  attributeData?: Readonly<Record<string, VariableValue | undefined>>;
+  /**
+   * Optional caller-supplied edge id, used in place of a freshly minted uuid.
+   * Mirrors the channel `addNode` already offers for nodes, so a synthetic
+   * interview trace can be replayed through the real store under the ids the
+   * generation engine folded into its own session. That engine never imports
+   * this package (design decision 13), so replay parity (criterion C1) has no
+   * other way to line the two sets of ids up. An id already present in the
+   * network is rejected by the reducer.
+   */
+  modelData?: {
+    [entityPrimaryKeyProperty]: NcEdge[EntityPrimaryKey];
+  };
+  /** The host-controlled current stage step. Provide via `useCurrentStep()`. */
+  currentStep: number;
+};
+
 export const addEdge = createAppAsyncThunk(
   actionTypes.addEdge,
-  (
-    props: {
-      from: NcNode[EntityPrimaryKey];
-      to: NcNode[EntityPrimaryKey];
-      type: NcNode['type'];
-      attributeData?: Readonly<Record<string, VariableValue | undefined>>;
-      currentStep: number;
-    },
-    { getState },
-  ) => {
-    const { from, to, type, attributeData, currentStep } = props;
+  (props: AddEdgeArgs, { getState }) => {
+    const { from, to, type, attributeData, modelData, currentStep } = props;
     const state = getState();
     const sessionMeta = getSessionMeta(state, currentStep);
 
@@ -263,7 +275,7 @@ export const addEdge = createAppAsyncThunk(
       `Invalid edge attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
     );
 
-    const edgeId = uuid();
+    const edgeId = modelData?.[entityPrimaryKeyProperty] ?? uuid();
 
     return {
       sessionMeta,
@@ -271,6 +283,7 @@ export const addEdge = createAppAsyncThunk(
       to,
       type,
       attributeData: initialAttributes,
+      modelData,
       edgeId,
     };
   },
@@ -399,11 +412,19 @@ export const toggleEdge = createAppAsyncThunk(
       to: NcNode[EntityPrimaryKey];
       type: NcNode['type'];
       attributeData?: Readonly<Record<string, VariableValue | undefined>>;
+      /**
+       * Optional caller-supplied edge id, forwarded to `addEdge` when the
+       * toggle creates. See `AddEdgeArgs`. The deleting branch ignores it: the
+       * edge it removes is the one already in the network.
+       */
+      modelData?: {
+        [entityPrimaryKeyProperty]: NcEdge[EntityPrimaryKey];
+      };
       currentStep: number;
     },
     { getState, dispatch },
   ) => {
-    const { from, to, type, attributeData, currentStep } = props;
+    const { from, to, type, attributeData, modelData, currentStep } = props;
     const state = getState();
 
     const existingEdge = edgeExists(
@@ -417,7 +438,9 @@ export const toggleEdge = createAppAsyncThunk(
       return dispatch(deleteEdge(existingEdge));
     }
 
-    return dispatch(addEdge({ from, to, type, attributeData, currentStep }));
+    return dispatch(
+      addEdge({ from, to, type, attributeData, modelData, currentStep }),
+    );
   },
 );
 
@@ -834,8 +857,16 @@ const sessionReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(addEdge.fulfilled, (state, action) => {
     const {
-      payload: { from, to, type, attributeData, edgeId },
+      payload: { from, to, type, attributeData, modelData, edgeId },
     } = action;
+
+    // If an edge UUID is provided, check that it doesn't already exist in the network
+    if (modelData?.[entityPrimaryKeyProperty]) {
+      const existingEdge = find(state.network.edges, {
+        [entityPrimaryKeyProperty]: modelData[entityPrimaryKeyProperty],
+      });
+      invariant(!existingEdge, 'Edge with this ID already exists in network');
+    }
 
     const newEdge: NcEdge = {
       [entityPrimaryKeyProperty]: edgeId,

@@ -19,6 +19,7 @@ import sessionReducer, {
   addNodeToPrompt,
   deleteNode,
   removeNodeFromPrompt,
+  toggleEdge,
   toggleNodeAttributes,
   updateEdge,
   updateEgo,
@@ -833,6 +834,110 @@ describe('addEdge', () => {
         'edge-var-1': 5,
       });
     });
+  });
+
+  describe('injected edge ids', () => {
+    // The optional `modelData` channel exists so a synthetic interview trace
+    // can be replayed through the real store under the generation engine's own
+    // edge ids (design decision 13, criterion C1).
+    it('uses a supplied id instead of minting one', async () => {
+      const store = createMutationStore();
+
+      const result = await store.dispatch(
+        addEdge({
+          from: 'node-1',
+          to: 'node-3',
+          type: 'friendship',
+          modelData: { _uid: 'injected-edge-1' },
+          currentStep: 0,
+        }),
+      );
+
+      expect(result.type).toBe('NETWORK/ADD_EDGE/fulfilled');
+      const { edges } = store.getState().session.network;
+      expect(edges).toHaveLength(2);
+      expect(edges[1]?._uid).toBe('injected-edge-1');
+    });
+
+    it('mints an id when none is supplied', async () => {
+      const store = createMutationStore();
+
+      const result = await store.dispatch(
+        addEdge({
+          from: 'node-1',
+          to: 'node-3',
+          type: 'friendship',
+          currentStep: 0,
+        }),
+      );
+
+      expect(result.type).toBe('NETWORK/ADD_EDGE/fulfilled');
+      const { edges } = store.getState().session.network;
+      expect(edges).toHaveLength(2);
+      expect(edges[1]?._uid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
+
+    it('rejects a supplied id already in the network, without mutation', async () => {
+      const store = createMutationStore();
+      const before = structuredClone(store.getState().session);
+
+      // The duplicate check lives in the reducer, and Redux runs reducers
+      // outside the thunk's own try/catch — so the invariant surfaces as a
+      // thrown error rather than a rejected action.
+      await expect(
+        store.dispatch(
+          addEdge({
+            from: 'node-1',
+            to: 'node-3',
+            type: 'friendship',
+            modelData: { _uid: 'edge-1' },
+            currentStep: 0,
+          }),
+        ),
+      ).rejects.toThrow('Edge with this ID already exists in network');
+
+      expect(store.getState().session).toStrictEqual(before);
+    });
+  });
+});
+
+describe('toggleEdge', () => {
+  it('uses a supplied id when the toggle creates an edge', async () => {
+    const store = createMutationStore();
+
+    await store.dispatch(
+      toggleEdge({
+        from: 'node-1',
+        to: 'node-3',
+        type: 'friendship',
+        modelData: { _uid: 'injected-edge-2' },
+        currentStep: 0,
+      }),
+    );
+
+    const { edges } = store.getState().session.network;
+    expect(edges).toHaveLength(2);
+    expect(edges[1]?._uid).toBe('injected-edge-2');
+  });
+
+  it('still deletes an existing edge when an id is supplied', async () => {
+    const store = createMutationStore();
+
+    await store.dispatch(
+      toggleEdge({
+        from: 'node-1',
+        to: 'node-2',
+        type: 'friendship',
+        modelData: { _uid: 'unused-edge-id' },
+        currentStep: 0,
+      }),
+    );
+
+    // The deleting branch ignores the supplied id: it removes 'edge-1' and
+    // creates nothing.
+    expect(store.getState().session.network.edges).toEqual([]);
   });
 });
 
