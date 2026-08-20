@@ -15,7 +15,9 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../../generateNetwork';
-import { SyntheticDataConstraintError } from '../error';
+// The old engine is still this overlay's driving consumer, and it throws its
+// own copy of the refusal, so `instanceof` here has to name that one.
+import { SyntheticDataConstraintError } from '../../../generateNetwork/constraints/error';
 
 const TODAY = '2026-07-27';
 

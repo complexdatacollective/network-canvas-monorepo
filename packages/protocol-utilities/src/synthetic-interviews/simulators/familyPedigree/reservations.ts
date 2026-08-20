@@ -10,8 +10,8 @@ import {
   scopeKey,
   uniqueSlotMembers,
   type EntityScopeRef,
-} from '../constraints/generateEntityAttributes';
-import type { GenerationContext } from '../context';
+} from '../../../generateNetwork/constraints/generateEntityAttributes';
+import type { GenerationContext } from '../../../generateNetwork/context';
 import { storedPedigreeOptionValue } from './semanticValues';
 import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from './types';
 

@@ -12,21 +12,25 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { ValueGenerator } from '../../ValueGenerator';
 import {
   claimFixedValues,
   generateAttributesForEntity,
   replaceFixedValues,
-} from '../attributes';
-import { SyntheticDataConstraintError } from '../constraints/error';
-import type { EntityScopeRef } from '../constraints/generateEntityAttributes';
+} from '../../../generateNetwork/attributes';
+import { SyntheticDataConstraintError } from '../../../generateNetwork/constraints/error';
+import type { EntityScopeRef } from '../../../generateNetwork/constraints/generateEntityAttributes';
 import {
   pedigreeDrawnNodeVariables,
   pedigreeEgoNodeVariables,
   withRuleTiedVariables,
-} from '../constraints/stageWrites';
-import type { GenerationContext, NetworkDraft, StageOfType } from '../context';
-import { ruleBrokenByFixedValues } from '../nodes';
+} from '../../../generateNetwork/constraints/stageWrites';
+import type {
+  GenerationContext,
+  NetworkDraft,
+  StageOfType,
+} from '../../../generateNetwork/context';
+import { ruleBrokenByFixedValues } from '../../../generateNetwork/nodes';
+import { ValueGenerator } from '../../../ValueGenerator';
 import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
   readPedigreeOptionValue,

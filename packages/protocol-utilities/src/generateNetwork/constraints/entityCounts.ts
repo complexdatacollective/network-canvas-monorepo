@@ -16,8 +16,8 @@ import type { StageOfType } from '../context';
 import {
   attainableFamilyPedigreeNodeCeiling,
   canAttainFamilyPedigreeEgoChildBranch,
-} from '../familyPedigree/generateFamilyPedigree';
-import type { ResolvedFamilyPedigreeGenerationOptions } from '../familyPedigree/types';
+} from '../../synthetic-interviews/simulators/familyPedigree/generateFamilyPedigree';
+import type { ResolvedFamilyPedigreeGenerationOptions } from '../../synthetic-interviews/simulators/familyPedigree/types';
 import {
   fabricatedPromptNodeCeiling,
   getNodeCountBounds,

@@ -18,7 +18,7 @@ import { isContentStage } from '../contentStages';
 import {
   PEDIGREE_RELATIONSHIP_TO_EGO_VALUES,
   type ResolvedFamilyPedigreeGenerationOptions,
-} from '../familyPedigree/types';
+} from '../../synthetic-interviews/simulators/familyPedigree/types';
 import {
   collectPromptFixedAssignments,
   countPromptFixedValues,

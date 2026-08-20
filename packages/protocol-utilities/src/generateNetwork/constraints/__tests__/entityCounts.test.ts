@@ -15,7 +15,7 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork';
 import { resolveGenerationConfig } from '../../config';
-import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation';
+import { resolveFamilyPedigreeGenerationOptions } from '../../../synthetic-interviews/simulators/familyPedigree/referencePopulation';
 import { buildEntityConstraints } from '../buildConstraints';
 import {
   edgeCountFor,

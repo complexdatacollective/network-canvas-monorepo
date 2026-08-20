@@ -26,9 +26,13 @@ import { simulateCategoricalBin } from './simulators/CategoricalBin';
 import { simulateContentStage } from './simulators/contentStages';
 import { simulateDyadCensus } from './simulators/DyadCensus';
 import { simulateEgoForm } from './simulators/EgoForm';
+import { simulateFamilyPedigree } from './simulators/FamilyPedigree';
+import { familyPedigreeOptionsSchema } from './simulators/familyPedigree/options';
+import { simulateGeospatial } from './simulators/Geospatial';
 import { simulateNameGenerator } from './simulators/NameGenerator';
 import { simulateNameGeneratorQuickAdd } from './simulators/NameGeneratorQuickAdd';
 import { simulateNameGeneratorRoster } from './simulators/NameGeneratorRoster';
+import { simulateNetworkComposer } from './simulators/NetworkComposer';
 import { simulateOneToManyDyadCensus } from './simulators/OneToManyDyadCensus';
 import { simulateOrdinalBin } from './simulators/OrdinalBin';
 import { simulateSociogram } from './simulators/Sociogram';
@@ -57,12 +61,15 @@ export const REGISTRY: SimulatorRegistry = {
   CategoricalBin: simulateCategoricalBin,
   DyadCensus: simulateDyadCensus,
   EgoForm: simulateEgoForm,
+  FamilyPedigree: simulateFamilyPedigree,
+  Geospatial: simulateGeospatial,
   Information: simulateContentStage,
   NameGenerator: simulateNameGenerator,
   NameGeneratorQuickAdd: simulateNameGeneratorQuickAdd,
   NameGeneratorRoster: simulateNameGeneratorRoster,
   Narrative: simulateContentStage,
   NarrativePedigree: simulateContentStage,
+  NetworkComposer: simulateNetworkComposer,
   OneToManyDyadCensus: simulateOneToManyDyadCensus,
   OrdinalBin: simulateOrdinalBin,
   Sociogram: simulateSociogram,
@@ -100,6 +107,13 @@ export const generateInterviewsOptions = z
      * the machine's local time, silently making output timezone-dependent.
      */
     startWindow: z.string().datetime().optional(),
+    /**
+     * Family-pedigree population and scenario options, applied to every
+     * FamilyPedigree stage in the run. Run-level rather than protocol-embedded:
+     * a family is a structure, not a population. Omitted, every field resolves
+     * to the bundled reference profile, so existing callers are unaffected.
+     */
+    familyPedigree: familyPedigreeOptionsSchema.optional(),
     /** Capture the engine's write trace for parity testing. */
     captureTrace: z.boolean().default(false),
   })
@@ -205,6 +219,9 @@ export const generateInterviews = (
         valueGen,
         uniqueRegistry,
         entityConstraints,
+        ...(options.familyPedigree
+          ? { familyPedigree: options.familyPedigree }
+          : {}),
       },
       clock,
       streams,

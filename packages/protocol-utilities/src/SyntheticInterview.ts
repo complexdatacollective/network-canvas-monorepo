@@ -37,7 +37,7 @@ import {
   type ComposerRendering,
   type ComposerRenderings,
   resolveComposerRenderings,
-} from './generateNetwork/constraints/composerRenderings';
+} from './synthetic-interviews/constraints/composerRenderings';
 import { todayYmd } from './generateNetwork/constraints/dateWindow';
 import {
   type ConstraintConflict,

@@ -10,6 +10,7 @@ import type { UniqueRegistry } from '../constraints/uniqueRegistry';
 import type { ValueGenerator } from '../constraints/ValueGenerator';
 import type { SessionEngine } from '../session-engine/engine';
 import type { SessionStreams } from '../session-engine/streams';
+import type { FamilyPedigreeOptions } from './familyPedigree/options';
 
 /**
  * Host-resolved asset content the engine cannot fetch itself: roster rows
@@ -57,6 +58,13 @@ export type SimulationContext = {
    * never disagree about which slot a value belongs to.
    */
   entityConstraints: EntityConstraintCache;
+  /**
+   * Run-level family-pedigree population and scenario options, when the caller
+   * gave any. Deliberately not protocol-embedded: a family is a structure, not
+   * a population, so the protocol says what a pedigree collects and the caller
+   * says which population it stands for.
+   */
+  familyPedigree?: FamilyPedigreeOptions;
 };
 
 /**

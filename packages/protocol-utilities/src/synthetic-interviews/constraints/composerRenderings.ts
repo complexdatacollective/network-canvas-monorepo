@@ -7,10 +7,10 @@ import type {
 } from '@codaco/protocol-validation';
 import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
 
-import type { VariableEntry } from '../../types';
 import { buildVariableConstraints } from './buildConstraints';
 import type { DateWindow } from './dateWindow';
 import type { ConstraintConflict } from './error';
+import type { VariableEntry } from './variableEntry';
 
 /**
  * One NetworkComposer field's control, as its stage declares it.

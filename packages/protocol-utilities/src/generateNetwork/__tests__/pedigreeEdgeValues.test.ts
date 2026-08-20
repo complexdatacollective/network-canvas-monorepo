@@ -16,8 +16,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork';
-import { US_FAMILY_PEDIGREE_POPULATION } from '../familyPedigree/referencePopulation';
-import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../familyPedigree/types';
+import { US_FAMILY_PEDIGREE_POPULATION } from '../../synthetic-interviews/simulators/familyPedigree/referencePopulation';
+import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from '../../synthetic-interviews/simulators/familyPedigree/types';
 
 const familyStage = {
   id: 'family-stage',
