@@ -5,7 +5,6 @@ import { cx } from '~/utils/cva';
 import {
   thumbnailBase,
   thumbnailExisting,
-  thumbnailFullWidth,
   thumbnailIcon,
   thumbnailInteractive,
   thumbnailLabel,
@@ -17,20 +16,17 @@ type GeoJSONThumbnailProps = {
     name: string;
   };
   interactive?: boolean;
-  fullWidth?: boolean;
 };
 
 const GeoJSONThumbnail = ({
   id,
   meta = { name: '' },
   interactive,
-  fullWidth,
 }: GeoJSONThumbnailProps) => (
   <div
     className={cx(
       thumbnailBase,
       id === 'existing' && thumbnailExisting,
-      fullWidth && thumbnailFullWidth,
       interactive && thumbnailInteractive,
     )}
   >

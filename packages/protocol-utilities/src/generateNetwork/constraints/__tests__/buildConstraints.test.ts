@@ -372,7 +372,7 @@ describe('buildVariableConstraints', () => {
         TODAY,
       ),
     ).toThrow(
-      `Date variable "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
+      `Date attribute "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
     );
   });
 
@@ -596,7 +596,7 @@ describe('buildVariableConstraints', () => {
         TODAY,
       ),
     ).toThrow(
-      `Date variable "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
+      `Date attribute "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
         'Synthetic data generation needs a year of 0001 or later.',
     );
   });
@@ -626,7 +626,7 @@ describe('buildVariableConstraints', () => {
           TODAY,
         ),
       ).toThrow(
-        `Date variable "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
+        `Date attribute "Born" (v1) declares ${parameter} "${value}", whose year is earlier than its picker can offer. ` +
           'Synthetic data generation needs a year of 1000 or later.',
       );
     },
@@ -840,7 +840,7 @@ describe('buildVariableConstraints', () => {
           TODAY,
         ),
       ).toThrow(
-        `Date variable "Born" (v1) declares ${parameter} "2020-02-31", which is not a calendar date.`,
+        `Date attribute "Born" (v1) declares ${parameter} "2020-02-31", which is not a calendar date.`,
       );
     },
   );
@@ -871,7 +871,7 @@ describe('buildVariableConstraints', () => {
           TODAY,
         ),
       ).toThrow(
-        `Date variable "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
+        `Date attribute "Born" (v1) declares ${parameter} "${value}", which is not a calendar date.`,
       );
     },
   );

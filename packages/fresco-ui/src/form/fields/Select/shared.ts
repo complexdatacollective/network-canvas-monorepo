@@ -27,3 +27,33 @@ export type SelectOption = {
   label: string;
   disabled?: boolean;
 };
+
+/**
+ * A labelled set of options, rendered by the native select as a real
+ * `<optgroup>`.
+ *
+ * The alternative callers reached for before this existed — a disabled,
+ * value-less option standing in as a heading — is not a heading to anything:
+ * a screen reader announces it as one more option, its decoration
+ * ("-- Number Types --") lands inside the accessible name, and every such
+ * heading collapses to the same empty `value`, which React reports as a
+ * duplicate key.
+ */
+export type SelectOptionGroup = {
+  label: string;
+  options: SelectOption[];
+};
+
+export type SelectOptionOrGroup = SelectOption | SelectOptionGroup;
+
+export const isSelectOptionGroup = (
+  option: SelectOptionOrGroup,
+): option is SelectOptionGroup => 'options' in option;
+
+/** Every selectable option, with group membership discarded. */
+export const flattenSelectOptions = (
+  options: readonly SelectOptionOrGroup[],
+): SelectOption[] =>
+  options.flatMap((option) =>
+    isSelectOptionGroup(option) ? option.options : [option],
+  );

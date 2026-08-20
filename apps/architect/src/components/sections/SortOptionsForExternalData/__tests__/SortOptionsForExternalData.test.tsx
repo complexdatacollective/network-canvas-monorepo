@@ -55,7 +55,7 @@ describe('SortOptionsForExternalData', () => {
       children: <SortOptionsForExternalData {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Sort Options' }));
     await waitFor(() => {
       expect(getFieldState('sortOptions.sortOrder')?.value).toBeUndefined();
     });
@@ -63,7 +63,7 @@ describe('SortOptionsForExternalData', () => {
       getFieldState('sortOptions.sortableProperties')?.value,
     ).toBeUndefined();
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Sort Options' }));
     await waitFor(() => {
       expect(getFieldState('sortOptions.sortOrder')).not.toBeUndefined();
     });

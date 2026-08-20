@@ -1,11 +1,11 @@
 import { cookies } from 'next/headers';
 import { after, NextResponse } from 'next/server';
 
+import { ensureError } from '@codaco/shared-consts';
 import { addEvent } from '~/lib/activityFeed';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
-import { ensureError } from '~/utils/ensureError';
 
 export async function POST(
   _request: Request,

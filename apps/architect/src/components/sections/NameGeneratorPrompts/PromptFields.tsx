@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -19,11 +18,12 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
+import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
 import {
-  getVariableRoleMapOutsideStage,
-  roleMapKey,
-} from '~/selectors/indexes';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+  hasValidatedUse,
+} from '~/selectors/roleFilters';
 
 /**
  * Stable identities for the empty cases. `EMPTY_ATTRIBUTES` feeds
@@ -52,12 +52,20 @@ export const getAdditionalAttributesOptionsForSubject = (
   committedVariables?: readonly string[],
   excludedStageIndex?: number,
 ) =>
-  excludeValidatedUses(
+  // It also drops a variable an interface derives from the structure a
+  // participant builds — a Family Pedigree's participant marker is a boolean
+  // like any other, and setting it here would put several people in one family.
+  excludeInterfaceOwned(
     state,
     subject,
-    getVariableOptionsForSubject(state, subject),
+    excludeValidatedUses(
+      state,
+      subject,
+      getVariableOptionsForSubject(state, subject),
+      committedVariables,
+      excludedStageIndex,
+    ),
     committedVariables,
-    excludedStageIndex,
   );
 
 type PromptFieldsProps = {
@@ -158,8 +166,7 @@ const PromptFields = ({
         committedVariableIds,
         draftValidatedVariables,
         hasValidatedUseElsewhere: (variableId) =>
-          subject !== null &&
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+          subject !== null && hasValidatedUse(roleMap, subject, variableId),
       }),
     [
       allVariables,
@@ -173,18 +180,8 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section
-        title="Assign Additional Variables"
-        summary={
-          <Paragraph>
-            This feature allows you to assign a variable and associated value to
-            any nodes created on this prompt. You could then use this variable
-            in your skip logic or stage filtering rules.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
-        <Row>
+      <Section layout="vertical">
+        <>
           {/*
             The field only mounts once a node type is chosen: with no subject
             there is no pool to pick from and nothing to validate. Hoisting it
@@ -195,8 +192,10 @@ const PromptFields = ({
           {subject && (
             <ArchitectArrayField
               name="additionalAttributes"
-              label="Additional variables to assign"
-              labelHidden
+              label="Assign Additional Attributes"
+              hint="This feature allows you to assign an attribute and associated value
+            to any nodes created on this prompt. You could then use this
+            attribute in your skip logic or stage filtering rules."
               component={AssignAttributes}
               initialValue={additionalAttributes}
               entity={subject.entity}
@@ -214,7 +213,7 @@ const PromptFields = ({
               validation={validation}
             />
           )}
-        </Row>
+        </>
       </Section>
     </>
   );

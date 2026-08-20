@@ -4,7 +4,6 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
-import Row from '../EditorLayout/Row';
 import Section from '../EditorLayout/Section';
 import IssueAnchor from '../IssueAnchor';
 import SubjectSelectField, {
@@ -32,7 +31,7 @@ const NodeType = (props: NodeTypeProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <IssueAnchor fieldName="subject" description="Node Type" />
         <ArchitectField
           name="subject"
@@ -44,11 +43,11 @@ const NodeType = (props: NodeTypeProps) => {
           initialValue={initialSubject}
           validation={{ required: true }}
         />
-      </Row>
+      </>
       {withFilter && (
-        <Row>
+        <>
           <Filter />
-        </Row>
+        </>
       )}
     </Section>
   );

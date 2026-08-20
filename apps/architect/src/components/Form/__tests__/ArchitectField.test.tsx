@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { startCase } from 'es-toolkit/compat';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
@@ -73,10 +74,43 @@ describe('ArchitectField', () => {
 
     expect(anchor).not.toBeNull();
     if (!anchor) throw new Error('issue anchor was not rendered');
-    expect(anchor.getAttribute('data-name')).toBe('My Field');
+    expect(anchor.getAttribute('data-name')).toBe('My field');
     expect(
       anchor.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  /**
+   * The Issues panel harvests `data-name` off this anchor and prints it as the
+   * row's name for the field. It used to be `startCase(name)`, which reads as a
+   * real label only where a field's path happens to start-case into one — for
+   * everything else the researcher was shown the internal path, spaced out:
+   * "Search Options Match Properties", "Behaviours Min Nodes", "Prompts 0 Text"
+   * (#1400).
+   *
+   * `myField`/`My field` cannot catch that (`startCase('myField')` is "My
+   * Field", one capital away), so this pins a field whose authored label shares
+   * no words with its path.
+   */
+  it('names the field for the Issues panel by its label, not its internal path', () => {
+    const { container } = renderInForm(
+      <ArchitectField
+        name="searchOptions.matchProperties"
+        label="Which attributes should be searchable?"
+        component={ProbeInput}
+      />,
+    );
+
+    const anchor = container.querySelector(
+      '#field_searchOptions_matchProperties__error',
+    );
+    expect(anchor).not.toBeNull();
+    expect(anchor?.getAttribute('data-name')).toBe(
+      'Which attributes should be searchable?',
+    );
+    expect(anchor?.getAttribute('data-name')).not.toBe(
+      startCase('searchOptions.matchProperties'),
+    );
   });
 
   it('emits the data-field-name seam the Issues panel and E2E specs key on', () => {

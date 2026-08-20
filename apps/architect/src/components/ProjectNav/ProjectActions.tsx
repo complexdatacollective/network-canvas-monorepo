@@ -1,20 +1,24 @@
+import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
 import {
-  ArrowLeftToLine,
-  Check,
-  Download,
-  Redo,
-  Save,
-  Undo,
-} from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
-import { getProtocol } from '~/selectors/protocol';
+import { useSingleFlight } from '~/hooks/useSingleFlight';
+import { getCanonicalProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   isProtocolSourceAuthoringEnabled,
@@ -24,20 +28,41 @@ import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
-import ActionToolbar from './ActionToolbar';
+import { useActionToolbar } from './ActionToolbar';
+import { HistoryToolbarControls } from './historyToolbarItems';
+
+/**
+ * What this page is doing with the protocol, which decides which actions are
+ * honest to offer. There are two unrelated reasons a page can be read-only, and
+ * they call for opposite answers on history recovery — so they are named
+ * separately rather than sharing one `readOnly` flag that the next change would
+ * conflate again.
+ *
+ * - `authoring`: the ordinary editor pages. Everything is offered.
+ * - `report`: the page presents the protocol rather than authoring it (the
+ *   Summary report). Save-to-source is hidden — it overwrites the canonical
+ *   protocol source files and exists only in source-authoring dev builds — but
+ *   undo and redo stay: this tab still owns the saved copy, so history recovery
+ *   reaches disk exactly as it does anywhere else (#1389).
+ * - `locked`: another tab owns the saved copy, so autosave is refused and the
+ *   library write behind any change here is dropped. Undo and redo go too: they
+ *   mutate the protocol, so offering them would rewind what is on screen and
+ *   never reach disk. Only actions that read the protocol are left.
+ */
+export type ProjectActionsMode = 'authoring' | 'report' | 'locked';
 
 type ProjectActionsProps = {
-  additionalItems?: ToolbarSegment[];
-  readOnly?: boolean;
+  additionalActions?: ReactNode;
+  mode?: ProjectActionsMode;
 };
 
 const ProjectActions = ({
-  additionalItems = [],
-  readOnly = false,
+  additionalActions,
+  mode = 'authoring',
 }: ProjectActionsProps) => {
   const dispatch = useAppDispatch();
   const activeProtocolId = useAppSelector(getActiveProtocolId);
-  const protocol = useAppSelector(getProtocol);
+  const protocol = useAppSelector(getCanonicalProtocol);
   const { openDialog } = useDialog();
   const {
     canUndo,
@@ -45,10 +70,19 @@ const ProjectActions = ({
     undo: scopedUndo,
     redo: scopedRedo,
   } = useProtocolUndoRedo();
-  const [, setLocation] = useLocation();
-  const handleReturnToStart = useCallback(
-    () => setLocation('/'),
-    [setLocation],
+  const [location, setLocation] = useLocation();
+  const returnsToTimeline = [
+    '/protocol/assets',
+    '/protocol/codebook',
+    '/protocol/summary',
+  ].includes(location);
+  const returnDestination = returnsToTimeline ? '/protocol' : '/';
+  const returnLabel = returnsToTimeline
+    ? 'Return to Stages'
+    : 'Return to Start Screen';
+  const handleReturn = useCallback(
+    () => setLocation(returnDestination),
+    [returnDestination, setLocation],
   );
 
   const [isExporting, setIsExporting] = useState(false);
@@ -60,7 +94,16 @@ const ProjectActions = ({
   const handleUndo = useCallback(() => scopedUndo(), [scopedUndo]);
   const handleRedo = useCallback(() => scopedRedo(), [scopedRedo]);
 
-  const handleDownload = useCallback(async () => {
+  /*
+    Both of these run once at a time because `useSingleFlight` says so, not
+    because their button is disabled while they run. `disabled` is a rendering
+    of state the second click in a tick has not seen yet, it covers only the
+    one control, and each call's own `finally` would clear it while the other
+    was still going. Save-to-source overwrites the canonical protocol source
+    files in the repository; a download builds and writes a file. Neither is
+    something to run twice by accident.
+  */
+  const runDownload = useCallback(async () => {
     setIsExporting(true);
     try {
       const downloaded = await downloadActiveProtocol(dispatch, openDialog);
@@ -70,8 +113,9 @@ const ProjectActions = ({
       setIsExporting(false);
     }
   }, [dispatch, openDialog]);
+  const handleDownload = useSingleFlight(runDownload);
 
-  const handleSaveSource = useCallback(async () => {
+  const runSaveSource = useCallback(async () => {
     if (!activeProtocolId || !sourceRef || !protocol) {
       return;
     }
@@ -134,6 +178,7 @@ const ProjectActions = ({
       setIsSavingSource(false);
     }
   }, [activeProtocolId, openDialog, protocol, sourceRef]);
+  const handleSaveSource = useSingleFlight(runSaveSource);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,15 +190,16 @@ const ProjectActions = ({
       };
     }
 
-    void getStoredProtocol(activeProtocolId)
-      .then((row) => {
+    void (async () => {
+      try {
+        const row = await getStoredProtocol(activeProtocolId);
         if (!cancelled) {
           setSourceRef(row?.sourceRef ?? null);
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error) {
         reportError(error);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -161,116 +207,110 @@ const ProjectActions = ({
   }, [activeProtocolId]);
 
   useEffect(() => {
-    if (!downloadSuccess) return;
+    if (!downloadSuccess) return undefined;
     const timer = setTimeout(() => setDownloadSuccess(false), 2000);
     return () => clearTimeout(timer);
   }, [downloadSuccess]);
 
   useEffect(() => {
-    if (!sourceSaveSuccess) return;
+    if (!sourceSaveSuccess) return undefined;
     const timer = setTimeout(() => setSourceSaveSuccess(false), 2000);
     return () => clearTimeout(timer);
   }, [sourceSaveSuccess]);
 
   const canSaveToSource =
-    !readOnly &&
+    mode === 'authoring' &&
     isProtocolSourceAuthoringEnabled &&
     activeProtocolId !== null &&
     protocol !== null &&
     sourceRef !== null;
 
-  const toolbarItems = useMemo<ToolbarSegment[]>(() => {
-    const items: ToolbarSegment[] = [
-      {
-        type: 'button',
-        id: 'return-to-start',
-        label: 'Return to Start Screen',
-        icon: <ArrowLeftToLine />,
-        showLabel: true,
-        onClick: handleReturnToStart,
-      },
-      ...additionalItems,
-    ];
+  // A history operation is a protocol mutation, so it belongs to the tab that
+  // owns the saved copy — and only to it. See `ProjectActionsMode`.
+  const canRecoverHistory = mode !== 'locked';
+  const showHistoryActions = canRecoverHistory && (canUndo || canRedo);
 
-    if (!readOnly) {
-      items.push(
-        { type: 'separator', id: 'project-history-separator' },
-        {
-          type: 'button',
-          id: 'undo',
-          label: 'Undo',
-          icon: <Undo />,
-          disabled: !canUndo,
-          onClick: handleUndo,
-        },
-        {
-          type: 'button',
-          id: 'redo',
-          label: 'Redo',
-          icon: <Redo />,
-          disabled: !canRedo,
-          onClick: handleRedo,
-        },
-      );
-    }
+  const toolbarProps = useMemo(
+    () => ({
+      leadingActions: showHistoryActions ? (
+        <HistoryToolbarControls
+          key="history-controls"
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+        />
+      ) : undefined,
+      children: [
+        <ToolbarGroup key="project-navigation" aria-label="Navigation actions">
+          <ToolbarButton icon={<ArrowLeftToLine />} onClick={handleReturn}>
+            {returnLabel}
+          </ToolbarButton>
+        </ToolbarGroup>,
+        <ToolbarSeparator key="project-navigation-separator" />,
+        additionalActions ? (
+          <ToolbarGroup key="additional" aria-label="Additional actions">
+            {additionalActions}
+          </ToolbarGroup>
+        ) : null,
+        additionalActions ? (
+          <ToolbarSeparator key="additional-separator" />
+        ) : null,
+        <ToolbarGroup key="download" aria-label="Download actions">
+          <ToolbarButton
+            icon={downloadSuccess ? <Check /> : <Download />}
+            variant="default"
+            className="bg-sea-green text-white"
+            disabled={isExporting}
+            onClick={handleDownload}
+          >
+            {downloadSuccess
+              ? 'Downloaded'
+              : isExporting
+                ? 'Downloading...'
+                : 'Download'}
+          </ToolbarButton>
+        </ToolbarGroup>,
+        canSaveToSource ? <ToolbarSeparator key="source-separator" /> : null,
+        canSaveToSource ? (
+          <ToolbarGroup key="source" aria-label="Source actions">
+            <ToolbarButton
+              icon={sourceSaveSuccess ? <Check /> : <Save />}
+              disabled={isSavingSource}
+              onClick={handleSaveSource}
+            >
+              {sourceSaveSuccess
+                ? 'Saved'
+                : isSavingSource
+                  ? 'Saving...'
+                  : 'Save to source'}
+            </ToolbarButton>
+          </ToolbarGroup>
+        ) : null,
+      ],
+    }),
+    [
+      additionalActions,
+      canRedo,
+      canSaveToSource,
+      canUndo,
+      downloadSuccess,
+      handleDownload,
+      handleRedo,
+      handleReturn,
+      handleSaveSource,
+      handleUndo,
+      isExporting,
+      isSavingSource,
+      returnLabel,
+      showHistoryActions,
+      sourceSaveSuccess,
+    ],
+  );
 
-    items.push(
-      { type: 'separator', id: 'project-download-separator' },
-      {
-        type: 'button',
-        id: 'download',
-        label: downloadSuccess
-          ? 'Downloaded'
-          : isExporting
-            ? 'Downloading...'
-            : 'Download',
-        icon: downloadSuccess ? <Check /> : <Download />,
-        showLabel: true,
-        variant: 'default',
-        className: 'bg-sea-green text-white',
-        disabled: isExporting,
-        onClick: handleDownload,
-      },
-    );
+  useActionToolbar(toolbarProps);
 
-    if (canSaveToSource) {
-      items.push(
-        { type: 'separator', id: 'project-source-separator' },
-        {
-          type: 'button',
-          id: 'save-to-source',
-          label: sourceSaveSuccess
-            ? 'Saved'
-            : isSavingSource
-              ? 'Saving...'
-              : 'Save to source',
-          icon: sourceSaveSuccess ? <Check /> : <Save />,
-          showLabel: true,
-          disabled: isSavingSource,
-          onClick: handleSaveSource,
-        },
-      );
-    }
-
-    return items;
-  }, [
-    additionalItems,
-    canRedo,
-    canSaveToSource,
-    canUndo,
-    downloadSuccess,
-    handleDownload,
-    handleRedo,
-    handleReturnToStart,
-    handleSaveSource,
-    handleUndo,
-    isExporting,
-    isSavingSource,
-    readOnly,
-    sourceSaveSuccess,
-  ]);
-
-  return <ActionToolbar items={toolbarItems} />;
+  return null;
 };
 
 export default ProjectActions;

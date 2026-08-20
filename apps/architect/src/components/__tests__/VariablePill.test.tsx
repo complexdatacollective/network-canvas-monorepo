@@ -75,11 +75,11 @@ const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 const startEditing = async (uuid: string) => {
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: 'Edit variable name: subject_var',
+    name: 'Edit attribute name: subject_var',
   });
   fireEvent.click(pill);
 
-  return screen.findByRole('textbox', { name: 'Variable name' });
+  return screen.findByRole('textbox', { name: 'Attribute name' });
 };
 
 describe('ConnectedVariablePill', () => {
@@ -90,7 +90,7 @@ describe('ConnectedVariablePill', () => {
   it('uses an accessible button to open the variable name editor directly', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
 
     expect(pill).toHaveAttribute('aria-haspopup', 'dialog');
@@ -105,20 +105,20 @@ describe('ConnectedVariablePill', () => {
 
     fireEvent.click(pill);
     expect(
-      await screen.findByRole('dialog', { name: 'Edit variable name' }),
+      await screen.findByRole('dialog', { name: 'Edit attribute name' }),
     ).toBeInTheDocument();
   });
 
   it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(<ConnectedVariablePill animated editable uuid="node-subject" />);
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
 
     fireEvent.focus(pill);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Edit variable name: subject_var',
+      'Edit attribute name: subject_var',
     );
   });
 
@@ -126,7 +126,7 @@ describe('ConnectedVariablePill', () => {
     const input = await startEditing('node-subject');
 
     expect(
-      screen.getByRole('dialog', { name: 'Edit variable name' }),
+      screen.getByRole('dialog', { name: 'Edit attribute name' }),
     ).toBeInTheDocument();
     expect(input).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('ConnectedVariablePill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
     expect(pill).toHaveFocus();
   });
@@ -157,7 +157,7 @@ describe('ConnectedVariablePill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     const pill = screen.getByRole('button', {
-      name: 'Edit variable name: subject_var',
+      name: 'Edit attribute name: subject_var',
     });
     expect(pill).toHaveFocus();
   });

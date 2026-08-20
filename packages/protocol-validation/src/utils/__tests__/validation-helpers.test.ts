@@ -9,6 +9,7 @@ import {
   filterRuleEntityExists,
   findDuplicateId,
   findDuplicateName,
+  findDuplicateValue,
   getAllEntityNames,
   getFilterRuleVariableType,
   getVariableNames,
@@ -311,10 +312,38 @@ describe('Validation Helpers', () => {
       expect(result).toBeNull();
     });
 
-    it('handles case sensitive duplicates', () => {
-      const names = ['Name', 'name', 'NAME'];
-      const result = findDuplicateName(names);
-      expect(result).toBeNull(); // These are different strings
+    // Folding here decides whether an existing protocol may be OPENED, and
+    // there is no editor on that path to repair it in: a real protocol in the
+    // validation corpus carries `gender` and `GENDER`, and folding stopped it
+    // migrating at all. Architect refuses to CREATE such a pair; the schema
+    // does not refuse to READ one.
+    it('does not fold case', () => {
+      expect(findDuplicateName(['Name', 'name', 'NAME'])).toBeNull();
+    });
+
+    // Same reason. `Café` typed two ways is one name to a reader, and the
+    // editor treats it as one — but a protocol already carrying both must
+    // still open.
+    it('does not fold Unicode form', () => {
+      const precomposed = 'Caf\u00e9';
+      const decomposed = 'Cafe\u0301';
+      expect(findDuplicateName([precomposed, decomposed])).toBeNull();
+    });
+
+    // The rule it does still enforce.
+    it('catches an exact repeat', () => {
+      expect(findDuplicateName(['Gender', 'Age', 'Gender'])).toBe('Gender');
+    });
+  });
+
+  describe('findDuplicateValue', () => {
+    it('returns the first exactly-repeated value', () => {
+      expect(findDuplicateValue(['a', 'b', 'a'])).toBe('a');
+    });
+
+    // Identifiers are compared exactly: two spellings are two different keys.
+    it('does not fold case', () => {
+      expect(findDuplicateValue(['Type', 'type'])).toBeNull();
     });
   });
 
@@ -646,7 +675,7 @@ describe('Validation Helpers', () => {
       const result = createValidationMessage('Base error', {
         variable: 'testVar',
       });
-      expect(result).toBe('Base error - variable: "testVar"');
+      expect(result).toBe('Base error - attribute: "testVar"');
     });
 
     it('appends entity context', () => {
@@ -663,7 +692,7 @@ describe('Validation Helpers', () => {
         entity: 'testEntity',
       });
       expect(result).toBe(
-        'Base error (node[person]) - variable: "testVar" - entity: "testEntity"',
+        'Base error (node[person]) - attribute: "testVar" - entity: "testEntity"',
       );
     });
   });

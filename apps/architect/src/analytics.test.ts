@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { POSTHOG_API_KEY, POSTHOG_HOST } from '@codaco/shared-consts';
+
 import { appVersion } from './utils/appVersion';
 
 const { init, register, identify } = vi.hoisted(() => ({
@@ -26,16 +28,12 @@ describe('initializeAnalytics', () => {
       'installation-id',
     );
 
-    initializeAnalytics({
-      apiKey: 'public-project-key',
-      disabled: false,
-      isDevelopment: false,
-    });
+    initializeAnalytics({ disabled: false, isDevelopment: false });
 
     expect(init).toHaveBeenCalledWith(
-      'public-project-key',
+      POSTHOG_API_KEY,
       expect.objectContaining({
-        api_host: 'https://ph-relay.networkcanvas.com',
+        api_host: POSTHOG_HOST,
         person_profiles: 'identified_only',
       }),
     );
@@ -49,30 +47,26 @@ describe('initializeAnalytics', () => {
     expect(identify).not.toHaveBeenCalled();
   });
 
+  // Architect used to read its project key from a build-time variable and
+  // return early when it was absent, so a release built without the variable
+  // shipped with telemetry silently off and nothing failed. The key is public
+  // PostHog data shared by every product, so it is compiled in: there is no
+  // longer an environment in which analytics can fail open.
+  it('reports to the same project as every other product, with nothing configured', () => {
+    initializeAnalytics({ disabled: false, isDevelopment: false });
+
+    expect(init).toHaveBeenCalledOnce();
+    expect(init.mock.calls[0]?.[0]).toBe(POSTHOG_API_KEY);
+  });
+
   it.each([
     {
       name: 'development mode',
-      environment: {
-        apiKey: 'public-project-key',
-        disabled: false,
-        isDevelopment: true,
-      },
+      environment: { disabled: false, isDevelopment: true },
     },
     {
       name: 'an explicit disable override',
-      environment: {
-        apiKey: 'public-project-key',
-        disabled: true,
-        isDevelopment: false,
-      },
-    },
-    {
-      name: 'a missing public project key',
-      environment: {
-        apiKey: undefined,
-        disabled: false,
-        isDevelopment: false,
-      },
+      environment: { disabled: true, isDevelopment: false },
     },
   ])('does not initialize for $name', ({ environment }) => {
     initializeAnalytics(environment);

@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   extractProtocol,
   extractProtocolFromZip,
+  loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
   NetcanvasInflationLimitError,
 } from '../extractProtocol.ts';
+import { MalformedNetcanvasError } from '../malformedNetcanvasError.ts';
 
 const buildZip = async (entries: Record<string, string>): Promise<Buffer> => {
   const zip = new JSZip();
@@ -32,18 +34,109 @@ describe('extractProtocol', () => {
     expect(result).toEqual({ protocol, assets: [] });
   });
 
-  it('throws when protocol.json is not present', async () => {
-    const buffer = await buildZip({ 'assets/other.txt': 'hello' });
+  // Every failure below is classified rather than left to the thrower, so a
+  // host can say what is wrong with the file without repeating JSZip's or V8's
+  // wording. The technical text stays on `message`/`cause` for the console.
+  describe('classified failures', () => {
+    it('rejects a file that is not a zip archive at all', async () => {
+      const notAnArchive = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-    await expect(extractProtocol(buffer)).rejects.toThrow(
-      'protocol.json not found in zip',
-    );
-  });
+      const error = await extractProtocol(notAnArchive).catch(
+        (thrown: unknown) => thrown,
+      );
 
-  it('throws when protocol.json contains invalid JSON', async () => {
-    const buffer = await buildZip({ 'protocol.json': 'invalid json {' });
+      expect(error).toBeInstanceOf(MalformedNetcanvasError);
+      expect((error as MalformedNetcanvasError).reason).toBe('not-an-archive');
+      // The library's own message survives for support, one level down.
+      expect(String((error as MalformedNetcanvasError).cause)).toMatch(
+        /central directory/i,
+      );
+    });
 
-    await expect(extractProtocol(buffer)).rejects.toThrow();
+    it('exposes the same classification from the shared archive loader', async () => {
+      // Architect's size guard loads the archive itself, so the loader has to
+      // classify too — otherwise the drop path and the package path diverge.
+      await expect(
+        loadNetcanvasArchive(new Uint8Array([1, 2, 3])),
+      ).rejects.toBeInstanceOf(MalformedNetcanvasError);
+    });
+
+    it('rejects an archive with no protocol.json', async () => {
+      const buffer = await buildZip({ 'assets/other.txt': 'hello' });
+
+      const error = await extractProtocol(buffer).catch(
+        (thrown: unknown) => thrown,
+      );
+
+      expect(error).toBeInstanceOf(MalformedNetcanvasError);
+      expect((error as MalformedNetcanvasError).reason).toBe(
+        'missing-protocol',
+      );
+    });
+
+    it('rejects a protocol.json that is not valid JSON, keeping the parser error as the cause', async () => {
+      const buffer = await buildZip({ 'protocol.json': '{"name": tru' });
+
+      const error = await extractProtocol(buffer).catch(
+        (thrown: unknown) => thrown,
+      );
+
+      expect(error).toBeInstanceOf(MalformedNetcanvasError);
+      expect((error as MalformedNetcanvasError).reason).toBe(
+        'unreadable-protocol-json',
+      );
+      expect((error as MalformedNetcanvasError).cause).toBeInstanceOf(
+        SyntaxError,
+      );
+      // The parser's cursor position must not have leaked into the message.
+      expect((error as MalformedNetcanvasError).message).not.toMatch(
+        /position \d+/,
+      );
+    });
+
+    it('rejects a manifest entry whose file is absent, naming the resource', async () => {
+      const protocol = {
+        schemaVersion: 8,
+        assetManifest: {
+          img1: {
+            type: 'image',
+            name: 'Village map',
+            source: 'village-map.png',
+          },
+        },
+      };
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify(protocol),
+      });
+
+      const error = await extractProtocol(buffer).catch(
+        (thrown: unknown) => thrown,
+      );
+
+      expect(error).toBeInstanceOf(MalformedNetcanvasError);
+      expect((error as MalformedNetcanvasError).reason).toBe('missing-asset');
+      // The manifest's display name, not the zip path — it is what the
+      // researcher called the resource.
+      expect((error as MalformedNetcanvasError).assetName).toBe('Village map');
+    });
+
+    it('rejects a manifest entry that is not a recognised shape', async () => {
+      const buffer = await buildZip({
+        'protocol.json': JSON.stringify({
+          schemaVersion: 8,
+          assetManifest: { broken: 'not-an-object' },
+        }),
+      });
+
+      const error = await extractProtocol(buffer).catch(
+        (thrown: unknown) => thrown,
+      );
+
+      expect(error).toBeInstanceOf(MalformedNetcanvasError);
+      expect((error as MalformedNetcanvasError).reason).toBe(
+        'invalid-asset-definition',
+      );
+    });
   });
 
   it('inflates asset files declared in the manifest', async () => {

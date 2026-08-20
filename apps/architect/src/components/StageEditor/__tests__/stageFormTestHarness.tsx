@@ -156,7 +156,11 @@ export const renderStageForm = ({
     getFormValues: () => getContext().storeApi.getState().getFormValues(),
     getFieldState: (name: string) =>
       getContext().storeApi.getState().getFieldState(name),
-    getPresent: () => store.getState().stageEditorDraft.history.present,
+    // The stage half of the draft timeline entry: these specs assert form
+    // values, not the editor's codebook copy.
+    getPresent: () => store.getState().stageEditorDraft.history.present?.stage,
+    getPresentCodebook: () =>
+      store.getState().stageEditorDraft.history.present?.codebook,
     getLiveValues: () => store.getState().stageEditorDraft.ui.liveValues,
     renderTree: (content: ReactNode) => view.rerender(<Tree>{content}</Tree>),
   };

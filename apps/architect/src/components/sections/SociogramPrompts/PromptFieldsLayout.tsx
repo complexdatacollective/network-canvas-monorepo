@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { VariableType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import MultiSelect, {
@@ -94,23 +94,23 @@ const PromptFieldsLayout = ({
       title="Layout"
       summary={
         <Paragraph>
-          This variable stores the position of nodes on the sociogram.
+          This attribute stores the position of nodes on the sociogram.
         </Paragraph>
       }
       group
       layout="vertical"
     >
-      <Row>
+      <>
         <Alert variant="info" className="my-7">
           <AlertDescription>
-            If you use the same layout variable across all prompts, the position
-            of nodes will be automatically set as the participant moves between
-            tasks.
+            If you use the same layout attribute across all prompts, the
+            position of nodes will be automatically set as the participant moves
+            between tasks.
           </AlertDescription>
         </Alert>
         <ArchitectField
           name="layout.layoutVariable"
-          label="Create or select a variable to store node coordinates"
+          label="Create or select an attribute to store node coordinates"
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={layout?.layoutVariable ?? undefined}
@@ -121,7 +121,7 @@ const PromptFieldsLayout = ({
             handleCreateVariable(value, 'layout', 'layout.layoutVariable')
           }
         />
-      </Row>
+      </>
       <Section
         toggleable
         title="Sort Unplaced Nodes"
@@ -137,12 +137,13 @@ const PromptFieldsLayout = ({
         handleToggleChange={handleToggleSortOrder}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectArrayField
             name="sortOrder"
             label="Sort order"
             labelHidden
             component={MultiSelect}
+            addButtonLabel="Add new sort rule"
             initialValue={initialSortOrder ?? EMPTY_SORT_ORDER}
             properties={SORT_RULE_PROPERTIES}
             validation={SORT_RULE_VALIDATION}
@@ -159,7 +160,7 @@ const PromptFieldsLayout = ({
               )
             }
           />
-        </Row>
+        </>
       </Section>
     </Section>
   );

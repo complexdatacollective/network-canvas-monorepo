@@ -2,7 +2,7 @@ import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import {
-  addRule,
+  addSkipLogicRule,
   assertJoinMatchesRules,
   chooseJoin,
   type RuleSpec,
@@ -17,16 +17,15 @@ import {
 // - The rules UI is the shared Query primitive with `type="query"` (ego
 //   rules available); it has NO data-field-name seam — everything is scoped
 //   through the section.
-// - Destination is a Base UI Select (combobox 'When this stage is skipped',
-//   options portal to page level — NOT selectOption). 'End the interview'
-//   parses to `{type:'finish'}`; the untouched default ('Next available
-//   stage') parses to undefined so no `destination` key is ever written
-//   (SkipLogicDestinationField.tsx parseSkipLogicDestination).
+// - Destination is a native select named 'When this stage is skipped'. 'End
+//   the interview' parses to `{type:'finish'}`; the untouched default ('Next
+//   available stage') parses to undefined so no `destination` key is ever
+//   written (SkipLogicDestinationField.tsx parseSkipLogicDestination).
 // - With 2+ rules the 'Must match' radios appear and a join is required
 //   (ruleValidator blocks save until picked).
 export async function configureSkipLogic(
   editor: StageEditor,
-  page: Page,
+  _page: Page,
   opts: {
     action: 'Skip this stage' | 'Show this stage';
     rules: RuleSpec[];
@@ -36,27 +35,20 @@ export async function configureSkipLogic(
 ): Promise<void> {
   assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Skip Logic');
-  await section
-    .getByRole('switch', { name: 'Turn this feature on or off' })
-    .click();
+  await section.getByRole('switch', { name: 'Skip Logic' }).click();
   await editor
     .field('skipLogic.action')
     .getByRole('radio', { name: opts.action, exact: true })
     .click();
   for (const rule of opts.rules) {
-    await addRule(section, rule);
+    await addSkipLogicRule(section, rule);
   }
   if (opts.join) {
     await chooseJoin(section, opts.join);
   }
   if (opts.destination) {
-    // The Base UI select trigger renders with NO accessible name (verified
-    // live: the 'When this stage is skipped' label is a sibling node, not
-    // wired to the trigger), and it is the only combobox inside the Skip
-    // Logic section once the rule dialog has closed.
-    await section.getByRole('combobox').click();
-    await page
-      .getByRole('option', { name: opts.destination, exact: true })
-      .click();
+    await section
+      .getByRole('combobox', { name: 'When this stage is skipped' })
+      .selectOption({ label: opts.destination });
   }
 }

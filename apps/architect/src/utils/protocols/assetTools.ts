@@ -149,7 +149,14 @@ const validateNetwork = async (file: File): Promise<ValidationResult> => {
     get(network, 'nodes', []).length === 0 &&
     get(network, 'edges', []).length === 0
   ) {
-    throw new Error("Network asset doesn't include any nodes or edges");
+    // Coded so the message survives to the researcher: an uncoded import
+    // failure is replaced with generic copy (see getImportAssetErrorInfo in
+    // ducks/modules/protocol/assetManifest.ts) because those are internal.
+    const error: CodedError = new Error(
+      "This network file doesn't contain any nodes or edges.",
+    );
+    error.code = 'NETWORK_EMPTY';
+    throw error;
   }
 
   const variableNames = getVariableNamesFromNetwork(network as Network);
@@ -169,7 +176,11 @@ export const validateAsset = async (file: File): Promise<ValidationResult> => {
   const assetType = getSupportedAssetType(file.name);
 
   if (!assetType) {
-    throw new Error('Asset type not supported');
+    const error: CodedError = new Error(
+      'That file type is not supported as a resource.',
+    );
+    error.code = 'UNSUPPORTED_TYPE';
+    throw error;
   }
 
   if (assetType === 'network') {

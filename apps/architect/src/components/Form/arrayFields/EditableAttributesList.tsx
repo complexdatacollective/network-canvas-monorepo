@@ -19,6 +19,7 @@ import {
   isVariableUsedBySibling,
   sharedFormValidationViews,
 } from '~/components/sections/Form/composerHelpers';
+import FieldEditorPreview from '~/components/sections/Form/FieldEditorPreview';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import { useStageFormValues } from '~/components/StageEditor/useStageFormValues';
 import { makeFieldEditorValidate } from '~/components/Validations/contradictions';
@@ -27,8 +28,9 @@ import {
   getVariablesForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getVariableRoleMap } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 
 import DialogArrayField, {
   type DialogArrayItemSelector,
@@ -36,10 +38,14 @@ import DialogArrayField, {
 
 /** Stable empty array: `initialValue` is a register-effect dependency. */
 const NO_FIELDS: Record<string, unknown>[] = [];
+const COMPOSER_PREVIEW_PROPS = { mode: 'composer' };
 
 // DialogArrayField renders these with the edited row's own properties, so it
 // types them by the only shape it can know.
 const EditorFields = ComposerAttributeFields as ComponentType<
+  Record<string, unknown>
+>;
+const EditorPreview = FieldEditorPreview as ComponentType<
   Record<string, unknown>
 >;
 const Preview = ComposerFieldPreview as ComponentType<Record<string, unknown>>;
@@ -82,6 +88,14 @@ type EditableAttributesListProps = {
   /** DOM id of the row editor's form. */
   editFormName?: string;
   title?: string;
+  /**
+   * Visible text and accessible name of the add button. REQUIRED, and not
+   * defaultable: a Network Composer stage mounts one of these lists for its
+   * node type and one more for EVERY selected edge type, so no constant
+   * belonging to this component can tell them apart — only the caller knows
+   * whose attributes its list holds.
+   */
+  addButtonLabel: string;
   /**
    * Accessible name for the list. The surrounding Subsection carries the
    * visible heading, so this is hidden by default (see plan §2.10).
@@ -128,6 +142,7 @@ const EditableAttributesList = ({
   type,
   editFormName = 'editable-list-form',
   title = 'Edit attribute',
+  addButtonLabel,
   label = 'Editable attributes',
   handleChangeFields,
   siblingUnvalidatedVariableIds,
@@ -172,9 +187,9 @@ const EditableAttributesList = ({
   // Backs makeFieldEditorValidate's save-time gate: a composer attribute may
   // not pick a variable some bin/highlight/census/etc. elsewhere already
   // writes.
-  const hasUnvalidatedUse = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
-      (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0 ||
+      hasUnvalidatedUse(roleMap, subject, variableId) ||
       (siblingUnvalidatedVariableIds?.includes(variableId) ?? false),
     [roleMap, subject, siblingUnvalidatedVariableIds],
   );
@@ -236,7 +251,7 @@ const EditableAttributesList = ({
         ) {
           return {
             variable:
-              'This variable is already collected by another attribute in this list. Choose a different variable, or edit the existing attribute instead.',
+              'This attribute is already collected by another attribute in this list. Choose a different attribute, or edit the existing attribute instead.',
           };
         }
         // `makeFieldEditorValidate` keys its messages at `validation`, which
@@ -248,7 +263,7 @@ const EditableAttributesList = ({
           allVariables,
           buildComposerFieldOverlay(composerFields, props?.editIndex),
           crossFormRendered,
-          hasUnvalidatedUse,
+          hasUnvalidatedUseForSubject,
           [...resolvedSharedViews, ...resolvedComposerViews],
           'current-form',
         )(composerDraftValues(values), props);
@@ -260,7 +275,7 @@ const EditableAttributesList = ({
       allVariables,
       composerFields,
       crossFormRendered,
-      hasUnvalidatedUse,
+      hasUnvalidatedUseForSubject,
       resolvedComposerViews,
       resolvedSharedViews,
     ],
@@ -296,11 +311,14 @@ const EditableAttributesList = ({
           label={label}
           labelHidden
           component={DialogArrayField}
+          addButtonLabel={addButtonLabel}
           value={value ?? NO_FIELDS}
           onChange={onChange}
           addTitle={title}
           editorTitle={title}
           editorFieldsComponent={EditorFields}
+          editorPreviewComponent={EditorPreview}
+          editorPreviewProps={COMPOSER_PREVIEW_PROPS}
           editorProps={editorProps}
           editorValidate={editorValidate}
           itemLabel="attribute"
@@ -322,12 +340,15 @@ const EditableAttributesList = ({
       label={label}
       labelHidden
       component={DialogArrayField}
+      addButtonLabel={addButtonLabel}
       initialValue={initialValue}
       // Editable attributes are optional (no node/edge attributes is valid).
       validation={{}}
       addTitle={title}
       editorTitle={title}
       editorFieldsComponent={EditorFields}
+      editorPreviewComponent={EditorPreview}
+      editorPreviewProps={COMPOSER_PREVIEW_PROPS}
       // The editor's variable picker takes the same committed sibling list
       // `editorValidate` gates on, so a variable another attribute already
       // collects is never offered in the first place rather than being offered

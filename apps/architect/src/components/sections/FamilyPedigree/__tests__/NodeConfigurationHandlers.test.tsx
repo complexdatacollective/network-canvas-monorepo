@@ -159,7 +159,7 @@ describe('FamilyPedigree NodeConfiguration handleChangeFields', () => {
     expect(updateVariable).not.toHaveBeenCalled();
     expect(result).toEqual({
       success: false,
-      formErrors: ['Variable not found'],
+      formErrors: ['Attribute not found'],
     });
   });
 

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { buildAppSuperProperties } from '@codaco/shared-consts';
 import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import { getSettings, updateSettings } from '~/lib/db/api';
@@ -45,19 +46,21 @@ const NOOP_CONTEXT: AnalyticsContextValue = {
 
 const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
 
-// Super properties attached to every app-level event. Keys are snake_case to
-// match the `@codaco/interview` package so app and interview events share a
-// consistent schema in PostHog. Crucially, this is anonymous and per-device:
-// `installation_id` identifies the installation, never a user or participant.
+// Super properties attached to every app-level event. Built from the shared
+// helper so app and interview events share one schema in PostHog and a mistyped
+// key is a compile error rather than a silently missing dimension. Crucially,
+// this is anonymous and per-device: `installation_id` identifies the
+// installation, never a user or participant.
 function registerSuperProperties(client: PostHog) {
-  client.register({
-    // No Electron/Capacitor host remains; this app is the only host.
-    app: POSTHOG_APP_KEY,
-    $app_name: POSTHOG_APP_NAME,
-    installation_id: getInstallationId(),
-    host_version: APP_VERSION,
-    $app_version: APP_VERSION,
-  });
+  client.register(
+    buildAppSuperProperties({
+      // No Electron/Capacitor host remains; this app is the only host.
+      appKey: POSTHOG_APP_KEY,
+      appName: POSTHOG_APP_NAME,
+      version: APP_VERSION,
+      installationId: getInstallationId(),
+    }),
+  );
 }
 
 // Apply the preference to the live client: register identity + super props and

@@ -8,18 +8,19 @@ import {
   AnimatePresence,
   LayoutGroup,
   motion,
+  type MotionProps,
+  type Transition,
   useDragControls,
   useMotionValue,
   useReducedMotion,
+  type Variants,
 } from 'motion/react';
 import * as React from 'react';
 
-import { Button, type ButtonProps } from '../Button';
+import { Button, type ButtonProps, IconButton } from '../Button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../DropdownMenu';
 import { MotionSurface } from '../layout/Surface';
@@ -27,161 +28,239 @@ import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import { cva, cx } from '../utils/cva';
 
-export type SegmentContent = {
-  /** Accessible name. Always the aria-label; rendered as visible text when showLabel. */
-  label: string;
-  /** Optional Lucide icon (or any node). */
-  icon?: React.ReactNode;
-  /**
-   * Render the label as visible text.
-   * Default: false when an icon is present (icon-only + tooltip), true when no icon.
-   */
-  showLabel?: boolean;
-  /** Fresco Button variant. @default 'text' */
-  variant?: ButtonProps['variant'];
-  /**
-   * Tailwind classes forwarded to the underlying control — e.g. to colour a
-   * segment with named theme colours: `className="bg-tomato text-white"`.
-   */
-  className?: string;
-};
-
-export type ButtonSegment = {
-  type: 'button';
-  id: string;
-  disabled?: boolean;
-  onClick?: () => void;
-  /**
-   * Host the segment inside a caller-supplied element — e.g. a Popover or Menu
-   * trigger. The element receives the styled toolbar button as its `render`, so
-   * the overlay's trigger wiring (focus return, `aria-expanded`) composes with
-   * the toolbar button and its roving focus. When set, the open/close behaviour
-   * comes from the wrapper rather than `onClick`.
-   */
-  render?: React.ReactElement<{ render?: React.ReactElement }>;
-} & SegmentContent;
-
-export type ToggleSegment = {
-  type: 'toggle';
-  id: string;
-  disabled?: boolean;
-  pressed?: boolean;
-  defaultPressed?: boolean;
-  onPressedChange?: (
-    pressed: boolean,
-    eventDetails: Toggle.ChangeEventDetails,
-  ) => void;
-} & SegmentContent;
-
-export type GroupSegment = {
-  type: 'group';
-  id: string;
-  mode: 'single' | 'multiple';
-  value?: string[];
-  defaultValue?: string[];
-  onValueChange?: (
-    value: string[],
-    eventDetails: ToggleGroup.ChangeEventDetails,
-  ) => void;
-  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
-};
-
-export type SeparatorSegment = {
-  type: 'separator';
-  id: string;
-};
-
-/**
- * A button that opens a single-select menu — for choosing among options that
- * would otherwise need one segment each (e.g. picking an edge type to draw).
- * The trigger shows `pressed` styling when a selection is active.
- */
-export type MenuSegment = {
-  type: 'menu';
-  id: string;
-  disabled?: boolean;
-  pressed?: boolean;
-  value?: string;
-  options: Array<SegmentContent & { value: string; disabled?: boolean }>;
-  onSelect: (value: string) => void;
-} & SegmentContent;
-
-/**
- * A pressed-able button that anchors a popover next to itself, rendering
- * arbitrary content (e.g. a text input). Open state is controlled by the
- * consumer so it can be tied to external state — for instance keeping the
- * button "pressed" for as long as the popover is open.
- */
-export type PopoverSegment = {
-  type: 'popover';
-  id: string;
-  disabled?: boolean;
-  pressed?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Which side of the trigger the popover opens on. @default 'right' */
-  side?: 'top' | 'right' | 'bottom' | 'left';
-  children: React.ReactNode;
-} & SegmentContent;
-
 export type SegmentSize = 'sm' | 'md' | 'lg';
 export type ToolbarOrientation = 'horizontal' | 'vertical';
+export type Position = { x: number; y: number };
 
-export type ComponentSegmentRenderProps = {
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
+const TOOLBAR_MOTION_CHILD = Symbol('ToolbarMotionChild');
+
+type MissingToolbarChildRef = {
+  readonly __toolbarChildMustDeclareARefProp: unique symbol;
 };
 
 /**
- * Renders a caller-supplied component as a segment inside the toolbar surface.
- * Use this for composite controls whose interaction model is larger than a
- * single toolbar button, such as a split button with its own popover trigger.
+ * Registers a custom direct toolbar child for presence/layout animation.
+ *
+ * Motion's `popLayout` mode injects a ref into each direct child so it can
+ * remove that child's DOM element from layout while its exit animation runs.
+ * The ref prop is therefore part of this helper's type contract: custom
+ * wrappers must declare it and forward it to their single toolbar primitive.
  */
-export type ComponentSegment = {
-  type: 'component';
-  id: string;
-  component: React.ComponentType<ComponentSegmentRenderProps>;
+export function defineToolbarChild<C extends React.ElementType>(
+  component: C &
+    ('ref' extends keyof React.ComponentProps<C>
+      ? unknown
+      : MissingToolbarChildRef),
+): C {
+  Object.defineProperty(component, TOOLBAR_MOTION_CHILD, {
+    configurable: false,
+    enumerable: false,
+    value: true,
+  });
+  return component;
+}
+
+type DisabledFocusBehavior = {
+  /**
+   * Keep the control in the toolbar's roving focus when disabled.
+   *
+   * A toolbar is a single tab stop, so a control that leaves the roving focus
+   * the moment it becomes unavailable drops keyboard focus to `<body>` — which
+   * is exactly what happens to every self-disabling command (undo, redo,
+   * next/previous, zoom in/out). WAI-ARIA's toolbar pattern therefore
+   * recommends keeping disabled items focusable, so that is the default here.
+   *
+   * Pass `focusableWhenDisabled={false}` for the rare control that must be
+   * genuinely unfocusable — e.g. one that is never the focused element when it
+   * becomes unavailable and whose presence in the roving focus would only add
+   * noise.
+   * @default true
+   */
+  focusableWhenDisabled?: boolean;
 };
 
-export type ToolbarSegment =
-  | ButtonSegment
-  | ToggleSegment
-  | GroupSegment
-  | SeparatorSegment
-  | MenuSegment
-  | PopoverSegment
-  | ComponentSegment;
+type ToggleBehavior = {
+  /** Required for a button rendered inside `ToolbarToggleGroup`. */
+  value?: string;
+  pressed?: boolean;
+  defaultPressed?: boolean;
+  onPressedChange?: Toggle.Props['onPressedChange'];
+};
 
-export type Position = { x: number; y: number };
+// Motion owns these event names on animated controls. Excluding the native DOM
+// variants keeps the public props unambiguous while every other Button prop is
+// forwarded to the underlying Fresco control.
+type MotionEventConflict =
+  | 'onAnimationStart'
+  | 'onDrag'
+  | 'onDragStart'
+  | 'onDragEnd';
 
-export type SegmentedToolbarProps = {
-  /** Accessible name for the toolbar (role="toolbar" requires a label). */
-  label: string;
-  items: ToolbarSegment[];
-  /** @default 'horizontal' */
-  orientation?: ToolbarOrientation;
-  /** @default 'md' */
-  size?: SegmentSize;
+type MotionSafeButtonProps = Omit<ButtonProps, MotionEventConflict>;
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
+export type ToolbarButtonProps = MotionSafeButtonProps &
+  DisabledFocusBehavior &
+  ToggleBehavior & {
+    ref?: React.Ref<HTMLButtonElement>;
+    size?: SegmentSize;
+  };
+
+type FrescoIconButtonProps = DistributiveOmit<
+  React.ComponentProps<typeof IconButton>,
+  MotionEventConflict
+>;
+
+export type ToolbarIconButtonProps = FrescoIconButtonProps &
+  DisabledFocusBehavior &
+  ToggleBehavior & {
+    size?: SegmentSize;
+    /** Tooltip content. Pass `false` to suppress the automatic aria-label tooltip. */
+    tooltip?: React.ReactNode | false;
+    tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
+  };
+
+export type ToolbarGroupProps = Omit<
+  Toolbar.Group.Props,
+  'aria-label' | 'children' | 'className' | 'render'
+> & {
+  /** Accessible name required by Base UI for each toolbar group. */
+  'aria-label': string;
+  'children'?: React.ReactNode;
+  'className'?: string;
+  'ref'?: React.Ref<HTMLDivElement>;
+};
+
+export type ToolbarToggleGroupProps = Omit<
+  ToggleGroup.Props,
+  'aria-label' | 'children' | 'className' | 'orientation' | 'render'
+> & {
+  /** Accessible name required for the group of toggle buttons. */
+  'aria-label': string;
+  'children'?: React.ReactNode;
+  'className'?: string;
+  /** Defaults to the containing toolbar's orientation. */
+  'orientation'?: ToolbarOrientation;
+  'ref'?: React.Ref<HTMLDivElement>;
+};
+
+export type ToolbarSeparatorProps = Omit<
+  Toolbar.Separator.Props,
+  'className' | 'orientation' | 'render'
+> & {
   className?: string;
+  ref?: React.Ref<HTMLDivElement>;
+};
+
+type ToolbarOverlayTrigger = React.ReactElement<
+  (ToolbarButtonProps | ToolbarIconButtonProps) & {
+    ref?: React.Ref<HTMLButtonElement>;
+  }
+>;
+
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (typeof ref === 'function') {
+    ref(value);
+  } else if (ref) {
+    ref.current = value;
+  }
+}
+
+function useMergedButtonRef(
+  forwardedRef: React.Ref<HTMLButtonElement> | undefined,
+  triggerRef: React.Ref<HTMLButtonElement> | undefined,
+) {
+  return React.useCallback(
+    (button: HTMLButtonElement | null) => {
+      assignRef(forwardedRef, button);
+      assignRef(triggerRef, button);
+    },
+    [forwardedRef, triggerRef],
+  );
+}
+
+export type ToolbarMenuProps = Omit<
+  React.ComponentProps<typeof DropdownMenu>,
+  'children'
+> & {
+  /** Animated toolbar control that opens the menu. */
+  trigger: ToolbarOverlayTrigger;
+  children: React.ReactNode;
+  ref?: React.Ref<HTMLButtonElement>;
+  /** Props forwarded to Fresco's DropdownMenuContent. */
+  contentProps?: Omit<
+    React.ComponentProps<typeof DropdownMenuContent>,
+    'children'
+  >;
+};
+
+export type ToolbarPopoverProps = Omit<
+  React.ComponentProps<typeof Popover>,
+  'children'
+> & {
+  /** Animated toolbar control that opens the popover. */
+  trigger: ToolbarOverlayTrigger;
+  children: React.ReactNode;
+  ref?: React.Ref<HTMLButtonElement>;
+  /** Props forwarded to Fresco's PopoverContent. */
+  contentProps?: Omit<React.ComponentProps<typeof PopoverContent>, 'children'>;
+};
+
+export type SegmentedToolbarProps = Omit<
+  Toolbar.Root.Props,
+  'aria-label' | 'children' | 'className' | 'orientation' | 'render'
+> & {
+  /** Accessible name for the toolbar. */
+  'aria-label': string;
+  'children'?: React.ReactNode;
+  /** @default 'horizontal' */
+  'orientation'?: ToolbarOrientation;
+  /** @default 'md' */
+  'size'?: SegmentSize;
+  'className'?: string;
   /** @default false */
-  draggable?: boolean;
+  'draggable'?: boolean;
   /** Uncontrolled starting position (only when draggable). */
-  defaultPosition?: Position;
+  'defaultPosition'?: Position;
   /** Controlled position (only when draggable). */
-  position?: Position;
-  onPositionChange?: (pos: Position) => void;
+  'position'?: Position;
+  'onPositionChange'?: (position: Position) => void;
   /** Optional drag bounds. */
-  dragConstraints?:
+  'dragConstraints'?:
     | React.RefObject<Element | null>
     | { top: number; left: number; right: number; bottom: number };
   /** Accessible name for the drag handle. @default 'Move toolbar' */
-  dragHandleLabel?: string;
+  'dragHandleLabel'?: string;
 };
 
+type ToolbarContextValue = {
+  orientation: ToolbarOrientation;
+  size: SegmentSize;
+  reduceMotion: boolean;
+};
+
+const ToolbarContext = React.createContext<ToolbarContextValue | null>(null);
+const GroupDisabledContext = React.createContext(false);
+const ToggleGroupItemContext = React.createContext(false);
+
+function useToolbarContext(componentName: string): ToolbarContextValue {
+  const context = React.useContext(ToolbarContext);
+  if (!context) {
+    throw new Error(
+      `${componentName} must be rendered inside SegmentedToolbar.`,
+    );
+  }
+  return context;
+}
+
 // Layout only — the pill's surface colour and contrast come from `Surface`.
-// A medium effect shadow keeps floating chrome elevated without a heavy halo.
+// The inner Toolbar.Root owns overflow so the rounded, layout-animated shell
+// never clips focus rings or exiting controls.
 const rootLayoutVariants = cva({
-  base: 'effect-shadow-md flex w-fit items-center gap-1 rounded-full p-1.5',
+  base: 'effect-shadow-md flex w-fit max-w-full min-w-0 items-center gap-1 p-1.5',
   variants: {
     orientation: {
       horizontal: 'flex-row',
@@ -191,388 +270,529 @@ const rootLayoutVariants = cva({
   defaultVariants: { orientation: 'horizontal' },
 });
 
-/** Whether a segment's text should be visible (vs icon-only). */
-function isLabelVisible(content: SegmentContent): boolean {
-  return content.showLabel ?? !content.icon;
+const layoutSpring: Transition = {
+  type: 'spring',
+  stiffness: 420,
+  damping: 34,
+  mass: 0.7,
+};
+
+// Controls are 40/48/64px high and the surface adds 6px padding on each side.
+// Keep the animated pill radius as a numeric style so Motion can scale-correct
+// it while the surface changes size. A class-derived radius briefly distorts
+// during layout interpolation because Motion cannot preserve its geometry.
+const surfaceRadius: Record<SegmentSize, number> = {
+  sm: 26,
+  md: 30,
+  lg: 38,
+};
+
+const itemVariants: Variants = {
+  initial: {
+    scale: 0.72,
+    filter: 'blur(3px) opacity(0%)',
+  },
+  animate: {
+    scale: 1,
+    filter: 'blur(0px) opacity(100%)',
+    transition: {
+      type: 'spring',
+      stiffness: 520,
+      damping: 30,
+      mass: 0.6,
+    },
+  },
+  exit: {
+    scale: 0.72,
+    filter: 'blur(3px) opacity(0%)',
+    transition: {
+      type: 'spring',
+      stiffness: 620,
+      damping: 42,
+      mass: 0.5,
+    },
+  },
+};
+
+function motionItemProps(reduceMotion: boolean): MotionProps {
+  if (reduceMotion) {
+    return {
+      layout: 'position',
+      initial: false,
+      transition: { duration: 0 },
+    };
+  }
+
+  return {
+    layout: 'position',
+    variants: itemVariants,
+    initial: 'initial',
+    animate: 'animate',
+    exit: 'exit',
+    transition: { layout: layoutSpring },
+  };
 }
 
 /**
- * A disabled toolbar segment stays focusable — the APG toolbar behaviour Base
- * UI's roving focus already implements via `focusableWhenDisabled`, so a
- * keyboard user can still reach a segment to learn it is unavailable.
- *
- * A native `disabled` attribute is incompatible with that: browsers blur a
- * focused element the instant it becomes disabled, so a keyboard user who
- * exhausts an action — pressing Undo until there is nothing left to undo —
- * loses focus to the document body. Base UI does delete the attribute again,
- * but only in a layout effect, one commit after React has written it to the
- * DOM and the browser has already taken focus away.
- *
- * So swallow `disabled` before it reaches the DOM and let `aria-disabled`
- * carry the state (it is what Base UI converges on anyway). Activation is
- * already blocked in Base UI's own click/keydown/pointerdown handlers, which
- * close over the disabled state rather than reading the attribute.
+ * Matches Base UI Toolbar.Button's own default: a disabled toolbar control
+ * stays in the roving focus and announces its state through `aria-disabled`
+ * rather than the native `disabled` attribute, so becoming unavailable never
+ * ejects keyboard focus from the toolbar. `focusableWhenDisabled={false}`
+ * opts a control back into native `disabled` semantics.
  */
-const SegmentControl = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  function SegmentControl({ disabled, ...props }, ref) {
-    // The composite item and the inner trigger each contribute a signal, and
-    // whichever renders last wins the merge — so treat either as disabled.
-    const isDisabled =
-      disabled === true ||
-      props['aria-disabled'] === true ||
-      props['aria-disabled'] === 'true';
+type DisabledAwareButtonProps = MotionSafeButtonProps &
+  DisabledFocusBehavior & { ref?: React.Ref<HTMLButtonElement> };
+
+/**
+ * Activation guard for the `aria-disabled` branch.
+ *
+ * `aria-disabled` is an ANNOUNCEMENT, not a behaviour: unlike the native
+ * `disabled` attribute it does not stop a pointer activating the control. Base
+ * UI suppresses the keyboard path (`useFocusableWhenDisabled` preventDefaults
+ * non-Tab keydown) and its own toggle path, but a raw `onClick` reaching the
+ * rendered element through `mergeProps` is chained, not blocked — Base UI's own
+ * docs say event handlers returned by those functions are not automatically
+ * prevented.
+ *
+ * So the moment this component stopped emitting native `disabled`, every
+ * caller's `onClick` became reachable on a disabled control. That is not a
+ * cosmetic gap: `disabled` was load-bearing as a re-entrancy guard (Architect's
+ * Download and Save-to-source buttons hold no flag of their own) and as a range
+ * guard (Narrative's preset arrows compute `activePreset - 1` unclamped, so a
+ * click at index 0 unmounts the whole preset toolbar).
+ *
+ * Swallowing the click keeps the accessibility win — focus stays in the roving
+ * toolbar and the state is announced — without making `disabled` advisory.
+ */
+const swallowActivation = (event: React.MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
+function DisabledAwareButton({
+  ref,
+  disabled,
+  focusableWhenDisabled = true,
+  'aria-disabled': ariaDisabled,
+  ...props
+}: DisabledAwareButtonProps) {
+  const isDisabled =
+    disabled === true || ariaDisabled === true || ariaDisabled === 'true';
+
+  if (focusableWhenDisabled) {
     return (
-      <Button ref={ref} {...props} aria-disabled={isDisabled || undefined} />
+      <Button
+        ref={ref}
+        {...props}
+        aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? swallowActivation : props.onClick}
+      />
     );
-  },
-);
+  }
 
-// Pressed-state highlight for toggle segments, via Base UI's data attribute.
-// `!important` so the selected colours win over Button's text-variant hover.
-const pressedClasses =
-  'data-pressed:bg-selected! data-pressed:text-selected-contrast!';
+  return <Button ref={ref} {...props} disabled={isDisabled || undefined} />;
+}
 
-/** A toolbar segment built on the shared Button component, styled flat + round. */
-function segmentButton(
-  content: SegmentContent,
-  size: SegmentSize,
-  extraClassName?: string,
+type DisabledAwareIconButtonProps = FrescoIconButtonProps &
+  DisabledFocusBehavior;
+
+function DisabledAwareIconButton({
+  ref,
+  disabled,
+  focusableWhenDisabled = true,
+  'aria-disabled': ariaDisabled,
+  ...props
+}: DisabledAwareIconButtonProps) {
+  const isDisabled =
+    disabled === true || ariaDisabled === true || ariaDisabled === 'true';
+
+  if (focusableWhenDisabled) {
+    // See `swallowActivation`: `aria-disabled` announces but does not prevent,
+    // so the caller's `onClick` must be withheld or `disabled` becomes advisory.
+    return (
+      <IconButton
+        ref={ref}
+        {...props}
+        aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? swallowActivation : props.onClick}
+      />
+    );
+  }
+
+  return <IconButton ref={ref} {...props} disabled={isDisabled || undefined} />;
+}
+
+const MotionToolbarButtonControl = motion.create(DisabledAwareButton);
+const MotionToolbarIconButtonControl = motion.create(DisabledAwareIconButton);
+
+type ToolbarControlBehavior = ToggleBehavior & DisabledFocusBehavior;
+
+function useToolbarControlBehavior({
+  disabled,
+  focusableWhenDisabled = true,
+  value,
+  pressed,
+  defaultPressed,
+  onPressedChange,
+}: ToolbarControlBehavior & { disabled?: boolean }) {
+  const inheritedDisabled = React.useContext(GroupDisabledContext);
+  const inToggleGroup = React.useContext(ToggleGroupItemContext);
+  const isUncontrollable = pressed !== undefined && !onPressedChange;
+  const effectiveDisabled =
+    disabled === true || inheritedDisabled || isUncontrollable;
+  const isToggle =
+    inToggleGroup ||
+    value !== undefined ||
+    pressed !== undefined ||
+    defaultPressed !== undefined ||
+    onPressedChange !== undefined;
+
+  if (inToggleGroup && value === undefined) {
+    throw new Error(
+      'ToolbarButton and ToolbarIconButton require a value inside ToolbarToggleGroup.',
+    );
+  }
+
+  return {
+    defaultPressed,
+    effectiveDisabled,
+    focusableWhenDisabled,
+    isToggle,
+    onPressedChange,
+    pressed,
+    value,
+  };
+}
+
+function renderToolbarControl(
+  control: React.ReactElement,
+  behavior: ReturnType<typeof useToolbarControlBehavior>,
 ) {
-  const labelVisible = isLabelVisible(content);
+  const renderedControl = behavior.isToggle ? (
+    <Toggle
+      value={behavior.value}
+      pressed={behavior.pressed}
+      defaultPressed={behavior.defaultPressed}
+      onPressedChange={behavior.onPressedChange}
+      disabled={behavior.effectiveDisabled}
+      render={control}
+    />
+  ) : (
+    control
+  );
+
   return (
-    <SegmentControl
-      variant={content.variant ?? 'text'}
-      size={size}
-      icon={content.icon}
-      aria-label={labelVisible ? undefined : content.label}
-      className={cx(
-        'rounded-full',
-        !labelVisible && 'aspect-square p-0',
-        extraClassName,
-        content.className,
-      )}
-    >
-      {labelVisible ? content.label : null}
-    </SegmentControl>
+    <Toolbar.Button
+      disabled={behavior.effectiveDisabled}
+      focusableWhenDisabled={behavior.focusableWhenDisabled}
+      render={renderedControl}
+    />
   );
 }
 
-// On a vertical toolbar, tooltips/menus/popovers open to the right (into the
-// canvas) rather than overlapping the stacked buttons. Horizontal toolbars keep
-// each overlay's own default side (tooltip top, menu/popover bottom).
-function overlaySide(orientation: ToolbarOrientation): 'right' | undefined {
-  return orientation === 'vertical' ? 'right' : undefined;
+export function ToolbarButton({
+  ref,
+  className,
+  disabled,
+  focusableWhenDisabled = true,
+  value,
+  pressed,
+  defaultPressed,
+  onPressedChange,
+  size: sizeProp,
+  variant = 'text',
+  ...props
+}: ToolbarButtonProps) {
+  const { size, reduceMotion } = useToolbarContext('ToolbarButton');
+  const behavior = useToolbarControlBehavior({
+    disabled,
+    focusableWhenDisabled,
+    value,
+    pressed,
+    defaultPressed,
+    onPressedChange,
+  });
+
+  return renderToolbarControl(
+    <MotionToolbarButtonControl
+      ref={ref}
+      {...motionItemProps(reduceMotion)}
+      {...props}
+      disabled={behavior.effectiveDisabled}
+      focusableWhenDisabled={focusableWhenDisabled}
+      size={sizeProp ?? size}
+      variant={variant}
+      className={cx('shrink-0 rounded-full', className)}
+    />,
+    behavior,
+  );
 }
 
-/** Wraps an icon-only control in a tooltip carrying its label. */
-function withTooltip(
-  control: React.ReactElement,
-  label: string,
-  labelVisible: boolean,
-  side?: 'top' | 'right' | 'bottom' | 'left',
-) {
-  if (labelVisible) return control;
+export function ToolbarIconButton({
+  ref,
+  className,
+  disabled,
+  focusableWhenDisabled = true,
+  value,
+  pressed,
+  defaultPressed,
+  onPressedChange,
+  size: sizeProp,
+  variant = 'text',
+  tooltip,
+  tooltipSide,
+  ...props
+}: ToolbarIconButtonProps) {
+  const { orientation, size, reduceMotion } =
+    useToolbarContext('ToolbarIconButton');
+  const behavior = useToolbarControlBehavior({
+    disabled,
+    focusableWhenDisabled,
+    value,
+    pressed,
+    defaultPressed,
+    onPressedChange,
+  });
+  const control = renderToolbarControl(
+    <MotionToolbarIconButtonControl
+      ref={ref}
+      {...motionItemProps(reduceMotion)}
+      {...props}
+      disabled={behavior.effectiveDisabled}
+      focusableWhenDisabled={focusableWhenDisabled}
+      size={sizeProp ?? size}
+      variant={variant}
+      className={cx('shrink-0', className)}
+    />,
+    behavior,
+  );
+  const automaticTooltip =
+    'aria-label' in props ? props['aria-label'] : undefined;
+  const tooltipContent =
+    tooltip === false ? undefined : (tooltip ?? automaticTooltip);
+
+  if (!tooltipContent) return control;
+
   return (
     <Tooltip>
       <TooltipTrigger render={control} />
-      <TooltipContent side={side}>{label}</TooltipContent>
+      <TooltipContent
+        side={tooltipSide ?? (orientation === 'vertical' ? 'right' : undefined)}
+      >
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   );
 }
 
-function ToolbarButtonSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: ButtonSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  const styledButton = segmentButton(segment, size);
-  // When a caller hosts the segment in their own element (e.g. a Popover
-  // trigger), the styled button becomes that element's render target so the
-  // overlay wiring composes with the toolbar button — mirroring the
-  // Toolbar.Button → Toggle → Button nesting used for toggle segments.
-  const control = segment.render
-    ? React.cloneElement(segment.render, { render: styledButton })
-    : styledButton;
-  const button = (
-    <Toolbar.Button
-      disabled={segment.disabled}
-      onClick={segment.onClick}
-      render={control}
-    />
-  );
-  return withTooltip(
-    button,
-    segment.label,
-    isLabelVisible(segment),
-    overlaySide(orientation),
-  );
-}
+/**
+ * Composes an animated toolbar control with Fresco's accessible dropdown menu.
+ * The popup defaults to the right of a vertical toolbar and below a horizontal
+ * toolbar, while callers can override the side through `contentProps`.
+ */
+export function ToolbarMenu({
+  ref,
+  trigger,
+  children,
+  contentProps,
+  ...props
+}: ToolbarMenuProps) {
+  const { orientation } = useToolbarContext('ToolbarMenu');
+  const mergedRef = useMergedButtonRef(ref, trigger.props.ref);
+  const triggerWithRef = React.cloneElement(trigger, { ref: mergedRef });
 
-function ToolbarToggleSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: ToggleSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  // A controlled `pressed` with no `onPressedChange` can never change state —
-  // Base UI won't manage it internally once it's controlled, so a tap would
-  // advertise an activation that does nothing. Disable that combination
-  // rather than leave a live-looking control wired to nothing; an
-  // uncontrolled toggle (no `pressed`) is unaffected, since Base UI manages
-  // its own state regardless of whether a callback is supplied.
-  const isUncontrollable =
-    segment.pressed !== undefined && !segment.onPressedChange;
-  const disabled = segment.disabled || isUncontrollable;
-  // `disabled` also goes on the composite item, not just the inner Toggle:
-  // that is what tells Base UI's roving focus the segment is disabled-but-
-  // focusable, and keeps its `aria-disabled` in step with the Toggle's.
-  const toggle = (
-    <Toolbar.Button
-      disabled={disabled}
-      render={
-        <Toggle
-          pressed={segment.pressed}
-          defaultPressed={segment.defaultPressed}
-          onPressedChange={segment.onPressedChange}
-          disabled={disabled}
-          render={segmentButton(segment, size, pressedClasses)}
-        />
-      }
-    />
-  );
-  return withTooltip(
-    toggle,
-    segment.label,
-    isLabelVisible(segment),
-    overlaySide(orientation),
-  );
-}
-
-function ToolbarGroupSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: GroupSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  // Same rationale as the toggle segment above: a controlled `value` with no
-  // `onValueChange` can never change, since Base UI won't manage selection
-  // internally once the group is controlled.
-  const isUncontrollable =
-    segment.value !== undefined && !segment.onValueChange;
   return (
-    <ToggleGroup
-      multiple={segment.mode === 'multiple'}
-      value={segment.value}
-      defaultValue={segment.defaultValue}
-      onValueChange={segment.onValueChange}
-      disabled={isUncontrollable}
-      orientation={orientation}
-      className={cx(
-        'flex items-center gap-1',
-        orientation === 'vertical' && 'flex-col',
-      )}
-    >
-      {segment.options.map((option) => {
-        // The group's own `disabled` reaches each Toggle through context, so
-        // fold it in here too — the composite item is outside that context and
-        // would otherwise treat the option as enabled.
-        const disabled = option.disabled || isUncontrollable;
-        const toggle = (
-          <Toolbar.Button
-            disabled={disabled}
-            render={
-              <Toggle
-                value={option.value}
-                disabled={disabled}
-                render={segmentButton(option, size, pressedClasses)}
-              />
-            }
-          />
-        );
-        return (
-          <React.Fragment key={option.value}>
-            {withTooltip(
-              toggle,
-              option.label,
-              isLabelVisible(option),
-              overlaySide(orientation),
-            )}
-          </React.Fragment>
-        );
-      })}
-    </ToggleGroup>
-  );
-}
-
-// Active styling for a menu trigger. Unlike a Toggle it has no data-pressed
-// state, so the selected highlight is applied directly when `pressed`.
-const menuActiveClasses = 'bg-selected! text-selected-contrast!';
-
-function ToolbarMenuSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: MenuSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  // A consumer-supplied className (e.g. a named theme colour) takes precedence
-  // over the default pressed highlight, so an active selection can be coloured
-  // by its own meaning (e.g. an edge type's colour) rather than `bg-selected`.
-  const activeClasses = segment.className
-    ? undefined
-    : segment.pressed
-      ? menuActiveClasses
-      : undefined;
-  const trigger = (
-    <Toolbar.Button
-      disabled={segment.disabled}
-      render={
-        <DropdownMenuTrigger
-          disabled={segment.disabled}
-          render={segmentButton(segment, size, activeClasses)}
-        />
-      }
-    />
-  );
-  return (
-    <DropdownMenu>
-      {withTooltip(
-        trigger,
-        segment.label,
-        isLabelVisible(segment),
-        overlaySide(orientation),
-      )}
-      <DropdownMenuContent side={overlaySide(orientation)}>
-        <DropdownMenuRadioGroup
-          value={segment.value}
-          onValueChange={(value) => segment.onSelect(String(value))}
-        >
-          {segment.options.map((option) => (
-            // Base UI radio items keep the menu open by default; close on pick
-            // so a single selection commits and returns focus to the page.
-            <DropdownMenuRadioItem
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-              closeOnClick
-            >
-              {option.icon}
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+    <DropdownMenu {...props}>
+      <DropdownMenuTrigger render={triggerWithRef} />
+      <DropdownMenuContent
+        {...contentProps}
+        side={
+          contentProps?.side ??
+          (orientation === 'vertical' ? 'right' : 'bottom')
+        }
+      >
+        {children}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function ToolbarPopoverSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: PopoverSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  // As with menu segments, a consumer-supplied className takes precedence over
-  // the default pressed highlight, so an active state can be coloured by its
-  // own meaning (e.g. a group tool adopting the active group's colour).
-  const activeClasses = segment.className
-    ? undefined
-    : segment.pressed
-      ? menuActiveClasses
-      : undefined;
-  const trigger = (
-    <Toolbar.Button
-      disabled={segment.disabled}
-      render={
-        <PopoverTrigger
-          disabled={segment.disabled}
-          render={segmentButton(segment, size, activeClasses)}
-        />
-      }
-    />
-  );
+/**
+ * Composes an animated toolbar control with Fresco's accessible popover.
+ * The popup defaults to the right of a vertical toolbar and below a horizontal
+ * toolbar, while callers can override the side through `contentProps`.
+ */
+export function ToolbarPopover({
+  ref,
+  trigger,
+  children,
+  contentProps,
+  ...props
+}: ToolbarPopoverProps) {
+  const { orientation } = useToolbarContext('ToolbarPopover');
+  const mergedRef = useMergedButtonRef(ref, trigger.props.ref);
+  const triggerWithRef = React.cloneElement(trigger, { ref: mergedRef });
+
   return (
-    <Popover
-      open={segment.open}
-      onOpenChange={(open) => segment.onOpenChange(open)}
-    >
-      {withTooltip(
-        trigger,
-        segment.label,
-        isLabelVisible(segment),
-        overlaySide(orientation),
-      )}
+    <Popover {...props}>
+      <PopoverTrigger render={triggerWithRef} />
       <PopoverContent
-        side={segment.side ?? overlaySide(orientation)}
-        showArrow={false}
+        {...contentProps}
+        side={
+          contentProps?.side ??
+          (orientation === 'vertical' ? 'right' : 'bottom')
+        }
       >
-        {segment.children}
+        {children}
       </PopoverContent>
     </Popover>
   );
 }
 
-function ToolbarComponentSegment({
-  segment,
-  size,
-  orientation,
-}: {
-  segment: ComponentSegment;
-  size: SegmentSize;
-  orientation: ToolbarOrientation;
-}) {
-  const Component = segment.component;
-  return <Component size={size} orientation={orientation} />;
-}
+function AnimatedChildren({ children }: { children?: React.ReactNode }) {
+  const motionChildren = React.Children.toArray(children);
 
-const segmentSpring = { type: 'spring' as const, duration: 0.4, bounce: 0.2 };
+  for (const child of motionChildren) {
+    const component = React.isValidElement(child) ? child.type : null;
+    const isObjectLike =
+      typeof component === 'function' ||
+      (typeof component === 'object' && component !== null);
 
-const NUDGE_STEP = 8;
+    if (
+      !isObjectLike ||
+      Reflect.get(component, TOOLBAR_MOTION_CHILD) !== true
+    ) {
+      throw new Error(
+        'SegmentedToolbar only accepts its Toolbar* components as direct children. Custom wrappers must declare and forward a ref, then be registered with defineToolbarChild().',
+      );
+    }
+  }
 
-function SegmentMotion({
-  reduce,
-  children,
-}: {
-  reduce: boolean;
-  children: React.ReactNode;
-}) {
-  const variants = reduce
-    ? undefined
-    : {
-        initial: { opacity: 0, scale: 0.6 },
-        animate: { opacity: 1, scale: 1 },
-        exit: { opacity: 0, scale: 0.6 },
-      };
   return (
-    <motion.div
-      layout
-      className="flex items-center justify-center"
-      initial={variants?.initial}
-      animate={variants?.animate}
-      exit={variants?.exit}
-      transition={reduce ? { duration: 0 } : segmentSpring}
-    >
-      {children}
-    </motion.div>
+    <AnimatePresence initial={false} mode="popLayout">
+      {motionChildren}
+    </AnimatePresence>
   );
 }
 
-// Grip sizing per toolbar size (kept as literal classes for Tailwind extraction).
+export function ToolbarGroup({
+  ref,
+  children,
+  className,
+  disabled = false,
+  ...props
+}: ToolbarGroupProps) {
+  const { orientation, reduceMotion } = useToolbarContext('ToolbarGroup');
+  const inheritedDisabled = React.useContext(GroupDisabledContext);
+  const effectiveDisabled = inheritedDisabled || disabled;
+
+  return (
+    <Toolbar.Group
+      ref={ref}
+      {...props}
+      disabled={effectiveDisabled}
+      render={
+        <motion.div
+          {...motionItemProps(reduceMotion)}
+          className={cx(
+            'relative flex items-center gap-1',
+            orientation === 'vertical' && 'flex-col',
+            className,
+          )}
+        />
+      }
+    >
+      <GroupDisabledContext.Provider value={effectiveDisabled}>
+        <AnimatedChildren>{children}</AnimatedChildren>
+      </GroupDisabledContext.Provider>
+    </Toolbar.Group>
+  );
+}
+
+export function ToolbarToggleGroup({
+  ref,
+  children,
+  className,
+  disabled = false,
+  orientation: orientationProp,
+  value,
+  onValueChange,
+  ...props
+}: ToolbarToggleGroupProps) {
+  const { orientation, reduceMotion } = useToolbarContext('ToolbarToggleGroup');
+  const inheritedDisabled = React.useContext(GroupDisabledContext);
+  const isUncontrollable = value !== undefined && !onValueChange;
+  const effectiveDisabled = inheritedDisabled || disabled || isUncontrollable;
+
+  return (
+    <ToggleGroup
+      ref={ref}
+      {...props}
+      value={value}
+      onValueChange={onValueChange}
+      disabled={effectiveDisabled}
+      orientation={orientationProp ?? orientation}
+      render={
+        <motion.div
+          {...motionItemProps(reduceMotion)}
+          className={cx(
+            'relative flex items-center gap-1',
+            (orientationProp ?? orientation) === 'vertical' && 'flex-col',
+            className,
+          )}
+        />
+      }
+    >
+      <GroupDisabledContext.Provider value={effectiveDisabled}>
+        <ToggleGroupItemContext.Provider value>
+          <AnimatedChildren>{children}</AnimatedChildren>
+        </ToggleGroupItemContext.Provider>
+      </GroupDisabledContext.Provider>
+    </ToggleGroup>
+  );
+}
+
+export function ToolbarSeparator({
+  ref,
+  className,
+  ...props
+}: ToolbarSeparatorProps) {
+  const { orientation, reduceMotion } = useToolbarContext('ToolbarSeparator');
+  const separatorOrientation =
+    orientation === 'horizontal' ? 'vertical' : 'horizontal';
+
+  return (
+    <Toolbar.Separator
+      ref={ref}
+      {...props}
+      orientation={separatorOrientation}
+      render={
+        <motion.div
+          {...motionItemProps(reduceMotion)}
+          className={cx(
+            'shrink-0 rounded-full bg-current/20',
+            orientation === 'horizontal' ? 'mx-1 h-6 w-px' : 'my-1 h-px w-6',
+            className,
+          )}
+        />
+      }
+    />
+  );
+}
+
+// `AnimatedChildren` checks this registry at runtime, while
+// `defineToolbarChild` checks at compile time that every registered component
+// exposes the React 19 ref prop required by Motion's `popLayout` mode.
+defineToolbarChild(ToolbarButton);
+defineToolbarChild(ToolbarIconButton);
+defineToolbarChild(ToolbarMenu);
+defineToolbarChild(ToolbarPopover);
+defineToolbarChild(ToolbarGroup);
+defineToolbarChild(ToolbarToggleGroup);
+defineToolbarChild(ToolbarSeparator);
+
+const NUDGE_STEP = 8;
+
 const dragHandleSizes: Record<SegmentSize, string> = {
   sm: 'p-1 [&_svg]:size-4',
   md: 'p-1.5 [&_svg]:size-5',
@@ -580,10 +800,8 @@ const dragHandleSizes: Record<SegmentSize, string> = {
 };
 
 /**
- * DragHandle is intentionally outside role="toolbar" so its arrow keys move
- * the toolbar rather than competing with the toolbar's roving-focus navigation.
- * It is deliberately not styled as a button (no fill, no hover state) — just a
- * muted grip affordance.
+ * The drag handle sits outside role="toolbar" so its arrow keys move the
+ * complete toolbar rather than competing with the toolbar's roving focus.
  */
 function DragHandle({
   label,
@@ -630,89 +848,8 @@ function DragHandle({
   );
 }
 
-function renderSegment(
-  segment: ToolbarSegment,
-  size: SegmentSize,
-  orientation: ToolbarOrientation,
-  reduce: boolean,
-) {
-  const inner = (() => {
-    switch (segment.type) {
-      case 'menu':
-        return (
-          <ToolbarMenuSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      case 'popover':
-        return (
-          <ToolbarPopoverSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      case 'separator':
-        return (
-          <Toolbar.Separator
-            orientation={
-              orientation === 'horizontal' ? 'vertical' : 'horizontal'
-            }
-            className={cx(
-              'shrink-0 rounded-full bg-current/20',
-              orientation === 'horizontal' ? 'mx-1 h-6 w-px' : 'my-1 h-px w-6',
-            )}
-          />
-        );
-      case 'group':
-        return (
-          <ToolbarGroupSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      case 'toggle':
-        return (
-          <ToolbarToggleSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      case 'button':
-        return (
-          <ToolbarButtonSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      case 'component':
-        return (
-          <ToolbarComponentSegment
-            segment={segment}
-            size={size}
-            orientation={orientation}
-          />
-        );
-      default:
-        return null;
-    }
-  })();
-
-  return (
-    <SegmentMotion key={segment.id} reduce={reduce}>
-      {inner}
-    </SegmentMotion>
-  );
-}
-
 export function SegmentedToolbar({
-  label,
-  items,
+  children,
   orientation = 'horizontal',
   size = 'md',
   draggable = false,
@@ -722,14 +859,13 @@ export function SegmentedToolbar({
   dragConstraints,
   dragHandleLabel = 'Move toolbar',
   className,
+  disabled = false,
+  ...props
 }: SegmentedToolbarProps) {
-  const reduce = useReducedMotion() ?? false;
+  const reduceMotion = useReducedMotion() ?? false;
+  const layoutGroupId = React.useId();
   const dragControls = useDragControls();
   const [announcement, setAnnouncement] = React.useState('');
-
-  // Motion's `drag` owns the position via these motion values (the single
-  // source of truth), so pointer drags and keyboard nudges stay in sync and
-  // `dragConstraints` clamps both.
   const x = useMotionValue(position?.x ?? defaultPosition?.x ?? 0);
   const y = useMotionValue(position?.y ?? defaultPosition?.y ?? 0);
 
@@ -742,9 +878,6 @@ export function SegmentedToolbar({
 
   const handleNudge = (delta: Position) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
-    // Pointer drags are clamped by motion, but keyboard nudges bypass it, so
-    // honour the object-form bounds here. The RefObject form is left to motion's
-    // drag clamping (we don't measure the ref element).
     if (dragConstraints && !('current' in dragConstraints)) {
       next.x = Math.min(
         Math.max(next.x, dragConstraints.left),
@@ -763,39 +896,46 @@ export function SegmentedToolbar({
     );
   };
 
-  const segments = (
-    <AnimatePresence initial={false} mode="popLayout">
-      {items.map((segment) =>
-        renderSegment(segment, size, orientation, reduce),
-      )}
-    </AnimatePresence>
+  const context = React.useMemo<ToolbarContextValue>(
+    () => ({ orientation, size, reduceMotion }),
+    [orientation, reduceMotion, size],
   );
 
   const innerToolbar = (
-    <Toolbar.Root
-      orientation={orientation}
-      aria-label={label}
-      className={cx(
-        'flex items-center gap-1',
-        orientation === 'vertical' && 'flex-col',
-      )}
-    >
-      {segments}
-    </Toolbar.Root>
+    <ToolbarContext.Provider value={context}>
+      <Toolbar.Root
+        {...props}
+        disabled={disabled}
+        orientation={orientation}
+        className={cx(
+          'relative flex min-w-0 items-center gap-1',
+          orientation === 'vertical'
+            ? 'flex-col'
+            : 'm-[-5px] overflow-x-auto overscroll-x-contain p-[5px]',
+        )}
+      >
+        <GroupDisabledContext.Provider value={disabled}>
+          <AnimatedChildren>{children}</AnimatedChildren>
+        </GroupDisabledContext.Provider>
+      </Toolbar.Root>
+    </ToolbarContext.Provider>
   );
 
-  // The Surface is the "pill" container; the Toolbar.Root sits inside it so Base
-  // UI's roving focus is never wrapped by motion/Surface. A shared LayoutGroup
-  // keeps the container's resize in step with segment enter/exit.
+  const surfaceTransition: Transition = reduceMotion
+    ? { duration: 0 }
+    : { layout: layoutSpring };
+
   if (!draggable) {
     return (
-      <LayoutGroup>
+      <LayoutGroup id={layoutGroupId} inherit={false}>
         <MotionSurface
           floating
           shadow="none"
           spacing="none"
           noContainer
           layout
+          style={{ borderRadius: surfaceRadius[size] }}
+          transition={surfaceTransition}
           className={cx(rootLayoutVariants({ orientation }), className)}
         >
           {innerToolbar}
@@ -804,25 +944,23 @@ export function SegmentedToolbar({
     );
   }
 
-  // When draggable, the Surface pill is also the drag container; the toolbar
-  // sits inside it next to the drag handle.
   return (
-    <LayoutGroup>
+    <LayoutGroup id={layoutGroupId} inherit={false}>
       <MotionSurface
         data-motion-drag-container="segmented-toolbar"
         floating
         shadow="none"
         spacing="none"
         noContainer
-        layout
+        layout="size"
         drag
         dragListener={false}
         dragControls={dragControls}
         dragMomentum={false}
         dragConstraints={dragConstraints}
         onDragEnd={() => onPositionChange?.({ x: x.get(), y: y.get() })}
-        style={{ x, y }}
-        transition={reduce ? { duration: 0 } : segmentSpring}
+        style={{ x, y, borderRadius: surfaceRadius[size] }}
+        transition={surfaceTransition}
         className={cx(rootLayoutVariants({ orientation }), className)}
       >
         <DragHandle

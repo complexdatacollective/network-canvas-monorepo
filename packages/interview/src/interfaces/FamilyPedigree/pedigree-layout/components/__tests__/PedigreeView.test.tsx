@@ -1,3 +1,11 @@
+/**
+ * PedigreeView's ROUTING: which store mutations each context-menu action makes,
+ * given a dialog result. The dialog itself is mocked and `PersonFields` is
+ * stubbed out, so nothing here renders dialog content — which is precisely why
+ * this file could not have caught issue #1390. Anything about what the dialogs
+ * actually render belongs in PedigreeViewEditDialog.test.tsx, which builds the
+ * real DialogProvider/pedigree-provider nesting.
+ */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { MouseEventHandler, ReactNode } from 'react';

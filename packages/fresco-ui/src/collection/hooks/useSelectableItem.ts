@@ -4,6 +4,7 @@ import { useCallback, useEffect } from 'react';
 import { useShallow } from 'zustand/shallow';
 
 import { useCollectionStore } from '../contexts';
+import { isEventFromOwnSubtree } from '../isEventFromOwnSubtree';
 import type { SelectionManager } from '../selection/SelectionManager';
 import type { SelectableItemResult, SelectionMode } from '../selection/types';
 import type { Key } from '../types';
@@ -84,9 +85,24 @@ export function useSelectableItem(
 
   // Focus management: focus the DOM element when this item becomes focused
   useEffect(() => {
-    if (isFocused && isFocusedCollection && ref.current) {
-      ref.current.focus({ preventScroll: true });
+    const element = ref.current;
+    if (!isFocused || !isFocusedCollection || !element) {
+      return;
     }
+
+    // Never take focus off something this item already contains. Rows are not
+    // leaves: an item may render its own buttons, links or menu triggers, and
+    // once the researcher has reached one of those, moving focus up to the row
+    // strands them — the control they were on is unreachable without traversing
+    // the whole row again, and any popup it opened closes behind them.
+    //
+    // Roving between items is unaffected: the active element then lives in a
+    // different item (or nowhere), so this item still claims focus.
+    if (element.contains(element.ownerDocument.activeElement)) {
+      return;
+    }
+
+    element.focus({ preventScroll: true });
   }, [isFocused, isFocusedCollection, ref]);
 
   // Scroll focused item into view
@@ -100,25 +116,40 @@ export function useSelectableItem(
   }, [isFocused, ref]);
 
   // Handle focus event
-  const handleFocus = useCallback(() => {
-    if (isDisabled) {
-      return;
-    }
+  const handleFocus = useCallback(
+    (e: React.FocusEvent) => {
+      // A popup this item renders through a portal delivers its focus events
+      // here through the React tree even though it sits outside this item in
+      // the DOM. Moving between its options is not focus landing on this row.
+      if (!isEventFromOwnSubtree(e)) {
+        return;
+      }
 
-    if (selectionManager.focusedKey !== key) {
-      selectionManager.setFocusedKey(key);
-    }
+      if (isDisabled) {
+        return;
+      }
 
-    if (selectOnFocus && selectionMode !== 'none') {
-      selectionManager.replaceSelection(key);
-    }
-  }, [key, selectionManager, selectOnFocus, selectionMode, isDisabled]);
+      if (selectionManager.focusedKey !== key) {
+        selectionManager.setFocusedKey(key);
+      }
+
+      if (selectOnFocus && selectionMode !== 'none') {
+        selectionManager.replaceSelection(key);
+      }
+    },
+    [key, selectionManager, selectOnFocus, selectionMode, isDisabled],
+  );
 
   // Handle click event. Delegates to `handleItemClick`, which batches the
   // focus and selection changes into a single store write so subscribers
   // only wake once per click.
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
+      // Same portal caveat as `handleFocus`: activating an option in a popup
+      // this item rendered must not also select the row behind it.
+      if (!isEventFromOwnSubtree(e)) {
+        return;
+      }
       if (isDisabled || selectionMode === 'none') {
         return;
       }
@@ -134,6 +165,12 @@ export function useSelectableItem(
   // Handle keyboard events
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Same portal caveat as `handleFocus`: Space or Enter pressed on an
+      // option inside a popup this item rendered must not also toggle the row.
+      if (!isEventFromOwnSubtree(e)) {
+        return;
+      }
+
       if (isDisabled) {
         return;
       }

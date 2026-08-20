@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Finishing a Refactor'
+  short_description: 'Convert every call site before opening the PR'
+  default_prompt: 'Use $finishing-a-refactor to enumerate and convert every call site of the pattern this change replaces.'

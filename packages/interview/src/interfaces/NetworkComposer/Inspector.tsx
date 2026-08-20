@@ -60,6 +60,15 @@ function AutoPersist({
       return snapshot;
     }),
   );
+  // Deliberately the store's STICKY `isDirty`, not `selectIsFormDirty`.
+  //
+  // This is not a "you have unsaved changes" warning — it is the trigger for
+  // an autosave, and it has to fire for the edit that puts a value BACK. With
+  // a live comparison, editing an attribute (persisted), then restoring it,
+  // would settle as "not changed" and skip the write — leaving the edited
+  // value persisted while the participant is looking at the restored one.
+  // Sticky is the safe semantics for a persistence trigger: once anything has
+  // been touched, every settled state is written.
   const isDirty = useFormStore((state) => state.isDirty);
   const isInitial = useRef(true);
 

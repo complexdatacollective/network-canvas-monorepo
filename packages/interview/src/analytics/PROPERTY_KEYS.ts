@@ -1,20 +1,22 @@
+import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
+
 // PostHog instance name. Must be unique across all posthog-js instances on a
 // page so we never collide with a host's default-named instance.
 export const INSTANCE_NAME = '@codaco/interview';
 
-// Codaco-managed PostHog proxy. The project key is public PostHog data, not a
-// secret — same value used by architect and the documentation app.
-export const POSTHOG_API_KEY =
-  'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
-export const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
+// The project key and relay host are shared by every Network Canvas product;
+// re-exported here so this package's analytics code has one import for all of
+// its PostHog constants.
+export { POSTHOG_API_KEY, POSTHOG_HOST } from '@codaco/shared-consts';
 
 // Super-property keys (snake_case for PostHog convention).
+//
+// The app-identifying keys come from `@codaco/shared-consts`, where every
+// product's metadata is built from the same definition — spread rather than
+// restated so this package cannot drift from its hosts. The rest are the
+// interview-scoped keys only this runtime reports.
 export const SUPER_PROPS = {
-  APP: 'app',
-  APP_NAME: '$app_name',
-  APP_VERSION: '$app_version',
-  INSTALLATION_ID: 'installation_id',
-  HOST_VERSION: 'host_version',
+  ...POSTHOG_APP_PROPS,
   PACKAGE_VERSION: 'package_version',
   PROTOCOL_HASH: 'protocol_hash',
   STAGE_TYPE: 'stage_type',

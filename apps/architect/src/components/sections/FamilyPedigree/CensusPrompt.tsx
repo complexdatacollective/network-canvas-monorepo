@@ -1,5 +1,5 @@
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -19,7 +19,7 @@ const CensusPrompt = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <IssueAnchor fieldName="censusPrompt" description="Census Prompt" />
         <ArchitectField
           name="censusPrompt"
@@ -29,7 +29,7 @@ const CensusPrompt = (_props: StageEditorSectionProps) => {
           initialValue={initialValue}
           validation={{ required: true }}
         />
-      </Row>
+      </>
     </Section>
   );
 };

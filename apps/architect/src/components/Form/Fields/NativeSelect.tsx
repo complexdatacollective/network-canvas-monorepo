@@ -7,6 +7,7 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { normalizeForComparison } from '@codaco/shared-consts';
 import { cx } from '~/utils/cva';
 import { getValidator } from '~/utils/validations';
 
@@ -75,8 +76,8 @@ const NativeSelect = ({
   onCreateOption,
   onCreateNew,
   createLabelText = '✨ Create new ✨',
-  createInputLabel = 'New variable name',
-  createInputPlaceholder = 'Enter a variable name...',
+  createInputLabel = 'New attribute name',
+  createInputPlaceholder = 'Enter an attribute name...',
   allowPlaceholderSelect = false,
   sortOptionsByLabel = true,
   reserved = [],
@@ -129,8 +130,15 @@ const NativeSelect = ({
       const validationError = getValidator(createValidation ?? {})(candidate);
       if (validationError) return validationError;
 
+      // The same question the array-field validators (`uniqueByList`,
+      // `uniqueArrayAttribute`) and the protocol schema's `findDuplicateName`
+      // ask: case-insensitive AND Unicode-canonical. Comparing raw case here
+      // let this control accept a label the schema then rejected as a
+      // duplicate — the two spellings of `Café` reach the participant as two
+      // choices nothing distinguishes.
       const matchesLabel = ({ label: optionLabel }: Option) =>
-        optionLabel.toLowerCase() === candidate.toLowerCase();
+        normalizeForComparison(optionLabel) ===
+        normalizeForComparison(candidate);
 
       if (options.some(matchesLabel) || reserved.some(matchesLabel)) {
         return `An option named "${candidate}" is already defined${entity ? ` on entity type ${entity}` : ''}`;

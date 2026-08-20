@@ -5,7 +5,7 @@ import { pickResource, uploadIntoResourceBrowser } from './asset-upload.js';
 
 // Information stage Items (sections/ContentGrid/*). The item dialog is
 // titled 'Edit Item' for both new and edit; its type radios are 'Image' /
-// 'Video' / 'Audio' / 'Text' (ContentGrid/options.tsx), the Content section
+// 'Video' / 'Audio' / 'Text' (ContentGrid/options.tsx), the Content field
 // mounts once a type is chosen, and 'Display size' radios ('Full size' /
 // 'Small' / 'Medium' / 'Large') render for image/video only — 'Full size'
 // writes no `size` key (normalizeType drops the '' value). Saved items are
@@ -23,22 +23,22 @@ async function openFreshItemDialog(
   const dialog = page.getByRole('dialog', { name: 'Edit Item' });
   const create = editor
     .section('Items')
-    .getByRole('button', { name: 'Create new', exact: true });
+    .getByRole('button', { name: 'Create new content item', exact: true });
   await create.click();
   await expect(dialog).toBeVisible();
-  // A fresh item has no `type`, so no Content section. On a stale reopen,
+  // A fresh item has no `type`, so no per-type content field. On a stale reopen,
   // cancel — the full close cycle forces the unmount that destroys the
   // shared form — and try once more.
-  const contentSection = dialog.locator('section[data-name="Content"]');
+  const contentField = dialog.locator('[data-field-name^="content"]');
   try {
-    await expect(contentSection).toBeHidden({ timeout: 3_000 });
+    await expect(contentField).toBeHidden({ timeout: 3_000 });
   } catch {
     const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true });
     await cancel.click();
     await dialog.waitFor({ state: 'detached' });
     await create.click();
     await expect(dialog).toBeVisible();
-    await expect(contentSection).toBeHidden();
+    await expect(contentField).toBeHidden();
   }
   return dialog;
 }
@@ -70,10 +70,9 @@ export async function addAssetItem(
 ): Promise<void> {
   const dialog = await openFreshItemDialog(editor, page);
   await dialog.getByRole('radio', { name: opts.kind, exact: true }).click();
-  await dialog
-    .locator('[data-field-name="content"]')
-    .getByRole('button', { name: 'Select resource' })
-    .click();
+  // The field-level accessible name stays "Content" even though the item
+  // editor keeps a separate internal draft field per content type.
+  await dialog.getByRole('button', { name: 'Select resource' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Resource Browser' }),
   ).toBeVisible();
@@ -85,9 +84,7 @@ export async function addAssetItem(
   // The browser closes on selection; the picker button flips once the field
   // value commits.
   await expect(
-    dialog
-      .locator('[data-field-name="content"]')
-      .getByRole('button', { name: 'Update resource' }),
+    dialog.getByRole('button', { name: 'Update resource' }),
   ).toBeVisible();
   if (opts.size) {
     await dialog.getByRole('radio', { name: opts.size, exact: true }).click();

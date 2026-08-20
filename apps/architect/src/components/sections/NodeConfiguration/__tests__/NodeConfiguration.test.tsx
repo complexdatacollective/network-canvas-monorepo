@@ -56,8 +56,18 @@ type OpenWindowCall = {
 const openWindowSpy = vi.fn<(call: OpenWindowCall) => void>();
 
 vi.mock('~/components/Form/arrayFields/EditableAttributesList', () => ({
-  default: ({ fieldName }: { fieldName: string }) => (
-    <div data-testid="attributes-list" data-fieldname={fieldName} />
+  default: ({
+    fieldName,
+    addButtonLabel,
+  }: {
+    fieldName: string;
+    addButtonLabel?: string;
+  }) => (
+    <div
+      data-testid="attributes-list"
+      data-fieldname={fieldName}
+      data-addbuttonlabel={addButtonLabel ?? ''}
+    />
   ),
 }));
 
@@ -117,7 +127,7 @@ describe('NodeConfiguration', () => {
   it('renders each field area under its own subsection heading', () => {
     renderSection();
     expect(
-      screen.getByRole('heading', { name: /quick add variable/i }),
+      screen.getByRole('heading', { name: /quick add attribute/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /node positions/i }),
@@ -139,6 +149,12 @@ describe('NodeConfiguration', () => {
     expect(screen.getByTestId('field-layoutVariable')).toBeInTheDocument();
     expect(screen.getByTestId('attributes-list').dataset.fieldname).toBe(
       'nodeForm.fields',
+    );
+    // The same stage renders one more attributes list per selected edge type
+    // below this one (see EdgeConfiguration), so this button has to say which
+    // list it adds to rather than share a name with all of them.
+    expect(screen.getByTestId('attributes-list').dataset.addbuttonlabel).toBe(
+      'Create new node attribute',
     );
   });
 

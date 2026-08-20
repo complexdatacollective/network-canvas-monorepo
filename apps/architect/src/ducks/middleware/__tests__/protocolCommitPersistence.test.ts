@@ -44,7 +44,7 @@ import activeProtocol, {
 } from '../../modules/activeProtocol';
 import app, {
   setActiveProtocolId,
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
 } from '../../modules/app';
 import { actionCreators as stageActions } from '../../modules/protocol/stages';
 import protocolValidation from '../../modules/protocolValidation';
@@ -177,7 +177,7 @@ describe('validated protocol commit persistence', () => {
   it('does not persist accepted commits from a read-only duplicate tab', async () => {
     const store = makeStore();
     await seedValidProtocol(store);
-    store.dispatch(setProtocolOpenElsewhere(true));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
 
     validateProtocol.mockImplementation(async (protocol: CurrentProtocol) => ({
       success: true,

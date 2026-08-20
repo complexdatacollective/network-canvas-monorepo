@@ -52,7 +52,7 @@ describe('MinMaxAlterLimits', () => {
       children: <MinMaxAlterLimits {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Min/max alters' }));
 
     const minInput = await screen.findByLabelText(/Minimum Number of Alters/);
     fireEvent.change(minInput, { target: { value: '3' } });
@@ -75,7 +75,7 @@ describe('MinMaxAlterLimits', () => {
       children: <MinMaxAlterLimits {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Min/max alters' }));
 
     await waitFor(() => {
       expect(

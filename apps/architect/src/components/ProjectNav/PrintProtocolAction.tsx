@@ -1,8 +1,12 @@
 import { Printer } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  defineToolbarChild,
+  ToolbarButton,
+  type ToolbarButtonProps,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import { getProtocolName } from '~/selectors/protocol';
 
 const dateWithSafeChars = (date: string, replaceWith = '-') =>
@@ -13,32 +17,32 @@ const dateWithSafeChars = (date: string, replaceWith = '-') =>
 const fileNameWithSafeChars = (name: string) =>
   name.replace(/[/\\:*?"<>|]/g, '-').trim();
 
-export function usePrintProtocolAction(): ToolbarSegment {
-  const protocolName = useSelector(getProtocolName);
+type PrintProtocolActionProps = {
+  ref?: ToolbarButtonProps['ref'];
+};
 
-  const handlePrint = useCallback(() => {
-    if (!protocolName) return;
-    const now = new Date();
-    const dateString = `${dateWithSafeChars(now.toLocaleDateString(), '-')} ${dateWithSafeChars(now.toLocaleTimeString(), '.')}`;
-    const fileName = `${fileNameWithSafeChars(protocolName)} Protocol Summary (Created ${dateString}).pdf`;
-    const previousTitle = window.document.title;
-    window.document.title = fileName;
-    try {
-      window.print();
-    } finally {
-      window.document.title = previousTitle;
-    }
-  }, [protocolName]);
+export const PrintProtocolAction = defineToolbarChild(
+  function PrintProtocolAction({ ref }: PrintProtocolActionProps) {
+    const protocolName = useSelector(getProtocolName);
 
-  return useMemo<ToolbarSegment>(
-    () => ({
-      type: 'button',
-      id: 'print',
-      label: 'Print',
-      icon: <Printer />,
-      showLabel: true,
-      onClick: handlePrint,
-    }),
-    [handlePrint],
-  );
-}
+    const handlePrint = useCallback(() => {
+      if (!protocolName) return;
+      const now = new Date();
+      const dateString = `${dateWithSafeChars(now.toLocaleDateString(), '-')} ${dateWithSafeChars(now.toLocaleTimeString(), '.')}`;
+      const fileName = `${fileNameWithSafeChars(protocolName)} Protocol Summary (Created ${dateString}).pdf`;
+      const previousTitle = window.document.title;
+      window.document.title = fileName;
+      try {
+        window.print();
+      } finally {
+        window.document.title = previousTitle;
+      }
+    }, [protocolName]);
+
+    return (
+      <ToolbarButton ref={ref} icon={<Printer />} onClick={handlePrint}>
+        Print
+      </ToolbarButton>
+    );
+  },
+);

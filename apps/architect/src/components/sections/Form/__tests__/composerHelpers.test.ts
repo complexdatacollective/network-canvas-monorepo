@@ -341,6 +341,22 @@ describe('sharedFormValidationViews', () => {
         form: [{ variable: 'diagnosis' }],
       },
     },
+    // A second pedigree on a DIFFERENT node type. FamilyPedigree carries no
+    // literal `subject`: its subject is declared on the stage schema as
+    // `nodeConfig.type` (see stage-subject-resolution.ts) and resolved by the
+    // collector, so these two stages must land in different views. Reading a
+    // hit's own subject is the only thing that separates them — recover the
+    // entity without its type, and `staff_role` is admitted for a person
+    // subject as a fourth view alongside the three person stages above.
+    // (A fourth view, not a merged one: `variablesByStage` is keyed by stage
+    // index, so two stages can never share one.)
+    {
+      type: 'FamilyPedigree',
+      nodeConfig: {
+        type: 'organisation',
+        form: [{ variable: 'staff_role' }],
+      },
+    },
     {
       type: 'NetworkComposer',
       subject: { entity: 'node', type: 'person' },
@@ -367,6 +383,20 @@ describe('sharedFormValidationViews', () => {
       },
       {
         renderedVariableIds: new Set(['diagnosis']),
+        overlay: {},
+      },
+    ]);
+  });
+
+  it('resolves a pedigree field against its own declared node type', () => {
+    expect(
+      sharedFormValidationViews(stages, {
+        entity: 'node',
+        type: 'organisation',
+      }),
+    ).toEqual([
+      {
+        renderedVariableIds: new Set(['staff_role']),
         overlay: {},
       },
     ]);

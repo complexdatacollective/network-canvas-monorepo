@@ -1,5 +1,6 @@
 import { after, type NextRequest, NextResponse } from 'next/server';
 
+import { ensureError } from '@codaco/shared-consts';
 import {
   createCorsHeaders,
   requireApiTokenAuth,
@@ -8,7 +9,6 @@ import { createVersionedHandler } from '~/app/api/_helpers/versioning';
 import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
-import { ensureError } from '~/utils/ensureError';
 
 const corsHeaders = createCorsHeaders('GET, OPTIONS');
 

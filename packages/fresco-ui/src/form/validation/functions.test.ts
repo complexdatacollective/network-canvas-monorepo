@@ -7,8 +7,9 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import type { ValidationContext } from '../store/types';
+import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
+import { makeValidationFunction } from './helpers';
 
 describe('Validation Functions', () => {
   const createMockContext = (
@@ -33,6 +34,10 @@ describe('Validation Functions', () => {
             dateAttribute: {
               name: 'Date Attribute',
               type: 'datetime',
+            },
+            toString: {
+              name: 'Prototype-named Attribute',
+              type: 'number' as const,
             },
           },
         },
@@ -198,6 +203,59 @@ describe('Validation Functions', () => {
           createMockContext(),
         )({});
       }).toThrow('Min length must be specified');
+    });
+  });
+
+  describe('pattern', () => {
+    const NMTOKEN = {
+      regex: '^[a-zA-Z0-9._:-]+$',
+      errorMessage:
+        'Not a valid node type name. Only letters, numbers and the symbols ._-: are supported',
+      hint: 'Use letters, numbers and the symbols ._-: only.',
+    };
+
+    it('rejects a non-empty value that does not match', () => {
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      const result = validator.safeParse('not valid!');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(NMTOKEN.errorMessage);
+      }
+    });
+
+    it('accepts a non-empty value that matches', () => {
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      expect(validator.safeParse('Person_1').success).toBe(true);
+    });
+
+    // `required` owns emptiness, exactly as HTML5's `pattern` attribute does.
+    // Without this an empty required field reported BOTH "This field is
+    // required." and "Not a valid …" at once, as a bulleted list — the
+    // researcher was told to fix two things when there was only one.
+    it.each([undefined, null, '', '   '])(
+      'says nothing about the unanswered value %p',
+      (value) => {
+        const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+        expect(validator.safeParse(value).success).toBe(true);
+      },
+    );
+
+    it('holds no cursor between values', () => {
+      // A `test` against a stateful (global) expression alternates pass/fail
+      // on identical input. Same validator instance, same value, twice.
+      const validator = validations.pattern(NMTOKEN, createMockContext())({});
+
+      expect(validator.safeParse('Person').success).toBe(true);
+      expect(validator.safeParse('Person').success).toBe(true);
+    });
+
+    it('should throw error when the expression is not specified', () => {
+      expect(() => {
+        validations.pattern({ ...NMTOKEN, regex: '' }, createMockContext())({});
+      }).toThrow('Regex must be specified');
     });
   });
 
@@ -733,7 +791,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be different from 'Test Attribute'.",
+          'Your answer must be different from your earlier answer.',
         );
       }
     });
@@ -781,7 +839,7 @@ describe('Validation Functions', () => {
             unknownAttribute: 'value',
           })
           .safeParse('test');
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
   });
 
@@ -796,7 +854,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be the same as 'Test Attribute'.",
+          'Your answer must be the same as your earlier answer.',
         );
       }
     });
@@ -886,7 +944,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be greater than the value of 'Number Attribute'.",
+          'Your answer must be greater than your earlier answer.',
         );
       }
     });
@@ -951,7 +1009,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -978,7 +1036,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be less than the value of 'Number Attribute'.",
+          'Your answer must be less than your earlier answer.',
         );
       }
     });
@@ -1041,7 +1099,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1068,7 +1126,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be greater than or equal to the value of 'Number Attribute'.",
+          'Your answer must be the same as or greater than your earlier answer.',
         );
       }
     });
@@ -1136,7 +1194,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1161,7 +1219,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "Your answer must be less than or equal to the value of 'Number Attribute'.",
+          'Your answer must be the same as or less than your earlier answer.',
         );
       }
     });
@@ -1229,7 +1287,7 @@ describe('Validation Functions', () => {
             createMockContext(),
           )({})
           .safeParse(10);
-      }).toThrow('Comparison variable not found in codebook');
+      }).toThrow('Comparison attribute not found in codebook');
     });
 
     it('should pass validation when comparison attribute is not in form values (allows hint generation)', () => {
@@ -1412,6 +1470,319 @@ describe('Validation Functions', () => {
       )({});
 
       expect(validator.safeParse(5).success).toBe(true);
+    });
+  });
+
+  /**
+   * Regression cover for issue #1385: an unanswered field collected BOTH the
+   * required error and a nonsensical comparison error about a value it did
+   * not have, and the comparison copy named the codebook variable — the
+   * researcher's identifier for a column of data — to the participant.
+   */
+  describe('comparison rules and unanswered values (#1385)', () => {
+    const comparisonCases = [
+      {
+        name: 'differentFrom',
+        build: (context: ValidationContext) =>
+          validations.differentFrom('numberAttribute', context),
+      },
+      {
+        name: 'sameAs',
+        build: (context: ValidationContext) =>
+          validations.sameAs('numberAttribute', context),
+      },
+      {
+        name: 'greaterThanVariable',
+        build: (context: ValidationContext) =>
+          validations.greaterThanVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'lessThanVariable',
+        build: (context: ValidationContext) =>
+          validations.lessThanVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'greaterThanOrEqualToVariable',
+        build: (context: ValidationContext) =>
+          validations.greaterThanOrEqualToVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+      {
+        name: 'lessThanOrEqualToVariable',
+        build: (context: ValidationContext) =>
+          validations.lessThanOrEqualToVariable(
+            { attribute: 'numberAttribute', type: 'number' },
+            context,
+          ),
+      },
+    ] as const;
+
+    it.each(comparisonCases)(
+      '$name does not fire on an unanswered field whose target IS answered',
+      ({ build }) => {
+        const validator = build(createMockContext())({ numberAttribute: 5 });
+
+        expect(validator.safeParse(undefined).success).toBe(true);
+        expect(validator.safeParse(null).success).toBe(true);
+        expect(validator.safeParse('').success).toBe(true);
+        expect(validator.safeParse('   ').success).toBe(true);
+        expect(validator.safeParse(Number.NaN).success).toBe(true);
+        expect(validator.safeParse([]).success).toBe(true);
+      },
+    );
+
+    it.each(comparisonCases)(
+      '$name does not fire when the target is present but empty',
+      ({ build }) => {
+        // A form value the participant has cleared: the key is present, so
+        // `getComparisonValue` reports it, but there is nothing to compare to.
+        const emptyTargets: FieldValue[] = [undefined, '', '   '];
+        for (const emptyTarget of emptyTargets) {
+          const validator = build(createMockContext())({
+            numberAttribute: emptyTarget,
+          });
+
+          expect(validator.safeParse(5).success).toBe(true);
+        }
+      },
+    );
+
+    it('leaves an unanswered required field with exactly one error', async () => {
+      // Through the same combiner a real Field uses, so the two rules meet
+      // exactly as they do on screen.
+      const validate = makeValidationFunction({
+        required: true,
+        greaterThanVariable: { attribute: 'numberAttribute', type: 'number' },
+        validationContext: createMockContext(),
+      });
+
+      const result = await validate({ numberAttribute: 5 }).safeParseAsync(
+        undefined,
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'You must answer this question before continuing.',
+        ]);
+      }
+    });
+
+    it('names the comparison target with the authored prompt, never the variable', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'numberAttribute', type: 'number' },
+        createMockContext({
+          variableLabels: {
+            numberAttribute: 'How many years have you lived here?',
+          },
+        }),
+      )({ numberAttribute: 5 });
+
+      const result = validator.safeParse(1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          "Your answer must be greater than your answer to 'How many years have you lived here?'.",
+        );
+      }
+    });
+
+    it('treats an inherited label property as an absent authored label', () => {
+      const validator = validations.greaterThanVariable(
+        { attribute: 'toString', type: 'number' },
+        createMockContext({ variableLabels: {} }),
+      )({ toString: 5 });
+
+      const result = validator.safeParse(1);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Your answer must be greater than your earlier answer.',
+        );
+      }
+    });
+
+    it.each(comparisonCases)(
+      '$name never leaks the codebook variable name or id without an authored label',
+      ({ build }) => {
+        const validator = build(createMockContext())({ numberAttribute: 5 });
+
+        // 5 fails every one of the six rules against a target of 5 except the
+        // inclusive ones, so drive each with a value that cannot satisfy it.
+        for (const value of [5, 1, 9]) {
+          const result = validator.safeParse(value);
+          if (result.success) continue;
+          const message = result.error.issues[0]?.message ?? '';
+          expect(message).not.toContain('Number Attribute');
+          expect(message).not.toContain('numberAttribute');
+        }
+      },
+    );
+  });
+
+  /**
+   * `isUnanswered` is the file's single definition of emptiness, and every
+   * OPTIONAL rule short-circuits on it so an unanswered field collects exactly
+   * one error — the `required` one — rather than a second, nonsensical one
+   * about a value the participant never supplied.
+   *
+   * The rules below used to hand-roll a weaker `undefined | null | ''` guard,
+   * which let whitespace-only text and an empty selection fall through to
+   * `Number(value)` — which coerces BOTH to `0` and then reports them as
+   * out of bounds. `maxSelected` and `email` went further and leaned on
+   * `z.prefault`, which surfaced raw Zod type errors ("expected array,
+   * received null") to participants and, for `email`, rejected an untouched
+   * optional field outright.
+   *
+   * `maxLength` is deliberately absent: an empty string is a present value
+   * for it and trivially satisfies any maximum (see isUnanswered.ts).
+   */
+  describe('optional rules short-circuit on the shared emptiness predicate', () => {
+    const NUMBERS_ONLY = {
+      regex: '^\\d+$',
+      errorMessage: 'Enter numbers only.',
+      hint: 'Numbers only.',
+    };
+
+    const optionalRules = [
+      {
+        name: 'minLength',
+        build: () => validations.minLength(5, createMockContext())({}),
+      },
+      {
+        name: 'minValue',
+        build: () => validations.minValue(10, createMockContext())({}),
+      },
+      {
+        // A negative bound, because `Number('   ')` and `Number([])` are both
+        // `0`, which any non-negative maximum would accept by accident.
+        name: 'maxValue',
+        build: () => validations.maxValue(-1, createMockContext())({}),
+      },
+      {
+        name: 'min (numeric)',
+        build: () => validations.min(10, createMockContext())({}),
+      },
+      {
+        name: 'min (date)',
+        build: () => validations.min('2000-01-01', createMockContext())({}),
+      },
+      {
+        name: 'max (numeric)',
+        build: () => validations.max(-1, createMockContext())({}),
+      },
+      {
+        name: 'max (date)',
+        build: () => validations.max('2000-01-01', createMockContext())({}),
+      },
+      {
+        name: 'minSelected',
+        build: () => validations.minSelected(2, createMockContext())({}),
+      },
+      {
+        name: 'maxSelected',
+        build: () => validations.maxSelected(2, createMockContext())({}),
+      },
+      {
+        name: 'pattern',
+        build: () => validations.pattern(NUMBERS_ONLY, createMockContext())({}),
+      },
+      {
+        name: 'email',
+        build: () => validations.email()(),
+      },
+    ];
+
+    const unansweredValues: unknown[] = [
+      undefined,
+      null,
+      '',
+      '   ',
+      [],
+      Number.NaN,
+    ];
+
+    const unansweredCases = optionalRules.flatMap((rule) =>
+      unansweredValues.map((value) => ({ ...rule, value })),
+    );
+
+    it.each(unansweredCases)(
+      '$name says nothing about the unanswered value $value',
+      ({ build, value }) => {
+        expect(build().safeParse(value).success).toBe(true);
+      },
+    );
+
+    it('maxSelected ignores a value that is not a selection', () => {
+      // Every other collection rule returns silently on a value of the wrong
+      // shape rather than showing a participant a Zod type error.
+      const validator = validations.maxSelected(2, createMockContext())({});
+
+      expect(validator.safeParse('abc').success).toBe(true);
+      expect(validator.safeParse(5).success).toBe(true);
+    });
+
+    it.each([
+      {
+        name: 'maxSelected',
+        build: () => validations.maxSelected(2, createMockContext())({}),
+        hint: 'Select a maximum of 2 values.',
+      },
+      {
+        name: 'email',
+        build: () => validations.email()(),
+        hint: 'Must be a valid email address.',
+      },
+    ])(
+      '$name still carries its hint metadata after dropping z.prefault',
+      ({ build, hint }) => {
+        // `makeValidationHints` reads the hint back off the returned schema, so
+        // moving these two off `z.prefault` must not move the metadata with it.
+        expect(z.globalRegistry.get(build())?.hint).toBe(hint);
+      },
+    );
+
+    it('email rejects a malformed address with the participant-facing message', () => {
+      const validator = validations.email()();
+
+      expect(validator.safeParse('someone@example.com').success).toBe(true);
+
+      const result = validator.safeParse('not-an-address');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          'Enter a valid email address.',
+        );
+      }
+    });
+
+    it('leaves an unanswered required numeric field with exactly one error', async () => {
+      // Through the same combiner a real Field uses, so the rules meet exactly
+      // as they do on screen. Whitespace-only text is unanswered, so only
+      // `required` has anything to say about it.
+      const validate = makeValidationFunction({
+        required: true,
+        minValue: 10,
+        minLength: 5,
+        validationContext: createMockContext(),
+      });
+
+      const result = await validate({}).safeParseAsync('   ');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'You must answer this question before continuing.',
+        ]);
+      }
     });
   });
 });

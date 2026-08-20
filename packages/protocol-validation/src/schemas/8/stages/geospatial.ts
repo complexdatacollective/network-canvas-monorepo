@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { assetReference } from '../asset-reference.ts';
 import {
   geospatialPromptSchema,
   NodeStageSubjectSchema,
@@ -38,14 +39,14 @@ const styleOptions = z.enum(
 );
 
 const mapOptions = z.strictObject({
-  tokenAssetId: z.string(),
+  tokenAssetId: assetReference(),
   style: styleOptions,
   center: z.tuple([z.number(), z.number()]),
   initialZoom: z
     .number()
     .min(0, { message: 'Zoom must be at least 0' })
     .max(22, { message: 'Zoom must be less than or equal to 22' }),
-  dataSourceAssetId: z.string(),
+  dataSourceAssetId: assetReference(),
   color: z.string(),
   targetFeatureProperty: z
     .string()

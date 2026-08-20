@@ -15,10 +15,19 @@ vi.mock('./APIKeyBrowser', () => ({
     onSelect,
   }: {
     show: boolean;
-    onSelect: (id: string) => void;
+    onSelect: (selection: {
+      id: string;
+      name: string;
+      created: boolean;
+    }) => void;
   }) =>
     show ? (
-      <button type="button" onClick={() => onSelect('api-key-1')}>
+      <button
+        type="button"
+        onClick={() =>
+          onSelect({ id: 'api-key-1', name: 'Mapbox key', created: false })
+        }
+      >
         Choose API key
       </button>
     ) : null,

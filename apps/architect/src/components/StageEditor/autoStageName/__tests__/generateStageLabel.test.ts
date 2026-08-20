@@ -63,6 +63,28 @@ describe('dedupeStageLabel', () => {
   it('fills numbering gaps', () => {
     expect(dedupeStageLabel('A', ['A', 'A #3'])).toBe('A #2');
   });
+
+  /**
+   * Two spellings of the same name. A researcher who types "Cafe\u0301
+   * Sociogram" on one machine and "Caf\u00e9 Sociogram" on another sees one
+   * string on screen either way, so two stages with those labels are two
+   * stages with the same name — which is how the codebook, the protocol schema
+   * and the migration repair all count it (`normalizeForComparison`). Folding
+   * case alone left this one surface disagreeing.
+   */
+  it('treats a decomposed and a precomposed label as the same name', () => {
+    const decomposed = 'Cafe\u0301 Sociogram';
+    const precomposed = 'Caf\u00e9 Sociogram';
+    expect(decomposed).not.toBe(precomposed);
+
+    expect(dedupeStageLabel(precomposed, [decomposed])).toBe(
+      `${precomposed} #2`,
+    );
+    // …and the suffix search normalises too, so #2 is not handed out twice.
+    expect(
+      dedupeStageLabel(precomposed, [decomposed, `${decomposed} #2`]),
+    ).toBe(`${precomposed} #3`);
+  });
 });
 
 describe('generateStageLabel', () => {

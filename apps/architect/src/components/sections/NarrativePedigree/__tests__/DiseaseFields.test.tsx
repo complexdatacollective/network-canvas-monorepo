@@ -72,13 +72,13 @@ describe('DiseaseFields', () => {
 
   it('renders the Node Variable section', () => {
     renderFields();
-    expect(screen.getByText('Node Variable')).toBeDefined();
+    expect(screen.getByText('Node Attribute')).toBeDefined();
   });
 
   it('renders the variable field, offering only boolean variables', () => {
     renderFields();
-    expect(screen.getByText('No variable selected')).toBeInTheDocument();
-    expect(screen.getByText('Select variable')).toBeInTheDocument();
+    expect(screen.getByText('No attribute selected')).toBeInTheDocument();
+    expect(screen.getByText('Select attribute')).toBeInTheDocument();
   });
 
   it('renders the Inheritance Pattern section', () => {

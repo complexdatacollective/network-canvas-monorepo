@@ -46,25 +46,25 @@ export async function addNarrativePreset(
         scope: editor.field('layoutVariable'),
         until: editor
           .field('layoutVariable')
-          .getByRole('button', { name: 'Change variable' }),
+          .getByRole('button', { name: 'Change attribute' }),
       });
       if (spec.groupVariable) {
         await editor
-          .section('Group Variable')
-          .getByRole('switch', { name: 'Turn this feature on or off' })
+          .section('Group Attribute')
+          .getByRole('switch', { name: 'Group Attribute' })
           .click();
         await createVariableViaSpotlight(page, {
           variableName: spec.groupVariable,
           scope: editor.field('groupVariable'),
           until: editor
             .field('groupVariable')
-            .getByRole('button', { name: 'Change variable' }),
+            .getByRole('button', { name: 'Change attribute' }),
         });
       }
       if (spec.displayEdges) {
         await editor
           .section('Display Edges')
-          .getByRole('switch', { name: 'Turn this feature on or off' })
+          .getByRole('switch', { name: 'Display Edges' })
           .click();
         for (const edgeName of spec.displayEdges) {
           await editor
@@ -76,7 +76,7 @@ export async function addNarrativePreset(
       if (spec.highlight) {
         await editor
           .section('Highlight Node Attributes')
-          .getByRole('switch', { name: 'Turn this feature on or off' })
+          .getByRole('switch', { name: 'Highlight Node Attributes' })
           .click();
         for (const variableName of spec.highlight) {
           await editor
@@ -87,10 +87,11 @@ export async function addNarrativePreset(
       }
     },
     {
+      addButtonLabel: 'Create new preset',
       freshSign: (candidate) =>
         candidate
           .locator('[data-field-name="layoutVariable"]')
-          .getByRole('button', { name: 'Select variable' }),
+          .getByRole('button', { name: 'Select attribute' }),
     },
   );
 }

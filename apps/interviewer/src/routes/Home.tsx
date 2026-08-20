@@ -12,6 +12,7 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
+import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
@@ -146,6 +147,10 @@ export function HomeRoute() {
 
       try {
         await deleteProtocol(hash);
+        // The rows are gone, so nothing can ever ask the resolver for this
+        // protocol's assets again — release the object URLs (and the decrypted
+        // bytes behind them) it minted while the protocol existed.
+        revokeProtocolAssetUrls(hash);
         toast.add({
           title: 'Protocol deleted',
           description: protocol.name,

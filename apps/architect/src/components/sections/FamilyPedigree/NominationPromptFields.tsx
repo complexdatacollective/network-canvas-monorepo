@@ -1,6 +1,6 @@
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import type { Entity } from '~/components/NewVariableWindow';
@@ -10,8 +10,9 @@ import NewVariableWindow, {
 import PromptText from '~/components/sections/PromptText';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
+
+import { selectSlotPickerOptions } from './slotWiring';
 
 type NominationPromptFieldsProps = {
   nodeType?: string;
@@ -42,15 +43,17 @@ const NominationPromptFields = ({
   const booleanVariables = variableOptions.filter((v) => v.type === 'boolean');
 
   // The nomination-toggle picker is an UNVALIDATED writer: drop options a
-  // form elsewhere already validates.
-  const subject = { entity: 'node', type: nodeType };
+  // form elsewhere already validates. It also writes through a per-node toggle
+  // the participant operates, so it may never name a variable the pedigree
+  // itself derives — the ego marker above all, which every completeness check
+  // keys off. It fills no interface slot of its own, so no slot is exempt.
   const availableVariables = useAppSelector((state) =>
-    excludeValidatedUses(
-      state,
-      subject,
-      booleanVariables,
-      typeof variable === 'string' ? variable : undefined,
-    ),
+    selectSlotPickerOptions(state, {
+      subject: nodeType ? { entity: 'node', type: nodeType } : null,
+      options: booleanVariables,
+      currentValue: typeof variable === 'string' ? variable : undefined,
+      writerClass: 'unvalidated',
+    }),
   );
 
   const handleCreatedNewVariable = (...args: unknown[]) => {
@@ -78,14 +81,14 @@ const NominationPromptFields = ({
   return (
     <>
       <PromptText initialValue={asString(item?.text)} />
-      <Section title="Variable" layout="vertical">
-        <Row>
+      <Section title="Attribute" layout="vertical">
+        <>
           <div id={getFieldId('variable')} />
           <ArchitectField
             name="variable"
             component={VariablePickerControl}
             validation={{ required: true }}
-            label="Variable"
+            label="Attribute"
             labelHidden
             initialValue={asString(item?.variable)}
             entity="node"
@@ -93,7 +96,7 @@ const NominationPromptFields = ({
             options={availableVariables}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

@@ -948,12 +948,47 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       await stage.geospatial.search('Sidetrack');
       await expect(stage.geospatial.getSuggestions()).toHaveCount(1);
 
+      // Tabbing PAST the panel closes it and leaves focus where the browser
+      // sent it. #1394: restoring focus from that close — the document
+      // `focusout` path — wins over the browser's pending move in chromium,
+      // which would bounce Tab backwards onto the toggle and wipe the query.
+      await stage.geospatial.searchInput.focus();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.getSuggestions().first()).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.zoomInButton).toBeFocused();
+      expect(await stage.geospatial.isSearchOpen()).toBe(false);
+
+      // The filed keyboard route: ArrowDown onto the suggestion, Enter to
+      // choose it. Focus returns to "Search location", so the next Tab resumes
+      // from the toggle and reaches Zoom In in sequence — rather than resuming
+      // where the removed option used to sit and skipping the toggle entirely.
+      await stage.geospatial.search('Sidetrack');
+      await stage.geospatial.searchInput.press('ArrowDown');
+      await expect(stage.geospatial.getSuggestions().first()).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(stage.geospatial.searchToggle).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(stage.geospatial.zoomInButton).toBeFocused();
+
       // Selecting a suggestion flies the camera to FLY_TO_ZOOM (14) but never
       // writes the location variable — only a map click does. The mocked
       // retrieve resolves instantly and reduced-motion makes the fly-to jump,
       // so assert the zoom outcome directly rather than observing the transient
       // move (which selectSuggestion's fixed idle wait would miss).
+      await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(14);
+      await expect(stage.geospatial.searchStatus).toHaveText(
+        'Map moved to Sidetrack.',
+      );
+      await stage.geospatial.recenter();
+      await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(11);
+
+      // The mouse route ends in the same place: the option never holds focus
+      // (mousedown is prevented), so this is the second, independent way the
+      // panel can close on selection.
+      await stage.geospatial.search('Sidetrack');
       await stage.geospatial.getSuggestions().first().click();
+      await expect(stage.geospatial.searchToggle).toBeFocused();
       await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(14);
       await stage.geospatial.recenter();
       await expect.poll(() => stage.geospatial.getZoomLevel()).toBe(11);

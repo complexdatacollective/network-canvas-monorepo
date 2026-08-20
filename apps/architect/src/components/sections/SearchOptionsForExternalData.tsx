@@ -87,9 +87,9 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
       >
         <Alert variant="info" className="my-7">
           <AlertDescription>
-            The selecting lots of attributes here may slow the performance of
-            the search feature. Select only the attributes that participants
-            will search for.
+            Selecting lots of attributes here may slow the performance of the
+            search feature. Select only the attributes that participants will
+            search for.
           </AlertDescription>
         </Alert>
         <ArchitectField

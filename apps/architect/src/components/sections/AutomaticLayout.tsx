@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
@@ -62,7 +62,7 @@ const AutomaticLayout = () => {
 
   return (
     <Section title="Layout Mode">
-      <Row>
+      <>
         <ArchitectField
           name={FIELD_PATH}
           label="Layout mode"
@@ -71,7 +71,7 @@ const AutomaticLayout = () => {
           initialValue={initialValue}
           validation={{ required: true }}
         />
-      </Row>
+      </>
     </Section>
   );
 };

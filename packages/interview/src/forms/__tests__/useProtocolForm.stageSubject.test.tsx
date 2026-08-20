@@ -14,6 +14,7 @@ import Form from '@codaco/fresco-ui/form/Form';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   asEntityAttributeReference,
+  type ComposerFormField,
   type FormField,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -179,8 +180,10 @@ describe('useProtocolForm stageSubject', () => {
       { wrapper: makeWrapper() },
     );
 
-    expect(firstFieldProp(result.current.fieldComponents, 'sameAs')).toBe(
-      DISPLAY_NAME_VAR,
+    expect(firstFieldProp(result.current.fieldComponents, 'field')).toEqual(
+      expect.objectContaining({
+        validation: expect.objectContaining({ sameAs: DISPLAY_NAME_VAR }),
+      }),
     );
     expect(firstFieldValidationContext(result.current.fieldComponents)).toEqual(
       expect.objectContaining({
@@ -282,4 +285,39 @@ describe('useProtocolForm stageSubject', () => {
       ).toEqual(prototypeDescriptor);
     },
   );
+});
+
+/**
+ * Issue #1385: comparison errors named the codebook variable to the
+ * participant. The validation context now carries only authored,
+ * participant-facing text, so there is nothing else for a validator to reach
+ * for.
+ */
+describe('useProtocolForm variableLabels', () => {
+  it('carries only authored participant-facing text', () => {
+    const { result } = renderHook(
+      () =>
+        useProtocolForm({
+          fields: [
+            {
+              variable: asEntityAttributeReference(NAME_VAR),
+              prompt: 'What is your name?',
+            },
+            // A NetworkComposer field with no authored label: the codebook
+            // variable's name must NOT stand in for one.
+            {
+              variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
+              component: 'Text',
+            } as ComposerFormField,
+          ],
+          subject: { entity: 'node', type: NODE_TYPE },
+        }),
+      { wrapper: makeWrapper() },
+    );
+
+    const context = firstFieldValidationContext(result.current.fieldComponents);
+    expect(isRecord(context) ? context.variableLabels : undefined).toEqual({
+      [NAME_VAR]: 'What is your name?',
+    });
+  });
 });

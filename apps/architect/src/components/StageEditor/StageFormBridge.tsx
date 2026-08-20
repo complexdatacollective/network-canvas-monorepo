@@ -17,6 +17,7 @@ import type { Stage } from '@codaco/protocol-validation';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   draftSnapshot,
+  openStageEditorDraft,
   resetDraft,
   setLiveValues,
   setRestoring,
@@ -214,7 +215,12 @@ const StageFormBridge = ({
 
     // Dedup against the current `present` so one undo step stays one logical
     // change (and a stale debounce that fires after a restore is a no-op).
-    if (isEqual(values, reduxStore.getState().stageEditorDraft.history.present))
+    if (
+      isEqual(
+        values,
+        reduxStore.getState().stageEditorDraft.history.present?.stage,
+      )
+    )
       return;
 
     dispatch(draftSnapshot(values));
@@ -391,7 +397,11 @@ const StageFormBridge = ({
       formState.fields.size > 0
         ? (formState.getFormValues() as unknown as Stage)
         : committedStageRef.current;
-    dispatch(resetDraft(seed));
+    // Also opens the editor's codebook transaction: from here until the draft
+    // is committed or discarded, every codebook write from a nested field or
+    // variable editor lands on the draft copy rather than on the canonical
+    // protocol (#1382).
+    dispatch(openStageEditorDraft(seed));
 
     const unsubscribe = storeApi.subscribe(handleStoreChange);
 
@@ -405,7 +415,32 @@ const StageFormBridge = ({
       // The mirror only describes a mounted stage form.
       dispatch(setLiveValues(null));
     };
-  }, [cancelPendingSnapshot, dispatch, handleStoreChange, storeApi]);
+  }, [
+    cancelPendingSnapshot,
+    dispatch,
+    handleStoreChange,
+    reduxStore,
+    storeApi,
+  ]);
+
+  // The codebook transaction belongs to the mounted stage form, so closing it
+  // is tied to that lifetime rather than to any one exit. Every discard path
+  // already resets the draft, but not every way OUT of the editor is a discard
+  // path: leaving a pristine editor (Back to the overview, or "Return to Start
+  // Screen") runs no discard handler at all. Left open, the transaction would
+  // keep routing codebook writes made elsewhere — the Codebook page, say — into
+  // a draft nothing will ever commit, losing them silently on reload.
+  //
+  // Deliberately its own mount-only effect: folding it into the seeding effect
+  // below would tie a teardown that DISCARDS the draft to that effect's
+  // dependencies, where a single identity change would wipe the researcher's
+  // in-progress edits.
+  useEffect(
+    () => () => {
+      dispatch(resetDraft(null));
+    },
+    [dispatch],
+  );
 
   const draft = useMemo(
     () => ({

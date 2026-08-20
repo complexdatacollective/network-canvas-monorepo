@@ -101,12 +101,12 @@ const Anonymisation = ({
       {hasEncryptedVariables && (
         <>
           <Paragraph className="mb-5">
-            The following variables will be encrypted using the participant's
+            The following attributes will be encrypted using the participant's
             passphrase:
           </Paragraph>
           <MiniTable
             rows={[
-              ['Node Type', 'Variable'],
+              ['Node Type', 'Attribute'],
               ...encryptedVariables.map(({ id, name, nodeType }) => [
                 <EntityBadge
                   key={`badge-${id}`}

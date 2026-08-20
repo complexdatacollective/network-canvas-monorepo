@@ -64,7 +64,7 @@ const Variables = ({ variables }: VariablesProps) => {
         <tbody>
           {isEmpty(variables) && (
             <tr>
-              <td colSpan={3}>No variables to display.</td>
+              <td colSpan={3}>No attributes to display.</td>
             </tr>
           )}
           {sortedVariables.map(([variableId, variableConfiguration]) => {

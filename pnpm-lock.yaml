@@ -755,6 +755,9 @@ importers:
       '@codaco/sample-protocol':
         specifier: workspace:^
         version: link:../../packages/sample-protocol
+      '@codaco/shared-consts':
+        specifier: workspace:^
+        version: link:../../packages/shared-consts
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind

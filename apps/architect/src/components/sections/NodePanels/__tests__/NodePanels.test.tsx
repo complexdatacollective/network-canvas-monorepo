@@ -53,12 +53,10 @@ describe('NodePanels', () => {
     // exist in the tree. `handleToggleChange` is async (it awaits `confirm`
     // even on the allow-through path), so the switch flips a tick after the
     // click.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Side Panels' }));
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+        screen.getByRole('switch', { name: 'Side Panels' }),
       ).toHaveAttribute('aria-checked', 'true'),
     );
 

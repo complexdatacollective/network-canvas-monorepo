@@ -1,7 +1,6 @@
 import { get, isEqual, pickBy } from 'es-toolkit/compat';
 import { useMemo, useRef } from 'react';
 
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -29,6 +28,7 @@ type ValidationSectionProps = {
   disabled?: boolean;
   entity: string;
   id?: string;
+  label?: string;
   summary?: string;
   variableType?: string;
   existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
@@ -45,17 +45,32 @@ type ValidationSectionProps = {
    * validation.
    */
   initialValue?: ValidationMap | null;
+  /**
+   * Passed through to `Validations` — see its `commitsImmediately`. Set only
+   * by `CodebookVariableValidationSection`, whose isolated form has no submit
+   * to refuse a half-configured rule with.
+   */
+  commitsImmediately?: boolean;
+  /**
+   * Keep the validation editor inside its Section surface without rendering
+   * the legacy Section heading/toggle. Dialogs use the field's own label and
+   * hint instead; stage-editor consumers retain the toggleable heading.
+   */
+  showHeading?: boolean;
 };
 const ValidationSection = ({
   disabled = false,
   entity,
   id = getFieldId('validation'),
-  summary = 'Choose which validation rules apply to this form field.',
+  label = 'Validation',
+  summary = 'Enable validation of this attribute.',
   variableType = '',
   existingVariables,
   allVariables,
   currentVariableId,
   initialValue,
+  commitsImmediately = false,
+  showHeading = true,
 }: ValidationSectionProps) => {
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   // Sibling draft values, read reactively off the SAME form `ValidationSection`
@@ -113,21 +128,14 @@ const ValidationSection = ({
   // Validations field is unmounted — and `validateForm` only fails a submit
   // over errors on REGISTERED fields, so the collapsed section wouldn't just
   // hide the message, it would let the contradictory save through entirely.
-  // Forcing the section open while the error stands both registers the field
-  // (so the save is actually blocked) and renders the message when that save
-  // fails.
+  // Forcing the section open while the error stands registers the field (so
+  // the save is actually blocked). The ArchitectField rendered by
+  // `Validations` owns displaying the error once mounted.
   const fieldErrors = useFormStore(
     (store) => store.errors.fieldErrors.validation,
   );
   const hasValidationSyncError =
     Array.isArray(fieldErrors) && fieldErrors.length > 0;
-  // fresco-ui's own `FieldErrors` slot on the `validation` Field only shows
-  // once that field is both dirty AND blurred — correct for a field the user
-  // is actively editing, but this error can attach to `validation` before it
-  // has ever registered (the section was collapsed), and a freshly-mounted
-  // field is neither dirty nor blurred. Rendering the message here directly,
-  // keyed only on the error existing, is what surfaces it at all.
-  const validationErrorsId = getFieldId('validation-sync-error');
   const handleToggleChange = (nextState: boolean) => {
     if (!nextState) {
       onExplicitClose();
@@ -147,11 +155,11 @@ const ValidationSection = ({
     <Section
       layout="vertical"
       id={id}
-      title="Validation"
-      summary={<Paragraph>{summary}</Paragraph>}
+      title={showHeading ? label : undefined}
+      summary={showHeading ? <Paragraph>{summary}</Paragraph> : undefined}
       disabled={disabled}
-      toggleable
-      startExpanded={startExpanded}
+      toggleable={showHeading}
+      startExpanded={showHeading ? startExpanded : true}
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleChange}
     >
@@ -167,11 +175,7 @@ const ValidationSection = ({
         draftComponent={draftComponent}
         draftParameters={draftParameters}
         draftVariableName={draftVariableName}
-      />
-      <FieldErrors
-        id={validationErrorsId}
-        errors={fieldErrors ?? undefined}
-        show={hasValidationSyncError}
+        commitsImmediately={commitsImmediately}
       />
     </Section>
   );

@@ -131,10 +131,19 @@ export function DataTableColumnHeader<TData, TValue>({
           ref={buttonRef}
           render={
             <Button
-              size="sm"
-              className="-mx-4 min-w-max px-4! text-base"
-              variant={isActive ? 'default' : 'text'}
-              color={isActive ? 'primary' : 'dynamic'}
+              className="-mx-4 min-w-max px-4!"
+              // NOT `aria-pressed`, because of what `isActive` MEANS here. ARIA
+              // does permit `aria-pressed` alongside `aria-expanded`, so a menu
+              // trigger that is genuinely a toggle could carry both — but
+              // `isActive` is mostly not about this button. Two of its four
+              // terms (`isSorted`, `isFiltered`) describe the COLUMN's data
+              // state, so `aria-pressed` would announce "pressed" for a column
+              // that is merely sorted with the menu shut, implying that
+              // activating it would un-press it. It opens a menu instead, and
+              // `aria-expanded` already carries the open/closed half.
+              selected={isActive}
+              variant="text"
+              color="dynamic"
               iconPosition="right"
               icon={
                 icons.length > 0 ? (

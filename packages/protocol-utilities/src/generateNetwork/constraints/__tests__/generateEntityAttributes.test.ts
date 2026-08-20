@@ -380,7 +380,7 @@ describe('generateEntityAttributes', () => {
         variableNames: ['Second Choice'],
         rules: ['minSelected', 'maxSelected', 'differentFrom'],
         reason:
-          'no value satisfies these rules alongside the values chosen for the variables they refer to',
+          'no value satisfies these rules alongside the values chosen for the attributes they refer to',
       },
     ]);
   });

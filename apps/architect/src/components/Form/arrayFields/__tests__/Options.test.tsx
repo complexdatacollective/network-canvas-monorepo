@@ -27,7 +27,7 @@ const getOptions = (): OptionValue[] => {
   return (storeApi.getState().getFormValues().options ?? []) as OptionValue[];
 };
 
-// A row is genuinely incomplete while it is being filled in — "Add new"
+// A row is genuinely incomplete while it is being filled in — "Create new option"
 // commits `{}` — so the seed accepts partial options. `OptionValue` describes
 // a FINISHED option, which is what the array is required to hold by the time
 // it reaches a save; that gap is exactly what `optionsValidation` enforces.
@@ -44,6 +44,7 @@ const setup = (options: Partial<OptionValue>[] = TWO_VALID_OPTIONS) => {
         name="options"
         label="Options"
         component={Options}
+        addButtonLabel="Create new option"
         // The field's prop type describes finished options; seeding a
         // half-filled row is the point of several cases below.
         initialValue={options as OptionValue[]}
@@ -63,7 +64,7 @@ describe('Options', () => {
   it('opens a freshly added blank option straight into its editor', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new option' }));
 
     await waitFor(() => expect(finishButton()).toBeInTheDocument());
     // Opening the row must not write anything back: the rich-text editor's
@@ -75,7 +76,7 @@ describe('Options', () => {
   it('keeps the editor open when finishing an option with no label or value', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new option' }));
     await waitFor(() => expect(finishButton()).toBeInTheDocument());
 
     fireEvent.click(
@@ -154,7 +155,7 @@ describe('Options', () => {
 
     expect(
       await screen.findByText(
-        'Requires a minimum of two options. If you need fewer options, consider using a boolean variable.',
+        'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.',
       ),
     ).toBeInTheDocument();
     expect(

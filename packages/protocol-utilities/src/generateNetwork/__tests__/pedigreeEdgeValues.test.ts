@@ -899,10 +899,10 @@ describe('FamilyPedigree materialization', () => {
       });
 
     expect(generate).toThrow(
-      'one disease variable cannot represent conflicting inheritance patterns',
+      'one disease attribute cannot represent conflicting inheritance patterns',
     );
     expect(generate).toThrow(
-      /assign both autosomalDominant and autosomalRecessive to the same disease variable/,
+      /assign both autosomalDominant and autosomalRecessive to the same disease attribute/,
     );
   });
 

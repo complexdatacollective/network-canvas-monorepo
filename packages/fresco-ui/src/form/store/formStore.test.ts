@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/mini';
 
 import type { FieldValue } from '../Field/types';
-import { createFormStore, type FormStore } from '../store/formStore';
+import {
+  createFormStore,
+  type FormStore,
+  selectIsFormDirty,
+} from '../store/formStore';
 import type { FieldConfig, FieldState, FormConfig } from '../store/types';
 import { validateFieldValue } from '../validation/helpers';
 
@@ -147,6 +151,30 @@ describe('FormStore', () => {
       expect(field?.initialValue).toBeUndefined();
     });
 
+    it('makes a standing field error visible when its field registers', () => {
+      store.getState().setErrors({
+        formErrors: [],
+        fieldErrors: { email: ['Already invalid'] },
+      });
+
+      store.getState().registerField({
+        name: 'email',
+        initialValue: '',
+        validation: z.optional(z.string()),
+      });
+
+      expect(store.getState().getFieldErrors('email')).toEqual([
+        'Already invalid',
+      ]);
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+      expect(store.getState().isValid).toBe(false);
+    });
+
     it('should unregister a field', () => {
       const fieldConfig: FieldConfig = {
         name: 'email',
@@ -230,6 +258,67 @@ describe('FormStore', () => {
 
       // Now form should be valid (only field1 remains and it's valid)
       expect(store.getState().isValid).toBe(true);
+    });
+  });
+
+  /**
+   * The live answer to "does this form hold unsaved work?", which every guard
+   * that could destroy that work has to consult — Architect's nested-editor
+   * discard confirmation, its cross-tab lock. Deliberately NOT the `isDirty`
+   * flag beside it: that one is sticky, and each of these cases is a way the
+   * two disagree.
+   */
+  describe('selectIsFormDirty', () => {
+    it('is false for a form nothing has been typed into', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    it('is true once a field differs from what it registered with', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+
+      expect(selectIsFormDirty(store.getState())).toBe(true);
+    });
+
+    // The whole reason for a live comparison. The sticky flag stays true here,
+    // which is how a form the researcher had already put back by hand ended up
+    // being guarded as unsaved work.
+    it('returns to false when an edit is typed back to where it started', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+      store.getState().setFieldValue('email', 'a@b.c');
+
+      expect(store.getState().isDirty).toBe(true);
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    // A field registered without an initial value holds `undefined`; clearing
+    // it after typing leaves `''`. Same state to the person editing.
+    it.each([
+      ['', undefined],
+      [undefined, ''],
+      [[], undefined],
+    ])('treats %o and %o as the same emptiness', (value, initialValue) => {
+      store.getState().registerField({
+        name: 'field',
+        initialValue: initialValue as FieldValue,
+      });
+      store.getState().setFieldValue('field', value as FieldValue);
+
+      expect(selectIsFormDirty(store.getState())).toBe(false);
+    });
+
+    // A field that unmounts parks its value in `dormantValues`; an edit made
+    // before it unmounted is still an unsaved edit.
+    it('counts an edit parked by a field that has since unmounted', () => {
+      store.getState().registerField({ name: 'email', initialValue: 'a@b.c' });
+      store.getState().setFieldValue('email', 'd@e.f');
+      store.getState().unregisterField('email');
+
+      expect(store.getState().fields.has('email')).toBe(false);
+      expect(selectIsFormDirty(store.getState())).toBe(true);
     });
   });
 
@@ -2147,5 +2236,123 @@ describe('FormStore', () => {
       expect(dormant?.initialValue).toBe('initial@example.com');
       expect(dormant?.validation).toBe(validation);
     });
+  });
+});
+
+/**
+ * A message is a claim about one value. Replacing the value ends the claim.
+ *
+ * The bug this pins: Architect's "create a variable" flow writes the picked
+ * variable through `setFieldValue`, and the required-field error raised
+ * moments earlier survived the write — the pill showed the chosen variable
+ * while the fieldset stayed red and still read "This field is required."
+ */
+describe('a host write and the errors it supersedes', () => {
+  let store: ReturnType<typeof createFormStore>;
+
+  beforeEach(() => {
+    store = createFormStore();
+    vi.clearAllMocks();
+  });
+
+  const registerTwoFields = () => {
+    store.getState().registerField({
+      name: 'variable',
+      initialValue: undefined,
+      validation: z.string().check(z.minLength(1, 'This field is required.')),
+    });
+    store.getState().registerField({
+      name: 'prompt',
+      initialValue: undefined,
+      validation: z.string().check(z.minLength(1, 'This field is required.')),
+    });
+  };
+
+  const registerVariablePicker = () => {
+    registerTwoFields();
+    store.getState().setErrors({
+      formErrors: [],
+      fieldErrors: {
+        variable: ['This field is required.'],
+        prompt: ['This field is required.'],
+      },
+    });
+  };
+
+  it("drops the written field's messages, and leaves every other field's alone", () => {
+    registerVariablePicker();
+
+    store.getState().setFieldValue('variable', 'age');
+
+    expect(store.getState().getFieldErrors('variable')).toBeNull();
+    expect(store.getState().getFieldState('variable')?.value).toBe('age');
+    // The other field is still wrong, and still says so.
+    expect(store.getState().getFieldErrors('prompt')).toEqual([
+      'This field is required.',
+    ]);
+    expect(store.getState().isValid).toBe(false);
+  });
+
+  it('drops the messages of a field that is no longer mounted', () => {
+    // A collapsed section unmounts its fields while their submit errors live
+    // on in the error map — which Architect's Issues panel reads directly, so
+    // a survivor here is a row pointing at nothing.
+    registerVariablePicker();
+    store.getState().unregisterField('variable');
+    store.getState().setErrors({
+      formErrors: [],
+      fieldErrors: { variable: ['This field is required.'] },
+    });
+
+    store.getState().setFieldValue('variable', 'age');
+
+    expect(store.getState().errors.fieldErrors).toEqual({});
+    expect(store.getState().dormantValues.get('variable')?.value).toBe('age');
+  });
+
+  it('does not revalidate the written field: a new problem waits for submit', async () => {
+    // The deliberate half of the contract. `useField.handleChange` owns the
+    // debounced validate-on-change, so the store must not fire a second one
+    // per keystroke — but nothing invalid can slip past, because submit
+    // validates every field.
+    registerVariablePicker();
+
+    store.getState().setFieldValue('variable', '');
+
+    expect(mockValidateFieldValue).not.toHaveBeenCalled();
+    expect(store.getState().getFieldErrors('variable')).toBeNull();
+
+    mockValidateFieldValue.mockResolvedValue({
+      success: false,
+      error: new z.core.$ZodError([
+        { code: 'custom', message: 'This field is required.', path: [] },
+      ]),
+    });
+    await store.getState().validateForm();
+
+    expect(store.getState().getFieldErrors('variable')).toEqual([
+      'This field is required.',
+    ]);
+  });
+
+  it('takes nothing away from a field that has already passed, because typing is a write too', async () => {
+    // The other half of the contract, and the one with the blast radius:
+    // `useField.handleChange` calls `setFieldValue` on every controlled
+    // change, so this path runs per character typed in every fresco-ui form —
+    // including the participant-facing ones. `SlidesForm` and `EgoForm` gate
+    // "ready to continue" on the form's flag and `QuickAddField` animates its
+    // add badge off the field's, so a write that reset the verdict to "not yet
+    // checked" would flicker both on every keystroke, for as long as it takes
+    // the debounced validation to land.
+    registerTwoFields();
+    mockValidateFieldValue.mockResolvedValue({ success: true, data: 'age' });
+    await store.getState().validateField('variable');
+    await store.getState().validateField('prompt');
+    expect(store.getState().isValid).toBe(true);
+
+    store.getState().setFieldValue('variable', 'age at diagnosis');
+
+    expect(store.getState().getFieldState('variable')?.meta.isValid).toBe(true);
+    expect(store.getState().isValid).toBe(true);
   });
 });

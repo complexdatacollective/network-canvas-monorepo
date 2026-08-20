@@ -9,7 +9,6 @@ import ArchitectField from '~/components/Form/ArchitectField';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
 
-import Row from '../../EditorLayout/Row';
 import Section from '../../EditorLayout/Section';
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject, getNarrativeVariables } from './selectors';
@@ -105,7 +104,7 @@ const PresetFields = ({
         }
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="label"
             label="Preset label"
@@ -115,21 +114,21 @@ const PresetFields = ({
             initialValue={label ?? ''}
             placeholder="Enter a label for the preset..."
           />
-        </Row>
+        </>
       </Section>
       <Section
         layout="vertical"
-        title="Layout Variable"
+        title="Layout Attribute"
         summary={
           <Paragraph>
-            Select a variable to use to position the nodes for this preset.
+            Select an attribute to use to position the nodes for this preset.
           </Paragraph>
         }
       >
-        <Row>
+        <>
           <ArchitectField
             name="layoutVariable"
-            label="Layout variable"
+            label="Layout attribute"
             labelHidden
             component={VariablePicker}
             validation={{ required: true }}
@@ -139,13 +138,13 @@ const PresetFields = ({
             options={layoutVariablesForSubject}
             onCreateOption={handleCreateLayoutVariable}
           />
-        </Row>
+        </>
       </Section>
       <Section
-        title="Group Variable"
+        title="Group Attribute"
         summary={
           <Paragraph>
-            Select a categorical variable which will be used to draw convex
+            Select a categorical attribute which will be used to draw convex
             hulls around nodes.
           </Paragraph>
         }
@@ -155,17 +154,17 @@ const PresetFields = ({
         handleToggleChange={handleToggleGroupVariable}
         layout="vertical"
       >
-        <Row>
+        <>
           <Paragraph>
             This feature will draw a semi-transparent convex hull for each
-            categorical value of the variable you select. If a node&apos;s
+            categorical value of the attribute you select. If a node&apos;s
             attributes include this categorical value, the hull will be expanded
             to include the node. If a node has multiple values for this
-            categorical variable, it will appear in multiple overlapping hulls.
+            categorical attribute, it will appear in multiple overlapping hulls.
           </Paragraph>
           <ArchitectField
             name="groupVariable"
-            label="Select a categorical variable for grouping"
+            label="Select a categorical attribute for grouping"
             component={VariablePicker}
             initialValue={groupVariable ?? undefined}
             entity={entity}
@@ -173,7 +172,7 @@ const PresetFields = ({
             options={groupVariablesForSubject}
             disallowCreation
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Display Edges"
@@ -188,7 +187,7 @@ const PresetFields = ({
         }
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="edges.display"
             component={CheckboxGroupField}
@@ -196,14 +195,14 @@ const PresetFields = ({
             initialValue={edges?.display ?? []}
             options={edgesForSubject}
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Highlight Node Attributes"
         summary={
           <Paragraph>
-            Select one or more boolean variables below. Nodes whose value is
-            &quot;true&quot; for this variable will be highlighted when this
+            Select one or more boolean attributes below. Nodes whose value is
+            &quot;true&quot; for this attribute will be highlighted when this
             preset is active.
           </Paragraph>
         }
@@ -215,15 +214,15 @@ const PresetFields = ({
         handleToggleChange={handleToggleHighlightVariables}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="highlight"
             component={CheckboxGroupField}
-            label="Select one or more boolean variables"
+            label="Select one or more boolean attributes"
             initialValue={highlight ?? []}
             options={highlightVariablesForSubject}
           />
-        </Row>
+        </>
       </Section>
     </>
   );

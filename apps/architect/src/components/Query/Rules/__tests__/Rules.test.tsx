@@ -1,54 +1,120 @@
-import { render, screen } from '@testing-library/react';
-import type { ComponentType } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
-vi.mock('~/components/IssueAnchor', () => ({ default: () => null }));
-
 import Rules from '../Rules';
 
-const RulesComponent = Rules as unknown as ComponentType<{
-  codebook: Record<string, unknown>;
-  allowEdgeRules?: boolean;
-  onChange?: (value: unknown) => void;
-}>;
+const TWO_RULES = [
+  {
+    id: 'rule-1',
+    type: 'node',
+    options: { type: 'person', attribute: 'name', operator: 'EXISTS' },
+  },
+  {
+    id: 'rule-2',
+    type: 'node',
+    options: { type: 'person', attribute: 'age', operator: 'EXISTS' },
+  },
+];
 
 const renderRules = (allowEdgeRules?: boolean) =>
   render(
     <DialogProvider>
-      <RulesComponent
+      <Rules
         codebook={{ node: {}, edge: {} }}
         allowEdgeRules={allowEdgeRules}
+        addRuleLabel="Add new filter rule"
       />
     </DialogProvider>,
   );
 
+const openRuleEditor = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Add new filter rule' }));
+
 describe('Rules', () => {
-  it('offers an edge rule by default', () => {
+  it('offers an edge target by default', async () => {
+    renderRules();
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Edge -/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers an edge target when edge rules are allowed', async () => {
+    renderRules(true);
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Edge -/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the edge target when edge rules are not allowed', async () => {
+    renderRules(false);
+    openRuleEditor();
+
+    expect(
+      await screen.findByRole('radio', { name: /^Node -/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('radio', { name: /^Edge -/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('names its one add control from the caller', () => {
     renderRules();
 
     expect(
-      screen.getByRole('button', { name: 'Add edge rule' }),
+      screen.getByRole('button', { name: 'Add new filter rule' }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Add new/ })).toHaveLength(1);
   });
 
-  it('offers an edge rule when they are allowed', () => {
-    renderRules(true);
+  /**
+   * "Rule Matching" is the control that sets this, and it is the only
+   * thing that said so — a researcher reading the cards had to reach the
+   * bottom of the list to learn whether they had asked for all of them or any
+   * of them. The chosen value belongs between the rules as well.
+   */
+  it('shows the chosen matching between the rules as well as under them', () => {
+    render(
+      <DialogProvider>
+        <Rules
+          codebook={{ node: {}, edge: {} }}
+          rules={TWO_RULES}
+          join="OR"
+          addRuleLabel="Add new filter rule"
+        />
+      </DialogProvider>,
+    );
 
+    const [first] = within(screen.getByRole('list')).getAllByRole('listitem');
+
+    expect(within(first!).getByText('or')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Add edge rule' }),
-    ).toBeInTheDocument();
+      screen.getByRole('radio', { name: 'Any rule can match' }),
+    ).toBeChecked();
   });
 
-  it('hides the edge rule button when edge rules are not allowed', () => {
-    renderRules(false);
+  it('offers ego as a target only for skip logic', async () => {
+    render(
+      <DialogProvider>
+        <Rules
+          type="query"
+          codebook={{ node: {}, edge: {}, ego: {} }}
+          addRuleLabel="Add new skip logic rule"
+        />
+      </DialogProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add new skip logic rule' }),
+    );
 
     expect(
-      screen.queryByRole('button', { name: 'Add edge rule' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Add alter rule' }),
+      await screen.findByRole('radio', { name: /^Ego -/ }),
     ).toBeInTheDocument();
   });
 });

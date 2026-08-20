@@ -7,7 +7,7 @@ import { mapboxStyleOptions } from '~/config/mapboxConstants';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import useVariablesFromExternalData from '../../hooks/useVariablesFromExternalData';
-import { Row, Section } from '../EditorLayout';
+import { Section } from '../EditorLayout';
 import ExternalLink from '../ExternalLink';
 import ArchitectField from '../Form/ArchitectField';
 import ColorPicker from '../Form/Fields/ColorPicker';
@@ -80,7 +80,7 @@ const MapOptions = () => {
         summary={
           <Paragraph>
             This interface requires an API key from Mapbox. For more information
-            about Mapbox and retreiving an API Key, read our{' '}
+            about Mapbox and retrieving an API key, read our{' '}
             <ExternalLink href={documentationLinks.geospatialInterface}>
               documentation
             </ExternalLink>{' '}
@@ -106,7 +106,7 @@ const MapOptions = () => {
           </Paragraph>
         }
       >
-        <Row>
+        <>
           <div data-name="Layer data-source" />
           <ArchitectField
             component={GeoDataSource}
@@ -115,9 +115,9 @@ const MapOptions = () => {
             validation={{ required: true }}
             label="Layer data source"
           />
-        </Row>
+        </>
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
-          <Row>
+          <>
             <ArchitectField
               name="mapOptions.targetFeatureProperty"
               label="Which property should be used for map selection?"
@@ -136,7 +136,7 @@ const MapOptions = () => {
                   : undefined
               }
             />
-          </Row>
+          </>
         )}
       </Section>
       <Section

@@ -228,6 +228,15 @@ export default function QuickAddField({
     ? resolveNodeShape(nodeTypeDefinition.shape, newNodeAttributes)
     : 'circle';
 
+  // The input is not wrapped in a BaseField, so nothing renders a label
+  // element for it and `useField` names none (see `renderedElements`): the
+  // control carries its own name. The entity label is what the participant is
+  // being asked for ("Person name"); the placeholder is an instruction, so it
+  // is only the fallback when the codebook type is unavailable.
+  const inputLabel = nodeTypeDefinition
+    ? `${nodeTypeDefinition.name} name`
+    : placeholder;
+
   // Close form when disabled
   useEffect(() => {
     if (disabled) {
@@ -275,6 +284,7 @@ export default function QuickAddField({
                       type="text"
                       autoFocus
                       placeholder={placeholder}
+                      aria-label={inputLabel}
                       id={id}
                       name={targetVariable}
                       data-testid="quick-add-input"

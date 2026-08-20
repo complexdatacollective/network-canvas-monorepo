@@ -146,15 +146,15 @@ export const alterFormScenarios: InterfaceScenarios = {
         await slides.nextSlide(label1);
 
         // Slide 2 (Grace): its own nickname is unset.
-        await expect(
-          page.locator('[data-field-name="nickname"] input'),
-        ).toHaveValue('');
+        await expect(stage.form.field('nickname').locator('input')).toHaveValue(
+          '',
+        );
 
         // Back to slide 1: Ada's typed value was persisted and restored.
         await slides.previousSlide();
-        await expect(
-          page.locator('[data-field-name="nickname"] input'),
-        ).toHaveValue('Ziggy');
+        await expect(stage.form.field('nickname').locator('input')).toHaveValue(
+          'Ziggy',
+        );
 
         await slides.nextSlide('Ada');
         await stage.form.fillText('nickname', 'Moss');
@@ -238,17 +238,11 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('fullName')).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
         await expect(slides.getCurrentItemLabel()).resolves.toBe(labelBefore);
-        // focusFirstError moves focus into the required field (deferred).
-        await expect
-          .poll(() =>
-            page.evaluate(
-              () =>
-                !!document.activeElement?.closest(
-                  '[data-field-name="fullName"]',
-                ),
-            ),
-          )
-          .toBe(true);
+        // focusFirstError moves focus into the required field on the commit
+        // that renders the error (#1385) — read it immediately, since a
+        // polling assertion would also pass on the deferred focus that used to
+        // leave the participant on `document.body` for up to two seconds.
+        expect(await stage.form.focusIsInside('fullName')).toBe(true);
 
         await stage.form.fillText('fullName', 'Ada Lovelace');
         await slides.nextSlide(labelBefore);
@@ -379,8 +373,8 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('interests')).toBeVisible();
 
         // Deselect Music to satisfy maxSelected: 2.
-        const music = page
-          .locator('[data-field-name="interests"]')
+        const music = stage.form
+          .field('interests')
           .getByRole('checkbox', { name: 'Music', exact: true });
         await music.click();
         await expect(music).not.toBeChecked();
@@ -808,9 +802,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await interview.dismissIntro();
 
         // Scalar values use the protocol's normalized 0-1 range.
-        const vasSlider = page
-          .locator('[data-field-name="vas"]')
-          .getByRole('slider');
+        const vasSlider = stage.form.field('vas').getByRole('slider');
         await expect(vasSlider).toHaveAttribute('min', '0');
         await expect(vasSlider).toHaveAttribute('max', '1');
         await expect(page.getByText('Not at all')).toBeVisible();
@@ -824,10 +816,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await stage.form.fillNumber('number', '42');
         await stage.form.selectRadio('boolean', 'Yes');
         // Toggle: fresco-ui ToggleField renders role="switch".
-        await page
-          .locator('[data-field-name="toggle"]')
-          .getByRole('switch')
-          .click();
+        await stage.form.field('toggle').getByRole('switch').click();
         await stage.form.selectRadio('radio', 'Very close');
         await stage.form.selectLikert('likert', 'Often');
         await stage.form.selectCheckbox('checkbox', 'Reading');
@@ -847,9 +836,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await vasSlider.blur();
 
         // Month-resolution DatePicker: two native <select>s (year, then month).
-        const dateSelects = page
-          .locator('[data-field-name="datePicker"]')
-          .locator('select');
+        const dateSelects = stage.form.field('datePicker').locator('select');
         await dateSelects.nth(0).selectOption('2024');
         await dateSelects.nth(1).selectOption('06');
 
@@ -862,9 +849,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // so the whole form reads valid (a prerequisite for the pulse).
         await dateSelects.nth(1).focus();
         await dateSelects.nth(1).blur();
-        await page
-          .locator('[data-field-name="relativeDatePicker"] input')
-          .blur();
+        await stage.form.field('relativeDatePicker').locator('input').blur();
 
         // Scroll the slide's ScrollArea to the bottom so the
         // useScrolledToBottom sentinel intersects, satisfying the
@@ -953,7 +938,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // Cancel: stays on slide 2, typed value intact.
         await slides.discardCancelButton.click();
         await expect(dialog).toBeHidden();
-        await expect(page.locator('[data-field-name="age"] input')).toHaveValue(
+        await expect(stage.form.field('age').locator('input')).toHaveValue(
           '999',
         );
 

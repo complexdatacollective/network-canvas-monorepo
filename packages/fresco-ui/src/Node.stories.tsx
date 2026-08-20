@@ -1229,3 +1229,56 @@ export const TwoFingerHold: Story = {
     },
   },
 };
+
+/**
+ * A node drawn inside something that already owns the interaction.
+ */
+export const Presentational: Story = {
+  render: () => (
+    <div className="flex flex-col items-start gap-6 p-16">
+      <button
+        type="button"
+        className="focusable bg-surface-1 text-surface-1-contrast flex items-center gap-4 rounded px-5 py-2.5"
+        onClick={fn()}
+      >
+        <Node label="person" size="xs" presentational />
+        <span>where name is exactly equal to Dee</span>
+      </button>
+      <Paragraph className="max-w-prose">
+        The chip is inert content, so the whole card is one control: one tab
+        stop, one accessible name, and no second target for a screen reader to
+        find inside the first.
+      </Paragraph>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByRole('button');
+
+    // A control inside a control is invalid HTML and a dead target for
+    // assistive technology; `<button>` takes phrasing content, so a `<div>`
+    // in there is invalid too.
+    await expect(
+      card.querySelectorAll('button, [role="button"], [tabindex], div'),
+    ).toHaveLength(0);
+    await expect(card).toHaveAccessibleName(
+      /person\s*where name is exactly equal to Dee/,
+    );
+  },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        story: `
+\`presentational\` renders a node as inert content — a \`<span>\` with no role,
+no tab stop and no activation — for the case where the node is a picture of an
+entity inside a control that owns the interaction, such as Architect's
+skip-logic rule cards. The node's label still reads as part of the surrounding
+control's name, and press-and-hold still reveals a clipped one; a
+presentational node forwards no \`ref\` and ignores \`onClick\` and the drag
+handlers.
+        `,
+      },
+    },
+  },
+};

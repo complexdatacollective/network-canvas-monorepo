@@ -32,8 +32,8 @@ import {
 //   key can never be removed once written — so: omit → never touch,
 //   explicit false on option one → click twice (on→off), explicit false on
 //   option two → click once (its default is true).
-// - Required validation goes through the toggleable Validation section,
-//   then the directly toggleable 'Required' rule.
+// - Field dialogs render validation inline without a master section toggle;
+//   each rule, including 'Required', has its own switch.
 export type BooleanOptionSpec = {
   label: string;
   // 'omit' → never touch the toggle (option one only — option two defaults
@@ -106,7 +106,7 @@ export async function addConfiguredFormField(
   const dialog = page.getByRole('dialog', { name: 'Edit Field' });
 
   const create = section.getByRole('button', {
-    name: 'Create new',
+    name: 'Create new form field',
     exact: true,
   });
   await create.click();
@@ -114,7 +114,7 @@ export async function addConfiguredFormField(
   // the unset variable picker. If the shared dialog form resurrected the
   // previous field's state, cancel — forcing the unmount that destroys the
   // form — and reopen.
-  const freshSign = dialog.getByRole('button', { name: 'Select variable' });
+  const freshSign = dialog.getByRole('button', { name: 'Select attribute' });
   try {
     await freshSign.waitFor({ state: 'visible', timeout: 3_000 });
   } catch {
@@ -126,10 +126,10 @@ export async function addConfiguredFormField(
   }
   await createVariableViaSpotlight(page, {
     variableName: spec.variableName,
-    until: dialog.getByRole('button', { name: 'Change variable' }),
+    until: dialog.getByRole('button', { name: 'Change attribute' }),
   });
 
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(spec.promptText);
 
@@ -138,10 +138,7 @@ export async function addConfiguredFormField(
     .selectOption({ label: spec.inputControl });
 
   if (spec.options) {
-    await fillOptionRows(
-      dialog.locator('[data-name="Categorical/Ordinal options"]'),
-      spec.options,
-    );
+    await fillOptionRows(dialog, spec.options);
   }
 
   if (spec.booleanOptions) {
@@ -163,13 +160,7 @@ export async function addConfiguredFormField(
   }
 
   if (spec.required) {
-    const validation = dialog.locator('[data-name="Validation"]');
-    await validation
-      .getByRole('switch', { name: 'Turn this feature on or off' })
-      .click();
-    await validation
-      .getByRole('switch', { name: 'Required', exact: true })
-      .click();
+    await dialog.getByRole('switch', { name: 'Required', exact: true }).click();
   }
 
   await page.getByRole('button', { name: 'Add', exact: true }).click();

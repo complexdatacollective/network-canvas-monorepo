@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BookOpenText,
+  Eye,
   FileImage,
   type LucideIcon,
   Printer,
@@ -10,6 +11,7 @@ import { motion } from 'motion/react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
+import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
@@ -36,6 +38,7 @@ const TABS: Tab[] = [
 
 const ProjectNav = () => {
   const [location] = useLocation();
+  const accessMode = useProtocolAccessMode();
   const protocolName = useSelector(getProtocolName);
   const hasUnusedAssets = useSelector(getHasUnusedAssets);
   const hasUnusedVariables = useSelector(getHasUnusedVariables);
@@ -45,11 +48,11 @@ const ProjectNav = () => {
   // warning indicator on that tab and provides its screen-reader label.
   const tabWarnings: Record<string, string | undefined> = {
     '/protocol': hasVariableRoleConflicts
-      ? 'has variables written both with and without validation'
+      ? 'has attributes written both with and without validation'
       : undefined,
     '/protocol/assets': hasUnusedAssets ? 'has unused resources' : undefined,
     '/protocol/codebook': hasUnusedVariables
-      ? 'has unused variables'
+      ? 'has unused attributes'
       : undefined,
   };
 
@@ -95,10 +98,24 @@ const ProjectNav = () => {
     );
   });
 
+  // A read-only tab renders one whole-protocol view at whatever /protocol URL
+  // it is on, so these tabs would push history entries and change nothing. A
+  // control that is visibly live and does nothing is the defect this guard was
+  // written to remove, so they are replaced by a statement of the state.
+  const trailing =
+    accessMode === 'read-only' ? (
+      <span className="inline-flex items-center gap-2 text-base leading-none font-semibold">
+        <Eye className="size-4 shrink-0" aria-hidden />
+        Read only
+      </span>
+    ) : (
+      tabs
+    );
+
   return (
     <NavShell
       leading={<Breadcrumb items={breadcrumbItems} />}
-      trailing={tabs}
+      trailing={trailing}
     />
   );
 };

@@ -52,6 +52,7 @@ const NameGeneratorRosterPrompts = (_props: StageEditorSectionProps) => {
         label="Prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new prompt"
         validation={{ notEmpty }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
@@ -63,6 +64,7 @@ const NameGeneratorRosterPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         // No `currentStageIndex`: this section never supplied one, so the
         // additional-attributes pool keeps excluding this stage's own
         // committed roles exactly as before.

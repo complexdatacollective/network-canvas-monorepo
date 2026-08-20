@@ -11,7 +11,7 @@ import prune from '~/utils/prune';
  * The stage is pruned (null/empty values stripped) so that preview validates the
  * exact shape a save would commit. The form contract excludes null, but this
  * function can also receive drafts assembled outside the form; pruning here
- * matches the `updateStage`/`createStage` commit boundary and avoids previewing
+ * matches the `commitStageEditorDraft` commit boundary and avoids previewing
  * a shape that would never be saved. It also means a panel with no title resolves
  * to a genuinely-invalid protocol (missing required `title`) rather than a
  * transient empty value, which keeps preview correctly disabled until a title

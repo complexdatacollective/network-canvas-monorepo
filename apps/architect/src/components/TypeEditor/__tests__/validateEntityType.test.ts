@@ -43,7 +43,7 @@ describe('validateEntityType()', () => {
     const errors = validateEntityType({
       shape: { default: 'circle', dynamic: {} },
     });
-    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/Select a variable/);
+    expect(errors[SHAPE_MAPPING_FIELD]).toMatch(/Select an attribute/);
   });
 
   it('flags a breakpoints mapping with no thresholds', () => {

@@ -1,5 +1,12 @@
 import { omit } from 'es-toolkit/compat';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector, useStore } from 'react-redux';
 import { useLocation } from 'wouter';
 
@@ -7,33 +14,49 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   type Stage,
   type StageType,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
 import StageEditorNav from '~/components/ProjectNav/StageEditorNav';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   getPreviewRespectSkipLogic,
   getPreviewUseSyntheticData,
+  getProtocolLockState,
   setPreviewRespectSkipLogic,
   setPreviewUseSyntheticData,
 } from '~/ducks/modules/app';
-import { actionCreators as stageActions } from '~/ducks/modules/protocol/stages';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
+import {
+  commitStageEditorDraftThunk,
+  resetDraft,
+} from '~/ducks/modules/stageEditorDraft';
 import type { RootState } from '~/ducks/store';
+import {
+  getLeavePersistence,
+  guardState,
+  stageDiscardDescriptions,
+} from '~/hooks/useProtocolNavGuard';
+import { useSingleFlight } from '~/hooks/useSingleFlight';
 import { useStageEditorKeyboard } from '~/hooks/useStageEditorKeyboard';
 import { getProtocol, getStage, getStageIndex } from '~/selectors/protocol';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
-import { ensureError } from '~/utils/ensureError';
+import {
+  getLiveStageDraftDirty,
+  getLiveStageValues,
+} from '~/selectors/stageEditorDraft';
+import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
+import StageDraftConflictDialog from './StageDraftConflictDialog';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
@@ -43,12 +66,6 @@ type StageEditorProps = {
   insertAtIndex?: number;
   type?: string;
 };
-
-// The mirror the stage form bridge maintains. It is the only view of the live
-// form values available outside the form's provider, which is where the
-// preview payload and the wip-protocol validation are assembled.
-const getLiveStageValues = (state: RootState) =>
-  state.stageEditorDraft.ui.liveValues;
 
 /**
  * Undo/redo shortcuts write to the stage form store, so the hook has to run
@@ -96,8 +113,12 @@ const StageEditor = (props: StageEditorProps) => {
         'That stage no longer exists. It may have been deleted. Returning you to the protocol overview.',
       actions: { primary: { label: 'OK', value: true } },
     });
+    // Abandons the draft along with the stage. Without this the editor's
+    // codebook transaction would stay open after the redirect, and codebook
+    // writes made elsewhere would land on a draft nothing will ever commit.
+    dispatch(resetDraft(null));
     setLocation('/protocol');
-  }, [stageMissing, openDialog, setLocation]);
+  }, [stageMissing, openDialog, setLocation, dispatch]);
 
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
@@ -228,29 +249,37 @@ const StageEditor = (props: StageEditorProps) => {
 
   const onSubmit = useCallback<FormSubmitHandler>(
     (values: Record<string, FieldValue>) => {
+      // This tab does not own the saved copy of this protocol, so the library
+      // write behind this commit would be dropped — and in `reclaim-blocked`
+      // the commit would additionally replace the codebook wholesale from a
+      // snapshot taken before the other tab's edits. Refuse rather than take it
+      // into memory and look saved: the editor stays mounted holding the work,
+      // and the banner above names the ways forward. (The commit button is
+      // disabled too; this covers a submit raised from the keyboard, and says
+      // why rather than failing silently.)
+      const refusal = refusedCommitMessage(
+        getProtocolLockState(reduxStore.getState()),
+        'stage',
+      );
+      if (refusal) {
+        return { success: false, formErrors: [refusal] };
+      }
+
       // A key the form no longer carries has been removed (a section toggled
       // off), which is why the update overwrites rather than merges: preview
       // already renders the stage without it, and a merge would silently
       // resurrect it on save.
       const normalizedStage = withStageIdentity(values as unknown as Stage);
 
-      if (id) {
-        dispatch(stageActions.updateStage(id, normalizedStage, true));
-      } else {
-        dispatch(
-          stageActions.createStage({
-            options: normalizedStage,
-            index: insertAtIndex,
-          }),
-        );
-      }
-
-      dispatch(resetDraft(null));
+      // The stage and every codebook edit its field editors made are promoted
+      // in one action, so the protocol timeline, validation and persistence
+      // each see exactly one snapshot — and a half-applied save cannot exist.
+      dispatch(commitStageEditorDraftThunk(id, normalizedStage, insertAtIndex));
       setLocation('/protocol');
 
       return { success: true };
     },
-    [withStageIdentity, id, insertAtIndex, setLocation, dispatch],
+    [withStageIdentity, id, insertAtIndex, setLocation, dispatch, reduxStore],
   );
 
   // Cancel handler with unsaved changes confirmation
@@ -266,25 +295,43 @@ const StageEditor = (props: StageEditorProps) => {
       return true;
     }
 
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'Unsaved Changes',
-      description:
-        'You have unsaved changes. Are you sure you want to leave without saving?',
-      actions: {
-        primary: { label: 'Leave Without Saving', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
+    // One decision, one prompt. Cancel and Back ask the researcher the very
+    // same question about the very same draft — since the wording converged,
+    // byte for byte — so Cancel joins the interlock the navigation guards
+    // already share rather than being the one exit that can stack a second
+    // identical dialog on top of the first.
+    if (guardState.prompting) return false;
+    guardState.prompting = true;
+    try {
+      // What is lost differs with whether this tab can save at all, and a tab
+      // that cannot must not be told the last saved version of the stage is
+      // waiting for it here.
+      const persistence = getLeavePersistence(reduxStore.getState());
+      const confirmed = await openDialog({
+        type: 'choice',
+        intent: 'warning',
+        size: 'readable',
+        title: 'Discard unsaved stage changes?',
+        description:
+          stageDiscardDescriptions[
+            persistence === 'no-protocol' ? 'saved' : persistence
+          ],
+        actions: {
+          primary: { label: 'Discard Changes and Leave', value: true },
+          cancel: { label: 'Cancel', value: false },
+        },
+      });
 
-    if (confirmed) {
-      dispatch(resetDraft(null));
-      setLocation('/protocol');
-      return true;
+      if (confirmed) {
+        dispatch(resetDraft(null));
+        setLocation('/protocol');
+        return true;
+      }
+
+      return false;
+    } finally {
+      guardState.prompting = false;
     }
-
-    return false;
   }, [openDialog, reduxStore, setLocation, dispatch]);
 
   // A browser-level exit (refresh, tab close, window close) is the one way out
@@ -318,7 +365,10 @@ const StageEditor = (props: StageEditorProps) => {
     };
   }, [reduxStore]);
 
-  const handlePreview = useCallback(async () => {
+  // Guarded by a latch of its own, not by the Preview button's `disabled` —
+  // see `useSingleFlight`. Two clicks in one tick would validate the protocol
+  // twice and open two preview windows.
+  const runPreview = useCallback(async () => {
     // Preview must show the stage as it is on screen, not as the mirror last
     // coalesced it.
     flushStageLiveValues();
@@ -407,6 +457,8 @@ const StageEditor = (props: StageEditorProps) => {
     useSyntheticData,
     respectSkipLogic,
   ]);
+  const handlePreview = useSingleFlight(runPreview);
+
   const sections = useMemo(
     () => getInterface(interfaceType).sections,
     [interfaceType],
@@ -439,26 +491,38 @@ const StageEditor = (props: StageEditorProps) => {
   const totalStages = protocolStageCount + (isExistingStage ? 0 : 1);
   const previewLabel = isOpeningPreview ? 'Opening preview…' : 'Preview';
 
+  const syntheticDataLabelId = useId();
+  const respectSkipLogicLabelId = useId();
+  // A `<label>` cannot name either of these: `ToggleField` renders a bare
+  // `<button role="switch">`, and a button's accessible name never comes from
+  // an associated label the way an `<input>`'s does. Wrapping them in one left
+  // both switches unnamed, so each is pointed at its own text explicitly.
   const previewOptionsContent = (
     <div className="flex flex-col gap-3">
-      <label className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <ToggleField
+          aria-labelledby={syntheticDataLabelId}
           value={useSyntheticData}
           onChange={(checked) =>
             dispatch(setPreviewUseSyntheticData(!!checked))
           }
         />
-        <span className="text-sm">Start preview with example data</span>
-      </label>
-      <label className="flex items-center gap-3">
+        <span id={syntheticDataLabelId} className="text-sm">
+          Start preview with example data
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
         <ToggleField
+          aria-labelledby={respectSkipLogicLabelId}
           value={respectSkipLogic}
           onChange={(checked) =>
             dispatch(setPreviewRespectSkipLogic(!!checked))
           }
         />
-        <span className="text-sm">Respect skip logic</span>
-      </label>
+        <span id={respectSkipLogicLabelId} className="text-sm">
+          Respect skip logic
+        </span>
+      </div>
     </div>
   );
 
@@ -476,6 +540,11 @@ const StageEditor = (props: StageEditorProps) => {
       onSubmit={onSubmit}
     >
       <StageEditorKeyboardShortcuts />
+      <StageDraftConflictDialog
+        stageId={id}
+        insertAtIndex={insertAtIndex}
+        withStageIdentity={withStageIdentity}
+      />
       <div className="relative h-full overflow-y-auto pb-32">
         <StageEditorNav
           stageName={stageName}
@@ -489,6 +558,23 @@ const StageEditor = (props: StageEditorProps) => {
         />
         <div className="phone-landscape:px-6 px-4">
           <div className="mx-auto w-full max-w-7xl">
+            {/*
+             * The editor's visible hero heading is the stage-name INPUT
+             * (StageHeading), which is a control, not a heading — so this route
+             * had no `<h1>` and nothing for a keyboard user arriving from a
+             * Codebook "Used In" link to land on. This is the real heading and
+             * RouteFocus's landing point; it is `sr-only` because the input
+             * already shows the same text at hero size.
+             *
+             * Focus lands HERE, never on the name input: opening an edit the
+             * researcher did not ask for is worse than a silent arrival. The
+             * new-stage flow is the deliberate exception — it autofocuses the
+             * input because naming the stage IS the next step, and RouteFocus
+             * leaves any destination that has already claimed focus alone.
+             */}
+            <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
+              {stageName}
+            </Heading>
             <StageHeading
               stageNumber={stageNumber}
               totalStages={totalStages}

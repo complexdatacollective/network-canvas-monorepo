@@ -82,7 +82,7 @@ const TypeEditor = ({
 
   return (
     <>
-      <Section title={`${capitalize(entity)} Type`} layout="vertical">
+      <Section layout="vertical">
         <ArchitectField
           label={`${capitalize(entity)} type name`}
           hint={
@@ -100,13 +100,19 @@ const TypeEditor = ({
           initialValue={initialValues.name}
           validation={{
             required: true,
-            allowedNMToken: true,
+            // Names the subject, so the message reads "Not a valid node type
+            // name" rather than the mapper's default "variable name" — this
+            // field is not a variable. Whole strings, one per branch, rather
+            // than an interpolated `${entity} type name`.
+            allowedNMToken:
+              entity === 'node' ? 'node type name' : 'edge type name',
             uniqueByList: existingTypes,
           }}
           placeholder={`Enter a name for this ${entity} type...`}
         />
       </Section>
-      <Section title="Color" id={getFieldId('color')} layout="vertical">
+
+      <Section id={getFieldId('color')} layout="vertical">
         <ArchitectField
           component={ColorPicker}
           name="color"
@@ -118,40 +124,41 @@ const TypeEditor = ({
           paletteRange={paletteSize}
         />
       </Section>
+
       {entity === 'node' && (
-        <Section title="Shape" id={getFieldId('shape')} layout="vertical">
-          <ArchitectField
-            component={ShapePickerControl}
-            label="Shape"
-            hint="Choose a default shape for this node type."
-            name="shape.default"
-            initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
-            validation={{ required: true }}
-            nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
-          />
-          <ShapeVariableMapping
-            variables={initialValues.variables}
-            initialMapping={initialValues.shape?.dynamic}
-            nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
-            defaultShape={
-              typeof defaultShape === 'string'
-                ? (defaultShape as NodeShape)
-                : undefined
-            }
-          />
-        </Section>
-      )}
-      {entity === 'node' && (
-        <Section title="Icon" id={getFieldId('icon')} layout="vertical">
-          <ArchitectField
-            component={IconPicker}
-            label="Icon"
-            hint={`Choose an icon to display on interfaces that create this ${entity}.`}
-            name="icon"
-            initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
-            validation={{ required: true }}
-          />
-        </Section>
+        <>
+          <Section id={getFieldId('shape')} layout="vertical">
+            <ArchitectField
+              component={ShapePickerControl}
+              label="Shape"
+              hint="Choose a default shape for this node type."
+              name="shape.default"
+              initialValue={initialValues.shape?.default ?? DEFAULT_NODE_SHAPE}
+              validation={{ required: true }}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+            />
+            <ShapeVariableMapping
+              variables={initialValues.variables}
+              initialMapping={initialValues.shape?.dynamic}
+              nodeColor={typeof nodeColor === 'string' ? nodeColor : undefined}
+              defaultShape={
+                typeof defaultShape === 'string'
+                  ? (defaultShape as NodeShape)
+                  : undefined
+              }
+            />
+          </Section>
+          <Section id={getFieldId('icon')} layout="vertical">
+            <ArchitectField
+              component={IconPicker}
+              label="Icon"
+              hint={`Choose an icon to display on interfaces that create this ${entity}.`}
+              name="icon"
+              initialValue={initialValues.icon ?? DEFAULT_NODE_ICON}
+              validation={{ required: true }}
+            />
+          </Section>
+        </>
       )}
     </>
   );

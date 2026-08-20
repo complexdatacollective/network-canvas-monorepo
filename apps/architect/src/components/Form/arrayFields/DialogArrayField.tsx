@@ -1,13 +1,3 @@
-/**
- * COMPOSITION: this is a *field component*, rendered as
- * `<ArchitectArrayField name="prompts" component={DialogArrayField} … />`.
- * It receives the whole array as one `value`/`onChange` pair and never
- * registers per-index leaves, which is the governing rule for every array in
- * the stage form: a deleted row's dormant value must not be able to resurrect
- * itself in `getFormValues()`. Making it a field component rather than a
- * self-contained `name`-taking section keeps ONE owner of the field name, the
- * validation adapter and the Issues anchor (`ArchitectArrayField`).
- */
 import { cloneDeep, isEqual, set, unset } from 'es-toolkit/compat';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
@@ -26,22 +16,34 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ArrayField, {
   ArrayFieldDragHandle,
+  stripManagedProperties,
   type ArrayFieldEditorProps,
   type ArrayFieldItemProps,
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+/**
+ * COMPOSITION: this is a *field component*, rendered as
+ * `<ArchitectArrayField name="prompts" component={DialogArrayField} … />`.
+ * It receives the whole array as one `value`/`onChange` pair and never
+ * registers per-index leaves, which is the governing rule for every array in
+ * the stage form: a deleted row's dormant value must not be able to resurrect
+ * itself in `getFormValues()`. Making it a field component rather than a
+ * self-contained `name`-taking section keeps ONE owner of the field name, the
+ * validation adapter and the Issues anchor (`ArchitectArrayField`).
+ */
+import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import type { FormLevelValidate } from '~/components/DialogForm/formLevelValidate';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import type { StageFormStoreApi } from '~/components/StageEditor/stageFormContext';
 import type { RootState } from '~/ducks/modules/root';
-import { ensureError } from '~/utils/ensureError';
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -77,6 +79,7 @@ export type DialogArrayEditorValidate = (
 
 export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   ArrayFieldProps<T>,
+  | 'addButtonLabel'
   | 'confirmDelete'
   | 'editorComponent'
   | 'immediateAdd'
@@ -84,6 +87,18 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   | 'itemTemplate'
   | 'onOperation'
 > & {
+  /**
+   * Visible text and accessible name of the add button — REQUIRED, and a whole
+   * string rather than a `Create new ${itemLabel}` template, so it can be
+   * localised and so no call site can fall back to a generic default.
+   *
+   * A stage editor mounts several of these at once (a Name Generator has both
+   * a form-field list and a prompt list; a Network Composer has one attribute
+   * list per edge type). Named "Create new", every one of them is the same
+   * control to anyone navigating by a list of buttons, and Architect's own E2E
+   * specs had to scope by section to tell them apart.
+   */
+  addButtonLabel: string;
   /** Dialog title when adding. Defaults to `Add ${itemLabel}`. */
   addTitle?: string;
   /** Dialog title when editing an existing row. */
@@ -94,6 +109,15 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   /** Renders the editor dialog's fields. Receives the item's own properties. */
   editorFieldsComponent: Renderer;
   editorProps?: Record<string, unknown>;
+  /**
+   * Optional supporting pane for the editor dialog. It receives the row that
+   * opened the dialog plus `editorPreviewProps`, and can subscribe to the
+   * dialog form store for live draft values.
+   */
+  editorPreviewComponent?: Renderer;
+  editorPreviewProps?: Record<string, unknown>;
+  /** Semantic width preset for the editor dialog. */
+  editorDialogSize?: DialogProps['size'];
   editorValidate?: DialogArrayEditorValidate;
   /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
   itemLabel?: string;
@@ -109,14 +133,6 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   onBeforeSave?: (value: unknown) => unknown;
   /** DOM id of the editor dialog's `<form>` (`SubmitButton form={…}`). */
   requestedEditFormName?: string;
-};
-
-const stripManagedProperties = (
-  item: Partial<ArrayItem> | undefined,
-): ArrayItem => {
-  if (!item) return {};
-  const { _internalId, _draft, ...value } = item;
-  return value;
 };
 
 const isRecord = (value: unknown): value is ArrayItem =>
@@ -241,6 +257,9 @@ type DialogArrayContextValue = {
     isNewRow: boolean,
   ) => boolean;
   editorFieldsComponent: Renderer;
+  editorDialogSize?: DialogProps['size'];
+  editorPreviewComponent?: Renderer;
+  editorPreviewProps?: Record<string, unknown>;
   editorProps?: Record<string, unknown>;
   editorTitle: string;
   editorValidate?: DialogArrayEditorValidate;
@@ -280,13 +299,21 @@ const DialogItem = ({
   onDelete,
   disabled,
   readOnly,
+  editTriggerRef,
+  getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) => {
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
   const { confirm } = useDialog();
+  const rowRef = useRef<HTMLDivElement>(null);
   const interactionDisabled = disabled || readOnly;
   const itemValue = stripManagedProperties(item);
 
   const handleDelete = () => {
+    // Resolved now, while the row is still in the document: after the confirm
+    // the row is gone, and `closest()` from a detached node walks a detached
+    // tree. The list element itself survives.
+    const list = rowRef.current?.closest('[role="list"]') ?? null;
+
     void confirm({
       title: `Remove this ${itemLabel}?`,
       description: `This ${itemLabel} will be removed from the list.`,
@@ -294,13 +321,42 @@ const DialogItem = ({
       cancelLabel: 'Cancel',
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
+      // Cancel returns focus to the Remove control, which is untouched. Confirm
+      // destroys it along with the row, so name a surviving target: whichever
+      // row has taken this one's place, else the list's add button — which is
+      // the only control left when the row just removed was the last one.
+      // Answering `null` there would leave focus on `<body>`, which Base UI
+      // resolves to the first tabbable element in the document, sending the
+      // researcher back to the page header from the middle of a form.
+      finalFocus: () => {
+        if (list?.isConnected) {
+          // `itemLabel` is caller-supplied, and this runs inside Base UI's
+          // layout-effect cleanup — an unescaped quote would throw a
+          // SyntaxError out of an unmount.
+          const remaining = list.querySelectorAll<HTMLElement>(
+            `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
+          );
+          // The row that has taken this one's place, or the last one if this
+          // was the last row.
+          const neighbour = remaining[Math.min(index, remaining.length - 1)];
+          if (neighbour) return neighbour;
+        }
+        // Nothing is left in the list. Both remembered openers point at the
+        // Remove button that has just been destroyed with the row, so
+        // answering nothing here lands focus on `<body>` — which Base UI
+        // resolves to the first tabbable element in the whole document,
+        // throwing the researcher back to the page header from the middle of
+        // a form. The add button is the one control that survives an emptied
+        // list, and it is where they are going next anyway.
+        return getAddTrigger();
+      },
     });
   };
 
   if (isBeingEdited || item._draft) return null;
 
   return (
-    <div className="flex w-full items-center gap-3">
+    <div ref={rowRef} className="flex w-full items-center gap-3">
       {isSortable && (
         <ArrayFieldDragHandle
           dragControls={dragControls}
@@ -319,6 +375,7 @@ const DialogItem = ({
         })}
       </div>
       <IconButton
+        ref={editTriggerRef}
         icon={<Pencil />}
         aria-label={`Edit ${itemLabel}`}
         color="dynamic"
@@ -351,12 +408,16 @@ const DialogEditor = ({
   isNewItem,
   onSave,
   onCancel,
+  getEditorTrigger,
 }: ArrayFieldEditorProps<ArrayItem>) => {
   const {
     addTitle,
     commitDetachedRow,
     editFormName,
     editorFieldsComponent,
+    editorDialogSize,
+    editorPreviewComponent,
+    editorPreviewProps,
     editorProps,
     editorTitle,
     editorValidate,
@@ -542,6 +603,16 @@ const DialogEditor = ({
 
   if (!session) return null;
 
+  const editorPreview = editorPreviewComponent
+    ? createElement(editorPreviewComponent, {
+        ...itemValues,
+        ...editorProps,
+        ...editorPreviewProps,
+        item: itemValues,
+        editIndex,
+      })
+    : undefined;
+
   return (
     <DialogForm
       key={session.id}
@@ -553,12 +624,22 @@ const DialogEditor = ({
       onSubmit={handleSave}
       validate={validate}
       editIndex={editIndex}
+      size={editorDialogSize}
+      /**
+       * A row hides its own controls while it is being edited, so the Edit
+       * button that opened this dialog is not the element that will be on
+       * screen when the dialog closes. `getEditorTrigger` is called at that
+       * moment and answers with the freshly mounted control — or, for a new
+       * item (which was never a row), with the list's add button.
+       */
+      finalFocus={getEditorTrigger}
       layoutId={
         !session.isNewItem && typeof session.item._internalId === 'string'
           ? session.item._internalId
           : undefined
       }
       style={{ borderRadius: 'var(--radius)' }}
+      aside={editorPreview}
     >
       <DialogStoreCapture apiRef={storeApiRef} />
       {createElement(editorFieldsComponent, {
@@ -581,11 +662,14 @@ function DialogArrayField<T extends ArrayItem>({
   value,
   onChange,
   name = '',
-  addButtonLabel = 'Create new',
+  addButtonLabel,
   emptyStateMessage = 'No items have been created yet.',
   addTitle,
   editorTitle,
   editorFieldsComponent,
+  editorDialogSize,
+  editorPreviewComponent,
+  editorPreviewProps,
   editorProps,
   editorValidate,
   itemLabel = 'item',
@@ -597,7 +681,7 @@ function DialogArrayField<T extends ArrayItem>({
   previewProps,
   requestedEditFormName,
   getId,
-  itemClasses = 'bg-accent text-accent-contrast elevation-low',
+  itemClasses,
   ...arrayFieldProps
 }: DialogArrayFieldProps<T>) {
   const createItem = useCallback(() => {
@@ -656,6 +740,9 @@ function DialogArrayField<T extends ArrayItem>({
       commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(name),
       editorFieldsComponent,
+      editorDialogSize,
+      editorPreviewComponent,
+      editorPreviewProps,
       editorProps,
       editorTitle,
       editorValidate,
@@ -670,6 +757,9 @@ function DialogArrayField<T extends ArrayItem>({
       addTitle,
       commitDetachedRow,
       editorFieldsComponent,
+      editorDialogSize,
+      editorPreviewComponent,
+      editorPreviewProps,
       editorProps,
       editorTitle,
       editorValidate,

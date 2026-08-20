@@ -4,9 +4,8 @@ import { shallowEqual } from 'react-redux';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -18,6 +17,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import LockedOptions from '~/components/Options/LockedOptions';
 import PromptText from '~/components/sections/PromptText';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
 import { useAppSelector } from '~/ducks/hooks';
@@ -26,6 +26,7 @@ import {
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import {
+  excludeInterfaceOwned,
   excludeUnvalidatedUses,
   excludeValidatedUses,
 } from '~/selectors/roleFilters';
@@ -35,6 +36,7 @@ import { VariablePickerControl as VariablePicker } from '../../Form/Fields/Varia
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
+import { useLockedOptions } from '../useLockedOptions';
 import { getSortOrderOptionGetter } from './optionGetters';
 
 type VariableOption = {
@@ -137,16 +139,30 @@ const PromptFields = ({
   // already-configured prompt never loses its variable from the list.
   const categoricalVariableOptions = useAppSelector(
     (state) =>
-      excludeValidatedUses(
+      // A variable an interface derives from the structure a participant
+      // builds is not a bin: the bin writes through drag-and-drop and would
+      // overwrite it. Binding a variable whose OPTIONS an interface owns stays
+      // available — sorting family members by sex is legitimate authoring —
+      // and the options editor below renders read-only for those.
+      excludeInterfaceOwned(
         state,
         subject,
-        rawVariableOptions.filter(
-          ({ type: variableType }) => variableType === 'categorical',
+        excludeValidatedUses(
+          state,
+          subject,
+          rawVariableOptions.filter(
+            ({ type: variableType }) => variableType === 'categorical',
+          ),
+          currentVariable,
         ),
         currentVariable,
       ),
     shallowEqual,
   );
+  // The interview and genetics engine branch on these exact values, so the
+  // list is fixed however the variable is reached — and a variable the
+  // new-variable window stamped `readOnly` is fixed for its own reason.
+  const lockedOptions = useLockedOptions(subject, currentVariable);
   const otherVariableTextOptions = useAppSelector(
     (state) =>
       excludeUnvalidatedUses(
@@ -204,16 +220,12 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section
-        title="Categorical Variable"
-        id={getFieldId('variable')}
-        layout="vertical"
-      >
-        <Row>
+      <Section id={getFieldId('variable')} layout="vertical">
+        <>
           <ArchitectField
             name="variable"
-            label="Categorical variable"
-            labelHidden
+            label="Categorical attribute"
+            hint="Select a categorical attribute to assign a value to."
             component={VariablePicker}
             validation={{ required: true }}
             initialValue={variable}
@@ -222,37 +234,38 @@ const PromptFields = ({
             options={categoricalVariableOptions}
             onCreateOption={handleNewVariable}
           />
-        </Row>
+        </>
         {currentVariable && (
-          <Row>
-            <Heading level="h4" id={getFieldId('options')}>
-              Variable Options
-            </Heading>
-            <Paragraph>
-              Create <strong>up to 8</strong> options for this variable.
-            </Paragraph>
-            {showVariableOptionsTip && (
-              <Alert variant="destructive" className="my-7">
-                <AlertTitle>Too many option values</AlertTitle>
-                <AlertDescription>
-                  The categorical bin interface is designed to use{' '}
-                  <strong>up to 8 option values</strong> (including an
-                  &quot;other&quot; variable). Using more will create a
-                  sub-optimal experience for participants, and might reduce data
-                  quality. Consider grouping your variable options and capturing
-                  further detail with follow-up questions.
-                </AlertDescription>
-              </Alert>
+          <>
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <>
+                {showVariableOptionsTip && (
+                  <Alert variant="destructive" className="my-7">
+                    <AlertTitle>Too many option values</AlertTitle>
+                    <AlertDescription>
+                      The categorical bin interface is designed to use{' '}
+                      <strong>up to 8 option values</strong> (including an
+                      &quot;other&quot; attribute). Using more will create a
+                      sub-optimal experience for participants, and might reduce
+                      data quality. Consider grouping your attribute options and
+                      capturing further detail with follow-up questions.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <ArchitectArrayField
+                  name="variableOptions"
+                  label="Option values"
+                  hint="A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute."
+                  component={Options}
+                  addButtonLabel="Create new option"
+                  validation={optionsValidation}
+                  initialValue={variableOptions}
+                />
+              </>
             )}
-            <ArchitectArrayField
-              name="variableOptions"
-              label="Options"
-              labelHidden
-              component={Options}
-              validation={optionsValidation}
-              initialValue={variableOptions}
-            />
-          </Row>
+          </>
         )}
       </Section>
       <Section
@@ -262,7 +275,7 @@ const PromptFields = ({
           <Paragraph>
             You can optionally create an &quot;other&quot; option that triggers
             a follow-up dialog when nodes are dropped within it, and stores the
-            value the participant enters in a designated variable. This feature
+            value the participant enters in a designated attribute. This feature
             may be useful in order to collect values you might not have listed
             above.
           </Paragraph>
@@ -272,11 +285,11 @@ const PromptFields = ({
         handleToggleChange={handleToggleOtherVariable}
         layout="vertical"
       >
-        <Row>
+        <>
           <ArchitectField
             name="otherVariable"
-            label="Other variable"
-            labelHidden
+            label="Other attribute"
+            hint="Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option."
             component={VariablePicker}
             validation={{ required: true }}
             initialValue={otherVariable}
@@ -285,37 +298,42 @@ const PromptFields = ({
             options={otherVariableTextOptions}
             onCreateOption={handleCreateOtherVariable}
           />
-        </Row>
+        </>
         {currentOtherVariable && (
-          <CodebookVariableValidationSection
-            fieldName="otherVariable"
-            entity={entity}
-            type={type}
-            variableId={currentOtherVariable}
-          />
+          <div className="mb-8">
+            <CodebookVariableValidationSection
+              sectionSummary="Enable validation of the other attribute."
+              fieldName="otherVariable"
+              entity={entity}
+              type={type}
+              variableId={currentOtherVariable}
+            />
+          </div>
         )}
-        <Row>
+        <>
           <ArchitectField
             name="otherOptionLabel"
-            label="Label for Bin"
+            label="Label for 'Other' bin"
+            hint="Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above."
             component={RichTextField}
             validation={{ required: true }}
             initialValue={otherOptionLabel}
             singleLine
             placeholder='Enter a label (such as "other") for this bin...'
           />
-        </Row>
-        <Row>
+        </>
+        <>
           <ArchitectField
             name="otherVariablePrompt"
             label="Question Prompt for Dialog"
+            hint="Enter a question prompt to show when the other option is triggered."
             component={RichTextField}
             validation={{ required: true }}
             initialValue={otherVariablePrompt}
             singleLine
             placeholder="Enter a question prompt to show when the other option is triggered..."
           />
-        </Row>
+        </>
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

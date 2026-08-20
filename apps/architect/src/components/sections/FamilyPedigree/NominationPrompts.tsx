@@ -18,7 +18,14 @@ import {
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/store';
 import { EMPTY_VARIABLES, getVariablesForSubject } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getExclusiveVariableSlotMap,
+  getVariableRoleMap,
+} from '~/selectors/indexes';
+import {
+  hasValidatedUse,
+  interfaceOwnedPickIssue,
+} from '~/selectors/roleFilters';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
@@ -55,14 +62,23 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
+  const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Cross-class exclusivity gate: the nomination toggle is an UNVALIDATED
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
   // exclusion — see NominationPromptFields.tsx's excludeValidatedUses call).
-  // The row's PRE-EDIT committed variable is looked up by id in the stage's
-  // own committed `nominationPrompts` — the array-field successor to reading
-  // `getFormInitialValues('editable-list-form')`, since `onBeforeSave` is
-  // owned by the stage form, not the row dialog.
+  //
+  // DELIBERATELY not converted to the shared `useCrossClassEditorValidate`
+  // (CategoricalBin/OrdinalBin/TieStrengthCensus/Sociogram/Geospatial). Its
+  // escape is anchored to the row the DIALOG opened on; this one is anchored
+  // to the stage's own COMMITTED `nominationPrompts`, found by row id. The
+  // two differ once a prompt has been edited more than once within a single
+  // unsaved stage session, and only the committed anchor keeps a variable the
+  // protocol ALREADY binds here restorable — a pre-existing conflict an
+  // import introduced, which the timeline alert reports non-destructively
+  // rather than trapping the researcher. `NominationPromptsOnBeforeSave.test`
+  // pins both halves: the committed pick escapes, and no row borrows
+  // another's.
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!nodeType || !isRecord(value)) return value;
@@ -72,11 +88,24 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       const originalVariable =
         committedNominationPrompts?.find((prompt) => prompt.id === id)
           ?.variable ?? '';
+      // A variable the pedigree derives structurally (its ego marker, its
+      // relationship variable) can never be a nomination toggle. The picker
+      // already drops those, so this catches a stale draft or an imported
+      // protocol — and unlike the cross-class gate it has no unchanged-pick
+      // escape: re-saving such a prompt would keep writing the ego flag.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        subject,
+        variable,
+      );
+      if (ownedIssue) {
+        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+      }
       const issue = crossClassPickIssue({
         variableId: variable,
         originalVariableId: originalVariable,
         hasConflictingUse: (variableId) =>
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+          hasValidatedUse(roleMap, subject, variableId),
         allVariables,
         message: validatedElsewhereMessage,
       });
@@ -85,7 +114,13 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
       }
       return value;
     },
-    [nodeType, roleMap, allVariables, committedNominationPrompts],
+    [
+      nodeType,
+      roleMap,
+      exclusiveSlotMap,
+      allVariables,
+      committedNominationPrompts,
+    ],
   );
   const isDisabled = !nodeType;
   const handleToggleChange = useCallback(
@@ -123,7 +158,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         <Paragraph>
           Optionally add prompts to collect attribute information about family
           members. Each prompt should ask about a specific condition or trait
-          and will store the response in the selected boolean variable.
+          and will store the response in the selected boolean attribute.
         </Paragraph>
       }
       title="Nomination Prompts"
@@ -136,6 +171,7 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         label="Nomination prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new nomination prompt"
         validation={{ notEmpty }}
         initialValue={nominationPromptsInitial ?? []}
         addTitle="Edit Prompt"
@@ -144,10 +180,11 @@ const NominationPrompts = (_props: StageEditorSectionProps) => {
         editorTitle="Edit Prompt"
         editorProps={{ nodeType }}
         itemLabel="prompt"
+        editorDialogSize="editor"
         onBeforeSave={onBeforeSave}
         sortable
         requestedEditFormName="editable-list-form"
-        emptyStateMessage='No nomination prompts have been created yet. Click "Create new" to add your first prompt.'
+        emptyStateMessage='No nomination prompts have been created yet. Click "Create new nomination prompt" to add your first one.'
       />
     </Section>
   );

@@ -8,8 +8,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * writes the authored layout as inline `left`/`top` percentages). Edges are
  * `<line data-edge-id>` (EdgeLayer.tsx). Convex hulls are
  * `<polygon fill="var(--cat-N)">` (ConvexHullLayer.tsx). The preset toolbar and
- * behaviours toolbar are fresco-ui SegmentedToolbar instances whose segments are
- * real `<button>`s named by their label. The legend popover is open on mount and
+ * behaviours toolbar are fresco-ui SegmentedToolbar instances composed from
+ * real `<button>`s with accessible names. The legend popover is open on mount and
  * only closes on a press of the centre label button, so its accordion sections
  * ('Attributes' | 'Links' | 'Groups') stay reachable across other interactions.
  * Free-draw annotations are `<path stroke="white">` inside a foreground svg.

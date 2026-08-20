@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -62,6 +63,22 @@ const DateTimeParameters = ({
   // and detach the field. The first value the field reports once registered is
   // recorded rather than acted on, so opening the editor never clears a
   // committed range.
+  //
+  // Clearing them is correct — a full-resolution date is not a year, and
+  // re-deriving one would quietly widen a window the researcher chose
+  // deliberately — but it must not be silent, which is what it used to be. The
+  // hint below says it will happen; `clearedRange` says that it just did, in a
+  // live region, and only when there was something to clear.
+  const minValue = useFormStore(
+    (state) => state.getFieldState(minField)?.value,
+  );
+  const maxValue = useFormStore(
+    (state) => state.getFieldState(maxField)?.value,
+  );
+  const rangeRef = useRef({ min: minValue, max: maxValue });
+  rangeRef.current = { min: minValue, max: maxValue };
+  const [clearedRange, setClearedRange] = useState(false);
+
   const previousType = useRef<unknown>(undefined);
   useEffect(() => {
     if (dateType === undefined) return;
@@ -71,9 +88,16 @@ const DateTimeParameters = ({
     }
     if (previousType.current === dateType) return;
     previousType.current = dateType;
+    const { min, max } = rangeRef.current;
+    setClearedRange(Boolean(min) || Boolean(max));
     setFieldValue(minField, undefined);
     setFieldValue(maxField, undefined);
   }, [dateType, maxField, minField, setFieldValue]);
+
+  // The notice has served its purpose once a bound is set again.
+  useEffect(() => {
+    if (minValue || maxValue) setClearedRange(false);
+  }, [minValue, maxValue]);
 
   const dateFormat = asDateFormat(dateType);
   const pickerParameters = {
@@ -88,7 +112,7 @@ const DateTimeParameters = ({
         component={NativeSelectField}
         name={typeField}
         label="Date resolution"
-        hint="Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year."
+        hint="Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year. Changing the resolution clears the start and end range, because those dates are stored at the resolution you choose here."
         // Seeds the resolution the interview runtime assumes, so a variable
         // saved without touching this field still carries one.
         initialValue={
@@ -97,6 +121,19 @@ const DateTimeParameters = ({
         validation={{ required: true }}
         options={dateTypes}
       />
+      {/* Always mounted so a screen reader is watching it before the notice
+          appears — a live region added to the page at the same moment as its
+          own content is not reliably announced. */}
+      <div role="status" aria-live="polite">
+        {clearedRange && (
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              The start and end range were cleared because they were set at the
+              previous date resolution. Set them again if you still need them.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       <ArchitectField
         component={DatePicker}
         name={minField}

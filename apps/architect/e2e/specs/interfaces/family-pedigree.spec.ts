@@ -64,7 +64,7 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   //     `GAMETE_ROLE_OPTIONS`) additionally pass `lockedOptions` —
   //     NewVariableWindow.tsx disables "Variable type" for the same reason AND
   //     merges `lockedOptions` into the form's initial `options`, rendering
-  //     `<LockedOptions>` (a read-only display, no "Add new" button) instead
+  //     `<LockedOptions>` (a read-only display, no add button) instead
   //     of the editable `<Options>` editor.
   // In both cases the "Variable type" combobox ends up disabled and no
   // interactive Options editor renders, so `createVariableWithOptions`'s

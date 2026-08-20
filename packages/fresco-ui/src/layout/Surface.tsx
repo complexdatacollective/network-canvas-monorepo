@@ -83,11 +83,6 @@ export const surfaceVariants = compose(
   }),
 );
 
-// `process.env.NODE_ENV` is replaced statically by consuming bundlers (the
-// library-safe convention React itself uses); declared here because the web
-// tsconfig deliberately excludes Node globals.
-declare const process: { env: { NODE_ENV?: string } };
-
 const MAX_SURFACE_DEPTH = 4;
 
 const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {
@@ -177,13 +172,10 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
     const childDepth = floating ? 1 : depth + 1;
 
     useEffect(() => {
-      // Consumer bundlers replace NODE_ENV, so the warning (and this whole
-      // effect body) is dead-code-eliminated from production builds.
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        !floating &&
-        depth > MAX_SURFACE_DEPTH
-      ) {
+      // Consumer bundlers replace this Vite environment flag, so the warning
+      // (and this whole effect body) is dead-code-eliminated from production
+      // builds without requiring Node globals in browser consumers.
+      if (import.meta.env.DEV && !floating && depth > MAX_SURFACE_DEPTH) {
         console.warn(
           `Surface: nested ${depth} levels deep, which exceeds the surface token scale (0–${MAX_SURFACE_DEPTH}). Rendering with the level-${MAX_SURFACE_DEPTH} tokens. Consider flattening the layout.`,
         );

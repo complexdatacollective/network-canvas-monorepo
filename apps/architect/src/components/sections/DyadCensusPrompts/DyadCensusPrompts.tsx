@@ -41,6 +41,7 @@ const DyadCensusPrompts = (_props: StageEditorSectionProps) => {
         label="Prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new prompt"
         validation={{ notEmpty }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
@@ -52,6 +53,7 @@ const DyadCensusPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         editorProps={{ entity, type }}
         requestedEditFormName="editable-list-form"
         sortable

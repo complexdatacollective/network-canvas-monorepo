@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import type { Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
 import ProtocolSchemaV8 from '../schema.ts';
@@ -4419,7 +4420,7 @@ describe('Migration V7 to V8', () => {
       if (migrationV7toV8.notes) {
         expect(migrationV7toV8.notes.length).toBeGreaterThan(0);
         expect(migrationV7toV8.notes).toContain(
-          'migration adds `required: true` to every variable they reference',
+          'migration adds `required: true` to every attribute they reference',
         );
         expect(migrationV7toV8.notes).toContain(
           'while preserving its other validation rules',
@@ -6161,6 +6162,172 @@ describe('Migration V7 to V8', () => {
 
     it('removes a null parameters record', () => {
       expect(migrateDatetime(null)).not.toHaveProperty('parameters');
+    });
+  });
+
+  describe('duplicate form field repair', () => {
+    // Taken from `alter-form-test.netcanvas` in the private test-protocol
+    // corpus — the one protocol there whose AlterForm collects a single
+    // variable ("name") twice. V8's `uniqueFormFieldVariables` rejects that, so
+    // without this repair the whole migration throws and the protocol becomes
+    // unopenable. The stage, its ids and its field prompts are reproduced
+    // verbatim; only the unrelated codebook variable names are tidied.
+    const NAME = '2e152396-75ea-40e9-887f-ee79ee0202e6';
+    const SCALE = '5aa7d752-1c2a-4f89-8d72-84400003769b';
+    const CATEGORICAL = '5f728f8f-658e-4d4b-8c67-2f6523f1a8cb';
+    const PERSON = 'f59522c2-3888-49d7-8ee0-35664276d80c';
+
+    const alterFormTestProtocol = () => ({
+      stages: [
+        {
+          label: 'yo',
+          type: 'NameGeneratorQuickAdd',
+          subject: { entity: 'node', type: PERSON },
+          quickAdd: NAME,
+          prompts: [
+            { id: '4a4fb216-2f13-42d7-8789-d23720374e1c', text: 'hello\n' },
+          ],
+          id: '01f9b6d0-6a6f-11ed-9509-db564de30fb8',
+        },
+        {
+          label: 'sdf',
+          type: 'AlterForm',
+          introductionPanel: { title: 'sdf', text: 'sdf\n' },
+          subject: { type: PERSON, entity: 'node' },
+          form: {
+            fields: [
+              { variable: NAME, prompt: 'sdfsdf\n' },
+              { variable: NAME, prompt: 'sdfs\n' },
+              { variable: SCALE, prompt: 'sadasd\n' },
+              { variable: CATEGORICAL, prompt: 'asd\n' },
+            ],
+          },
+          id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
+        },
+      ],
+      codebook: {
+        node: {
+          [PERSON]: {
+            color: 'node-color-seq-1',
+            iconVariant: 'add-a-person',
+            name: 'person',
+            variables: {
+              [NAME]: {
+                component: 'Text',
+                type: 'text',
+                name: 'name',
+                validation: { required: true },
+              },
+              [SCALE]: {
+                type: 'scalar',
+                component: 'VisualAnalogScale',
+                parameters: { minLabel: '10', maxLabel: '100' },
+                name: 'closeness',
+              },
+              [CATEGORICAL]: {
+                type: 'categorical',
+                component: 'ToggleButtonGroup',
+                options: [
+                  { label: 'asfa\n', value: 'asf' },
+                  { label: 'asfadd\n', value: 'asfd' },
+                  { label: 'sdghwrhwrhe\n', value: 'sdwhwrh' },
+                ],
+                name: 'categorical',
+              },
+            },
+          },
+        },
+      },
+      assetManifest: {},
+      schemaVersion: 7,
+      lastModified: '2022-11-22T17:12:31.320Z',
+    });
+
+    const migrateAndParse = (protocol: unknown) => {
+      const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
+        name: 'alter-form-test',
+      });
+      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      expect(
+        parsed.success,
+        JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
+      ).toBe(true);
+      const stage = parsed.data?.stages[1];
+      return stage && 'form' in stage ? stage.form?.fields : undefined;
+    };
+
+    it('migrates the real protocol to a valid V8 document', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toBeDefined();
+    });
+
+    it('keeps the first field for the repeated variable and drops the later one', () => {
+      // The first row survives, so the prompt the researcher wrote first is the
+      // one the participant sees; "sdfs\n" — the row that was already sharing
+      // its answer with the first — is gone.
+      expect(
+        migrateAndParse(alterFormTestProtocol())?.filter(
+          (field) => field.variable === NAME,
+        ),
+      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
+    });
+
+    it('leaves every other field untouched and in order', () => {
+      expect(migrateAndParse(alterFormTestProtocol())).toEqual([
+        { variable: NAME, prompt: 'sdfsdf\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: CATEGORICAL, prompt: 'asd\n' },
+      ]);
+    });
+
+    it('keeps only the first of three fields naming one variable', () => {
+      const protocol = alterFormTestProtocol();
+      protocol.stages[1]!.form!.fields = [
+        { variable: NAME, prompt: 'first\n' },
+        { variable: NAME, prompt: 'second\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: NAME, prompt: 'third\n' },
+      ];
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'first\n' },
+        { variable: SCALE, prompt: 'sadasd\n' },
+      ]);
+    });
+
+    it('repairs a titled NameGenerator form the same way', () => {
+      const protocol = alterFormTestProtocol();
+      protocol.stages[1] = {
+        label: 'Add someone',
+        type: 'NameGenerator',
+        subject: { type: PERSON, entity: 'node' },
+        prompts: [
+          {
+            id: '5b5fc327-3f24-42d7-8789-d23720374e1c',
+            text: 'Who do you know?',
+          },
+        ],
+        form: {
+          title: 'Add a person',
+          fields: [
+            { variable: NAME, prompt: 'Their name?' },
+            { variable: SCALE, prompt: 'How close?' },
+            { variable: NAME, prompt: 'Their name again?' },
+          ],
+        },
+        id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
+      } as unknown as (typeof protocol.stages)[1];
+      expect(migrateAndParse(protocol)).toEqual([
+        { variable: NAME, prompt: 'Their name?' },
+        { variable: SCALE, prompt: 'How close?' },
+      ]);
+    });
+
+    it('migrates the real protocol through migrateProtocol without throwing', () => {
+      // The exact call the corpus test makes, and the one that threw
+      // "Migration resulted in invalid protocol" before this repair.
+      const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
+        name: 'alter-form-test',
+      });
+      expect(migrated.schemaVersion).toBe(8);
     });
   });
 });

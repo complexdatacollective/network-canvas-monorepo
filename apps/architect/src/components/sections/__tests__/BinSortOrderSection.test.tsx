@@ -36,10 +36,10 @@ describe('BinSortOrderSection', () => {
     );
 
     // `layout="vertical"` renders no collapsed placeholder — the mounted
-    // MultiSelect's own "Add new" affordance is the observable signal that
+    // MultiSelect's own "Add new bin sort rule" affordance is the observable signal that
     // the row field is (not) registered.
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('button', { name: 'Add new bin sort rule' }),
     ).not.toBeInTheDocument();
     expect(getFieldValue()).toBeUndefined();
   });
@@ -55,7 +55,9 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add new bin sort rule' }),
+    ).toBeInTheDocument();
     expect(getFieldValue()).toEqual([{ property: 'name', direction: 'asc' }]);
   });
 
@@ -70,11 +72,13 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Set the order of nodes in bins' }),
+    );
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: 'Add new' }),
+        screen.queryByRole('button', { name: 'Add new bin sort rule' }),
       ).not.toBeInTheDocument();
     });
     expect(getFieldValue()).toBeUndefined();
@@ -97,7 +101,9 @@ describe('BinSortOrderSection', () => {
       </Form>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add new' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add new bin sort rule' }),
+    );
     const propertySelects = await screen.findAllByRole('combobox', {
       name: 'Property',
     });

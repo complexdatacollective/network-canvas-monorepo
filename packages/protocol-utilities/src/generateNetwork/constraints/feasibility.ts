@@ -716,7 +716,7 @@ function adaptDelegatedContradiction(
     return {
       variableIds,
       rules: ['sameAs', 'differentFrom'],
-      reason: 'these variables are required to be both equal and different',
+      reason: 'these attributes are required to be both equal and different',
     };
   }
 
@@ -729,7 +729,7 @@ function adaptDelegatedContradiction(
         ),
       ),
       reason:
-        'these variables reference each other in a cycle that no assignment can satisfy',
+        'these attributes reference each other in a cycle that no assignment can satisfy',
     };
   }
 
@@ -762,7 +762,7 @@ function adaptDelegatedContradiction(
               ...crossings.flatMap((crossing) => crossing.rules),
             ],
             reason:
-              'these variables are held to a single value, but their bounds do not ' +
+              'these attributes are held to a single value, but their bounds do not ' +
               `overlap: ${crossings.map((crossing) => crossing.detail).join('; ')}`,
           };
         }
@@ -810,7 +810,7 @@ function adaptDelegatedContradiction(
         ),
       ),
       reason:
-        'the comparisons between these variables do not fit inside the bounds they declare',
+        'the comparisons between these attributes do not fit inside the bounds they declare',
     };
   }
 
@@ -970,8 +970,8 @@ function analyseEntity(
       broken.variableIds,
       [broken.rule, 'additionalAttributes'],
       broken.variableIds.length === 1
-        ? `a prompt fixes this variable to ${fixedTo}, which ${broken.rule} does not allow`
-        : `a prompt fixes these variables to ${fixedTo}, which ${broken.rule} cannot hold`,
+        ? `a prompt fixes this attribute to ${fixedTo}, which ${broken.rule} does not allow`
+        : `a prompt fixes these attributes to ${fixedTo}, which ${broken.rule} cannot hold`,
     );
   }
 
@@ -1049,7 +1049,7 @@ function analyseEntity(
 
     if (constraints.unique) {
       if (scope.entity === 'ego') {
-        report([id], ['unique'], 'unique is not supported on ego variables');
+        report([id], ['unique'], 'unique is not supported on ego attributes');
       } else {
         // Measured against the group's intersected rules, because that is what
         // the generator draws against: a variable held equal to a narrower one
@@ -1075,7 +1075,7 @@ function analyseEntity(
           report(
             members,
             ['unique'],
-            `only ${size} distinct values are possible${members.length > 1 ? ' once these variables are held equal' : ''}, but up to ${holders} ${scope.entity}s of this type can be generated`,
+            `only ${size} distinct values are possible${members.length > 1 ? ' once these attributes are held equal' : ''}, but up to ${holders} ${scope.entity}s of this type can be generated`,
           );
         }
 
@@ -1128,7 +1128,7 @@ function analyseEntity(
                 ? [scope.entity === 'edge' ? 'edgeConfig' : 'egoVariable']
                 : []),
             ],
-            `${writers} ${verb} ${members.length > 1 ? 'these variables, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
+            `${writers} ${verb} ${members.length > 1 ? 'these attributes, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
           );
         }
       }
@@ -1175,7 +1175,7 @@ function analyseEntity(
       rules,
       component.some((group) => incomparable.has(group))
         ? 'a number is compared against a date here, which no assignment can satisfy'
-        : 'the comparisons between these variables do not fit inside the bounds they declare',
+        : 'the comparisons between these attributes do not fit inside the bounds they declare',
     );
   }
 
@@ -1195,8 +1195,8 @@ function analyseEntity(
       cycle,
       rules,
       involvesComparator
-        ? 'these variables reference each other in a cycle that no assignment can satisfy'
-        : 'these variables are required to be both equal and different',
+        ? 'these attributes reference each other in a cycle that no assignment can satisfy'
+        : 'these attributes are required to be both equal and different',
     );
   }
 

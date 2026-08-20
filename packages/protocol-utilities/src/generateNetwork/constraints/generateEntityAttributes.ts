@@ -1152,7 +1152,7 @@ function exhaustedConflict(
     rules: declaredRules(members),
     reason:
       'no value satisfies these rules alongside the values chosen for the ' +
-      'variables they refer to',
+      'attributes they refer to',
   };
 }
 

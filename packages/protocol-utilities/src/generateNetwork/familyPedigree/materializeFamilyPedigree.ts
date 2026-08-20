@@ -88,10 +88,10 @@ function diseasesForStage(
               rules: ['inheritancePattern'],
               reason:
                 `NarrativePedigree stages assign both ${existingPattern} and ` +
-                `${disease.inheritancePattern} to the same disease variable`,
+                `${disease.inheritancePattern} to the same disease attribute`,
             },
           ],
-          'one disease variable cannot represent conflicting inheritance patterns',
+          'one disease attribute cannot represent conflicting inheritance patterns',
         );
       }
       narrativePatternByVariable.set(
@@ -568,7 +568,13 @@ export function materializeFamilyPedigree(
         person.biologicalSex,
       );
     }
+    // Structural values win. The schema now rejects a disease mapped onto one
+    // of the pedigree's own structural variables (NarrativePedigree's
+    // `diseases[].variable` is tagged as a writer, so
+    // `findExclusiveVariableConflicts` reports it), so this is defence in
+    // depth for the unvalidated protocols this generator also accepts.
     for (const disease of diseases) {
+      if (Object.hasOwn(fixed, disease.variable)) continue;
       fixed[disease.variable] = person.affectedVariables.has(disease.variable);
     }
 

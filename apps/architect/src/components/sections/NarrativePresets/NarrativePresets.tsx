@@ -90,6 +90,7 @@ const NarrativePresets = ({
         label="Narrative presets"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new preset"
         validation={{ notEmpty }}
         initialValue={initialPresets}
         addTitle="Edit Preset"

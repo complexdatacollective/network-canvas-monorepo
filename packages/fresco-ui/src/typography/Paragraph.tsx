@@ -3,7 +3,10 @@ import { forwardRef } from 'react';
 import { cva, cx, type VariantProps } from '../utils/cva';
 
 export const paragraphVariants = cva({
-  base: 'font-body text-pretty',
+  // `wrap-break-word` for the same reason as `Heading`: body copy quotes
+  // researcher-authored identifiers, and an unbroken token must break rather
+  // than overflow its container (#1392).
+  base: 'font-body text-pretty wrap-break-word',
   variants: {
     intent: {
       default: '',

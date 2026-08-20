@@ -11,6 +11,8 @@ import {
 } from 'es-toolkit/compat';
 import { DateTime } from 'luxon';
 
+import { normalizeForComparison } from '@codaco/shared-consts';
+
 type ValidationValue = unknown;
 type ValidationMessage = string | undefined;
 type ValidationResult = string | undefined;
@@ -57,9 +59,12 @@ const hasValue = (value: ValidationValue) => {
   return !isNil(value);
 };
 
+// Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
+// spelling of the same text are the same answer to a participant, so they are
+// the same value here too. See `@codaco/shared-consts`' `canonical-text`.
 const isRoughlyEqual = (left: unknown, right: unknown) => {
   if (typeof left === 'string' && typeof right === 'string') {
-    return left.toLowerCase() === right.toLowerCase();
+    return normalizeForComparison(left) === normalizeForComparison(right);
   }
 
   return isEqual(left, right);
@@ -302,7 +307,7 @@ const minDate =
 // Variables and option values must respect NMTOKEN rules so that
 // they are compatable with XML export formats
 const allowedVariableName =
-  (name = 'variable name'): Validator =>
+  (name = 'attribute name'): Validator =>
   (value) => {
     if (!/^[a-zA-Z0-9._\-:]+$/.test(value as string)) {
       return `Not a valid ${name}. Only letters, numbers and the symbols ._-: are supported`;

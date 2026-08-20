@@ -14,10 +14,14 @@ const surfaceSubmissionErrors = (
   storeApi: FormStoreApi,
   errors: FlattenedErrors,
 ) => {
-  storeApi.getState().setErrors(errors);
-  setTimeout(() => {
-    storeApi.getState().submitInvalidHandler?.(errors);
-  }, 0);
+  const state = storeApi.getState();
+  state.setErrors(errors);
+  // Hand off to the form's own error-focus request rather than scheduling a
+  // timer here. The form runs its invalid-submit handler from a layout effect
+  // on the commit that renders these errors, so focus is ordered against that
+  // commit instead of racing it — the same guarantee every other submit path
+  // now has.
+  state.requestErrorFocus();
 };
 
 export async function submitRegisteredForm(

@@ -2,14 +2,13 @@ import { get } from 'es-toolkit/compat';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { useStore } from 'react-redux';
 
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { StageType } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ExternalLink from '~/components/ExternalLink';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -138,7 +137,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
     // `present` is the entry being restored: `useStageDraftHistory` dispatches
     // the timeline step before it applies the values, in the same batch.
     const restored = get(
-      reduxStore.getState().stageEditorDraft.history.present ?? {},
+      reduxStore.getState().stageEditorDraft.history.present?.stage ?? {},
       'background',
     ) as Record<string, unknown> | undefined;
 
@@ -182,7 +181,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
       }
     >
       {imageAllowed && (
-        <Row>
+        <>
           <UnconnectedField
             name="background-type"
             label="Choose a background type"
@@ -192,55 +191,60 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
             options={backgroundTypeOptions}
             orientation="horizontal"
           />
-        </Row>
+        </>
       )}
       {!showImage && (
         <>
-          <Row>
+          <>
             <ArchitectField
               name="background.concentricCircles"
               component={IntegerInput}
               validation={{ required: true, positiveNumber: true }}
               label="Number of concentric circles to use:"
               initialValue={concentricCirclesInitialValue}
+              inline
             />
-          </Row>
-          <Row>
+          </>
+          <>
             <ArchitectField
               name="background.skewedTowardCenter"
               component={ToggleField}
               inline
-              label="Skew the size of the circles so that the middle is proportionally larger."
+              label="Skew circle size?"
+              hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
               initialValue={skewedTowardCenterInitialValue ?? false}
             />
-          </Row>
+          </>
         </>
       )}
       {showImage && (
-        <>
-          <Alert variant="info" className="my-7">
-            <AlertTitle>Make the background responsive</AlertTitle>
-            <AlertDescription>
-              A responsive SVG can span the canvas in portrait and landscape
-              while keeping labels readable.{' '}
-              <ExternalLink href={documentationLinks.responsiveSvgBackgrounds}>
-                Learn how to create a responsive SVG background
-              </ExternalLink>
-              .
-            </AlertDescription>
-          </Alert>
-          <Row>
-            <ArchitectField
-              name="background.image"
-              component={Image}
-              label="Background image"
-              labelHidden
-              canvasBackgroundPreview
-              validation={{ required: true }}
-              initialValue={imageInitialValue}
-            />
-          </Row>
-        </>
+        <ArchitectField
+          name="background.image"
+          component={Image}
+          label="Background image"
+          hint={
+            <>
+              <Paragraph>
+                Choose an image to use as the background for this prompt. The
+                image will be scaled to fit the canvas.
+              </Paragraph>
+              <Paragraph>
+                {' '}
+                A responsive SVG can span the canvas in portrait and landscape
+                while keeping labels readable.{' '}
+                <ExternalLink
+                  href={documentationLinks.responsiveSvgBackgrounds}
+                >
+                  Learn how to create a responsive SVG background
+                </ExternalLink>
+                .
+              </Paragraph>
+            </>
+          }
+          canvasBackgroundPreview
+          validation={{ required: true }}
+          initialValue={imageInitialValue}
+        />
       )}
     </Section>
   );

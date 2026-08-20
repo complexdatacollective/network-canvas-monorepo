@@ -1,3 +1,10 @@
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  AccordionTrigger,
+} from '@codaco/fresco-ui/Accordion';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -9,11 +16,13 @@ type ShowProtocolOpenResultDialogArgs = {
   result: ProtocolOpenResult | undefined;
   openDialog: DialogContextType['openDialog'];
   onApproveMigration?: () => Promise<void>;
+  onApproveRepair?: () => Promise<void>;
 };
 export const showProtocolOpenResultDialog = async ({
   result,
   openDialog,
   onApproveMigration,
+  onApproveRepair,
 }: ShowProtocolOpenResultDialogArgs): Promise<void> => {
   if (!result || result.status === 'opened') {
     return;
@@ -104,6 +113,73 @@ export const showProtocolOpenResultDialog = async ({
     });
     return;
   }
+  if (result.status === 'repair-required') {
+    const problems = (
+      <ul className="mb-6 list-disc space-y-2 pl-5">
+        {result.problems.map((problem) => (
+          <li key={problem.problem}>
+            {problem.problem}
+            {problem.repair ? ` ${problem.repair}` : ''}
+          </li>
+        ))}
+      </ul>
+    );
+    if (!result.repairable) {
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'This protocol cannot be opened',
+        size: 'editor',
+        children: (
+          <>
+            <Paragraph>
+              Some of this protocol&apos;s settings conflict with each other,
+              and the conflicts cannot be resolved automatically:
+            </Paragraph>
+            {problems}
+            <Paragraph>
+              Open it in the version of Architect that created it, correct the
+              settings listed above, and try again. If you need help, reach out
+              on our{' '}
+              <ExternalLink href="https://community.networkcanvas.com/">
+                community website.
+              </ExternalLink>
+            </Paragraph>
+          </>
+        ),
+        actions: { primary: { label: 'Return to start screen', value: true } },
+      });
+      return;
+    }
+    const confirmed = await openDialog({
+      type: 'choice',
+      intent: 'warning',
+      title: 'This protocol needs fixing before it can be opened',
+      size: 'editor',
+      children: (
+        <>
+          <Paragraph>
+            Some of this protocol&apos;s settings conflict with each other.
+            Architect can fix them for you, but the changes below cannot be
+            undone once the protocol is saved.
+          </Paragraph>
+          {problems}
+          <Paragraph>
+            Nothing else in your protocol will change, and nothing is written
+            until you choose to fix it.
+          </Paragraph>
+        </>
+      ),
+      actions: {
+        primary: { label: 'Fix these problems', value: true },
+        cancel: { label: 'Return to start screen', value: false },
+      },
+    });
+    if (confirmed === true) {
+      await onApproveRepair?.();
+    }
+    return;
+  }
   if (result.status === 'validation-error') {
     void openDialog({
       type: 'acknowledge',
@@ -147,8 +223,40 @@ export const showProtocolOpenResultDialog = async ({
             community website.
           </ExternalLink>
         </Paragraph>
+        <ProtocolFailureDetails detail={result.detail} />
       </>
     ),
     actions: { primary: { label: 'OK', value: true } },
   });
+};
+
+/**
+ * The underlying error's own text, collapsed.
+ *
+ * Architect runs offline and a researcher may have exception reporting turned
+ * off, so without this the only record of what actually failed is a console
+ * they will never open. It stays shut by default because it is written for
+ * whoever reads the bug report, not for the person who just wanted to open
+ * their protocol — the dialog above it says everything they need in order to
+ * decide what to do next.
+ */
+const ProtocolFailureDetails = ({ detail }: { detail?: string }) => {
+  if (!detail) {
+    return null;
+  }
+
+  return (
+    <Accordion className="mt-4">
+      <AccordionItem value="technical-details">
+        <AccordionHeader>
+          <AccordionTrigger>Technical details</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionPanel>
+          <pre className="bg-surface-1 max-h-40 overflow-auto rounded-sm p-4 text-sm whitespace-pre-wrap">
+            {detail}
+          </pre>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  );
 };

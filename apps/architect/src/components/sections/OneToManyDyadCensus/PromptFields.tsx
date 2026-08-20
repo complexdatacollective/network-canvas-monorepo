@@ -4,7 +4,7 @@ import { shallowEqual, useSelector } from 'react-redux';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { RootState } from '~/ducks/modules/root';
@@ -92,7 +92,7 @@ const PromptFields = ({
             from the group.
           </AlertDescription>
         </Alert>
-        <Row>
+        <>
           <ArchitectField
             name="text"
             label="Prompt Text"
@@ -102,8 +102,8 @@ const PromptFields = ({
             singleLine
             placeholder="Enter text for the prompt here..."
           />
-        </Row>
-        <Row>
+        </>
+        <>
           <ArchitectField
             name="createEdge"
             label="Create edges of the following type"
@@ -112,7 +112,7 @@ const PromptFields = ({
             initialValue={createEdge}
             entityType="edge"
           />
-        </Row>
+        </>
       </Section>
 
       <BucketSortOrderSection

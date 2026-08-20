@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { guardState } from '~/hooks/useProtocolNavGuard';
 
 const mocks = vi.hoisted(() => ({
   openDialog: vi.fn(),
@@ -168,18 +169,19 @@ type RecordedAction = { type?: string; payload?: unknown };
 type UpdateStageAction = {
   type: string;
   payload: {
-    stageId: string;
+    stageId: string | null;
     stage: Record<string, unknown>;
-    overwrite?: boolean;
+    index?: number;
   };
 };
 
+// The editor promotes its stage and its draft codebook in one action.
 const findUpdateStage = (
   dispatched: RecordedAction[],
 ): UpdateStageAction | undefined =>
-  dispatched.find((action) => action.type === 'stages/updateStage') as
-    | UpdateStageAction
-    | undefined;
+  dispatched.find(
+    (action) => action.type === 'stages/commitStageEditorDraft',
+  ) as UpdateStageAction | undefined;
 
 const renderEditor = (
   options: { stageOverrides?: Record<string, unknown> } = {},
@@ -187,7 +189,7 @@ const renderEditor = (
   const protocol = makeProtocol(options.stageOverrides);
   const dispatched: RecordedAction[] = [];
   // Sits after the thunk middleware, so it records only resolved plain
-  // actions (the `stages/updateStage` dispatch the save produces).
+  // actions (the `stages/commitStageEditorDraft` dispatch the save produces).
   const recordDispatch: Middleware = () => (next) => (action) => {
     dispatched.push(action as RecordedAction);
     return next(action);
@@ -219,6 +221,9 @@ const renderEditor = (
 describe('StageEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Module state shared with the navigation guards; a test that leaves a
+    // confirmation pending would otherwise gag the next one.
+    guardState.prompting = false;
     mocks.openDialog.mockResolvedValue(false);
     mocks.launchPreview.mockResolvedValue({ kind: 'delivered' });
     // Most interfaces render the SkipLogic section; the Anonymisation-shaped
@@ -277,10 +282,64 @@ describe('StageEditor', () => {
 
     await waitFor(() => {
       expect(mocks.openDialog).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Unsaved Changes' }),
+        expect.objectContaining({ title: 'Discard unsaved stage changes?' }),
       );
     });
     expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+
+  // One decision, one prompt. Back already refuses to stack a second
+  // confirmation on a first (`guardState.prompting`), and since the wording
+  // converged the two dialogs are byte-identical — so a researcher who cancels
+  // and then presses Back was being asked to answer the same question twice,
+  // about the same draft, in the same words.
+  it('never stacks a second discard confirmation on the first', async () => {
+    // A confirmation that stays on screen, as a real one does until answered.
+    mocks.openDialog.mockReturnValue(new Promise(() => undefined));
+    renderEditor();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+    });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+      target: { value: 'Renamed stage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await Promise.resolve();
+
+    expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    // The interlock Back reads, so the two exits cannot each open their own.
+    expect(guardState.prompting).toBe(true);
+  });
+
+  it('releases the interlock once the confirmation is answered', async () => {
+    renderEditor();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+    });
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+      target: { value: 'Renamed stage' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+    });
+
+    // Declining leaves the researcher in the editor, and the next Cancel or
+    // Back must be able to ask again.
+    await waitFor(() => {
+      expect(guardState.prompting).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(mocks.openDialog).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('browser unload guard', () => {
@@ -371,8 +430,9 @@ describe('StageEditor', () => {
         expect(findUpdateStage(dispatched)).toBeDefined();
       });
       const action = findUpdateStage(dispatched)!;
-      expect(action.payload.overwrite).toBe(true);
-      // The overwrite save must not silently delete the schema-valid,
+      // The commit always replaces the stage wholesale (a key the form no
+      // longer carries has been removed, not left untouched), so it must not
+      // silently delete the schema-valid,
       // runtime-honored key the editor never showed.
       expect(action.payload.stage.skipLogic).toEqual(SKIP_LOGIC);
     });

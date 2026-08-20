@@ -4,7 +4,6 @@ import { v4 as uuid } from 'uuid';
 
 import type {
   Codebook,
-  CurrentProtocol,
   EdgeColor,
   EdgeDefinition,
   EntityDefinition,
@@ -12,18 +11,41 @@ import type {
   VariablePropertyKey,
 } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
+import type { RootState } from '~/ducks/store';
 import {
   getAllVariableUUIDsByEntity,
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
+import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
+import { getProtocol } from '~/selectors/protocol';
+import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
+import { commitStageEditorDraft } from './commitStageEditorDraft';
 import { deleteStage } from './deleteStage';
+import { stageEditorCodebookMeta } from './stageEditorCodebookMeta';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
+
+/**
+ * Stamps a codebook slice action for the stage editor's draft copy whenever a
+ * codebook transaction is open, so nothing a nested field or variable editor
+ * writes reaches the canonical protocol before the stage is committed (#1382).
+ *
+ * Routing here rather than at each of the ~11 UI call sites keeps the decision
+ * in one place, and means a new call site is transactional by default rather
+ * than by remembering to opt in.
+ */
+const routeCodebookAction = <T extends { type: string }>(
+  action: T,
+  state: RootState,
+): T =>
+  getStageEditorCodebookTransactionOpen(state)
+    ? { ...action, meta: stageEditorCodebookMeta }
+    : action;
 
 type CreateTypePayload<T extends EntityDefinition = EntityDefinition> = {
   entity: Entity;
@@ -79,7 +101,7 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch },
+    { dispatch, getState },
   ) => {
     const type = uuid();
     const payload: CreateTypePayload = {
@@ -91,7 +113,12 @@ export const createTypeAsync = createAppAsyncThunk(
       },
     };
 
-    dispatch(codebookSlice.actions.createType(payload));
+    dispatch(
+      routeCodebookAction(
+        codebookSlice.actions.createType(payload),
+        getState(),
+      ),
+    );
     return { type, entity };
   },
 );
@@ -108,10 +135,15 @@ export const updateTypeAsync = createAppAsyncThunk(
       type: string;
       configuration: Partial<EntityDefinition>;
     },
-    { dispatch },
+    { dispatch, getState },
   ) => {
     const payload: UpdateTypePayload = { entity, type, configuration };
-    dispatch(codebookSlice.actions.updateType(payload));
+    dispatch(
+      routeCodebookAction(
+        codebookSlice.actions.updateType(payload),
+        getState(),
+      ),
+    );
     return { type, entity };
   },
 );
@@ -121,9 +153,12 @@ export const createEdgeAsync = createAppAsyncThunk(
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
     const state = getState();
-    const protocol = (state.activeProtocol?.present ||
-      state.activeProtocol) as CurrentProtocol;
-    const colorFromHelper = getNextCategoryColor(protocol, entity);
+    // Draft-aware, so a colour picked inside an open stage editor accounts for
+    // edge types created earlier in the same (uncommitted) session.
+    const protocol = getProtocol(state);
+    const colorFromHelper = protocol
+      ? getNextCategoryColor(protocol, entity)
+      : undefined;
     const color = configuration.color ?? colorFromHelper;
     const type = uuid();
 
@@ -137,7 +172,9 @@ export const createEdgeAsync = createAppAsyncThunk(
       payload.configuration.color = color as EdgeColor;
     }
 
-    dispatch(codebookSlice.actions.createType(payload));
+    dispatch(
+      routeCodebookAction(codebookSlice.actions.createType(payload), state),
+    );
     return { type, entity };
   },
 );
@@ -153,11 +190,11 @@ export const createVariableAsync = createAppAsyncThunk(
     { dispatch, getState },
   ) => {
     if (!configuration.name) {
-      throw new Error('Cannot create a new variable without a name');
+      throw new Error('Cannot create a new attribute without a name');
     }
 
     if (!configuration.type) {
-      throw new Error('Cannot create a new variable without a type');
+      throw new Error('Cannot create a new attribute without a type');
     }
 
     const safeConfiguration = prune({
@@ -166,7 +203,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }) as Variable;
 
     if (isEmpty(safeConfiguration.name)) {
-      throw new Error('Variable name contains no valid characters');
+      throw new Error('Attribute name contains no valid characters');
     }
 
     const state = getState();
@@ -178,7 +215,7 @@ export const createVariableAsync = createAppAsyncThunk(
     // We can't use same variable name twice.
     if (variableNameExists) {
       throw new Error(
-        `Variable with name "${safeConfiguration.name}" already exists`,
+        `Attribute with name "${safeConfiguration.name}" already exists`,
       );
     }
 
@@ -190,7 +227,9 @@ export const createVariableAsync = createAppAsyncThunk(
       configuration: safeConfiguration,
     };
 
-    dispatch(codebookSlice.actions.createVariable(payload));
+    dispatch(
+      routeCodebookAction(codebookSlice.actions.createVariable(payload), state),
+    );
     return { entity, type, variable };
   },
 );
@@ -217,9 +256,10 @@ export const updateVariableAsync = createAppAsyncThunk(
       throw new Error('No variable provided to updateVariable()!');
     }
 
+    const state = getState();
+
     // If entity and type are provided, validate the variable exists
     if (entity && type) {
-      const state = getState();
       const variableExists = has(
         getVariablesForSubject(state, { entity, type }),
         variable,
@@ -236,7 +276,9 @@ export const updateVariableAsync = createAppAsyncThunk(
       replaceProperties,
     };
 
-    dispatch(codebookSlice.actions.updateVariable(payload));
+    dispatch(
+      routeCodebookAction(codebookSlice.actions.updateVariable(payload), state),
+    );
     return payload;
   },
 );
@@ -254,21 +296,69 @@ export const deleteVariableAsync = createAppAsyncThunk(
     const state = getState();
     const isUsed = getIsUsed(state);
 
+    // REJECT rather than resolve `false`. A resolved thunk reads as success to
+    // every caller — `useDialog().confirm` closes its dialog and reports done —
+    // so the researcher was told a variable had been deleted while it was still
+    // there (#1392). The message is researcher-facing: it is rendered verbatim
+    // in the confirm dialog's error paragraph.
     if (get(isUsed, variable, false)) {
-      return false;
+      throw new Error(
+        'This attribute is in use and cannot be deleted. Remove it from the stages listed under "Used In" first.',
+      );
     }
 
     const payload: DeleteVariablePayload = { entity, type, variable };
-    dispatch(codebookSlice.actions.deleteVariable(payload));
-    return true;
+    dispatch(
+      routeCodebookAction(codebookSlice.actions.deleteVariable(payload), state),
+    );
   },
 );
 
+/**
+ * Whether the protocol references this entity type anywhere — the same indexes
+ * the Codebook's "used in" tags are built from (`makeGetEntityWithUsage`), read
+ * again here at the moment of the write.
+ *
+ * Asked twice on purpose: a row's `inUse` prop is a render-time snapshot, so a
+ * Delete control can be live while the store has already moved on (the same
+ * gap #1392 was filed for on variables). `ego` has no types to delete.
+ */
+const getEntityTypeIsUsed = (
+  state: RootState,
+  entity: Entity,
+  type: string,
+): boolean => {
+  if (entity === 'ego') return false;
+  const typeIndex =
+    entity === 'node' ? getNodeIndex(state) : getEdgeIndex(state);
+  return utils.buildSearch([typeIndex]).has(type);
+};
+
 export const deleteTypeAsync = createAppAsyncThunk(
   'codebook/deleteTypeAsync',
-  async ({ entity, type }: { entity: Entity; type: string }, { dispatch }) => {
+  async (
+    { entity, type }: { entity: Entity; type: string },
+    { dispatch, getState },
+  ) => {
+    const state = getState();
+
+    // REJECT rather than resolve, exactly as `deleteVariableAsync` does and for
+    // the same reason: a resolved thunk reads as success to every caller —
+    // `useDialog().confirm` closes its dialog and reports done — so the
+    // researcher was told a type had been deleted while it was still there
+    // (#1392, which fixed the variable path and left this one). The message is
+    // researcher-facing: it is rendered verbatim in the confirm dialog's error
+    // paragraph.
+    if (getEntityTypeIsUsed(state, entity, type)) {
+      throw new Error(
+        'This type is in use and cannot be deleted. Remove it from the stages listed under "used in" first.',
+      );
+    }
+
     const payload: DeleteTypePayload = { entity, type };
-    dispatch(codebookSlice.actions.deleteType(payload));
+    dispatch(
+      routeCodebookAction(codebookSlice.actions.deleteType(payload), state),
+    );
   },
 );
 
@@ -418,15 +508,25 @@ const codebookSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(deleteStage, (state, action) => {
-      if (!action.payload.clearEncryptedVariables) return;
+    builder
+      .addCase(deleteStage, (state, action) => {
+        if (!action.payload.clearEncryptedVariables) return;
 
-      for (const nodeType of Object.values(state.node ?? {})) {
-        for (const variable of Object.values(nodeType.variables ?? {})) {
-          delete variable.encrypted;
+        for (const nodeType of Object.values(state.node ?? {})) {
+          for (const variable of Object.values(nodeType.variables ?? {})) {
+            delete variable.encrypted;
+          }
         }
-      }
-    });
+      })
+      // Promoting the stage editor's draft codebook. Replacing wholesale is
+      // what makes discard total: a variable the editor created exists only in
+      // the draft, and every property it changed (name, component, options,
+      // parameters, validation) is carried by the same object — so there is no
+      // per-property merge to get wrong in either direction.
+      .addCase(
+        commitStageEditorDraft,
+        (state, action) => action.payload.codebook ?? state,
+      );
   },
 });
 

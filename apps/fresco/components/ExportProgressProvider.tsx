@@ -11,11 +11,11 @@ import {
 
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ExportOptions } from '@codaco/network-exporters/options';
+import { ensureError } from '@codaco/shared-consts';
 import { commitInterviewExport } from '~/actions/interviews';
 import ExportToastContent from '~/components/ExportProgress/ExportToastContent';
 import { useDownload } from '~/hooks/useDownload';
 import { runBatchedExport } from '~/lib/export/runBatchedExport';
-import { ensureError } from '~/utils/ensureError';
 
 type ExportContextValue = {
   startExport: (interviewIds: string[], exportOptions: ExportOptions) => void;

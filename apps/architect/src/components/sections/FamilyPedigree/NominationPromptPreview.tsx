@@ -32,7 +32,7 @@ const NominationPromptPreview = ({
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
           <strong>{codebookVariable.type}</strong>
-          {' variable: '}
+          {' attribute: '}
           <strong>{codebookVariable.name}</strong>
         </Badge>
       </div>

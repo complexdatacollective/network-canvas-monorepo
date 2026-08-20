@@ -11,6 +11,7 @@ import Field from '../Field/Field';
 import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
 import FormStoreProvider from '../store/formStoreProvider';
+import { focusFirstError } from '../utils/focusFirstError';
 import { useForm } from './useForm';
 import useFormStore from './useFormStore';
 
@@ -283,5 +284,47 @@ describe('useForm submission errors', () => {
       expect(screen.getByTestId('form-submitting')).toHaveTextContent('false');
       expect(screen.getByTestId('form-validity')).toHaveTextContent('true');
     });
+  });
+});
+
+/**
+ * Issue #1385: an invalid submission left focus on `document.body` for the
+ * length of a timer, and dropped it entirely whenever React's own commit-time
+ * focus restoration won the race. Focus is now taken from a layout effect on
+ * the commit that renders the errors, so it is deterministic.
+ */
+describe('useForm invalid-submit focus', () => {
+  it('focuses the first invalid control, in document order, with nothing deferred', async () => {
+    function Harness() {
+      const { formProps } = useForm({
+        onSubmit: async () => ({ success: true as const }),
+        onSubmitInvalid: focusFirstError,
+      });
+
+      return (
+        <form onSubmit={formProps.onSubmit}>
+          <Field name="first" label="First" component={InputField} required />
+          <Field name="second" label="Second" component={InputField} required />
+          <button type="submit">Submit</button>
+        </form>
+      );
+    }
+
+    render(
+      <FormStoreProvider>
+        <Harness />
+      </FormStoreProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+
+    // No fake timers, no waitFor on focus: the error render and the focus land
+    // in the same commit, so focus is already correct the moment the error is.
+    expect(
+      await screen.findAllByText(/must answer this question/),
+    ).toHaveLength(2);
+    expect(
+      document.activeElement?.closest('[data-field-name="first"]'),
+    ).not.toBeNull();
   });
 });

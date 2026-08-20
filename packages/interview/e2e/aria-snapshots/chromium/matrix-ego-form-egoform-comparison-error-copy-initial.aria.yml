@@ -1,0 +1,16 @@
+- main:
+  - heading "About you" [level=1]
+  - paragraph: Please answer the questions below.
+  - text: How many years have you lived here?
+  - button "Decrease value"
+  - spinbutton "How many years have you lived here?"
+  - button "Increase value"
+  - text: How many years do you expect to stay? Required
+  - button "Decrease value"
+  - spinbutton "How many years do you expect to stay?"
+  - button "Increase value"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

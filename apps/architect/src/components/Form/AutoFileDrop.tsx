@@ -1,5 +1,5 @@
 import { has } from 'es-toolkit/compat';
-import { type ReactNode, useCallback, useMemo } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef } from 'react';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -8,6 +8,7 @@ import ExternalLink from '~/components/ExternalLink';
 import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
+  GENERIC_IMPORT_FAILURE_MESSAGE,
   importAssetAsync,
   type ImportAssetErrorInfo,
 } from '~/ducks/modules/protocol/assetManifest';
@@ -34,13 +35,9 @@ const getImportAssetErrorInfo = (
   if (isImportAssetErrorInfo(value)) {
     return value;
   }
-  return {
-    filename,
-    message:
-      value instanceof Error
-        ? value.message
-        : 'The file could not be imported.',
-  };
+  // A throw that never became an ImportAssetErrorInfo carries an internal
+  // message, so it is replaced rather than shown.
+  return { filename, message: GENERIC_IMPORT_FAILURE_MESSAGE };
 };
 const documentationMessage = (
   <>
@@ -78,7 +75,7 @@ const getValidationErrorContent = ({
     return (
       <>
         <Paragraph>
-          The file you attempted to import contained invalid variable names.
+          The file you attempted to import contained invalid attribute names.
         </Paragraph>
         <Paragraph>{message}</Paragraph>
         {documentationMessage}
@@ -127,6 +124,16 @@ const AutoFileDrop = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const accepts = useMemo(() => getAccepts(type), [type]);
+  // Where focus goes when either dialog below is dismissed.
+  //
+  // `openDialog` prefers whatever was focused when it was called and uses this
+  // as the fallback, which between them covers both ways an import starts:
+  // clicking or pressing Enter on the upload control leaves that control
+  // focused, so it IS the opener; a file dropped onto the page moves no focus
+  // at all, and then this is the only answer. Resolved lazily, when focus is
+  // actually being returned.
+  const dropzoneRef = useRef<HTMLElement | null>(null);
+  const finalFocus = useCallback(() => dropzoneRef.current, []);
   const handleDrop = useCallback(
     async (files: File[]) => {
       const ids: string[] = [];
@@ -153,6 +160,7 @@ const AutoFileDrop = ({
                 </>
               ),
               actions: { primary: { label: 'OK', value: true } },
+              finalFocus,
             });
           }
         } catch (error) {
@@ -165,24 +173,27 @@ const AutoFileDrop = ({
             intent: 'destructive',
             title: isValidationError
               ? `Error: ${importError.filename} is not formatted correctly`
-              : 'Asset import error',
+              : 'That file could not be added',
             children: isValidationError ? (
               getValidationErrorContent(importError)
             ) : (
               <>
-                The file <strong>{importError.filename}</strong> could not be
-                imported.
+                <Paragraph>
+                  <strong>{importError.filename}</strong> could not be added to
+                  your resource library.
+                </Paragraph>
                 <Paragraph>{importError.message}</Paragraph>
               </>
             ),
             actions: { primary: { label: 'OK', value: true } },
+            finalFocus,
           });
           return;
         }
       }
       onDrop(ids);
     },
-    [dispatch, onDrop, openDialog],
+    [dispatch, onDrop, openDialog, finalFocus],
   );
   return (
     <Dropzone
@@ -190,6 +201,7 @@ const AutoFileDrop = ({
       onDrop={handleDrop}
       className={className}
       disabled={disabled}
+      rootRef={dropzoneRef}
     />
   );
 };

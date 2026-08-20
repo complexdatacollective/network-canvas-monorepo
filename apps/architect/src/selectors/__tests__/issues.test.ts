@@ -11,10 +11,16 @@ import {
   getUsesTestingMapboxToken,
 } from '../issues';
 
-// Minimal protocol: asset1 + variable v1 are referenced by the single stage,
-// while asset2 + variable v2 are defined but never used.
-// Uses OrdinalBin because its prompts have a `variable` field that the
-// entity-attribute-reference extractor recognises; NameGenerator prompts do not.
+// Minimal protocol: asset1 + variable v1 are referenced by the stages, while
+// asset2 + variable v2 are defined but never used.
+//
+// Two stages, because usage is derived from the SCHEMA: OrdinalBin for the
+// variable (its prompts have a `variable` field the entity-attribute-reference
+// extractor recognises; NameGenerator prompts do not), and NameGeneratorRoster
+// for the asset (`dataSource` is a tagged asset reference on that stage type
+// and nowhere else). This used to hang `dataSource` on the OrdinalBin stage,
+// which no schema declares — the path-walking collector it replaced counted it
+// anyway.
 const protocol = {
   name: 'Test protocol',
   stages: [
@@ -22,9 +28,15 @@ const protocol = {
       id: 's1',
       type: 'OrdinalBin',
       label: 'Ordinal bin',
-      dataSource: 'asset1',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Rate it', variable: 'v1' }],
+    },
+    {
+      id: 's2',
+      type: 'NameGeneratorRoster',
+      label: 'Roster',
+      subject: { entity: 'node', type: 'person' },
+      dataSource: 'asset1',
     },
   ],
   codebook: {

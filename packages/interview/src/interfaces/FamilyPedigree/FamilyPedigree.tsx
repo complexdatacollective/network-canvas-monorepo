@@ -1,7 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -28,6 +27,7 @@ import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
 import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
+import { useFamilyPedigreeDialog } from './familyPedigreeDialog';
 import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
@@ -86,7 +86,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   } = props;
 
   const dispatch = useAppDispatch();
-  const { confirm, openDialog } = useDialog();
+  const { confirm, openDialog } = useFamilyPedigreeDialog();
   const suppressHint = useContext(SuppressPedigreeHintContext);
   const { isDevelopment } = useContractFlags();
   const { moveForward } = props.getNavigationHelpers();

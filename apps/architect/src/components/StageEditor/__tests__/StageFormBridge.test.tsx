@@ -516,4 +516,28 @@ describe('StageFormBridge', () => {
     expect(snapshots).toHaveLength(0);
     expect(store.getState().stageEditorDraft.ui.liveValues).toBeNull();
   });
+
+  // The codebook transaction has to end with the editor however it is left.
+  // Not every way out runs a discard handler — leaving a PRISTINE editor (Back
+  // to the overview, "Return to Start Screen") runs none at all — and a
+  // transaction left open would route codebook writes made elsewhere into a
+  // draft nothing will ever commit, losing them silently (#1382).
+  it('closes the codebook transaction on unmount, even when nothing was edited', () => {
+    const { store, unmount } = renderStageForm({
+      committedStage,
+      children: <LabelField />,
+      extraReducers: {
+        activeProtocol: () => ({
+          present: { codebook: { node: {}, edge: {} } },
+        }),
+      },
+    });
+
+    expect(store.getState().stageEditorDraft.ui.initialCodebook).not.toBeNull();
+
+    unmount();
+
+    expect(store.getState().stageEditorDraft.ui.initialCodebook).toBeNull();
+    expect(store.getState().stageEditorDraft.history.present).toBeNull();
+  });
 });

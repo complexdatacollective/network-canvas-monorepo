@@ -2,7 +2,6 @@ import { useSelector } from 'react-redux';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
-import { Row } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { ruleValidator } from '~/components/Query';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -34,48 +33,45 @@ const SkipLogicFields = ({
 
   return (
     <>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.action"
-          description="Skip Logic Action"
-        />
-        <ArchitectField
-          name="skipLogic.action"
-          label="When the rules match"
-          component={RadioGroupField}
-          initialValue={initialAction}
-          validation={{ required: true }}
-          options={[
-            { value: 'SHOW', label: 'Show this stage' },
-            { value: 'SKIP', label: 'Skip this stage' },
-          ]}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.filter"
-          description="Skip Logic Rules"
-        />
-        <ArchitectField
-          name="skipLogic.filter"
-          label="Rules"
-          component={QueryField}
-          initialValue={initialFilter}
-          validation={{ required: true, validator: ruleValidator }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.destination"
-          description="Skip Logic Destination"
-        />
-        <SkipLogicDestinationField
-          initialValue={initialDestination}
-          stages={stages}
-          stagePosition={stagePosition}
-          isNewStage={stagePath === null}
-        />
-      </Row>
+      <IssueAnchor
+        fieldName="skipLogic.action"
+        description="Skip Logic Action"
+      />
+      <ArchitectField
+        name="skipLogic.action"
+        label="Action"
+        hint="What should happen when the rules match?"
+        component={RadioGroupField}
+        initialValue={initialAction}
+        validation={{ required: true }}
+        options={[
+          { value: 'SHOW', label: 'Show this stage' },
+          { value: 'SKIP', label: 'Skip this stage' },
+        ]}
+      />
+
+      <IssueAnchor
+        fieldName="skipLogic.filter"
+        description="Skip Logic Rules"
+      />
+      <ArchitectField
+        name="skipLogic.filter"
+        label="Rules"
+        hint="Create one or more rules to determine when the action should occur."
+        component={QueryField}
+        initialValue={initialFilter}
+        validation={{ required: true, validator: ruleValidator }}
+      />
+      <IssueAnchor
+        fieldName="skipLogic.destination"
+        description="Skip Logic Destination"
+      />
+      <SkipLogicDestinationField
+        initialValue={initialDestination}
+        stages={stages}
+        stagePosition={stagePosition}
+        isNewStage={stagePath === null}
+      />
     </>
   );
 };

@@ -24,11 +24,6 @@ vi.mock('~/ducks/modules/protocol/codebook', () => ({
     createVariableAsync(arg),
 }));
 
-const markExternalEdit = vi.fn(() => ({ type: 'markExternalEdit' }));
-vi.mock('~/ducks/modules/stageEditorDraft', () => ({
-  markExternalEdit: () => markExternalEdit(),
-}));
-
 let existingVariable: Record<string, unknown> | undefined;
 vi.mock('~/selectors/codebook', () => ({
   makeGetVariable: () => () => existingVariable,
@@ -72,7 +67,6 @@ const renderCommit = (
 beforeEach(() => {
   updateVariableAsync.mockClear();
   createVariableAsync.mockClear();
-  markExternalEdit.mockClear();
   dispatch.mockClear();
   existingVariable = { component: 'Text', type: 'text', name: 'secret' };
   createResult = { unwrap: () => Promise.resolve({ variable: 'new-v' }) };
@@ -94,16 +88,6 @@ describe('useFormFieldCommit', () => {
     ]);
     expect(arg.replaceProperties).not.toContain('encrypted');
     expect(arg.replaceProperties).not.toContain('readOnly');
-  });
-
-  // The codebook write never passes through the stage form, so the draft
-  // timeline is told about it explicitly (`_modified`'s replacement).
-  it('marks the stage draft as externally edited', async () => {
-    const commit = renderCommit(useFormFieldCommit);
-
-    await commit({ variable: 'v1', component: 'Text' });
-
-    expect(markExternalEdit).toHaveBeenCalledTimes(1);
   });
 
   // The dialog merges its values over the row, which arrives already merged
@@ -164,36 +148,20 @@ describe('useFormFieldCommit', () => {
 
     expect(result).toEqual({
       success: false,
-      formErrors: ['Variable not found'],
+      formErrors: ['Attribute not found'],
     });
   });
 
-  // `externalEditCount` is never decremented for the life of the editor, so a
-  // failed save that marked one would leave the stage permanently dirty.
-  it('leaves the draft untouched when the row points at a missing variable', async () => {
+  // A save that cannot resolve its variable must leave the codebook alone, so
+  // that a stage with no real edit stays clean and discards without prompting.
+  it('writes nothing when the row points at a missing variable', async () => {
     existingVariable = undefined;
     const commit = renderCommit(useFormFieldCommit);
 
     await commit({ variable: 'gone', component: 'Text' });
 
-    expect(markExternalEdit).not.toHaveBeenCalled();
-  });
-
-  it('leaves the draft untouched when variable creation fails', async () => {
-    createResult = { unwrap: () => Promise.reject(new Error('no')) };
-    const commit = renderCommit(useFormFieldCommit);
-
-    await commit({ _createNewVariable: '...', component: 'Text' });
-
-    expect(markExternalEdit).not.toHaveBeenCalled();
-  });
-
-  it('marks the draft when a variable is successfully created', async () => {
-    const commit = renderCommit(useFormFieldCommit);
-
-    await commit({ _createNewVariable: 'age', component: 'Number' });
-
-    expect(markExternalEdit).toHaveBeenCalledTimes(1);
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+    expect(createVariableAsync).not.toHaveBeenCalled();
   });
 });
 
@@ -249,29 +217,13 @@ describe('useComposerFieldCommit', () => {
     });
   });
 
-  it('leaves the draft untouched when the row points at a missing variable', async () => {
+  it('writes nothing when the row points at a missing variable', async () => {
     existingVariable = undefined;
     const commit = renderCommit(useComposerFieldCommit);
 
     await commit({ variable: 'gone', component: 'Text' });
 
-    expect(markExternalEdit).not.toHaveBeenCalled();
-  });
-
-  it('leaves the draft untouched when variable creation fails', async () => {
-    createResult = { unwrap: () => Promise.reject(new Error('no')) };
-    const commit = renderCommit(useComposerFieldCommit);
-
-    await commit({ _createNewVariable: '...', component: 'Text' });
-
-    expect(markExternalEdit).not.toHaveBeenCalled();
-  });
-
-  it('marks the draft when the codebook variable is successfully updated', async () => {
-    const commit = renderCommit(useComposerFieldCommit);
-
-    await commit({ variable: 'v1', component: 'TextArea' });
-
-    expect(markExternalEdit).toHaveBeenCalledTimes(1);
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+    expect(createVariableAsync).not.toHaveBeenCalled();
   });
 });

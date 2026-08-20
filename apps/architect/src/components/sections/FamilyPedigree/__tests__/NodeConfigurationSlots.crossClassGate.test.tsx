@@ -72,20 +72,26 @@ vi.mock('~/components/Form/ArchitectField', () => ({
 let capturedEditorValidate:
   | ((
       values: Record<string, unknown>,
-      props?: { initialValues?: unknown },
+      props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>)
   | undefined;
+// The picker's sibling list travels the other way, as `editorProps`, so a test
+// can prove the gate and the picker read the same rows.
+let capturedEditorProps: Record<string, unknown> | undefined;
 vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({
     editorValidate,
+    editorProps,
   }: {
     editorValidate?: (
       values: Record<string, unknown>,
-      props?: { initialValues?: unknown },
+      props?: { editIndex?: number; initialValues?: unknown },
     ) => Record<string, unknown>;
+    editorProps?: Record<string, unknown>;
   }) => {
     if (typeof editorValidate === 'function') {
       capturedEditorValidate = editorValidate;
+      capturedEditorProps = editorProps;
     }
     return <div data-testid="field-array" />;
   },
@@ -201,6 +207,7 @@ const renderComponent = ({
   }
   capturedValidationSectionProps = undefined;
   capturedEditorValidate = undefined;
+  capturedEditorProps = undefined;
   const store = configureStore({
     reducer: {
       activeProtocol: (state = { present: protocol }) => state,
@@ -249,7 +256,32 @@ const renderComponent = ({
       }
     });
   }
+
+  return {
+    /**
+     * Rewrites `nodeConfig.form` the way the array editor does when the
+     * researcher adds or removes a row: the stage form holds it immediately,
+     * the saved stage does not carry it until the editor is saved.
+     */
+    setPedigreeFormFields: (fields: Record<string, unknown>[]) => {
+      if (!context) throw new Error('stage form context was not captured');
+      const storeApi = (context as StageFormContextValue).storeApi;
+      act(() => {
+        storeApi.getState().setFieldValue('nodeConfig.form', fields);
+      });
+    },
+  };
 };
+
+/** The `editorValidate` as it stands now, not as it stood at mount. */
+const currentEditorValidate = () => {
+  if (!capturedEditorValidate) {
+    throw new Error('editorValidate was not captured');
+  }
+  return capturedEditorValidate;
+};
+
+const currentSiblingFields = () => capturedEditorProps?.siblingFields;
 
 describe('FamilyPedigree NodeConfiguration slot picker exclusions', () => {
   it('edits the label as a node variable, preserving every text validation rule', () => {
@@ -353,13 +385,19 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
     ).toBeUndefined();
   });
 
+  // The label's own picker drops this variable (the sibling case above), so
+  // reaching the gate at all means a stale draft or an imported protocol —
+  // and the refusal names the interface that claims it, rather than the
+  // generic cross-class wording, because a variable an interface slot OWNS is
+  // refused for that stronger reason. `findExclusiveVariableConflicts` reports
+  // the same pairing, so the editor and the schema agree.
   it('rejects a label pick an unvalidated structural writer already claims', () => {
     renderComponent({
       protocol: protocolWith([STRUCTURAL_PEDIGREE_STAGE]),
     });
     expect(
       slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
-    ).toContain('is written without validation');
+    ).toContain('is set by the Family Pedigree interface');
   });
 
   it('allows a label pick this stage’s own form also validates', () => {
@@ -403,5 +441,51 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
       variable:
         '"Used Label" is written without validation by another stage, so it cannot be used as a form field',
     });
+  });
+
+  // The rows to check against are the ones in the OPEN editor, not the ones on
+  // the saved stage. A field added in this session is not on the saved stage
+  // yet, so a committed sibling list would let its variable be picked a second
+  // time — and would not hide it in the picker either — leaving a stage the
+  // schema refuses on save.
+  it('rejects a variable a field added in this editing session already collects', () => {
+    const { setPedigreeFormFields } = renderComponent({
+      protocol: protocolWith([]),
+    });
+
+    setPedigreeFormFields([{ variable: 'freeLabel', component: 'Text' }]);
+
+    expect(
+      currentEditorValidate()({
+        variable: 'freeLabel',
+        component: 'Text',
+        validation: {},
+      }).variable,
+    ).toBe(
+      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
+    );
+    expect(currentSiblingFields()).toEqual([
+      { variable: 'freeLabel', component: 'Text' },
+    ]);
+  });
+
+  it('stops rejecting a variable whose field was removed in this editing session', () => {
+    const { setPedigreeFormFields } = renderComponent({
+      protocol: protocolWith([]),
+      initialNodeConfig: {
+        form: [{ variable: 'freeLabel', component: 'Text' }],
+      },
+    });
+
+    setPedigreeFormFields([]);
+
+    expect(
+      currentEditorValidate()({
+        variable: 'freeLabel',
+        component: 'Text',
+        validation: {},
+      }).variable,
+    ).toBeUndefined();
+    expect(currentSiblingFields()).toEqual([]);
   });
 });

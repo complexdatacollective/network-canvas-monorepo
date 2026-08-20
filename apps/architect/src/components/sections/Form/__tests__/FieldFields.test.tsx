@@ -8,8 +8,16 @@ import Form from '@codaco/fresco-ui/form/Form';
 // stubs it; what matters here is the props FieldFields hands ValidationSection,
 // which the stub below surfaces as a data attribute.
 vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => (
-    <div data-testid="section">{children}</div>
+  Section: ({
+    children,
+    title,
+  }: {
+    children: ReactNode;
+    title?: ReactNode;
+  }) => (
+    <section data-testid="section" data-has-title={title != null}>
+      {children}
+    </section>
   ),
   Subsection: ({ children }: { children: ReactNode }) => (
     <section>{children}</section>
@@ -24,9 +32,6 @@ vi.mock('~/components/Form/ArchitectArrayField', () => ({
   default: ({ name }: { name: string }) => (
     <div data-testid={`array-field-${name}`} />
   ),
-}));
-vi.mock('~/components/Form/Fields/InputPreview', () => ({
-  default: () => <div data-testid="input-preview" />,
 }));
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
@@ -44,10 +49,17 @@ vi.mock('~/components/ExternalLink', () => ({
 
 // Surfaces the identity the ROW-level contradiction check is given.
 vi.mock('~/components/sections/ValidationSection', () => ({
-  default: ({ currentVariableId }: { currentVariableId: string }) => (
+  default: ({
+    currentVariableId,
+    showHeading,
+  }: {
+    currentVariableId: string;
+    showHeading?: boolean;
+  }) => (
     <div
       data-testid="validation-section"
       data-current-variable-id={currentVariableId}
+      data-show-heading={showHeading}
     />
   ),
 }));
@@ -97,6 +109,20 @@ beforeEach(() => {
 // a real codebook id let the row OFFER a reference rule the dialog then
 // rejected on save.
 describe('FieldFields validation identity', () => {
+  it('restores untitled Section surfaces around dialog fields', () => {
+    renderFields();
+
+    const sections = screen.getAllByTestId('section');
+    expect(sections.length).toBeGreaterThan(0);
+    sections.forEach((section) => {
+      expect(section).toHaveAttribute('data-has-title', 'false');
+    });
+    expect(screen.getByTestId('validation-section')).toHaveAttribute(
+      'data-show-heading',
+      'false',
+    );
+  });
+
   it('passes an empty id for a variable that does not exist yet', () => {
     fieldHandlers.isNewVariable = true;
     renderFields();

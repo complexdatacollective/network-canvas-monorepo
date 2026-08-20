@@ -4,6 +4,10 @@ import { type Context, createContext, type ReactNode, useRef } from 'react';
 
 import { createFormStore, type FormStoreApi } from './formStore';
 
+// Re-exported through the provider because that is the entry consumers already
+// import to reach a form store — the selector is useless without one.
+export { selectIsFormDirty } from './formStore';
+
 export const FormStoreContext: Context<FormStoreApi | undefined> =
   createContext<FormStoreApi | undefined>(undefined);
 

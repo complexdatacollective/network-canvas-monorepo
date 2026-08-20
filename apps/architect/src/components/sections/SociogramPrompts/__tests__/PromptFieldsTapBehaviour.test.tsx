@@ -184,7 +184,7 @@ describe('Sociogram prompt tap behavior', () => {
       subject: { entity: 'node', type: 'person' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.change(await screen.findByLabelText('text'), {
       target: { value: 'Tap to flag' },
     });
@@ -271,7 +271,7 @@ describe('Sociogram prompt tap behavior', () => {
       subject: { entity: 'node', type: 'person' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.change(await screen.findByLabelText('text'), {
       target: { value: 'Tap to connect' },
     });
@@ -303,7 +303,7 @@ describe('Sociogram prompt tap behavior', () => {
       subject: { entity: 'node', type: 'person' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new prompt' }));
     fireEvent.change(await screen.findByLabelText('text'), {
       target: { value: 'Position everyone' },
     });

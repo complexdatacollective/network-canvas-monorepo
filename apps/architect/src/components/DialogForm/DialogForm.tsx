@@ -1,18 +1,20 @@
 import { useCallback, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { Layout } from '~/components/EditorLayout';
+import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
 import {
   withFormLevelValidate,
   type FormLevelValidate,
   type LenientSubmitHandler,
 } from './formLevelValidate';
+import { useNestedDraftDialog } from './useNestedDraftDialog';
 
 export type DialogFormProps = {
   /** Whether the dialog is open. */
@@ -55,6 +57,20 @@ export type DialogFormProps = {
    */
   layoutId?: string;
   style?: React.CSSProperties;
+  /** Semantic width preset forwarded to the underlying Dialog. */
+  size?: DialogProps['size'];
+  /**
+   * Where focus RETURNS when this dialog closes. Resolve lazily (a function) —
+   * it is read after the exit animation, by which time a control that unmounted
+   * while the dialog was open has been remounted as a different element.
+   */
+  finalFocus?: DialogProps['finalFocus'];
+  /**
+   * Optional supporting content rendered beside the form in a workspace-sized
+   * dialog. It remains outside the form element, so interactive previews can
+   * own their own form semantics without nesting forms.
+   */
+  aside?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -73,9 +89,27 @@ const DialogFormBody = ({
   editIndex,
   layoutId,
   style,
+  size,
+  finalFocus,
+  aside,
   children,
 }: DialogFormProps) => {
-  const { isSubmitting } = useFormMeta();
+  const refusedCommit = useRefusedNestedCommit();
+
+  /**
+   * Every dialog form is guarded by construction. The previous arrangement was
+   * opt-in per caller (`DirtyProbe` + a hand-written confirm in
+   * `NewVariableWindow` and `EntityTypeDialog`), and the array-row editor —
+   * the one in the bug report — simply never opted in.
+   *
+   * The registration and the confirm-before-dismissal both live in
+   * `useNestedDraftDialog`, which the Geospatial API-key browser — a dialog
+   * that is not and cannot be a `DialogForm` — uses on exactly the same terms.
+   */
+  const { isSubmitting, requestClose } = useNestedDraftDialog({
+    open,
+    onClose,
+  });
 
   /**
    * The footer's SubmitButton is not a descendant of the `<form>` — it sits in
@@ -101,37 +135,76 @@ const DialogFormBody = ({
     return `${formId}-${nextDialogFormInstance}`;
   });
 
-  const handleClose = useCallback(() => {
-    if (!isSubmitting) onClose();
-  }, [isSubmitting, onClose]);
+  /**
+   * A tab that cannot save must not accept a Finish that looks like it worked
+   * — see `useRefusedNestedCommit` for which commits that covers and why.
+   */
+  const guardedSubmit = useCallback<LenientSubmitHandler>(
+    async (values) => {
+      const refusal = refusedCommit();
+      if (refusal) return { success: false, formErrors: [refusal] };
+      return await onSubmit(values);
+    },
+    [onSubmit, refusedCommit],
+  );
 
-  const handleSubmit = withFormLevelValidate(onSubmit, validate, {
+  const handleSubmit = withFormLevelValidate(guardedSubmit, validate, {
     editIndex,
   });
 
   return (
     <Dialog
       open={open}
-      closeDialog={handleClose}
+      closeDialog={requestClose}
       dismissible={!isSubmitting}
       title={title}
-      size="editor"
       layoutId={layoutId}
       style={style}
+      finalFocus={finalFocus}
+      size={size ?? (aside ? 'workspace' : undefined)}
       footer={
         <>
-          <Button color="default" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            color="default"
+            onClick={requestClose}
+            disabled={isSubmitting}
+          >
             {cancelLabel}
           </Button>
           <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
         </>
       }
     >
-      <Layout>
-        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-          {children}
-        </FormWithoutProvider>
-      </Layout>
+      {aside ? (
+        // Keep every responsive rule below anchored to Dialog's container.
+        // Making this panel a container would make its descendants query the
+        // narrower inner width while the panel itself still queries Dialog,
+        // desynchronising the split layout and the handle's visibility.
+        <ResizableFlexPanel
+          storageKey={`${formId}-workspace-split`}
+          defaultBasis={50}
+          min={30}
+          max={70}
+          stickyHandle
+          aria-label="Resize form and preview panes"
+          className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
+        >
+          <Layout className="min-w-0 @min-[60rem]:pr-4">
+            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+              {children}
+            </FormWithoutProvider>
+          </Layout>
+          <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+            {aside}
+          </aside>
+        </ResizableFlexPanel>
+      ) : (
+        <Layout>
+          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+            {children}
+          </FormWithoutProvider>
+        </Layout>
+      )}
     </Dialog>
   );
 };

@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -33,21 +33,23 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <ArchitectArrayField
           name="items"
           label="Content items"
           labelHidden
           component={DialogArrayField}
+          addButtonLabel="Create new content item"
           validation={{ notEmpty }}
           initialValue={initialItems}
           addTitle="Edit Item"
           editorFieldsComponent={
             ItemEditor as ComponentType<Record<string, unknown>>
           }
+          editorDialogSize="editor"
           editorProps={{ allowSize: true }}
           editorTitle="Edit Item"
-          emptyStateMessage='No items have been created yet. Click "Create new" to add text or media.'
+          emptyStateMessage='No items have been created yet. Click "Create new content item" to add text or media.'
           itemLabel="item"
           itemSelector={denormalizeType}
           normalizeItem={(value) =>
@@ -59,7 +61,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
           requestedEditFormName="editable-list-form"
           sortable
         />
-      </Row>
+      </>
     </Section>
   );
 };

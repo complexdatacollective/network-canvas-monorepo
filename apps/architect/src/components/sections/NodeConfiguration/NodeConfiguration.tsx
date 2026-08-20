@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section, Subsection } from '~/components/EditorLayout';
+import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import EditableAttributesList from '~/components/Form/arrayFields/EditableAttributesList';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -34,10 +34,12 @@ import {
   getVariableOptionsForSubject,
   getVariablesForSubjectSelector,
 } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import { getVariableRoleMap } from '~/selectors/indexes';
 import {
   excludeUnvalidatedUses,
   excludeValidatedUses,
+  hasUnvalidatedUse,
+  hasValidatedUse,
 } from '~/selectors/roleFilters';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
@@ -156,15 +158,13 @@ export const NodeConfigurationComponent = ({
   const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.unvalidated ??
-        0) > 0,
+      hasUnvalidatedUse(roleMap, nodeVariablesSubject, variableId),
     [roleMap, nodeVariablesSubject],
   );
   const hasValidatedUseForSubject = useCallback(
     (variableId: string) =>
       !!nodeVariablesSubject &&
-      (roleMap[roleMapKey(nodeVariablesSubject, variableId)]?.validated ?? 0) >
-        0,
+      hasValidatedUse(roleMap, nodeVariablesSubject, variableId),
     [roleMap, nodeVariablesSubject],
   );
   const originalQuickAdd = initialQuickAdd ?? '';
@@ -279,7 +279,7 @@ export const NodeConfigurationComponent = ({
       title="Node Configuration"
       summary={
         <Paragraph>
-          Configure the variable mappings, layout behaviour, group hulls, and
+          Configure the attribute mappings, layout behaviour, group hulls, and
           the attributes collected for each node.
         </Paragraph>
       }
@@ -288,14 +288,14 @@ export const NodeConfigurationComponent = ({
       layout="horizontal"
     >
       <Subsection
-        title="Quick add variable"
-        summary="The variable populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
+        title="Quick add attribute"
+        summary="The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label."
       >
-        <Row>
-          <IssueAnchor fieldName="quickAdd" description="Quick Add Variable" />
+        <>
+          <IssueAnchor fieldName="quickAdd" description="Quick Add Attribute" />
           <ArchitectField
             name="quickAdd"
-            label="Create or select a variable for the quick-add form"
+            label="Create or select an attribute for the quick-add form"
             component={VariablePicker}
             initialValue={initialQuickAdd}
             validation={{
@@ -311,7 +311,7 @@ export const NodeConfigurationComponent = ({
               })
             }
           />
-        </Row>
+        </>
         {typeof quickAddVariable === 'string' && (
           <CodebookVariableValidationSection
             fieldName="quickAdd"
@@ -324,16 +324,16 @@ export const NodeConfigurationComponent = ({
 
       <Subsection
         title="Node positions"
-        summary="Stores each node's position on the canvas. Reusing the same variable across stages preserves positions as the participant moves between tasks."
+        summary="Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="layoutVariable"
-            description="Layout Variable"
+            description="Layout Attribute"
           />
           <ArchitectField
             name="layoutVariable"
-            label="Create or select a variable to store node coordinates"
+            label="Create or select an attribute to store node coordinates"
             component={VariablePicker}
             initialValue={initialLayoutVariable}
             validation={{ required: true }}
@@ -344,14 +344,14 @@ export const NodeConfigurationComponent = ({
               handleCreateVariable(value, 'layout', 'layoutVariable')
             }
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection
         title="Automatic layout"
         summary="When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="behaviours.automaticLayout"
             description="Default automatic layout"
@@ -363,21 +363,21 @@ export const NodeConfigurationComponent = ({
             inline
             initialValue={initialAutomaticLayout ?? true}
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection
         title="Group hulls"
-        summary="Draw shaded outlines around groups of nodes that share a value of a categorical variable. Choose (or create) the variable whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
+        summary="Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once."
       >
-        <Row>
+        <>
           <IssueAnchor
             fieldName="convexHullVariable"
-            description="Group hull variable"
+            description="Group hull attribute"
           />
           <ArchitectField
             name="convexHullVariable"
-            label="Create or select a categorical variable for grouping"
+            label="Create or select a categorical attribute for grouping"
             component={VariablePicker}
             initialValue={initialConvexHullVariable}
             validation={{ crossClassPick: convexHullCrossClassValidate }}
@@ -391,12 +391,12 @@ export const NodeConfigurationComponent = ({
               )
             }
           />
-        </Row>
+        </>
       </Subsection>
 
       <Subsection
         title="Editable attributes"
-        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute pairs a variable with the input control used to collect it."
+        summary="The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it."
       >
         <EditableAttributesList
           fieldName="nodeForm.fields"
@@ -404,6 +404,9 @@ export const NodeConfigurationComponent = ({
           type={type}
           editFormName="node-attr-edit"
           title="Edit attribute"
+          // Distinguishes this list from the per-edge-type attribute lists the
+          // same Network Composer stage renders below it.
+          addButtonLabel="Create new node attribute"
           handleChangeFields={handleChangeFields}
           siblingUnvalidatedVariableIds={siblingUnvalidatedVariableIds}
         />

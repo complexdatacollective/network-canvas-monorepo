@@ -34,10 +34,10 @@ const SortOrder = ({ rules }: SortOrderProps) => {
 const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
   [
     'layout.layoutVariable',
-    'Layout variable',
+    'Layout attribute',
     (id: unknown) => <Variable id={String(id)} />,
   ],
-  ['variable', 'Variable', (id: unknown) => <Variable id={String(id)} />],
+  ['variable', 'Attribute', (id: unknown) => <Variable id={String(id)} />],
   [
     'edges.create',
     'Creates edge',
@@ -54,7 +54,7 @@ const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
   ],
   [
     'edgeVariable',
-    'Edge Strength Variable',
+    'Edge Strength Attribute',
     (id: unknown) => <Variable id={String(id)} />,
   ],
   [
@@ -64,7 +64,7 @@ const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
   ],
   [
     'highlight.variable',
-    'Highlight variable',
+    'Highlight attribute',
     (id: unknown) => <Variable id={String(id)} />,
   ],
   ['negativeLabel', 'Negative Option Label', (text: unknown) => String(text)],
@@ -85,12 +85,12 @@ const attributes: Array<[string, string, (val: unknown) => ReactNode]> = [
   ],
   [
     'otherVariable',
-    'Other variable',
+    'Other attribute',
     (id: unknown) => <Variable id={String(id)} />,
   ],
   [
     'otherVariablePrompt',
-    'Other variable prompt',
+    'Other attribute prompt',
     (text: unknown) => String(text),
   ],
   ['otherOptionLabel', 'Other option label', (text: unknown) => String(text)],
@@ -148,7 +148,9 @@ const Prompt = ({
       <Markdown label={text} />
       {attributeRows.length > 0 && <MiniTable rotated rows={attributeRows} />}
       {additionalAttributes.length > 0 && (
-        <MiniTable rows={[['Variable', 'Value'], ...additionalAttributeRows]} />
+        <MiniTable
+          rows={[['Attribute', 'Value'], ...additionalAttributeRows]}
+        />
       )}
     </div>
   );

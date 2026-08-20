@@ -1,6 +1,6 @@
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -22,7 +22,7 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <Row>
+      <>
         <ArchitectField
           name="explanationText.title"
           label="Title"
@@ -31,8 +31,8 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => {
           initialValue={titleInitialValue}
           placeholder="This interview uses enhanced privacy protection"
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <ArchitectField
           name="explanationText.body"
           label="Body"
@@ -41,7 +41,7 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => {
           initialValue={bodyInitialValue}
           placeholder="Enter your passphrase below, and click the 'continue' button."
         />
-      </Row>
+      </>
     </Section>
   );
 };

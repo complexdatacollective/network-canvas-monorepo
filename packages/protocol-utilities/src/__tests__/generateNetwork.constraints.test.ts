@@ -1606,7 +1606,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+      'a prompt fixes these attributes to false and true, which sameAs cannot hold',
     );
   });
 
@@ -1620,7 +1620,7 @@ describe('a rule between two fixed attributes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 
@@ -2478,7 +2478,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to 2005-05-01, which parameters does not allow',
+        'a prompt fixes this attribute to 2005-05-01, which parameters does not allow',
       );
     }
   });
@@ -2679,7 +2679,7 @@ describe('a fixed value its own rules reject', () => {
 
       expect(build).toThrow(SyntheticDataConstraintError);
       expect(build).toThrow(
-        'a prompt fixes this variable to true, which options does not allow',
+        'a prompt fixes this attribute to true, which options does not allow',
       );
     }
   });
@@ -2807,7 +2807,7 @@ describe('a unique value a prompt fixes', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow('(unique, additionalAttributes)');
-    expect(build).toThrow('these variables, which are held equal, to true');
+    expect(build).toThrow('these attributes, which are held equal, to true');
   });
 
   it('refuses identically regardless of seed', () => {
@@ -3546,6 +3546,39 @@ describe('rules spanning a pedigree ego flag and a drawn attribute', () => {
       ).toBe(nodes.length - fromGenerator.length);
     }
   });
+
+  // The schema now rejects a nomination prompt bound to the pedigree's own ego
+  // variable, but an imported protocol authored before that rule still reaches
+  // this preview. The disease loop used to run after the structural assignment
+  // and overwrite the ego flag with a pseudo-random affected flag, so several
+  // relatives came back marked as the participant.
+  it('keeps the ego flag when a nomination prompt names the ego variable', () => {
+    const codebook = pedigreeCodebook({
+      isEgo: { name: 'Is ego', type: 'boolean' },
+      biologicalSex: {
+        name: 'Biological sex',
+        type: 'categorical',
+        options: BIOLOGICAL_SEX_OPTIONS,
+      },
+    });
+    const collidingStage = {
+      ...(pedigreeStage as unknown as Record<string, unknown>),
+      boundaries: {
+        requireGrandparents: 'required',
+        requireChildrenContributors: 'off',
+      },
+      nominationPrompts: [
+        { id: 'nom-ego', text: 'Who has this?', variable: 'isEgo' },
+      ],
+    } as unknown as Stage;
+
+    for (let seed = 1; seed <= 100; seed++) {
+      const nodes = pedigreeNodes(seed, codebook, [collidingStage]);
+      expect(
+        attributesOf(nodes).filter((attributes) => attributes.isEgo === true),
+      ).toHaveLength(1);
+    }
+  });
 });
 
 /**
@@ -3664,7 +3697,7 @@ describe('a prompt the stage node ceiling leaves nothing for', () => {
 
     expect(build).toThrow(SyntheticDataConstraintError);
     expect(build).toThrow(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 

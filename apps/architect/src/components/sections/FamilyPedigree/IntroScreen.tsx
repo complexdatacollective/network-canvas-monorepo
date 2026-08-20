@@ -2,7 +2,7 @@ import { useCallback, type ComponentType } from 'react';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { FamilyPedigreeIntroItem } from '@codaco/protocol-validation';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -74,11 +74,12 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
       startExpanded={isEnabled}
       handleToggleChange={handleToggleChange}
     >
-      <Row>
+      <>
         <ArchitectArrayField
           name="introScreen.items"
           label="Content sections"
           component={DialogArrayField}
+          addButtonLabel="Create new content section"
           validation={{ notEmpty }}
           initialValue={initialItems ?? []}
           addTitle="Edit Section"
@@ -92,9 +93,9 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
           }
           itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
           requestedEditFormName="editable-list-form"
-          emptyStateMessage='No content sections have been created yet. Click "Create new" to add text or media to the intro screen.'
+          emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
         />
-      </Row>
+      </>
     </Section>
   );
 };

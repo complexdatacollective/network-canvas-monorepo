@@ -1,4 +1,4 @@
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import { getFieldId } from '~/utils/issues';
@@ -17,19 +17,19 @@ type PromptTextProps = {
 
 const PromptText = ({ name = 'text', initialValue }: PromptTextProps) => {
   return (
-    <Section id={getFieldId(name)} title="Prompt Text" layout="vertical">
-      <Row>
+    <Section id={getFieldId(name)} layout="vertical">
+      <>
         <ArchitectField
           name={name}
           component={RichText}
           singleLine
           label="Prompt text"
-          hint="The prompt text instructs your participant about the task on this stage. Enter the text to use for your prompt below."
-          placeholder="Enter text for the prompt here..."
+          hint="Provide instructions or context to the participant about the task you want them to complete."
+          placeholder="Enter your prompt..."
           validation={{ required: true }}
           initialValue={initialValue}
         />
-      </Row>
+      </>
     </Section>
   );
 };

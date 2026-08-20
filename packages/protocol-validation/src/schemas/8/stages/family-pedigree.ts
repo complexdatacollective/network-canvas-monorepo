@@ -6,17 +6,35 @@ import {
   duplicateIdRefinement,
   findDuplicateId,
 } from '../../../utils/validation-helpers.ts';
+import { assetReference } from '../asset-reference.ts';
 import {
-  FormFieldSchema,
+  FormFieldArraySchema,
   familyPedigreeNominationPromptSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
+import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
 // an author-supplied nomination prompt may not reuse it (collides at runtime).
 const RESERVED_NOMINATION_PROMPT_ID = 'scaffolding';
+
+/**
+ * Stable identities for the pedigree's own structural slots. Architect's slot
+ * pickers name them to exempt themselves from the exclusivity exclusion, so
+ * they are exported rather than written twice.
+ */
+export const FAMILY_PEDIGREE_SLOTS = {
+  egoVariable: 'familyPedigree.nodeConfig.egoVariable',
+  relationshipVariable: 'familyPedigree.nodeConfig.relationshipVariable',
+  relationshipTypeVariable:
+    'familyPedigree.edgeConfig.relationshipTypeVariable',
+  isActiveVariable: 'familyPedigree.edgeConfig.isActiveVariable',
+  isGestationalCarrierVariable:
+    'familyPedigree.edgeConfig.isGestationalCarrierVariable',
+  gameteRoleVariable: 'familyPedigree.edgeConfig.gameteRoleVariable',
+} as const;
 
 // The intro screen reuses the Information stage's text/asset content model, but
 // its own schema: the pedigree intro editor has no item-resizing UI, so — unlike
@@ -29,7 +47,12 @@ const introScreenBaseItem = z.strictObject({
 
 const IntroScreenItemSchema = z.discriminatedUnion('type', [
   introScreenBaseItem.extend({ type: z.literal('text') }),
-  introScreenBaseItem.extend({ type: z.literal('asset') }),
+  // `content` is the manifest asset id on this branch, and plain rendered text
+  // on the sibling one — so the tag lives here rather than on the shared base.
+  introScreenBaseItem.extend({
+    type: z.literal('asset'),
+    content: assetReference(),
+  }),
 ]);
 
 export type FamilyPedigreeIntroItem = z.infer<typeof IntroScreenItemSchema>;
@@ -44,51 +67,97 @@ export const NodeConfigSchema = z.strictObject({
     subject: { sibling: 'type', entity: 'node' },
     usage: 'validatedAttribute',
   }),
-  // Boolean variable marking the ego node
+  // Boolean variable marking the ego node. The interface derives it from the
+  // pedigree's structure, and every completeness check keys off it, so it is
+  // exclusive to this slot: a second writer (a nomination toggle, a form
+  // field) would move the participant around their own family tree.
   egoVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.egoVariable,
+      owner: 'the Family Pedigree interface, which marks the participant',
+    },
   }),
-  // String variable storing the relationship to ego (e.g. 'sibling', 'parent')
+  // String variable storing the relationship to ego (e.g. 'sibling', 'parent').
+  // Derived from the pedigree structure, so exclusive for the same reason.
   relationshipVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.relationshipVariable,
+      owner:
+        'the Family Pedigree interface, which records each relationship to the participant',
+    },
   }),
-  // Variable storing the biological sex of this node (female/male/intersex/unknown)
+  // Variable storing the biological sex of this node (female/male/intersex/unknown).
+  // Deliberately NOT exclusive: binning or otherwise collecting family members
+  // by sex is legitimate authoring. Its OPTIONS are interface-owned, because
+  // the genetics engine branches on those exact values.
   biologicalSexVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'node' },
     usage: 'unvalidatedAttribute',
+    ownedOptions: 'biologicalSex',
   }),
   // Optional form fields collected when creating a node
-  form: z.array(FormFieldSchema).optional(),
+  form: FormFieldArraySchema.optional(),
 });
 
 export const EdgeConfigSchema = z.strictObject({
   // Edge type in the codebook (single type for both parent and partner edges)
   type: entityTypeReference({ entity: 'edge' }),
+  // Every edge slot below is derived from the pedigree the participant draws
+  // and read back by the genetics engine, so each is exclusive to its own slot.
   // Variable storing the relationship type value (discriminant for the Edge union)
   relationshipTypeVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.relationshipTypeVariable,
+      owner:
+        'the Family Pedigree interface, which records the kind of each family relationship',
+    },
+    ownedOptions: 'relationshipType',
   }),
   // Variable storing whether the relationship is currently active
   isActiveVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.isActiveVariable,
+      owner:
+        'the Family Pedigree interface, which records whether a relationship is current',
+    },
   }),
   // Variable storing gestational carrier status (parent edges only)
   isGestationalCarrierVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.isGestationalCarrierVariable,
+      owner:
+        'the Family Pedigree interface, which records who carried each pregnancy',
+    },
   }),
   // Variable storing the gamete role for this edge (which gamete each participant contributed)
   gameteRoleVariable: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.gameteRoleVariable,
+      owner:
+        'the Family Pedigree interface, which records which gamete each parent contributed',
+    },
+    ownedOptions: 'gameteRole',
   }),
 });
 
-export const familyPedigreeStage = baseStageSchema.extend({
+// The pedigree names its alter node type on `nodeConfig` rather than as a
+// stage `subject`, so it declares that as its subject resolution: the node
+// form's fields and every nomination prompt resolve against it. The edge
+// config's own slots are sibling-resolved against `edgeConfig.type` and do not
+// use the stage subject.
+const familyPedigreeStageShape = baseStageSchema.extend({
   type: z.literal('FamilyPedigree'),
   nodeConfig: NodeConfigSchema,
   edgeConfig: EdgeConfigSchema,
@@ -146,6 +215,11 @@ export const familyPedigreeStage = baseStageSchema.extend({
       }
     }),
 });
+
+export const familyPedigreeStage = withStageSubjectResolution(
+  familyPedigreeStageShape,
+  { from: 'stagePath', path: ['nodeConfig', 'type'], entity: 'node' },
+);
 
 // Config types, the single source of truth for the FamilyPedigree stage shape.
 // Consumers (e.g. @codaco/protocol-utilities) derive from these rather than

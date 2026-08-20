@@ -10,11 +10,13 @@ import {
   useStageInitialValue,
   useSubject,
 } from '~/components/StageEditor/stageFormHooks';
+import type { CrossClassPick } from '~/components/Validations/crossClassPicks';
 import { getOptionsForVariable } from '~/selectors/codebook';
 
 // Imported from its own file rather than the `NameGeneratorPrompts` barrel
 // index, which also re-exports the section component itself.
 import PromptPreview from '../NameGeneratorPrompts/PromptPreview';
+import { useCrossClassEditorValidate } from '../useCrossClassEditorValidate';
 import PromptFields from './PromptFields';
 import { useOnBeforeSavePrompt } from './useOnBeforeSavePrompt';
 
@@ -27,11 +29,7 @@ type Prompt = Record<string, unknown>;
 
 /**
  * Enriches the row being edited with its variable's live codebook options
- * (mirroring the deleted `helpers.tsx` `itemSelector`), plus the row's
- * PRE-EDIT `variable`/`otherVariable` under distinct keys —
- * `useOnBeforeSavePrompt`'s unchanged-pick escape reads them from there,
- * since the new `DialogArrayField` no longer surfaces a dialog-form
- * `initialValues` prop separately from the row itself.
+ * (mirroring the deleted `helpers.tsx` `itemSelector`).
  */
 const makeItemSelector =
   (entity: string | null, type: string | null): DialogArrayItemSelector =>
@@ -44,18 +42,28 @@ const makeItemSelector =
       variable,
     });
 
-    return {
-      ...prompt,
-      variableOptions,
-      _originalVariable: prompt.variable,
-      _originalOtherVariable: prompt.otherVariable,
-    };
+    return { ...prompt, variableOptions };
   };
+
+/**
+ * The bin itself writes through drag-and-drop, with no validation of its own;
+ * the follow-up "other" attribute is collected through an input that honours
+ * that variable's codebook validation. Opposite classes, so their gates check
+ * opposite directions.
+ */
+const PROMPT_PICKS = [
+  { path: 'variable', writerClass: 'unvalidated' },
+  { path: 'otherVariable', writerClass: 'validated' },
+] as const satisfies readonly CrossClassPick[];
 
 const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   const onBeforeSave = useOnBeforeSavePrompt(entity, type);
+  const editorValidate = useCrossClassEditorValidate({
+    picks: PROMPT_PICKS,
+    subjectForRow: () => (type ? { entity, type } : null),
+  });
 
   return (
     <Section
@@ -74,6 +82,7 @@ const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
         label="Prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new prompt"
         validation={{ notEmpty }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
@@ -85,7 +94,9 @@ const CategoricalBinPrompts = (_props: StageEditorSectionProps) => {
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         onBeforeSave={onBeforeSave}
+        editorValidate={editorValidate}
         itemSelector={makeItemSelector(entity, type)}
         editorProps={{ entity, type }}
         requestedEditFormName="editable-list-form"

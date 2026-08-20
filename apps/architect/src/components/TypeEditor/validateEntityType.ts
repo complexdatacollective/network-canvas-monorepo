@@ -10,7 +10,7 @@ export const SHAPE_MAPPING_FIELD = 'shape.dynamic';
 export type EntityTypeFormErrors = Record<string, string>;
 
 const SELECT_VARIABLE_MESSAGE =
-  'Select a variable to map to a shape, or turn off shape mapping.';
+  'Select an attribute to map to a shape, or turn off shape mapping.';
 const THRESHOLDS_MIN_MESSAGE =
   'Add at least one threshold, or turn off shape mapping.';
 const THRESHOLDS_ASCENDING_MESSAGE =

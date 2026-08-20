@@ -1,5 +1,9 @@
 import { useId, type KeyboardEvent } from 'react';
 
+import {
+  fieldDescribedBy,
+  fieldElementIds,
+} from '@codaco/fresco-ui/form/Field/fieldElements';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -29,11 +33,11 @@ type ValidationRuleProps = {
   onToggle: (ruleKey: string, nextState: boolean) => void;
   onTextChange: (ruleKey: string, text: string) => void;
   onCommit: (ruleKey: string, text: string) => void;
-  shouldFocusValue?: boolean;
+  onValueExit: (ruleKey: string, text: string) => void;
 };
 
 const ROW_BASE =
-  'flex flex-wrap items-center gap-x-5 gap-y-2 rounded px-5 transition-colors duration-300 ease-in-out';
+  'flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 rounded px-5 whitespace-normal transition-colors duration-300 ease-in-out';
 const ROW_OFF = `${ROW_BASE} py-3`;
 const ROW_ON = `${MULTI_SELECT_RULE_CLASSES} ${ROW_BASE}`;
 
@@ -49,26 +53,27 @@ const ValidationRule = ({
   onToggle,
   onTextChange,
   onCommit,
-  shouldFocusValue = false,
+  onValueExit,
 }: ValidationRuleProps) => {
   const rowId = useId();
-  const labelId = `${rowId}-label`;
-  const hintId = `${rowId}-hint`;
-  const errorId = `${rowId}-error`;
+  // This row is not a BaseField, but it names the same elements around its
+  // controls, so it takes both the IDs and the reference list from fresco-ui's
+  // one owner of them rather than assembling `${rowId}-…` itself. `required`
+  // is omitted because the row renders no such marker.
+  const ids = fieldElementIds(rowId);
 
   const hasIssues = issues.length > 0;
   const takesNumber = isValidationWithNumberValue(ruleKey);
   const takesTarget = isValidationWithListValue(ruleKey);
 
   const describedBy =
-    [hint ? hintId : null, hasIssues ? errorId : null]
-      .filter(Boolean)
-      .join(' ') || undefined;
+    fieldDescribedBy(rowId, { hint: Boolean(hint), error: hasIssues }) ||
+    undefined;
 
   const handleValueKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      onCommit(ruleKey, text);
+      onValueExit(ruleKey, text);
     }
   };
 
@@ -80,7 +85,7 @@ const ValidationRule = ({
           value={isOn}
           readOnly={isUnavailable}
           aria-disabled={isUnavailable || undefined}
-          aria-labelledby={labelId}
+          aria-labelledby={ids.label}
           aria-describedby={describedBy}
           onChange={(nextState) => {
             if (isUnavailable) {
@@ -89,31 +94,32 @@ const ValidationRule = ({
             onToggle(ruleKey, !!nextState);
           }}
         />
-        <span id={labelId}>{label}</span>
+        <span id={ids.label}>{label}</span>
       </div>
 
       {isOn && takesNumber && (
-        <InputField
-          name={`validation-value-${ruleKey}`}
-          className="w-36"
-          aria-label={label}
-          aria-invalid={hasIssues || undefined}
-          aria-describedby={describedBy}
-          value={text}
-          onChange={(value: unknown) =>
-            onTextChange(ruleKey, typeof value === 'string' ? value : '')
-          }
-          onBlur={() => onCommit(ruleKey, text)}
-          onStep={(value: string) => onCommit(ruleKey, value)}
-          stepperLabels={{
-            increase: `Increase ${label}`,
-            decrease: `Decrease ${label}`,
-          }}
-          onKeyDown={handleValueKeyDown}
-          type="number"
-          step={1}
-          autoFocus={shouldFocusValue}
-        />
+        <div className="contents">
+          <InputField
+            name={`validation-value-${ruleKey}`}
+            className="w-36"
+            aria-label={label}
+            aria-invalid={hasIssues || undefined}
+            aria-describedby={describedBy}
+            value={text}
+            onChange={(value: unknown) =>
+              onTextChange(ruleKey, typeof value === 'string' ? value : '')
+            }
+            onBlur={() => onValueExit(ruleKey, text)}
+            onStep={(value: string) => onCommit(ruleKey, value)}
+            stepperLabels={{
+              increase: `Increase ${label}`,
+              decrease: `Decrease ${label}`,
+            }}
+            onKeyDown={handleValueKeyDown}
+            type="number"
+            step={1}
+          />
+        </div>
       )}
 
       {isOn && takesTarget && (
@@ -130,21 +136,21 @@ const ValidationRule = ({
               onTextChange(ruleKey, next);
               onCommit(ruleKey, next);
             }}
-            placeholder="Select comparison variable"
-            autoFocus={shouldFocusValue}
+            onBlur={() => onValueExit(ruleKey, text)}
+            placeholder="Select comparison attribute"
           />
         </div>
       )}
 
       {hint && (
-        <div className="basis-full">
-          <Hint id={hintId}>{hint}</Hint>
+        <div className="w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
+          <Hint id={ids.hint}>{hint}</Hint>
         </div>
       )}
 
       {hasIssues && (
-        <div className="mt-2 basis-full">
-          <FieldErrors id={errorId} errors={issues} show variant="box" />
+        <div className="mt-2 w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
+          <FieldErrors id={ids.error} errors={issues} show variant="box" />
         </div>
       )}
     </div>

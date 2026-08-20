@@ -35,6 +35,8 @@ type EntitySelectFieldProps = CreateFormFieldProps<
     /** Only reaches the control through `UnconnectedField`; `Field` strips
      * validation props and signals the same thing via `aria-required`. */
     required?: boolean;
+    /** Block creating new entities. Used when in deeply nested dialogs */
+    allowCreation?: boolean;
   }
 >;
 
@@ -61,6 +63,7 @@ export const EntitySelectControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
+  allowCreation = true,
 }: EntitySelectFieldProps) => {
   const { confirm, openDialog } = useDialog();
   const edgeOptions = useSelector(getEdgeOptions);
@@ -213,25 +216,29 @@ export const EntitySelectControl = ({
             </p>
           )}
         </fieldset>
-        <Button
-          type="button"
-          icon={<Plus />}
-          onClick={() => {
-            if (refuseBlockedChange()) return;
-            setShowNewTypeDialog(true);
-          }}
-          color="primary"
-          disabled={disabled || readOnly}
-        >
-          Create new {entityType} type
-        </Button>
+        {allowCreation && (
+          <>
+            <Button
+              type="button"
+              icon={<Plus />}
+              onClick={() => {
+                if (refuseBlockedChange()) return;
+                setShowNewTypeDialog(true);
+              }}
+              color="primary"
+              disabled={disabled || readOnly}
+            >
+              Create new {entityType} type
+            </Button>
+            <NewTypeDialog
+              show={showNewTypeDialog}
+              entityType={entityType}
+              onComplete={handleNewTypeComplete}
+              onCancel={() => setShowNewTypeDialog(false)}
+            />
+          </>
+        )}
       </div>
-      <NewTypeDialog
-        show={showNewTypeDialog}
-        entityType={entityType}
-        onComplete={handleNewTypeComplete}
-        onCancel={() => setShowNewTypeDialog(false)}
-      />
     </>
   );
 };

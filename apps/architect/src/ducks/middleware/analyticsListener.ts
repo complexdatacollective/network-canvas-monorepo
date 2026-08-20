@@ -6,7 +6,7 @@ import {
 import { posthog } from '~/analytics';
 
 import { setActiveProtocol } from '../modules/activeProtocol';
-import { createStage } from '../modules/protocol/stages';
+import { commitStageEditorDraft } from '../modules/protocol/commitStageEditorDraft';
 import { validateProtocolAsync } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
 import { exportNetcanvas } from '../modules/userActions/userActions';
@@ -30,8 +30,12 @@ startAppListening({
 });
 
 startAppListening({
-  actionCreator: createStage,
+  actionCreator: commitStageEditorDraft,
   effect: (action) => {
+    // The stage editor commits creates and edits through one action; only a
+    // create (no pre-existing stage id) is a `stage_added`.
+    if (action.payload.stageId !== null) return;
+
     posthog.capture('stage_added', {
       stage_type: action.payload.stage.type ?? 'unknown',
       stage_index: action.payload.index,

@@ -5,7 +5,8 @@
     - option "Alice"
     - option "Bob"
     - option "Person"
-  - textbox "Type a label and press enter..."
+  - textbox "Person name":
+    - /placeholder: Type a label and press enter...
   - button "Quick add input" [pressed]
   - navigation:
     - button "Previous Step" [disabled]

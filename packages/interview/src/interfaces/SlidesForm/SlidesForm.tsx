@@ -18,9 +18,9 @@ import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
+  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
-import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { TitlelessForm } from '@codaco/protocol-validation';
@@ -81,7 +81,14 @@ type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<boolean>;
   isDirty: () => boolean;
-  focusFirstError: () => void;
+  /**
+   * Ask the slide's form to move to its first invalid question. The form does
+   * that from a layout effect on the commit that renders the errors, so this
+   * returns before focus moves — deliberately: calling it synchronously after
+   * `validate()` would otherwise focus before the error render is committed
+   * and lose the focus to that commit's own restoration.
+   */
+  requestErrorFocus: () => void;
   getFieldErrors: () => ProtocolFieldErrorEntry[];
 };
 
@@ -199,8 +206,14 @@ const SlideContentInner = forwardRef<SlideHandle, SlideContentProps>(
       validate: async () =>
         storeApi ? storeApi.getState().validateForm() : false,
       submit: async () => (storeApi ? submitRegisteredForm(storeApi) : false),
-      isDirty: () => storeApi?.getState().isDirty ?? false,
-      focusFirstError: () => focusFirstError(formErrorsRef.current),
+      // A live comparison against the values the fields registered with, not
+      // the store's sticky `isDirty`. The sticky flag never returns to false
+      // once anything has been typed, so a participant who changed an answer
+      // and then put it back was still asked whether to discard changes they
+      // no longer had.
+      isDirty: () =>
+        storeApi ? selectIsFormDirty(storeApi.getState()) : false,
+      requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
         buildProtocolFieldErrors(
           formErrorsRef.current,
@@ -377,7 +390,7 @@ export default function SlidesForm({
     if (!formIsValid) {
       const errs = slideRef.current?.getFieldErrors?.() ?? [];
       track('form_validation_failed', { form_kind, field_errors: errs });
-      slideRef.current?.focusFirstError();
+      slideRef.current?.requestErrorFocus();
       return false;
     }
 

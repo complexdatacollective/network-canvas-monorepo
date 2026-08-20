@@ -2,7 +2,13 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
-import type { FieldValue } from '../store/types';
+import type { StageSubject } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcNetwork,
+} from '@codaco/shared-consts';
+
+import type { FieldValue, ValidationContext } from '../store/types';
 import { makeValidationHints, validateFieldValue } from './helpers';
 
 describe('Validation Utils', () => {
@@ -187,6 +193,65 @@ describe('Validation Utils', () => {
         'Must be on or after January 1, 2000.',
         'Must be on or before December 31, 2020.',
       ]);
+    });
+  });
+
+  /**
+   * Issue #1385: the participant-facing hint named the codebook variable —
+   * the researcher's identifier — whenever `showValidationHints` was on.
+   */
+  describe('makeValidationHints — comparison rules (#1385)', () => {
+    const comparisonContext = (
+      variableLabels?: Record<string, string>,
+    ): ValidationContext => ({
+      stageSubject: { entity: 'ego' } as StageSubject,
+      codebook: {
+        ego: {
+          variables: {
+            yearsHere: { name: 'yearsHere', type: 'number' },
+          },
+        },
+      },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: { _uid: 'ego', [entityAttributesProperty]: {} },
+      } as NcNetwork,
+      ...(variableLabels ? { variableLabels } : {}),
+    });
+
+    function hintTexts(element: ReturnType<typeof makeValidationHints>) {
+      if (!element) return [];
+      const { container } = render(element);
+      return Array.from(container.querySelectorAll('li')).map(
+        (li) => li.textContent?.trim() ?? '',
+      );
+    }
+
+    it('names the comparison target with the authored prompt', () => {
+      expect(
+        hintTexts(
+          makeValidationHints({
+            greaterThanVariable: { attribute: 'yearsHere', type: 'number' },
+            validationContext: comparisonContext({
+              yearsHere: 'How many years have you lived here?',
+            }),
+          }),
+        ),
+      ).toEqual([
+        "Must be greater than your answer to 'How many years have you lived here?'.",
+      ]);
+    });
+
+    it('falls back to a label-free sentence rather than the variable name', () => {
+      expect(
+        hintTexts(
+          makeValidationHints({
+            greaterThanVariable: { attribute: 'yearsHere', type: 'number' },
+            validationContext: comparisonContext(),
+          }),
+        ),
+      ).toEqual(['Must be greater than your earlier answer.']);
     });
   });
 });

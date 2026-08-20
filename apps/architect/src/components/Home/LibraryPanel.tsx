@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@codaco/fresco-ui/DropdownMenu';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import {
   Tooltip,
@@ -74,6 +75,18 @@ const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
     `Edited ${formatTimestamp(protocol.updatedAt)}`,
   ].join(' · ');
 };
+/**
+ * Where focus belongs once a row action's dialog closes.
+ *
+ * Resolved lazily, at focus-return, rather than captured as a single element:
+ * which control still exists depends on what the action did. Cancelling a
+ * delete, or closing the info dialog, leaves the row's Actions button exactly
+ * where it was; confirming the delete removes the row and that button with it.
+ * The enclosing listbox is the fallback because it outlives every one of its
+ * items and is itself focusable, so the researcher lands back in the list they
+ * were working in rather than at the top of the page.
+ */
+type ResolveMenuFocus = () => HTMLElement | null;
 type LibraryRowItem = Record<string, unknown> & {
   kind: 'row';
   id: string;
@@ -83,9 +96,9 @@ type LibraryRowItem = Record<string, unknown> & {
   meta?: string;
   downloading?: boolean;
   onOpen: () => void;
-  onDownload?: () => void;
-  onDelete?: () => void;
-  onShowInfo?: () => void;
+  onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onDelete?: (resolveFocus: ResolveMenuFocus) => void;
+  onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
 type LibraryPanelItem = LibraryRowItem;
 type PanelRowProps = {
@@ -95,9 +108,9 @@ type PanelRowProps = {
   meta?: string;
   downloading?: boolean;
   onOpen: () => void;
-  onDownload?: () => void;
-  onDelete?: () => void;
-  onShowInfo?: () => void;
+  onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onDelete?: (resolveFocus: ResolveMenuFocus) => void;
+  onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
 const PanelRow = ({
   itemProps,
@@ -111,9 +124,16 @@ const PanelRow = ({
   onShowInfo,
 }: PanelRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const handleClick = (event: React.MouseEvent) => {
     itemProps.onClick?.(event);
     if (event.defaultPrevented) return;
+    // The row's menu renders through a portal, so React delivers its clicks
+    // here even though they land outside the row in the DOM. Opening the
+    // protocol because a menu item was activated would undo whatever the
+    // researcher actually chose. The menu items stop propagation too; this is
+    // the guard that does not depend on every future one remembering to.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     onOpen();
   };
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -126,12 +146,26 @@ const PanelRow = ({
       onOpen();
     }
   };
+  // Read while the row is still mounted — after a confirmed delete neither the
+  // trigger nor the row is in the document, and `closest` would have nothing to
+  // walk up from.
+  const captureMenuFocus = (): ResolveMenuFocus => {
+    const trigger = triggerRef.current;
+    const listbox = trigger?.closest<HTMLElement>('[role="listbox"]') ?? null;
+    return () => {
+      if (trigger?.isConnected) return trigger;
+      if (listbox?.isConnected) return listbox;
+      return null;
+    };
+  };
   const runMenuAction =
-    (action: () => void | Promise<void>) => (event: React.MouseEvent) => {
+    (action: (resolveFocus: ResolveMenuFocus) => void | Promise<void>) =>
+    (event: React.MouseEvent) => {
       event.stopPropagation();
       setMenuOpen(false);
+      const resolveFocus = captureMenuFocus();
       void Promise.resolve()
-        .then(() => action())
+        .then(() => action(resolveFocus))
         .catch((error: unknown) => {
           console.error('LibraryPanel action failed', error);
           reportError(error);
@@ -153,7 +187,14 @@ const PanelRow = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span title={name} className="line-clamp-2 font-semibold wrap-anywhere">
+        {/* Already height-bounded by `line-clamp-2`; `dir="auto"` is the RTL
+            half — without it the row's LTR base direction reorders an RTL name
+            so the clamp's ellipsis lands on the wrong end. */}
+        <span
+          title={name}
+          dir="auto"
+          className="line-clamp-2 font-semibold wrap-anywhere"
+        >
           {name}
         </span>
         {meta ? (
@@ -172,10 +213,16 @@ const PanelRow = ({
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger
               render={
+                // Stays enabled while a download runs. A disabled control
+                // cannot hold focus, so disabling it here would drop focus to
+                // `<body>` at exactly the moment the menu hands it back — and
+                // it would also lock the researcher out of Delete and See more
+                // info for the duration. The spinner carries the busy state,
+                // and the Download item alone is disabled.
                 <IconButton
+                  ref={triggerRef}
                   variant="text"
                   aria-label={`Actions for ${name}`}
-                  disabled={downloading}
                   onClick={(event) => event.stopPropagation()}
                   icon={
                     downloading ? (
@@ -238,18 +285,36 @@ type GalleryCardProps = {
 // Living outside the collection, it needs none of the collection's roving-
 // focus item props: its own controls are already independently focusable.
 const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Dismissing unmounts the card, taking the Dismiss button — and, with it,
+  // keyboard focus — out of the document. Hand focus to the tab that owns this
+  // panel first, so the researcher stays where they were instead of being
+  // dropped onto `<body>`, from which the next Tab restarts at the page header.
+  // Found through the panel's own `aria-labelledby`, which is the tab, rather
+  // than by querying for a tab by name.
+  const handleDismiss = () => {
+    const panel = cardRef.current?.closest<HTMLElement>('[role="tabpanel"]');
+    const owningTabId = panel?.getAttribute('aria-labelledby');
+    const owningTab = owningTabId
+      ? panel?.ownerDocument.getElementById(owningTabId)
+      : null;
+    owningTab?.focus();
+    onDismiss();
+  };
   return (
-    <div
+    <Surface
+      ref={cardRef}
       role="group"
       aria-label="Protocol gallery"
-      className="border-outline bg-surface-2 relative mt-2.5 flex shrink-0 flex-col gap-1 rounded-sm border p-5"
+      spacing="sm"
     >
       <IconButton
         variant="text"
+        color="dynamic"
         size="sm"
         aria-label="Dismiss"
-        className="absolute top-1 right-1"
-        onClick={onDismiss}
+        className="absolute top-1 right-2"
+        onClick={handleDismiss}
         icon={<X />}
       />
       <Paragraph className="m-0 pr-7 font-semibold">
@@ -261,7 +326,7 @@ const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
           protocol gallery
         </ExternalLink>
       </Paragraph>
-    </div>
+    </Surface>
   );
 };
 const getLibraryItemKey = (item: LibraryPanelItem) => item.id;
@@ -331,9 +396,14 @@ const LibraryPanel = ({
     stats: MetaStat[];
   } | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  // The info dialog is rendered once for the whole panel, so the row that asked
+  // for it has to be remembered separately. A resolver rather than an element:
+  // by the time the dialog closes the menu item that opened it is long gone,
+  // and the dialog's own opener capture would have nothing usable to return to.
+  const infoFocusRef = useRef<ResolveMenuFocus | null>(null);
   const activeTab = tab;
   const handleDownload = useCallback(
-    async (protocol: StoredProtocolRow) => {
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));
       try {
         const skippedAssets = await downloadProtocolAsNetcanvas(
@@ -352,6 +422,7 @@ const LibraryPanel = ({
             title: 'Some assets could not be included',
             description: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
             actions: { primary: { label: 'OK', value: true } },
+            finalFocus: resolveFocus,
           });
         }
       } catch (error) {
@@ -365,6 +436,7 @@ const LibraryPanel = ({
           title: 'Download failed',
           description: `"${protocol.name}" could not be downloaded.`,
           actions: { primary: { label: 'OK', value: true } },
+          finalFocus: resolveFocus,
         });
       } finally {
         setDownloadingIds((prev) => {
@@ -377,7 +449,7 @@ const LibraryPanel = ({
     [openDialog],
   );
   const handleDelete = useCallback(
-    async (protocol: StoredProtocolRow) => {
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       const confirmed = await openDialog({
         type: 'choice',
         intent: 'destructive',
@@ -387,6 +459,12 @@ const LibraryPanel = ({
           primary: { label: 'Delete', value: true },
           cancel: { label: 'Cancel', value: false },
         },
+        // Both branches need this, for opposite reasons. The dialog's own
+        // remembered opener is the menu item, which has already unmounted by
+        // the time focus is returned; and on the confirm branch the Actions
+        // trigger goes too, which is why `resolveFocus` falls through to the
+        // listbox rather than naming one element.
+        finalFocus: resolveFocus,
       });
       if (!confirmed) {
         return;
@@ -401,58 +479,67 @@ const LibraryPanel = ({
           title: 'Delete failed',
           description: `"${protocol.name}" could not be deleted.`,
           actions: { primary: { label: 'OK', value: true } },
+          finalFocus: resolveFocus,
         });
       }
     },
     [dispatch, openDialog],
   );
-  const handleShowInfo = useCallback(async (protocol: StoredProtocolRow) => {
-    const { codebook } = protocol.protocol;
-    const assetCount = await getProtocolAssetCount(protocol.id);
-    const stats: MetaStat[] = [
-      { label: 'Stages', value: String(protocol.protocol.stages.length) },
-      {
-        label: 'Node types',
-        value: String(Object.keys(codebook.node ?? {}).length),
-      },
-      {
-        label: 'Edge types',
-        value: String(Object.keys(codebook.edge ?? {}).length),
-      },
-      { label: 'Assets', value: String(assetCount) },
-      { label: 'Added', value: formatTimestamp(protocol.createdAt) },
-      { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
-    ];
-    setInfo({
-      title: protocol.name,
-      description: protocol.protocol.description,
-      stats,
-    });
-    setInfoOpen(true);
-  }, []);
+  const handleShowInfo = useCallback(
+    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
+      infoFocusRef.current = resolveFocus;
+      const { codebook } = protocol.protocol;
+      const assetCount = await getProtocolAssetCount(protocol.id);
+      const stats: MetaStat[] = [
+        { label: 'Stages', value: String(protocol.protocol.stages.length) },
+        {
+          label: 'Node types',
+          value: String(Object.keys(codebook.node ?? {}).length),
+        },
+        {
+          label: 'Edge types',
+          value: String(Object.keys(codebook.edge ?? {}).length),
+        },
+        { label: 'Assets', value: String(assetCount) },
+        { label: 'Added', value: formatTimestamp(protocol.createdAt) },
+        { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
+      ];
+      setInfo({
+        title: protocol.name,
+        description: protocol.protocol.description,
+        stats,
+      });
+      setInfoOpen(true);
+    },
+    [],
+  );
   // Templates aren't stored in the library, so build their info from the
   // in-memory protocol object rather than the asset DB. This surfaces the
   // template's full title and (rich) description, which the truncated row can't.
-  const handleShowTemplateInfo = useCallback((template: BundledTemplate) => {
-    const { protocol } = template;
-    const stats: MetaStat[] = [
-      { label: 'Stages', value: String(protocol.stages.length) },
-      {
-        label: 'Node types',
-        value: String(Object.keys(protocol.codebook.node ?? {}).length),
-      },
-      {
-        label: 'Edge types',
-        value: String(Object.keys(protocol.codebook.edge ?? {}).length),
-      },
-    ];
-    setInfo({
-      title: protocol.name ?? template.name,
-      description: protocol.description ?? template.description,
-      stats,
-    });
-    setInfoOpen(true);
-  }, []);
+  const handleShowTemplateInfo = useCallback(
+    (template: BundledTemplate, resolveFocus: ResolveMenuFocus) => {
+      infoFocusRef.current = resolveFocus;
+      const { protocol } = template;
+      const stats: MetaStat[] = [
+        { label: 'Stages', value: String(protocol.stages.length) },
+        {
+          label: 'Node types',
+          value: String(Object.keys(protocol.codebook.node ?? {}).length),
+        },
+        {
+          label: 'Edge types',
+          value: String(Object.keys(protocol.codebook.edge ?? {}).length),
+        },
+      ];
+      setInfo({
+        title: protocol.name ?? template.name,
+        description: protocol.description ?? template.description,
+        stats,
+      });
+      setInfoOpen(true);
+    },
+    [],
+  );
   const handleShowStorageInfo = useCallback(() => {
     void openDialog({
       type: 'acknowledge',
@@ -524,9 +611,11 @@ const LibraryPanel = ({
         meta: formatProtocolMeta(protocol),
         downloading: downloadingIds.has(protocol.id),
         onOpen: () => onOpenProtocol(protocol.id),
-        onDownload: () => handleDownload(protocol),
-        onDelete: () => handleDelete(protocol),
-        onShowInfo: () => handleShowInfo(protocol),
+        onDownload: (resolveFocus) =>
+          void handleDownload(protocol, resolveFocus),
+        onDelete: (resolveFocus) => void handleDelete(protocol, resolveFocus),
+        onShowInfo: (resolveFocus) =>
+          void handleShowInfo(protocol, resolveFocus),
       })),
     [
       protocols,
@@ -568,7 +657,8 @@ const LibraryPanel = ({
         name: template.name,
         description: template.description,
         onOpen: () => onOpenTemplate(template),
-        onShowInfo: () => handleShowTemplateInfo(template),
+        onShowInfo: (resolveFocus: ResolveMenuFocus) =>
+          handleShowTemplateInfo(template, resolveFocus),
       })),
     );
     return items;
@@ -631,7 +721,11 @@ const LibraryPanel = ({
       </div>
     ) : null;
   return (
-    <>
+    <Surface
+      spacing="sm"
+      className="publish-colors max-h-[85dvh] w-full"
+      noContainer
+    >
       <Tabs
         aria-label="Protocol library"
         layout="top"
@@ -646,7 +740,7 @@ const LibraryPanel = ({
           { value: 'templates', label: 'Templates' },
         ]}
         headerEnd={headerEnd}
-        className="bg-surface text-surface-contrast publish-colors max-h-[85dvh] w-full overflow-hidden rounded p-5 shadow-md"
+        className="h-full"
       >
         <TabsPanel value="recent" className="flex min-h-0 flex-col">
           <Collection
@@ -696,6 +790,7 @@ const LibraryPanel = ({
         closeDialog={() => setInfoOpen(false)}
         title={info?.title ?? ''}
         size="readable"
+        finalFocus={() => infoFocusRef.current?.() ?? null}
         footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
       >
         {info && (
@@ -715,7 +810,7 @@ const LibraryPanel = ({
           </div>
         )}
       </Dialog>
-    </>
+    </Surface>
   );
 };
 export default LibraryPanel;

@@ -4,14 +4,18 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import {
+  ToolbarButton,
+  ToolbarPopover,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
 import { useStageFormContext } from './StageEditor/stageFormContext';
 
-type UseIssuesToolbarSegmentResult = {
-  segment: ToolbarSegment | null;
+type UseIssuesToolbarControlResult = {
+  control: React.ReactNode;
   openIssues: () => void;
   hasIssues: boolean;
 };
@@ -26,7 +30,7 @@ const resolveTarget = (field: string): HTMLElement | null => {
   return null;
 };
 
-export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
+export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   // The stage form's field errors are already flat and keyed by field name;
   // `submitFailed` is tracked by the stage form bridge because the panel only
   // surfaces issues once a save has been attempted.
@@ -39,9 +43,26 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   const [open, setOpen] = useState(false);
   const issueRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  // Where the popover hands focus back on close. Base UI restores focus to the
+  // trigger by default, which is right for a panel the researcher dismissed
+  // and wrong for one whose entire purpose is to SEND them to a control: it
+  // left them on "Issues (2)" with the invalid field somewhere below, and —
+  // once the panel auto-opens on a failed save — on whatever control
+  // `focusFirstError` had already chosen, whichever issue they clicked.
+  const finalFocusRef = useRef<HTMLElement | null>(null);
+
+  // Every OPEN clears it, so a panel that is merely dismissed (Escape, a click
+  // outside) still returns focus to its trigger. Without this, the control
+  // chosen by the last row click would keep taking focus from every later
+  // dismissal.
+  const setPanelOpen = useCallback((next: boolean) => {
+    if (next) finalFocusRef.current = null;
+    setOpen(next);
+  }, []);
+
   const openIssues = useCallback(() => {
-    if (hasIssues) setOpen(true);
-  }, [hasIssues]);
+    if (hasIssues) setPanelOpen(true);
+  }, [hasIssues, setPanelOpen]);
 
   // Field display labels live in the DOM, so a row's own label is only
   // discoverable once that row's field anchor is mounted. Reads `data-name`
@@ -66,9 +87,14 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
       // UI mounts the popover's portal in a later commit than the one that
       // flips `open`, so on a first open the effect runs while `issueRefs` is
       // still empty and every row keeps its raw internal path. Verified in a
-      // real browser: submitting an invalid Information stage listed
-      // "title - This field is required.", and only re-validating after an
-      // edit turned it into "Title - …". A ref callback cannot be early: it
+      // real browser on an invalid Information stage: without this the row
+      // read "title - This field is required." — the raw field name — and only
+      // re-validating after an edit replaced it. It now harvests to
+      // "Page heading - …", because #1400 changed `ArchitectField`'s
+      // `IssueAnchor` description from `startCase(name)` to the field's own
+      // `label` ("Page heading", sections/Title.tsx), so the panel and the
+      // control agree by construction and neither says "Title". Pinned by
+      // e2e/specs/issues-panel.spec.ts. A ref callback cannot be early: it
       // runs when the element exists, whenever that turns out to be.
       harvestLabel(el, field);
     },
@@ -78,20 +104,30 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
   const handleClickIssue = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, field: string) => {
       e.preventDefault();
-      const destination = resolveTarget(field);
-      if (destination) {
-        scrollTo(destination);
-        setOpen(false);
-      }
+      // The same resolution an invalid submit uses, so an issue row and a
+      // failed save agree about which control owns a field's error —
+      // including composite fields that name their own target and Base UI
+      // switches, which no plain selector reaches.
+      const control = resolveFieldErrorTarget(field);
+      const destination = control ?? resolveTarget(field);
+      if (!destination) return;
+
+      finalFocusRef.current = control ?? null;
+      // Focus first, then scroll, as `focusFirstError` does: a control that
+      // scrolls its own internals into view on focus cannot then leave the
+      // page somewhere other than where this put it.
+      control?.focus({ preventScroll: true });
+      scrollTo(destination);
+      setOpen(false);
     },
     [],
   );
 
   useEffect(() => {
     if (submitFailed && hasIssues) {
-      setOpen(true);
+      setPanelOpen(true);
     }
-  }, [submitFailed, hasIssues]);
+  }, [submitFailed, hasIssues, setPanelOpen]);
 
   useEffect(() => {
     if (!hasIssues) setOpen(false);
@@ -107,26 +143,38 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     });
   }, [flatIssues, harvestLabel, open]);
 
-  const segment = useMemo<ToolbarSegment | null>(() => {
+  const control = useMemo<React.ReactNode>(() => {
     if (!hasIssues || !submitFailed) return null;
 
-    return {
-      type: 'popover',
-      id: 'issues',
-      label: `Issues (${issueCount})`,
-      icon: <TriangleAlert />,
-      showLabel: true,
-      open,
-      onOpenChange: setOpen,
-      side: 'top',
-      children: (
-        <>
-          <div className="border-outline flex items-center gap-5 border-b px-5 py-3">
+    return (
+      <ToolbarPopover
+        key="stage-issues"
+        open={open}
+        onOpenChange={setPanelOpen}
+        contentProps={{
+          side: 'top',
+          className: 'p-0',
+          showArrow: true,
+          finalFocus: () => finalFocusRef.current ?? true,
+        }}
+        trigger={
+          <ToolbarButton
+            icon={<TriangleAlert />}
+            color="warning"
+            className="aria-expanded:border-warning! aria-expanded:bg-warning! aria-expanded:text-warning-contrast!"
+          >
+            Issues ({issueCount})
+          </ToolbarButton>
+        }
+      >
+        <div className="flex flex-col overflow-hidden rounded-[inherit]">
+          <div className="flex items-center gap-4 px-5 py-2.5">
             <TriangleAlert className="size-4 shrink-0" aria-hidden />
             <span className="text-sm font-semibold tracking-wider uppercase">
               Issues ({issueCount})
             </span>
           </div>
+          <hr className="my-0" />
           <ol className="m-0 list-none overflow-y-auto p-0 [counter-reset:issue]">
             {map(flatIssues, ({ id, field, issue }) => {
               // Row identity (`id`) and anchor target (`fieldId`) are separate:
@@ -153,9 +201,9 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
               );
             })}
           </ol>
-        </>
-      ),
-    };
+        </div>
+      </ToolbarPopover>
+    );
   }, [
     flatIssues,
     handleClickIssue,
@@ -163,8 +211,9 @@ export function useIssuesToolbarSegment(): UseIssuesToolbarSegmentResult {
     issueCount,
     open,
     setIssueRef,
+    setPanelOpen,
     submitFailed,
   ]);
 
-  return { segment, openIssues, hasIssues };
+  return { control, openIssues, hasIssues };
 }

@@ -44,6 +44,7 @@ const NameGeneratorPrompts = ({
         label="Prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new prompt"
         validation={{ notEmpty }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
@@ -55,6 +56,7 @@ const NameGeneratorPrompts = ({
         }
         editorTitle="Edit Prompt"
         itemLabel="prompt"
+        editorDialogSize="editor"
         editorProps={{
           entity,
           type,

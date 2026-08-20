@@ -370,7 +370,7 @@ describe('NetworkComposer field renderings', () => {
       });
 
     expect(generate).toThrow(
-      'this protocol renders one variable with incompatible date controls',
+      'this protocol renders one attribute with incompatible date controls',
     );
   });
 
@@ -485,7 +485,7 @@ describe('NetworkComposer field renderings', () => {
       });
 
     expect(generate).toThrow(
-      'this protocol renders one variable with incompatible date controls',
+      'this protocol renders one attribute with incompatible date controls',
     );
     try {
       generate();

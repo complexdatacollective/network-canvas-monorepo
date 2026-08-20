@@ -41,7 +41,7 @@ export async function addSociogramPrompt(
   const fresh = (candidate: Page): Locator =>
     candidate
       .locator('[data-field-name="layout.layoutVariable"]')
-      .getByRole('button', { name: 'Select variable' });
+      .getByRole('button', { name: 'Select attribute' });
   await addPrompt(
     editor.section('Prompts'),
     async () => {
@@ -51,14 +51,14 @@ export async function addSociogramPrompt(
         scope: editor.field('layout.layoutVariable'),
         until: editor
           .field('layout.layoutVariable')
-          .getByRole('button', { name: 'Change variable' }),
+          .getByRole('button', { name: 'Change attribute' }),
       });
 
       const interaction = spec.interaction;
       if (interaction) {
         const section = editor.section('Interaction Behavior');
         const toggle = section.getByRole('switch', {
-          name: 'Turn this feature on or off',
+          name: 'Interaction Behavior',
         });
         await toggle.click();
         if (interaction.kind === 'none-explicit') {
@@ -96,7 +96,7 @@ export async function addSociogramPrompt(
             scope: editor.field('highlight.variable'),
             until: editor
               .field('highlight.variable')
-              .getByRole('button', { name: 'Change variable' }),
+              .getByRole('button', { name: 'Change attribute' }),
           });
         }
       }
@@ -104,7 +104,7 @@ export async function addSociogramPrompt(
       if (spec.displayEdges) {
         const displaySection = editor.section('Display Edges');
         const displayToggle = displaySection.getByRole('switch', {
-          name: 'Turn this feature on or off',
+          name: 'Display Edges',
         });
         // The section auto-expands when edges.create is set (mount-effect
         // union) — guard instead of blind-clicking.

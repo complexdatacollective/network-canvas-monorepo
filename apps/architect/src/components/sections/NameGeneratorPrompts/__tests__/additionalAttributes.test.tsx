@@ -21,7 +21,7 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
     onChange?: (value: string) => void;
   }) => (
     <button type="button" onClick={() => onChange?.(picker.emits)}>
-      Select variable
+      Select attribute
     </button>
   ),
   default: () => null,
@@ -66,7 +66,7 @@ const NEARBY_COLLECTED_ELSEWHERE = {
 const asStage = (values: Record<string, unknown>) => values as unknown as Stage;
 
 const INCOMPLETE_MESSAGE =
-  'Every additional variable needs both a variable and a value.';
+  'Every additional attribute needs both an attribute and a value.';
 
 const NEARBY_ELSEWHERE_MESSAGE = validatedElsewhereMessage('Nearby');
 
@@ -161,7 +161,9 @@ describe('Name Generator prompt: assigned additional variables', () => {
     openPromptEditor();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Add new variable to assign' }),
+      await screen.findByRole('button', {
+        name: 'Add new attribute to assign',
+      }),
     );
     save();
 
@@ -176,9 +178,11 @@ describe('Name Generator prompt: assigned additional variables', () => {
     openPromptEditor();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Add new variable to assign' }),
+      await screen.findByRole('button', {
+        name: 'Add new attribute to assign',
+      }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
     await screen.findByLabelText('Value to assign');
     save();
 
@@ -188,7 +192,7 @@ describe('Name Generator prompt: assigned additional variables', () => {
   it('saves a prompt that assigns nothing', async () => {
     openPromptEditor();
 
-    await screen.findByRole('button', { name: 'Add new variable to assign' });
+    await screen.findByRole('button', { name: 'Add new attribute to assign' });
     save();
 
     await expectSaved();
@@ -198,7 +202,7 @@ describe('Name Generator prompt: assigned additional variables', () => {
   it('saves a prompt that assigns nothing even while a conflict exists elsewhere', async () => {
     openPromptEditor({ otherStages: [NEARBY_COLLECTED_ELSEWHERE] });
 
-    await screen.findByRole('button', { name: 'Add new variable to assign' });
+    await screen.findByRole('button', { name: 'Add new attribute to assign' });
     save();
 
     await expectSaved();
@@ -239,7 +243,7 @@ describe('Name Generator prompt: cross-class gate', () => {
     picker.emits = 'nearby';
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Select variable' }),
+      await screen.findByRole('button', { name: 'Select attribute' }),
     );
 
     // The row says so first…
@@ -306,7 +310,7 @@ describe('Name Generator prompt: cross-class gate', () => {
     // A half-finished sibling reveals every row's errors without waiting for
     // an edit, which is how the accusation reached the researcher.
     fireEvent.click(
-      screen.getByRole('button', { name: 'Add new variable to assign' }),
+      screen.getByRole('button', { name: 'Add new attribute to assign' }),
     );
     save();
 
@@ -330,10 +334,10 @@ describe('Name Generator prompt: cross-class gate', () => {
     fireEvent.click(deleteButtons[0]!);
     await waitFor(() =>
       expect(
-        screen.getAllByRole('button', { name: 'Select variable' }),
+        screen.getAllByRole('button', { name: 'Select attribute' }),
       ).toHaveLength(1),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
     save();
 
     expect(
@@ -369,7 +373,7 @@ describe('Name Generator Roster prompt: cross-class gate', () => {
     picker.emits = 'nearby';
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Select variable' }),
+      await screen.findByRole('button', { name: 'Select attribute' }),
     );
     expect(
       await screen.findByText(NEARBY_ELSEWHERE_MESSAGE),

@@ -1,4 +1,10 @@
-import type { ResolvedAsset } from '@codaco/interview';
+// The React-free contract entry, deliberately: this module is imported by the
+// protocol list as well as the interview route, and pulling the package's
+// component graph in behind it would make every one of those a heavy import.
+import {
+  createAssetUrlOwner,
+  type ResolvedAsset,
+} from '@codaco/interview/contract';
 
 import {
   getProtocolAsset,
@@ -6,43 +12,32 @@ import {
   getProtocolByHash,
 } from '../db/api';
 
-type CacheEntry = {
-  protocolHash: string;
-  importedAt: string;
-  assetId: string;
-  url: string;
-  // Whether `url` is an object URL we minted (and therefore must revoke), as
-  // opposed to a plain string returned verbatim (apikey / already-a-URL data).
-  isObjectUrl: boolean;
-};
+// One owner for the whole app, so an asset has exactly one live URL at a time
+// and that URL has exactly one owner, no matter which resolver minted it. The
+// owner is never closed: this app opens and closes interviews for the lifetime
+// of the tab, and only ever releases one protocol at a time (below).
+const assetUrls = createAssetUrlOwner();
 
-const urlCache = new Map<string, CacheEntry>();
-
-// The protocol hash intentionally ignores `assetManifest`, so re-importing
-// the same protocol with updated asset files keeps the same hash. `importedAt`
-// is refreshed on every re-import (see db/protocols.ts), so including it in the
-// cache key evicts stale blob URLs.
-function cacheKey(protocolHash: string, importedAt: string, assetId: string) {
-  return `${protocolHash}::${importedAt}::${assetId}`;
+// Keyed by protocol + asset, never by import. The protocol hash intentionally
+// ignores `assetManifest`, so re-importing the same protocol with updated asset
+// files keeps the same hash; the import timestamp passed as the request's scope
+// is what distinguishes a superseded URL from the live one.
+function cacheKey(protocolHash: string, assetId: string) {
+  return `${protocolHash}::${assetId}`;
 }
 
-// A re-import mints a new key (fresh `importedAt`) rather than overwriting the
-// old one, so a superseded object URL would otherwise leak. When caching a new
-// entry, revoke any prior object URL for the same protocol+asset from an
-// earlier import. The old-`importedAt` key is never requested again by the
-// current resolver, so nothing in flight still reads it.
-function revokeSupersededObjectUrls(next: CacheEntry) {
-  for (const [key, entry] of urlCache) {
-    if (
-      entry.isObjectUrl &&
-      entry.protocolHash === next.protocolHash &&
-      entry.assetId === next.assetId &&
-      entry.importedAt !== next.importedAt
-    ) {
-      URL.revokeObjectURL(entry.url);
-      urlCache.delete(key);
-    }
-  }
+/**
+ * Deleting a protocol strands every URL minted for it: the key can never be
+ * requested again, so no later write can supersede it, and the object URL —
+ * holding asset bytes that db/protocols.ts already decrypted — would stay
+ * resident for the lifetime of the tab. Only the protocol list calls this, and
+ * only after the delete has committed, so nothing on screen can be showing one
+ * of these URLs.
+ */
+export function revokeProtocolAssetUrls(protocolHash: string): void {
+  // Releases this protocol's keys and cancels its in-flight reads, leaving
+  // every other protocol's URLs — and the owner itself — untouched.
+  assetUrls.release(`${protocolHash}::`);
 }
 
 export async function buildResolvedAssets(
@@ -75,43 +70,29 @@ export async function buildResolvedAssets(
 
 export function makeAssetResolver(
   protocolHash: string,
+  // An ISO-8601 UTC timestamp that db/protocols.ts forces strictly upwards on
+  // every re-import, so comparing two of them lexicographically — which is
+  // what the owner does with a request's scope — compares them chronologically.
   importedAt: string,
 ): (assetId: string) => Promise<string> {
-  return async (assetId: string) => {
-    const key = cacheKey(protocolHash, importedAt, assetId);
-    const cached = urlCache.get(key);
-    if (cached) return cached.url;
-
-    const record = await getProtocolAsset(protocolHash, assetId);
-    if (!record) {
-      throw new Error(
-        `Asset "${assetId}" not found for protocol ${protocolHash}`,
-      );
-    }
-
-    if (typeof record.data === 'string') {
-      urlCache.set(key, {
-        protocolHash,
-        importedAt,
-        assetId,
-        url: record.data,
-        isObjectUrl: false,
-      });
-      return record.data;
-    }
-
-    // `record.data` is already decrypted at the db boundary (db/protocols.ts
-    // decrypts asset rows on read), so this Blob holds plaintext bytes.
-    const url = URL.createObjectURL(record.data);
-    const entry: CacheEntry = {
-      protocolHash,
-      importedAt,
-      assetId,
-      url,
-      isObjectUrl: true,
-    };
-    revokeSupersededObjectUrls(entry);
-    urlCache.set(key, entry);
-    return url;
-  };
+  return (assetId: string) =>
+    assetUrls.resolve({
+      key: cacheKey(protocolHash, assetId),
+      scope: importedAt,
+      read: async () => {
+        const record = await getProtocolAsset(protocolHash, assetId);
+        if (!record) {
+          throw new Error(
+            `Asset "${assetId}" not found for protocol ${protocolHash}`,
+          );
+        }
+        // A string is an apikey (or an already-usable URL) and is passed
+        // through un-owned. A Blob is already decrypted at the db boundary
+        // (db/protocols.ts decrypts asset rows on read), so the object URL the
+        // owner mints from it holds plaintext bytes — which is why releasing
+        // the protocol has to revoke it.
+        return record.data;
+      },
+      unavailable: () => new Error(`Asset "${assetId}" is no longer available`),
+    });
 }

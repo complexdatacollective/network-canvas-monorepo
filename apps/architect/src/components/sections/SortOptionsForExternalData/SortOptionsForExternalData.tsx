@@ -2,7 +2,7 @@ import { compose } from 'react-recompose';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import MultiSelect, {
   completeRows,
@@ -27,7 +27,7 @@ const SORT_ORDER_PROPERTIES: PropertyField[] = [
 ];
 
 const SORTABLE_PROPERTIES: PropertyField[] = [
-  { fieldName: 'variable' },
+  { fieldName: 'variable', label: 'Attribute' },
   {
     fieldName: 'label',
     control: 'input',
@@ -95,7 +95,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       handleToggleChange={handleToggleSortOptions}
       disabled={disabled}
     >
-      <Row>
+      <>
         <Heading level="h4">Initial Sort Order</Heading>
         <Paragraph>
           Create one or more rules to determine the default sort order or the
@@ -108,14 +108,15 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           label="Initial sort order"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new sort rule"
           initialValue={initialSortOrder}
           maxItems={1}
           properties={SORT_ORDER_PROPERTIES}
           validation={SORT_ORDER_VALIDATION}
           options={sortOrderOptionGetter}
         />
-      </Row>
-      <Row>
+      </>
+      <>
         <Heading level="h4">Participant Sortable Properties</Heading>
         <Paragraph>
           This interface allows the participant to sort the roster, to help with
@@ -127,6 +128,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
           label="Participant sortable properties"
           labelHidden
           component={MultiSelect}
+          addButtonLabel="Add new sortable property"
           initialValue={initialSortableProperties}
           maxItems={maxVariableOptions}
           properties={SORTABLE_PROPERTIES}
@@ -143,7 +145,7 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
             )
           }
         />
-      </Row>
+      </>
     </Section>
   );
 };

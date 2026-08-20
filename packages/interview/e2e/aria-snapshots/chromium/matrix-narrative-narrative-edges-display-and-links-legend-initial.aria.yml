@@ -7,14 +7,15 @@
     - button "Node3"
   - button "Drag to reposition"
   - toolbar "Presets":
-    - button "Previous preset" [disabled]
-    - button "Friends" [expanded]
-    - button "Next preset"
+    - group "Preset navigation":
+      - button "Previous preset" [disabled]
+      - button "Friends" [expanded]
+      - dialog:
+        - heading "Links" [level=3]:
+          - button "Links" [expanded]
+        - region "Links": Friendship
+      - button "Next preset"
   - status
-  - dialog:
-    - heading "Links" [level=3]:
-      - button "Links" [expanded]
-    - region "Links": Friendship
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

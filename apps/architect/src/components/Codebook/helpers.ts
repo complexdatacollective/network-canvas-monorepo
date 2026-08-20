@@ -1,5 +1,4 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { compact, get, reduce } from 'es-toolkit/compat';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import {
@@ -13,7 +12,11 @@ import {
 import type { RootState } from '~/ducks/store';
 import { getAllVariablesByUUID, getType } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
-import { getVariableIndex, utils } from '~/selectors/indexes';
+import {
+  getEntityTypeUsageHitsById,
+  getVariableUsageHits,
+  utils,
+} from '~/selectors/indexes';
 import { getCodebook, getProtocol } from '~/selectors/protocol';
 
 type StageMeta = {
@@ -55,83 +58,105 @@ const getTypeMetaByIndex = createSelector([getCodebook], (codebook) => {
   return typeNames;
 });
 
-/**
- * Takes an object in the format of `{[path]: variableID}` and a variableID to
- * search for. Returns an array of paths that match the variableID.
- *
- * @param {Object.<string, string>}} index Usage index in (in format `{[path]: variableID}`)
- * @param {any} value Value to match in usage index
- * @returns {string[]} List of paths ("usage array")
- */
-export const getUsage = (
-  index: Record<string, unknown>,
-  value: string,
-): string[] =>
-  reduce(
-    index,
-    (acc: string[], indexValue: unknown, path: string) => {
-      if (indexValue !== value) {
-        return acc;
-      }
-      return [...acc, path];
-    },
-    [],
-  );
-
 type UsageMeta = {
   label: string;
   id?: string;
 };
 
 /**
- * Get stage meta that matches "usage array" (with duplicates removed).
+ * The one thing this display needs from a reference hit: WHERE in the protocol
+ * the reference sits. Both `collectEntityAttributeReferences` (variables) and
+ * `collectEntityTypeReferences` (node/edge types) emit exactly this, so both
+ * usage columns are described by one function.
+ */
+type UsageHit = {
+  path: readonly (string | number)[];
+};
+
+/**
+ * Describes where a set of reference hits sit, as the rows of the Codebook's
+ * "Used In" cell (with duplicates removed).
  *
- * Parses the dotted-array key format produced by collectEntityAttributeReferences,
- * e.g. `stages.0.form.fields.0.variable` or
- * `codebook.node.personType.variables.varId.validation.sameAs`.
+ * Reads the collector's own structured paths. It does NOT re-derive structure
+ * from a joined string: segments arrive already separated, so a codebook
+ * record key containing a dot (`/^[a-zA-Z0-9._:-]+$/` permits one) names its
+ * variable or type correctly instead of degrading to "unknown", and a stage
+ * index arrives as the number it is rather than something to re-parse.
  *
- * See `getUsage()` for how the usage array is generated.
- *
- * Any stages that can't be found in the index are omitted.
+ * NEVER EMPTY by construction — which is the guarantee that matters, and is
+ * narrower than "every hit contributes". A hit sitting somewhere this function
+ * has no wording for (a schema that tags a reference at a new kind of location)
+ * contributes the generic entry ONLY when nothing else resolved: the fallback
+ * below is gated on all three resolved buckets being empty, so an undescribable
+ * hit sitting alongside a described one is dropped. That is harmless, because
+ * the row is non-empty either way — and non-empty is the whole claim. An empty
+ * result beside a disabled "In use — cannot be deleted" button is the exact
+ * disagreement #1392 was filed for, and it must not be possible to reintroduce
+ * by adding a reference site somewhere new.
  *
  * @param {Object[]} stageMetaByIndex Stage meta by index (as created by `getStageMetaByIndex()`)
  * @param {Object[]} variableMetaByIndex Variable meta by index (as created by
  * `getVariableMetaByIndex()`)
- * @param {string[]} usageArray "Usage array" as created by `getUsage()`
+ * @param {Object[]} hits Reference hits naming one variable or one entity type
  * @returns {Object[]} List of stage meta `{ label, id }`.
  */
 export const getUsageAsStageMeta = (
   stageMetaByIndex: StageMeta[],
   variableMetaByIndex: Variables,
-  usageArray: string[],
+  hits: readonly UsageHit[],
   typeMetaByIndex: Record<string, string> = {},
 ): UsageMeta[] => {
   const codebookVariableNames = new Set<string>();
   const shapeMappingTypeNames = new Set<string>();
-  const stageIndexSet = new Set<number>();
+  const stagesByIndex = new Map<number, StageMeta>();
+  let hasUndescribableHit = false;
 
-  for (const key of usageArray) {
-    const segments = key.split('.');
-    if (segments[0] === 'stages') {
-      const stageIndex = Number(segments[1]);
-      if (!Number.isNaN(stageIndex)) {
-        stageIndexSet.add(stageIndex);
-      }
-    } else if (segments[0] === 'codebook') {
-      const variablesPos = segments.indexOf('variables');
-      if (variablesPos !== -1) {
-        const variableId = segments[variablesPos + 1];
-        const variable = variableId
-          ? variableMetaByIndex[variableId]
+  for (const { path } of hits) {
+    if (path[0] === 'stages') {
+      const stageIndex = path[1];
+      const stageMeta =
+        typeof stageIndex === 'number'
+          ? stageMetaByIndex[stageIndex]
           : undefined;
-        codebookVariableNames.add(variable?.name || 'unknown');
-      } else if (segments.includes('shape')) {
-        const typeId = segments[2];
-        const typeName = typeId ? typeMetaByIndex[typeId] : undefined;
-        shapeMappingTypeNames.add(typeName || 'unknown');
+      if (typeof stageIndex === 'number' && stageMeta) {
+        stagesByIndex.set(stageIndex, stageMeta);
+        continue;
+      }
+      hasUndescribableHit = true;
+      continue;
+    }
+
+    if (path[0] === 'codebook') {
+      // An ego definition has no type segment, so the reference sites are:
+      //   codebook.ego.variables.<owner>.validation.<rule>
+      //   codebook.<entity>.<typeId>.variables.<owner>.validation.<rule>
+      //   codebook.node.<typeId>.shape.dynamic.variable
+      const withinDefinition =
+        path[1] === 'ego' ? path.slice(2) : path.slice(3);
+
+      if (withinDefinition[0] === 'variables') {
+        const owningVariableId = withinDefinition[1];
+        const owner =
+          typeof owningVariableId === 'string'
+            ? variableMetaByIndex[owningVariableId]
+            : undefined;
+        codebookVariableNames.add(owner?.name ?? 'unknown');
+        continue;
+      }
+
+      if (withinDefinition[0] === 'shape') {
+        const typeId = path[2];
+        const typeName =
+          typeof typeId === 'string' ? typeMetaByIndex[typeId] : undefined;
+        shapeMappingTypeNames.add(typeName ?? 'unknown');
+        continue;
       }
     }
+
+    hasUndescribableHit = true;
   }
+
+  const stageVariablesWithMeta = [...stagesByIndex.values()];
 
   const codebookVariablesWithMeta: UsageMeta[] = [...codebookVariableNames].map(
     (name) => ({ label: `Used as validation for "${name}"` }),
@@ -141,16 +166,19 @@ export const getUsageAsStageMeta = (
     (name) => ({ label: `Used in shape settings for "${name}"` }),
   );
 
-  const stageVariablesWithMeta = compact(
-    [...stageIndexSet].map((stageIndex) =>
-      get(stageMetaByIndex, stageIndex.toString()),
-    ),
-  );
+  const fallbackWithMeta: UsageMeta[] =
+    hasUndescribableHit &&
+    stageVariablesWithMeta.length === 0 &&
+    codebookVariablesWithMeta.length === 0 &&
+    shapeMappingsWithMeta.length === 0
+      ? [{ label: 'Used elsewhere in this protocol' }]
+      : [];
 
   return [
     ...stageVariablesWithMeta,
     ...codebookVariablesWithMeta,
     ...shapeMappingsWithMeta,
+    ...fallbackWithMeta,
   ];
 };
 
@@ -173,8 +201,13 @@ export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
 };
 
 /**
- * Creates a selector that returns a function for getting entity usage data
- * @param {unknown} index The index to use for searching
+ * Creates a selector that returns a function for getting entity usage data.
+ *
+ * `index` answers only "is this type referenced at all" — the gate on the
+ * Delete control. Where it is referenced comes from the structured hits, so
+ * the two cannot be derived from the same string by different rules.
+ *
+ * @param {unknown} index A joined type index (`getNodeIndex`/`getEdgeIndex`)
  * @param {Record<string, unknown>} mergeProps Props to merge with the result
  * @returns {function} Function that can be used in map operations
  */
@@ -183,8 +216,13 @@ export const makeGetEntityWithUsage = (
   mergeProps: Record<string, unknown>,
 ) =>
   createSelector(
-    [getStageMetaByIndex, getVariableMetaByIndex, getTypeMetaByIndex],
-    (stageMetaByIndex, variableMetaByIndex, typeMetaByIndex) => {
+    [
+      getStageMetaByIndex,
+      getVariableMetaByIndex,
+      getTypeMetaByIndex,
+      getEntityTypeUsageHitsById,
+    ],
+    (stageMetaByIndex, variableMetaByIndex, typeMetaByIndex, hitsByTypeId) => {
       const search = utils.buildSearch([index]);
 
       return (_: unknown, id: string) => {
@@ -193,7 +231,7 @@ export const makeGetEntityWithUsage = (
           ? getUsageAsStageMeta(
               stageMetaByIndex,
               variableMetaByIndex,
-              getUsage(index, id),
+              hitsByTypeId.get(id) ?? [],
               typeMetaByIndex,
             )
           : [];
@@ -265,7 +303,6 @@ export const getEntityProperties = (
       ? entityType.shape?.default
       : undefined;
 
-  const variableIndex = getVariableIndex(state);
   const variableMeta = getVariableMetaByIndex(state);
   const typeMeta = getTypeMetaByIndex(state);
   const stageMetaByIndex = getStageMetaByIndex(state);
@@ -274,7 +311,10 @@ export const getEntityProperties = (
   const variablesWithUsage: Record<string, VariableWithUsage> = {};
 
   for (const [id, variable] of Object.entries(variables || {})) {
-    const inUse = get(isUsedIndex, id, false);
+    // Indexed directly rather than through a path-style getter, so a variable
+    // id containing a dot (`/^[a-zA-Z0-9._:-]+$/` permits one) needs no
+    // reasoning about whether the getter treats it as a path or a key.
+    const inUse = isUsedIndex[id] ?? false;
 
     const baseProperties: VariableWithUsage = {
       ...variable,
@@ -290,7 +330,7 @@ export const getEntityProperties = (
     const usage = getUsageAsStageMeta(
       stageMetaByIndex,
       variableMeta,
-      getUsage(variableIndex, id),
+      getVariableUsageHits(state, id),
       typeMeta,
     ).toSorted(sortByLabel);
 

@@ -316,7 +316,7 @@ describe('analyseFeasibility', () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.rules.toSorted()).toEqual(['differentFrom', 'sameAs']);
     expect(conflicts[0]?.reason).toBe(
-      'these variables are required to be both equal and different',
+      'these attributes are required to be both equal and different',
     );
   });
 
@@ -469,7 +469,7 @@ describe('analyseFeasibility', () => {
     expect(conflicts[1]?.variableNames).toEqual(['A', 'B']);
     expect(conflicts[1]?.reason).toContain('bounds do not overlap');
     expect(conflicts[1]?.reason).toContain(
-      'minLength 10 exceeds maxLength 2, which one of these variables already ' +
+      'minLength 10 exceeds maxLength 2, which one of these attributes already ' +
         'declares on its own',
     );
   });
@@ -1955,7 +1955,7 @@ describe('a rule between two values one prompt fixes', () => {
     expect(conflicts[0]?.rules).toEqual(['sameAs', 'additionalAttributes']);
     expect(conflicts[0]?.variableNames).toEqual(['A', 'B']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes these variables to false and true, which sameAs cannot hold',
+      'a prompt fixes these attributes to false and true, which sameAs cannot hold',
     );
   });
 
@@ -1972,7 +1972,7 @@ describe('a rule between two values one prompt fixes', () => {
       'additionalAttributes',
     ]);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes these variables to true and true, which differentFrom cannot hold',
+      'a prompt fixes these attributes to true and true, which differentFrom cannot hold',
     );
   });
 
@@ -2082,7 +2082,7 @@ describe('a value one prompt fixes against its own rules', () => {
     expect(conflicts[0]?.rules).toEqual(['options', 'additionalAttributes']);
     expect(conflicts[0]?.variableNames).toEqual(['Rank']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes this variable to true, which options does not allow',
+      'a prompt fixes this attribute to true, which options does not allow',
     );
   });
 
@@ -2104,7 +2104,7 @@ describe('a value one prompt fixes against its own rules', () => {
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.rules).toEqual(['minValue', 'additionalAttributes']);
     expect(conflicts[0]?.reason).toBe(
-      'a prompt fixes this variable to true, which minValue does not allow',
+      'a prompt fixes this attribute to true, which minValue does not allow',
     );
   });
 
@@ -3011,7 +3011,7 @@ describe('a pedigree edge variable no stage writes', () => {
       expect(conflicts).toHaveLength(1);
       expect(conflicts[0]?.variableNames).toEqual(['Source', 'Confirm']);
       expect(conflicts[0]?.reason).toBe(
-        'these variables are held to a single value, but their bounds do not ' +
+        'these attributes are held to a single value, but their bounds do not ' +
           'overlap: minLength 10 exceeds maxLength 5',
       );
     });

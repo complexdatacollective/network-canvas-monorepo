@@ -2,6 +2,11 @@ import { debounce } from 'es-toolkit';
 import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import {
+  type FieldElements,
+  fieldDescribedBy,
+  fieldElementIds,
+} from '../Field/fieldElements';
 import type {
   FieldSlotController,
   FieldValue,
@@ -31,7 +36,7 @@ import useFormStore from './useFormStore';
  * For fields without validateOnChange: shows errors after the field has been
  * blurred, is dirty, and validation has completed.
  */
-function shouldShowFieldError(
+export function shouldShowFieldError(
   fieldState: FieldState | undefined,
   fieldErrors: string[] | null,
   validateOnChange: boolean,
@@ -83,8 +88,14 @@ type UseFieldResult = {
     'readOnly': boolean;
     'aria-required': boolean; // Indicates if the field is required
     'aria-invalid': boolean; // Indicates if the field is invalid
-    'aria-describedby': string; // IDs of elements that provide additional information about the field
-    'aria-labelledby': string; // ID of the visible field label
+    // IDs of elements that provide additional information about the field.
+    // `undefined` when the caller renders none of them, so the attribute is
+    // omitted rather than emitted empty.
+    'aria-describedby': string | undefined;
+    // ID of the visible field label. `undefined` when the caller renders no
+    // label element — a reference to one that does not exist would displace
+    // the control's own `aria-label` and leave it unnamed.
+    'aria-labelledby': string | undefined;
     'aria-disabled': boolean; // Indicates if the field is disabled
     'aria-readonly': boolean; // Indicates if the field is read-only
   };
@@ -128,7 +139,32 @@ type UseFieldConfig = {
    * field. Off by default — the field is the unit of focus.
    */
   validateOnControlBlur?: boolean;
+  /**
+   * The caller's own hint content, if any. Only its presence matters here:
+   * it shares the `${id}-hint` element with the validation summary, and
+   * `aria-describedby` must not name an element that was never rendered.
+   */
+  hint?: ReactNode;
+  /**
+   * Which of the elements `fieldElementIds` names the caller actually renders.
+   *
+   * `fieldProps` points `aria-labelledby` and `aria-describedby` at those IDs,
+   * and an IDREF that resolves to nothing is worse than no reference at all: a
+   * dangling `aria-labelledby` outranks the control's own `aria-label` in the
+   * accessible-name computation, so the control can end up with no name.
+   *
+   * Defaults to naming nothing, so a caller that spreads `fieldProps` onto
+   * markup of its own is correct without knowing this option exists. `Field`,
+   * which renders the control inside a `BaseField`, passes
+   * `BASE_FIELD_ELEMENTS` from the same file as that markup; a caller that
+   * renders only its own `FieldErrors` region passes `{ error: true }`.
+   */
+  renderedElements?: FieldElements;
 } & Partial<ValidationPropsCatalogue>;
+
+// A caller that says nothing renders none of BaseField's elements, so
+// `fieldProps` names none of them. Hoisted so the default is one stable object.
+const NO_FIELD_ELEMENTS: FieldElements = {};
 
 export function useField(config: UseFieldConfig): UseFieldResult {
   const {
@@ -137,6 +173,8 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     initialValue,
     showValidationHints = false,
     validationContext,
+    hint,
+    renderedElements = NO_FIELD_ELEMENTS,
     ...validationProps
   } = config;
 
@@ -416,18 +454,36 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       'readOnly': isReadOnly ?? false,
       'aria-required': !!validationProps.required,
       'aria-invalid': showInvalid,
-      'aria-labelledby': `${id}-label`,
+      /**
+       * Named only when the caller renders the label element. A caller that
+       * does not — because it names its control with `aria-label` instead —
+       * would otherwise carry an `aria-labelledby` pointing at nothing, and a
+       * dangling `aria-labelledby` beats `aria-label` in the accessible-name
+       * computation: the control ends up unnamed rather than named.
+       */
+      'aria-labelledby': renderedElements.label
+        ? fieldElementIds(id).label
+        : undefined,
       'aria-disabled': isDisabled ?? false,
       'aria-readonly': isReadOnly ?? false,
       /**
-       * Set this so that screen readers can properly announce the hint and error messages.
-       * If either the hint or error ID is not present, it will be ignored by the screen reader.
-       * The alternative would require us to check if the hint prop exists and if the error state
-       * is set, which doesn't seem worth it.
+       * Assembled by the single owner of the list, from what the caller says
+       * it renders (`renderedElements`, defaulting to nothing) and the field's
+       * own state. The error region is named whenever it is rendered, message
+       * or not: BaseField mounts it unconditionally and a connected field's
+       * errors arrive asynchronously, so the control has to already describe
+       * the region that is about to hold the message.
        *
        * Note: we cannot use aria-description yet, as it is not widely supported.
        */
-      'aria-describedby': `${id}-required ${id}-hint ${id}-error`.trim(),
+      'aria-describedby':
+        fieldDescribedBy(id, {
+          required:
+            renderedElements.required && Boolean(validationProps.required),
+          // The same condition BaseField uses to render the Hint element.
+          hint: renderedElements.hint && Boolean(hint ?? validationSummary),
+          error: renderedElements.error,
+        }) || undefined,
     },
     controller,
     validationSummary,

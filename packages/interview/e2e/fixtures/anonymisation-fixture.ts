@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { FormFixture } from './stage-fixture.js';
+
 /**
  * Fixture for Anonymisation stages.
  *
@@ -17,19 +19,26 @@ import type { Locator, Page } from '@playwright/test';
  */
 export class AnonymisationFixture {
   readonly page: Page;
+  private readonly form: FormFixture;
 
   constructor(page: Page) {
     this.page = page;
+    this.form = new FormFixture(page);
   }
 
-  /** Passphrase field — Field name="passphrase" (Anonymisation.tsx:131-140). */
+  /**
+   * Passphrase field — `Field name="passphrase"`. Rendered both by the stage's
+   * own form (Anonymisation.tsx:131-140) and by the PassphrasePrompter overlay
+   * (PassphrasePrompter.tsx:169-176), which is why the prompter has no separate
+   * accessor: the field name is the same, so this locates whichever is present.
+   */
   passphraseField(): Locator {
-    return this.page.locator('[data-field-name="passphrase"] input');
+    return this.form.field('passphrase').locator('input');
   }
 
   /** Confirm field — Field name="passphrase-2" (Anonymisation.tsx:141-150). */
   confirmField(): Locator {
-    return this.page.locator('[data-field-name="passphrase-2"] input');
+    return this.form.field('passphrase-2').locator('input');
   }
 
   /** Fill both passphrase fields with the same value. */
@@ -101,13 +110,8 @@ export class AnonymisationFixture {
       .waitFor({ state: 'visible' });
   }
 
-  /** Passphrase overlay input — PassphrasePrompter.tsx:169-176 (name="passphrase"). */
-  prompterPassphraseField(): Locator {
-    return this.page.locator('[data-field-name="passphrase"] input');
-  }
-
   async submitPrompterPassphrase(value: string): Promise<void> {
-    await this.prompterPassphraseField().fill(value);
+    await this.passphraseField().fill(value);
     await this.page.getByRole('button', { name: 'Submit passphrase' }).click();
   }
 }

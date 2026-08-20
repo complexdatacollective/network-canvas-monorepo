@@ -1,10 +1,20 @@
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { Stage } from '@codaco/protocol-validation';
+import app, { setProtocolLockState } from '~/ducks/modules/app';
+import stageEditorDraft, {
+  draftTimelineActions,
+} from '~/ducks/modules/stageEditorDraft';
 
 import DialogForm from '../DialogForm';
+import { hasDirtyNestedDraft } from '../nestedDraftRegistry';
+
+const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
 
 // `FormWithoutProvider` hardcodes `onSubmitInvalid: focusFirstError`
 // (fresco-ui's Form.tsx), so DialogForm relies on it rather than
@@ -42,6 +52,33 @@ describe('DialogForm', () => {
       screen.getByRole('heading', { name: 'Edit Label' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue('Alice');
+  });
+
+  it('starts workspace dialogs at an even split and resizes them from the keyboard', () => {
+    render(
+      <DialogForm
+        open
+        onClose={vi.fn()}
+        title="Edit field"
+        formId="resizable-workspace-form"
+        submitLabel="Save"
+        onSubmit={vi.fn()}
+        aside={<div>Participant preview</div>}
+      >
+        <Field name="label" label="Label" component={InputField} />
+      </DialogForm>,
+    );
+
+    const resizeHandle = screen.getByRole('slider', {
+      name: 'Resize form and preview panes',
+    });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '50');
+    expect(
+      screen.getByText('Participant preview').closest('aside'),
+    ).toHaveClass('z-10');
+
+    fireEvent.keyDown(resizeHandle, { key: 'ArrowRight' });
+    expect(resizeHandle).toHaveAttribute('aria-valuenow', '52');
   });
 
   it('submits via the footer button’s form= association, not DOM nesting', async () => {
@@ -186,6 +223,8 @@ describe('DialogForm', () => {
         expect.objectContaining({
           fieldErrors: { label: ['Name already used'] },
         }),
+        // The form element the search is scoped to.
+        expect.anything(),
       );
     });
   });
@@ -330,6 +369,204 @@ describe('DialogForm', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    });
+  });
+});
+
+/**
+ * Cancel, the close button, Escape and a backdrop click all reach `DialogForm`
+ * through fresco-ui `Dialog`'s single `closeDialog` prop. Before this guard,
+ * every one of them discarded a half-typed nested editor with no warning, and
+ * the guard that did exist was opt-in per caller — which the array-row editor
+ * (the one in the bug report) never opted into.
+ */
+describe('DialogForm unsaved-changes guard', () => {
+  const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
+
+  const renderForm = (onClose: () => void) =>
+    render(
+      <DialogForm
+        open
+        onClose={onClose}
+        title="Edit Field"
+        formId="guard-form"
+        submitLabel="Save"
+        onSubmit={vi.fn()}
+      >
+        <Field
+          name="hint"
+          label="Hint"
+          component={InputField}
+          initialValue="Committed"
+        />
+      </DialogForm>,
+    );
+
+  const cancel = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  it('closes immediately when nothing has been changed', () => {
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    cancel();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(openDialogSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks before discarding an edit, and only closes on confirm', async () => {
+    let resolveDialog: ((value: boolean) => void) | undefined;
+    openDialogSpy.mockReturnValueOnce(
+      new Promise<boolean>((resolve) => {
+        resolveDialog = resolve;
+      }),
+    );
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hint' }), {
+      target: { value: 'DRAFT-HINT' },
+    });
+    cancel();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(openDialogSpy).toHaveBeenCalledTimes(1);
+
+    resolveDialog!(true);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the editor and its values when the discard is declined', async () => {
+    openDialogSpy.mockResolvedValueOnce(false);
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    const hint = screen.getByRole('textbox', { name: 'Hint' });
+    fireEvent.change(hint, { target: { value: 'DRAFT-HINT' } });
+    cancel();
+
+    await waitFor(() => expect(openDialogSpy).toHaveBeenCalledTimes(1));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(hint).toHaveValue('DRAFT-HINT');
+  });
+
+  it('does not nag once an edit has been undone by hand', async () => {
+    // The form store's own `isDirty` is sticky — set by any `setFieldValue` and
+    // cleared only by `reset` — so guarding on it would keep asking about a form
+    // the researcher had already put back. The stage editor's guard rejected it
+    // for the same reason.
+    const onClose = vi.fn();
+    renderForm(onClose);
+
+    const hint = screen.getByRole('textbox', { name: 'Hint' });
+    fireEvent.change(hint, { target: { value: 'Changed' } });
+    fireEvent.change(hint, { target: { value: 'Committed' } });
+    cancel();
+
+    expect(openDialogSpy).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers its draft with the navigation guards while it is dirty', async () => {
+    const { unmount } = renderForm(vi.fn());
+
+    expect(hasDirtyNestedDraft()).toBe(false);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hint' }), {
+      target: { value: 'DRAFT-HINT' },
+    });
+    expect(hasDirtyNestedDraft()).toBe(true);
+
+    unmount();
+    expect(hasDirtyNestedDraft()).toBe(false);
+  });
+});
+
+/**
+ * A demoted tab keeps its editors mounted rather than tearing them away
+ * (`held-nested-editor`), so a Finish can be pressed in a tab whose writes can
+ * never reach disk. Outside a stage editor that commit writes the canonical
+ * protocol, and the reclaim's re-read of the saved row would replace it without
+ * a word — the silent discard, one step further along.
+ */
+describe('DialogForm in a tab that cannot save', () => {
+  const createTestStore = () =>
+    configureStore({
+      reducer: combineReducers({ app, stageEditorDraft }),
+    });
+
+  const renderForm = (
+    store: ReturnType<typeof createTestStore>,
+    onSubmit: () => void,
+  ) =>
+    render(
+      <Provider store={store}>
+        <DialogForm
+          open
+          onClose={vi.fn()}
+          title="Edit Field"
+          formId="lock-form"
+          submitLabel="Save"
+          onSubmit={onSubmit}
+        >
+          <Field
+            name="hint"
+            label="Hint"
+            component={InputField}
+            initialValue="Committed"
+          />
+        </DialogForm>
+      </Provider>,
+    );
+
+  const save = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  it('refuses the commit, and says why, while another tab holds the protocol', async () => {
+    const store = createTestStore();
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    const onSubmit = vi.fn();
+
+    renderForm(store, onSubmit);
+    save();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'This protocol is open in another tab, which holds the saved copy. Close the other tab to save these changes here.',
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // Inside a stage editor the commit lands in that editor's own draft
+  // transaction, not the protocol — and it is the only way to move an inner
+  // editor's work somewhere the blocked-reclaim choice can rescue it.
+  it('accepts the commit inside an open stage editor transaction', async () => {
+    const store = createTestStore();
+    store.dispatch(setProtocolLockState('reclaim-blocked'));
+    store.dispatch(draftTimelineActions.reset({ stage, codebook: {} }));
+    const onSubmit = vi.fn();
+
+    renderForm(store, onSubmit);
+    save();
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('accepts the commit normally when this tab owns the protocol', async () => {
+    const store = createTestStore();
+    const onSubmit = vi.fn();
+
+    renderForm(store, onSubmit);
+    save();
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
     });
   });
 });

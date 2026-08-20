@@ -24,8 +24,18 @@ export default defineConfig({
     },
   },
   plugins: [
+    // No `bundleTypes`: that route runs the declarations through API
+    // Extractor, which ships its own TypeScript (5.9/6.0) and cannot resolve
+    // globals from the workspace's (7.x) lib — `ensureError`'s `Error` return
+    // type alone fails the build with "Unable to follow symbol". Emitting a
+    // `.d.ts` per module needs no second type system, and is what every other
+    // package here already does.
     dts({
-      bundleTypes: true,
+      // `src` only: the tsconfig also includes `*.ts` so the config files
+      // here are typechecked, and without this their declarations ship too.
+      include: ['src'],
+      // `dist/index.d.ts` is where `publishConfig.types` points.
+      insertTypesEntry: true,
     }),
   ],
 });

@@ -1,18 +1,21 @@
 - main:
-    - toolbar "Network composer tools":
-        - button "Select"
-        - button "Add node" [expanded]
-        - dialog:
-            - textbox "Person name":
-                - /placeholder: Type a name, then press Enter
-        - separator
-        - button "Automatic layout"
-        - separator
-        - button "Undo" [disabled]
-        - button "Redo" [disabled]
-    - application
-    - navigation:
-        - button "Previous Step" [disabled]
-        - progressbar "Progress indicator": x
-        - button "Next Step"
-    - region "Interview notifications"
+  - toolbar "Network composer tools":
+    - group "Editing tools":
+      - button "Select"
+      - button "Add node" [expanded] [pressed]
+      - dialog:
+        - textbox "Person name":
+          - /placeholder: Type a name, then press Enter
+    - separator
+    - group "Layout tools":
+      - button "Automatic layout"
+    - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo" [disabled]
+  - application
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

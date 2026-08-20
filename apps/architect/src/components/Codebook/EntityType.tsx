@@ -8,6 +8,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { ensureError } from '@codaco/shared-consts';
 import { Section } from '~/components/EditorLayout';
 import NewVariableWindow from '~/components/NewVariableWindow/NewVariableWindow';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -85,7 +86,7 @@ const EntityType = ({
       void openDialog({
         type: 'acknowledge',
         intent: 'info',
-        title: `Cannot delete ${name} ${entity}`,
+        title: 'Cannot delete type',
         children: (
           <Paragraph>
             The {name} {entity} cannot be deleted as it is currently in use.
@@ -96,13 +97,33 @@ const EntityType = ({
       return;
     }
     void confirm({
-      title: `Delete ${name} ${entity}`,
-      description: `Are you sure you want to delete the ${name} ${entity}? This cannot be undone.`,
-      confirmLabel: `Delete ${name} ${entity}`,
+      // Fixed, localisable action strings — see the same change in
+      // Codebook/Variables.tsx. A type name interpolated into the heading and
+      // the confirm button overflowed the dialog at every width (#1392).
+      title: 'Delete type',
+      // `codebook/deleteType` is inside the protocol timeline, so Undo restores
+      // it (#1400) — wording shared with the stage, variable and resource
+      // dialogs.
+      description: `Are you sure you want to delete the ${entity} type “${name}”? You can restore it with Undo while this protocol remains open.`,
+      confirmLabel: 'Delete type',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => {
-        void dispatch(deleteTypeAsync({ entity, type }));
+      // `.unwrap()` re-throws a rejected thunk so `confirm` can surface the
+      // refusal in the dialog's error paragraph and keep the dialog open.
+      // Without it the dispatch promise RESOLVES even when the thunk rejected,
+      // and the dialog closes reporting a deletion that never happened — the
+      // same defect #1392 fixed on the sibling variable deletion.
+      //
+      // `ensureError` because `.unwrap()` throws Redux Toolkit's plain
+      // `SerializedError`, not an `Error` — and the dialog only shows a caught
+      // value's `message` when it `instanceof Error`, so without this the
+      // researcher gets "An error occurred" instead of the reason.
+      onConfirm: async () => {
+        try {
+          await dispatch(deleteTypeAsync({ entity, type })).unwrap();
+        } catch (error) {
+          throw ensureError(error);
+        }
       },
     });
   }, [confirm, dispatch, entity, inUse, name, openDialog, type]);
@@ -168,7 +189,7 @@ const EntityType = ({
             size="sm"
             onClick={() => setShowAddVariable(true)}
           >
-            Add variable
+            Add attribute
           </Button>
         </div>
         {filteredVariables.length > 0 && (

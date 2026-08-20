@@ -770,7 +770,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         {
           kind: 'alterPresence',
           nodeTypeName: 'Classmate',
-          operator: 'does not Exist',
+          operator: 'does not exist',
         },
       ],
     });
@@ -850,7 +850,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'communication_freq',
         // The locked-type picker opens NewVariableWindow on create — the
         // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Variable name' }),
+        until: page.getByRole('textbox', { name: 'Attribute name' }),
       });
       await createVariableWithOptions(page, {
         variableName: 'communication_freq',
@@ -883,7 +883,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'group',
         // The locked-type picker opens NewVariableWindow on create — the
         // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Variable name' }),
+        until: page.getByRole('textbox', { name: 'Attribute name' }),
       });
       await createVariableWithOptions(page, {
         variableName: 'group',
@@ -936,7 +936,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         variableName: 'social_networks_research_relationship',
         // The locked-type picker opens NewVariableWindow on create — the
         // required outcome for the helper's swallowed-click retry.
-        until: page.getByRole('textbox', { name: 'Variable name' }),
+        until: page.getByRole('textbox', { name: 'Attribute name' }),
       });
       await createVariableWithOptions(page, {
         variableName: 'social_networks_research_relationship',

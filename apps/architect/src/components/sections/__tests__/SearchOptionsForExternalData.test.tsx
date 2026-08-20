@@ -55,7 +55,7 @@ describe('SearchOptionsForExternalData', () => {
       children: <SearchOptionsForExternalData {...STAGE_PROPS} />,
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
     await waitFor(() => {
       expect(
         screen.queryByRole('group', {
@@ -64,7 +64,7 @@ describe('SearchOptionsForExternalData', () => {
       ).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTitle('Turn this feature on or off'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Search Options' }));
     await screen.findByRole('group', {
       name: 'Which attributes should be searchable?',
     });
@@ -73,5 +73,39 @@ describe('SearchOptionsForExternalData', () => {
       getFieldState('searchOptions.matchProperties')?.value,
     ).toBeUndefined();
     expect(getFieldState('searchOptions.fuzziness')?.value).toBeUndefined();
+  });
+
+  // The guidance opened "The selecting lots of attributes here…" (#1400).
+  it('gives the searchable-attributes guidance a grammatical opening', () => {
+    renderStageForm({
+      committedStage: COMMITTED_STAGE,
+      children: <SearchOptionsForExternalData {...STAGE_PROPS} />,
+    });
+
+    expect(
+      screen.getByText(/^Selecting lots of attributes here may slow/),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * This section is where the Issues panel's start-cased field paths were most
+   * visible: a roster with no searchable attribute selected listed "Search
+   * Options Match Properties", which names nothing the researcher can see on
+   * the page. The anchor now carries the field's own label (#1400) — including
+   * for `fuzziness`, whose label is hidden on screen but is still the name the
+   * control announces.
+   */
+  it('anchors its fields for the Issues panel under their own labels', () => {
+    const { container } = renderStageForm({
+      committedStage: COMMITTED_STAGE,
+      children: <SearchOptionsForExternalData {...STAGE_PROPS} />,
+    });
+
+    expect(
+      container.querySelector('#field_searchOptions_matchProperties__error'),
+    ).toHaveAttribute('data-name', 'Which attributes should be searchable?');
+    expect(
+      container.querySelector('#field_searchOptions_fuzziness__error'),
+    ).toHaveAttribute('data-name', 'Search accuracy');
   });
 });

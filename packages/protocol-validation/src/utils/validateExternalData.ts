@@ -13,7 +13,7 @@ export type Network = {
 
 const allowedVariableName = (value: string) => {
   if (!/^[a-zA-Z0-9._\-:]+$/.test(value)) {
-    return 'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported.';
+    return 'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported.';
   }
   return undefined;
 };
@@ -43,5 +43,5 @@ export const validateNames = (items: string[] = []) => {
     return false;
   }
 
-  return `Variable name not allowed ("${errors.join('", "')}"). Only letters, numbers and the symbols ._-: are supported.`;
+  return `Attribute name not allowed ("${errors.join('", "')}"). Only letters, numbers and the symbols ._-: are supported.`;
 };

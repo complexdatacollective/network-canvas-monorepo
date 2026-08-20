@@ -1,9 +1,6 @@
 'use client';
 
-import { invariant } from 'es-toolkit';
-import { useContext } from 'react';
-
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
@@ -26,11 +23,8 @@ import {
   countGeneticParents,
 } from '../../components/wizards/parentTypeOptions';
 import { readBiologicalSex } from '../../components/wizards/transforms/personAttributes';
-import {
-  FamilyPedigreeContext,
-  FamilyPedigreeStoreBridge,
-  useFamilyPedigreeStore,
-} from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
 import type { VariableConfig } from '../../store';
 import {
   getEdgeRelationshipType,
@@ -70,12 +64,6 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
-  const familyPedigreeStore = useContext(FamilyPedigreeContext);
-  invariant(
-    familyPedigreeStore,
-    'PedigreeView must be used within a FamilyPedigreeProvider',
-  );
-
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
@@ -125,7 +113,12 @@ export default function PedigreeView({
     biologicalSexVariable,
   };
 
-  const { confirm, openDialog } = useDialog();
+  const { confirm, openDialog } = useFamilyPedigreeDialog();
+
+  // Saving the person editor changes the pedigree without a page change and
+  // without altering the member count the stage's own live region reports, so
+  // a screen-reader participant would otherwise get no confirmation at all.
+  const { announce } = useAccessibilityAnnouncements();
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -149,14 +142,12 @@ export default function PedigreeView({
       submitLabel: 'Add',
       cancelLabel: 'Cancel',
       children: (
-        <FamilyPedigreeStoreBridge store={familyPedigreeStore}>
-          <AddPersonFields
-            anchorNodeId={nodeId}
-            nodes={nodes}
-            edges={edges}
-            variableConfig={variableConfig}
-          />
-        </FamilyPedigreeStoreBridge>
+        <AddPersonFields
+          anchorNodeId={nodeId}
+          nodes={nodes}
+          edges={edges}
+          variableConfig={variableConfig}
+        />
       ),
     });
 
@@ -374,13 +365,16 @@ export default function PedigreeView({
       }
     }
     if (partnershipChanged && isFinalized) syncMetadata();
+    // The submitted name, never the one this dialog opened with: a participant
+    // is free to clear the name (it is explicitly optional), and naming the
+    // person they just erased would be worse than not naming them at all.
+    announce(name ? `Details updated for ${name}.` : 'Details updated.');
     return { success: true };
   };
 
   const handleAddChild = async (nodeId: string) => {
     const result = await openAddChildWizard(
       openDialog,
-      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -397,7 +391,6 @@ export default function PedigreeView({
   const handleAddSibling = async (nodeId: string) => {
     const result = await openAddSiblingWizard(
       openDialog,
-      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -416,7 +409,6 @@ export default function PedigreeView({
       geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
-            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
@@ -426,7 +418,6 @@ export default function PedigreeView({
           )
         : await openDefineParentsWizard(
             openDialog,
-            familyPedigreeStore,
             nodeId,
             nodes,
             edges,

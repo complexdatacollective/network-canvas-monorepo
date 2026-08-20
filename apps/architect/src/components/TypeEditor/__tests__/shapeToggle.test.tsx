@@ -75,7 +75,7 @@ describe('ShapeVariableMapping toggle', () => {
   it('turns shape mapping on', () => {
     const { getShape } = renderWithShape({ default: 'circle' });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
     expect(getShape().dynamic).toEqual({});
   });
@@ -89,7 +89,7 @@ describe('ShapeVariableMapping toggle', () => {
       dynamic: MAPPING,
     });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
     expect(getShape().dynamic).toBeUndefined();
   });
@@ -100,7 +100,7 @@ describe('ShapeVariableMapping toggle', () => {
       dynamic: MAPPING,
     });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
     expect(getShape().default).toBe('diamond');
   });
@@ -111,7 +111,7 @@ describe('ShapeVariableMapping toggle', () => {
       dynamic: MAPPING,
     });
 
-    const toggle = screen.getByLabelText('Map variable to shape');
+    const toggle = screen.getByLabelText('Map attribute to shape');
     fireEvent.click(toggle);
     fireEvent.click(toggle);
 
@@ -129,13 +129,13 @@ describe('ShapeVariableMapping toggle', () => {
   // was refused.
   const INCOMPLETE_MAPPING_ERRORS = {
     'shape.dynamic':
-      'Select a variable to map to a shape, or turn off shape mapping.',
+      'Select an attribute to map to a shape, or turn off shape mapping.',
   };
 
   it('refuses to save a mapping enabled for the first time and left empty', () => {
     const { getValues } = renderWithShape({ default: 'circle' });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
     expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
   });
@@ -146,7 +146,7 @@ describe('ShapeVariableMapping toggle', () => {
       dynamic: MAPPING,
     });
 
-    const toggle = screen.getByLabelText('Map variable to shape');
+    const toggle = screen.getByLabelText('Map attribute to shape');
     fireEvent.click(toggle);
     fireEvent.click(toggle);
 

@@ -58,13 +58,13 @@ export async function createVariableViaSpotlight(
   },
 ): Promise<void> {
   const trigger = (opts.scope ?? page).getByRole('button', {
-    name: opts.buttonName ?? 'Select variable',
+    name: opts.buttonName ?? 'Select attribute',
   });
 
   const attempt = async () => {
     await trigger.click();
     const search = page.getByRole('searchbox', {
-      name: 'Find or create a variable',
+      name: 'Find or create an attribute',
     });
     await search.fill(opts.variableName);
     // The list may still show the pre-filter rows for a beat after the
@@ -75,7 +75,7 @@ export async function createVariableViaSpotlight(
     const rows = page.getByTestId('spotlight-list-item');
     await rows.filter({ hasText: opts.variableName }).first().waitFor();
     const createRow = rows
-      .filter({ hasText: 'Create new variable called' })
+      .filter({ hasText: 'Create new attribute called' })
       .first();
     if (await createRow.count()) {
       await createRow.click();
@@ -117,9 +117,9 @@ export async function createVariableViaSpotlight(
 // disabled — only click through it when it's actually interactive.
 //
 // Options (components/Options/Options.tsx) only reveal once an
-// ordinal/categorical type is set. "Add new" commits a blank row straight
-// into the array (`immediateAdd` — no separate confirm-to-add step), but
-// Option.tsx's own mount effect immediately opens that blank row into edit
+// ordinal/categorical type is set. "Create new option" commits a blank row
+// straight into the array (`immediateAdd` — no separate confirm-to-add step),
+// but Option.tsx's own mount effect immediately opens that blank row into edit
 // mode. Only one option can be "being edited" at a time (ArrayField tracks a
 // single editingId) — opening a row collapses whichever one was previously
 // edited back to a read-only summary line ("label — value") and unmounts its
@@ -131,7 +131,7 @@ export async function createVariableViaSpotlight(
 // moving on; the Check-icon button (aria-label "Finish editing option") just
 // collapses it back to summary. We click that after each option, before
 // adding the next, to avoid depending on the auto-open effect racing our own
-// next "Add new" click.
+// next "Create new option" click.
 export async function createVariableWithOptions(
   page: Page,
   opts: {
@@ -141,23 +141,18 @@ export async function createVariableWithOptions(
   },
 ): Promise<void> {
   await page
-    .getByRole('textbox', { name: 'Variable name' })
+    .getByRole('textbox', { name: 'Attribute name' })
     .fill(opts.variableName);
 
   const typeLabel = opts.type === 'ordinal' ? 'Ordinal' : 'Categorical';
-  const typeCombobox = page.getByRole('combobox', { name: 'Variable type' });
+  const typeCombobox = page.getByRole('combobox', { name: 'Attribute type' });
   if (await typeCombobox.isEnabled()) {
     await typeCombobox.click();
     await page.getByRole('option', { name: typeLabel }).click();
   }
 
-  // Scope to this dialog (InlineEditScreen renders `Dialog title="Create New
-  // Variable"`). The prompt editor underneath has its own "Variable Options"
-  // list with an identically-labelled 'Add new' — it only mounts once the
-  // prompt's `variable` is set, which is after this runs, but relying on that
-  // ordering would make a strict-mode collision one refactor away.
   await fillOptionRows(
-    page.getByRole('dialog', { name: 'Create New Variable' }),
+    page.getByRole('dialog', { name: 'Create New Attribute' }),
     opts.options.map((option) =>
       typeof option === 'string'
         ? { label: option, value: option.toLowerCase() }
@@ -176,21 +171,23 @@ export type OptionRow = { label: string; value: string };
 
 // Fill an Options editor's rows (components/Options/*), shared between the
 // NewVariableWindow flow above and the form-field dialog's
-// 'Categorical/Ordinal options' section (editor-sections/
-// form-field-controls.ts). `scope` bounds the 'Add new' click — several
-// sections can show identically-labelled 'Add new' buttons at once; the row
-// edit fields themselves are page-unique because only one option row is ever
-// open (see the Option.tsx notes above). The Value input coerces
-// number-like strings to numbers on write (Option.tsx parseOptionValue:
-// `'5'` → 5, `'-2'` → -2), so callers pass raw strings for both numeric and
-// string-valued options.
+// 'Categorical/Ordinal options' field (editor-sections/form-field-controls.ts).
+// `scope` names WHICH editor to fill, not which of
+// several same-named buttons to press: every options list is now the only
+// "Create new option" on its surface. The row edit fields are page-unique
+// because only one option row is ever open (see the Option.tsx notes above).
+// The Value input coerces number-like strings to numbers on write (Option.tsx
+// parseOptionValue: `'5'` → 5, `'-2'` → -2), so callers pass raw strings for
+// both numeric and string-valued options.
 export async function fillOptionRows(
   scope: Locator,
   rows: OptionRow[],
 ): Promise<void> {
   const page = scope.page();
   for (const row of rows) {
-    await scope.getByRole('button', { name: 'Add new', exact: true }).click();
+    await scope
+      .getByRole('button', { name: 'Create new option', exact: true })
+      .click();
     await page.getByRole('textbox', { name: 'Label' }).fill(row.label);
     await page.getByRole('textbox', { name: 'Value' }).fill(row.value);
     await page.getByRole('button', { name: 'Finish editing option' }).click();

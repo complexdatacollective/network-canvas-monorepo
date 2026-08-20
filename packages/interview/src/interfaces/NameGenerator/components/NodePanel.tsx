@@ -114,11 +114,17 @@ function NodePanel(props: NodePanelProps) {
       minimize={minimize}
       testId="node-panel"
     >
-      {isExternalData && status.isLoading ? (
+      {/*
+        `idle` counts as loading here: an external panel that has not started
+        reading yet has no nodes, and showing its empty list would be the same
+        false statement the roster used to make.
+      */}
+      {isExternalData &&
+      (status.state === 'idle' || status.state === 'loading') ? (
         <div className="flex flex-1 items-center justify-center">
           <Loading message="Loading..." />
         </div>
-      ) : isExternalData && status.error ? (
+      ) : isExternalData && status.state === 'error' ? (
         <div className="flex flex-1 flex-col items-center justify-center">
           <Heading level="h4">Something went wrong</Heading>
           <Paragraph>External data could not be loaded.</Paragraph>

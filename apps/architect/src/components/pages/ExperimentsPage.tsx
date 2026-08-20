@@ -1,26 +1,48 @@
 import { ArrowLeft, FlaskConical } from 'lucide-react';
+import { useCallback, useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
-import Button from '@codaco/fresco-ui/Button';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import type { ToolbarSegment } from '@codaco/fresco-ui/SegmentedToolbar';
+import { ToolbarButton } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Layout } from '~/components/EditorLayout';
-import ActionToolbar from '~/components/ProjectNav/ActionToolbar';
+import { useActionToolbar } from '~/components/ProjectNav/ActionToolbar';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
-import { getExperiments, getProtocol } from '~/selectors/protocol';
+import { getExperiments } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const ExperimentsPage = () => {
+  const encryptedVariablesLabelId = useId();
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
-  const protocol = useSelector(getProtocol);
   const experiments = useSelector(getExperiments) ?? {};
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     setLocation('/protocol');
-  };
+  }, [setLocation]);
+  // Published to the one toolbar surface the workspace owns rather than
+  // rendered here, so leaving this page animates these controls out as the next
+  // route's animate in — and so two fixed toolbars can never share a screen.
+  // Memoised because `useActionToolbar` re-registers on every new props
+  // identity.
+  const toolbarProps = useMemo(
+    () => ({
+      'aria-label': 'Experiments actions',
+      'children': [
+        <ToolbarButton
+          key="go-back"
+          icon={<ArrowLeft />}
+          onClick={handleGoBack}
+        >
+          Go Back
+        </ToolbarButton>,
+      ],
+    }),
+    [handleGoBack],
+  );
+  useActionToolbar(toolbarProps);
   const handleToggleExperiment = (key: string, checked: boolean) => {
     dispatch(
       actionCreators.updateProtocol({
@@ -28,31 +50,10 @@ const ExperimentsPage = () => {
       }),
     );
   };
-  if (!protocol) {
-    return (
-      <Layout>
-        <div className="flex h-full flex-col items-center justify-center gap-4">
-          <Paragraph>
-            No protocol loaded. Please open a protocol first.
-          </Paragraph>
-          <Button onClick={() => setLocation('/')} color="default">
-            Go Home
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
+  // No "no protocol loaded" branch: ProtocolRouteGuard sends a /protocol route
+  // with no protocol home before this page renders, so a second, weaker guard
+  // here would only be another place for the two to disagree.
   const isEncryptedEnabled = experiments.encryptedVariables ?? false;
-  const toolbarItems: ToolbarSegment[] = [
-    {
-      type: 'button',
-      id: 'go-back',
-      label: 'Go Back',
-      icon: <ArrowLeft />,
-      showLabel: true,
-      onClick: handleGoBack,
-    },
-  ];
   return (
     <div className="relative h-full overflow-y-auto pb-32 print:h-auto print:overflow-visible print:pb-0">
       <Layout>
@@ -62,7 +63,9 @@ const ExperimentsPage = () => {
               <div className="bg-mustard/20 rounded-lg p-2">
                 <FlaskConical className="text-mustard h-6 w-6" />
               </div>
-              <Heading level="h1">Experimental Features</Heading>
+              <Heading level="h1" {...routeFocusTargetProps}>
+                Experimental Features
+              </Heading>
             </div>
             <Paragraph>
               These features are experimental and may not be fully supported.
@@ -79,13 +82,21 @@ const ExperimentsPage = () => {
               )}
             >
               <div className="min-w-0 flex-1">
-                <Heading level="h4">Encrypted Variables</Heading>
+                <Heading level="h4" id={encryptedVariablesLabelId}>
+                  Encrypted Attributes
+                </Heading>
                 <Paragraph className="text-muted text-sm">
-                  Enable support for encrypted variables in the codebook. This
+                  Enable support for encrypted attributes in the codebook. This
                   allows sensitive data to be collected securely.
                 </Paragraph>
               </div>
               <ToggleField
+                // A bare `<button role="switch">` takes its name from
+                // aria-labelledby, aria-label, its own contents or `title` —
+                // and this one has none of those, so it reached assistive
+                // technology as an unnamed switch. The feature's heading is
+                // its name.
+                aria-labelledby={encryptedVariablesLabelId}
                 value={isEncryptedEnabled}
                 onChange={(checked) =>
                   handleToggleExperiment('encryptedVariables', !!checked)
@@ -95,7 +106,6 @@ const ExperimentsPage = () => {
           </div>
         </div>
       </Layout>
-      <ActionToolbar aria-label="Experiments actions" items={toolbarItems} />
     </div>
   );
 };

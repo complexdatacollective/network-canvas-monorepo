@@ -31,10 +31,10 @@ const operators = {
 };
 
 // List of operator options with labels
-export const operatorsAsOptions = [
+const operatorLabels: [value: string, label: string][] = [
   [operators.EXACTLY, 'is exactly'],
   [operators.EXISTS, 'exists'],
-  [operators.NOT_EXISTS, 'does not Exist'],
+  [operators.NOT_EXISTS, 'does not exist'],
   [operators.NOT, 'is not'],
   [operators.GREATER_THAN, 'is greater than'],
   [operators.GREATER_THAN_OR_EQUAL, 'is greater than or exactly'],
@@ -51,7 +51,12 @@ export const operatorsAsOptions = [
   [operators.OPTIONS_LESS_THAN, 'number of selected options is less than'],
   [operators.OPTIONS_EQUALS, 'number of selected options is exactly'],
   [operators.OPTIONS_NOT_EQUALS, 'number of selected options is not'],
-].map(([value, label]) => ({ value, label }));
+];
+
+export const operatorsAsOptions = operatorLabels.map(([value, label]) => ({
+  value,
+  label,
+}));
 
 // Operators that also require a value to be used
 export const operatorsWithValue = new Set([
@@ -107,10 +112,4 @@ export const operatorsByType = {
     'OPTIONS_NOT_EQUALS',
   ]),
   exists: new Set(['EXISTS', 'NOT_EXISTS']),
-};
-
-export const templates = {
-  entityTypeRule: ['type', 'operator'],
-  entityVariableRule: ['type', 'operator', 'attribute', 'value'],
-  egoRule: ['attribute', 'value'],
 };

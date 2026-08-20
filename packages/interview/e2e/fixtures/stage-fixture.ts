@@ -88,8 +88,13 @@ async function navigateDndToTarget(
  * Form fixture for EgoForm/AlterForm/NameGenerator stages.
  *
  * Provides methods to interact with form fields using their data-field-name attribute.
+ *
+ * Exported so the per-interface fixtures that live in their own modules
+ * (anonymisation-fixture.ts, network-composer-fixture.ts) can reach `field()`
+ * instead of restating the selector — they are not hung off StageFixture, so
+ * `stage.form` is not available to them.
  */
-class FormFixture {
+export class FormFixture {
   readonly page: Page;
 
   constructor(page: Page) {
@@ -97,18 +102,60 @@ class FormFixture {
   }
 
   /**
-   * Get a field container by its field name.
-   * Fields have data-field-name attribute set by the form system.
+   * A field container by its field name — the fixture's one definition of the
+   * `data-field-name` seam (stamped by `fresco-ui/src/form/hooks/useField.ts`).
+   *
+   * PUBLIC deliberately. While it was private, every scenario that needed a
+   * field for something the fixture had no method for rebuilt the selector by
+   * hand, so the markup contract lived in dozens of places and the fixture
+   * that owns it went unused. Reach for this instead of writing
+   * `[data-field-name="…"]` in a scenario.
+   *
+   * `scope` narrows the lookup to a sub-tree, for the forms that are not the
+   * only form on screen — NetworkComposer renders its attribute form inside
+   * the inspector panel, so it searches there. Defaults to the whole page.
    */
-  private getField(fieldName: string): Locator {
-    return this.page.locator(`[data-field-name="${fieldName}"]`);
+  field(fieldName: string, scope?: Locator): Locator {
+    const root = scope ?? this.page;
+    return root.locator(`[data-field-name="${fieldName}"]`);
+  }
+
+  /**
+   * Every field container on the stage, in DOM (declaration) order. For
+   * assertions about the form as a whole — field count, ordering — rather than
+   * about one named field.
+   */
+  fields(): Locator {
+    return this.page.locator('[data-field-name]');
+  }
+
+  /**
+   * The field container whose rendered text includes `text`, for the fields a
+   * scenario knows by their visible prompt rather than by variable id.
+   */
+  fieldByText(text: string): Locator {
+    return this.page.locator('[data-field-name]', { hasText: text });
+  }
+
+  /**
+   * Whether focus currently rests inside the named field. Scenarios asserting
+   * that a validation failure kept focus in place reached for
+   * `document.activeElement?.closest('[data-field-name="…"]')`; this owns the
+   * selector so those reads cannot drift from `field()`.
+   */
+  async focusIsInside(fieldName: string): Promise<boolean> {
+    return this.page.evaluate(
+      (name) =>
+        !!document.activeElement?.closest(`[data-field-name="${name}"]`),
+      fieldName,
+    );
   }
 
   /**
    * Fill a text input field.
    */
   async fillText(fieldName: string, value: string): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const input = field.locator('input, textarea').first();
     await input.click();
     await input.fill(value);
@@ -123,7 +170,7 @@ class FormFixture {
     optionLabel: string | RegExp,
     options?: { exact?: boolean },
   ): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const radio = field.getByRole('radio', {
       name: optionLabel,
       exact: options?.exact ?? true,
@@ -140,7 +187,7 @@ class FormFixture {
    * go to index 0, then ArrowRight until aria-valuetext matches the target.
    */
   async selectLikert(fieldName: string, optionLabel: string): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const slider = field.getByRole('slider');
     const max = Number(await slider.getAttribute('max'));
 
@@ -185,7 +232,7 @@ class FormFixture {
     fieldName: string,
     optionLabel: string,
   ): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const option = field.getByRole('checkbox', {
       name: optionLabel,
       exact: true,
@@ -198,7 +245,7 @@ class FormFixture {
    * Select a specific checkbox option within a checkbox group.
    */
   async selectCheckbox(fieldName: string, optionLabel: string): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const checkbox = field.getByRole('checkbox', {
       name: optionLabel,
       exact: true,
@@ -211,7 +258,7 @@ class FormFixture {
    * Fill a date input field.
    */
   async fillDate(fieldName: string, value: string): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const input = field.locator('input[type="date"]');
     await input.fill(value);
     await expect(input).toHaveValue(value);
@@ -221,7 +268,7 @@ class FormFixture {
    * Fill a number input field.
    */
   async fillNumber(fieldName: string, value: string): Promise<void> {
-    const field = this.getField(fieldName);
+    const field = this.field(fieldName);
     const input = field.getByRole('spinbutton');
     await input.click();
     await input.fill(value);
@@ -925,6 +972,14 @@ class GeospatialFixture {
    */
   get searchInput(): Locator {
     return this.page.getByTestId('geospatial-search-input');
+  }
+
+  /**
+   * Get the search's polite status region, which reports the outcome of the
+   * last search (the place the map moved to, a failure, or no matches).
+   */
+  get searchStatus(): Locator {
+    return this.page.getByTestId('geospatial-search-status');
   }
 
   /**

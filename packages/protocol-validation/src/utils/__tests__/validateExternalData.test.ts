@@ -177,7 +177,7 @@ describe('validateExternalData', () => {
       const invalidNames = ['first name', 'last name'];
 
       const result = validateNames(invalidNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
       expect(result).toContain('first name');
       expect(result).toContain('last name');
     });
@@ -186,7 +186,7 @@ describe('validateExternalData', () => {
       const invalidNames = ['name!', 'age@', 'data#field'];
 
       const result = validateNames(invalidNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
       expect(result).toContain('name!');
       expect(result).toContain('age@');
       expect(result).toContain('data#field');
@@ -241,7 +241,7 @@ describe('validateExternalData', () => {
       const invalidNames = ['1name!', '2field@'];
 
       const result = validateNames(invalidNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
     });
 
     it('should identify only invalid names in mixed array', () => {
@@ -253,7 +253,7 @@ describe('validateExternalData', () => {
       ];
 
       const result = validateNames(mixedNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
       expect(result).toContain('invalid name');
       expect(result).toContain('bad@name');
       expect(result).not.toContain('validName');
@@ -264,14 +264,14 @@ describe('validateExternalData', () => {
       const invalidNames = ['namé', 'naïve', '名前'];
 
       const result = validateNames(invalidNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
     });
 
     it('should reject empty string', () => {
       const invalidNames = [''];
 
       const result = validateNames(invalidNames);
-      expect(result).toContain('Variable name not allowed');
+      expect(result).toContain('Attribute name not allowed');
     });
 
     it('should allow complex valid combinations', () => {

@@ -73,8 +73,11 @@ describe('CodebookVariableValidationSection', () => {
 
     renderSection();
 
+    // The negative of the expanded case below. This used to query an "Add
+    // new" button, which this section has never rendered — the rule list is a
+    // switch group — so the assertion passed no matter what was on screen.
     expect(
-      screen.queryByRole('button', { name: 'Add new' }),
+      screen.queryByRole('group', { name: 'Requirements' }),
     ).not.toBeInTheDocument();
   });
 
@@ -103,15 +106,13 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     // No existing rules: the section starts collapsed, so its toggle has to
     // be opened before the rule list is reachable. `Section`'s toggle
     // handler is async (it awaits `handleToggleChange`), so the resulting
     // `setInternalOpen` lands a microtask after the click.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     fireEvent.click(
       await screen.findByRole('switch', { name: 'Required', hidden: true }),
     );
@@ -125,8 +126,6 @@ describe('CodebookVariableValidationSection', () => {
         }),
       );
     });
-
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
   });
 
   it('commits the removal when the section is turned off, so the old rules leave the codebook', async () => {
@@ -140,12 +139,10 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     // Existing rules: the section starts expanded, so this click turns it off.
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'Turn this feature on or off' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
     await waitFor(() => {
       expect(updateVariableAsync).toHaveBeenCalledWith(
@@ -156,8 +153,258 @@ describe('CodebookVariableValidationSection', () => {
         }),
       );
     });
+  });
 
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(1);
+  it('writes a numeric rule with its valid initial value', async () => {
+    codebookVariables.current = {
+      v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+        id: string;
+      },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
+    fireEvent.click(
+      await screen.findByRole('switch', {
+        name: 'Minimum value',
+        hidden: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variable: 'v1',
+          configuration: { validation: { minValue: 0 } },
+          replaceProperties: ['validation'],
+        }),
+      );
+    });
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(0);
+    expect(
+      screen.queryByText(
+        'Enter a value for "Minimum value", or switch the rule off.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    'Different from',
+    'Same as',
+    'Less than',
+    'Greater than',
+    'Less than or equal to',
+    'Greater than or equal to',
+  ])(
+    'leaves the %s picker untouched and waits for interaction before showing an error',
+    async (label) => {
+      codebookVariables.current = {
+        v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+          id: string;
+        },
+        v2: { id: 'v2', name: 'Limit', type: 'number' } as Variable & {
+          id: string;
+        },
+      };
+      updateVariableAsync.mockClear();
+
+      renderSection();
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
+      const ruleToggle = await screen.findByRole('switch', {
+        name: label,
+        hidden: true,
+      });
+      ruleToggle.focus();
+      fireEvent.click(ruleToggle);
+
+      const picker = screen.getByRole('combobox', { name: label });
+      expect(ruleToggle).toHaveFocus();
+      expect(picker).not.toHaveFocus();
+      expect(picker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+
+      fireEvent.focus(picker);
+      fireEvent.blur(picker);
+
+      await waitFor(() => {
+        expect(picker).toHaveAttribute('aria-invalid', 'true');
+      });
+      expect(
+        screen.getAllByText(
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
+        ).length,
+      ).toBeGreaterThan(0);
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    'Different from',
+    'Same as',
+    'Less than',
+    'Greater than',
+    'Less than or equal to',
+    'Greater than or equal to',
+  ])(
+    'does not let an earlier picker error leak into a newly enabled %s rule',
+    async (label) => {
+      codebookVariables.current = {
+        v1: { id: 'v1', name: 'Age', type: 'number' } as Variable & {
+          id: string;
+        },
+        v2: { id: 'v2', name: 'Limit', type: 'number' } as Variable & {
+          id: string;
+        },
+      };
+      updateVariableAsync.mockClear();
+
+      renderSection();
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
+      const firstLabel =
+        label === 'Different from' ? 'Same as' : 'Different from';
+      const firstToggle = await screen.findByRole('switch', {
+        name: firstLabel,
+        hidden: true,
+      });
+      fireEvent.click(firstToggle);
+      const firstPicker = screen.getByRole('combobox', { name: firstLabel });
+      fireEvent.focus(firstPicker);
+      fireEvent.blur(firstPicker);
+      await waitFor(() => {
+        expect(firstPicker).toHaveAttribute('aria-invalid', 'true');
+      });
+      fireEvent.click(firstToggle);
+
+      const nextToggle = screen.getByRole('switch', {
+        name: label,
+        hidden: true,
+      });
+      nextToggle.focus();
+      fireEvent.click(nextToggle);
+
+      const nextPicker = screen.getByRole('combobox', { name: label });
+      expect(nextToggle).toHaveFocus();
+      expect(nextPicker).not.toHaveFocus();
+      expect(nextPicker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+      expect(updateVariableAsync).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not write a contradictory pair, then writes it once corrected', async () => {
+    codebookVariables.current = {
+      v1: {
+        id: 'v1',
+        name: 'Age',
+        type: 'number',
+        validation: { maxValue: 6 },
+      } as Variable & { id: string },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    fireEvent.click(
+      await screen.findByRole('switch', {
+        name: 'Minimum value',
+        hidden: true,
+      }),
+    );
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: { validation: { maxValue: 6, minValue: 6 } },
+        }),
+      );
+    });
+    updateVariableAsync.mockClear();
+
+    const input = screen.getByRole('spinbutton', { name: 'Minimum value' });
+    fireEvent.change(input, { target: { value: '10' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(/minValue \(10\) is greater than maxValue \(6\)/)
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: '2' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variable: 'v1',
+          configuration: { validation: { maxValue: 6, minValue: 2 } },
+          replaceProperties: ['validation'],
+        }),
+      );
+    });
+  });
+
+  // Adversarial review: this surface has no save to refuse, so a rule it is
+  // holding back has no later moment to be explained. Clearing a rule's value
+  // is "switched on, not answered yet" — it must SAY so, not just quietly
+  // stop writing.
+  it('says so, and writes nothing, when a rule’s value is cleared', async () => {
+    codebookVariables.current = {
+      v1: {
+        id: 'v1',
+        name: 'Age',
+        type: 'number',
+        validation: { minValue: 10, maxValue: 20 },
+      } as Variable & { id: string },
+    };
+    updateVariableAsync.mockClear();
+
+    renderSection();
+
+    const input = await screen.findByRole('spinbutton', {
+      name: 'Maximum value',
+    });
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(
+          'Enter a value for "Maximum value", or switch the rule off.',
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+    expect(updateVariableAsync).not.toHaveBeenCalled();
+
+    // Switching the rule off is the way to actually drop the bound, and that
+    // does reach the codebook.
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Maximum value', hidden: true }),
+    );
+
+    await waitFor(() => {
+      expect(updateVariableAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          configuration: { validation: { minValue: 10 } },
+        }),
+      );
+    });
   });
 
   it('writes nothing for a variable whose section is never opened', async () => {
@@ -168,15 +415,14 @@ describe('CodebookVariableValidationSection', () => {
     };
     updateVariableAsync.mockClear();
 
-    const { store } = renderSection();
+    renderSection();
 
     await waitFor(() => {
       expect(
-        screen.getByRole('switch', { name: 'Turn this feature on or off' }),
+        screen.getByRole('switch', { name: 'Validation' }),
       ).toBeInTheDocument();
     });
 
     expect(updateVariableAsync).not.toHaveBeenCalled();
-    expect(store.getState().stageEditorDraft.ui.externalEditCount).toBe(0);
   });
 });

@@ -1,7 +1,6 @@
 import { values } from 'es-toolkit/compat';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type {
   CreateFormFieldProps,
   FieldValue,
@@ -9,9 +8,9 @@ import type {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { Variable, VariableOptions } from '@codaco/protocol-validation';
+import type { Variable, VariableOption } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
-import DirtyProbe from '~/components/DialogForm/DirtyProbe';
 import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -27,11 +26,19 @@ import {
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import { ensureError } from '~/utils/ensureError';
 import { getFieldId } from '~/utils/issues';
 import safeName from '~/utils/safeName';
 
 const FORM_ID = 'create-new-variable';
+
+/**
+ * A seeded option list the researcher may not edit. `readonly` because the
+ * canonical interface-owned sets (`INTERFACE_OWNED_OPTION_SETS`) are declared
+ * that way in `@codaco/protocol-validation` and nothing here may mutate one —
+ * the alternative, copying each set at its call site, would put the canonical
+ * data back into several hands.
+ */
+export type LockedVariableOptions = readonly VariableOption[];
 
 /** Stable empty list: `initialValue` is a register-effect dependency. */
 const NO_OPTIONS: OptionValue[] = [];
@@ -70,7 +77,7 @@ type NewVariableFieldsProps = {
   variableTypeOptions: typeof VARIABLE_OPTIONS;
   initialValues: Record<string, unknown>;
   typeLocked: boolean;
-  lockedOptions: VariableOptions | null;
+  lockedOptions: LockedVariableOptions | null;
 };
 
 const NewVariableFields = ({
@@ -90,11 +97,11 @@ const NewVariableFields = ({
 
   return (
     <Section layout="vertical">
-      <Subsection id={getFieldId('name')} title="Variable Name">
+      <Subsection id={getFieldId('name')} title="Attribute Name">
         <ArchitectField
           name="name"
-          label="Variable name"
-          hint="The variable name is how you will reference the variable elsewhere, including in exported data."
+          label="Attribute name"
+          hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
           component={VariableNameField}
           placeholder="e.g. Nickname"
           initialValue={
@@ -109,13 +116,13 @@ const NewVariableFields = ({
           }}
         />
       </Subsection>
-      <Subsection id={getFieldId('type')} title="Variable Type">
+      <Subsection id={getFieldId('type')} title="Attribute Type">
         <ArchitectField
           name="type"
-          label="Variable type"
+          label="Attribute type"
           labelHidden
           component={StyledSelectField}
-          placeholder="Select variable type"
+          placeholder="Select attribute type"
           options={variableTypeOptions}
           initialValue={
             typeof initialValues.type === 'string'
@@ -133,19 +140,14 @@ const NewVariableFields = ({
       {isOrdinalOrCategoricalType(variableType) && (
         <Subsection id={getFieldId('options')} title="Options">
           {lockedOptions ? (
-            <>
-              <p className="text-sm text-current/70">
-                These options are automatically configured by the interface and
-                cannot be modified.
-              </p>
-              <LockedOptions options={lockedOptions} />
-            </>
+            <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"
               label="Options"
               hint="Create the values this input control offers the participant."
               component={Options}
+              addButtonLabel="Create new option"
               initialValue={initialOptions}
               validation={optionsValidation}
             />
@@ -165,7 +167,7 @@ type NewVariableWindowProps = {
   onCancel: () => void;
   initialValues?: Record<string, unknown> | null;
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
-  lockedOptions?: VariableOptions | null;
+  lockedOptions?: LockedVariableOptions | null;
 };
 
 export default function NewVariableWindow({
@@ -179,8 +181,6 @@ export default function NewVariableWindow({
   lockedOptions = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-  const dirtyRef = useRef(false);
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const existingVariables = useAppSelector((state) =>
@@ -240,31 +240,6 @@ export default function NewVariableWindow({
     [dispatch, entity, type, onComplete, lockedOptions, mergedInitialValues],
   );
 
-  const handleCancel = useCallback(async () => {
-    // An untouched form loses nothing, so close immediately. Once the author has
-    // started filling it in, confirm before discarding — so an accidental
-    // backdrop/outside click or Esc can't silently drop a partially-authored
-    // variable.
-    if (!dirtyRef.current) {
-      onCancel();
-      return;
-    }
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'Unsaved Changes',
-      description:
-        'You have unsaved changes. Are you sure you want to close without saving?',
-      actions: {
-        primary: { label: 'Close Without Saving', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
-    if (confirmed) {
-      onCancel();
-    }
-  }, [onCancel, openDialog]);
-
   /**
    * Every open of this window creates a DIFFERENT variable, so each one needs
    * its own field store — the `key` DialogForm documents for exactly this.
@@ -300,13 +275,12 @@ export default function NewVariableWindow({
     <DialogForm
       key={openCount}
       open={show}
-      onClose={() => void handleCancel()}
-      title="Create New Variable"
+      onClose={onCancel}
+      title="Create New Attribute"
       formId={FORM_ID}
       submitLabel="Save and Close"
       onSubmit={handleSubmit}
     >
-      <DirtyProbe dirtyRef={dirtyRef} />
       <NewVariableFields
         existingVariableNames={existingVariableNames}
         variableTypeOptions={filteredVariableOptions}

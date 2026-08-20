@@ -2,9 +2,9 @@ import { useCallback } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { VariableType } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { useAppDispatch } from '~/ducks/hooks';
 import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
-import { ensureError } from '~/utils/ensureError';
 
 type Entity = 'node' | 'edge' | 'ego';
 
@@ -64,7 +64,7 @@ export const useCreateVariable = (
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          title: 'Could not create variable',
+          title: 'Could not create attribute',
           description: message,
           actions: { primary: { label: 'OK', value: true } },
         });

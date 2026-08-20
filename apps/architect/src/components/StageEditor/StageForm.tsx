@@ -1,5 +1,5 @@
 import { LayoutGroup } from 'motion/react';
-import { type ReactNode, useCallback, useId } from 'react';
+import { type ReactNode, useCallback, useId, useRef } from 'react';
 
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
@@ -37,6 +37,7 @@ const StageFormElement = ({
   className,
 }: StageFormElementProps) => {
   const { formId, markSubmitFailed, clearSubmitFailed } = useStageFormContext();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = useCallback<FormSubmitHandler>(
     async (values) => {
@@ -53,7 +54,11 @@ const StageFormElement = ({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
       markSubmitFailed();
-      focusFirstError(errors);
+      // Scoped to this form, exactly as `FormWithoutProvider` does it. A nested
+      // editor open over the stage renders the same field paths, and without a
+      // scope the document-order rule can hand the stage form's failed submit a
+      // control belonging to the dialog on top of it.
+      focusFirstError(errors, formRef.current);
     },
   });
 
@@ -62,6 +67,7 @@ const StageFormElement = ({
   return (
     <form
       id={formId}
+      ref={formRef}
       noValidate // Don't show native HTML validation UI
       className={cx('h-full w-full flex-1', className)}
       onSubmit={formProps.onSubmit}

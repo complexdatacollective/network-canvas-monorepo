@@ -22,13 +22,13 @@ export async function assignBooleanAttribute(
   value: boolean,
 ): Promise<void> {
   await page
-    .getByRole('button', { name: 'Add new variable to assign' })
+    .getByRole('button', { name: 'Add new attribute to assign' })
     .click();
   const variableField = editor.field(`additionalAttributes[${index}].variable`);
   await createVariableViaSpotlight(page, {
     variableName,
     scope: variableField,
-    until: variableField.getByRole('button', { name: 'Change variable' }),
+    until: variableField.getByRole('button', { name: 'Change attribute' }),
   });
   await editor
     .field(`additionalAttributes[${index}].value`)

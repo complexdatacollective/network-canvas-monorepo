@@ -21,10 +21,10 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   actually failed (`hasIssues && submitFailed`), so absence is trivially
 //   true before any submit attempt — call this after `save()` (or a failed
 //   submit) to make the assertion meaningful.
-// - `save()`'s button: StageEditorNav.tsx's toolbar segment
-//   `id: 'finished-editing', label: 'Finished Editing'` only pushes into the
-//   toolbar when `hasUnsavedChanges` is true, and its `onClick` dispatches
-//   a submit of the stage form. StageEditor.tsx's `onSubmit` handler
+// - `save()`'s button: StageEditorNav.tsx conditionally composes its
+//   `FinishedEditingControl` when `hasUnsavedChanges` is true. The control is
+//   a native submit button associated with the stage form. StageEditor.tsx's
+//   `onSubmit` handler
 //   navigates to `/protocol` only once the form's validators all pass
 //   and the commit actually runs — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.

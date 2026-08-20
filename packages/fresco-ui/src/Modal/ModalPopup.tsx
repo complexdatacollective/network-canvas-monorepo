@@ -10,6 +10,14 @@ import {
 import { type ComponentProps, useEffect, useId, useRef } from 'react';
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
+import {
+  holdsFocus,
+  isUsableFinalFocusTarget,
+  normaliseFinalFocus,
+  type FinalFocusCloseType,
+  type FinalFocusResult,
+} from '../utils/finalFocus';
+import { useModalOpener } from './ModalOpener';
 
 /**
  * Makes the opacity property required in TargetAndTransition.
@@ -61,12 +69,23 @@ type ModalPopupProps = BaseModalPopupProps &
  *
  * @param children The content of the modal popup.
  * @param className Additional class names for styling.
+ * @param initialFocus Where focus goes when the popup opens.
+ * @param finalFocus Where focus RETURNS when the popup closes. Both are
+ * forwarded to Base UI's `Dialog.Popup`, which hands them to its focus
+ * manager. They used to be spread onto the `motion.div` render target with the
+ * rest of `props`, which put them on a DOM element instead of on the focus
+ * manager — so no dialog in the app could declare a focus-return target, and
+ * every close fell back to Base UI's last resort. When `finalFocus` names
+ * nothing usable, focus returns to the control the enclosing `Modal`
+ * remembered as its opener; see `useModalOpener`.
  * @param props Animation props or layoutId, along with other Dialog.Popup props.
  */
 export default function ModalPopup({
   children,
   className,
   style,
+  initialFocus,
+  finalFocus,
   ...props
 }: ModalPopupProps) {
   const hasLayoutId = 'layoutId' in props && props.layoutId !== undefined;
@@ -75,6 +94,7 @@ export default function ModalPopup({
   const usesDeclarativeAnimation = hasLayoutId || hasCustomAnimation;
 
   const id = useId();
+  const openerRef = useModalOpener();
 
   // Determine animation: layoutId gets minimal opacity so that base-ui detects it,
   // custom props used as-is, otherwise default
@@ -145,8 +165,81 @@ export default function ModalPopup({
     }
   }, [isPresent, scope, animate, usesDeclarativeAnimation]);
 
+  /**
+   * Restores a rule that an explicit `finalFocus` silently switches off.
+   *
+   * Base UI only returns focus to its DEFAULT target if focus has not already
+   * moved somewhere else in the meantime ("it likely entered a different
+   * element which should be respected"). That check is skipped whenever
+   * `finalFocus` is anything other than a boolean — so declaring a return
+   * target, which is the whole point of this fix, would also make focus return
+   * UNCONDITIONAL. A dialog that opens another dialog on its way out (picking
+   * "create a new variable" opens the create-variable editor) would then yank
+   * focus back out of the dialog that just took it.
+   *
+   * So: if something outside this popup already holds focus when it closes,
+   * leave it alone. `false` is Base UI's "do not return focus at all"; `null`
+   * would mean "use your default", which is exactly what must not happen here.
+   */
+  const guardedFinalFocus = (
+    closeType: FinalFocusCloseType,
+  ): FinalFocusResult => {
+    const popupElement = scope.current;
+    const ownerDocument = popupElement?.ownerDocument ?? document;
+    const active = ownerDocument.activeElement;
+    const boundary =
+      popupElement?.closest('[data-base-ui-portal]') ?? popupElement;
+
+    // A sibling portal that is NOT a dialog — a Select listbox, a Combobox, a
+    // Popover, a Tooltip opened from inside this popup — is part of this
+    // interaction, not somewhere focus has "moved on" to. Only another dialog,
+    // or a control back on the page, counts as focus being claimed elsewhere.
+    const activeDialog = active?.closest?.(
+      '[role="dialog"], [role="alertdialog"]',
+    );
+    const heldByAnotherDialog =
+      !!activeDialog && !boundary?.contains(activeDialog);
+    const heldByThePage = !active?.closest?.('[data-base-ui-portal]');
+
+    // `holdsFocus`, not `asFinalFocusTarget`: this asks whether something is
+    // HOLDING focus, not whether it would make a good return target. The
+    // destination predicate additionally requires an `HTMLElement`, because
+    // that is what Base UI's `finalFocus` accepts — so it answers "nothing is
+    // focused" for a focused SVG or MathML control, and this popup would then
+    // take focus back off someone who was using it. Latent rather than
+    // observed: nothing in this repo focuses a non-HTML element today. It is
+    // still the wrong question to ask, and this is a published component.
+    const focusHeldElsewhere =
+      holdsFocus(active) && (heldByAnotherDialog || heldByThePage);
+
+    if (focusHeldElsewhere) return false;
+
+    const declared = normaliseFinalFocus(finalFocus, closeType);
+    // `true`/`false` are instructions, not targets, so they pass straight
+    // through.
+    if (typeof declared === 'boolean') return declared;
+    // A named element only wins if it can still be focused. The caller's target
+    // is usually the control that opened the popup, and a confirmed destructive
+    // action removes exactly that. An explicit target bypasses Base UI's own
+    // connectivity check, so handing over a detached node leaves focus on
+    // `<body>`: worse than falling through to the remembered opener (or to Base
+    // UI's own default).
+    if (declared !== null && isUsableFinalFocusTarget(declared)) {
+      return declared;
+    }
+
+    // `null` from the caller means "no opinion", which is where the opener
+    // remembered by the enclosing `Modal` comes in. Answering `null` in turn
+    // asks Base UI for its own default, which is the behaviour a popup with no
+    // opinion and no remembered opener has always had.
+    const opener = openerRef?.current;
+    return isUsableFinalFocusTarget(opener) ? opener : null;
+  };
+
   const popup = (
     <Dialog.Popup
+      initialFocus={initialFocus}
+      finalFocus={guardedFinalFocus}
       // Must render motion.div to properly detect animation completion for Base-UI's Dialog
       render={
         <motion.div

@@ -61,7 +61,7 @@ vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
         .join(',')}
       onClick={() => onChange?.(picker.emits)}
     >
-      Select variable
+      Select attribute
     </button>
   ),
   default: () => null,
@@ -74,6 +74,8 @@ import {
 } from '~/components/Validations/contradictions';
 // eslint-disable-next-line import/first -- must follow the vi.mock calls above
 import { roleMapKey } from '~/selectors/indexes';
+// eslint-disable-next-line import/first -- must follow the vi.mock calls above
+import { hasValidatedUse } from '~/selectors/roleFilters';
 
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -160,8 +162,7 @@ const setup = (
             committedVariableIds,
             draftValidatedVariables,
             hasValidatedUseElsewhere: (variableId) =>
-              (roleMap.map[roleMapKey(SUBJECT, variableId)]?.validated ?? 0) >
-              0,
+              hasValidatedUse(roleMap.map, SUBJECT, variableId),
           })}
         />
         <button type="submit">Save</button>
@@ -173,7 +174,7 @@ const setup = (
 };
 
 const INCOMPLETE_MESSAGE =
-  'Every additional variable needs both a variable and a value.';
+  'Every additional attribute needs both an attribute and a value.';
 
 beforeEach(() => {
   roleMap.map = {};
@@ -194,7 +195,7 @@ describe('AssignAttributes', () => {
     setup();
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Add new variable to assign' }),
+      screen.getByRole('button', { name: 'Add new attribute to assign' }),
     );
 
     await waitFor(() => expect(getAttributes()).toEqual([{}]));
@@ -204,12 +205,12 @@ describe('AssignAttributes', () => {
     setup();
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Add new variable to assign' }),
+      screen.getByRole('button', { name: 'Add new attribute to assign' }),
     );
     await waitFor(() => expect(getAttributes()).toHaveLength(1));
     expect(screen.queryByLabelText('Value to assign')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
 
     await waitFor(() =>
       expect(screen.getByLabelText('Value to assign')).toBeInTheDocument(),
@@ -221,7 +222,7 @@ describe('AssignAttributes', () => {
     setup([{ variable: 'close', value: true }, {}]);
 
     await waitFor(() => expect(getAttributes()).toHaveLength(2));
-    const pickers = screen.getAllByRole('button', { name: 'Select variable' });
+    const pickers = screen.getAllByRole('button', { name: 'Select attribute' });
     expect(pickers[0]).toHaveAttribute('data-options', 'close:disabled,nearby');
   });
 
@@ -299,7 +300,7 @@ describe('completeAttributes', () => {
 describe('AssignAttributes completeness gate', () => {
   const addRow = () =>
     fireEvent.click(
-      screen.getByRole('button', { name: 'Add new variable to assign' }),
+      screen.getByRole('button', { name: 'Add new attribute to assign' }),
     );
 
   const save = () =>
@@ -532,7 +533,7 @@ describe('AssignAttributes cross-class gate', () => {
       committedVariableIds: new Set(['close']),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select variable' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
     await waitFor(() =>
       expect(getAttributes()).toEqual([{ variable: 'nearby', value: true }]),
     );

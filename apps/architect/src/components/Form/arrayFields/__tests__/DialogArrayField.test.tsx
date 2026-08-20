@@ -11,6 +11,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
@@ -59,6 +60,15 @@ const EditorFields = (props: Record<string, unknown>) => {
       component={TextInput}
       initialValue={typeof props.label === 'string' ? props.label : ''}
     />
+  );
+};
+
+const EditorLivePreview = () => {
+  const { label } = useFormValue(['label'] as const);
+  return (
+    <output aria-label="Live item preview">
+      {typeof label === 'string' ? label : ''}
+    </output>
   );
 };
 
@@ -171,7 +181,9 @@ const releaseAndSettle = async ({
 };
 
 type FieldOverrides = {
+  editorDialogSize?: 'editor';
   editorFieldsComponent?: React.ComponentType<Record<string, unknown>>;
+  editorPreviewComponent?: React.ComponentType<Record<string, unknown>>;
   editorValidate?: DialogArrayEditorValidate;
   normalizeItem?: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -182,6 +194,8 @@ const arrayField = (
   initialItems: Item[],
   {
     editorFieldsComponent = EditorFields,
+    editorDialogSize,
+    editorPreviewComponent,
     editorValidate,
     normalizeItem,
     onBeforeSave,
@@ -192,9 +206,12 @@ const arrayField = (
     name="items"
     label="Items"
     component={DialogArrayField}
+    addButtonLabel="Create new item"
     initialValue={initialItems}
     previewComponent={Preview}
     editorFieldsComponent={editorFieldsComponent}
+    editorDialogSize={editorDialogSize}
+    editorPreviewComponent={editorPreviewComponent}
     editorTitle="Edit item"
     addTitle="Add item"
     itemLabel="item"
@@ -231,11 +248,71 @@ const setup = ({
 
 const editorInput = () => screen.getByRole('textbox', { name: 'Item label' });
 
+/**
+ * A stage editor mounts several of these at once — a Name Generator has a form
+ * field list AND a prompt list; a Network Composer has one attribute list per
+ * selected edge type. Every one of them used to read "Create new", so anyone
+ * navigating by a list of buttons met the same control repeated, and
+ * Architect's own E2E specs had to scope each click to a section to tell them
+ * apart. `addButtonLabel` is required, with no default, so a call site cannot
+ * fall back into that state without failing to compile.
+ */
+describe('DialogArrayField add button', () => {
+  it('gives two lists on one screen two different buttons', () => {
+    const store = configureStore({ reducer: (state = {}) => state });
+
+    render(
+      <Provider store={store}>
+        <Form onSubmit={() => ({ success: true })}>
+          <ArchitectArrayField
+            name="fields"
+            label="Form fields"
+            component={DialogArrayField}
+            addButtonLabel="Create new form field"
+            initialValue={NO_ITEMS}
+            previewComponent={Preview}
+            editorFieldsComponent={EditorFields}
+            editorTitle="Edit field"
+            itemLabel="field"
+          />
+          <ArchitectArrayField
+            name="prompts"
+            label="Prompts"
+            component={DialogArrayField}
+            addButtonLabel="Create new prompt"
+            initialValue={NO_ITEMS}
+            previewComponent={Preview}
+            editorFieldsComponent={EditorFields}
+            editorTitle="Edit prompt"
+            itemLabel="prompt"
+          />
+        </Form>
+      </Provider>,
+    );
+
+    const addButtons = screen
+      .getAllByRole('button')
+      .map((button) => button.textContent?.trim() ?? '')
+      .filter((label) => label.startsWith('Create new'));
+
+    expect(addButtons).toEqual(['Create new form field', 'Create new prompt']);
+    expect(new Set(addButtons).size).toBe(addButtons.length);
+  });
+});
+
 describe('DialogArrayField', () => {
+  it('uses the configured semantic width for its editor dialog', () => {
+    setup({ editorDialogSize: 'editor' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
+
+    expect(screen.getByRole('dialog')).toHaveClass('max-w-4xl');
+  });
+
   it('adds a UUID-backed item only after the editor is saved', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     expect(getItems()).toEqual([]);
 
     fireEvent.change(editorInput(), { target: { value: 'First item' } });
@@ -261,6 +338,24 @@ describe('DialogArrayField', () => {
     await waitFor(() => {
       expect(getItems()).toEqual([{ id: 'item-1', label: 'After' }]);
     });
+  });
+
+  it('renders an editor preview beside the form and updates it from live draft values', () => {
+    setup({
+      initialItems: [{ id: 'item-1', label: 'Before' }],
+      editorPreviewComponent: EditorLivePreview,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+
+    const preview = screen.getByRole('status', {
+      name: 'Live item preview',
+    });
+    expect(preview).toHaveTextContent('Before');
+    expect(preview.closest('aside')).not.toBeNull();
+
+    fireEvent.change(editorInput(), { target: { value: 'After' } });
+    expect(preview).toHaveTextContent('After');
   });
 
   it('drops a field the editor cleared before its section unmounted', async () => {
@@ -306,7 +401,7 @@ describe('DialogArrayField', () => {
   it('discards a cancelled draft', async () => {
     setup();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Discard me' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -325,6 +420,14 @@ describe('DialogArrayField', () => {
     fireEvent.change(editorInput(), { target: { value: 'Abandoned' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
+    // Cancelling a DIRTY editor now asks first, so the row only comes back
+    // once the (auto-confirmed) discard dialog has resolved.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Edit item' }),
+      ).toBeInTheDocument(),
+    );
+
     // Re-opening the SAME row must start from its committed values, not from
     // the store the cancelled session left behind.
     fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
@@ -342,7 +445,7 @@ describe('DialogArrayField', () => {
     }));
     setup({ onBeforeSave, normalizeItem });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Async' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -365,7 +468,7 @@ describe('DialogArrayField', () => {
     }));
     setup({ onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
@@ -380,7 +483,7 @@ describe('DialogArrayField', () => {
     const onBeforeSave = vi.fn((value: unknown) => value);
     setup({ editorValidate, onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByText('Blocked by validate')).toBeInTheDocument();
@@ -413,7 +516,7 @@ describe('DialogArrayField', () => {
 
     // A new item is not in the committed array, so it reports no index.
     editorValidate.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     await waitFor(() => expect(editorValidate).toHaveBeenCalled());
@@ -452,6 +555,58 @@ describe('DialogArrayField', () => {
     await waitFor(() => expect(getItems()).toEqual([]));
     expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledWith(
       expect.objectContaining({ confirmLabel: 'Remove item' }),
+    );
+  });
+
+  /**
+   * The confirmed removal destroys the row AND the Remove control that opened
+   * the dialog, so the row has to name where focus goes instead. Resolved when
+   * focus is actually returned, against the list as it is by then.
+   */
+  const removalFinalFocus = (): HTMLElement | null => {
+    const options = globalThis.__architectDialogMocks.confirm.mock.calls.at(
+      -1,
+    )?.[0] as { finalFocus?: unknown } | undefined;
+    const { finalFocus } = options ?? {};
+    if (typeof finalFocus !== 'function') {
+      throw new Error('the removal confirm is expected to name a finalFocus');
+    }
+    return (finalFocus as () => HTMLElement | null)();
+  };
+
+  it('sends focus to the row that took the removed one’s place', async () => {
+    setup({
+      initialItems: [
+        { id: 'item-1', label: 'First' },
+        { id: 'item-2', label: 'Second' },
+      ],
+    });
+
+    const [firstRemove] = screen.getAllByRole('button', {
+      name: 'Remove item',
+    });
+    if (!firstRemove) throw new Error('Expected two remove buttons');
+    fireEvent.click(firstRemove);
+
+    await waitFor(() => expect(getItems()).toHaveLength(1));
+    expect(removalFinalFocus()).toBe(
+      screen.getByRole('button', { name: 'Remove item' }),
+    );
+  });
+
+  it('sends focus to the add button when the removed row was the only one', async () => {
+    // No row is left to move to, and both remembered openers point at the
+    // Remove control that has just been destroyed. Naming nothing here leaves
+    // focus on `<body>`, which Base UI resolves to the first tabbable element
+    // in the document — the researcher is thrown back to the page header from
+    // the middle of a form.
+    setup({ initialItems: [{ id: 'item-1', label: 'Only' }] });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item' }));
+
+    await waitFor(() => expect(getItems()).toEqual([]));
+    expect(removalFinalFocus()).toBe(
+      screen.getByRole('button', { name: 'Create new item' }),
     );
   });
 
@@ -600,7 +755,7 @@ describe('DialogArrayField', () => {
     });
     const { unmount } = setup({ onBeforeSave });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Slow addition' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(onBeforeSave).toHaveBeenCalledOnce());
@@ -633,7 +788,7 @@ describe('DialogArrayField in the stage form', () => {
       arrayField(NO_ITEMS, {}),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create new' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
     fireEvent.change(editorInput(), { target: { value: 'Undo me' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -649,5 +804,75 @@ describe('DialogArrayField in the stage form', () => {
     act(() => getHistory().undo());
 
     expect(getFormValues().items as Item[]).toHaveLength(0);
+  });
+});
+
+/**
+ * Where focus goes when a row editor closes.
+ *
+ * The row hides its own controls while it is being edited, so the Edit button
+ * that opened the dialog is unmounted for the whole session and a FRESH one is
+ * mounted on the way back. Nothing captured at open time survives that, which is
+ * why the editor names its return target through `getEditorTrigger`, resolved
+ * when focus is actually returned.
+ */
+describe('DialogArrayField focus return', () => {
+  const settle = async () => {
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Item label' }),
+      ).not.toBeInTheDocument(),
+    );
+    // Base UI returns focus after the popup's exit animation.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  };
+
+  const openEditorFor = async (name: string) => {
+    const trigger = screen.getByRole('button', { name });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+  };
+
+  it('returns focus to the row’s Edit control after Cancel', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    await openEditorFor('Edit item');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Edit item' }),
+    );
+  });
+
+  it('returns focus to the add button after a new item is cancelled', async () => {
+    // A new item was never a row, so there is no Edit control to go back to —
+    // the control that opened the editor is the list's add button.
+    setup();
+
+    await openEditorFor('Create new item');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Create new item' }),
+    );
+  });
+
+  it('returns focus to the row’s Edit control after a save', async () => {
+    setup({ initialItems: [{ id: 'item-1', label: 'Before' }] });
+
+    await openEditorFor('Edit item');
+    fireEvent.change(editorInput(), { target: { value: 'After' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await settle();
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Edit item' }),
+    );
   });
 });

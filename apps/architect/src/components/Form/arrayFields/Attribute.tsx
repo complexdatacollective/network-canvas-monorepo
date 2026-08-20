@@ -21,10 +21,8 @@ import {
 } from '~/components/Validations/contradictions';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
-import {
-  getVariableRoleMapOutsideStage,
-  roleMapKey,
-} from '~/selectors/indexes';
+import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
+import { hasValidatedUse } from '~/selectors/roleFilters';
 
 import RowField from './RowField';
 import { useCreateVariable } from './useCreateVariable';
@@ -217,8 +215,7 @@ const Attribute = ({
         allVariables,
         committedVariableIds,
         draftValidatedVariables,
-        hasValidatedUseElsewhere: (id) =>
-          (roleMap[roleMapKey(subject, id)]?.validated ?? 0) > 0,
+        hasValidatedUseElsewhere: (id) => hasValidatedUse(roleMap, subject, id),
       }),
     [
       allVariables,
@@ -242,7 +239,7 @@ const Attribute = ({
       <div>
         <RowField
           name={`${rowFieldName}.variable`}
-          label="Create or select a variable"
+          label="Create or select an attribute"
           component={FrescoVariablePicker}
           value={variable}
           onChange={(value: unknown) =>

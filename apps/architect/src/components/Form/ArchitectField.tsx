@@ -1,4 +1,3 @@
-import { startCase } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -59,15 +58,16 @@ export type ArchitectFieldProps<C extends ValidFieldComponent> = Omit<
  * Architect's field primitive: the Issues-panel anchor plus a form-connected
  * fresco-ui `Field`.
  *
- * `label` is required — there is no fallback to the field name. `labelHidden`
- * keeps it for screen readers where the surrounding heading already names the
- * field, and is mutually exclusive with `hint` (see LabellingProps).
+ * `label` is required — there is no fallback to the field name, and it is what
+ * the Issues panel calls the field (see the anchor below). `labelHidden` keeps
+ * it for screen readers where the surrounding heading already names the field,
+ * and is mutually exclusive with `hint` (see LabellingProps).
  */
 function ArchitectField<C extends ValidFieldComponent>(
   props: ArchitectFieldProps<C>,
 ) {
   const { validation, ...fieldProps } = props;
-  const { name } = fieldProps;
+  const { name, label } = fieldProps;
   const { nativeProps, custom } = useValidationProps(validation, name);
 
   const mergedProps = {
@@ -78,7 +78,16 @@ function ArchitectField<C extends ValidFieldComponent>(
 
   return (
     <>
-      <IssueAnchor fieldName={`${name}._error`} description={startCase(name)} />
+      {/*
+        The Issues panel names each row by harvesting this `data-name`
+        (`Issues.tsx`), so it is researcher-facing copy. It used to be
+        `startCase(name)` — a start-cased internal field path, which surfaced
+        rows like "Search Options Match Properties", "Behaviours Min Nodes" and
+        "Prompts 0 Text" (#1400). `label` is required and is the name the
+        researcher already reads above the control, so the panel and the field
+        agree by construction.
+      */}
+      <IssueAnchor fieldName={`${name}._error`} description={label} />
       {/*
         The native validation props are derived at runtime from an untyped
         config object, so they cannot be statically matched against the

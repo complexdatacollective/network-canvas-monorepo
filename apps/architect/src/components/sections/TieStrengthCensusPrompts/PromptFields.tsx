@@ -6,7 +6,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import Options, {
@@ -18,17 +18,22 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import LockedOptions from '~/components/Options/LockedOptions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
 import {
   getVariableOptionsForSubject,
   getVariablesForSubject,
 } from '~/selectors/codebook';
-import { excludeValidatedUses } from '~/selectors/roleFilters';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject } from '../SociogramPrompts/selectors';
+import { useLockedOptions } from '../useLockedOptions';
 
 type SelectOption = {
   label: string;
@@ -76,19 +81,30 @@ const PromptFields = ({
     type: currentCreateEdge ?? undefined,
   };
   // TSC's edge-variable picker is an UNVALIDATED writer: drop options a form
-  // elsewhere already validates.
+  // elsewhere already validates, and drop any variable an interface derives
+  // from the structure a participant builds — a Family Pedigree's edge slots
+  // above all, which its genetics engine reads back.
   const ordinalVariableOptions = useAppSelector((state) => {
     const ordinalOptions = getVariableOptionsForSubject(
       state,
       edgeSubject,
     ).filter(({ type: variableType }) => variableType === 'ordinal');
-    return excludeValidatedUses(
+    return excludeInterfaceOwned(
       state,
       edgeSubject,
-      ordinalOptions,
+      excludeValidatedUses(
+        state,
+        edgeSubject,
+        ordinalOptions,
+        currentEdgeVariable,
+      ),
       currentEdgeVariable,
     ) as SelectOption[];
   });
+
+  // An interface that branches on the variable's exact values owns its option
+  // list, so the editor renders it read-only.
+  const lockedOptions = useLockedOptions(edgeSubject, currentEdgeVariable);
   const optionsForCurrentEdgeVariable = useAppSelector((state) => {
     const variables = getVariablesForSubject(state, edgeSubject);
     const found = currentEdgeVariable
@@ -147,7 +163,7 @@ const PromptFields = ({
         id={getFieldId('text')}
         layout="vertical"
       >
-        <Row>
+        <>
           <Paragraph>
             Tie-Strength Census prompts explain to your participant which
             relationship they should evaluate (for example,
@@ -175,7 +191,7 @@ const PromptFields = ({
             singleLine
             placeholder="Enter text for the prompt here..."
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Tie-Strength Configuration"
@@ -189,7 +205,7 @@ const PromptFields = ({
             <ul>
               <li>
                 Create an edge between two alters, and simultaneously assign a
-                value to an ordinal variable.
+                value to an ordinal attribute.
               </li>
               <li>Decline to create an edge</li>
             </ul>
@@ -202,14 +218,14 @@ const PromptFields = ({
           summary={
             <Paragraph>
               Begin by selecting or creating an edge type. You will then be able
-              to select or create an ordinal variable on this edge type. The
-              options of this ordinal variable will represent the choices
+              to select or create an ordinal attribute on this edge type. The
+              options of this ordinal attribute will represent the choices
               provided to the user when creating an edge.
             </Paragraph>
           }
           layout="vertical"
         >
-          <Row>
+          <>
             <ArchitectField
               name="createEdge"
               label="Select an edge type"
@@ -227,14 +243,14 @@ const PromptFields = ({
                 allowedNMToken: 'edge type name',
               }}
             />
-          </Row>
+          </>
         </Section>
         {currentCreateEdge && (
-          <Section title="Ordinal Variable" layout="vertical">
-            <Row>
+          <Section title="Ordinal Attribute" layout="vertical">
+            <>
               <ArchitectField
                 name="edgeVariable"
-                label="Select an ordinal variable for this edge type"
+                label="Select an ordinal attribute for this edge type"
                 component={VariablePicker}
                 validation={{ required: true }}
                 initialValue={edgeVariable}
@@ -243,38 +259,45 @@ const PromptFields = ({
                 options={ordinalVariableOptions}
                 onCreateOption={handleNewVariable}
               />
-            </Row>
+            </>
             {currentEdgeVariable && (
-              <Row>
+              <>
                 <Heading level="h4" id={getFieldId('variableOptions')}>
-                  Variable Options
+                  Attribute Options
                 </Heading>
-                <Paragraph>
-                  The following choices or &apos;options&apos; are configured
-                  for this variable. We suggest no more than four options should
-                  be used on this interface.
-                </Paragraph>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong> including the
-                      negative label. Using more will create a sub-optimal
-                      experience for participants, and might reduce data
-                      quality.
-                    </AlertDescription>
-                  </Alert>
+                {lockedOptions ? (
+                  <LockedOptions options={lockedOptions} />
+                ) : (
+                  <>
+                    <Paragraph>
+                      The following choices or &apos;options&apos; are
+                      configured for this attribute. We suggest no more than
+                      four options should be used on this interface.
+                    </Paragraph>
+                    {showVariableOptionsTip && (
+                      <Alert variant="destructive" className="my-7">
+                        <AlertTitle>Too many option values</AlertTitle>
+                        <AlertDescription>
+                          The ordinal bin interface is designed to use{' '}
+                          <strong>up to 5 option values</strong> including the
+                          negative label. Using more will create a sub-optimal
+                          experience for participants, and might reduce data
+                          quality.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <ArchitectArrayField
+                      name="variableOptions"
+                      label="Options"
+                      labelHidden
+                      component={Options}
+                      addButtonLabel="Create new option"
+                      validation={optionsValidation}
+                      initialValue={variableOptions}
+                    />
+                  </>
                 )}
-                <ArchitectArrayField
-                  name="variableOptions"
-                  label="Options"
-                  labelHidden
-                  component={Options}
-                  validation={optionsValidation}
-                  initialValue={variableOptions}
-                />
-              </Row>
+              </>
             )}
           </Section>
         )}

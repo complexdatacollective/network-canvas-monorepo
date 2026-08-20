@@ -126,8 +126,17 @@ export const sharedFormValidationView = (
 /**
  * Every committed shared FormFieldSchema view for `subject`. The schema's
  * writer metadata identifies these surfaces without duplicating its stage-type
- * union here; FamilyPedigree is the sole surface whose subject must be
- * recovered from nodeConfig rather than the reference hit.
+ * union here, and a hit's subject is whatever the collector resolved: a stage
+ * that names its subject somewhere other than a literal `subject` field
+ * declares that path on its own schema (FamilyPedigree's `nodeConfig.type`),
+ * and the collector applies it during the walk.
+ *
+ * A hit therefore leaves the walk either with the right subject or with NONE —
+ * a pedigree whose `nodeConfig.type` is still unset, which is ordinary
+ * in-progress editor state, resolves to nothing. Hence the optional chain
+ * below; a hit with no subject matches no subject and is skipped. What must
+ * not happen is re-deriving one from stage shape here, which would be a second
+ * resolution path free to disagree with the declared one.
  */
 export const sharedFormValidationViews = (
   stages: unknown,
@@ -150,16 +159,9 @@ export const sharedFormValidationViews = (
     const stage = stages[stageIndex];
     if (!isRecord(stage) || stage.type === 'NetworkComposer') continue;
 
-    const hitSubject =
-      hit.subject ??
-      (stage.type === 'FamilyPedigree' &&
-      isRecord(stage.nodeConfig) &&
-      typeof stage.nodeConfig.type === 'string'
-        ? { entity: 'node' as const, type: stage.nodeConfig.type }
-        : undefined);
     if (
-      hitSubject?.entity !== subject.entity ||
-      hitSubject.type !== subject.type
+      hit.subject?.entity !== subject.entity ||
+      hit.subject.type !== subject.type
     ) {
       continue;
     }

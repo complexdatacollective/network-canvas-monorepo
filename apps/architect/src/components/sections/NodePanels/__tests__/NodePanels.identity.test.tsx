@@ -18,8 +18,7 @@ import {
 // eslint-disable-next-line import/first -- must follow the vi.mock call above
 import { NodePanels } from '../NodePanels';
 
-const toggle = () =>
-  screen.getByRole('switch', { name: 'Turn this feature on or off' });
+const toggle = () => screen.getByRole('switch', { name: 'Side Panels' });
 
 const ONE_PANEL = [
   { id: 'panel-1', title: 'A', dataSource: 'existing', filter: undefined },

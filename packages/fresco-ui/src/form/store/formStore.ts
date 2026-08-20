@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
@@ -148,6 +149,60 @@ const clearFieldValidating = (fields: Map<string, FieldState>): void => {
   });
 };
 
+/**
+ * Drop the messages the store is holding about a field, because the value they
+ * were written about has just been replaced.
+ *
+ * An error message is a claim about one specific value. Once a new one is
+ * written, the claim cannot be true or false — it is about something that no
+ * longer exists — so keeping it on screen tells the researcher to correct a
+ * problem they have already corrected. `useField` renders straight from this
+ * map, and Architect's Issues panel reads it directly, so a survivor here is a
+ * survivor in both.
+ *
+ * MESSAGES ONLY: `meta.isValid` is deliberately left exactly as it was.
+ *
+ * Nothing is lost by that, because a message already implies a `false`
+ * verdict — `validateField` and `setErrors` are the only two writers of
+ * `errors.fieldErrors` and both set `isValid: false` in the same update — so
+ * clearing messages can never strand the pair in the "valid, yet complaining"
+ * state. And the field keeps whatever verdict it had: still `false` after a
+ * failed check, until something looks at the new value.
+ *
+ * Resetting the verdict here instead would be the single widest-reaching thing
+ * this store does. `setFieldValue` is not only a host entry point:
+ * `useField.handleChange` calls it on EVERY controlled change, in every
+ * fresco-ui form, including the participant-facing ones in `@codaco/interview`.
+ * `useField` always builds a validation function, so `!validation` is `false`
+ * for every field it registers — a "back to unchecked" reset would therefore
+ * mark the field, and through `calculateFormValidity` the whole form, invalid
+ * on every keystroke. `SlidesForm` and `EgoForm` gate "ready to continue" on
+ * the form flag and `QuickAddField` animates its add badge off the field's,
+ * so that shows up on screen as a flicker per character typed.
+ *
+ * The write also does NOT revalidate. `useField.handleChange` owns rescheduling
+ * its own (debounced) validate-on-change, and revalidating here would fight
+ * that debounce on every keystroke. The consequence is part of the contract: a
+ * write that introduces a NEW problem surfaces at the field's next blur or at
+ * submit — `validateForm` runs every field — never between the two.
+ */
+const discardFieldErrors = (
+  state: Pick<FormStoreState, 'errors' | 'isValid'>,
+  fieldName: string,
+  fields: Map<string, FieldState>,
+): void => {
+  if (Object.hasOwn(state.errors.fieldErrors, fieldName)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [fieldName]: _removed, ...remainingFieldErrors } =
+      state.errors.fieldErrors;
+    state.errors = {
+      formErrors: state.errors.formErrors,
+      fieldErrors: remainingFieldErrors,
+    };
+  }
+  state.isValid = calculateFormValidity(fields, state.errors.formErrors);
+};
+
 const normalizeSubmissionErrors = (
   errors: FlattenedErrors,
   fields: Map<string, FieldState>,
@@ -259,12 +314,23 @@ type FormStoreState = {
   isValid: boolean;
   submitHandler: FormSubmitHandler | null;
   submitInvalidHandler: ((errors: FlattenedErrors) => void) | null;
+  /**
+   * Ticks once per blocked submission attempt. `useForm` watches it from a
+   * LAYOUT effect, so the invalid-submit handler runs after React has
+   * committed the render that shows the errors — the only point at which the
+   * first invalid control is both in the DOM and safe from the commit's own
+   * focus restoration. Hosts that validate outside the form element (the
+   * interview's Next button) tick it instead of scheduling their own timer,
+   * so every host orders focus against the commit the same way.
+   */
+  errorFocusRequest: number;
 
   // Form management
   registerForm: (config: FormConfig) => void;
   reset: () => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
+  requestErrorFocus: () => void;
 
   // Getters with selective subscription
   getFormValues: () => Record<string, FieldValue>;
@@ -279,6 +345,57 @@ type FormStoreState = {
 
   // Form reset
   resetForm: () => void;
+};
+
+/**
+ * Values that mean "nothing here". A field registered without an
+ * `initialValue` holds `undefined`; typing into it and then clearing it leaves
+ * `''` (or `[]`). Those are the same state to the person editing, so treating
+ * them as different would report a form dirty after an edit was undone.
+ */
+const isBlankFieldValue = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
+const hasFieldChanged = (field: FieldState): boolean => {
+  if (isBlankFieldValue(field.value) && isBlankFieldValue(field.initialValue)) {
+    return false;
+  }
+  return !isEqual(field.value, field.initialValue);
+};
+
+/**
+ * Whether the form currently holds values that differ from the ones its fields
+ * registered with.
+ *
+ * A LIVE comparison, and deliberately not the `isDirty` flag beside it in this
+ * same state. That flag is sticky — `setFieldValue` sets it and only `reset`
+ * clears it — so it never returns to false once anything has been typed.
+ * Anything guarding unsaved work on the sticky flag nags about a form the
+ * person had already restored by hand, and any normalisation write at mount (a
+ * markdown-to-rich-text conversion, an editor seeding itself) makes a freshly
+ * opened form claim to be dirty immediately.
+ *
+ * `dormantValues` counts: a field that unmounts (a collapsed section, a branch
+ * that stopped rendering) parks its value there, and an edit made before it
+ * unmounted is still an unsaved edit.
+ *
+ * Lives here, next to the state it reads, because more than one host needs the
+ * answer and a host-local copy freezes that host's idea of "blank" — Architect
+ * carried one for its nested-editor discard guard.
+ */
+export const selectIsFormDirty = (
+  state: Pick<FormStoreState, 'fields' | 'dormantValues'>,
+): boolean => {
+  for (const field of state.fields.values()) {
+    if (hasFieldChanged(field)) return true;
+  }
+  for (const field of state.dormantValues.values()) {
+    if (hasFieldChanged(field)) return true;
+  }
+  return false;
 };
 
 export type FormStore = FormStoreState &
@@ -337,6 +454,7 @@ export const createFormStore = (): FormStoreApi => {
       isValidating: false,
       isDirty: false,
       isValid: true,
+      errorFocusRequest: 0,
 
       submitHandler: null,
       submitInvalidHandler: null,
@@ -386,6 +504,15 @@ export const createFormStore = (): FormStoreApi => {
           state.isValid = true;
           state.submitHandler = null;
           state.submitInvalidHandler = null;
+          // Deliberately monotonic: rewinding the counter here would read as a
+          // fresh request to the watching layout effect and focus a field the
+          // person never tried to submit.
+        });
+      },
+
+      requestErrorFocus: () => {
+        set((state) => {
+          state.errorFocusRequest += 1;
         });
       },
 
@@ -417,6 +544,14 @@ export const createFormStore = (): FormStoreApi => {
           const dormant = dormantRecords.get(fieldName);
           const hasDormantValue = dormant !== undefined;
           const value = hasDormantValue ? dormant.value : config.initialValue;
+          const standingErrors = Object.hasOwn(
+            state.errors.fieldErrors,
+            fieldName,
+          )
+            ? state.errors.fieldErrors[fieldName]
+            : undefined;
+          const hasStandingErrors =
+            Array.isArray(standingErrors) && standingErrors.length > 0;
 
           if (hasDormantValue) {
             dormantRecords.delete(fieldName);
@@ -433,10 +568,10 @@ export const createFormStore = (): FormStoreApi => {
             value,
             meta: {
               isValidating: false,
-              isTouched: hasDormantValue,
-              isBlurred: false,
-              isDirty: hasDormantValue,
-              isValid: !config.validation,
+              isTouched: hasDormantValue || hasStandingErrors,
+              isBlurred: hasStandingErrors,
+              isDirty: hasDormantValue || hasStandingErrors,
+              isValid: hasStandingErrors ? false : !config.validation,
             },
           };
 
@@ -604,6 +739,12 @@ export const createFormStore = (): FormStoreApi => {
                 isValid: existing?.meta.isValid ?? true,
               },
             });
+            // A field can hold errors from a submit and then be unmounted (a
+            // collapsed section) before a host stages a new value for it. The
+            // messages outlive the mount, and Architect's Issues panel reads
+            // this map directly, so a row for a value that no longer exists
+            // would survive with nothing on screen to correct.
+            discardFieldErrors(state, fieldName, fieldRecords);
             state.isDirty = true;
             syncPublicFields(state.dormantValues, dormantRecords);
           });
@@ -635,6 +776,7 @@ export const createFormStore = (): FormStoreApi => {
               isTouched: true,
             },
           });
+          discardFieldErrors(state, fieldName, fieldRecords);
           state.isDirty = true;
           syncPublicFields(state.fields, fieldRecords);
         });

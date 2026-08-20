@@ -48,14 +48,14 @@ const VariableRoleConflictsAlert = () => {
     <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">
       <AlertTitle>
         {conflicts.length === 1
-          ? 'A variable is written both with and without validation'
-          : `${conflicts.length} variables are written both with and without validation`}
+          ? 'An attribute is written both with and without validation'
+          : `${conflicts.length} attributes are written both with and without validation`}
       </AlertTitle>
       <AlertDescription>
         <span className="block">
-          Values written outside a form bypass the variable&apos;s validation
+          Values written outside a form bypass the attribute&apos;s validation
           rules, so forms elsewhere can receive values they would reject. For
-          each variable below, remove it from either the form or the other
+          each attribute below, remove it from either the form or the other
           stage.
         </span>
         <ul className="mt-2 list-disc pl-5">

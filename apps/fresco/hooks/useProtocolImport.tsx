@@ -11,6 +11,7 @@ import {
   getMigrationInfo,
   hashProtocol,
 } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import {
   cleanupUploadedFiles,
   getNewAssetIds,
@@ -30,7 +31,6 @@ import {
 } from '~/lib/protocol/validateAndMigrateProtocol';
 import { type AssetInsertType } from '~/schemas/protocol';
 import { DatabaseError } from '~/utils/databaseError';
-import { ensureError } from '~/utils/ensureError';
 import {
   fileAsArrayBuffer,
   getProtocolAssets,

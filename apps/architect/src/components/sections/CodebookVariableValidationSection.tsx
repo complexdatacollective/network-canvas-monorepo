@@ -7,9 +7,9 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { Variable } from '@codaco/protocol-validation';
+import { ruleMapIssue } from '~/components/Validations/validateRuleMap';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
-import { markExternalEdit } from '~/ducks/modules/stageEditorDraft';
 import {
   EMPTY_VARIABLES,
   getVariablesForSubjectSelector,
@@ -93,9 +93,17 @@ const VariableSiblingFieldMirror = ({ variable }: { variable: Variable }) => (
  */
 const ValidationCommitObserver = ({
   currentValidation,
+  isCommittable,
   onCommit,
 }: {
   currentValidation: ValidationMap;
+  /**
+   * Whether the rule map is finished and satisfiable. This surface has no
+   * submit to refuse — it writes straight to the codebook on every change —
+   * so an unanswered or contradictory map is simply not written, and the rule
+   * row's own inline error explains what still needs attention.
+   */
+  isCommittable: (validation: ValidationMap) => boolean;
   onCommit: (validation: ValidationMap) => void;
 }) => {
   const { validation } = useFormValue(['validation'] as const);
@@ -115,7 +123,7 @@ const ValidationCommitObserver = ({
     // field means every rule was removed.
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const next = (validation ?? {}) as ValidationMap;
-    if (!isEqual(next, currentValidation)) {
+    if (!isEqual(next, currentValidation) && isCommittable(next)) {
       onCommit(next);
     }
     // `currentValidation`/`onCommit` intentionally excluded: this observer
@@ -133,6 +141,8 @@ type CodebookVariableValidationSectionProps = {
   entity: string;
   type?: string | null;
   variableId?: string | null;
+  sectionLabel?: string;
+  sectionSummary?: string;
 };
 
 /**
@@ -143,6 +153,8 @@ type CodebookVariableValidationSectionProps = {
  * instead via `ValidationCommitObserver`.
  */
 const CodebookVariableValidationSection = ({
+  sectionLabel = 'Validation',
+  sectionSummary = 'Enable to add validation rules to the attribute.',
   fieldName,
   entity,
   type,
@@ -169,10 +181,21 @@ const CodebookVariableValidationSection = ({
     [variable],
   );
 
+  const isCommittable = (validation: ValidationMap) =>
+    ruleMapIssue(validation, {
+      allVariables: variables,
+      currentVariableId: variableId ?? '',
+      variableType: variable?.type ?? '',
+      options: variable && 'options' in variable ? variable.options : undefined,
+      component:
+        variable && 'component' in variable ? variable.component : undefined,
+      parameters:
+        variable && 'parameters' in variable ? variable.parameters : undefined,
+    }) === undefined;
+
   const handleCommit = (validation: ValidationMap) => {
     if (!variableId) return;
 
-    dispatch(markExternalEdit());
     void dispatch(
       updateVariableAsync({
         variable: variableId,
@@ -193,6 +216,7 @@ const CodebookVariableValidationSection = ({
       <VariableSiblingFieldMirror variable={variable} />
       <ValidationCommitObserver
         currentValidation={currentValidation}
+        isCommittable={isCommittable}
         onCommit={handleCommit}
       />
       <ValidationSection
@@ -202,8 +226,10 @@ const CodebookVariableValidationSection = ({
         allVariables={variables}
         currentVariableId={variableId}
         id={`codebook-validation-${variableId}`}
-        summary="Choose which validation rules apply to the selected variable."
+        label={sectionLabel}
+        summary={sectionSummary}
         initialValue={currentValidation}
+        commitsImmediately
       />
     </FormStoreProvider>
   );

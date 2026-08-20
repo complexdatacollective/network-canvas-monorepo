@@ -21,6 +21,7 @@ import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
@@ -36,6 +37,10 @@ import {
 } from '~/templates';
 import { loadSampleAssets, sampleProtocol } from '~/templates/sample-protocol';
 import { documentationLinks } from '~/utils/documentationLinks';
+import {
+  describeImportFailure,
+  TEMPLATE_OPEN_FAILURE_MESSAGE,
+} from '~/utils/protocolImportErrors';
 import { reportError } from '~/utils/reportError';
 
 import LibraryPanel from './LibraryPanel';
@@ -98,26 +103,32 @@ const Home = () => {
     },
     [dispatch, runAction],
   );
+  // A .netcanvas can need BOTH an upgrade and a configuration repair, and each
+  // approval has to carry the earlier one forward — re-opening the file with
+  // only the newest flag would ask for the upgrade all over again. Each
+  // approval callback is offered only while its own flag is still unset, so an
+  // approval always advances and can never re-present the dialog it came from.
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const result = await runAction(() =>
-        dispatch(openLocalNetcanvas({ file })).unwrap(),
-      );
-      await showProtocolOpenResultDialog({
-        result,
-        openDialog,
-        onApproveMigration: async () => {
-          const approvedResult = await runAction(() =>
-            dispatch(
-              openLocalNetcanvas({ file, migrationApproved: true }),
-            ).unwrap(),
-          );
-          await showProtocolOpenResultDialog({
-            result: approvedResult,
-            openDialog,
-          });
-        },
-      });
+      const open = async (approvals: {
+        migrationApproved?: boolean;
+        repairApproved?: boolean;
+      }): Promise<void> => {
+        const result = await runAction(() =>
+          dispatch(openLocalNetcanvas({ file, ...approvals })).unwrap(),
+        );
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+          onApproveMigration: approvals.migrationApproved
+            ? undefined
+            : () => open({ ...approvals, migrationApproved: true }),
+          onApproveRepair: approvals.repairApproved
+            ? undefined
+            : () => open({ ...approvals, repairApproved: true }),
+        });
+      };
+      await open({});
     },
     [dispatch, openDialog, runAction],
   );
@@ -197,13 +208,18 @@ const Home = () => {
             ).unwrap();
           });
         } catch (error) {
-          const { message } = reportError(error);
-          void openDialog({
-            type: 'acknowledge',
-            intent: 'destructive',
-            title: 'Protocol Import Error',
-            description: message,
-            actions: { primary: { label: 'OK', value: true } },
+          reportError(error);
+          // This branch is the template's own asset loading and the thunk's
+          // rejection — never an archive — so the default talks about the
+          // template. `describeImportFailure` still runs first because a
+          // storage failure is reachable here and describes itself better.
+          await showProtocolOpenResultDialog({
+            result: {
+              status: 'error',
+              title: 'Protocol Import Error',
+              ...describeImportFailure(error, TEMPLATE_OPEN_FAILURE_MESSAGE),
+            },
+            openDialog,
           });
           return;
         }
@@ -216,9 +232,23 @@ const Home = () => {
     (id: string) => {
       void (async () => {
         const result = await runAction(() =>
-          dispatch(openLibraryProtocol(id)).unwrap(),
+          dispatch(openLibraryProtocol({ id })).unwrap(),
         );
-        await showProtocolOpenResultDialog({ result, openDialog });
+        await showProtocolOpenResultDialog({
+          result,
+          openDialog,
+          onApproveRepair: async () => {
+            const repairedResult = await runAction(() =>
+              dispatch(
+                openLibraryProtocol({ id, repairApproved: true }),
+              ).unwrap(),
+            );
+            await showProtocolOpenResultDialog({
+              result: repairedResult,
+              openDialog,
+            });
+          },
+        });
       })();
     },
     [dispatch, openDialog, runAction],
@@ -295,6 +325,7 @@ const Home = () => {
                     level="h1"
                     margin="none"
                     className="laptop:text-[clamp(3rem,9vh,6rem)] mb-3 text-[clamp(2.75rem,8vh,4.5rem)] leading-[0.95] tracking-tight"
+                    {...routeFocusTargetProps}
                   >
                     Welcome to <span className="text-action">Architect</span>
                   </Heading>

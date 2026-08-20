@@ -5,16 +5,19 @@ import { createVariableViaSpotlight } from './variables.js';
 // AlterForm/AlterEdgeForm/EgoForm's `form.fields` array (sections/Form/Form.tsx)
 // wires the same DialogArrayField pattern as prompts.ts, with
 // `editorFieldsComponent: FieldFields` (sections/Form/FieldFields.tsx,
-// confusingly exported as `PromptFields`). "Create new" is
-// DialogArrayField's default `addButtonLabel`.
+// confusingly exported as `PromptFields`). Since #1391 `addButtonLabel` is
+// required on DialogArrayField and there is no default, so this list's add
+// button names what it adds: "Create new form field".
 //
 // Takes the enclosing section `Locator` (e.g. `editor.section('Form')`) rather
-// than the Page, and scopes the "Create new" OPEN click to it: NameGenerator
-// renders both a `Form` AND a `NameGeneratorPrompts` DialogArrayField at once
-// (StageEditor/Interfaces.tsx), each with the same default "Create new" label,
-// so an unscoped match hits 2+ buttons and Playwright strict-mode throws. The
-// opened dialog is a single page-level portal, so its fields and the final
-// "Add" submit are unambiguous and reached via `section.page()`.
+// than the Page, and still scopes the OPEN click to it. That is no longer
+// needed to avoid a strict-mode collision — NameGenerator renders both a `Form`
+// AND a `NameGeneratorPrompts` DialogArrayField at once
+// (StageEditor/Interfaces.tsx), and the two buttons now read "Create new form
+// field" and "Create new prompt" — but scoping keeps this helper honest about
+// which list it is driving. The opened dialog is a single page-level portal, so
+// its fields and the final "Add" submit are unambiguous and reached via
+// `section.page()`.
 //
 // Inside that dialog:
 // - `variable`: VariablePicker, driven the same way as any other spotlight
@@ -22,11 +25,9 @@ import { createVariableViaSpotlight } from './variables.js';
 //   variable" but stays unhidden, which doesn't matter here since the
 //   picker's *button* text ("Select variable") is what `createVariableViaSpotlight`
 //   targets.
-// - `prompt`: a RichText field whose accessible name is explicitly
-//   overridden to "Prompt text" (FieldFields.tsx:
-//   `componentProps={{ label: 'Prompt text', labelHidden: true, ... }}`) —
-//   NOT the field's raw name ("prompt"), unlike RichText fields elsewhere
-//   that fall back to `input.name`.
+// - `prompt`: a RichText field whose accessible name is "Question text"
+//   (FieldFields.tsx). This is the stable field-level label; the surrounding
+//   heading-less Section deliberately contributes no duplicate name.
 // - `component` ("Input Control", labelHidden): a real native `<select>`
 //   (fresco-ui's `NativeSelectField`), so `selectOption` works directly.
 //   Its Subsection is `disabled={!variable}` (FieldFields.tsx) — i.e. it
@@ -48,10 +49,10 @@ export async function addFormField(
 ): Promise<void> {
   const page = section.page();
   await section
-    .getByRole('button', { name: 'Create new', exact: true })
+    .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   await createVariableViaSpotlight(page, { variableName: opts.variableName });
-  const prompt = page.getByRole('textbox', { name: 'Prompt text' });
+  const prompt = page.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(opts.promptText);
   await page

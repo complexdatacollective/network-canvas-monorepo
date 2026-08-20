@@ -40,6 +40,7 @@ const fixtures = vi.hoisted(() => {
 
   return {
     codebook,
+    nodeForm: [{ variable: 'alias', prompt: 'What else do they go by?' }],
     localNodes: new Map<string, NcNode>(),
     validationContext: {
       codebook,
@@ -57,6 +58,10 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
   useStageSelector: (selector: unknown) => {
     if (selector === 'nodeType') return 'person';
     if (selector === 'nodeLabelVariable') return 'name';
+    // The rest of the person's attributes, as the wizard's protocol form
+    // collects them. `getNodeForm` strips the label variable, which is why the
+    // field here has to name that one itself.
+    if (selector === 'nodeForm') return fixtures.nodeForm;
     return fixtures.validationContext;
   },
 }));
@@ -64,6 +69,7 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
 vi.mock('../../utils/nodeUtils', () => ({
   getNodeType: 'nodeType',
   getNodeLabelVariable: 'nodeLabelVariable',
+  getNodeForm: 'nodeForm',
 }));
 
 vi.mock('../../FamilyPedigreeContext', () => ({

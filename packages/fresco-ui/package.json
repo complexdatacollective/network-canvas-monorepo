@@ -60,7 +60,9 @@
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
     "./typography/UnorderedList": "./src/typography/UnorderedList.tsx",
+    "./utils/ariaIdReferences": "./src/utils/ariaIdReferences.ts",
     "./utils/cva": "./src/utils/cva.ts",
+    "./utils/finalFocus": "./src/utils/finalFocus.ts",
     "./utils/composeEventHandlers": "./src/utils/composeEventHandlers.ts",
     "./utils/NoSSRWrapper": "./src/utils/NoSSRWrapper.tsx",
     "./hooks/useSafeAnimate": "./src/hooks/useSafeAnimate.ts",
@@ -76,6 +78,7 @@
     "./dnd/dnd": "./src/dnd/dnd.ts",
     "./dnd/types": "./src/dnd/types.ts",
     "./dnd/useAccessibilityAnnouncements": "./src/dnd/useAccessibilityAnnouncements.ts",
+    "./dnd/useKeyboardReorder": "./src/dnd/useKeyboardReorder.ts",
     "./dnd/useDragSource": "./src/dnd/useDragSource.tsx",
     "./dnd/useDropTarget": "./src/dnd/useDropTarget.ts",
     "./dnd/utils": "./src/dnd/utils.ts",
@@ -90,6 +93,7 @@
     "./collection/types": "./src/collection/types.ts",
     "./form/Field/Field": "./src/form/Field/Field.tsx",
     "./form/Field/FieldController": "./src/form/Field/FieldController.tsx",
+    "./form/Field/fieldElements": "./src/form/Field/fieldElements.ts",
     "./form/Field/types": "./src/form/Field/types.ts",
     "./form/Field/UnconnectedField": "./src/form/Field/UnconnectedField.tsx",
     "./form/FieldGroup": "./src/form/FieldGroup.tsx",
@@ -150,6 +154,7 @@
     "./DataTable/filters/RangeFilter": "./src/DataTable/filters/RangeFilter.tsx",
     "./DataTable/filters/TextFilter": "./src/DataTable/filters/TextFilter.tsx",
     "./Modal/ModalBackdrop": "./src/Modal/ModalBackdrop.tsx",
+    "./Modal/ModalOpener": "./src/Modal/ModalOpener.ts",
     "./dialogs/DialogPopup": "./src/dialogs/DialogPopup.tsx",
     "./dialogs/DialogTrigger": "./src/dialogs/DialogTrigger.tsx",
     "./dnd/DndStoreProvider": "./src/dnd/DndStoreProvider.tsx",
@@ -340,9 +345,17 @@
         "types": "./dist/typography/UnorderedList.d.ts",
         "default": "./dist/typography/UnorderedList.js"
       },
+      "./utils/ariaIdReferences": {
+        "types": "./dist/utils/ariaIdReferences.d.ts",
+        "default": "./dist/utils/ariaIdReferences.js"
+      },
       "./utils/cva": {
         "types": "./dist/utils/cva.d.ts",
         "default": "./dist/utils/cva.js"
+      },
+      "./utils/finalFocus": {
+        "types": "./dist/utils/finalFocus.d.ts",
+        "default": "./dist/utils/finalFocus.js"
       },
       "./utils/composeEventHandlers": {
         "types": "./dist/utils/composeEventHandlers.d.ts",
@@ -404,6 +417,10 @@
         "types": "./dist/dnd/useAccessibilityAnnouncements.d.ts",
         "default": "./dist/dnd/useAccessibilityAnnouncements.js"
       },
+      "./dnd/useKeyboardReorder": {
+        "types": "./dist/dnd/useKeyboardReorder.d.ts",
+        "default": "./dist/dnd/useKeyboardReorder.js"
+      },
       "./dnd/useDragSource": {
         "types": "./dist/dnd/useDragSource.d.ts",
         "default": "./dist/dnd/useDragSource.js"
@@ -459,6 +476,10 @@
       "./form/Field/FieldController": {
         "types": "./dist/form/Field/FieldController.d.ts",
         "default": "./dist/form/Field/FieldController.js"
+      },
+      "./form/Field/fieldElements": {
+        "types": "./dist/form/Field/fieldElements.d.ts",
+        "default": "./dist/form/Field/fieldElements.js"
       },
       "./form/Field/types": {
         "types": "./dist/form/Field/types.d.ts",
@@ -696,6 +717,10 @@
       "./Modal/ModalBackdrop": {
         "types": "./dist/Modal/ModalBackdrop.d.ts",
         "default": "./dist/Modal/ModalBackdrop.js"
+      },
+      "./Modal/ModalOpener": {
+        "types": "./dist/Modal/ModalOpener.d.ts",
+        "default": "./dist/Modal/ModalOpener.js"
       },
       "./dialogs/DialogPopup": {
         "types": "./dist/dialogs/DialogPopup.d.ts",

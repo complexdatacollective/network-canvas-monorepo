@@ -1,13 +1,8 @@
-import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
-import type {
-  CommitBatch,
-  FamilyPedigreeStoreApi,
-  VariableConfig,
-} from '../../store';
+import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import type { CommitBatch, VariableConfig } from '../../store';
 import { buildNodeOptions } from './buildNodeOptions';
 import { derivePreselection } from './derivePreselection';
 import {
@@ -39,8 +34,7 @@ function getNodeDisplayName(
 }
 
 export async function openDefineParentsWizard(
-  openDialog: ReturnType<typeof useDialog>['openDialog'],
-  store: FamilyPedigreeStoreApi,
+  openDialog: OpenPedigreeDialog,
   focalNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -71,39 +65,19 @@ export async function openDefineParentsWizard(
     gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
-  function WrappedBioTriadStep() {
+  function BioTriadConfigStep() {
     return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <BioTriadConfigProvider value={bioTriadConfig}>
-          <BioTriadStep />
-        </BioTriadConfigProvider>
-      </FamilyPedigreeStoreBridge>
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <BioTriadStep />
+      </BioTriadConfigProvider>
     );
   }
 
-  function WrappedPartnershipsStep() {
+  function PartnershipsStep() {
     return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <BioTriadConfigProvider value={bioTriadConfig}>
-          <NewParentPartnershipsStep />
-        </BioTriadConfigProvider>
-      </FamilyPedigreeStoreBridge>
-    );
-  }
-
-  function WrappedGenericOtherParentsStep() {
-    return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <GenericOtherParentsStep />
-      </FamilyPedigreeStoreBridge>
-    );
-  }
-
-  function WrappedGenericAdditionalParentsStep() {
-    return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <GenericAdditionalParentsStep />
-      </FamilyPedigreeStoreBridge>
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <NewParentPartnershipsStep />
+      </BioTriadConfigProvider>
     );
   }
 
@@ -114,20 +88,20 @@ export async function openDefineParentsWizard(
     steps: [
       {
         title: 'Biological parents',
-        content: WrappedBioTriadStep,
+        content: BioTriadConfigStep,
       },
       {
         title: 'Other parents',
-        content: WrappedGenericOtherParentsStep,
+        content: GenericOtherParentsStep,
       },
       {
         title: 'Additional parents',
-        content: WrappedGenericAdditionalParentsStep,
+        content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
         title: 'Parent partnerships',
-        content: WrappedPartnershipsStep,
+        content: PartnershipsStep,
         skip: shouldSkipNewParentPartnerships,
       },
     ],

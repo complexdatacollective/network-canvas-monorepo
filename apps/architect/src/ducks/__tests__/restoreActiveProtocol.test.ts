@@ -7,8 +7,10 @@ import createTimeline from '../middleware/timeline';
 import activeProtocol, { setActiveProtocol } from '../modules/activeProtocol';
 import app, {
   getActiveProtocolId,
+  getProtocolLockState,
   getStorageUnavailable,
   setActiveProtocolId,
+  setProtocolLockState,
   setStorageUnavailable,
 } from '../modules/app';
 import {
@@ -74,6 +76,22 @@ describe('restoreActiveProtocolFromLibrary', () => {
     expect(result).toBe('missing');
     expect(getActiveProtocolId(store.getState())).toBeNull();
     expect(store.getState().activeProtocol.present).toBeNull();
+    expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
+  });
+
+  // A bookmarked or typed /protocol URL in a session that has no protocol id at
+  // all: the same "no protocol behind this route" state as a missing row, and
+  // it must settle on Home the same way.
+  it('blocks a protocol route when there is no session to restore', async () => {
+    const store = makeStore();
+
+    const result = await restoreActiveProtocolFromLibrary(store, {
+      getStoredProtocol,
+      replaceProtocolRoute,
+    });
+
+    expect(result).toBe('none');
+    expect(getStoredProtocol).not.toHaveBeenCalled();
     expect(replaceProtocolRoute).toHaveBeenCalledTimes(1);
   });
 
@@ -229,4 +247,32 @@ describe('restoreActiveProtocolAfterStoreRehydration', () => {
     expect(store.getState().activeProtocol.present).toEqual(canonical);
     expect(replaceProtocolRoute).not.toHaveBeenCalled();
   });
+});
+
+// The whole `app` slice is persisted to sessionStorage, so a reload restores
+// whatever cross-tab lock state this tab was in — including `reclaim-blocked`,
+// whose stage draft did NOT survive. Left in place it would make the tab refuse
+// every write, and drive a reclaim off rehydrated state with no lock event
+// behind it.
+describe('restoreActiveProtocolAfterStoreRehydration — cross-tab lock state', () => {
+  it.each(['rehydrated', 'timed-out', 'failed'] as const)(
+    'starts a %s session owning the protocol',
+    async (rehydrationResult) => {
+      const store = makeStore();
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      await restoreActiveProtocolAfterStoreRehydration(
+        store,
+        rehydrationResult,
+        {
+          getStoredProtocol: vi.fn().mockResolvedValue(undefined),
+          replaceProtocolRoute: vi.fn(),
+          clearRememberedSession: vi.fn(),
+          onError: vi.fn(),
+        },
+      );
+
+      expect(getProtocolLockState(store.getState())).toBe('owned');
+    },
+  );
 });

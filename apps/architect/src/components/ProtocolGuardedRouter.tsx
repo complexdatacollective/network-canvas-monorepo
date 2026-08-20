@@ -4,11 +4,13 @@ import { Router } from 'wouter';
 import type { AroundNavHandler } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
 import { useAppDispatch } from '~/ducks/hooks';
 import { store } from '~/ducks/store';
 import {
   collapseProtocolHistory,
+  getLeavePersistence,
   guardState,
   isProtocolPath,
   promptLeaveEditor,
@@ -34,7 +36,13 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
       const leaving =
         isProtocolPath(window.location.pathname) && !isProtocolPath(to);
 
-      if (guardState.bypass || !leaving) {
+      // With no protocol in the editing buffer there is nothing to confirm and
+      // nothing to download: prompting would offer actions that cannot succeed
+      // and then strand the user on a route ProtocolRouteGuard is already
+      // sending home.
+      const persistence = getLeavePersistence(store.getState());
+
+      if (guardState.bypass || !leaving || persistence === 'no-protocol') {
         nav(to, opts);
         return;
       }
@@ -54,7 +62,14 @@ const ProtocolGuardedRouter = ({ children }: ProtocolGuardedRouterProps) => {
           collapseProtocolHistory(to, () =>
             nav(to, { ...opts, replace: true }),
           ),
-        getLiveStageDraftDirty(store.getState()),
+        // A nested editor left open holds unsaved work that the stage form's
+        // mirror knows nothing about; without this the researcher is shown the
+        // reassuring "saved automatically" copy over a draft about to be lost.
+        getLiveStageDraftDirty(store.getState()) || hasDirtyNestedDraft(),
+        // ...and `persistence` still decides WHICH discard copy that is, so a
+        // tab that cannot save is never told the protocol behind the draft is
+        // fine.
+        persistence,
       );
     },
     [dispatch, openDialog],

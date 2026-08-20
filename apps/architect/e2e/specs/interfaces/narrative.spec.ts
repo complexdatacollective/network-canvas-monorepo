@@ -92,7 +92,8 @@ test('creates a valid Narrative stage from scratch', async ({
 
   // NarrativePresets.tsx, `Section title="Narrative Presets"` — the same
   // DialogArrayField shape as every other prompts/presets array in this
-  // suite ("Create new" opens the dialog, "Add" submits a new item).
+  // suite, with the add button named for what it adds ("Create new preset"
+  // opens the dialog, "Add" submits a new item).
   // PresetFields.tsx renders "Preset Label" first: a plain `FrescoReduxField`
   // text input (`name="label"`) with `labelHidden` and a real `placeholder`,
   // located directly rather than by (hidden) accessible name. Its "Layout
@@ -109,12 +110,18 @@ test('creates a valid Narrative stage from scratch', async ({
   // 'layout', 'layoutVariable')` — the same simple creation path as
   // Sociogram's prompt "Layout" section, with the type pre-supplied by the
   // call site (no NewVariableWindow opens).
-  await addPrompt(editor.section('Narrative Presets'), async () => {
-    await architectPage
-      .getByPlaceholder('Enter a label for the preset...')
-      .fill('Default view');
-    await createVariableViaSpotlight(architectPage, { variableName: 'layout' });
-  });
+  await addPrompt(
+    editor.section('Narrative Presets'),
+    async () => {
+      await architectPage
+        .getByPlaceholder('Enter a label for the preset...')
+        .fill('Default view');
+      await createVariableViaSpotlight(architectPage, {
+        variableName: 'layout',
+      });
+    },
+    { addButtonLabel: 'Create new preset' },
+  );
 
   await editor.expectNoIssues();
   await editor.save();

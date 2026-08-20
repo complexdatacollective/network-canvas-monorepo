@@ -621,13 +621,11 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Both custom Boolean labels render; the Toggle is a role=switch.
         await expect(page.getByText('Yes, we have')).toBeVisible();
         await expect(page.getByText('No, never')).toBeVisible();
-        const toggle = page
-          .locator('[data-field-name="see-regularly"]')
-          .getByRole('switch');
+        const toggle = stage.form.field('see-regularly').getByRole('switch');
         await expect(toggle).toBeVisible();
 
-        await page
-          .locator('[data-field-name="have-met"]')
+        await stage.form
+          .field('have-met')
           .getByRole('radio', { name: 'No, never' })
           .click();
         await toggle.click();
@@ -716,8 +714,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         // ToggleButtonGroup options render as role=checkbox toggle buttons.
         await expect(
-          page
-            .locator('[data-field-name="channels"]')
+          stage.form
+            .field('channels')
             .getByRole('checkbox', { name: 'Call', exact: true }),
         ).toBeVisible();
 
@@ -785,16 +783,17 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      run: async ({ page, interview }) => {
+      run: async ({ interview, stage }) => {
         await interview.dismissIntro();
 
         // >6 options auto-enables the multi-column grid layout: the RadioGroup
-        // fieldset (data-field-name is on the outer container, the grid is on
-        // the fieldset it wraps) carries a CSS grid with >1 column track.
+        // fieldset (the field container wraps the fieldset that carries the
+        // grid) shows a CSS grid with >1 column track.
         await expect
           .poll(() =>
-            page
-              .locator('[data-field-name="frequency"] fieldset')
+            stage.form
+              .field('frequency')
+              .locator('fieldset')
               .evaluate(
                 (el) =>
                   getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/)
@@ -896,25 +895,23 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Scalar values use the protocol's normalized 0-1 range.
         await expect(page.getByText('Not at all')).toBeVisible();
         await expect(page.getByText('Extremely')).toBeVisible();
-        const vasSlider = page
-          .locator('[data-field-name="importance"]')
-          .getByRole('slider');
+        const vasSlider = stage.form.field('importance').getByRole('slider');
         await expect(vasSlider).toHaveAttribute('min', '0');
         await expect(vasSlider).toHaveAttribute('max', '1');
         await vasSlider.focus();
         await vasSlider.press('End');
 
-        const contactCount = page
-          .locator('[data-field-name="contact-count"]')
+        const contactCount = stage.form
+          .field('contact-count')
           .getByRole('spinbutton');
         await contactCount.fill('95');
 
-        const monthField = page.locator('[data-field-name="met-month"]');
+        const monthField = stage.form.field('met-month');
         await monthField.locator('select').first().selectOption('2024');
         await monthField.locator('select').nth(1).selectOption('06');
 
-        const relDateInput = page
-          .locator('[data-field-name="last-contact"]')
+        const relDateInput = stage.form
+          .field('last-contact')
           .locator('input[type="date"]');
         await relDateInput.fill('2026-08-15'); // after anchor+after → invalid
         await interview.nextButton.click();
@@ -1069,8 +1066,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect(stage.form.getFieldError('closeness')).toHaveCount(0);
 
         // Attempt 3: all within bounds (2 selected, 6-char story).
-        const family = page
-          .locator('[data-field-name="contexts"]')
+        const family = stage.form
+          .field('contexts')
           .getByRole('checkbox', { name: 'Family', exact: true });
         await family.click(); // deselect back down to 2
         await expect(family).not.toBeChecked();
@@ -1355,20 +1352,20 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         );
         expect(connectorBg).not.toBe('rgba(0, 0, 0, 0)');
         // Pre-seeded value is restored into the input before any edit.
-        await expect(
-          page.locator('[data-field-name="met-at"] input'),
-        ).toHaveValue('kept');
+        await expect(stage.form.field('met-at').locator('input')).toHaveValue(
+          'kept',
+        );
         await advanceEdgeSlide(page, slides);
 
         // Slide 1 (Sam–Jo): own value unset; fill it. Wait for the outgoing
         // slide to unmount so the input locator resolves to a single element.
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await expect(
-          page.locator('[data-field-name="met-at"] input'),
-        ).toHaveCount(1);
-        await expect(
-          page.locator('[data-field-name="met-at"] input'),
-        ).toHaveValue('');
+        await expect(stage.form.field('met-at').locator('input')).toHaveCount(
+          1,
+        );
+        await expect(stage.form.field('met-at').locator('input')).toHaveValue(
+          '',
+        );
         await stage.form.fillText('met-at', 'reunion');
         await advanceEdgeSlide(page, slides);
 
@@ -1467,23 +1464,22 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         for (let i = 0; i < 20; i++) {
           await stage.form.fillText(`note-${i}`, `value ${i}`);
         }
-        await page.locator('[data-field-name="note-19"] input').blur();
-        await page
-          .locator('[data-field-name="note-19"] input')
-          .evaluate((el) => {
-            let node = el.parentElement;
-            while (node) {
-              const style = getComputedStyle(node);
-              if (
-                (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
-                node.scrollHeight > node.clientHeight
-              ) {
-                node.scrollTop = node.scrollHeight;
-                return;
-              }
-              node = node.parentElement;
+        const lastNote = stage.form.field('note-19').locator('input');
+        await lastNote.blur();
+        await lastNote.evaluate((el) => {
+          let node = el.parentElement;
+          while (node) {
+            const style = getComputedStyle(node);
+            if (
+              (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+              node.scrollHeight > node.clientHeight
+            ) {
+              node.scrollTop = node.scrollHeight;
+              return;
             }
-          });
+            node = node.parentElement;
+          }
+        });
         await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
         await advanceEdgeSlide(page, slides); // → slide 1
 
@@ -1492,12 +1488,12 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await stage.form.fillText('note-0', 'slide1 valid');
         await goBackEdgeSlide(page, 'Sam');
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await expect(
-          page.locator('[data-field-name="note-0"] input'),
-        ).toHaveCount(1);
-        await expect(
-          page.locator('[data-field-name="note-0"] input'),
-        ).toHaveValue('value 0');
+        await expect(stage.form.field('note-0').locator('input')).toHaveCount(
+          1,
+        );
+        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+          'value 0',
+        );
         let network = await protocol.getNetworkState(interview.interviewId);
         expect(
           (network?.edges ?? []).find(
@@ -1515,20 +1511,20 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         ).toBeVisible();
         await slides.discardCancelButton.click();
         await expect(dialog).toBeHidden();
-        await expect(
-          page.locator('[data-field-name="note-0"] input'),
-        ).toHaveValue('');
+        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+          '',
+        );
 
         // Go back again and confirm this time.
         await slides.previousSlideExpectingDiscardDialog();
         await slides.discardConfirmButton.click();
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await expect(
-          page.locator('[data-field-name="note-0"] input'),
-        ).toHaveCount(1);
-        await expect(
-          page.locator('[data-field-name="note-0"] input'),
-        ).toHaveValue('value 0');
+        await expect(stage.form.field('note-0').locator('input')).toHaveCount(
+          1,
+        );
+        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+          'value 0',
+        );
         network = await protocol.getNetworkState(interview.interviewId);
         expect(
           (network?.edges ?? []).find(
