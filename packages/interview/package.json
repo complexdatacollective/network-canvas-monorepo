@@ -39,7 +39,7 @@
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --build --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p e2e/tsconfig.json --noEmit",
-    "test": "vitest run --project=units",
+    "test": "vitest run --project=units --project=parity",
     "test:storybook": "vitest run --project=storybook",
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --project=chromium-visual --project=firefox-visual --project=webkit-visual --update-snapshots",
