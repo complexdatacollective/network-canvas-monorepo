@@ -7,19 +7,36 @@ import { join } from 'node:path';
 export const GATED_PRODUCT_PACKAGES = [
   '@codaco/documentation',
   'networkcanvas.com',
+  '@codaco/studio-client',
+  '@codaco/studio-rpc',
+  '@codaco/studio-server',
+  '@codaco/studio-sync',
 ];
 
 export const GATED_PRODUCT_DIRS = {
   '@codaco/documentation': 'apps/documentation',
   'networkcanvas.com': 'apps/networkcanvas.com',
+  '@codaco/studio-client': 'apps/studio/client',
+  '@codaco/studio-rpc': 'packages/studio-rpc',
+  '@codaco/studio-server': 'apps/studio/server',
+  '@codaco/studio-sync': 'packages/studio-sync',
 };
 
-// Documentation and Website keep separately generated release PRs because they
-// deploy independently from the normal Changesets lane. Architect and
-// Interviewer are private packages in that normal lane alongside libraries.
+// Documentation, Website, and Studio keep separately generated release PRs
+// because they release independently from the normal Changesets lane.
+// Architect and Interviewer are private packages in that normal lane alongside
+// libraries. The Studio lane spans all four Studio workspace packages — the
+// two deployable halves plus their private boundary packages — so a Studio
+// changeset can name any of them without touching the normal lane.
 export const GATED_PRODUCT_RELEASE_LANES = {
   documentation: ['@codaco/documentation'],
   website: ['networkcanvas.com'],
+  studio: [
+    '@codaco/studio-client',
+    '@codaco/studio-rpc',
+    '@codaco/studio-server',
+    '@codaco/studio-sync',
+  ],
 };
 
 export function releaseLaneForProduct(

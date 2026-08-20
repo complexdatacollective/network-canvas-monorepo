@@ -1943,9 +1943,9 @@ jobs:
         # changesets/action publish below.
         run: node scripts/verify-publish-exports.mjs
       - name: Hide separately gated product changesets from the normal release
-        # Documentation and Website changesets persist until their own release
-        # PR consumes them. Normal-lane apps intentionally remain for the
-        # Changesets CLI to version alongside library packages.
+        # Documentation, Website, and Studio changesets persist until their own
+        # release PR consumes them. Normal-lane apps intentionally remain for
+        # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
         run: node scripts/prune-ignored-changesets.mjs
       - id: changesets
@@ -1973,7 +1973,10 @@ jobs:
 
   # Maintains generated PRs for the products that remain outside the normal
   # "Version Packages" PR. Normal-lane apps use that standard Changesets lane;
-  # Documentation and Website remain independently releasable.
+  # Documentation, Website, and Studio remain independently releasable. The
+  # Studio lane names all four Studio workspace packages so its release PR
+  # consumes changesets for either deployable half or the private boundary
+  # packages.
   product-release-pr:
     name: Release PR (${{ matrix.product }})
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -1987,6 +1990,13 @@ jobs:
           - product: Website
             slug: website
             package_args: "--package 'networkcanvas.com'"
+          - product: Studio
+            slug: studio
+            package_args: >-
+              --package '@codaco/studio-client'
+              --package '@codaco/studio-rpc'
+              --package '@codaco/studio-server'
+              --package '@codaco/studio-sync'
     runs-on: ubuntu-latest
     concurrency:
       group: product-release-pr-${{ matrix.slug }}

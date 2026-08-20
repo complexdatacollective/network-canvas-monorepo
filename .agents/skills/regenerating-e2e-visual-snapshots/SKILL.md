@@ -33,8 +33,8 @@ intended baseline changes. Keep generation separate from normal verification.
 The complete Architect, Interview, and Interviewer E2E suites run in CI only for
 the normal Changesets branch `changeset-release/main` and merge groups whose
 library, Architect, or Interviewer versions trigger a release. The independent
-`changeset-release/documentation` and `changeset-release/website` branches ship
-none of the E2E subjects. The required `quality` check conditionally waits for
+`changeset-release/documentation`, `changeset-release/website`, and
+`changeset-release/studio` branches ship none of the E2E subjects. The required `quality` check conditionally waits for
 the selected E2E results. Ordinary PRs skip E2E and never inherit an older E2E
 result.
 

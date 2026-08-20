@@ -445,10 +445,12 @@ function suites(...keys) {
 
 // Maximum suite set for each release lane. The normal Changesets lane versions
 // libraries, Architect, and Interviewer, so it always keeps all three suites.
-// Documentation and Website ship none of the suite subjects and need no E2E.
+// Documentation, Website, and Studio ship none of the suite subjects and need
+// no E2E.
 export const SUITES_BY_RELEASE_REF = {
   'changeset-release/documentation': suites(),
   'changeset-release/main': suites('interview', 'interviewer', 'architect'),
+  'changeset-release/studio': suites(),
   'changeset-release/website': suites(),
 };
 

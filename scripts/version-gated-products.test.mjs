@@ -46,6 +46,19 @@ function workspace() {
       2,
     ),
   );
+  const studioPackages = {
+    '@codaco/studio-client': 'apps/studio/client',
+    '@codaco/studio-rpc': 'packages/studio-rpc',
+    '@codaco/studio-server': 'apps/studio/server',
+    '@codaco/studio-sync': 'packages/studio-sync',
+  };
+  for (const [name, dir] of Object.entries(studioPackages)) {
+    mkdirSync(join(cwd, dir), { recursive: true });
+    writeFileSync(
+      join(cwd, dir, 'package.json'),
+      JSON.stringify({ name, version: '0.1.0', private: true }, null, 2),
+    );
+  }
   return cwd;
 }
 
@@ -152,6 +165,59 @@ test('validateTargetPackages requires one complete lane', () => {
     validateTargetPackages(['@codaco/documentation', 'networkcanvas.com']),
     null,
   );
+  const studioLane = [
+    '@codaco/studio-client',
+    '@codaco/studio-rpc',
+    '@codaco/studio-server',
+    '@codaco/studio-sync',
+  ];
+  assert.deepEqual(validateTargetPackages(studioLane), studioLane);
+  assert.equal(validateTargetPackages(['@codaco/studio-server']), null);
+  assert.equal(
+    validateTargetPackages([...studioLane, '@codaco/documentation']),
+    null,
+  );
+});
+
+test('versions the studio lane packages that have changesets and consumes only studio changesets', () => {
+  const cwd = workspace();
+  writeFileSync(
+    join(cwd, '.changeset/server.md'),
+    `---\n"@codaco/studio-server": minor\n"@codaco/studio-sync": patch\n---\n\nSync leases`,
+  );
+  writeFileSync(
+    join(cwd, '.changeset/keep.md'),
+    `---\n"@codaco/interview": patch\n---\n\nnormal lane`,
+  );
+
+  const studioLane = [
+    '@codaco/studio-client',
+    '@codaco/studio-rpc',
+    '@codaco/studio-server',
+    '@codaco/studio-sync',
+  ];
+  const { plans, consumed } = planProductReleases(cwd, studioLane);
+  applyProductReleases(cwd, plans, consumed);
+
+  const server = JSON.parse(
+    readFileSync(join(cwd, 'apps/studio/server/package.json'), 'utf8'),
+  );
+  assert.equal(server.version, '0.2.0');
+  const sync = JSON.parse(
+    readFileSync(join(cwd, 'packages/studio-sync/package.json'), 'utf8'),
+  );
+  assert.equal(sync.version, '0.1.1');
+  const client = JSON.parse(
+    readFileSync(join(cwd, 'apps/studio/client/package.json'), 'utf8'),
+  );
+  assert.equal(client.version, '0.1.0');
+  assert.equal(existsSync(join(cwd, '.changeset/server.md')), false);
+  assert.equal(existsSync(join(cwd, '.changeset/keep.md')), true);
+
+  const body = renderPrBody(plans);
+  assert.match(body, /versions `@codaco\/studio-server`/);
+  assert.match(body, /no automated production deploy lane yet/);
+  assert.doesNotMatch(body, /Netlify \*\*production\*\*/);
 });
 
 test('creates a normal semver documentation release and changelog', () => {
