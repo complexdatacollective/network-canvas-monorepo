@@ -134,7 +134,9 @@ function base64EncodeUtf8(value: string): string {
 // copy, so reopening a saved file restores the stripped form instead of
 // reintroducing the original control characters. Zone labels are not painted and
 // JSON.stringify already escapes control characters, so they round-trip losslessly.
-function sanitizeDocument(doc: BackgroundDocument): BackgroundDocument {
+export function sanitizeDocumentForExport(
+  doc: BackgroundDocument,
+): BackgroundDocument {
   return {
     ...doc,
     title: stripXmlInvalid(doc.title),
@@ -370,7 +372,7 @@ function serializeElement(
 export function serializeDocument(doc: BackgroundDocument): string {
   // Both the painted markup and the embedded JSON are derived from the sanitized
   // copy so the file is valid XML and reopening it restores the stripped form.
-  const sanitized = sanitizeDocument(doc);
+  const sanitized = sanitizeDocumentForExport(doc);
   const json = JSON.stringify(sanitized);
   const idPrefix = documentIdPrefix(json);
   const markers = collectArrowMarkers(sanitized.elements, idPrefix);

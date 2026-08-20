@@ -42,7 +42,9 @@ import { editZoneLabelFlow } from '~/toolbar/textEditDialog';
 import { linesToText, textToLines } from '~/toolbar/textLines';
 
 import { hitTestDocument } from './canvasGeometry';
+import { flushFocusedField } from './focusedField';
 import { InlineTextEditor } from './InlineTextEditor';
+import { createLatestFrame, type LatestFrame } from './latestFrame';
 import { KeyboardTargets } from './overlay/KeyboardTargets';
 import { OverlaySvg } from './overlay/OverlaySvg';
 import { ResizeHandles } from './overlay/ResizeHandles';
@@ -98,23 +100,6 @@ function cursorForTool(tool: EditorTool): string {
   if (tool === 'select') return 'default';
   if (tool === 'text') return 'text';
   return 'crosshair';
-}
-
-// Commits a focused property field (input/textarea/select) by blurring it,
-// unless it is the stage itself or an inline text edit (handled separately).
-// NumberField/InputField commit synchronously in their blur handler, so the
-// pending value lands before a subsequent selection change.
-function flushFocusedField(stage: HTMLElement): void {
-  const active = document.activeElement;
-  if (
-    active instanceof HTMLElement &&
-    active !== stage &&
-    (active instanceof HTMLInputElement ||
-      active instanceof HTMLTextAreaElement ||
-      active instanceof HTMLSelectElement)
-  ) {
-    active.blur();
-  }
 }
 
 function moveInDoc(
@@ -178,8 +163,24 @@ export function EditorCanvas(): ReactElement {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const hoverRafRef = useRef<number | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
+  const hoverFrameRef = useRef<LatestFrame<Vec> | null>(null);
+  if (hoverFrameRef.current === null) {
+    hoverFrameRef.current = createLatestFrame((point) => {
+      const store = useEditorStore.getState();
+      if (!store.zonesVisible) {
+        setHoverLabel(null);
+        return;
+      }
+      const zones = zonesOf(store.doc);
+      if (zones.length === 0) {
+        setHoverLabel(null);
+        return;
+      }
+      const label = assignZone(point, zones);
+      setHoverLabel(label ?? 'no zone');
+    });
+  }
 
   // Per-gesture snap-guide chrome. Local, not in the store, because it is purely
   // transient visual feedback that lives and dies with a single drag.
@@ -348,7 +349,7 @@ export function EditorCanvas(): ReactElement {
       // re-renders the panel and the pending edit is lost (or lands on the
       // wrong element). The field commits against its own captured element id,
       // so the value reaches the element it was being edited for.
-      flushFocusedField(el);
+      flushFocusedField();
       const store = useEditorStore.getState();
       const tool = store.activeTool;
       const rect = el.getBoundingClientRect();
@@ -530,28 +531,23 @@ export function EditorCanvas(): ReactElement {
     // Clear a stale readout when zone feedback is unavailable — zones hidden, or
     // the last zone removed — so a previous label can't linger or reappear.
     if (!store.zonesVisible) {
+      hoverFrameRef.current?.cancel();
       setHoverLabel(null);
       return;
     }
     const zones = zonesOf(store.doc);
     if (zones.length === 0) {
+      hoverFrameRef.current?.cancel();
       setHoverLabel(null);
       return;
     }
-    // rAF-throttled so the hover readout updates at most once per frame.
-    if (hoverRafRef.current !== null) return;
-    hoverRafRef.current = requestAnimationFrame(() => {
-      hoverRafRef.current = null;
-      const label = assignZone(pt, zonesOf(useEditorStore.getState().doc));
-      setHoverLabel(label ?? 'no zone');
-    });
+    // rAF-throttled so the hover readout updates at most once per frame, while
+    // retaining the newest point from a burst instead of classifying the first.
+    hoverFrameRef.current?.schedule(pt);
   }, []);
 
   const handlePointerLeave = useCallback(() => {
-    if (hoverRafRef.current !== null) {
-      cancelAnimationFrame(hoverRafRef.current);
-      hoverRafRef.current = null;
-    }
+    hoverFrameRef.current?.cancel();
     setHoverLabel(null);
   }, []);
 
@@ -654,6 +650,7 @@ export function EditorCanvas(): ReactElement {
     el.addEventListener('dblclick', handleDoubleClick);
     el.addEventListener('keydown', handleKeyDown);
     return () => {
+      hoverFrameRef.current?.cancel();
       el.removeEventListener('pointerdown', handlePointerDown);
       el.removeEventListener('pointermove', handlePointerMove);
       el.removeEventListener('pointerleave', handlePointerLeave);

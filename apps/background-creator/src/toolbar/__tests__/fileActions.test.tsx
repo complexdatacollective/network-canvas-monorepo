@@ -61,6 +61,25 @@ describe('downloadSvgFlow', () => {
 
     expect(useEditorStore.getState().isDirty()).toBe(true);
   });
+
+  it('keeps unsanitized editor content dirty after exporting its sanitized snapshot', async () => {
+    const unsanitized = {
+      ...initialDocument,
+      title: 'Field\u000bmap',
+      description: 'Visible\fdescription',
+    };
+    useEditorStore.getState().commitDoc(unsanitized);
+
+    await downloadSvgFlow();
+
+    const state = useEditorStore.getState();
+    expect(state.doc).toBe(unsanitized);
+    expect(state.savedDocument).toMatchObject({
+      title: 'Fieldmap',
+      description: 'Visibledescription',
+    });
+    expect(state.isDirty()).toBe(true);
+  });
 });
 
 describe('editDocumentDetailsFlow', () => {

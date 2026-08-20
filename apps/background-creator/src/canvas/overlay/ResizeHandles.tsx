@@ -5,12 +5,12 @@ import type {
 } from 'react';
 
 import type { BackgroundDocument } from '~/model/types';
-import type { StageBox } from '~/state/documentGeometry';
 import { useEditorStore } from '~/state/editorStore';
 import {
   computeSnap,
   NO_GUIDES,
   type SnapGuides,
+  type SnapLines,
   snapLines,
 } from '~/state/snapping';
 
@@ -19,10 +19,11 @@ import {
   elementHandles,
   type Handle,
   type HandlePlacement,
-  resizeElement,
 } from '../canvasGeometry';
+import { flushFocusedField } from '../focusedField';
 import { RESIZE_HANDLE_ATTR } from '../overlayTargets';
 import { startPointerGesture } from '../pointerGesture';
+import { resizeDocumentFromSnapshot } from '../resizeGesture';
 
 // Pointer-only resize affordances for the selected item under the select tool.
 // Keyboard editing covers move + delete (see useItemControls); resize is a
@@ -44,39 +45,36 @@ export function ResizeHandles({
   const placements: HandlePlacement[] = el ? elementHandles(el) : [];
   if (!el || placements.length === 0) return null;
 
-  const applyResize = (
-    d: BackgroundDocument,
-    handle: Handle,
-    pt: { x: number; y: number },
-    stage: StageBox | null,
-  ): BackgroundDocument => ({
-    ...d,
-    elements: d.elements.map((element) =>
-      element.id === selection.id
-        ? resizeElement(element, handle, pt, stage)
-        : element,
-    ),
-  });
-
   // With Shift, a rect/ellipse corner-resize derives its y extent from x
   // (constrainRegular), so snapping y would fight the constraint — snap only x
   // and let the constraint place y. Lines carry no such constraint.
   const shiftConstrains = el.kind === 'rect' || el.kind === 'ellipse';
 
   const startResize = (e: ReactPointerEvent, handle: Handle) => {
-    const store = useEditorStore.getState();
     const startRect = getRect();
-    // Other elements don't move during a resize, so the snap candidate lines are
-    // fixed for the gesture; compute them once, excluding the resized element.
-    // Stage-aware so text candidates sit on rendered (measured) extents.
-    const candidates = snapLines(
-      store.doc,
-      selection.id,
-      startRect ? { width: startRect.width, height: startRect.height } : null,
-    );
+    let originalDoc: BackgroundDocument | null = null;
+    let candidates: SnapLines | null = null;
     startPointerGesture(e, e.currentTarget, getRect, {
-      onStart: () => store.beginGesture(),
+      onStart: () => {
+        // A property control commits on blur. Flush it before taking the
+        // gesture snapshot so its history entry cannot clear this resize's
+        // snapshot on the browser's later pointerdown-driven focus change.
+        flushFocusedField();
+        const store = useEditorStore.getState();
+        originalDoc = store.doc;
+        // Other elements don't move during a resize, so the snap candidates
+        // are fixed for the gesture and derive from the same original snapshot.
+        candidates = snapLines(
+          originalDoc,
+          selection.id,
+          startRect
+            ? { width: startRect.width, height: startRect.height }
+            : null,
+        );
+        store.beginGesture();
+      },
       onDrag: (pt, _start, shiftKey, altKey) => {
+        if (!originalDoc || !candidates) return;
         const rect = getRect();
         const fullStage = rect
           ? { width: rect.width, height: rect.height }
@@ -93,11 +91,21 @@ export function ResizeHandles({
         } else {
           onGuidesChange(NO_GUIDES);
         }
-        store.updateGesture((d) =>
-          applyResize(d, handle, moving, constrainStage),
-        );
+        const snapshot = originalDoc;
+        useEditorStore
+          .getState()
+          .updateGesture(() =>
+            resizeDocumentFromSnapshot(
+              snapshot,
+              selection.id,
+              handle,
+              moving,
+              constrainStage,
+            ),
+          );
       },
       onEnd: ({ cancelled }) => {
+        const store = useEditorStore.getState();
         onGuidesChange(NO_GUIDES);
         if (cancelled) {
           store.cancelGesture();

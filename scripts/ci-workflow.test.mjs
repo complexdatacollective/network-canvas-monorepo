@@ -529,6 +529,14 @@ test('stable app versions deploy to their Netlify production sites', () => {
     );
     assert.match(releaseJob, /prerelease: false/);
     assert.match(releaseJob, /make_latest: 'true'/);
+    assert.match(
+      releaseJob,
+      new RegExp(`group: apps-release-@codaco/${app}$`, 'm'),
+      `${app} releases must serialize across versions`,
+    );
+    assert.match(releaseJob, /fetch-depth: 0/);
+    assert.match(releaseJob, /bash \.github\/scripts\/app-release-guard\.sh/);
+    assert.match(releaseJob, /--since "\$SINCE"/);
   }
 });
 

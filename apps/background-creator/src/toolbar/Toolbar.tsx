@@ -1,5 +1,6 @@
 import {
   Circle,
+  Compass,
   File,
   FileCode,
   FileOutput,
@@ -104,6 +105,9 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
         break;
       case 'concentric':
         void newDocumentFlow(dialogs, 'concentric');
+        break;
+      case 'compass':
+        void newDocumentFlow(dialogs, 'compass');
         break;
       default:
         break;
@@ -244,6 +248,12 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
               onClick={() => handleNewSelect('concentric')}
             >
               Circles template
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<Compass />}
+              onClick={() => handleNewSelect('compass')}
+            >
+              Political compass template
             </DropdownMenuItem>
           </ToolbarMenu>
           <ToolbarIconButton

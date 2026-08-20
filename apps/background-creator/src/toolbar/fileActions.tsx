@@ -15,7 +15,7 @@ import { generatePythonScript } from '~/scripts/python';
 import { generateRScript } from '~/scripts/r';
 import { useEditorStore } from '~/state/editorStore';
 import { DocumentParseError, parseDocument } from '~/svg/parse';
-import { serializeDocument } from '~/svg/serialize';
+import { sanitizeDocumentForExport, serializeDocument } from '~/svg/serialize';
 
 import { evaluateScriptExport } from './exportGate';
 import { documentFilename } from './filename';
@@ -188,7 +188,7 @@ export async function downloadSvgFlow(): Promise<void> {
   // Preserve the exact exported snapshot as the baseline. If another edit were
   // to land while the browser save flow is settling, the current document
   // remains dirty relative to what was actually downloaded.
-  if (result.saved) store.markSaved(doc);
+  if (result.saved) store.markSaved(sanitizeDocumentForExport(doc));
 }
 
 function DocumentDetailsFields({
