@@ -20,11 +20,14 @@ import {
   type SyntheticInterviewResult,
 } from './session-engine/envelope';
 import { createSessionStreams } from './session-engine/streams';
+import { simulateAlterEdgeForm } from './simulators/AlterEdgeForm';
+import { simulateAlterForm } from './simulators/AlterForm';
 import { simulateCategoricalBin } from './simulators/CategoricalBin';
 import { simulateContentStage } from './simulators/contentStages';
 import { simulateEgoForm } from './simulators/EgoForm';
 import { simulateNameGenerator } from './simulators/NameGenerator';
 import { simulateNameGeneratorQuickAdd } from './simulators/NameGeneratorQuickAdd';
+import { simulateNameGeneratorRoster } from './simulators/NameGeneratorRoster';
 import { simulateOrdinalBin } from './simulators/OrdinalBin';
 import type { AssetData, SimulatorRegistry } from './simulators/types';
 import { invariant } from './utils/invariant';
@@ -41,16 +44,20 @@ export type {
 /**
  * The one simulator per interface type (spec rule 1). A type absent here
  * makes the walk throw a structured error — never a silent fallthrough. The
- * remaining fourteen interfaces register as Phase 3 lands them.
+ * remaining interfaces register as Phase 3 lands them.
  */
-const REGISTRY: SimulatorRegistry = {
+export const REGISTRY: SimulatorRegistry = {
+  AlterEdgeForm: simulateAlterEdgeForm,
+  AlterForm: simulateAlterForm,
   Anonymisation: simulateContentStage,
   CategoricalBin: simulateCategoricalBin,
   EgoForm: simulateEgoForm,
   Information: simulateContentStage,
   NameGenerator: simulateNameGenerator,
   NameGeneratorQuickAdd: simulateNameGeneratorQuickAdd,
+  NameGeneratorRoster: simulateNameGeneratorRoster,
   Narrative: simulateContentStage,
+  NarrativePedigree: simulateContentStage,
   OrdinalBin: simulateOrdinalBin,
 };
 

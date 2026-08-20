@@ -16,6 +16,7 @@ import {
 } from '../../constraints/reservations';
 import { UniqueRegistry } from '../../constraints/uniqueRegistry';
 import { ValueGenerator } from '../../constraints/ValueGenerator';
+import type { SyntheticSessionAction } from '../../session-engine/actions';
 import { createSessionClock } from '../../session-engine/clock';
 import { SessionEngine } from '../../session-engine/engine';
 import { createSessionStreams } from '../../session-engine/streams';
@@ -45,9 +46,15 @@ export const TEST_SEED = 1234;
  */
 const START_WINDOW = '2026-08-14T12:00:00.000Z';
 
+/**
+ * `extra` carries the protocol-level fields a stage's own validation reaches
+ * for — an `assetManifest` a roster's `dataSource` must name, say. Spread last
+ * so a fixture can also override the boilerplate above it.
+ */
 export const parseProtocol = (
   codebook: unknown,
   stages: unknown[],
+  extra: Record<string, unknown> = {},
 ): CurrentProtocol =>
   CurrentProtocolSchema.parse({
     name: 'Simulator test protocol',
@@ -55,6 +62,7 @@ export const parseProtocol = (
     schemaVersion: 8,
     codebook,
     stages,
+    ...extra,
   });
 
 export type Harness = {
@@ -63,6 +71,12 @@ export type Harness = {
   network: NcNetwork;
   nodes: () => NcNode[];
   ego: () => Record<string, VariableValue>;
+  /**
+   * Every primitive dispatched so far, in order — the setup's own writes
+   * included, so a test asserting what a SIMULATOR did takes the length before
+   * running it and slices from there. Requires `captureTrace`.
+   */
+  trace: () => readonly SyntheticSessionAction[];
   /**
    * Put alters into the network the way an earlier stage would have: through
    * the engine, stamped with the stage at `currentStep`.
@@ -85,7 +99,17 @@ export const harnessFor = (
     seed = TEST_SEED,
     index = 0,
     assetData = {},
-  }: { seed?: number; index?: number; assetData?: AssetData } = {},
+    // Off by default so a harness run stays cheap; a test asserting WHICH
+    // primitives were dispatched, in what order, turns it on. That is the only
+    // oracle strong enough for "wrote nothing", since a write can be a no-op
+    // in the fold and still be a write the interface could not have made.
+    captureTrace = false,
+  }: {
+    seed?: number;
+    index?: number;
+    assetData?: AssetData;
+    captureTrace?: boolean;
+  } = {},
 ): Harness => {
   const streams = createSessionStreams(seed, index);
   const clock = createSessionClock(START_WINDOW, streams);
@@ -94,7 +118,7 @@ export const harnessFor = (
     stages: protocol.stages,
     clock,
     egoUid: streams.uuid(),
-    captureTrace: false,
+    captureTrace,
   });
 
   const today = clock.startTime.slice(0, 10);
@@ -129,6 +153,13 @@ export const harnessFor = (
     network: engine.draft.network,
     nodes: () => engine.draft.network.nodes,
     ego: () => engine.draft.network.ego[entityAttributesProperty],
+    trace: () => {
+      const captured = engine.capturedTrace();
+      if (!captured) {
+        throw new Error('harnessFor was not asked to captureTrace');
+      }
+      return captured;
+    },
     seedAlters: (count, options = {}) => {
       const {
         currentStep = 0,

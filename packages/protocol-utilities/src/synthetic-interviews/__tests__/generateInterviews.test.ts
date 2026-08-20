@@ -16,6 +16,7 @@ import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from '../constants';
 import {
   generateInterviews,
   type GenerateInterviewsOptions,
+  REGISTRY,
   type SyntheticInterviewResult,
 } from '../index';
 import type { AssetData } from '../simulators/types';
@@ -826,6 +827,12 @@ describe('generateInterviews', () => {
       // A stage the walk cannot express must not fall through as a silent
       // no-op: that would be a second model of stage behaviour, quietly
       // producing a session missing everything the stage would have written.
+      //
+      // The registry entry is taken away rather than a still-unbuilt stage
+      // type being named. Naming one dates the test — every simulator that
+      // lands has to come here and choose another — and the invariant is not
+      // about which types exist yet, it is that a type the registry does not
+      // answer for stops the walk.
       const withAlterForm = parse([
         quickAddStage({
           generatesData: true,
@@ -841,9 +848,15 @@ describe('generateInterviews', () => {
         },
       ]);
 
-      expect(() => run(withAlterForm)).toThrow(
-        /no simulator for stage type "AlterForm"/,
-      );
+      const registered = REGISTRY.AlterForm;
+      delete REGISTRY.AlterForm;
+      try {
+        expect(() => run(withAlterForm)).toThrow(
+          /no simulator for stage type "AlterForm"/,
+        );
+      } finally {
+        REGISTRY.AlterForm = registered;
+      }
     });
   });
 

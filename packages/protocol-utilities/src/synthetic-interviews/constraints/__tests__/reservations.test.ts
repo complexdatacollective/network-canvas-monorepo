@@ -68,13 +68,17 @@ const codebook = {
   },
 };
 
-const parse = (stages: Record<string, unknown>[]): CurrentProtocol =>
+const parse = (
+  stages: Record<string, unknown>[],
+  assetManifest?: Record<string, unknown>,
+): CurrentProtocol =>
   CurrentProtocolSchema.parse({
     name: 'Reservation test protocol',
     description: 'Exercises the unique holds a session takes up front.',
     schemaVersion: 8,
     codebook,
     stages,
+    ...(assetManifest ? { assetManifest } : {}),
   });
 
 const drawsInto = (variable: string, count: number, id = 'draws') => ({
@@ -253,6 +257,30 @@ describe('the unique values a session holds back', () => {
       }
     });
 
+    it('lets only one of two rows offering the same value through', () => {
+      // A roster is the researcher's own data, and nothing there stops two
+      // rows carrying one value for a variable the codebook marks `unique`.
+      // Choosing the whole set of rows before any of them lands is what would
+      // let both through — the network holds the value only once the first is
+      // added — so rows are offered one at a time and the second is passed
+      // over, its place taken by somebody typed in.
+      const twins: AssetData = {
+        rosterNodes: {
+          roster: [0, 1].map((index) => ({
+            [entityPrimaryKeyProperty]: `row-${index}`,
+            type: 'person',
+            [entityAttributesProperty]: { name: `Row ${index}`, band: 1 },
+          })),
+        },
+      };
+
+      for (const payload of sessionsFor(protocol, 60, twins)) {
+        const values = valuesOf(payload.network?.nodes, 'band');
+
+        expect(new Set(values).size).toBe(values.length);
+      }
+    });
+
     it('takes every row it draws with the value it arrived carrying', () => {
       for (const payload of sessionsFor(protocol, 60, assetData)) {
         const rows = (payload.network?.nodes ?? []).filter((node) =>
@@ -263,6 +291,74 @@ describe('the unique values a session holds back', () => {
           const index = Number(row[entityPrimaryKeyProperty].split('-')[1]);
           expect(row[entityAttributesProperty].band).toBe(BANDS[index]?.value);
         }
+      }
+    });
+  });
+
+  describe('the values a roster STAGE’s rows carry', () => {
+    // The same hold, taken for the stage whose whole population is a roster.
+    // It reaches a roster without a panel, so a bookkeeping pass that only
+    // knew about panel-bearing name generators would skip it — and the
+    // consequence is not a crash but a quieter loss: the earlier draw takes
+    // the row's value, the row is then a duplicate of what the network holds
+    // and is passed over for good, and the roster stage nominates nobody.
+    const oneRow = parse(
+      [
+        drawsInto('band', 1),
+        {
+          id: 'roster',
+          type: 'NameGeneratorRoster',
+          label: 'Colleagues',
+          subject: { entity: 'node', type: 'person' },
+          dataSource: 'colleagues',
+          synthetic: {
+            generatesData: true,
+            count: { distribution: 'constant', value: 1 },
+          },
+          prompts: [{ id: 'roster-p1', text: 'Who else?' }],
+        },
+      ],
+      {
+        colleagues: {
+          id: 'colleagues',
+          name: 'Colleagues',
+          type: 'network',
+          source: 'colleagues.json',
+        },
+      },
+    );
+
+    const single: AssetData = {
+      rosterNodes: {
+        roster: [
+          {
+            [entityPrimaryKeyProperty]: 'row-1',
+            type: 'person',
+            [entityAttributesProperty]: { name: 'Row', band: 1 },
+          },
+        ],
+      },
+    };
+
+    it('keeps a row’s value out of the way of every earlier draw', () => {
+      // An unheld `unique` sequence starts at its first distinct value on
+      // every seed, which is exactly the value this row carries.
+      for (const payload of sessionsFor(oneRow, 40, single)) {
+        const drawn = (payload.network?.nodes ?? []).find(
+          (node) => node.stageId === 'draws',
+        );
+
+        expect(drawn?.[entityAttributesProperty].band).not.toBe(1);
+      }
+    });
+
+    it('leaves the row nominable when its stage comes round', () => {
+      for (const payload of sessionsFor(oneRow, 40, single)) {
+        expect(
+          (payload.network?.nodes ?? []).map(
+            (node) => node[entityPrimaryKeyProperty],
+          ),
+        ).toContain('row-1');
       }
     });
   });

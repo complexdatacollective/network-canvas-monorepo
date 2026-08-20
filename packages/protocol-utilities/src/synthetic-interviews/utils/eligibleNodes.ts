@@ -2,6 +2,7 @@ import { filter as buildFilter } from '@codaco/network-query';
 import type { Filter } from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
+  type NcEdge,
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -41,5 +42,37 @@ export const nodesForStage = (
   return network.nodes.filter(
     (node) =>
       node.type === subjectType && passed.has(node[entityPrimaryKeyProperty]),
+  );
+};
+
+/**
+ * The edges a stage puts in front of the participant: those of its subject
+ * type that survive its own filter.
+ *
+ * The same derivation as {@link nodesForStage} and for the same reason — the
+ * runtime's `getNetworkEdgesForType` reads the stage-filtered network exactly
+ * as `getNetworkNodesForType` does — with one consequence worth naming: a
+ * filter that removes a node removes every edge incident to it, because a tie
+ * to somebody the stage does not show is a tie the participant cannot be asked
+ * about.
+ */
+export const edgesForStage = (
+  network: NcNetwork,
+  subjectType: string,
+  stageFilter?: Filter,
+): NcEdge[] => {
+  if (!stageFilter) {
+    return network.edges.filter((edge) => edge.type === subjectType);
+  }
+
+  const passed = new Set(
+    buildFilter(stageFilter)(network).edges.map(
+      (edge) => edge[entityPrimaryKeyProperty],
+    ),
+  );
+
+  return network.edges.filter(
+    (edge) =>
+      edge.type === subjectType && passed.has(edge[entityPrimaryKeyProperty]),
   );
 };

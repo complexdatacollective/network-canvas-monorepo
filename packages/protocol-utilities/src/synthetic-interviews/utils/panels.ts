@@ -57,8 +57,13 @@ const applyPanelFilter = (
 };
 
 /**
- * The roster rows this stage's panels would be DISPLAYING, given what the
- * network already holds.
+ * The roster rows a stage would be DISPLAYING, given what the network already
+ * holds.
+ *
+ * Taken by stage id rather than by the stage: NameGeneratorRoster draws its
+ * whole population from a roster while the two name generators reach one
+ * through a panel, and what the participant can still see of it is the same
+ * question for all three.
  *
  * The pool is the host's, keyed by STAGE id: `collectRosterExternalData` has
  * already fetched each panel's asset, applied that panel's own filter, pooled
@@ -77,11 +82,11 @@ const applyPanelFilter = (
  * added to the network, so its presence there is detectable.
  */
 const displayedRosterNodes = (
-  stage: NameGeneratorStage,
+  stageId: string,
   assetData: AssetData,
   network: NcNetwork,
 ): NcNode[] => {
-  const pool = assetData.rosterNodes?.[stage.id] ?? [];
+  const pool = assetData.rosterNodes?.[stageId] ?? [];
   if (pool.length === 0) return [];
 
   const inNetwork = new Set(network.nodes.map(uidOf));
@@ -130,7 +135,7 @@ export const splitNominationBudget = (
   network: NcNetwork,
   streams: SessionStreams,
 ): { newNodes: number; fromRoster: number } => {
-  const available = displayedRosterNodes(stage, assetData, network).length;
+  const available = displayedRosterNodes(stage.id, assetData, network).length;
 
   if (available === 0) return { newNodes: budget, fromRoster: 0 };
 
@@ -195,30 +200,52 @@ export const nominationsFromExistingPanels = (
 };
 
 /**
- * Take up to `wanted` people from the stage's roster pool, in pool order.
+ * Offer a stage's roster rows one at a time until `wanted` have been
+ * nominated, or the list runs out. Answers how many were taken.
  *
- * Re-derived against the network on every call rather than from a pool taken
- * once, so a person nominated on an earlier prompt has already disappeared
- * from the roster by the time the next prompt draws — which is what the
- * interface shows the participant.
+ * ONE at a time rather than a slate chosen up front, because taking a row
+ * changes what the next one may be: its values are in the network the moment
+ * it is added, so a second row carrying the same `unique` value is no longer a
+ * row this session can use. A roster is the researcher's own data, and nothing
+ * stops two of its rows offering one value for a variable the codebook marks
+ * `unique` — choosing the whole set before any of it lands is what would let
+ * both through.
  *
- * `isDrawable` passes over a row the session cannot use — one whose `unique`
- * values the network already holds. The predicate is the caller's because it
- * reads the unique registry, which a panel knows nothing about.
+ * `nominate` answers whether the row was actually taken; a row passed over
+ * does not spend the stage's count, and the next candidate is offered instead.
+ * It belongs to the caller because taking a row is a WRITE, and only the
+ * caller holds the engine and the unique registry.
+ *
+ * `chooseIndex` is how this participant reaches into the list. A name
+ * generator's roster panel sits beside a text field and gets worked down, so
+ * it takes the front; a NameGeneratorRoster IS the list — searchable,
+ * sortable, shown in whatever order was asked for — so it draws uniformly.
+ *
+ * The list is derived against the network as it stands when the offering
+ * starts, and each row offered leaves it, so nobody is offered twice and
+ * people nominated on an earlier prompt are gone already.
  */
-export const takeFromRoster = (
-  wanted: number,
-  stage: NameGeneratorStage,
-  assetData: AssetData,
-  network: NcNetwork,
-  isDrawable: (row: NcNode) => boolean,
-): NcNode[] => {
-  const taken: NcNode[] = [];
+export const nominateFromRoster = ({
+  stageId,
+  assetData,
+  network,
+  wanted,
+  chooseIndex,
+  nominate,
+}: {
+  stageId: string;
+  assetData: AssetData;
+  network: NcNetwork;
+  wanted: number;
+  chooseIndex: (remaining: readonly NcNode[]) => number;
+  nominate: (row: NcNode) => boolean;
+}): number => {
+  const remaining = displayedRosterNodes(stageId, assetData, network);
+  let taken = 0;
 
-  for (const row of displayedRosterNodes(stage, assetData, network)) {
-    if (taken.length >= wanted) break;
-    if (!isDrawable(row)) continue;
-    taken.push(row);
+  while (taken < wanted && remaining.length > 0) {
+    const [row] = remaining.splice(chooseIndex(remaining), 1);
+    if (row && nominate(row)) taken += 1;
   }
 
   return taken;

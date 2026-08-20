@@ -38,13 +38,23 @@ import type { UniqueRegistry } from './uniqueRegistry';
  * cache rather than a `GenerationContext`.
  */
 
+/**
+ * The stages that name people: the two that fabricate them (and may reach a
+ * roster through a panel), and the one whose whole population IS a roster.
+ * All three take rows the researcher supplied and prompt values the author
+ * fixed, which is what this module's bookkeeping is about.
+ */
 type NameGeneratorStage = Extract<
   Stage,
-  { type: 'NameGenerator' | 'NameGeneratorQuickAdd' }
+  {
+    type: 'NameGenerator' | 'NameGeneratorQuickAdd' | 'NameGeneratorRoster';
+  }
 >;
 
 const isNameGeneratorStage = (stage: Stage): stage is NameGeneratorStage =>
-  stage.type === 'NameGenerator' || stage.type === 'NameGeneratorQuickAdd';
+  stage.type === 'NameGenerator' ||
+  stage.type === 'NameGeneratorQuickAdd' ||
+  stage.type === 'NameGeneratorRoster';
 
 const applyRosterReservations = (
   {

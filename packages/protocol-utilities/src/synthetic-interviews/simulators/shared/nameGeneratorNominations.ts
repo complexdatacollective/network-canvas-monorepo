@@ -12,9 +12,9 @@ import {
   rosterRowIsDrawable,
 } from '../../constraints/reservations';
 import {
+  nominateFromRoster,
   nominationsFromExistingPanels,
   splitNominationBudget,
-  takeFromRoster,
 } from '../../utils/panels';
 import { countUniform, sampleCount } from '../../utils/sampleCount';
 import type { SimulationContext } from '../types';
@@ -23,6 +23,14 @@ import { currentStepOf, promptsWorked } from './stageContext';
 type NameGeneratorStage = Extract<
   Stage,
   { type: 'NameGenerator' | 'NameGeneratorQuickAdd' }
+>;
+
+/** Any stage whose prompts elicit people, roster-only ones included. */
+type NominatingStage = Extract<
+  Stage,
+  {
+    type: 'NameGenerator' | 'NameGeneratorQuickAdd' | 'NameGeneratorRoster';
+  }
 >;
 
 /**
@@ -40,7 +48,7 @@ type NameGeneratorStage = Extract<
  * caller is already walking the prompts, and an array read by position needs a
  * fallback for a lookup that cannot miss — a branch describing nothing.
  */
-const shareForPrompt = (
+export const shareForPrompt = (
   total: number,
   prompts: number,
   index: number,
@@ -50,8 +58,8 @@ const shareForPrompt = (
  * The attributes the interview writes onto a node when a prompt elicits it,
  * independent of how the node arrived.
  */
-const promptAttributes = (
-  prompt: NameGeneratorStage['prompts'][number],
+export const promptAttributes = (
+  prompt: NominatingStage['prompts'][number],
 ): Record<string, boolean> =>
   Object.fromEntries(
     (prompt.additionalAttributes ?? []).map(({ variable, value }) => [
@@ -154,47 +162,46 @@ export const simulateNameGeneratorNominations = ({
     const share = shareForPrompt(budget, promptCount, promptIndex);
     const rosterHere = shareForPrompt(fromRoster, promptCount, promptIndex);
 
-    // Roster first: the pool is re-derived against the network as it now
-    // stands, so people taken on an earlier prompt are already gone from it.
-    const rows = takeFromRoster(
-      rosterHere,
-      stage,
+    // Roster first: the panel is worked down in the order it lists people,
+    // and the list is what the participant can still see — everyone already
+    // in the network is gone from it.
+    const fromRosterHere = nominateFromRoster({
+      stageId: stage.id,
       assetData,
-      engine.draft.network,
-      (row) =>
-        rosterRowIsDrawable(handles, scope, {
+      network: engine.draft.network,
+      wanted: rosterHere,
+      chooseIndex: () => 0,
+      nominate: (row) => {
+        const fixed: Record<string, VariableValue> = {
           ...row[entityAttributesProperty],
           ...shared,
-        }),
-    );
+        };
+        if (!rosterRowIsDrawable(handles, scope, fixed)) return false;
 
-    for (const row of rows) {
-      const fixed: Record<string, VariableValue> = {
-        ...row[entityAttributesProperty],
-        ...shared,
-      };
-      engine.addNode({
-        nodeType: stage.subject.type,
-        // A roster row keeps its own id, which is what lets the interface
-        // stop offering it once the person is in the network.
-        uid: row[entityPrimaryKeyProperty],
-        attributeData: fixed,
-        // A roster carries whatever columns the researcher gave it, including
-        // ones the codebook does not declare; the runtime admits them through
-        // the same flag.
-        allowUnknownAttributes: true,
-        currentStep,
-      });
-      // Nothing issued these values, so nothing gives them back — but they are
-      // in the network now, and a later draw handed one would be the duplicate
-      // `unique` forbids.
-      claimFixedValues(handles, scope, fixed);
-    }
+        engine.addNode({
+          nodeType: stage.subject.type,
+          // A roster row keeps its own id, which is what lets the interface
+          // stop offering it once the person is in the network.
+          uid: row[entityPrimaryKeyProperty],
+          attributeData: fixed,
+          // A roster carries whatever columns the researcher gave it,
+          // including ones the codebook does not declare; the runtime admits
+          // them through the same flag.
+          allowUnknownAttributes: true,
+          currentStep,
+        });
+        // Nothing issued these values, so nothing gives them back — but they
+        // are in the network now, and a later draw handed one would be the
+        // duplicate `unique` forbids.
+        claimFixedValues(handles, scope, fixed);
+        return true;
+      },
+    });
 
     // A row passed over for a value the network already holds leaves the
     // stage's count to be met by somebody the participant types in, exactly as
     // the G2 engine fell back to fabrication.
-    const newHere = share - rows.length;
+    const newHere = share - fromRosterHere;
 
     for (let index = 0; index < newHere; index += 1) {
       const entityIndex = created;
