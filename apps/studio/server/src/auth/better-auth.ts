@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { magicLink } from 'better-auth/plugins';
+import { magicLink, organization } from 'better-auth/plugins';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
@@ -75,6 +76,36 @@ export function createBetterAuthInstance(
         storeToken: 'hashed',
         sendMagicLink: ({ email, url }) => mailer.sendMagicLink({ email, url }),
       }),
+      // Workspaces are better-auth organizations (#1249). The tenant boundary
+      // tables keep domain names and snake_case: they are domain tables that
+      // better-auth happens to manage. session stays camelCase like the rest
+      // of the auth core. Invitation email delivery lands with #1256.
+      organization({
+        schema: {
+          session: { fields: { activeOrganizationId: 'activeWorkspaceId' } },
+          organization: {
+            modelName: 'workspaces',
+            fields: { createdAt: 'created_at' },
+          },
+          member: {
+            modelName: 'workspace_members',
+            fields: {
+              organizationId: 'workspace_id',
+              userId: 'user_id',
+              createdAt: 'created_at',
+            },
+          },
+          invitation: {
+            modelName: 'workspace_invitations',
+            fields: {
+              organizationId: 'workspace_id',
+              inviterId: 'inviter_id',
+              expiresAt: 'expires_at',
+              createdAt: 'created_at',
+            },
+          },
+        },
+      }),
     ],
   });
 }
@@ -85,6 +116,7 @@ export function createBetterAuthService(
   mailer: MagicLinkMailer,
 ): AuthService {
   const auth = createBetterAuthInstance(env, pool, mailer);
+  const db = drizzle({ client: pool });
   return {
     handler: (request) => auth.handler(request),
     getSession: async (headers) => {
@@ -98,6 +130,25 @@ export function createBetterAuthService(
         name: result.user.name,
         sessionId: result.session.id,
       };
+    },
+    getMembership: async (userId, workspaceId) => {
+      // Through the drizzle definitions rather than a raw SQL string: the
+      // adapter already queries these tables via drizzle, and this keeps the
+      // physical names single-sourced in auth-schema.ts. The plugin's own api
+      // surface is session-header-driven; this check is (userId, workspaceId)-
+      // keyed, so it queries directly.
+      const members = AUTH_TABLES.workspace_members;
+      const rows = await db
+        .select({ role: members.role })
+        .from(members)
+        .where(
+          and(
+            eq(members.user_id, userId),
+            eq(members.workspace_id, workspaceId),
+          ),
+        )
+        .limit(1);
+      return rows[0] ?? null;
     },
   };
 }

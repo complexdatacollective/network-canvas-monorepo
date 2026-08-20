@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.ts';
-import type { AuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-
-function fakeAuthService(): AuthService {
-  return {
-    handler: () => Promise.resolve(Response.json({})),
-    getSession: () => Promise.resolve(null),
-  };
-}
+import { stubAuthService } from './support/auth.ts';
 
 function appWithFakeAuth() {
-  return createApp(readEnv(), { auth: fakeAuthService() });
+  return createApp(readEnv(), { auth: stubAuthService() });
 }
 
 describe('cookie-plane CSRF', () => {

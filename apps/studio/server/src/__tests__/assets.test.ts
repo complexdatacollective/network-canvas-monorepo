@@ -10,8 +10,9 @@ import {
   createAssetStore,
   deliveryFor,
 } from '../assets.ts';
-import type { AuthService, SessionPrincipal } from '../auth/service.ts';
+import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv, type StudioEnv } from '../env.ts';
+import { stubAuthService } from './support/auth.ts';
 
 // Integration suite against a real S3-compatible endpoint — the dev MinIO
 // from scripts/dev-s3.ts (or whatever S3_* points at). Skips when no object
@@ -57,10 +58,9 @@ const PRINCIPAL: SessionPrincipal = {
 };
 
 function signedInApp(override?: StudioEnv) {
-  const auth: AuthService = {
-    handler: () => Promise.resolve(Response.json({})),
+  const auth = stubAuthService({
     getSession: () => Promise.resolve(PRINCIPAL),
-  };
+  });
   return createApp(override ?? readEnv(), { auth });
 }
 
@@ -80,11 +80,7 @@ const spaUpload = (
 // Both cases refuse before the store is consulted, so they need no MinIO.
 describe('asset upload authorisation', () => {
   it('refuses an unauthenticated upload', async () => {
-    const auth: AuthService = {
-      handler: () => Promise.resolve(Response.json({})),
-      getSession: () => Promise.resolve(null),
-    };
-    const app = createApp(readEnv(), { auth });
+    const app = createApp(readEnv(), { auth: stubAuthService() });
     const res = await app.request('/storage', spaUpload('bytes', 'text/plain'));
     expect(res.status).toBe(401);
     expect(res.headers.get('Content-Type')).toContain(
@@ -94,13 +90,12 @@ describe('asset upload authorisation', () => {
 
   it('refuses a cross-origin upload before any session lookup', async () => {
     let lookups = 0;
-    const auth: AuthService = {
-      handler: () => Promise.resolve(Response.json({})),
+    const auth = stubAuthService({
       getSession: () => {
         lookups += 1;
         return Promise.resolve(PRINCIPAL);
       },
-    };
+    });
     const app = createApp(readEnv(), { auth });
     const res = await app.request('/storage', {
       method: 'POST',
@@ -117,13 +112,12 @@ describe.skipIf(!reachable)('asset retrieval authorisation', () => {
     // Assets are fetched from contexts that carry no cookie, and the content
     // address is the capability. A GET must not consult the session at all.
     let lookups = 0;
-    const auth: AuthService = {
-      handler: () => Promise.resolve(Response.json({})),
+    const auth = stubAuthService({
       getSession: () => {
         lookups += 1;
         return Promise.resolve(null);
       },
-    };
+    });
     const app = createApp(readEnv(), { auth });
     const res = await app.request(`/storage/${'a'.repeat(64)}`);
     expect(res.status).toBe(404);
