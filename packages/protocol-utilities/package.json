@@ -32,6 +32,7 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
+    "zod": "catalog:",
     "@codaco/network-query": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",

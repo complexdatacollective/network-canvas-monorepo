@@ -59,3 +59,15 @@ export const SYNTHETIC_START_WINDOW_DAYS = 7;
  * a badly drawn map.
  */
 export const GEOSPATIAL_OUTSIDE_AREAS_PROBABILITY = 0.05;
+
+/**
+ * Finishing an interview is one more interaction — reading the confirmation,
+ * pressing the button — so a completed session's `finishTime` sits a beat
+ * after its last answer rather than on top of it.
+ *
+ * Ten seconds, jittered by the same lognormal the stages use. Long enough
+ * that finish never collides with the final write when timestamps are
+ * compared at second resolution; short enough that it reads as a button
+ * press, not another stage.
+ */
+export const SYNTHETIC_FINISH_BEAT_SECONDS = 10;
