@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { applyCommands, contentHash } from '../apply.ts';
 import { forceExpire, LeaseRejectedError, type SyncServer } from '../server.ts';
+import type { TenantDb } from '../tenant.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -17,10 +18,11 @@ import {
 
 describe.skipIf(!dbAvailable)('commit path', () => {
   let db: Pool;
+  let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, server } = await makeServer('sync_commit'));
+    ({ db, tenantDb, server } = await makeServer('sync_commit'));
   });
 
   afterAll(async () => {
@@ -101,7 +103,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
     // …and before the retry arrives, the lease expires and another tab
     // takes the section over (epoch bump).
-    await forceExpire(db, draft, 'stage-1');
+    await forceExpire(tenantDb, draft, 'stage-1');
     const b = await server.acquire(draft, 'stage-1', 'tab-B');
     expect(b?.epoch).toBe(2n);
 
@@ -163,7 +165,7 @@ describe.skipIf(!dbAvailable)('commit path', () => {
 
       // The lease expires while the commit queues. Transaction-start time
       // would still read it as live at the serialization point.
-      await forceExpire(db, draft, 'stage-1');
+      await forceExpire(tenantDb, draft, 'stage-1');
       await blocker.query('ROLLBACK');
 
       expect(await commit).toBeInstanceOf(LeaseRejectedError);

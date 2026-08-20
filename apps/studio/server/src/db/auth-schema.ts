@@ -102,7 +102,7 @@ const rateLimit = pgTable('rateLimit', {
 // plugin's schema overrides in src/auth/better-auth.ts (#1249). Property keys
 // are snake_case because the drizzle adapter resolves overridden field names
 // against them.
-const workspaces = pgTable('workspaces', {
+export const workspaces = pgTable('workspaces', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
