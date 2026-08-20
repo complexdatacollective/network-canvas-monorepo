@@ -1003,3 +1003,19 @@ describe('generateInterviews', () => {
     });
   });
 });
+
+describe('byte-level reproducibility (C9)', () => {
+  it('serialises two same-seed batches to identical bytes', () => {
+    // toStrictEqual tolerates differing key insertion order; a session
+    // destined for storage and export must not even differ there.
+    const first = JSON.stringify(batch(FULL_PROTOCOL, { count: 3, seed: 21 }));
+    const second = JSON.stringify(batch(FULL_PROTOCOL, { count: 3, seed: 21 }));
+    expect(second).toBe(first);
+  });
+
+  it('extends a batch without disturbing the members before the new one', () => {
+    const three = batch(FULL_PROTOCOL, { count: 3, seed: 21 });
+    const four = batch(FULL_PROTOCOL, { count: 4, seed: 21 });
+    expect(four.slice(0, 3)).toStrictEqual(three);
+  });
+});

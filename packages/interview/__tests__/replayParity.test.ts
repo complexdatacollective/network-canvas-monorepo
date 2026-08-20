@@ -416,3 +416,245 @@ describe('replay parity (C1)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Five-interface coverage: the first point where simulator-emitted traces
+// meet the real store. Counts and coins are authored deterministic so the
+// fixture exercises every write path on every seed.
+// ---------------------------------------------------------------------------
+
+const fiveInterfaceProtocol = (): CurrentProtocol =>
+  CurrentProtocolSchema.parse({
+    name: 'Replay parity: five interfaces',
+    schemaVersion: 8,
+    codebook: {
+      ego: {
+        variables: {
+          egoName: {
+            name: 'egoName',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true },
+          },
+          consent: { name: 'consent', type: 'boolean', component: 'Toggle' },
+        },
+      },
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: {
+              name: 'name',
+              type: 'text',
+              component: 'Text',
+              validation: { required: true, unique: true },
+            },
+            age: {
+              name: 'age',
+              type: 'number',
+              component: 'Number',
+              validation: { minValue: 18, maxValue: 90 },
+            },
+            contactFreq: {
+              name: 'contactFreq',
+              type: 'ordinal',
+              options: [
+                { label: 'Often', value: 3 },
+                { label: 'Sometimes', value: 2 },
+                { label: 'Rarely', value: 1 },
+              ],
+            },
+            support: {
+              name: 'support',
+              type: 'categorical',
+              options: [
+                { label: 'Emotional', value: 'emotional' },
+                { label: 'Practical', value: 'practical' },
+                { label: 'Advice', value: 'advice' },
+              ],
+            },
+            supportOther: {
+              name: 'supportOther',
+              type: 'text',
+              component: 'Text',
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'ego',
+        type: 'EgoForm',
+        label: 'About you',
+        introductionPanel: { title: 'About you', text: 'A little about you.' },
+        form: {
+          fields: [
+            { variable: asEntityAttributeReference('egoName'), prompt: 'Your name?' },
+            { variable: asEntityAttributeReference('consent'), prompt: 'Happy to continue?' },
+          ],
+        },
+      },
+      {
+        id: 'quickadd',
+        type: 'NameGeneratorQuickAdd',
+        label: 'Quick add',
+        quickAdd: asEntityAttributeReference('name'),
+        subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 3 } },
+        prompts: [
+          { id: 'qa-1', text: 'Who matters to you?' },
+          { id: 'qa-2', text: 'Anyone else?' },
+        ],
+      },
+      {
+        id: 'ng-form',
+        type: 'NameGenerator',
+        label: 'With detail',
+        subject: { entity: 'node', type: 'person' },
+        form: {
+          title: 'Add a person',
+          fields: [
+            { variable: asEntityAttributeReference('name'), prompt: 'Their name?' },
+            { variable: asEntityAttributeReference('age'), prompt: 'Their age?' },
+          ],
+        },
+        panels: [
+          {
+            id: 'panel-existing',
+            title: 'Already mentioned',
+            dataSource: 'existing',
+            synthetic: { nominationProbability: 1 },
+          },
+        ],
+        synthetic: { count: { distribution: 'constant', value: 2 } },
+        prompts: [{ id: 'ng-1', text: 'Family you are in contact with?' }],
+      },
+      {
+        id: 'skipped-with-people',
+        type: 'Information',
+        label: 'Skipped when anyone exists',
+        title: 'Skipped',
+        items: [{ id: 'sk', type: 'text', content: 'Hidden once people exist.' }],
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              {
+                id: 'has-person',
+                type: 'node',
+                options: { type: 'person', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+      },
+      {
+        id: 'ordbin',
+        type: 'OrdinalBin',
+        label: 'Contact',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'ord-1',
+            text: 'When did you last speak?',
+            variable: asEntityAttributeReference('contactFreq'),
+            color: 'ord-color-seq-1',
+          },
+        ],
+      },
+      {
+        id: 'catbin',
+        type: 'CategoricalBin',
+        label: 'Support',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'cat-1',
+            text: 'What support do they give?',
+            variable: asEntityAttributeReference('support'),
+            otherVariable: asEntityAttributeReference('supportOther'),
+            otherVariablePrompt: 'What support instead?',
+            otherOptionLabel: 'Something else',
+            synthetic: { otherBinProbability: 0.5 },
+          },
+        ],
+      },
+    ],
+  }) as CurrentProtocol;
+
+describe('replay parity (C1) — five interfaces', () => {
+  it('replays a completed five-interface walk', async () => {
+    await assertReplayParity(fiveInterfaceProtocol(), {
+      ...PINNED,
+      count: 1,
+      respectSkipLogic: true,
+    });
+  });
+
+  it.each([7, 99, 1234])('holds across seed %d', async (seed) => {
+    await assertReplayParity(fiveInterfaceProtocol(), {
+      ...PINNED,
+      seed,
+      count: 1,
+      respectSkipLogic: true,
+    });
+  });
+
+  it('replays a mid-stage stop (arrived, nothing done)', async () => {
+    await assertReplayParity(fiveInterfaceProtocol(), {
+      ...PINNED,
+      count: 1,
+      respectSkipLogic: true,
+      stopAt: { stageIndex: 2, promptIndex: 0 },
+    });
+  });
+
+  it('holds with dropout enabled, whatever the die decides', async () => {
+    await assertReplayParity(fiveInterfaceProtocol(), {
+      seed: 42,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      count: 1,
+      respectSkipLogic: true,
+      simulateDropOut: true,
+    });
+  });
+});
+
+describe('the five-interface fixture is not vacuous', () => {
+  // Parity compares two folds — if neither wrote anything it would pass
+  // trivially. This pins that the walk really generates substance, so the
+  // ten green parity runs above are proving something.
+  it('writes people, answers, and a skipped stage', () => {
+    const [result] = generateInterviews(fiveInterfaceProtocol(), {
+      ...PINNED,
+      count: 1,
+      respectSkipLogic: true,
+    });
+    expect(result).toBeDefined();
+    if (!result) throw new Error('unreachable');
+
+    expect(result.droppedOut).toBe(false);
+    // Stage 3 is authored to skip once anyone exists; quick-add guarantees 3.
+    expect(result.visitedStages).toEqual([0, 1, 2, 4, 5]);
+
+    const network = result.session.network;
+    expect(network).toBeDefined();
+    const nodes = network?.nodes ?? [];
+    expect(nodes.length).toBeGreaterThanOrEqual(4);
+
+    const names = nodes.map(
+      (node) => node[entityAttributesProperty]['name'],
+    );
+    expect(names.every((name) => typeof name === 'string' && name.length > 0)).toBe(true);
+    expect(new Set(names).size).toBe(names.length);
+
+    const attrs = nodes.map((node) => node[entityAttributesProperty]);
+    expect(attrs.some((a) => [1, 2, 3].includes(a['contactFreq'] as number))).toBe(true);
+    expect(attrs.some((a) => Array.isArray(a['support']) && a['support'].length > 0)).toBe(true);
+
+    expect(typeof result.session.network?.ego?.[entityAttributesProperty]?.['egoName']).toBe('string');
+  });
+});
