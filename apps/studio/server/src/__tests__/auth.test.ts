@@ -255,6 +255,17 @@ describe.skipIf(!db)('workspaces (organization plugin)', () => {
       });
       expect(await auth.getMembership(me.userId, 'not-a-workspace')).toBeNull();
       expect(await auth.getMembership('someone-else', workspace.id)).toBeNull();
+
+      // The plugin only check-then-inserts memberships, so the composite
+      // unique index is what keeps that single-row read unambiguous. Omitting
+      // created_at also exercises its default.
+      await expect(
+        scratch.pool.query(
+          `insert into workspace_members (id, workspace_id, user_id, role)
+           values ($1, $2, $3, 'member')`,
+          ['second-membership', workspace.id, me.userId],
+        ),
+      ).rejects.toThrow(/duplicate key/);
     } finally {
       await scratch.dispose();
     }

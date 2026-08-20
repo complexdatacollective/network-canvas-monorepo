@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 const user = pgTable('user', {
@@ -106,7 +107,9 @@ const workspaces = pgTable('workspaces', {
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   logo: text('logo'),
-  created_at: timestamp('created_at', { withTimezone: true }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   metadata: text('metadata'),
 });
 
@@ -121,13 +124,20 @@ const workspace_members = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role').default('member').notNull(),
-    created_at: timestamp('created_at', { withTimezone: true }).notNull(),
+    created_at: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  // Composite rather than the generated single-column user_id index: the
-  // membership check filters on both columns, and the user_id prefix still
-  // serves "workspaces for this user".
+  // A user holds at most one membership per workspace, enforced here because
+  // the plugin only check-then-inserts: it keeps getMembership's single-row
+  // read unambiguous. The unique index subsumes the generated single-column
+  // workspace_id index; the reversed composite serves "workspaces for this
+  // user".
   (table) => [
-    index('workspace_members_workspace_id_idx').on(table.workspace_id),
+    uniqueIndex('workspace_members_workspace_id_user_id_idx').on(
+      table.workspace_id,
+      table.user_id,
+    ),
     index('workspace_members_user_id_workspace_id_idx').on(
       table.user_id,
       table.workspace_id,
