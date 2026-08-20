@@ -150,6 +150,50 @@ grouped, so each group gained a labelled `group` node" — not "update snapshots
 The next person to see this diff in `git log` needs your reasoning, and a commit
 message that admits you could not find the change is a signal to stop, not ship.
 
+### 6. A regeneration that changes nothing has told you nothing
+
+`--update-snapshots` with no value **presets to `changed`**, which rewrites a
+baseline only when the render differs BEYOND the comparison threshold
+(Playwright's default `threshold` is `0.2` per pixel). So an artifact that comes
+back byte-identical does not mean "the render matches". It means "nothing
+crossed the line" — and those are very different claims.
+
+This is how a suite's images drift away from the app while every check stays
+green. A threshold that hides a regression hides an improvement equally well.
+
+Seen in August 2026 on `@codaco/interview`: a toolbar's active state changed
+from no fill to a 15% tint — a max per-channel delta of `0.122`, comfortably
+inside `0.2`. Regeneration wrote nothing at all, twice, and the committed PNGs
+went on depicting a control that no longer looked like that. Forcing
+`update_mode=all` revealed 216 changed files across 37 scenarios, including a
+node-label rendering improvement nobody had noticed the baselines were missing.
+
+**When a change is real but sub-threshold, force it:**
+
+```bash
+gh workflow run regenerate-e2e-visual-snapshots.yml --ref <branch>   -f suite=interview -f mode=regenerate -f update_mode=all
+```
+
+**Then prove the output is stable before you adopt it.** `all` rewrites every
+baseline from the current render, so if the render is not deterministic you are
+freezing one coin flip. Run the forced regeneration TWICE and diff the two
+artifacts against each other:
+
+- **They agree** → the differences are real; adopt them.
+- **They disagree** → you are looking at nondeterminism, not the app.
+
+That control run is cheap and it is the only thing that distinguishes the two.
+The interview suite passed it at 1 differing file in 432, at 10 pixels — so
+`all` is meaningful there. Do not assume the same of a suite you have not
+measured.
+
+Do NOT reach for magnitude heuristics instead of the control run. Sorting
+diffs by "how many pixels changed by more than 20 levels" looks principled and
+is not: a genuine word-wrap improvement and a font-loading race produce the
+same profile. Only re-running tells them apart. And check whether the product
+actually changed before theorising about the harness — the same provenance test
+you apply to review findings applies to your own hypotheses.
+
 ## Checklist
 
 - [ ] I read every hunk of the baseline diff
@@ -160,6 +204,8 @@ message that admits you could not find the change is a signal to stop, not ship.
 - [ ] Any baseline too large to review got split
 - [ ] The cause is written in the commit message or changeset
 - [ ] Throwaway probe specs are deleted
+- [ ] A regeneration that produced no changes was not read as "the render matches"
+- [ ] Forced (`all`) output was proved stable by a second run before adopting
 
 ## Related
 
