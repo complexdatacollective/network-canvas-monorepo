@@ -24,11 +24,15 @@ import { simulateAlterEdgeForm } from './simulators/AlterEdgeForm';
 import { simulateAlterForm } from './simulators/AlterForm';
 import { simulateCategoricalBin } from './simulators/CategoricalBin';
 import { simulateContentStage } from './simulators/contentStages';
+import { simulateDyadCensus } from './simulators/DyadCensus';
 import { simulateEgoForm } from './simulators/EgoForm';
 import { simulateNameGenerator } from './simulators/NameGenerator';
 import { simulateNameGeneratorQuickAdd } from './simulators/NameGeneratorQuickAdd';
 import { simulateNameGeneratorRoster } from './simulators/NameGeneratorRoster';
+import { simulateOneToManyDyadCensus } from './simulators/OneToManyDyadCensus';
 import { simulateOrdinalBin } from './simulators/OrdinalBin';
+import { simulateSociogram } from './simulators/Sociogram';
+import { simulateTieStrengthCensus } from './simulators/TieStrengthCensus';
 import type { AssetData, SimulatorRegistry } from './simulators/types';
 import { invariant } from './utils/invariant';
 import { walkSession } from './walk/walk';
@@ -51,6 +55,7 @@ export const REGISTRY: SimulatorRegistry = {
   AlterForm: simulateAlterForm,
   Anonymisation: simulateContentStage,
   CategoricalBin: simulateCategoricalBin,
+  DyadCensus: simulateDyadCensus,
   EgoForm: simulateEgoForm,
   Information: simulateContentStage,
   NameGenerator: simulateNameGenerator,
@@ -58,7 +63,10 @@ export const REGISTRY: SimulatorRegistry = {
   NameGeneratorRoster: simulateNameGeneratorRoster,
   Narrative: simulateContentStage,
   NarrativePedigree: simulateContentStage,
+  OneToManyDyadCensus: simulateOneToManyDyadCensus,
   OrdinalBin: simulateOrdinalBin,
+  Sociogram: simulateSociogram,
+  TieStrengthCensus: simulateTieStrengthCensus,
 };
 
 export const generateInterviewsOptions = z

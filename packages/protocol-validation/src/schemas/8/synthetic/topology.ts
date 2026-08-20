@@ -20,6 +20,57 @@ export const topologyTargetBounds = (
 ): { min: 0; max: number } => ({ min: 0, max: Math.max(0, pairCount) });
 
 /**
+ * The values each metric is defined over, before any declaration narrows them.
+ *
+ * A density is a PROPORTION of the available pairs, so it lives on 0-1; a mean
+ * degree is an average number of ties per person, so it has no ceiling but
+ * cannot go below zero. Both readings are already load-bearing in the schemas
+ * that admit these distributions — `densityNormalSchema` holds a degenerate
+ * mean to `{ min: 0, max: 1 }` and `meanDegreeNormalSchema` to `{ min: 0 }` —
+ * and this is the same statement, named once so the draw can read it.
+ */
+const METRIC_DOMAIN: Record<
+  EdgeTopology['metric'],
+  { min: number; max: number }
+> = {
+  density: { min: 0, max: 1 },
+  meanDegree: { min: 0, max: Number.POSITIVE_INFINITY },
+};
+
+/**
+ * The window a topology's draws must land in: its metric's own domain,
+ * narrowed by whatever bounds the declaration states.
+ *
+ * The twin of {@link syntheticCountSupport} for topologies, and here for the
+ * same reason: a declaration may leave one or both bounds unstated — a
+ * `uniform` density with neither means "any density at all" — and the value
+ * standing in for an unstated bound is a property of the metric, not a choice
+ * generation is entitled to make. Read where a draw is TRUNCATED into its
+ * window, which is different from {@link topologyTargetBounds}: that one is
+ * about how many edges the network can hold, this one about which values the
+ * declaration can return.
+ */
+export const topologyDrawWindow = (
+  topology: EdgeTopology,
+): { min: number; max: number } => {
+  const domain = METRIC_DOMAIN[topology.metric];
+  const declared = topology.distribution;
+  const declaredMin = 'min' in declared ? declared.min : undefined;
+  const declaredMax = 'max' in declared ? declared.max : undefined;
+
+  return {
+    min:
+      declaredMin === undefined
+        ? domain.min
+        : Math.max(declaredMin, domain.min),
+    max:
+      declaredMax === undefined
+        ? domain.max
+        : Math.min(declaredMax, domain.max),
+  };
+};
+
+/**
  * The edge count a drawn topology metric asks for, as a whole number inside
  * the bounds above.
  *
