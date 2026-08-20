@@ -814,9 +814,9 @@ function DragHandle({
   orientation: ToolbarOrientation;
   size: SegmentSize;
   onPointerDown: (event: React.PointerEvent) => void;
-  onNudge: (delta: Position) => void;
+  onNudge: (delta: Position, handle: HTMLButtonElement) => void;
 }) {
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
     const deltas: Record<string, Position> = {
       ArrowLeft: { x: -NUDGE_STEP, y: 0 },
       ArrowRight: { x: NUDGE_STEP, y: 0 },
@@ -826,7 +826,7 @@ function DragHandle({
     const delta = deltas[event.key];
     if (!delta) return;
     event.preventDefault();
-    onNudge(delta);
+    onNudge(delta, event.currentTarget);
   };
 
   return (
@@ -876,17 +876,39 @@ export function SegmentedToolbar({
     }
   }, [position, x, y]);
 
-  const handleNudge = (delta: Position) => {
+  // Pointer dragging delegates reference constraints to Motion, but keyboard
+  // nudges bypass that path. Measure the constraint and toolbar rectangles to
+  // recover the allowed motion-value offsets. An oversized element inverts the
+  // raw edges; sorting each pair turns that into a pannable range instead of
+  // making every arrow press jump to one extreme.
+  const nudgeLimits = (
+    handle: HTMLButtonElement,
+  ): { left: number; right: number; top: number; bottom: number } | null => {
+    if (!dragConstraints) return null;
+    if (!('current' in dragConstraints)) return dragConstraints;
+    const container = dragConstraints.current;
+    const surface = handle.parentElement;
+    if (!container || !surface) return null;
+    const containerRect = container.getBoundingClientRect();
+    const surfaceRect = surface.getBoundingClientRect();
+    const rawLeft = containerRect.left - (surfaceRect.left - x.get());
+    const rawRight = containerRect.right - (surfaceRect.right - x.get());
+    const rawTop = containerRect.top - (surfaceRect.top - y.get());
+    const rawBottom = containerRect.bottom - (surfaceRect.bottom - y.get());
+    return {
+      left: Math.min(rawLeft, rawRight),
+      right: Math.max(rawLeft, rawRight),
+      top: Math.min(rawTop, rawBottom),
+      bottom: Math.max(rawTop, rawBottom),
+    };
+  };
+
+  const handleNudge = (delta: Position, handle: HTMLButtonElement) => {
     const next = { x: x.get() + delta.x, y: y.get() + delta.y };
-    if (dragConstraints && !('current' in dragConstraints)) {
-      next.x = Math.min(
-        Math.max(next.x, dragConstraints.left),
-        dragConstraints.right,
-      );
-      next.y = Math.min(
-        Math.max(next.y, dragConstraints.top),
-        dragConstraints.bottom,
-      );
+    const limits = nudgeLimits(handle);
+    if (limits) {
+      next.x = Math.min(Math.max(next.x, limits.left), limits.right);
+      next.y = Math.min(Math.max(next.y, limits.top), limits.bottom);
     }
     x.set(next.x);
     y.set(next.y);

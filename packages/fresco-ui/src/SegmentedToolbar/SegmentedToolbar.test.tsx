@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Grid3x3, List, Pencil, Redo2, Undo2 } from 'lucide-react';
-import { createRef, type Ref, useState } from 'react';
+import { createRef, type Ref, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DropdownMenuItem } from '../DropdownMenu';
@@ -17,7 +17,46 @@ import {
   ToolbarToggleGroup,
 } from './SegmentedToolbar';
 
+function domRect(
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+): DOMRect {
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    x: left,
+    y: top,
+    width: right - left,
+    height: bottom - top,
+    toJSON: () => ({}),
+  };
+}
+
 describe('SegmentedToolbar — composition', () => {
+  it('keeps a horizontal toolbar within its container and scrolls the control rail', () => {
+    render(
+      <SegmentedToolbar aria-label="Wide tools">
+        <ToolbarGroup aria-label="Many tools">
+          {Array.from({ length: 12 }, (_, index) => (
+            <ToolbarIconButton
+              key={index}
+              aria-label={`Tool ${index + 1}`}
+              icon={<Pencil />}
+            />
+          ))}
+        </ToolbarGroup>
+      </SegmentedToolbar>,
+    );
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Wide tools' });
+    expect(toolbar).toHaveClass('overflow-x-auto');
+    expect(toolbar.parentElement).toHaveClass('max-w-full');
+  });
+
   it('renders composable styled buttons inside an accessible toolbar', () => {
     render(
       <SegmentedToolbar aria-label="Editing tools">
@@ -617,6 +656,77 @@ describe('SegmentedToolbar — dragging', () => {
     await userEvent.keyboard('{ArrowRight}{ArrowDown}');
 
     expect(onPositionChange).toHaveBeenLastCalledWith({ x: 4, y: 4 });
+  });
+
+  it('clamps keyboard nudges to a measured reference constraint', async () => {
+    const onPositionChange = vi.fn();
+    function Harness() {
+      const constraintRef = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={constraintRef} data-testid="constraint">
+          <SegmentedToolbar
+            aria-label="Editing tools"
+            draggable
+            dragConstraints={constraintRef}
+            onPositionChange={onPositionChange}
+          >
+            <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} />
+          </SegmentedToolbar>
+        </div>
+      );
+    }
+    render(<Harness />);
+
+    const container = screen.getByTestId('constraint');
+    const handle = screen.getByRole('button', { name: 'Move toolbar' });
+    const surface = handle.parentElement;
+    expect(surface).not.toBeNull();
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(
+      domRect(0, 0, 100, 100),
+    );
+    vi.spyOn(surface!, 'getBoundingClientRect').mockReturnValue(
+      domRect(0, 0, 96, 96),
+    );
+
+    handle.focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowDown}');
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 4, y: 4 });
+  });
+
+  it('treats an oversized reference-constrained toolbar as pannable', async () => {
+    const onPositionChange = vi.fn();
+    function Harness() {
+      const constraintRef = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={constraintRef} data-testid="constraint">
+          <SegmentedToolbar
+            aria-label="Editing tools"
+            draggable
+            dragConstraints={constraintRef}
+            onPositionChange={onPositionChange}
+          >
+            <ToolbarIconButton aria-label="Undo" icon={<Undo2 />} />
+          </SegmentedToolbar>
+        </div>
+      );
+    }
+    render(<Harness />);
+
+    const container = screen.getByTestId('constraint');
+    const handle = screen.getByRole('button', { name: 'Move toolbar' });
+    const surface = handle.parentElement;
+    expect(surface).not.toBeNull();
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(
+      domRect(0, 0, 100, 100),
+    );
+    vi.spyOn(surface!, 'getBoundingClientRect').mockReturnValue(
+      domRect(-30, 0, 130, 96),
+    );
+
+    handle.focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowLeft}');
+    expect(onPositionChange).toHaveBeenNthCalledWith(1, { x: 8, y: 0 });
+    expect(onPositionChange).toHaveBeenNthCalledWith(2, { x: 0, y: 0 });
   });
 
   /**

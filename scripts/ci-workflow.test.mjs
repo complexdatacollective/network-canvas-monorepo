@@ -479,7 +479,7 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
   assert.doesNotMatch(productReleaseJob, /actions: write/);
 });
 
-test('Architect and Interviewer use the normal Changesets release lane', () => {
+test('normal-lane apps do not get separate generated release PRs', () => {
   const releaseJob = job('release');
   const productReleaseJob = job('product-release-pr');
   assert.ok(releaseJob, 'release job exists');
@@ -487,6 +487,7 @@ test('Architect and Interviewer use the normal Changesets release lane', () => {
   assert.match(releaseJob, /uses: changesets\/action@/);
   assert.doesNotMatch(productReleaseJob, /slug: apps/);
   assert.doesNotMatch(productReleaseJob, /@codaco\/architect/);
+  assert.doesNotMatch(productReleaseJob, /@codaco\/background-creator/);
   assert.doesNotMatch(productReleaseJob, /@codaco\/interviewer/);
   assert.match(
     productReleaseJob,
@@ -494,10 +495,23 @@ test('Architect and Interviewer use the normal Changesets release lane', () => {
   );
 });
 
+test('Background Creator is built before merge despite having no E2E suite', () => {
+  const supportJob = job('quality-support');
+  assert.ok(supportJob, 'quality support job exists');
+  assert.match(
+    supportJob,
+    /turbo run build --filter='\.\/packages\/\*' --filter=@codaco\/background-creator/,
+  );
+});
+
 test('stable app versions deploy to their Netlify production sites', () => {
   const detectJob = job('apps-release-detect');
   assert.ok(detectJob, 'apps release detector exists');
-  for (const app of ['architect', 'interviewer']) {
+  for (const [app, siteSecret] of [
+    ['architect', 'ARCHITECT'],
+    ['background-creator', 'BACKGROUND_CREATOR'],
+    ['interviewer', 'INTERVIEWER'],
+  ]) {
     assert.match(
       detectJob,
       new RegExp(
@@ -510,11 +524,19 @@ test('stable app versions deploy to their Netlify production sites', () => {
     assert.match(
       releaseJob,
       new RegExp(
-        `netlify-cli@22 deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${app.toUpperCase()} \\}\\}"`,
+        `netlify-cli@22 deploy --no-build --prod[\\s\\S]*?--site="\\$\\{\\{ secrets\\.NETLIFY_SITE_ID_${siteSecret} \\}\\}"`,
       ),
     );
     assert.match(releaseJob, /prerelease: false/);
     assert.match(releaseJob, /make_latest: 'true'/);
+    assert.match(
+      releaseJob,
+      new RegExp(`group: apps-release-@codaco/${app}$`, 'm'),
+      `${app} releases must serialize across versions`,
+    );
+    assert.match(releaseJob, /fetch-depth: 0/);
+    assert.match(releaseJob, /bash \.github\/scripts\/app-release-guard\.sh/);
+    assert.match(releaseJob, /--since "\$SINCE"/);
   }
 });
 
@@ -522,6 +544,10 @@ test('snapshot update workflow accepts only current release branches', () => {
   assert.match(snapshotWorkflow, /'changeset-release\/main'/);
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/apps'/);
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/architect'/);
+  assert.doesNotMatch(
+    snapshotWorkflow,
+    /'changeset-release\/background-creator'/,
+  );
   assert.doesNotMatch(snapshotWorkflow, /'changeset-release\/interviewer'/);
 });
 

@@ -185,6 +185,15 @@
       "ignoreDependencies": ["@types/recompose"],
       "ignore": ["src/**/*.d.ts"]
     },
+    "apps/background-creator": {
+      "entry": ["index.html!"],
+      "vite": true,
+      "project": ["src/**/*.{ts,tsx}"],
+      "paths": {
+        "~/*": ["./src/*"]
+      },
+      "ignoreBinaries": ["Rscript"]
+    },
     "workers/development-protocol": {},
     "workers/posthog-proxy": {}
   }

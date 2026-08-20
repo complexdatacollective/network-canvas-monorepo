@@ -39,9 +39,9 @@ test('fails when a changeset mixes a separately gated product and normal package
   assert.match(res.stderr, /pnpm changeset/);
 });
 
-test('allows Architect and Interviewer in the normal release lane', () => {
+test('allows normal-lane apps to share a changeset', () => {
   const cwd = fixture({
-    'apps.md': `---\n"@codaco/architect": minor\n"@codaco/interviewer": patch\n---\n\nshared apps`,
+    'apps.md': `---\n"@codaco/architect": minor\n"@codaco/background-creator": patch\n"fresco": patch\n"@codaco/interviewer": patch\n---\n\nshared apps`,
   });
   assert.equal(run(cwd).status, 0);
 });

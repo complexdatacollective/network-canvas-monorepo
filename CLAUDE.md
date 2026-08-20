@@ -139,17 +139,18 @@ pnpm publish-packages
 #### Changeset lanes: normal vs separately gated products
 
 - **The normal Changesets lane** contains publishable libraries under
-  `packages/*` plus the private Architect, Interviewer, and Fresco apps. All use
-  normal semver and are versioned by `changesets/action` in the **Version
-  Packages** PR (`changeset-release/main`). Libraries publish to npm; changed
-  apps deploy and receive a GitHub release after that PR merges — Architect and
-  Interviewer to Netlify, Fresco via the mirror described below.
+  `packages/*` plus the private Architect, Background Creator, Interviewer, and
+  Fresco apps. All use normal semver and are versioned by `changesets/action` in
+  the **Version Packages** PR (`changeset-release/main`). Libraries publish to
+  npm; changed apps deploy and receive a GitHub release after that PR merges —
+  Architect, Background Creator, and Interviewer to Netlify, Fresco via the
+  mirror described below.
 - **Separately gated products** are Documentation and networkcanvas.com. They
   keep independent stable-semver release PRs, production deploys, and Git tags.
 - **One release lane per changeset.** A normal-lane changeset may combine
-  libraries, Architect, Interviewer, and Fresco. Never mix Documentation or
-  Website with the normal lane or with each other; `pnpm check:changesets`
-  rejects it.
+  libraries, Architect, Background Creator, Interviewer, and Fresco. Never mix
+  Documentation or Website with the normal lane or with each other; the
+  `pnpm check:changesets` guard rejects it.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
@@ -195,6 +196,7 @@ consistency:
 - **Apps**: Products and websites
   - `architect` - Offline-capable Vite/React PWA for designing, validating, and previewing protocols
   - `architect-classic` - Maintenance-mode Electron version of the original Architect
+  - `background-creator` - Vite/React editor for designing responsive sociogram backgrounds and matching zone-assignment scripts
   - `documentation` - Localized Next.js documentation site built from Markdown/MDX
   - `fresco` - Self-hosted Next.js server that runs Network Canvas interviews in the browser, backed by PostgreSQL and object storage
   - `interviewer` - Offline-first Vite/React PWA for protocol management, local interviews, and data export
