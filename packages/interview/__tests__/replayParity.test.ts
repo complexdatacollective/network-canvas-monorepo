@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildStageAvailabilityMap } from '@codaco/network-query';
 import {
   generateInterviews,
+  type AssetData,
   type GenerateInterviewsOptions,
   type SyntheticInterviewResult,
   type SyntheticSessionAction,
@@ -252,13 +253,18 @@ const persisted = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const assertReplayParity = async (
   protocol: CurrentProtocol,
   options: GenerateInterviewsOptions,
+  assetData?: AssetData,
 ): Promise<SyntheticInterviewResult | undefined> => {
   const respectSkipLogic = options.respectSkipLogic ?? true;
-  const [result] = generateInterviews(protocol, {
-    ...options,
-    count: 1,
-    captureTrace: true,
-  });
+  const [result] = generateInterviews(
+    protocol,
+    {
+      ...options,
+      count: 1,
+      captureTrace: true,
+    },
+    assetData,
+  );
   expect(result).toBeDefined();
   if (!result) return undefined;
   const { session, trace, currentStep, droppedOut, visitedStages } = result;
@@ -765,5 +771,323 @@ describe('replay parity (C1) — dropped sessions', () => {
       );
       expect(result.session.finishTime ?? null).toBeNull();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge-heavy coverage: the seven interfaces from the Phase-3 waves. Toggles
+// replay as gestures re-resolved by the runtime's own thunk, censuses write
+// stage metadata, the roster injects foreign uids, and the alter forms patch
+// entities the earlier stages made.
+// ---------------------------------------------------------------------------
+
+const edgeHeavyProtocol = (): CurrentProtocol =>
+  CurrentProtocolSchema.parse({
+    name: 'Replay parity: edge-heavy interfaces',
+    schemaVersion: 8,
+    assetManifest: {
+      colleagues: {
+        id: 'colleagues',
+        name: 'Colleagues',
+        type: 'network',
+        source: 'colleagues.json',
+      },
+    },
+    codebook: {
+      ego: {
+        variables: {
+          consent: { name: 'consent', type: 'boolean', component: 'Toggle' },
+        },
+      },
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: {
+              name: 'name',
+              type: 'text',
+              component: 'Text',
+              validation: { required: true, unique: true },
+            },
+            position: { name: 'position', type: 'layout' },
+            is_close: {
+              name: 'is_close',
+              type: 'boolean',
+              component: 'Toggle',
+            },
+            closeness: {
+              name: 'closeness',
+              type: 'ordinal',
+              component: 'RadioGroup',
+              options: [
+                { label: 'Very', value: 3 },
+                { label: 'Somewhat', value: 2 },
+                { label: 'Not', value: 1 },
+              ],
+            },
+          },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'Friend',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'strength',
+              type: 'ordinal',
+              component: 'RadioGroup',
+              options: [
+                { label: 'Strong', value: 3 },
+                { label: 'Middling', value: 2 },
+                { label: 'Weak', value: 1 },
+              ],
+            },
+          },
+        },
+        colleague: { name: 'Colleague', color: 'edge-color-seq-2' },
+      },
+    },
+    stages: [
+      {
+        id: 'quickadd',
+        type: 'NameGeneratorQuickAdd',
+        label: 'Quick add',
+        quickAdd: asEntityAttributeReference('name'),
+        subject: { entity: 'node', type: 'person' },
+        synthetic: { count: { distribution: 'constant', value: 4 } },
+        prompts: [{ id: 'qa-1', text: 'Who matters to you?' }],
+      },
+      {
+        id: 'sociogram',
+        type: 'Sociogram',
+        label: 'Sociogram',
+        subject: { entity: 'node', type: 'person' },
+        background: { concentricCircles: 3 },
+        behaviours: { automaticLayout: true },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.5 },
+          },
+        },
+        prompts: [
+          {
+            id: 'soc-create',
+            text: 'Link the people who know each other',
+            layout: { layoutVariable: asEntityAttributeReference('position') },
+            edges: { create: 'friend' },
+          },
+          {
+            id: 'soc-highlight',
+            text: 'Tap the people you feel close to',
+            layout: { layoutVariable: asEntityAttributeReference('position') },
+            highlight: {
+              allowHighlighting: true,
+              variable: asEntityAttributeReference('is_close'),
+            },
+          },
+        ],
+      },
+      {
+        id: 'dyad-census',
+        type: 'DyadCensus',
+        label: 'Dyad census',
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: { title: 'Pairs', text: 'About each pair.' },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.4 },
+          },
+        },
+        prompts: [
+          {
+            id: 'dc-colleague',
+            text: 'Do these two work together?',
+            createEdge: 'colleague',
+          },
+        ],
+      },
+      {
+        id: 'tie-strength',
+        type: 'TieStrengthCensus',
+        label: 'Tie strength',
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: {
+          title: 'Closeness',
+          text: 'How close is each pair?',
+        },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.6 },
+          },
+        },
+        prompts: [
+          {
+            id: 'ts-friend',
+            text: 'How close are these two?',
+            createEdge: 'friend',
+            edgeVariable: asEntityAttributeReference('strength'),
+            negativeLabel: 'They do not know each other',
+          },
+        ],
+      },
+      {
+        id: 'one-to-many',
+        type: 'OneToManyDyadCensus',
+        label: 'One to many',
+        subject: { entity: 'node', type: 'person' },
+        behaviours: { removeAfterConsideration: true },
+        synthetic: {
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.3 },
+          },
+        },
+        prompts: [
+          {
+            id: 'otm-colleague',
+            text: 'Tap everybody who works with this person',
+            createEdge: 'colleague',
+          },
+        ],
+      },
+      {
+        id: 'alter-form',
+        type: 'AlterForm',
+        label: 'About each person',
+        subject: { entity: 'node', type: 'person' },
+        introductionPanel: {
+          title: 'About each person',
+          text: 'A few questions about everyone you named.',
+        },
+        form: {
+          fields: [
+            {
+              variable: asEntityAttributeReference('closeness'),
+              prompt: 'How close are you?',
+            },
+          ],
+        },
+      },
+      {
+        id: 'alter-edge-form',
+        type: 'AlterEdgeForm',
+        label: 'About each tie',
+        subject: { entity: 'edge', type: 'friend' },
+        introductionPanel: {
+          title: 'About each tie',
+          text: 'A few questions about the connections you drew.',
+        },
+        form: {
+          fields: [
+            {
+              variable: asEntityAttributeReference('strength'),
+              prompt: 'How strong is this tie?',
+            },
+          ],
+        },
+      },
+      {
+        id: 'roster',
+        type: 'NameGeneratorRoster',
+        label: 'Colleagues',
+        subject: { entity: 'node', type: 'person' },
+        dataSource: 'colleagues',
+        synthetic: {
+          generatesData: true,
+          count: { distribution: 'constant', value: 2 },
+        },
+        prompts: [{ id: 'r-1', text: 'Who do you work with?' }],
+      },
+    ],
+  }) as CurrentProtocol;
+
+const edgeHeavyAssetData: AssetData = {
+  rosterNodes: {
+    roster: [0, 1, 2, 3].map((index) => ({
+      [entityPrimaryKeyProperty]: `roster-${index}`,
+      type: 'person',
+      [entityAttributesProperty]: { name: `Colleague ${index}` },
+    })),
+  },
+};
+
+describe('replay parity (C1) — edge-heavy interfaces', () => {
+  it.each([42, 7, 1234])('holds across seed %d', async (seed) => {
+    await assertReplayParity(
+      edgeHeavyProtocol(),
+      {
+        seed,
+        startWindow: '2026-08-20T12:00:00.000Z',
+        count: 1,
+        respectSkipLogic: true,
+        simulateDropOut: false,
+      },
+      edgeHeavyAssetData,
+    );
+  });
+
+  it('replays a mid-sociogram stop', async () => {
+    await assertReplayParity(
+      edgeHeavyProtocol(),
+      {
+        ...PINNED,
+        count: 1,
+        respectSkipLogic: true,
+        stopAt: { stageIndex: 1, promptIndex: 1 },
+      },
+      edgeHeavyAssetData,
+    );
+  });
+
+  it('is not vacuous: edges, grades, layouts, and roster ids all land', () => {
+    const [result] = generateInterviews(
+      edgeHeavyProtocol(),
+      {
+        seed: 42,
+        startWindow: '2026-08-20T12:00:00.000Z',
+        count: 1,
+        simulateDropOut: false,
+      },
+      edgeHeavyAssetData,
+    );
+    expect(result).toBeDefined();
+    if (!result) throw new Error('unreachable');
+
+    const network = result.session.network;
+    const nodes = network?.nodes ?? [];
+    const edges = network?.edges ?? [];
+
+    // Four quick-add people plus two roster colleagues, by their own uids.
+    expect(nodes.length).toBe(6);
+    expect(
+      nodes.filter((node) =>
+        String(node[entityPrimaryKeyProperty]).startsWith('roster-'),
+      ).length,
+    ).toBe(2);
+
+    // The sociogram laid out every person it saw.
+    const positioned = nodes.filter(
+      (node) => node[entityAttributesProperty]['position'] !== undefined,
+    );
+    expect(positioned.length).toBeGreaterThanOrEqual(4);
+
+    // The censuses and sociogram produced ties of both types, and every
+    // surviving friend tie carries the tie-strength grade.
+    expect(edges.some((edge) => edge.type === 'colleague')).toBe(true);
+    const friends = edges.filter((edge) => edge.type === 'friend');
+    expect(friends.length).toBeGreaterThan(0);
+    for (const edge of friends) {
+      expect([1, 2, 3]).toContain(edge[entityAttributesProperty]['strength']);
+    }
+
+    // The dyad census left its ledger; the one-to-many left none.
+    expect(result.session.stageMetadata?.['2']).toBeDefined();
+    expect(result.session.stageMetadata?.['4']).toBeUndefined();
   });
 });
