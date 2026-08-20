@@ -308,6 +308,21 @@ describe('Validations', () => {
       );
     });
 
+    // Issue #1383: a precomposed and a decomposed spelling of the same text
+    // are the same answer to a participant, so they are the same value here.
+    it('compares values under Unicode canonical equivalence', () => {
+      const precomposed = 'Café';
+      const decomposed = 'Cafe\u0301';
+      const values = {
+        options: [{ value: precomposed }, { value: decomposed }],
+      };
+
+      expect(precomposed).not.toBe(decomposed);
+      expect(subject(decomposed, values, undefined, 'options[1].value')).toBe(
+        'Values must be unique',
+      );
+    });
+
     it('passes for a unique or empty value', () => {
       const values = {
         options: [{ value: 'Alpha' }, { value: 'Beta' }],
@@ -390,7 +405,7 @@ describe('Validations', () => {
       'rejects %s',
       (value) => {
         expect(allowedVariableName()(value)).toBe(
-          'Not a valid variable name. Only letters, numbers and the symbols ._-: are supported',
+          'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
         );
       },
     );

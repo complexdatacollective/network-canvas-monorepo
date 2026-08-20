@@ -4,17 +4,17 @@ import { type Locator, type Page } from '@playwright/test';
 // (Form/DialogArrayField.tsx) pattern — verified against
 // DyadCensusPrompts.tsx (`addTitle: 'Edit Prompt'`, `editorTitle: 'Edit
 // Prompt'`) and the same shape recurs across the other prompt-array sections.
-// "Create new" is DialogArrayField's default `addButtonLabel`; the dialog's
-// submit button reads "Add" for a brand-new item
+// Each add button names what it adds ("Create new prompt", "Create new
+// preset", "Create new disease" — DialogArrayField requires the label, there
+// is no default), so `addButtonLabel` names the list this helper is driving.
+// The dialog's submit button reads "Add" for a brand-new item
 // (DialogArrayField.tsx's `DialogEditor`: `isNewItem ? 'Add' : 'Save'`).
 //
-// Takes the enclosing section `Locator` (e.g. `editor.section('NameGeneratorPrompts')`)
-// rather than the Page, and scopes the "Create new" OPEN click to it: several
-// interfaces render two DialogArrayFields at once (e.g. NameGenerator's `Form`
-// AND `NameGeneratorPrompts`, per StageEditor/Interfaces.tsx), both using the
-// same default "Create new" label — an unscoped match hits 2+ buttons and
-// Playwright strict-mode throws. The opened dialog is a page-level portal, so
-// the "Add" submit is unambiguous and is targeted via `section.page()`.
+// Still takes the enclosing section `Locator` rather than the Page: a stage
+// can render two lists of the SAME kind (a Network Composer's per-edge-type
+// attribute lists), and scoping keeps the click on the intended one. The
+// opened dialog is a page-level portal, so the "Add" submit is unambiguous and
+// is targeted via `section.page()`.
 //
 // `fill` fills whatever fields the specific interface's prompt editor exposes
 // (typically `StageEditor.fillRichText` for the prompt text, plus any
@@ -30,10 +30,12 @@ export async function addPrompt(
     // PREVIOUS item's values and id (observed live). When the sign doesn't
     // show, cancel — a full close cycle forces the unmount — and reopen.
     freshSign?: (page: Page) => Locator;
+    /** The list's own add-button label. */
+    addButtonLabel?: string;
   } = {},
 ): Promise<void> {
   const create = section.getByRole('button', {
-    name: 'Create new',
+    name: opts.addButtonLabel ?? 'Create new prompt',
     exact: true,
   });
   await create.click();

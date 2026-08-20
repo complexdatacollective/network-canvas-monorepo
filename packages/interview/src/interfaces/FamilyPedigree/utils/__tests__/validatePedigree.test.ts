@@ -64,6 +64,45 @@ function makeEdges(entries: [string, string, string][]): Map<string, NcEdge> {
 }
 
 describe('validatePedigreeCompleteness', () => {
+  it('blocks completion when no node is marked as the participant', () => {
+    const nodes = makeNodes([
+      ['mum', { name: 'Mum' }],
+      ['dad', { name: 'Dad' }],
+    ]);
+    const issues = validatePedigreeCompleteness(
+      nodes,
+      makeEdges([]),
+      variableConfig,
+      OFF_BOUNDARIES,
+      false,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe('required');
+    expect(issues[0]?.message).toContain('could not be found');
+  });
+
+  it('blocks completion when more than one node is marked as the participant', () => {
+    const nodes = makeNodes([
+      ['ego', { isEgo: true }],
+      ['mum', { isEgo: true, name: 'Mum' }],
+      ['dad', { name: 'Dad' }],
+    ]);
+    const edges = makeEdges([
+      ['mum', 'ego', 'biological'],
+      ['dad', 'ego', 'biological'],
+    ]);
+    const issues = validatePedigreeCompleteness(
+      nodes,
+      edges,
+      variableConfig,
+      OFF_BOUNDARIES,
+      false,
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe('required');
+    expect(issues[0]?.message).toContain('More than one person');
+  });
+
   it('passes for ego with two parents and no grandparents (grandparents not required)', () => {
     const nodes = makeNodes([
       ['ego', { isEgo: true }],

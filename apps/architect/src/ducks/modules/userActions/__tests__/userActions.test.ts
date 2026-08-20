@@ -4,12 +4,18 @@ import {
   type CurrentProtocol,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
 const setExportInProgress = vi.fn();
 const validateProtocol = vi.fn();
 const putStoredProtocol = vi.fn();
+const putStoredProtocolIfUnchanged = vi.fn();
 const getStoredProtocol = vi.fn();
 const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
@@ -38,6 +44,8 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 
 vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
+  putStoredProtocolIfUnchanged: (...args: unknown[]) =>
+    putStoredProtocolIfUnchanged(...args),
   markStoredProtocolValidated: (...args: unknown[]) =>
     markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
@@ -92,6 +100,88 @@ const runThunk = (
     | ReturnType<typeof openLibraryProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
+// A FamilyPedigree whose second nomination prompt writes the stage's own ego
+// marker: rejected by the schema, and repairable by dropping that prompt.
+const makeConflictedProtocol = (): CurrentProtocol =>
+  ({
+    name: 'Pedigree study',
+    schemaVersion: 8,
+    codebook: {
+      node: {
+        family_member: {
+          name: 'Family member',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            fmName: { name: 'fm_name', type: 'text', component: 'Text' },
+            isEgo: { name: 'is_ego', type: 'boolean' },
+            relationshipToEgo: { name: 'fm_rel', type: 'text' },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: BIOLOGICAL_SEX_OPTIONS,
+            },
+            hasConditionX: { name: 'hasConditionX', type: 'boolean' },
+          },
+        },
+      },
+      edge: {
+        family_edge: {
+          name: 'Family edge',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'relationshipType',
+              type: 'categorical',
+              options: RELATIONSHIP_TYPE_OPTIONS,
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+            gameteRole: {
+              name: 'gameteRole',
+              type: 'categorical',
+              options: GAMETE_ROLE_OPTIONS,
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'fp1',
+        label: 'Family Pedigree',
+        type: 'FamilyPedigree',
+        nodeConfig: {
+          type: 'family_member',
+          nodeLabelVariable: 'fmName',
+          egoVariable: 'isEgo',
+          relationshipVariable: 'relationshipToEgo',
+          biologicalSexVariable: 'biologicalSex',
+        },
+        edgeConfig: {
+          type: 'family_edge',
+          relationshipTypeVariable: 'relationshipType',
+          isActiveVariable: 'isActive',
+          isGestationalCarrierVariable: 'isGestationalCarrier',
+          gameteRoleVariable: 'gameteRole',
+        },
+        censusPrompt: 'Build your family',
+        framing: { mode: 'fixed', value: 'gamete' },
+        boundaries: {
+          requireGrandparents: 'off',
+          requireChildrenContributors: 'off',
+        },
+        nominationPrompts: [
+          { id: 'np1', text: 'Who has this?', variable: 'hasConditionX' },
+          { id: 'np2', text: 'Who is you?', variable: 'isEgo' },
+        ],
+      },
+    ],
+  }) as unknown as CurrentProtocol;
+
 const makeProtocol = (): CurrentProtocol =>
   ({
     name: 'My Study',
@@ -107,6 +197,7 @@ describe('userActions', () => {
     setImportInProgress.mockReset();
     validateProtocol.mockReset();
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
+    putStoredProtocolIfUnchanged.mockReset().mockResolvedValue(true);
     getStoredProtocol.mockReset();
     markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
@@ -211,7 +302,7 @@ describe('userActions', () => {
         updatedAt: 0,
       });
 
-      const result = await runThunk(openLibraryProtocol('p1'));
+      const result = await runThunk(openLibraryProtocol({ id: 'p1' }));
 
       expect(result.payload).toEqual({ status: 'opened' });
       expect(validateProtocol).not.toHaveBeenCalled();
@@ -233,13 +324,101 @@ describe('userActions', () => {
       ]);
       validateProtocol.mockResolvedValue({ success: false, error });
 
-      const result = await runThunk(openLibraryProtocol('legacy'));
+      const result = await runThunk(openLibraryProtocol({ id: 'legacy' }));
 
       expect(result.payload).toEqual({
         status: 'validation-error',
         message: error.message,
       });
       expect(markStoredProtocolValidated).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
+    });
+
+    // Protocols authored before the interface-ownership rules can fail
+    // admission for reasons Architect knows how to fix. It offers the fix
+    // instead of the raw validation error — and never applies it unasked.
+    it('offers a repair instead of a dead end, and applies it only once approved', async () => {
+      const protocol = makeConflictedProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'legacy',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      // The repair path only means anything against the REAL validator: the
+      // point is that the repaired protocol is proven to open.
+      const { validateProtocol: realValidateProtocol } = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(async (candidate: unknown) =>
+        realValidateProtocol(candidate as CurrentProtocol),
+      );
+
+      const offered = await runThunk(openLibraryProtocol({ id: 'legacy' }));
+      expect(offered.payload).toMatchObject({
+        status: 'repair-required',
+        repairable: true,
+      });
+      expect(putStoredProtocolIfUnchanged).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
+
+      const applied = await runThunk(
+        openLibraryProtocol({ id: 'legacy', repairApproved: true }),
+      );
+      expect(applied.payload).toEqual({ status: 'opened' });
+      // The repair is written back, so the researcher is not asked again.
+      expect(putStoredProtocolIfUnchanged).toHaveBeenCalledTimes(1);
+      const [expected, saved] = putStoredProtocolIfUnchanged.mock.calls[0] as [
+        { id: string },
+        { protocol: CurrentProtocol },
+      ];
+      // Guarded against exactly the row this thunk read and assessed.
+      expect(expected.id).toBe('legacy');
+      const repairedStage = saved.protocol.stages[0] as {
+        nominationPrompts?: unknown[];
+      };
+      expect(repairedStage.nominationPrompts).toHaveLength(1);
+    });
+
+    // The tab does not hold the cross-tab lock while it is doing this — it
+    // claims the protocol only once the editor route mounts — so a tab that
+    // does can autosave into the same row during the admission and the repair
+    // assessment. Writing the pre-assessment snapshot over that would take the
+    // other tab's edits with nothing on screen to say so.
+    it('refuses to write an approved repair over a row another tab has saved', async () => {
+      const protocol = makeConflictedProtocol();
+      getStoredProtocol.mockResolvedValue({
+        id: 'legacy',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const { validateProtocol: realValidateProtocol } = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(async (candidate: unknown) =>
+        realValidateProtocol(candidate as CurrentProtocol),
+      );
+      // The guarded write reports that the row moved on under it.
+      putStoredProtocolIfUnchanged.mockResolvedValue(false);
+
+      const applied = await runThunk(
+        openLibraryProtocol({ id: 'legacy', repairApproved: true }),
+      );
+
+      expect(applied.payload).toEqual({
+        status: 'error',
+        title: 'Protocol Changed',
+        message:
+          'This protocol was saved somewhere else while it was being repaired, so the repair was not applied. Open it again to see the current version.',
+      });
+      // Nothing forced through, and the stale snapshot never becomes the
+      // editing buffer either.
+      expect(putStoredProtocol).not.toHaveBeenCalled();
       expect(dispatch).not.toHaveBeenCalledWith({ type: 'setActiveProtocol' });
     });
   });

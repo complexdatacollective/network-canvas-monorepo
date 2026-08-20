@@ -23,9 +23,15 @@ import {
 import { type ReactElement, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { DropdownMenuItem } from '@codaco/fresco-ui/DropdownMenu';
 import {
   SegmentedToolbar,
-  type ToolbarSegment,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarMenu,
+  ToolbarPopover,
+  ToolbarSeparator,
+  ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import { type EditorTool, useEditorStore } from '~/state/editorStore';
 
@@ -126,113 +132,6 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
     }
   };
 
-  const items: ToolbarSegment[] = [
-    {
-      type: 'group',
-      id: 'draw-tools',
-      mode: 'single',
-      value: selectedFor(activeTool),
-      onValueChange: handleToolChange,
-      options: [
-        { value: 'select', label: 'Select', icon: <MousePointer2 /> },
-        { value: 'rect', label: 'Rectangle', icon: <Square /> },
-        { value: 'ellipse', label: 'Ellipse', icon: <Circle /> },
-        { value: 'line', label: 'Line', icon: <Minus /> },
-        { value: 'polygon', label: 'Polygon', icon: <Pentagon /> },
-        { value: 'text', label: 'Text', icon: <Type /> },
-      ],
-    },
-    { type: 'separator', id: 'sep-tools' },
-    {
-      type: 'toggle',
-      id: 'toggle-zones',
-      label: zonesVisible ? 'Hide zones' : 'Show zones',
-      icon: <Goal />,
-      pressed: zonesVisible,
-      onPressedChange: () => toggleZonesVisible(),
-    },
-    {
-      type: 'popover',
-      id: 'preview',
-      label: 'Preview',
-      icon: <Proportions />,
-      // The toolbar floats at the bottom, so popovers open upward into the canvas.
-      side: 'top',
-      open: previewOpen,
-      onOpenChange: setPreviewOpen,
-      pressed: previewOpen,
-      children: <PreviewPanel />,
-    },
-    { type: 'separator', id: 'sep-history' },
-    {
-      type: 'button',
-      id: 'undo',
-      label: 'Undo',
-      icon: <Undo2 />,
-      disabled: !canUndo || isEditingText,
-      onClick: () => undo(),
-    },
-    {
-      type: 'button',
-      id: 'redo',
-      label: 'Redo',
-      icon: <Redo2 />,
-      disabled: !canRedo || isEditingText,
-      onClick: () => redo(),
-    },
-    { type: 'separator', id: 'sep-document' },
-    {
-      type: 'menu',
-      id: 'new',
-      label: 'New',
-      icon: <FilePlus />,
-      kind: 'actions',
-      onSelect: handleNewSelect,
-      options: [
-        { value: 'blank', label: 'Blank canvas', icon: <File /> },
-        {
-          value: 'quadrants',
-          label: 'Quadrants template',
-          icon: <LayoutGrid />,
-        },
-        { value: 'concentric', label: 'Circles template', icon: <Target /> },
-      ],
-    },
-    {
-      type: 'button',
-      id: 'open',
-      label: 'Open',
-      icon: <FolderOpen />,
-      onClick: () => void openSvgFlow(dialogs),
-    },
-    {
-      type: 'menu',
-      id: 'export',
-      label: 'Export',
-      icon: <FileOutput />,
-      kind: 'actions',
-      onSelect: handleExportSelect,
-      options: [
-        {
-          value: 'details',
-          label: 'Edit document details',
-          icon: <FilePenLine />,
-        },
-        { value: 'svg', label: 'Download SVG', icon: <ImageDown /> },
-        { value: 'r', label: 'Export R script', icon: <FileCode /> },
-        { value: 'python', label: 'Export Python script', icon: <FileCode /> },
-      ],
-    },
-    { type: 'separator', id: 'sep-info' },
-    {
-      type: 'button',
-      id: 'information',
-      label: 'Information',
-      icon: <Info />,
-      onClick: onShowWelcome,
-    },
-  ];
-
   return (
     // Full-window overlay that centres the toolbar along the bottom while letting
     // pointer events fall through to the canvas everywhere except the toolbar.
@@ -243,14 +142,156 @@ export function Toolbar({ onShowWelcome }: ToolbarProps): ReactElement {
       className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-6"
     >
       <SegmentedToolbar
-        label="Editor toolbar"
-        items={items}
+        aria-label="Editor toolbar"
         orientation="horizontal"
         size="md"
         draggable
         dragConstraints={overlayRef}
         className="pointer-events-auto"
-      />
+      >
+        <ToolbarToggleGroup
+          aria-label="Drawing tools"
+          value={selectedFor(activeTool)}
+          onValueChange={handleToolChange}
+        >
+          <ToolbarIconButton
+            value="select"
+            aria-label="Select"
+            icon={<MousePointer2 />}
+          />
+          <ToolbarIconButton
+            value="rect"
+            aria-label="Rectangle"
+            icon={<Square />}
+          />
+          <ToolbarIconButton
+            value="ellipse"
+            aria-label="Ellipse"
+            icon={<Circle />}
+          />
+          <ToolbarIconButton value="line" aria-label="Line" icon={<Minus />} />
+          <ToolbarIconButton
+            value="polygon"
+            aria-label="Polygon"
+            icon={<Pentagon />}
+          />
+          <ToolbarIconButton value="text" aria-label="Text" icon={<Type />} />
+        </ToolbarToggleGroup>
+
+        <ToolbarSeparator />
+
+        <ToolbarGroup aria-label="Display tools">
+          <ToolbarIconButton
+            aria-label={zonesVisible ? 'Hide zones' : 'Show zones'}
+            icon={<Goal />}
+            pressed={zonesVisible}
+            onPressedChange={() => toggleZonesVisible()}
+          />
+          <ToolbarPopover
+            open={previewOpen}
+            onOpenChange={setPreviewOpen}
+            contentProps={{ side: 'top' }}
+            trigger={
+              <ToolbarIconButton
+                aria-label="Preview"
+                aria-pressed={previewOpen}
+                icon={<Proportions />}
+              />
+            }
+          >
+            <PreviewPanel />
+          </ToolbarPopover>
+        </ToolbarGroup>
+
+        <ToolbarSeparator />
+
+        <ToolbarGroup aria-label="History tools">
+          <ToolbarIconButton
+            aria-label="Undo"
+            icon={<Undo2 />}
+            disabled={!canUndo || isEditingText}
+            onClick={() => undo()}
+          />
+          <ToolbarIconButton
+            aria-label="Redo"
+            icon={<Redo2 />}
+            disabled={!canRedo || isEditingText}
+            onClick={() => redo()}
+          />
+        </ToolbarGroup>
+
+        <ToolbarSeparator />
+
+        <ToolbarGroup aria-label="Document tools">
+          <ToolbarMenu
+            contentProps={{ side: 'top' }}
+            trigger={<ToolbarIconButton aria-label="New" icon={<FilePlus />} />}
+          >
+            <DropdownMenuItem
+              icon={<File />}
+              onClick={() => handleNewSelect('blank')}
+            >
+              Blank canvas
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<LayoutGrid />}
+              onClick={() => handleNewSelect('quadrants')}
+            >
+              Quadrants template
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<Target />}
+              onClick={() => handleNewSelect('concentric')}
+            >
+              Circles template
+            </DropdownMenuItem>
+          </ToolbarMenu>
+          <ToolbarIconButton
+            aria-label="Open"
+            icon={<FolderOpen />}
+            onClick={() => void openSvgFlow(dialogs)}
+          />
+          <ToolbarMenu
+            contentProps={{ side: 'top' }}
+            trigger={
+              <ToolbarIconButton aria-label="Export" icon={<FileOutput />} />
+            }
+          >
+            <DropdownMenuItem
+              icon={<FilePenLine />}
+              onClick={() => handleExportSelect('details')}
+            >
+              Edit document details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<ImageDown />}
+              onClick={() => handleExportSelect('svg')}
+            >
+              Download SVG
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileCode />}
+              onClick={() => handleExportSelect('r')}
+            >
+              Export R script
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              icon={<FileCode />}
+              onClick={() => handleExportSelect('python')}
+            >
+              Export Python script
+            </DropdownMenuItem>
+          </ToolbarMenu>
+        </ToolbarGroup>
+
+        <ToolbarSeparator />
+
+        <ToolbarIconButton
+          aria-label="Information"
+          icon={<Info />}
+          onClick={onShowWelcome}
+        />
+      </SegmentedToolbar>
     </div>
   );
 }

@@ -40,7 +40,11 @@ const build = () => {
   });
   const closeValues = [true, false, true, null, true, false, true, false];
   closeValues.forEach((v, i) => {
-    si.setNodeAttribute(i, closeVar.id, v);
+    if (v === null) {
+      si.unsetNodeAttribute(i, closeVar.id);
+    } else {
+      si.setNodeAttribute(i, closeVar.id, v);
+    }
   });
   const groupValues: (string | string[])[] = [
     'family',

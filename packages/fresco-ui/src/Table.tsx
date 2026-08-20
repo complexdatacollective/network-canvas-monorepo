@@ -46,6 +46,8 @@ const TableHeader = React.forwardRef<
     ref={ref}
     className={cx(
       'publish-colors bg-surface-2 border-collapse [&_tr]:border-b',
+      // Override selected color CSS variable so that ColumnHeader buttons use primary instead of selected
+      '[--selected-contrast:var(--primary-contrast)] [--selected:var(--primary)]',
       className,
     )}
     {...props}

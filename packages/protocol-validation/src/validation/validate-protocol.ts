@@ -1,8 +1,9 @@
+import { ensureError } from '@codaco/shared-consts';
+
 import {
   type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
-import { ensureError } from '../utils/ensureError.ts';
 
 export type ProtocolValidationIssue = {
   /** Machine-readable issue code (currently Zod's issue codes, e.g. 'invalid_type', 'custom'). */

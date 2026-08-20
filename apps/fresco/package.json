@@ -57,7 +57,7 @@
     "ohash": "^2.0.11",
     "otpauth": "^9.5.1",
     "papaparse": "^5.5.4",
-    "postcss": "^8.5.23",
+    "postcss": "catalog:",
     "posthog-js": "catalog:",
     "posthog-node": "^5.47.3",
     "qrcode": "^1.5.4",
@@ -76,6 +76,7 @@
   "devDependencies": {
     "@chromatic-com/storybook": "catalog:",
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
     "@storybook/addon-vitest": "catalog:",

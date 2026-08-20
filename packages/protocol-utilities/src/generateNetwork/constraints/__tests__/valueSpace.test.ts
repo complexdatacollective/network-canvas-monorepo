@@ -64,9 +64,11 @@ function drawnBySequence(
   const values: VariableValue[] = [];
 
   for (let seq = 0; seq < ranks; seq++) {
-    values.push(
-      generator.generateConstrained(variable, 0, { distinctSeq: seq }),
-    );
+    const value = generator.generateConstrained(variable, 0, {
+      distinctSeq: seq,
+    });
+    if (value === undefined) throw new Error('Expected a generated value');
+    values.push(value);
   }
 
   return values;

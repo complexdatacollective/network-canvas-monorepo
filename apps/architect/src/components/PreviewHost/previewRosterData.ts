@@ -35,6 +35,10 @@ export function makeRosterAssetResolver(
         return null;
       }
 
+      // Deliberately not `createAssetUrlOwner`: this satisfies the
+      // `ResolveRosterAsset` contract, which hands the caller an explicit
+      // `cleanup` and uses the URL exactly once, to parse the roster. There is
+      // nothing to cache, de-duplicate or supersede, and no second owner.
       const url = URL.createObjectURL(asset.data);
       return {
         url,

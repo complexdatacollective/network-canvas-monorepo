@@ -6,9 +6,10 @@ import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
+import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
+import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
-import ProtocolOpenElsewhereBanner from '~/components/ProtocolOpenElsewhereBanner';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
@@ -111,22 +112,30 @@ const LaunchedProtocolOpener = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
 
-      void (async () => {
-        const result = await dispatch(openLocalNetcanvas({ file })).unwrap();
+      // A launched file can need an upgrade, a configuration repair, or both,
+      // and each approval has to carry the earlier one forward — the same
+      // shape Home's drop/open flow uses. Each approval callback is offered
+      // only while its own flag is still unset, so an approval always advances
+      // and can never re-present the dialog it came from.
+      const open = async (approvals: {
+        migrationApproved?: boolean;
+        repairApproved?: boolean;
+      }): Promise<void> => {
+        const result = await dispatch(
+          openLocalNetcanvas({ file, ...approvals }),
+        ).unwrap();
         await showProtocolOpenResultDialog({
           result,
           openDialog,
-          onApproveMigration: async () => {
-            const approvedResult = await dispatch(
-              openLocalNetcanvas({ file, migrationApproved: true }),
-            ).unwrap();
-            await showProtocolOpenResultDialog({
-              result: approvedResult,
-              openDialog,
-            });
-          },
+          onApproveMigration: approvals.migrationApproved
+            ? undefined
+            : () => open({ ...approvals, migrationApproved: true }),
+          onApproveRepair: approvals.repairApproved
+            ? undefined
+            : () => open({ ...approvals, repairApproved: true }),
         });
-      })();
+      };
+      void open({});
     };
 
     openLaunchedProtocols();
@@ -164,6 +173,11 @@ const AppContents = () => {
       <StartupProtocolFailureReporter />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
+      {/* Mounted app-wide, not inside the stage editor: a nested editor can be
+          open over the Codebook or Resources just as easily, and that is
+          precisely the case the stage editor's own conflict dialog cannot
+          answer. */}
+      <NestedDraftReclaimDialog />
       <ScrollToTop />
       {/* Viewport-tall column so the install banner reserves space in normal
           flow (rather than a fixed overlay that covered the sticky nav): the
@@ -174,7 +188,7 @@ const AppContents = () => {
         <InstallBanner />
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
-        <ProtocolOpenElsewhereBanner />
+        <ProtocolLockBanner />
         <div className="min-h-0 flex-1">
           <Routes />
         </div>

@@ -19,6 +19,7 @@ describe('computeSuperProperties', () => {
     };
     expect(computeSuperProperties(metadata, fixturePayload)).toEqual({
       app: 'Fresco',
+      $app_name: 'Fresco',
       installation_id: 'install-1',
       package_version: expect.any(String),
       protocol_hash: 'abc123',
@@ -33,6 +34,19 @@ describe('computeSuperProperties', () => {
     };
     expect(computeSuperProperties(metadata, fixturePayload)).toMatchObject({
       host_version: '2.5.0',
+      $app_version: '2.5.0',
+    });
+  });
+
+  it('uses an explicit display name without changing the custom app key', () => {
+    const metadata: InterviewAnalyticsMetadata = {
+      installationId: 'install-1',
+      hostApp: 'interviewer',
+      appName: 'Interviewer',
+    };
+    expect(computeSuperProperties(metadata, fixturePayload)).toMatchObject({
+      app: 'interviewer',
+      $app_name: 'Interviewer',
     });
   });
 
@@ -43,5 +57,6 @@ describe('computeSuperProperties', () => {
     };
     const result = computeSuperProperties(metadata, fixturePayload);
     expect(Object.keys(result)).not.toContain('host_version');
+    expect(Object.keys(result)).not.toContain('$app_version');
   });
 });

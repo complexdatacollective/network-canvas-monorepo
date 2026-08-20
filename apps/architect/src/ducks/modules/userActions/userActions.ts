@@ -2,6 +2,7 @@ import { type Dispatch } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
 import {
+  type ConfigurationProblem,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -12,9 +13,11 @@ import {
   type ProtocolValidationError,
   validateProtocol,
 } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import { posthog } from '~/analytics';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
+import { timelineActions } from '~/ducks/middleware/timeline';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   saveProtocolAssets,
@@ -25,20 +28,27 @@ import {
   disarmInMemoryUnloadGuard,
 } from '~/utils/beforeUnloadGuard';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
+import { assessConfigurationRepair } from '~/utils/configurationRepair';
 import {
   setExportInProgress,
   setImportInProgress,
 } from '~/utils/criticalOperation';
-import { ensureError } from '~/utils/ensureError';
+import { describeMigrationFailure } from '~/utils/describeMigrationFailure';
 import {
   assertCompressedSizeWithinLimit,
   loadGuardedNetcanvas,
   NetcanvasTooLargeError,
 } from '~/utils/netcanvasSizeGuard';
 import {
+  describeImportFailure,
+  PROTOCOL_OPEN_FAILURE_MESSAGE,
+  TEMPLATE_OPEN_FAILURE_MESSAGE,
+} from '~/utils/protocolImportErrors';
+import {
   deleteStoredProtocol,
   getStoredProtocol,
   putStoredProtocol,
+  putStoredProtocolIfUnchanged,
 } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
@@ -59,10 +69,27 @@ export type ProtocolOpenResult =
       status: 'error';
       title: string;
       message: string;
+      /**
+       * The underlying error's own text, for the dialog's collapsed technical
+       * details. Absent when the failure is an expected input problem whose
+       * message already says everything there is to know (an unsupported file
+       * type, an over-large file) — there is nothing further to disclose.
+       */
+      detail?: string;
     }
   | {
       status: 'validation-error';
       message: string;
+    }
+  | {
+      /**
+       * The protocol does not open because of configuration Architect
+       * recognises and, when `repairable`, can fix. Never repaired silently:
+       * the researcher is shown what is wrong and chooses.
+       */
+      status: 'repair-required';
+      problems: ConfigurationProblem[];
+      repairable: boolean;
     }
   | {
       status: 'migration-required';
@@ -185,12 +212,17 @@ const instantiateProtocol = async (
 type OpenLocalNetcanvasParams = {
   file: File;
   migrationApproved?: boolean;
+  repairApproved?: boolean;
 };
 
 export const openLocalNetcanvas = createAppAsyncThunk(
   'protocol/openLocalNetcanvas',
   async (
-    { file, migrationApproved = false }: OpenLocalNetcanvasParams,
+    {
+      file,
+      migrationApproved = false,
+      repairApproved = false,
+    }: OpenLocalNetcanvasParams,
     { dispatch: storeDispatch },
   ): Promise<ProtocolOpenResult> => {
     // Signal an import is in flight so a fresh-load service-worker update won't
@@ -276,13 +308,29 @@ export const openLocalNetcanvas = createAppAsyncThunk(
         migratedProtocol as CurrentProtocol,
       );
 
+      let admittedProtocol = migratedProtocol as CurrentProtocol;
       if (!validationResult.success) {
-        trackImportValidationFailure('local', validationResult.error);
-        const errorMessage = ensureError(validationResult.error).message;
-        return { status: 'validation-error', message: errorMessage };
+        // A protocol authored before the interface-ownership rules can fail
+        // here for reasons Architect knows how to fix. Offer the fix rather
+        // than the raw validation error — but only once the researcher has
+        // seen exactly what would change and agreed to it.
+        const assessment = await assessConfigurationRepair(admittedProtocol);
+        if (assessment.status === 'repairable' && repairApproved) {
+          admittedProtocol = assessment.protocol;
+        } else if (assessment.status !== 'clean') {
+          return {
+            status: 'repair-required',
+            problems: assessment.problems,
+            repairable: assessment.status === 'repairable',
+          };
+        } else {
+          trackImportValidationFailure('local', validationResult.error);
+          const errorMessage = ensureError(validationResult.error).message;
+          return { status: 'validation-error', message: errorMessage };
+        }
       }
 
-      const finalProtocol = migratedProtocol as CurrentProtocol;
+      const finalProtocol = admittedProtocol;
       await instantiateProtocol(
         {
           protocol: finalProtocol,
@@ -295,12 +343,18 @@ export const openLocalNetcanvas = createAppAsyncThunk(
       return openedResult;
     } catch (error) {
       trackImportException('local', error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      // The raw error still reaches exception reporting and the console above;
+      // what the dialog leads with is Architect's own description of it, and
+      // the raw text is offered only behind the technical-details disclosure.
+      const { message, detail } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Failed to Open Protocol',
-        message: errorMessage,
+        message,
+        detail,
       };
     } finally {
       setImportInProgress(false);
@@ -369,10 +423,28 @@ const handleProtocolMigration = ({
         };
       }
 
-      const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
-        name,
-      });
-      return { status: 'ready', protocol: migratedProtocol as CurrentProtocol };
+      // `migrateProtocol` re-validates its output and THROWS when the result
+      // does not satisfy the current schema. Unhandled, that reached the
+      // researcher as a bare "Protocol migration failed." — their instrument
+      // would not open and nothing said why. See `describeMigrationFailure`.
+      try {
+        const migratedProtocol = migrateProtocol(protocol, APP_SCHEMA_VERSION, {
+          name,
+        });
+        return {
+          status: 'ready',
+          protocol: migratedProtocol as CurrentProtocol,
+        };
+      } catch (caught) {
+        const { title, message } = describeMigrationFailure(
+          ensureError(caught),
+          protocol,
+        );
+        return {
+          status: 'needs-ui',
+          result: { status: 'error', title, message },
+        };
+      }
     }
     case schemaVersionStates.UPGRADE_APP:
       return {
@@ -473,11 +545,18 @@ export const openBundledTemplate = createAppAsyncThunk(
       return openedResult;
     } catch (error) {
       trackImportException('bundled', error);
-      const errorMessage = ensureError(error).message;
+      // A bundled template never opens an archive, so the file-shaped reasons
+      // are unreachable here — but storage failures are not, and the default
+      // must talk about the template, never about a damaged file.
+      const { message, detail } = describeImportFailure(
+        error,
+        TEMPLATE_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Protocol Import Error',
-        message: errorMessage,
+        message,
+        detail,
       };
     } finally {
       setImportInProgress(false);
@@ -485,12 +564,18 @@ export const openBundledTemplate = createAppAsyncThunk(
   },
 );
 
-// Export protocol as .netcanvas file
+// Export protocol as .netcanvas file.
+//
+// `protocolOverride` exists for the one case where the file must NOT be the
+// canonical protocol: rescuing an uncommitted stage draft, whose stage and
+// codebook edits live outside `activeProtocol` and would otherwise be missing
+// from the very download offered to preserve them. It changes nothing on disk
+// or in the library — assets still resolve against the active protocol id.
 export const exportNetcanvas = createAppAsyncThunk(
   'webUserActions/exportNetcanvas',
-  async (_, { getState }) => {
+  async (protocolOverride: CurrentProtocol | undefined, { getState }) => {
     const state = getState();
-    const protocol = state.activeProtocol?.present;
+    const protocol = protocolOverride ?? state.activeProtocol?.present;
 
     if (!protocol) {
       throw new Error('No active protocol to export');
@@ -513,11 +598,19 @@ export const exportNetcanvas = createAppAsyncThunk(
   },
 );
 
+type OpenLibraryProtocolParams = {
+  id: string;
+  repairApproved?: boolean;
+};
+
 // Load a protocol already saved in the library into the editing buffer. Its
 // assets are already namespaced under this id in IndexedDB.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
-  async (id: string, { dispatch }): Promise<ProtocolOpenResult> => {
+  async (
+    { id, repairApproved = false }: OpenLibraryProtocolParams,
+    { dispatch },
+  ): Promise<ProtocolOpenResult> => {
     const row = await getStoredProtocol(id);
     if (!row) {
       return {
@@ -527,22 +620,67 @@ export const openLibraryProtocol = createAppAsyncThunk(
       };
     }
 
+    let protocol = row.protocol;
     try {
       const admission = await admitStoredProtocol(row);
       if (!admission.success) {
-        return {
-          status: 'validation-error',
-          message: ensureError(admission.error).message,
-        };
+        // A stored protocol authored before the interface-ownership rules can
+        // fail admission for reasons Architect knows how to fix. The repair is
+        // written back to the library so the researcher is not asked again.
+        const assessment = await assessConfigurationRepair(protocol);
+        if (assessment.status === 'repairable' && repairApproved) {
+          protocol = assessment.protocol;
+          // Guarded rather than written blind. This tab does not hold the
+          // cross-tab lock yet — it claims the protocol only once the editor
+          // route mounts, below — so a tab that DOES hold it can autosave into
+          // the same library row while the admission and the repair assessment
+          // are running. Both are asynchronous and neither is quick, and
+          // `putStoredProtocol` replaces the whole row without comparing
+          // anything: a blind write here lands this snapshot, read before all
+          // of that started, on top of edits the other tab has since saved.
+          //
+          // Nothing is merged and nothing is overwritten. The repair is
+          // reproducible — reopening derives it again from whatever is on disk
+          // then — so refusing costs the researcher a second click, while
+          // writing costs them work they cannot get back.
+          const written = await putStoredProtocolIfUnchanged(row, {
+            id,
+            protocol,
+            name: row.name,
+            description: row.description,
+          });
+          if (!written) {
+            return {
+              status: 'error',
+              title: 'Protocol Changed',
+              message:
+                'This protocol was saved somewhere else while it was being repaired, so the repair was not applied. Open it again to see the current version.',
+            };
+          }
+        } else if (assessment.status !== 'clean') {
+          return {
+            status: 'repair-required',
+            problems: assessment.problems,
+            repairable: assessment.status === 'repairable',
+          };
+        } else {
+          return {
+            status: 'validation-error',
+            message: ensureError(admission.error).message,
+          };
+        }
       }
     } catch (error: unknown) {
-      const normalized = reportError(error, {
-        operation: 'stored-protocol-admission',
-      });
+      reportError(error, { operation: 'stored-protocol-admission' });
+      const { message, detail } = describeImportFailure(
+        error,
+        PROTOCOL_OPEN_FAILURE_MESSAGE,
+      );
       return {
         status: 'error',
         title: 'Protocol Open Error',
-        message: normalized.message,
+        message,
+        detail,
       };
     }
 
@@ -551,7 +689,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
     dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
-    dispatch(setActiveProtocol(row.protocol));
+    dispatch(setActiveProtocol(protocol));
     navigate('/protocol');
     return openedResult;
   },
@@ -569,6 +707,16 @@ export const deleteLibraryProtocol = createAppAsyncThunk(
       disarmInMemoryUnloadGuard();
       dispatch(setActiveProtocolId(null));
       dispatch(clearActiveProtocol());
+      // `clearActiveProtocol` matches `protocolPattern` in ducks/modules/root.ts,
+      // so without this the timeline middleware takes its default path and
+      // pushes a `structuredClone` of the protocol that was just deleted onto
+      // `past` — where it stays, holding whatever the researcher wrote in
+      // labels, prompts and the codebook, until another protocol is opened or
+      // the page reloads. The dialog says it is permanently removed from this
+      // device, so it has to be. Same rule, same pairing as
+      // `restoreActiveProtocol`'s `clearRestoredSession` and
+      // `protocolValidationListener`.
+      dispatch(timelineActions.reset(null));
     }
   },
 );

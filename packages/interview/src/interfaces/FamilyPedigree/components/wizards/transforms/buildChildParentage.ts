@@ -1,6 +1,7 @@
 import type { RelationshipType, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, GameteRole, VariableConfig } from '../../../store';
+import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
 type RoleKey = 'egg-source' | 'sperm-source' | 'carrier-source';
@@ -94,7 +95,9 @@ export function buildChildParentage(
       };
       const sex = readBiologicalSex(personValues.biologicalSex);
       if (sex !== undefined) {
-        nodeAttrs[variableConfig.biologicalSexVariable] = [sex];
+        writeOwnAttribute(nodeAttrs, variableConfig.biologicalSexVariable, [
+          sex,
+        ]);
       }
       parentEntries.push({
         tempId: namespace,
@@ -142,11 +145,17 @@ export function buildChildParentage(
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        gameteRole,
+      ]);
     }
     edges.push({
       source: entry.tempId,
@@ -161,11 +170,17 @@ export function buildChildParentage(
       [variableConfig.isActiveVariable]: true,
     };
     if (entry.isGestationalCarrier) {
-      edgeAttributes[variableConfig.isGestationalCarrierVariable] = true;
+      writeOwnAttribute(
+        edgeAttributes,
+        variableConfig.isGestationalCarrierVariable,
+        true,
+      );
     }
     const gameteRole = gameteRoleForRole(entry.roleKey);
     if (gameteRole) {
-      edgeAttributes[variableConfig.gameteRoleVariable] = [gameteRole];
+      writeOwnAttribute(edgeAttributes, variableConfig.gameteRoleVariable, [
+        gameteRole,
+      ]);
     }
     edges.push({
       source: entry.sourceId,

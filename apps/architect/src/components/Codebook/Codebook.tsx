@@ -69,7 +69,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
               component={InputField}
               initialValue=""
               type="search"
-              placeholder="Search types and variables by name..."
+              placeholder="Search types and attributes by name..."
               prefixComponent={<Search aria-hidden className="size-4" />}
             />
           </Form>
@@ -92,15 +92,15 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
       {!hasAnyContent && (
         <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
           <Paragraph className="text-muted text-center">
-            There are currently no types or variables defined in this protocol.
+            There are currently no types or attributes defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
-            ego variables.
+            ego attributes.
           </Paragraph>
         </div>
       )}
 
       <div className="mb-14">
-        <Heading level="h2" margin="none" className="mb-5">
+        <Heading level="h2" margin="none" className="mb-5!">
           Ego
         </Heading>
         <Section layout="vertical" required={false}>

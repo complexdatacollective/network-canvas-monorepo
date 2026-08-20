@@ -1,18 +1,23 @@
 import { values } from 'es-toolkit/compat';
-import type { ComponentType } from 'react';
-import { useCallback, useMemo } from 'react';
-import { Field, formValueSelector, isDirty } from 'redux-form';
+import { useCallback, useMemo, useState } from 'react';
 
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type {
+  CreateFormFieldProps,
+  FieldValue,
+} from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { Variable, VariableOptions } from '@codaco/protocol-validation';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import type { Variable, VariableOption } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
+import DialogForm from '~/components/DialogForm/DialogForm';
 import { Section, Subsection } from '~/components/EditorLayout';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import InlineEditScreen from '~/components/InlineEditScreen';
-import Options from '~/components/Options';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options, {
+  optionsValidation,
+  type OptionValue,
+} from '~/components/Form/arrayFields/Options';
 import LockedOptions from '~/components/Options/LockedOptions';
 import {
   isOrdinalOrCategoricalType,
@@ -23,16 +28,136 @@ import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
 import safeName from '~/utils/safeName';
-import { validations } from '~/utils/validations';
-const form = 'create-new-variable';
-const isRequired = validations.required();
-const isAllowedVariableName = validations.allowedVariableName();
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const FrescoStyledSelectField = StyledSelectField as ComponentType<
-  Record<string, unknown>
+
+const FORM_ID = 'create-new-variable';
+
+/**
+ * A seeded option list the researcher may not edit. `readonly` because the
+ * canonical interface-owned sets (`INTERFACE_OWNED_OPTION_SETS`) are declared
+ * that way in `@codaco/protocol-validation` and nothing here may mutate one —
+ * the alternative, copying each set at its call site, would put the canonical
+ * data back into several hands.
+ */
+export type LockedVariableOptions = readonly VariableOption[];
+
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const NO_OPTIONS: OptionValue[] = [];
+
+type VariableNameFieldProps = CreateFormFieldProps<
+  string,
+  'input',
+  {
+    // Narrows the `size` an <input> would otherwise contribute (a number) to
+    // the control-size scale `InputField` expects.
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+  }
 >;
 
+/**
+ * Variable names are NMTOKENs, so the characters `safeName` strips can never
+ * be part of one, so the value is filtered on change rather than only
+ * validated.
+ */
+const VariableNameField = ({
+  value,
+  onChange,
+  ...props
+}: VariableNameFieldProps) => (
+  <InputField
+    {...props}
+    value={value ?? ''}
+    onChange={(nextValue) => onChange?.(safeName(nextValue ?? ''))}
+  />
+);
+
 export type Entity = 'node' | 'edge' | 'ego';
+
+type NewVariableFieldsProps = {
+  existingVariableNames: string[];
+  variableTypeOptions: typeof VARIABLE_OPTIONS;
+  initialValues: Record<string, unknown>;
+  typeLocked: boolean;
+  lockedOptions: LockedVariableOptions | null;
+};
+
+const NewVariableFields = ({
+  existingVariableNames,
+  variableTypeOptions,
+  initialValues,
+  typeLocked,
+  lockedOptions,
+}: NewVariableFieldsProps) => {
+  const variableType = useFormStore((state) => {
+    const value = state.getFieldState('type')?.value;
+    return typeof value === 'string' ? value : undefined;
+  });
+  const initialOptions = Array.isArray(initialValues.options)
+    ? (initialValues.options as OptionValue[])
+    : NO_OPTIONS;
+
+  return (
+    <Section layout="vertical">
+      <Subsection id={getFieldId('name')} title="Attribute Name">
+        <ArchitectField
+          name="name"
+          label="Attribute name"
+          hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
+          component={VariableNameField}
+          placeholder="e.g. Nickname"
+          initialValue={
+            typeof initialValues.name === 'string'
+              ? initialValues.name
+              : undefined
+          }
+          validation={{
+            required: true,
+            uniqueByList: existingVariableNames,
+            allowedVariableName: true,
+          }}
+        />
+      </Subsection>
+      <Subsection id={getFieldId('type')} title="Attribute Type">
+        <ArchitectField
+          name="type"
+          label="Attribute type"
+          labelHidden
+          component={StyledSelectField}
+          placeholder="Select attribute type"
+          options={variableTypeOptions}
+          initialValue={
+            typeof initialValues.type === 'string'
+              ? initialValues.type
+              : undefined
+          }
+          // Locked options only make sense for a categorical/ordinal type, so
+          // lock the type selector too — otherwise a caller passing
+          // lockedOptions without initialValues.type could switch away from
+          // that type while the options and readOnly flag stay locked.
+          disabled={typeLocked}
+          validation={{ required: true }}
+        />
+      </Subsection>
+      {isOrdinalOrCategoricalType(variableType) && (
+        <Subsection id={getFieldId('options')} title="Options">
+          {lockedOptions ? (
+            <LockedOptions options={lockedOptions} />
+          ) : (
+            <ArchitectArrayField
+              name="options"
+              label="Options"
+              hint="Create the values this input control offers the participant."
+              component={Options}
+              addButtonLabel="Create new option"
+              initialValue={initialOptions}
+              validation={optionsValidation}
+            />
+          )}
+        </Subsection>
+      )}
+    </Section>
+  );
+};
+
 type NewVariableWindowProps = {
   show?: boolean;
   entity: Entity;
@@ -42,8 +167,9 @@ type NewVariableWindowProps = {
   onCancel: () => void;
   initialValues?: Record<string, unknown> | null;
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
-  lockedOptions?: VariableOptions | null;
+  lockedOptions?: LockedVariableOptions | null;
 };
+
 export default function NewVariableWindow({
   show = false,
   entity,
@@ -55,11 +181,6 @@ export default function NewVariableWindow({
   lockedOptions = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
-  const { openDialog } = useDialog();
-  const variableType = useAppSelector(
-    (state) => formValueSelector(form)(state, 'type') as string | undefined,
-  );
-  const hasUnsavedChanges = useAppSelector((state) => isDirty(form)(state));
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
   const subject = useMemo(() => ({ entity, type }), [entity, type]);
   const existingVariables = useAppSelector((state) =>
@@ -68,10 +189,6 @@ export default function NewVariableWindow({
   const existingVariableNames = useMemo(
     () => values(existingVariables).map(({ name }: Variable) => name),
     [existingVariables],
-  );
-  const validateName = useCallback(
-    (value: string) => validations.uniqueByList(existingVariableNames)(value),
-    [existingVariableNames],
   );
   const filteredVariableOptions = useMemo(
     () =>
@@ -85,136 +202,92 @@ export default function NewVariableWindow({
   // Merge locked options into initial values if provided
   const mergedInitialValues = useMemo(() => {
     if (lockedOptions) {
-      return {
-        ...initialValues,
-        options: lockedOptions,
-      };
+      return { ...initialValues, options: lockedOptions };
     }
-    return initialValues;
+    return initialValues ?? {};
   }, [initialValues, lockedOptions]);
-  const handleCreateNewVariable = useCallback(
-    async (configuration: Record<string, unknown>) => {
+
+  const handleSubmit = useCallback(
+    async (formValues: Record<string, FieldValue>) => {
+      // Locked options are never rendered as a field, so they are carried over
+      // from the seed rather than read back out of the form.
+      const configuration = { ...mergedInitialValues, ...formValues };
       // Locked options belong to an interface-owned value set the researcher may
       // not edit; persist readOnly so the shared options editors enforce it.
       const withReadOnly = lockedOptions
         ? { ...configuration, readOnly: true }
         : configuration;
-      const result = await dispatch(
-        createVariableAsync({
-          entity,
-          type,
-          configuration: withReadOnly as Partial<Variable>,
-        }),
-      ).unwrap();
-      onComplete(result.variable);
-    },
-    [dispatch, entity, type, onComplete, lockedOptions],
-  );
-  const handleCancel = useCallback(async () => {
-    // An untouched form loses nothing, so close immediately. Once the author has
-    // started filling it in, confirm before discarding — so an accidental
-    // backdrop/outside click or Esc can't silently drop a partially-authored
-    // variable.
-    if (!hasUnsavedChanges) {
-      onCancel();
-      return;
-    }
-    const confirmed = await openDialog({
-      type: 'choice',
-      intent: 'warning',
-      title: 'Unsaved Changes',
-      description:
-        'You have unsaved changes. Are you sure you want to close without saving?',
-      actions: {
-        primary: { label: 'Close Without Saving', value: true },
-        cancel: { label: 'Cancel', value: false },
-      },
-    });
-    if (confirmed) {
-      onCancel();
-    }
-  }, [hasUnsavedChanges, onCancel, openDialog]);
-  return (
-    <InlineEditScreen
-      show={show}
-      form={form}
-      onSubmit={(formValues: unknown) =>
-        handleCreateNewVariable(formValues as Record<string, unknown>)
+
+      try {
+        // unwrap() re-throws the thunk's error (a duplicate or invalid name)
+        // instead of resolving to a rejected action with no payload.
+        const result = await dispatch(
+          createVariableAsync({
+            entity,
+            type,
+            configuration: withReadOnly as Partial<Variable>,
+          }),
+        ).unwrap();
+        onComplete(result.variable);
+      } catch (error) {
+        // Keep the dialog open and say why, rather than closing on a failure.
+        return {
+          success: false as const,
+          formErrors: [ensureError(error).message],
+        };
       }
-      onCancel={handleCancel}
-      initialValues={mergedInitialValues ?? undefined}
-      title="Create New Variable"
+    },
+    [dispatch, entity, type, onComplete, lockedOptions, mergedInitialValues],
+  );
+
+  /**
+   * Every open of this window creates a DIFFERENT variable, so each one needs
+   * its own field store — the `key` DialogForm documents for exactly this.
+   *
+   * The window is mounted for the lifetime of the picker that owns it and only
+   * toggles `show`, so without a key the store is shared across opens. What
+   * normally hides that is `Modal`'s exit animation: it unmounts the form,
+   * whose `useForm` cleanup resets the store. A close that is followed by
+   * another open before that exit finishes cancels the removal, so the reset
+   * never runs — and the next variable's fields then re-register over the
+   * previous one's parked values, which `registerField` prefers over
+   * `initialValue`. Creating a boolean variable straight after a categorical
+   * one therefore reopened the window still holding `categorical`: the type
+   * selector is locked against correcting it, so the options editor it reveals
+   * could never be satisfied and the save was blocked for good. The quieter
+   * case is worse — a boolean created straight after a TEXT one is stored as
+   * text, a wrong-typed codebook variable with nothing on screen to show it.
+   *
+   * Bumped as the window OPENS (the React-documented adjust-state-on-prop-
+   * change pattern) rather than on close, so the entering dialog is the fresh
+   * one and a close still animates out.
+   */
+  const [wasShown, setWasShown] = useState(show);
+  const [openCount, setOpenCount] = useState(0);
+  if (show !== wasShown) {
+    setWasShown(show);
+    if (show) {
+      setOpenCount((count) => count + 1);
+    }
+  }
+
+  return (
+    <DialogForm
+      key={openCount}
+      open={show}
+      onClose={onCancel}
+      title="Create New Attribute"
+      formId={FORM_ID}
+      submitLabel="Save and Close"
+      onSubmit={handleSubmit}
     >
-      <Section layout="vertical">
-        <Subsection
-          id={getFieldId('name')}
-          title="Variable Name"
-          summary={
-            <Paragraph>
-              Enter a name for this variable. The variable name is how you will
-              reference the variable elsewhere, including in exported data.
-            </Paragraph>
-          }
-        >
-          <Field
-            name="name"
-            label="Variable name"
-            labelHidden
-            component={FrescoReduxField}
-            placeholder="e.g. Nickname"
-            fieldComponent={FrescoInputField}
-            validate={[isRequired, validateName, isAllowedVariableName]}
-            normalize={safeName}
-          />
-        </Subsection>
-        <Subsection
-          id={getFieldId('type')}
-          title="Variable Type"
-          summary={<Paragraph>Choose a variable type</Paragraph>}
-        >
-          <ValidatedField
-            name="type"
-            label="Variable type"
-            labelHidden
-            component={FrescoReduxField}
-            validation={{ required: true }}
-            componentProps={{
-              fieldComponent: FrescoStyledSelectField,
-              placeholder: 'Select variable type',
-              options: filteredVariableOptions,
-              // Locked options only make sense for a categorical/ordinal type, so
-              // lock the type selector too — otherwise a caller passing
-              // lockedOptions without initialValues.type could switch away from
-              // that type while the options and readOnly flag stay locked.
-              disabled: !!initialValues?.type || !!lockedOptions,
-            }}
-          />
-        </Subsection>
-        {isOrdinalOrCategoricalType(variableType) && (
-          <Subsection
-            id={getFieldId('options')}
-            title="Options"
-            summary={
-              lockedOptions ? (
-                <Paragraph>
-                  These options are automatically configured by the interface
-                  and cannot be modified.
-                </Paragraph>
-              ) : (
-                <Paragraph>
-                  Create some options for this input control
-                </Paragraph>
-              )
-            }
-          >
-            {lockedOptions ? (
-              <LockedOptions options={lockedOptions} />
-            ) : (
-              <Options name="options" label="Options" />
-            )}
-          </Subsection>
-        )}
-      </Section>
-    </InlineEditScreen>
+      <NewVariableFields
+        existingVariableNames={existingVariableNames}
+        variableTypeOptions={filteredVariableOptions}
+        initialValues={mergedInitialValues}
+        typeLocked={!!initialValues?.type || !!lockedOptions}
+        lockedOptions={lockedOptions}
+      />
+    </DialogForm>
   );
 }

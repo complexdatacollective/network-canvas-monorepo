@@ -14,6 +14,7 @@ export type Publication = {
   source: string;
   authors: string;
   href: string;
+  year: string;
 };
 
 export type Grant = {
@@ -52,6 +53,10 @@ const internalPath = z
 const publicImage = z
   .string()
   .regex(/^\/images\/.+/, 'must start with /images/');
+const publicationYear = z
+  .string()
+  .trim()
+  .regex(/^\d{4}$/, 'must be a four-digit year');
 
 const newsRowSchema = z
   .object({
@@ -71,6 +76,7 @@ const publicationRowSchema = z
     source_es: requiredText,
     authors: requiredText,
     href: httpsUrl,
+    year: publicationYear,
   })
   .strict();
 
@@ -180,12 +186,13 @@ export async function loadSiteContent(
       title: localized(locale, row.title_en, row.title_es),
       href: row.href,
     })),
-    publications: publicationRows.slice(0, 8).map((row) => ({
+    publications: publicationRows.map((row) => ({
       id: row.id,
       title: localized(locale, row.title_en, row.title_es),
       source: localized(locale, row.source_en, row.source_es),
       authors: row.authors,
       href: row.href,
+      year: row.year,
     })),
     grants: grantRows.map((row) => ({
       id: row.id,

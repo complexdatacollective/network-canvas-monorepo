@@ -2,7 +2,9 @@ import { Pause, Pencil, Play, RotateCcw, Snowflake } from 'lucide-react';
 
 import {
   SegmentedToolbar,
-  type ToolbarSegment,
+  ToolbarGroup,
+  ToolbarIconButton,
+  ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
 type BehavioursPanelProps = {
@@ -37,58 +39,53 @@ export default function BehavioursPanel({
 }: BehavioursPanelProps) {
   if (!showLayoutToggle && !showDrawingControls) return null;
 
-  const items: ToolbarSegment[] = [];
-
-  if (showLayoutToggle) {
-    items.push({
-      type: 'button',
-      id: 'layout',
-      label: simulationEnabled
-        ? 'Pause automatic layout'
-        : 'Resume automatic layout',
-      icon: simulationEnabled ? <Pause /> : <Play />,
-      onClick: onToggleSimulation,
-    });
-  }
-
-  if (showLayoutToggle && showDrawingControls) {
-    items.push({ type: 'separator', id: 'sep' });
-  }
-
-  if (showDrawingControls) {
-    items.push(
-      {
-        type: 'toggle',
-        id: 'draw',
-        label: isDrawingEnabled ? 'Disable drawing' : 'Enable drawing',
-        icon: <Pencil />,
-        pressed: isDrawingEnabled,
-        onPressedChange: onToggleDrawing,
-      },
-      {
-        type: 'toggle',
-        id: 'freeze',
-        label: isFrozen ? 'Unfreeze annotations' : 'Freeze annotations',
-        icon: <Snowflake />,
-        pressed: isFrozen,
-        onPressedChange: onToggleFreeze,
-      },
-      {
-        type: 'button',
-        id: 'reset',
-        label: 'Reset annotations',
-        icon: <RotateCcw />,
-        onClick: onReset,
-      },
-    );
-  }
-
   return (
     <SegmentedToolbar
-      label="Layout and drawing tools"
-      items={items}
+      aria-label="Layout and drawing tools"
       size="lg"
       className="absolute bottom-10 left-10 z-10"
-    />
+    >
+      {showLayoutToggle ? (
+        <ToolbarGroup key="layout" aria-label="Layout controls">
+          <ToolbarIconButton
+            aria-label={
+              simulationEnabled
+                ? 'Pause automatic layout'
+                : 'Resume automatic layout'
+            }
+            icon={simulationEnabled ? <Pause /> : <Play />}
+            onClick={onToggleSimulation}
+          />
+        </ToolbarGroup>
+      ) : null}
+
+      {showLayoutToggle && showDrawingControls ? (
+        <ToolbarSeparator key="drawing-separator" />
+      ) : null}
+
+      {showDrawingControls ? (
+        <ToolbarGroup key="drawing" aria-label="Drawing controls">
+          <ToolbarIconButton
+            aria-label={isDrawingEnabled ? 'Disable drawing' : 'Enable drawing'}
+            icon={<Pencil />}
+            pressed={isDrawingEnabled}
+            onPressedChange={onToggleDrawing}
+          />
+          <ToolbarIconButton
+            aria-label={
+              isFrozen ? 'Unfreeze annotations' : 'Freeze annotations'
+            }
+            icon={<Snowflake />}
+            pressed={isFrozen}
+            onPressedChange={onToggleFreeze}
+          />
+          <ToolbarIconButton
+            aria-label="Reset annotations"
+            icon={<RotateCcw />}
+            onClick={onReset}
+          />
+        </ToolbarGroup>
+      ) : null}
+    </SegmentedToolbar>
   );
 }

@@ -1,50 +1,47 @@
-import type { ComponentType } from 'react';
-
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-
-import IssueAnchor from '../IssueAnchor';
-
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 
 const IntroductionPanel = (_props: StageEditorSectionProps) => {
-  const summaryText =
-    'This panel is shown prior to completion of the forms, and should serve as an introduction to the task.';
+  const titleInitialValue = useStageInitialValue<string>(
+    'introductionPanel.title',
+  );
+  const textInitialValue = useStageInitialValue<string>(
+    'introductionPanel.text',
+  );
+
   return (
     <Section
       title="Introduction Panel"
-      summary={<Paragraph>{summaryText}</Paragraph>}
+      summary={
+        <Paragraph>
+          This panel is shown prior to completion of the forms, and should serve
+          as an introduction to the task.
+        </Paragraph>
+      }
     >
-      <Row>
-        <IssueAnchor
-          fieldName="introductionPanel.title"
-          description="Title (Introduction panel)"
-        />
-        <ValidatedField
+      <>
+        <ArchitectField
           name="introductionPanel.title"
           label="Title"
-          component={FrescoReduxField}
-          componentProps={{ fieldComponent: FrescoInputField, maxLength: 50 }}
-          validation={{ required: true }}
+          component={InputField}
+          validation={{ required: true, maxLength: 50 }}
+          initialValue={titleInitialValue}
         />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="introductionPanel.text"
-          description="Text (Introduction panel)"
-        />
-        <ValidatedField
+      </>
+      <>
+        <ArchitectField
           name="introductionPanel.text"
           component={RichText}
-          componentProps={{ label: 'Introduction text' }}
+          label="Introduction text"
           validation={{ required: true }}
+          initialValue={textInitialValue}
         />
-      </Row>
+      </>
     </Section>
   );
 };

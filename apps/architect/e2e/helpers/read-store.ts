@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { expect, type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -100,6 +102,129 @@ export async function readProtocolJson(
     throw new Error('no canonical protocol row in ArchitectProtocolDB');
   }
   return protocol;
+}
+
+// A refused edit writes nothing, so a caller asserting "nothing was written"
+// has no state change of its own to wait for — every such condition is already
+// true at 0 ms. Rather than sleep, make a write that DOES persist and wait for
+// that: `mutate` puts `token` somewhere in the protocol through the UI (a
+// description, a name, a resource filename), and this returns once the token is
+// readable from the canonical row.
+//
+// That makes the caller's assertion conclusive rather than hopeful, because the
+// row carrying the token is a snapshot of the protocol AS IT STOOD AFTER the
+// refusal, not a patch: `protocolValidationListener.ts` captures each canonical
+// change as an immutable FIFO candidate carrying the whole protocol, and
+// `protocolLibraryListener.ts` writes accepted snapshots under a per-protocol
+// lock that preserves that order. A write the guard should have refused is
+// therefore inside the very row the caller then reads.
+//
+// This synchronises on the guard's own decision point: all three guards it
+// serves (AssetBrowser's `handleDelete`, Timeline's `handleDeleteStage` and
+// `commitReorder`) decide SYNCHRONOUSLY within the interaction that opened the
+// dialog — a click for the first two, an ArrowUp for the reorder guard — and
+// return before dispatching. A path that deferred its destructive dispatch
+// behind its own await would land after the token and would need its own
+// synchronisation.
+export async function settleAfterRefusal(
+  page: Page,
+  mutate: (token: string) => Promise<void>,
+): Promise<void> {
+  const token = `refusal-settle-${randomUUID()}`;
+  await mutate(token);
+  // Field-agnostic on purpose, so each caller can use whatever persisting edit
+  // its own screen already offers: a token this unique matches nothing else in
+  // the protocol, wherever `mutate` chose to put it.
+  await readProtocolJson(page, (protocol) =>
+    JSON.stringify(protocol).includes(token),
+  );
+}
+
+// Every key in the `assets` store, across all protocols (`${protocolId}::${assetId}`
+// — see `assetKey` in `~/utils/assetDB`). A tab that may not edit a protocol
+// must not be able to write a blob into that protocol's asset scope, and
+// `readProtocolJson` cannot see such a write: the manifest entry naming the
+// blob never reaches the protocol row, so only the asset store shows it.
+export async function readAssetKeys(page: Page): Promise<string[]> {
+  const keys: unknown = await page.evaluate(async (dbName) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    // A versionless open in a session where the app has not created its Dexie
+    // DB yet yields a store-less database, and a transaction on it throws.
+    if (!db.objectStoreNames.contains('assets')) {
+      db.close();
+      return [];
+    }
+    const result = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const req = db
+        .transaction('assets', 'readonly')
+        .objectStore('assets')
+        .getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return result.map(String);
+  }, DB_NAME);
+  return Array.isArray(keys) ? keys.map(String) : [];
+}
+
+export type StoreCounts = { protocols: number; assets: number };
+
+const isStoreCounts = (value: unknown): value is StoreCounts =>
+  typeof value === 'object' &&
+  value !== null &&
+  'protocols' in value &&
+  'assets' in value &&
+  typeof value.protocols === 'number' &&
+  typeof value.assets === 'number';
+
+// How many rows each library store holds. This is the oracle behind "the
+// import was refused and the library is untouched", so every failure path
+// REJECTS rather than resolving to a sentinel: a read that resolved to -1 on
+// error compared -1 to -1 across the refusal and passed while reading nothing
+// at all. The only non-error absence — a store the app has not created in this
+// session — is genuinely a count of zero, and is reported as such.
+export async function readStoreCounts(page: Page): Promise<StoreCounts> {
+  const counts: unknown = await page.evaluate(async (dbName) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () =>
+        reject(new Error(`indexedDB.open(${dbName}) failed: ${req.error}`));
+    });
+    const count = (store: string) =>
+      new Promise<number>((resolve, reject) => {
+        if (!db.objectStoreNames.contains(store)) {
+          resolve(0);
+          return;
+        }
+        const req = db
+          .transaction(store, 'readonly')
+          .objectStore(store)
+          .count();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () =>
+          reject(new Error(`count("${store}") failed: ${req.error}`));
+      });
+    try {
+      return {
+        protocols: await count('protocols'),
+        assets: await count('assets'),
+      };
+    } finally {
+      db.close();
+    }
+  }, DB_NAME);
+  if (!isStoreCounts(counts)) {
+    throw new Error(
+      `readStoreCounts read a value that is not a count pair: ${JSON.stringify(counts)}`,
+    );
+  }
+  return counts;
 }
 
 type Stage = CurrentProtocol['stages'][number];

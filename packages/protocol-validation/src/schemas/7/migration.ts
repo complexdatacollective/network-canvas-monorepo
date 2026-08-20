@@ -8,7 +8,7 @@ const migrationV6toV7 = createMigration({
   to: 7,
   dependencies: {},
   notes: `- Add the ability to specify minimum and maximum numbers of named alters on name generator stages.
-- Add additional skip logic options for handling ordinal and categorical variables.`,
+- Add additional skip logic options for handling ordinal and categorical attributes.`,
   migrate: (doc) =>
     ({
       ...doc,

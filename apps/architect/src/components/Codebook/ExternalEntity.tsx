@@ -37,7 +37,7 @@ const ExternalEntity = ({ id, name }: ExternalEntityProps) => {
         </div>
         {variables.length > 0 && (
           <div className="mt-5">
-            <Heading level="h3">Variables:</Heading>
+            <Heading level="h3">Attributes:</Heading>
             <VariableList variables={variables} />
           </div>
         )}

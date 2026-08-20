@@ -458,7 +458,7 @@ describe('ComposerFormSchema duplicate variables', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes('duplicate variable "birth_year"'),
+      candidate.message.includes('duplicate attribute "birth_year"'),
     );
     expect(issue?.path).toEqual(['nodeForm', 'fields', 1, 'variable']);
   });
@@ -482,7 +482,7 @@ describe('ComposerFormSchema duplicate variables', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes('duplicate variable "met_date"'),
+      candidate.message.includes('duplicate attribute "met_date"'),
     );
     expect(issue?.path).toEqual(['edges', 0, 'form', 'fields', 1, 'variable']);
   });

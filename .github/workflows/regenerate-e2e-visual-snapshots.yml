@@ -22,6 +22,18 @@ on:
         required: false
         type: number
         default: 10
+      update_mode:
+        description: >-
+          Playwright --update-snapshots mode. "changed" (the default) rewrites
+          only baselines whose render differs BEYOND the comparison threshold,
+          which is what an automated gate wants. "all" rewrites every baseline
+          from the current render — use it when the interface genuinely changed
+          but the difference is small enough to pass the per-pixel threshold, so
+          the committed PNGs would otherwise keep depicting a UI that no longer
+          exists.
+        required: false
+        type: string
+        default: changed
   workflow_dispatch:
     inputs:
       suite:
@@ -59,6 +71,14 @@ on:
           - '5'
           - '10'
           - '20'
+      update_mode:
+        description: Which baselines to rewrite
+        required: true
+        type: choice
+        default: changed
+        options:
+          - changed
+          - all
 
 permissions:
   contents: read
@@ -84,7 +104,10 @@ jobs:
 
       - name: Regenerate Architect visual snapshots
         if: inputs.mode == 'regenerate' && inputs.suite == 'architect'
-        run: ./apps/architect/e2e/scripts/run.sh --grep @visual --update-snapshots
+        run: >-
+          ./apps/architect/e2e/scripts/run.sh
+          --grep @visual
+          --update-snapshots=${{ inputs.update_mode }}
 
       - name: Regenerate Interview visual snapshots
         if: inputs.mode == 'regenerate' && inputs.suite == 'interview'
@@ -95,11 +118,14 @@ jobs:
           --project=chromium-visual
           --project=firefox-visual
           --project=webkit-visual
-          --update-snapshots
+          --update-snapshots=${{ inputs.update_mode }}
 
       - name: Regenerate Interviewer visual snapshots
         if: inputs.mode == 'regenerate' && inputs.suite == 'interviewer'
-        run: ./apps/interviewer/e2e/scripts/run.sh --grep @visual --update-snapshots
+        run: >-
+          ./apps/interviewer/e2e/scripts/run.sh
+          --grep @visual
+          --update-snapshots=${{ inputs.update_mode }}
 
       - name: Establish current-render Motion drag baselines
         if: inputs.mode == 'motion-drag-stress'

@@ -3,8 +3,9 @@
 import type { Middleware } from '@reduxjs/toolkit';
 import { debounce, isEqual, omit } from 'es-toolkit';
 
+import { ensureError } from '@codaco/shared-consts';
+
 import type { SessionPayload, SyncHandler } from '../../contract/types';
-import { ensureError } from '../../utils/ensureError';
 
 type SyncMiddlewareState = { session: SessionPayload };
 

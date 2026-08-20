@@ -1,48 +1,78 @@
-import type { ComponentType } from 'react';
-import { compose } from 'react-recompose';
-import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
+import { useMemo } from 'react';
+import { shallowEqual, useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import ValidatedField from '~/components/Form/ValidatedField';
-import IssueAnchor from '~/components/IssueAnchor';
 import type { RootState } from '~/ducks/modules/root';
+import { getVariableOptionsForSubject } from '~/selectors/codebook';
+import { getFieldId } from '~/utils/issues';
 
 import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
-import withVariableOptions from '../CategoricalBinPrompts/withVariableOptions';
-import EntitySelectField from '../fields/EntitySelectField/EntitySelectField';
+import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
+
 type SelectOption = {
   label: string;
   value: string;
-  [key: string]: unknown;
+  type?: string;
 };
+
+type SortOrderRow = Record<string, unknown>;
+
+const EMPTY_OPTIONS: SelectOption[] = [];
+
 type PromptFieldsProps = {
-  form: string;
-  sortVariableOptions?: SelectOption[];
+  entity?: 'node' | 'edge' | 'ego' | null;
+  type?: string | null;
+  text?: string;
+  createEdge?: string;
+  bucketSortOrder?: SortOrderRow[];
+  binSortOrder?: SortOrderRow[];
 };
+
 const PromptFields = ({
-  form,
-  sortVariableOptions = [],
+  entity = null,
+  type = null,
+  text,
+  createEdge,
+  bucketSortOrder,
+  binSortOrder,
 }: PromptFieldsProps) => {
-  // This stage writes no attribute at all — it consumes the shared HOC purely
-  // for sort options, and sort keys are read-only references outside the
-  // writer-exclusivity rule, so they draw from the RAW pool (never the
+  // This stage writes no attribute at all, so it needs the codebook pool
+  // purely for sort options — and sort keys are read-only references outside
+  // the writer-exclusivity rule, so they draw from the RAW pool (never a
   // role-filtered writer pool).
+  const subject = useMemo(
+    () => (entity ? { entity, type: type ?? undefined } : null),
+    [entity, type],
+  );
+  const sortVariableOptions = useSelector(
+    (state: RootState) =>
+      subject
+        ? (getVariableOptionsForSubject(state, subject) as SelectOption[])
+        : EMPTY_OPTIONS,
+    shallowEqual,
+  );
+
+  const { createEdge: liveCreateEdge } = useFormValue(['createEdge'] as const);
+  const currentCreateEdge =
+    typeof liveCreateEdge === 'string' ? liveCreateEdge : createEdge;
+
   const getOptions = getSortOrderOptionGetter(sortVariableOptions);
   const sortMaxItems = getOptions('property', undefined, []).length;
-  const getFormValue = formValueSelector(form);
-  const edgeVariable = useSelector(
-    (state: RootState) => getFormValue(state, 'createEdge') as string,
-  );
+
   return (
     <>
-      <Section title="One to Many Dyad Census Prompts" layout="vertical">
-        <IssueAnchor fieldName="text" description="Dyad Census Prompts" />
+      <Section
+        title="One to Many Dyad Census Prompts"
+        id={getFieldId('text')}
+        layout="vertical"
+      >
         <Paragraph>
           One to Many Dyad Census prompts guide your participant in evaluating
           relationships between a single focal node and several target nodes.
@@ -62,38 +92,34 @@ const PromptFields = ({
             from the group.
           </AlertDescription>
         </Alert>
-        <Row>
-          <ValidatedField
+        <>
+          <ArchitectField
             name="text"
-            component={RichText as ComponentType<Record<string, unknown>>}
+            label="Prompt Text"
+            component={RichText}
             validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              label: 'Prompt Text',
-              placeholder: 'Enter text for the prompt here...',
-            }}
+            initialValue={text}
+            singleLine
+            placeholder="Enter text for the prompt here..."
           />
-        </Row>
-        <Row>
-          <ValidatedField
+        </>
+        <>
+          <ArchitectField
             name="createEdge"
-            component={
-              EntitySelectField as ComponentType<Record<string, unknown>>
-            }
+            label="Create edges of the following type"
+            component={EntitySelectField}
             validation={{ required: true }}
-            componentProps={{
-              entityType: 'edge',
-              label: 'Create edges of the following type',
-            }}
+            initialValue={createEdge}
+            entityType="edge"
           />
-        </Row>
+        </>
       </Section>
 
       <BucketSortOrderSection
-        form={form}
-        disabled={!edgeVariable}
+        disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={bucketSortOrder}
         summary={
           <Paragraph>
             The focal nodes are presented one at a time. You may optionally
@@ -105,10 +131,10 @@ const PromptFields = ({
         }
       />
       <BinSortOrderSection
-        form={form}
-        disabled={!edgeVariable}
+        disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
+        initialValue={binSortOrder}
         summary={
           <Paragraph>
             You may also configure one or more sort rules that determine the
@@ -119,6 +145,5 @@ const PromptFields = ({
     </>
   );
 };
-export default compose<PromptFieldsProps, Record<string, never>>(
-  withVariableOptions,
-)(PromptFields);
+
+export default PromptFields;

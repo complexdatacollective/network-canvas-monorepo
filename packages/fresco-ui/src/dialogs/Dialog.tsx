@@ -2,7 +2,7 @@
 
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import type React from 'react';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 import CloseButton from '../CloseButton';
 import { surfaceSpacingVariants } from '../layout/Surface';
@@ -48,6 +48,18 @@ export type DialogProps = {
    * @default true
    */
   dismissible?: boolean;
+  /**
+   * Where focus goes when the dialog opens. Defaults to Base UI's behaviour
+   * (the popup itself, then its first tabbable child).
+   */
+  initialFocus?: React.ComponentProps<typeof BaseDialog.Popup>['initialFocus'];
+  /**
+   * Where focus RETURNS when the dialog closes. Prefer a function: it is
+   * resolved when focus is actually returned (after the exit animation), so it
+   * can name a control that is remounted by then. Resolve to `null` to keep
+   * Base UI's default; never resolve to `document.body`.
+   */
+  finalFocus?: React.ComponentProps<typeof BaseDialog.Popup>['finalFocus'];
 };
 
 /**
@@ -75,8 +87,11 @@ export default function Dialog({
   className,
   size = 'readable',
   dismissible = true,
+  finalFocus,
   ...rest
 }: DialogProps) {
+  const titleId = useId();
+
   return (
     <Modal
       open={open}
@@ -89,6 +104,12 @@ export default function Dialog({
       <DialogPopup
         key="dialog-popup"
         size={size}
+        // Straight through: `ModalPopup` resolves it and falls back to the
+        // opener remembered by the enclosing `Modal`. That capture used to live
+        // here, which left every surface rendering `ModalPopup` inside a
+        // `Modal` directly — Architect's variable pill editor, variable
+        // spotlight and nav drawer, Fresco's mobile nav drawer — without one.
+        finalFocus={finalFocus}
         className={cx(
           // Accent overrides the primary hue so that nested primary buttons inherit color.
           // Override the primitives (--primary/--primary-contrast) because @theme inline
@@ -106,17 +127,20 @@ export default function Dialog({
       >
         <DialogHeader>
           <div className="min-w-0 flex-1">
-            <BaseDialog.Title render={<Heading level="h2" margin="none" />}>
+            <BaseDialog.Title
+              id={titleId}
+              render={<Heading level="h2" margin="none" />}
+            >
               {title}
             </BaseDialog.Title>
             {header && <div className="mt-4">{header}</div>}
           </div>
           {dismissible && <BaseDialog.Close render={<CloseButton />} />}
         </DialogHeader>
-        <DialogContent>
+        <DialogContent labelledBy={title ? titleId : undefined}>
           {description && (
             <BaseDialog.Description
-              render={<Paragraph margin="none" className="max-w-[75ch]" />}
+              render={<Paragraph className="max-w-[75ch]" />}
             >
               {description}
             </BaseDialog.Description>
@@ -144,9 +168,24 @@ const DialogHeader = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const DialogContent = ({ children }: { children: React.ReactNode }) => {
+/**
+ * `labelledBy` names the scroll viewport after the dialog's own title. The
+ * viewport is a tab stop whenever the body overflows (so it can be scrolled by
+ * keyboard — WCAG 2.1.1), and an unnamed, roleless tab stop announces nothing:
+ * it was the "invisible stop after Close" reported in every dialog. A named
+ * `<section>` maps to `role="region"` implicitly, so no explicit role is needed.
+ */
+const DialogContent = ({
+  children,
+  labelledBy,
+}: {
+  children: React.ReactNode;
+  labelledBy?: string;
+}) => {
   return (
     <ScrollArea
+      aria-labelledby={labelledBy}
+      nameWhenScrollableOnly
       viewportClassName={surfaceSpacingVariants({
         section: 'content',
         className: 'py-2!',
@@ -170,7 +209,11 @@ const DialogFooter = ({
   return (
     <footer
       className={cx(
-        'mt-4 flex shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
+        // `min-w-0` so the row is bounded by the popup and not by its widest
+        // action: without it an over-long label sized the footer, and the flex
+        // row pushed the cancel action out past the dialog's clipped edge and
+        // off the viewport entirely (#1392).
+        'mt-4 flex min-w-0 shrink-0 flex-col gap-2 @min-[30rem]:flex-row @min-[30rem]:justify-end @min-[30rem]:[&>*:first-child:not(:only-child)]:mr-auto',
         children && 'mt-6',
         surfaceSpacingVariants({ section: 'footer' }),
         className,

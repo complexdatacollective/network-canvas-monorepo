@@ -7,12 +7,19 @@ import {
   type Reducer,
   type UnknownAction,
 } from '@reduxjs/toolkit';
+import { isEqual } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
 
 // Types
 export type Locus = {
   id: string;
   path: string;
+};
+
+// `setActiveProtocol` carries this only from the cross-tab reclaim, which
+// re-reads the canonical row without the session ending. See its use below.
+type ActionWithContinuingSession = UnknownAction & {
+  meta?: { continuingSession?: boolean };
 };
 
 type TimelineState<T = unknown> = {
@@ -22,6 +29,40 @@ type TimelineState<T = unknown> = {
   future: T[];
   futureTimeline: Locus[];
 };
+
+/**
+ * The fields the undo/redo guards read, widened to `unknown` so both the
+ * reducer's own immer draft and a selector's view of the wrapped slice satisfy
+ * it. `past` and `future` are optional because rehydrated state predates them:
+ * the default case below initialises `future` and optional-chains `past` for
+ * exactly that reason.
+ */
+type UndoableState = {
+  past?: readonly unknown[];
+  present?: unknown;
+  future?: readonly unknown[];
+};
+
+/**
+ * Whether undo is possible — the ONE statement of that rule.
+ *
+ * The `undo` case below refuses when this is false, and `getCanUndo` in
+ * `~/selectors/protocol` refuses to offer the control when it is false. Asking
+ * the same question in two places is how a control comes to advertise — and
+ * `undoWithNavigation` to announce — an operation the reducer silently drops,
+ * so there is exactly one place to ask it. `getCanUndo` layers a further
+ * refusal of its own on top; it does not restate this one.
+ *
+ * Tolerates a missing slice because unit-test stores register only the slices
+ * under test, and a selector reached from a mounted component there must
+ * resolve to "nothing to undo" rather than throw.
+ */
+export const canUndo = (state: UndoableState | undefined): boolean =>
+  (state?.past?.length ?? 0) > 0 && Boolean(state?.present);
+
+/** Whether redo is possible. Same contract as `canUndo`. */
+export const canRedo = (state: UndoableState | undefined): boolean =>
+  (state?.future?.length ?? 0) > 0;
 
 type TimelineOptions = {
   name?: string;
@@ -90,7 +131,7 @@ const createTimelineReducer = <T>(
             futureTimeline = [],
           } = state;
 
-          if (past.length === 0 || !present) {
+          if (!canUndo(state)) {
             return;
           }
 
@@ -159,8 +200,7 @@ const createTimelineReducer = <T>(
             timeline,
           } = state;
 
-          // Need at least one item in future to redo
-          if (!future || future.length === 0) {
+          if (!canRedo(state)) {
             return;
           }
 
@@ -273,12 +313,37 @@ const createTimelineReducer = <T>(
             return;
           }
 
-          // If newPresent matches the old one, don't treat as a new point in the timeline
-          if (present === newPresent) {
+          // If this is setActiveProtocol, reset the timeline (loading a new
+          // protocol). This is deliberately ahead of the "changed nothing"
+          // guard below: loading a protocol starts a new history even when the
+          // protocol loaded happens to equal the one already open, because the
+          // past and future entries belong to the session that is ending.
+          //
+          // A cross-tab reclaim is the one caller for which that is untrue.
+          // `useProtocolTabLock.finishReclaim` re-reads the canonical row while
+          // the researcher stays on the same protocol on the same route —
+          // nothing closed, nothing navigated — so wiping history there breaks
+          // the promise four destructive dialogs make in as many words: delete
+          // a stage, let a peer tab open and close, and Undo was greyed out
+          // with the stage unrecoverable. It marks itself `continuingSession`.
+          //
+          // That marker alone is not enough to keep the history, because the
+          // peer may have edited: then this tab's `past` describes a lineage
+          // the library row no longer has, and undoing into it would overwrite
+          // work this tab never saw (#1382). So the history survives only when
+          // the row read back is IDENTICAL to what is already in the buffer —
+          // in which case this is a no-op in every other respect too, and
+          // there is nothing for a reset to protect.
+          if (
+            action.type === 'activeProtocol/setActiveProtocol' &&
+            (action as ActionWithContinuingSession).meta?.continuingSession ===
+              true &&
+            (presentSnapshot === newPresent ||
+              isEqual(presentSnapshot, newPresent))
+          ) {
             return state;
           }
 
-          // If this is setActiveProtocol, reset the timeline (loading a new protocol)
           if (action.type === 'activeProtocol/setActiveProtocol') {
             const locus: Locus = { id: uuid(), path: options.getPath() };
             Object.assign(state, {
@@ -289,6 +354,46 @@ const createTimelineReducer = <T>(
               futureTimeline: [],
             });
             return;
+          }
+
+          // If newPresent matches the old one, don't treat as a new point in
+          // the timeline. This is the ONE place that decides what counts as a
+          // change, so no reducer has to re-implement the rule.
+          //
+          // Compare against `presentSnapshot`, which is what the reducer was
+          // actually handed — NOT `present`. `present` is a child proxy of the
+          // immer draft, while `current()` on an unmodified draft returns its
+          // plain base object, so `present === newPresent` compares a Proxy
+          // with a plain object and is false for every object-valued present.
+          // That made this guard dead: every non-excluded action, including one
+          // that changed nothing, cleared the redo stack and pushed a full
+          // protocol snapshot onto `past` — so a refused import left Undo
+          // enabled, and undoing it announced a change that had not happened.
+          //
+          // Reference equality alone only answers a reducer that MUTATES an
+          // immer draft. Plenty of protocol reducers REBUILD instead —
+          // `updateProtocolName` returns `{ ...state, name }`, every
+          // `codebook` writer returns a fresh codebook, `stages/deleteStage`
+          // filters the stage array, `deleteType`/`deleteVariable` `omit` from
+          // a copy —
+          // and a rebuild that reproduces the state it was given is a new
+          // object every time. Blurring the protocol-name field without typing
+          // is exactly that, and it invented an undo step and destroyed a
+          // pending redo. So fall back to a structural comparison: the state is
+          // JSON-shaped (it is `structuredClone`d into `past` and persisted as
+          // JSON), and equal content means there is nothing to undo.
+          //
+          // The cost is bounded and only paid when the reducer produced a new
+          // reference: an action a slice ignores returns the base object
+          // untouched and never reaches `isEqual`. Measured on the development
+          // protocol (32 stages, 37KB) a full equal-case walk is 0.13ms, less
+          // than the `structuredClone` below and far less than the Zod
+          // validation every committed point already triggers.
+          if (
+            presentSnapshot === newPresent ||
+            isEqual(presentSnapshot, newPresent)
+          ) {
+            return state;
           }
 
           // If excluded, we don't treat this as a new point in the timeline, but we do update the state

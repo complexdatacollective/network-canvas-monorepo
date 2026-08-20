@@ -1,11 +1,14 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
+import {
+  NcNetworkSchema,
+  ensureError,
+  StageMetadataSchema,
+} from '@codaco/shared-consts';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
-import { ensureError } from '~/utils/ensureError';
 
 /**
  * Handle post requests from the client to store the current interview state.
@@ -16,7 +19,24 @@ const routeHandler = async (
 ) => {
   const { interviewId } = await params;
 
-  const rawPayload = await request.json();
+  const invalidRequest = (error: unknown) => {
+    after(async () => {
+      await captureException(error, { interviewId });
+      await flushPostHog();
+    });
+
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400 },
+    );
+  };
+
+  let rawPayload: unknown;
+  try {
+    rawPayload = await request.json();
+  } catch (error) {
+    return invalidRequest(error);
+  }
 
   const Schema = z.object({
     id: z.string(),
@@ -29,19 +49,9 @@ const routeHandler = async (
   const validatedRequest = Schema.safeParse(rawPayload);
 
   if (!validatedRequest.success) {
-    after(async () => {
-      await captureException(validatedRequest.error, {
-        interviewId,
-      });
-      await shutdownPostHog();
-    });
-
     // Return a generic message rather than the full Zod error, which would
     // otherwise disclose the accepted schema shape to unauthenticated callers.
-    return NextResponse.json(
-      { error: 'Invalid request body' },
-      { status: 400 },
-    );
+    return invalidRequest(validatedRequest.error);
   }
 
   const { network, currentStep, stageMetadata } = validatedRequest.data;

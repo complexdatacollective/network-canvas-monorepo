@@ -19,6 +19,7 @@ import NodeDrawer from '../../components/NodeDrawer';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -239,6 +240,15 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               network: baseValidationContext.network,
               stageSubject: baseValidationContext.stageSubject,
               currentEntityId: nodeId,
+              // …and the same comparison rule must word its error the same way
+              // here as it does in a form. The one variable this dialog asks
+              // about has exactly one piece of authored, participant-facing
+              // text — the prompt rendered as the field's label below. The
+              // node's own label is deliberately not a source: it is the name
+              // the participant typed, not something the researcher authored.
+              variableLabels: buildVariableLabels([
+                { variable: otherVariable, label: otherVariablePrompt },
+              ]),
             }
           : undefined;
 
@@ -266,6 +276,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               placeholder="Enter your response here..."
               component={InputField}
               name={otherVariable}
+              nameMode="opaque"
               {...otherValidationProps}
               validationContext={validationContext}
               autoFocus
@@ -280,12 +291,14 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       const updateResult = await dispatch(
         updateNode({
           nodeId,
-          newAttributeData: {
-            [variable]: null,
-            [otherVariable]:
-              typeof result[otherVariable] === 'string'
-                ? result[otherVariable]
-                : '',
+          attributePatch: {
+            set: {
+              [otherVariable]:
+                typeof result[otherVariable] === 'string'
+                  ? result[otherVariable]
+                  : '',
+            },
+            unset: [variable],
           },
           currentStep,
         }),
@@ -303,13 +316,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     const updateResult = await dispatch(
       updateNode({
         nodeId,
-        newAttributeData: {
-          ...(prompt.otherVariable !== undefined
-            ? { [prompt.otherVariable]: null }
-            : {}),
-          // Categorical attributes are stored as arrays of selected option
-          // values; a single bin membership is a one-element array.
-          [variable]: [bin.value],
+        attributePatch: {
+          set: { [variable]: [bin.value] },
+          unset:
+            prompt.otherVariable !== undefined ? [prompt.otherVariable] : [],
         },
         currentStep,
       }),

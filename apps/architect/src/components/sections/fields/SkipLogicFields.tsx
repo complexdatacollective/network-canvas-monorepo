@@ -1,30 +1,16 @@
-import type { ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
-import { Row } from '~/components/EditorLayout';
-import ValidatedField from '~/components/Form/ValidatedField';
-import {
-  Query,
-  ruleValidator,
-  withFieldConnector,
-  withStoreConnector,
-} from '~/components/Query';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import type { SkipLogicDestination } from '@codaco/protocol-validation';
+import ArchitectField from '~/components/Form/ArchitectField';
+import { ruleValidator } from '~/components/Query';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
 import { getStageList } from '~/selectors/protocol';
 
 import IssueAnchor from '../../IssueAnchor';
+import { QueryField, type RuleSetValue } from './RuleSetFields';
 import SkipLogicDestinationField from './SkipLogicDestinationField';
-import { SkipLogicRadioGroupReduxField } from './SkipLogicReduxFields';
-
-const ConnectedQuery = (
-  withFieldConnector as unknown as (
-    c: ComponentType,
-  ) => ComponentType<Record<string, unknown>>
-)(
-  withStoreConnector(
-    Query as unknown as ComponentType,
-  ) as unknown as ComponentType,
-) as ComponentType<Record<string, unknown>>;
 
 type SkipLogicFieldsProps = Pick<
   StageEditorSectionProps,
@@ -36,49 +22,56 @@ const SkipLogicFields = ({
   stagePosition,
 }: SkipLogicFieldsProps) => {
   const stages = useSelector(getStageList);
+  // Without an initialValue a field registers empty, so an existing stage's
+  // committed skip logic would render blank — and save (which overwrites from
+  // the registered fields) would then discard it.
+  const initialAction = useStageInitialValue<string>('skipLogic.action');
+  const initialFilter = useStageInitialValue<RuleSetValue>('skipLogic.filter');
+  const initialDestination = useStageInitialValue<SkipLogicDestination>(
+    'skipLogic.destination',
+  );
 
   return (
     <>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.action"
-          description="Skip Logic Action"
-        />
-        <ValidatedField
-          name="skipLogic.action"
-          component={SkipLogicRadioGroupReduxField}
-          validation={{ required: true }}
-          componentProps={{
-            label: 'When the rules match',
-            options: [
-              { value: 'SHOW', label: 'Show this stage' },
-              { value: 'SKIP', label: 'Skip this stage' },
-            ],
-          }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.filter"
-          description="Skip Logic Rules"
-        />
-        <ValidatedField
-          component={ConnectedQuery}
-          name="skipLogic.filter"
-          validation={{ required: true, validator: ruleValidator }}
-        />
-      </Row>
-      <Row>
-        <IssueAnchor
-          fieldName="skipLogic.destination"
-          description="Skip Logic Destination"
-        />
-        <SkipLogicDestinationField
-          stages={stages}
-          stagePosition={stagePosition}
-          isNewStage={stagePath === null}
-        />
-      </Row>
+      <IssueAnchor
+        fieldName="skipLogic.action"
+        description="Skip Logic Action"
+      />
+      <ArchitectField
+        name="skipLogic.action"
+        label="Action"
+        hint="What should happen when the rules match?"
+        component={RadioGroupField}
+        initialValue={initialAction}
+        validation={{ required: true }}
+        options={[
+          { value: 'SHOW', label: 'Show this stage' },
+          { value: 'SKIP', label: 'Skip this stage' },
+        ]}
+      />
+
+      <IssueAnchor
+        fieldName="skipLogic.filter"
+        description="Skip Logic Rules"
+      />
+      <ArchitectField
+        name="skipLogic.filter"
+        label="Rules"
+        hint="Create one or more rules to determine when the action should occur."
+        component={QueryField}
+        initialValue={initialFilter}
+        validation={{ required: true, validator: ruleValidator }}
+      />
+      <IssueAnchor
+        fieldName="skipLogic.destination"
+        description="Skip Logic Destination"
+      />
+      <SkipLogicDestinationField
+        initialValue={initialDestination}
+        stages={stages}
+        stagePosition={stagePosition}
+        isNewStage={stagePath === null}
+      />
     </>
   );
 };

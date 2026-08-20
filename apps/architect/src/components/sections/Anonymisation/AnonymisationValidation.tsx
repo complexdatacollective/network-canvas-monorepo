@@ -1,51 +1,58 @@
-import { createSelector } from '@reduxjs/toolkit';
-import { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { change, formValueSelector, getFormSyncErrors } from 'redux-form';
-
+import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import Validations from '~/components/Validations';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/modules/root';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
+import Validations from '~/components/Validations/Validations';
 import useLatchedExpansion from '~/hooks/useLatchedExpansion';
+import { getFieldId } from '~/utils/issues';
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+type ValidationValue = boolean | number | string | null;
+type ValidationMap = Record<string, ValidationValue>;
+
+const hasEntries = (value: ValidationMap | undefined): boolean =>
+  !!value && Object.keys(value).length > 0;
+
+const validationErrorsId = getFieldId('anonymisation-validation-sync-error');
 
 const AnonymisationValidation = ({
-  form,
   stagePath,
   interfaceType,
 }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
-  // Create memoized selector for hasValidation
-  const hasValidationSelector = useMemo(() => {
-    const formSelector = formValueSelector(form);
-    return createSelector(
-      [(state) => formSelector(state, 'validation')],
-      (validation) => validation && Object.keys(validation).length > 0,
-    );
-  }, [form]);
-  const hasValidation = useSelector(hasValidationSelector);
-  const { startExpanded, onExplicitClose } =
-    useLatchedExpansion(!!hasValidation);
+  const setStageValue = useSetStageValue();
+  // The Field's own `initialValue` (registration-time only — must not track
+  // live edits, or every keystroke would re-register the field); the toggle's
+  // `startExpanded` needs the LIVE value so the section reacts to undo/redo
+  // and to rules being removed back down to zero.
+  const initialValidation = useStageInitialValue<ValidationMap>('validation');
+  const liveValidation = useStageFormValue<ValidationMap>('validation');
+  const hasValidation = hasEntries(liveValidation);
+  // Removing the last rule must not collapse the section out from under the
+  // user — but an explicit close still releases the latch, so rules restored
+  // afterwards (undo, or a reinitialize) reopen it rather than being saved
+  // out of sight.
+  const { startExpanded, onExplicitClose } = useLatchedExpansion(hasValidation);
   // Audit sweep: the shape ValidationSection was already fixed for. A
-  // collapsed toggleable Section unmounts its children, and redux-form only
-  // fails a submit over errors on REGISTERED fields — so a sync error keyed
-  // at `validation` while this section is shut would neither block the save
-  // nor be visible. This form ships no such validate today, which makes the
-  // section accidentally safe rather than correct; forcing it open while the
-  // error stands closes the class.
-  const hasValidationSyncError = useSelector((state: RootState) => {
-    const syncErrors: unknown = getFormSyncErrors(form)(state);
-    return isRecord(syncErrors) && typeof syncErrors.validation === 'string';
-  });
+  // collapsed toggleable Section unmounts its children, and `validateForm`
+  // only fails a submit over errors on REGISTERED fields — so a sync error
+  // keyed at `validation` while this section is shut would neither block the
+  // save nor be visible. This form ships no such validate today, which makes
+  // the section accidentally safe rather than correct; forcing it open while
+  // the error stands closes the class.
+  const fieldErrors = useFormStore(
+    (store) => store.errors.fieldErrors.validation,
+  );
+  const hasValidationSyncError =
+    Array.isArray(fieldErrors) && fieldErrors.length > 0;
   const handleToggleValidation = (nextState: boolean) => {
     if (!nextState) {
       onExplicitClose();
-      dispatch(change(form, 'validation', null));
+      setStageValue('validation', undefined);
     }
     return true;
   };
@@ -62,10 +69,10 @@ const AnonymisationValidation = ({
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
-      <Row>
+      <>
         <Validations
-          form={form}
           name="validation"
+          initialValue={initialValidation}
           variableType="passphrase"
           entity="ego"
           // The stage editor reinitializes in place when the edited stage
@@ -75,7 +82,17 @@ const AnonymisationValidation = ({
           // the edited stage's own slot, and is null only before it exists.
           scopeId={stagePath ?? `new-${interfaceType}`}
         />
-      </Row>
+      </>
+      {/* fresco-ui's own Field error slot only shows once the field is both
+          dirty and blurred, which a field revealed here for the first time
+          (the section was collapsed) never is. Render the message directly,
+          keyed only on the error existing — matches the old
+          `submitFailed`-gated (not dirty-gated) display it replaces. */}
+      <FieldErrors
+        id={validationErrorsId}
+        errors={fieldErrors ?? undefined}
+        show={hasValidationSyncError}
+      />
     </Section>
   );
 };

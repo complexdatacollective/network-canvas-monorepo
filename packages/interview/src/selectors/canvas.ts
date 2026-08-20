@@ -1,6 +1,6 @@
 import { createSelector, type Selector } from '@reduxjs/toolkit';
 import { isNil } from 'es-toolkit';
-import { get, has } from 'es-toolkit/compat';
+import { get } from 'es-toolkit/compat';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
@@ -48,11 +48,7 @@ export const getPlacedNodes: Selector<RootState, NcNode[]> =
 
       return nodes.filter((node) => {
         const attributes = getEntityAttributes(node);
-        return (
-          subject.type === node.type &&
-          has(attributes, layoutVariable) &&
-          !isNil(attributes[layoutVariable])
-        );
+        return subject.type === node.type && !isNil(attributes[layoutVariable]);
       });
     },
   );
@@ -92,11 +88,7 @@ export const getUnplacedNodes: Selector<RootState, NcNode[]> =
 
       return nodes.filter((node) => {
         const attributes = getEntityAttributes(node);
-        return (
-          subject.type === node.type &&
-          has(attributes, layoutVariable) &&
-          isNil(attributes[layoutVariable])
-        );
+        return subject.type === node.type && isNil(attributes[layoutVariable]);
       });
     },
   );

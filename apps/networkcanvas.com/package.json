@@ -1,6 +1,6 @@
 {
   "name": "networkcanvas.com",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
     "@netlify/edge-functions": "^3.0.8",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/jest-dom": "catalog:",
@@ -45,7 +46,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
-    "postcss": "^8.5.25",
+    "postcss": "catalog:",
     "sharp": "^0.35.3",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",

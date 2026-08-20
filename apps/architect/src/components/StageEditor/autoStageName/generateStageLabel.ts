@@ -1,4 +1,5 @@
 import type { StageType } from '@codaco/protocol-validation';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 export const MAX_LABEL_LENGTH = 50;
 
@@ -39,18 +40,26 @@ export function composeStageName(parts: {
   return stageName.charAt(0).toUpperCase() + stageName.slice(1);
 }
 
+/**
+ * `normalizeForComparison`, never a bare `toLowerCase()`: a stage label is a
+ * researcher-authored NAME, and the question "is this the same name as that
+ * one?" is answered identically everywhere in the ecosystem — case-folded AND
+ * Unicode-canonical. Folding case alone let a decomposed "Café" and a
+ * precomposed one sit side by side as two different stages here while the
+ * codebook, the schema and the migration repair all counted them as one.
+ */
 export function dedupeStageLabel(
   base: string,
   existingLabels: string[],
 ): string {
   const taken = new Set(
-    existingLabels.map((label) => label.trim().toLowerCase()),
+    existingLabels.map((label) => normalizeForComparison(label.trim())),
   );
-  if (!taken.has(base.trim().toLowerCase())) {
+  if (!taken.has(normalizeForComparison(base.trim()))) {
     return base;
   }
   let suffix = 2;
-  while (taken.has(`${base} #${suffix}`.toLowerCase())) {
+  while (taken.has(normalizeForComparison(`${base} #${suffix}`))) {
     suffix += 1;
   }
   return `${base} #${suffix}`;

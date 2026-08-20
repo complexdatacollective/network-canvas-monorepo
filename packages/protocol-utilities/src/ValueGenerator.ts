@@ -90,7 +90,10 @@ function fitsLength(value: string, constraints: VariableConstraints): boolean {
 }
 
 function isNameVariable(entry: VariableEntry): boolean {
-  return entry.name.trim().toLocaleLowerCase() === 'name';
+  // Mirrors the interview runtime's label resolution (getNodeLabelAttribute):
+  // a variable named "name" — or containing it — is what a node displays, so
+  // it is exactly the set that should draw realistic names.
+  return /name/i.test(entry.name);
 }
 
 function clamp(value: number, min?: number, max?: number): number {
@@ -119,7 +122,7 @@ export class ValueGenerator {
    * filled with random data that would corrupt a deliberately-constructed
    * scenario (e.g. a random ego or random disease flags in a pedigree).
    */
-  neutralForVariable(variable: VariableEntry): VariableValue {
+  neutralForVariable(variable: VariableEntry): VariableValue | undefined {
     switch (variable.type) {
       case 'boolean':
         return false;
@@ -128,12 +131,12 @@ export class ValueGenerator {
       case 'categorical':
         return [];
       default:
-        return null;
+        return undefined;
     }
   }
 
   generateName(): string {
-    return this.faker.person.firstName();
+    return `${this.faker.person.firstName()} ${this.faker.person.lastName()}`;
   }
 
   generatePromptText(stageType: string): string {
@@ -186,27 +189,25 @@ export class ValueGenerator {
     constraints: VariableConstraints,
     source: Faker,
   ): string | undefined {
+    // Longest-preferred: node labels drive the label-fitting and reveal
+    // behaviour, so a name variable draws a full name wherever constraints
+    // allow — shorter forms are fallbacks for a declared cap, not the default.
     const firstName = source.person.firstName();
-    if (fitsLength(firstName, constraints)) return firstName;
-    if (
-      constraints.maxLength !== undefined &&
-      firstName.length > constraints.maxLength
-    ) {
-      return undefined;
-    }
-
     const lastName = source.person.lastName();
-    const firstAndLast = `${firstName} ${lastName}`;
-    if (fitsLength(firstAndLast, constraints)) return firstAndLast;
+    const fullName = `${firstName} ${lastName}`;
+    if (fitsLength(fullName, constraints)) return fullName;
+
     if (
       constraints.maxLength !== undefined &&
-      firstAndLast.length > constraints.maxLength
+      fullName.length > constraints.maxLength
     ) {
-      return undefined;
+      // The cap has no room for a full name; a first name alone may still fit.
+      return fitsLength(firstName, constraints) ? firstName : undefined;
     }
 
-    const fullName = `${firstName} ${source.person.middleName()} ${lastName}`;
-    return fitsLength(fullName, constraints) ? fullName : undefined;
+    // The full name sits under a declared floor: lengthen with a middle name.
+    const withMiddle = `${firstName} ${source.person.middleName()} ${lastName}`;
+    return fitsLength(withMiddle, constraints) ? withMiddle : undefined;
   }
 
   generatePresetLabel(): string {
@@ -234,7 +235,7 @@ export class ValueGenerator {
       preferRealisticName?: boolean;
       forceRealisticName?: boolean;
     },
-  ): VariableValue {
+  ): VariableValue | undefined {
     const { entry, constraints } = variable;
     const seq = opts?.distinctSeq;
 
@@ -360,7 +361,7 @@ export class ValueGenerator {
 
       case 'boolean': {
         const values = booleanDomainValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
         const hasDefaultPair = values.includes(false) && values.includes(true);
         if (seq !== undefined && hasDefaultPair) return seq % 2 === 0;
 
@@ -369,7 +370,7 @@ export class ValueGenerator {
         if (randomBoolean !== undefined && hasDefaultPair) return randomBoolean;
 
         const value = values[(seq ?? 0) % values.length];
-        return value ?? null;
+        return value;
       }
 
       case 'ordinal': {
@@ -387,9 +388,9 @@ export class ValueGenerator {
         // A list whose values are already distinct is unaffected, first
         // occurrences being kept in order.
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
         const pick = seq ?? index;
-        return values[pick % values.length] ?? null;
+        return values[pick % values.length];
       }
 
       case 'categorical': {
@@ -399,7 +400,7 @@ export class ValueGenerator {
         // back a shorter answer than the size it selected, which `minSelected`
         // then rejects.
         const values = distinctOptionValues(entry);
-        if (values.length === 0) return null;
+        if (values.length === 0) return undefined;
 
         // A distinct value has to be reachable for every selection the value
         // space counts, so a sequence number indexes the combination space
@@ -450,7 +451,7 @@ export class ValueGenerator {
         };
 
       default:
-        return null;
+        return undefined;
     }
   }
 

@@ -1,7 +1,19 @@
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { FieldValue, ValidationContext } from '../../store/types';
-import { getValue } from '../../utils/objectPath';
+import {
+  getValue,
+  isSafeObjectPath,
+  parseLegacyObjectPath,
+} from '../../utils/objectPath';
+
+const isFieldValueRecord = (
+  value: unknown,
+): value is Record<string, FieldValue> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasSafeOwnProperty = (value: object, property: string): boolean =>
+  isSafeObjectPath([property]) && Object.hasOwn(value, property);
 
 /**
  * Resolves the value of a comparison variable for the variable-comparison
@@ -20,20 +32,28 @@ export function getComparisonValue(
   attribute: string,
   context?: ValidationContext,
 ): { present: boolean; value: FieldValue | null } {
-  const namespacedValues = context?.formValueNamespace
-    ? getValue(formValues, context.formValueNamespace)
-    : formValues;
-  const formAttribute = context?.formValueAliases?.[attribute] ?? attribute;
+  const namespace =
+    context?.formValueNamespacePath ??
+    (context?.formValueNamespace
+      ? parseLegacyObjectPath(context.formValueNamespace)
+      : []);
+  const namespacedValues = namespace
+    ? getValue(formValues, namespace)
+    : undefined;
+  const formAlias =
+    context?.formValueAliases &&
+    Object.hasOwn(context.formValueAliases, attribute)
+      ? context.formValueAliases[attribute]
+      : undefined;
+  const formAttribute = formAlias ?? attribute;
 
   if (
-    typeof namespacedValues === 'object' &&
-    namespacedValues !== null &&
-    !Array.isArray(namespacedValues) &&
-    formAttribute in namespacedValues
+    isFieldValueRecord(namespacedValues) &&
+    hasSafeOwnProperty(namespacedValues, formAttribute)
   ) {
     return {
       present: true,
-      value: (namespacedValues as Record<string, FieldValue>)[formAttribute],
+      value: namespacedValues[formAttribute],
     };
   }
 
@@ -44,7 +64,10 @@ export function getComparisonValue(
   const { stageSubject, network, currentEntityId, currentEntityAttributes } =
     context;
 
-  if (currentEntityAttributes && attribute in currentEntityAttributes) {
+  if (
+    currentEntityAttributes &&
+    hasSafeOwnProperty(currentEntityAttributes, attribute)
+  ) {
     return { present: true, value: currentEntityAttributes[attribute] };
   }
 
@@ -55,7 +78,7 @@ export function getComparisonValue(
           (entity) => entity._uid === currentEntityId,
         )?.[entityAttributesProperty];
 
-  if (attributes && attribute in attributes) {
+  if (attributes && hasSafeOwnProperty(attributes, attribute)) {
     return { present: true, value: attributes[attribute] };
   }
 

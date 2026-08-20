@@ -1,28 +1,14 @@
 import { type ReactNode, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import type {
-  FieldValue,
-  ValidationPropsCatalogue,
-  ValidFieldComponent,
-} from '@codaco/fresco-ui/form/Field/types';
-import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
-import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
-import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
-import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
-import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import RelativeDatePickerField from '@codaco/fresco-ui/form/fields/RelativeDatePicker';
-import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
-import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGroup';
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import FieldNamespace, {
+  resolveFieldName,
+  resolveFieldPath,
+} from '@codaco/fresco-ui/form/FieldNamespace';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import type {
   ComposerFormField,
-  ComponentType,
   FormField,
   StageSubject,
 } from '@codaco/protocol-validation';
@@ -35,24 +21,9 @@ import {
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
-import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
-import { buildFieldValidationProps } from './buildFieldValidationProps';
+import { useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
-
-const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
-  Text: InputField,
-  TextArea: TextAreaField,
-  Number: InputField,
-  RadioGroup: RadioGroupField,
-  CheckboxGroup: CheckboxGroupField,
-  Boolean: BooleanField,
-  Toggle: ToggleField,
-  ToggleButtonGroup: ToggleButtonGroupField,
-  VisualAnalogScale: VisualAnalogScaleField,
-  LikertScale: LikertScaleField,
-  DatePicker: DatePickerField,
-  RelativeDatePicker: RelativeDatePickerField,
-};
+import ProtocolField from './ProtocolField';
 
 /**
  * Narrow a loosely-typed form Subject into a valid StageSubject for the
@@ -121,6 +92,40 @@ export default function useProtocolForm({
     [subjectEntity, subjectType],
   );
 
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const subjectFieldsMetadata = useSelector((state) =>
+    stableSubject !== undefined
+      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
+      : null,
+  );
+  const fieldsMetadata = useMemo(
+    () =>
+      subjectFieldsMetadata ??
+      selectFieldMetadataFromVariables(stageVariables, fields),
+    [subjectFieldsMetadata, stageVariables, fields],
+  );
+
+  /**
+   * The participant-facing text for each variable this form asks about, for
+   * the variable-comparison validators to name their target with. Shared with
+   * the screens that render a field without going through this hook (a
+   * categorical "other" input, a quick-add popover, the pedigree's name field),
+   * so one comparison rule reads the same way wherever it is asked — see
+   * `buildVariableLabels` for what may and may not go in it.
+   *
+   * Read off the SAME metadata the fields are rendered from, rather than
+   * recomputed from `fields`, so a validator can only name a field by the
+   * caption the participant is reading on this screen. `useVariableLabels`
+   * keys on content, so the fresh array mapped here does not destabilise
+   * `validationContext`.
+   */
+  const variableLabels = useVariableLabels(
+    fieldsMetadata.map((field) => ({
+      variable: field.variable,
+      label: field.authoredLabel,
+    })),
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -135,23 +140,17 @@ export default function useProtocolForm({
     return {
       ...baseValidationContext,
       stageSubject,
+      variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
-  }, [baseValidationContext, currentEntityId, formValueAliases, stableSubject]);
-
-  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
-  const subjectFieldsMetadata = useSelector((state) =>
-    stableSubject !== undefined
-      ? selectFieldMetadataWithSubject(state, stableSubject, fields)
-      : null,
-  );
-  const fieldsMetadata = useMemo(
-    () =>
-      subjectFieldsMetadata ??
-      selectFieldMetadataFromVariables(stageVariables, fields),
-    [subjectFieldsMetadata, stageVariables, fields],
-  );
+  }, [
+    baseValidationContext,
+    currentEntityId,
+    formValueAliases,
+    stableSubject,
+    variableLabels,
+  ]);
 
   // Names of fields whose codebook variable is a number, so the submit
   // boundary can coerce their raw string values back to real numbers.
@@ -186,147 +185,34 @@ export default function useProtocolForm({
     [fieldsMetadata],
   );
 
-  const fieldsWithMetadata = fieldsMetadata.map((field, index) => {
-    const fieldName = field.variable;
-
-    const props: {
-      name: string;
-      label: string;
-      hint?: string;
-      showValidationHints?: boolean;
-      component?: string;
-      options?: unknown[];
-      useColumns?: boolean;
-      type?: string;
-      minLabel?: string;
-      maxLabel?: string;
-      min?: string | number;
-      max?: string | number;
-      anchor?: string;
-      before?: number;
-      after?: number;
-      initialValue?: FieldValue;
-      autoFocus?: boolean;
-      validationContext?: ValidationContext;
-    } & Partial<ValidationPropsCatalogue> = {
-      name: fieldName,
-      label: field.label,
-      component: field.component,
-      ...(field.hint !== undefined && { hint: field.hint }),
-      ...(field.showValidationHints !== undefined && {
-        showValidationHints: field.showValidationHints,
-      }),
-    };
-
-    // Set autoFocus on the first field if requested
-    if (autoFocus && index === 0) {
-      props.autoFocus = true;
-    }
-
-    // Set initial value if provided
-    if (initialValues?.[field.variable] !== undefined) {
-      props.initialValue = initialValues[field.variable];
-    }
-
-    // Pass validation properties derived from the protocol validation object
-    if ('validation' in field && field.validation) {
-      Object.assign(
-        props,
-        buildFieldValidationProps({
-          type: field.type,
-          variable: fieldName,
-          validation: field.validation,
-        }),
-      );
-    }
-
-    // Pass validation context for context-dependent validations (unique, sameAs, differentFrom, etc.)
-    if (validationContext) {
-      props.validationContext = validationContext;
-    }
-
-    // Process ordinal and categorical options
-    if ('options' in field) {
-      props.options = field.options;
-
-      // Turn on columns if there are more than 6 options. Maybe a bad idea?
-      if (
-        (field.component === 'CheckboxGroup' ||
-          field.component === 'RadioGroup') &&
-        (field.options?.length ?? 0) > 6
-      ) {
-        props.useColumns ??= true;
-      }
-    }
-
-    // Handle number inputs
-    if (field.type === 'number') {
-      props.type = 'number';
-    }
-
-    if (field.type === 'scalar') {
-      props.type = 'range';
-    }
-
-    // Handle VisualAnalogScale parameters
-    if (field.component === 'VisualAnalogScale' && field.parameters) {
-      const params = field.parameters;
-      if (typeof params.minLabel === 'string') props.minLabel = params.minLabel;
-      if (typeof params.maxLabel === 'string') props.maxLabel = params.maxLabel;
-    }
-
-    // Forward a DatePicker's resolution to the control. Its min/max validation
-    // bounds come from buildDatePickerBoundProps below, which forwards only
-    // AUTHORED bounds verbatim — with none authored, fresco-ui's
-    // DatePickerField deliberately leaves a full-resolution input unbounded
-    // (see 35ff5dfd1), so submission validation must stay unbounded too.
-    if (field.component === 'DatePicker' && field.parameters) {
-      const params = field.parameters;
-      if (typeof params.type === 'string') props.type = params.type;
-    }
-
-    // Forward RelativeDatePicker's anchor/before/after to the component for
-    // its own UI-side range calculation, separately from the absolute
-    // min/max computed below.
-    if (field.component === 'RelativeDatePicker' && field.parameters) {
-      const params = field.parameters;
-      const paramAnchor =
-        typeof params.anchor === 'string' ? params.anchor : undefined;
-      const paramBefore =
-        typeof params.before === 'number' ? params.before : undefined;
-      const paramAfter =
-        typeof params.after === 'number' ? params.after : undefined;
-
-      if (paramAnchor !== undefined) props.anchor = paramAnchor;
-      if (paramBefore !== undefined) props.before = paramBefore;
-      if (paramAfter !== undefined) props.after = paramAfter;
-    }
-
-    // Pre-compute absolute min/max validation bounds for DatePicker and
-    // RelativeDatePicker fields so the Field-level min/max validators fire on
-    // submission. Without this, RelativeDatePicker's internally-computed
-    // min/max would only constrain the native picker UI — keyboard-typed
-    // out-of-range values would pass through validation. Runs whether or not
-    // a `parameters` record exists: a RelativeDatePicker with an ABSENT
-    // record still renders its default window (see buildDatePickerBoundProps).
-    Object.assign(
-      props,
-      buildDatePickerBoundProps({
-        component: field.component,
-        parameters: field.parameters,
-      }),
+  const variableByFieldPath = useMemo(() => {
+    const namespacePath = namespace ? resolveFieldPath([], namespace) : [];
+    return Object.fromEntries(
+      fieldsMetadata.map((field) => [
+        resolveFieldName(namespacePath, field.variable, 'opaque'),
+        field.variable,
+      ]),
     );
+  }, [fieldsMetadata, namespace]);
 
-    return props;
+  const renderedFields = fieldsMetadata.map((field, index) => {
+    const initialValue =
+      initialValues &&
+      Object.hasOwn(initialValues, field.variable) &&
+      initialValues[field.variable] !== undefined
+        ? initialValues[field.variable]
+        : undefined;
+
+    return (
+      <ProtocolField
+        key={index}
+        field={field}
+        initialValue={initialValue}
+        autoFocus={autoFocus && index === 0}
+        validationContext={validationContext ?? undefined}
+      />
+    );
   });
-
-  const renderedFields = fieldsWithMetadata.map(
-    ({ component, ...fieldProps }, index) => {
-      const FieldComponent = fieldTypeMap[component as ComponentType];
-
-      return <Field key={index} {...fieldProps} component={FieldComponent} />;
-    },
-  );
 
   const fieldComponents: ReactNode = namespace ? (
     <FieldNamespace prefix={namespace}>{renderedFields}</FieldNamespace>
@@ -334,5 +220,10 @@ export default function useProtocolForm({
     renderedFields
   );
 
-  return { fieldComponents, coerceValues, componentByVariable };
+  return {
+    fieldComponents,
+    coerceValues,
+    componentByVariable,
+    variableByFieldPath,
+  };
 }

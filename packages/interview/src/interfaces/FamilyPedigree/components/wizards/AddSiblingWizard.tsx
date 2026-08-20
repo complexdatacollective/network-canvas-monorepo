@@ -1,12 +1,7 @@
-import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { FamilyPedigreeStoreBridge } from '../../FamilyPedigreeContext';
-import type {
-  CommitBatch,
-  FamilyPedigreeStoreApi,
-  VariableConfig,
-} from '../../store';
+import type { OpenPedigreeDialog } from '../../familyPedigreeDialog';
+import type { CommitBatch, VariableConfig } from '../../store';
 import PersonFields from '../quickStartWizard/PersonFields';
 import { buildNodeOptions } from './buildNodeOptions';
 import { derivePreselection } from './derivePreselection';
@@ -20,6 +15,7 @@ import GenericOtherParentsStep from './steps/GenericOtherParentsStep';
 import NewParentPartnershipsStep, {
   shouldSkipNewParentPartnerships,
 } from './steps/NewParentPartnershipsStep';
+import { runFamilyPedigreeTransform } from './transforms/personAttributes';
 import { siblingCellTransform } from './transforms/siblingCellTransform';
 
 function PersonDetailsStep() {
@@ -27,8 +23,7 @@ function PersonDetailsStep() {
 }
 
 export async function openAddSiblingWizard(
-  openDialog: ReturnType<typeof useDialog>['openDialog'],
-  store: FamilyPedigreeStoreApi,
+  openDialog: OpenPedigreeDialog,
   anchorNodeId: string,
   nodes: Map<string, NcNode>,
   edges: Map<string, NcEdge>,
@@ -56,47 +51,19 @@ export async function openAddSiblingWizard(
     gameteRoles: nominatedGameteRoles(edges, variableConfig),
   };
 
-  function WrappedBioTriadStep() {
+  function BioTriadConfigStep() {
     return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <BioTriadConfigProvider value={bioTriadConfig}>
-          <BioTriadStep />
-        </BioTriadConfigProvider>
-      </FamilyPedigreeStoreBridge>
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <BioTriadStep />
+      </BioTriadConfigProvider>
     );
   }
 
-  function WrappedPartnershipsStep() {
+  function PartnershipsStep() {
     return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <BioTriadConfigProvider value={bioTriadConfig}>
-          <NewParentPartnershipsStep />
-        </BioTriadConfigProvider>
-      </FamilyPedigreeStoreBridge>
-    );
-  }
-
-  function WrappedPersonDetailsStep() {
-    return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <PersonDetailsStep />
-      </FamilyPedigreeStoreBridge>
-    );
-  }
-
-  function WrappedGenericOtherParentsStep() {
-    return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <GenericOtherParentsStep />
-      </FamilyPedigreeStoreBridge>
-    );
-  }
-
-  function WrappedGenericAdditionalParentsStep() {
-    return (
-      <FamilyPedigreeStoreBridge store={store}>
-        <GenericAdditionalParentsStep />
-      </FamilyPedigreeStoreBridge>
+      <BioTriadConfigProvider value={bioTriadConfig}>
+        <NewParentPartnershipsStep />
+      </BioTriadConfigProvider>
     );
   }
 
@@ -107,34 +74,36 @@ export async function openAddSiblingWizard(
     steps: [
       {
         title: 'Sibling details',
-        content: WrappedPersonDetailsStep,
+        content: PersonDetailsStep,
       },
       {
         title: 'Biological parents',
-        content: WrappedBioTriadStep,
+        content: BioTriadConfigStep,
       },
       {
         title: 'Other parents',
-        content: WrappedGenericOtherParentsStep,
+        content: GenericOtherParentsStep,
       },
       {
         title: 'Additional parents',
-        content: WrappedGenericAdditionalParentsStep,
+        content: GenericAdditionalParentsStep,
         skip: ({ getFieldValue }) => getFieldValue('hasOtherParents') !== true,
       },
       {
         title: 'Parent partnerships',
-        content: WrappedPartnershipsStep,
+        content: PartnershipsStep,
         skip: shouldSkipNewParentPartnerships,
       },
     ],
     onFinish: (formValues: Record<string, unknown>) => {
-      return siblingCellTransform(
-        formValues,
-        anchorNodeId,
-        nodes,
-        edges,
-        variableConfig,
+      return runFamilyPedigreeTransform(() =>
+        siblingCellTransform(
+          formValues,
+          anchorNodeId,
+          nodes,
+          edges,
+          variableConfig,
+        ),
       );
     },
   });

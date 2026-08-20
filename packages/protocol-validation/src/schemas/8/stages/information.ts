@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
+import { assetReference } from '../asset-reference.ts';
 import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
@@ -17,8 +18,11 @@ const textItemSchema = baseItemSchema.extend({
 });
 
 // Size is an image/video sizing treatment, so it only applies to asset items.
+// `content` is the manifest asset id on this branch, and plain rendered text
+// on the sibling one — so the tag lives here rather than on the shared base.
 const assetItemSchema = baseItemSchema.extend({
   type: z.literal('asset'),
+  content: assetReference(),
   size: ItemSizeSchema.optional(),
 });
 

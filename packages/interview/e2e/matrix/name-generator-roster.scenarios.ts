@@ -19,6 +19,25 @@ const rosterSmallAsset = (assetId: string): SyntheticAssetSpec => ({
   localPath: path.join(DATA_DIR, 'roster-small.json'),
 });
 
+// Two entries, so a scenario can exhaust the roster in two keyboard drags.
+const rosterPairAsset = (assetId: string): SyntheticAssetSpec => ({
+  assetId,
+  name: 'JSON Roster',
+  type: 'network',
+  source: 'roster-pair.json',
+  localPath: path.join(DATA_DIR, 'roster-pair.json'),
+});
+
+// A well-formed roster file that happens to contain no entries — a loaded
+// roster with nothing in it, which is neither an error nor an exhausted one.
+const rosterEmptyAsset = (assetId: string): SyntheticAssetSpec => ({
+  assetId,
+  name: 'Empty Roster',
+  type: 'network',
+  source: 'roster-empty.json',
+  localPath: path.join(DATA_DIR, 'roster-empty.json'),
+});
+
 // Refs captured in build() and read in run() (module-scope because each
 // scenario is a plain object literal, per the run-scenario contract).
 let basicJsonPersonTypeId = '';
@@ -621,6 +640,96 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
         await roster.search('Drew');
         await expect(roster.emptyState).toBeVisible();
+        // The other half of the pair below: a genuine search miss must still
+        // say so, and must not be reported as an exhausted roster.
+        await expect(roster.exhaustedState).toHaveCount(0);
+      },
+    },
+
+    {
+      id: 'roster-exhausted-empty-state',
+      covers: ['exhausted-roster-empty-state'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const personType = synth.addNodeType({ name: 'Person' });
+        personType.addVariable({ name: 'location', type: 'text' });
+
+        synth.addAsset({
+          id: 'jsonRoster',
+          name: 'JSON Roster',
+          type: 'network',
+          source: 'roster-pair.json',
+        });
+        synth.addAsset({
+          id: 'emptyRoster',
+          name: 'Empty Roster',
+          type: 'network',
+          source: 'roster-empty.json',
+        });
+
+        // Stage A: search IS configured, so the filter input is on screen
+        // throughout — the harder case for telling the two empty states apart,
+        // and the one the report describes.
+        synth
+          .addStage('NameGeneratorRoster', {
+            label: 'Add everyone',
+            subject: { entity: 'node', type: personType.id },
+            dataSource: 'jsonRoster',
+            searchOptions: {
+              fuzziness: 0.4,
+              matchProperties: ['name', 'location'],
+            },
+          })
+          .addPrompt({ text: 'Please add anyone you recognise.' });
+
+        // Stage B: a roster file that loaded successfully and contains no
+        // entries. Nothing was searched and nothing was added, so neither of
+        // the other two messages is true of it.
+        synth
+          .addStage('NameGeneratorRoster', {
+            label: 'Empty roster',
+            subject: { entity: 'node', type: personType.id },
+            dataSource: 'emptyRoster',
+          })
+          .addPrompt({ text: 'Please add anyone you recognise.' });
+
+        return synth;
+      },
+      assets: [rosterPairAsset('jsonRoster'), rosterEmptyAsset('emptyRoster')],
+      /**
+       * #1400: a roster whose entries had all been added told the participant
+       * "Nothing matched your search term." — with no search term entered, and
+       * on stages that have no search at all. The panel is empty for three
+       * different reasons and only one of them is a search; all three are
+       * exercised here.
+       *
+       * Adds are drag-only (`onDrop={handleAddNode}`), so this drives the
+       * keyboard DnD path the fixture uses everywhere else.
+       */
+      run: async ({ page, interview }) => {
+        const roster = new NameGeneratorRosterFixture(page);
+
+        await expect(roster.sourceListbox.getByRole('option')).toHaveCount(2);
+        await roster.addNode('Cara Chen');
+        await roster.addNode('Amy Adams');
+
+        await expect(roster.exhaustedState).toBeVisible();
+        await expect(roster.emptyState).toHaveCount(0);
+        await expect(roster.emptyListState).toHaveCount(0);
+
+        // Removing one puts the roster back to a normal, non-empty state — the
+        // message is a report on the panel, not a latch.
+        await roster.removeNode('Amy Adams');
+        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(roster.sourceListbox.getByRole('option')).toHaveCount(1);
+
+        await interview.next();
+
+        // Stage B: an empty file is not an exhausted roster and not a search.
+        await expect(roster.emptyListState).toBeVisible();
+        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(roster.emptyState).toHaveCount(0);
+        await expect(roster.filterInput).toHaveCount(0);
       },
     },
 

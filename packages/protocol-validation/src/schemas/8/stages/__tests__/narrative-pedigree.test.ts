@@ -163,6 +163,161 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects two diseases mapped to the same variable', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'shared',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: '#0f0',
+          variable: 'shared',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'variable',
+    ]);
+  });
+
+  it('rejects two diseases sharing a label, ignoring case and surrounding space', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: '  condition x ',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'label',
+    ]);
+  });
+
+  // Canonical equivalence: `Café` written with U+00E9 and `Cafe` + U+0301 are
+  // the same text, render identically in every font, and are produced
+  // interchangeably by different keyboards and paste sources — so they are one
+  // key in the participant-facing disease legend.
+  it('rejects two diseases whose labels are canonically equivalent spellings', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Café Coronary',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Café Coronary',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
+      'diseases',
+      1,
+      'label',
+    ]);
+  });
+
+  // Node offers no way to change the process's default locale from inside a
+  // test, and `toLocaleLowerCase()` with no argument folds by exactly that. So
+  // stand in for a Turkish host: under it `I` lowercases to `ı` rather than
+  // `i`, which is what would let this one protocol be valid on one researcher's
+  // laptop and repair-required on another's.
+  const withTurkishHostLocale = (run: () => void) => {
+    const original = String.prototype.toLocaleLowerCase;
+    String.prototype.toLocaleLowerCase = function (this: string) {
+      return original.call(this, 'tr');
+    };
+    try {
+      run();
+    } finally {
+      String.prototype.toLocaleLowerCase = original;
+    }
+  };
+
+  it('gives the same duplicate-label verdict whatever the host locale', () => {
+    const stage = {
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Ilk',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'ilk',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    };
+
+    expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
+    withTurkishHostLocale(() => {
+      expect(narrativePedigreeStage.safeParse(stage).success).toBe(false);
+    });
+  });
+
+  it('accepts two diseases with distinct labels and variables', () => {
+    const result = narrativePedigreeStage.safeParse({
+      ...validNarrativePedigreeStageShape,
+      diseases: [
+        {
+          id: 'd1',
+          label: 'Condition X',
+          color: '#f00',
+          variable: 'v1',
+          inheritancePattern: 'autosomalDominant' as const,
+        },
+        {
+          id: 'd2',
+          label: 'Condition Y',
+          color: '#0f0',
+          variable: 'v2',
+          inheritancePattern: 'yLinked' as const,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('rejects an empty disease label', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,

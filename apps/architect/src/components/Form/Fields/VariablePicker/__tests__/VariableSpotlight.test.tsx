@@ -24,7 +24,6 @@ describe('VariableSpotlight', () => {
           onSelect={noop}
           entity=""
           type=""
-          onCancel={noop}
           onCreateOption={noop}
           options={[]}
         />
@@ -45,7 +44,6 @@ describe('VariableSpotlight', () => {
           onSelect={noop}
           entity=""
           type=""
-          onCancel={noop}
           onCreateOption={noop}
           options={[
             {
@@ -70,6 +68,10 @@ describe('VariableSpotlight', () => {
     // Rows are sorted by label: "Just a number" before "Name".
     expect(items[0]).toHaveTextContent('Just a number');
     expect(items[0]?.querySelector('.icon')).toBeInTheDocument();
+    expect(items[0]).toHaveClass(
+      'hover:bg-surface-2',
+      'data-disabled:hover:bg-transparent',
+    );
     expect(items[1]).toHaveTextContent('Name');
     expect(items[1]?.querySelector('.icon')).toBeInTheDocument();
   });

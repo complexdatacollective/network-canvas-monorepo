@@ -5,7 +5,8 @@
   - dialog "Introduction":
     - heading "Introduction" [level=2]
     - button "Close"
-    - text: Disallowed heading
-    - paragraph: An allowed paragraph.
+    - region "Introduction":
+      - text: Disallowed heading
+      - paragraph: An allowed paragraph.
     - button "Cancel"
     - button "Continue"

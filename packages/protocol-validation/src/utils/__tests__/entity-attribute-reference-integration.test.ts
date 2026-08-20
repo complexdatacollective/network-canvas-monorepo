@@ -73,7 +73,7 @@ describe('entity-attribute references against the real v8 schema', () => {
     const issues = validateEntityAttributeReferences(broken);
     expect(issues).toContainEqual({
       code: 'custom',
-      message: 'The variable "start" does not exist in the codebook',
+      message: 'The attribute "start" does not exist in the codebook',
       path: [
         'codebook',
         'node',

@@ -1,3 +1,4 @@
+import { isInvalidPolygon } from '~/model/polygonGeometry';
 import type { BackgroundDocument, SvgElement, Vec } from '~/model/types';
 import { assertNever } from '~/state/assertNever';
 import {
@@ -5,7 +6,6 @@ import {
   clamp01,
   constrainRegular,
   elementBounds,
-  isDegeneratePolygon,
   type StageBox,
   textBounds,
 } from '~/state/documentGeometry';
@@ -322,12 +322,10 @@ export function resizeElement(
     const points = el.points.map((v, i) =>
       i === handle.index ? { x: clamp01(pt.x), y: clamp01(pt.y) } : v,
     );
-    // Reject a drag that makes the polygon degenerate — collapsing it below
-    // three distinct vertices (one vertex onto another) OR onto a straight line
-    // (one vertex onto the edge between its neighbours). Either yields a
-    // zero-area zone that would export but never classify a node; the vertex
-    // simply stops rather than committing it.
-    if (isDegeneratePolygon(points)) return el;
+    // Reject a drag that makes the polygon invalid: collapsed, collinear, or
+    // self-intersecting. SVG fill and zone membership only agree for a simple
+    // polygon, so the vertex stops rather than committing an ambiguous shape.
+    if (isInvalidPolygon(points)) return el;
     return { ...el, points };
   }
   return el;

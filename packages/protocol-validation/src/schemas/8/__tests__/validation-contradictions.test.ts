@@ -23,7 +23,7 @@ describe('findValidationContradictions — local checks', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('invertedBounds');
     expect(result[0]?.message).toBe(
-      'Variable "first_name": minLength (10) is greater than maxLength (2)',
+      'Attribute "first_name": minLength (10) is greater than maxLength (2)',
     );
     expect(result[0]?.variableIds).toEqual(['a']);
     expect(result[0]?.strips).toEqual([
@@ -71,7 +71,7 @@ describe('findValidationContradictions — local checks', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('minSelectedExceedsOptions');
     expect(result[0]?.message).toBe(
-      'Variable "colors": minSelected (3) is greater than the number of options (2)',
+      'Attribute "colors": minSelected (3) is greater than the number of options (2)',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'minSelected' },
@@ -95,7 +95,7 @@ describe('findValidationContradictions — local checks', () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.class).toBe('invertedBounds');
       expect(result[0]?.message).toBe(
-        `Variable "answer": required answers cannot satisfy ${maximumRule} (0)`,
+        `Attribute "answer": required answers cannot satisfy ${maximumRule} (0)`,
       );
       expect(result[0]?.strips).toEqual([
         { variableId: 'a', rule: maximumRule },
@@ -141,7 +141,7 @@ describe('findValidationContradictions — local checks', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('minSelectedExceedsOptions');
     expect(result[0]?.message).toBe(
-      'Variable "colors": minSelected (3) is greater than the number of options (2)',
+      'Attribute "colors": minSelected (3) is greater than the number of options (2)',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'minSelected' },
@@ -211,7 +211,7 @@ describe('findValidationContradictions — reference structure', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('conflictingReferencePair');
     expect(result[0]?.message).toBe(
-      'Variable "a": sameAs and differentFrom both reference "b"',
+      'Attribute "a": sameAs and differentFrom both reference "b"',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'sameAs' },
@@ -271,8 +271,8 @@ describe('findValidationContradictions — reference structure', () => {
       b: number('b', { greaterThanVariable: 'b' }),
     });
     expect(result.map((c) => c.message).toSorted()).toEqual([
-      'Variable "a": differentFrom references the variable itself',
-      'Variable "b": greaterThanVariable references the variable itself',
+      'Attribute "a": differentFrom references the attribute itself',
+      'Attribute "b": greaterThanVariable references the attribute itself',
     ]);
   });
 
@@ -331,7 +331,7 @@ describe('findValidationContradictions — bound disjointness', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "a": lessThanVariable "b" can never be satisfied because their value ranges do not overlap',
+      'Attribute "a": lessThanVariable "b" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'lessThanVariable' },
@@ -372,7 +372,7 @@ describe('findValidationContradictions — bound disjointness', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but their rules leave no value they can share',
+      'Attributes "a", "b" are joined by sameAs but their rules leave no value they can share',
     );
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
@@ -498,7 +498,7 @@ describe('findValidationContradictions — Finding D: sameAs option-set disjoint
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but share no option values',
+      'Attributes "a", "b" are joined by sameAs but share no option values',
     );
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
@@ -554,7 +554,7 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but their available values never overlap',
+      'Attributes "a", "b" are joined by sameAs but their available values never overlap',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
@@ -607,7 +607,7 @@ describe('findValidationContradictions — eighth-wave Finding 1: boolean domain
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are forced equal by the comparison rules but their available values never overlap',
+      'Attributes "a", "b" are forced equal by the comparison rules but their available values never overlap',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
   });
@@ -633,7 +633,7 @@ describe('findValidationContradictions — second-wave Finding 1: shared-option 
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but share only 1 option values, fewer than minSelected (2)',
+      'Attributes "a", "b" are joined by sameAs but share only 1 option values, fewer than minSelected (2)',
     );
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
@@ -767,7 +767,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 6: comparat
     expect(result[0]?.class).toBe('sameAsGroupConflict');
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b', 'c']);
     expect(result[0]?.message).toBe(
-      'Variable "b": differentFrom references "c", but the comparison rules already require them to be equal',
+      'Attribute "b": differentFrom references "c", but the comparison rules already require them to be equal',
     );
     // The differentFrom edge itself is what a class-9 group conflict always
     // strips; removing it leaves `a.sameAs = c`, `a >= b >= c` satisfiable
@@ -908,7 +908,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
     const groupConflict = result.find((c) => c.class === 'sameAsGroupConflict');
     expect(groupConflict).toBeDefined();
     expect(groupConflict?.message).toBe(
-      'Variable "b": differentFrom references "a", but sameAs already requires them to be equal',
+      'Attribute "b": differentFrom references "a", but sameAs already requires them to be equal',
     );
     expect(groupConflict?.strips).toEqual([
       { variableId: 'b', rule: 'differentFrom' },
@@ -937,7 +937,7 @@ describe('findValidationContradictions — Twenty-second-wave Finding 3: compara
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('sameAsGroupConflict');
     expect(result[0]?.message).toBe(
-      'Variable "a": differentFrom references "b", but the comparison rules already require them to be equal',
+      'Attribute "a": differentFrom references "b", but the comparison rules already require them to be equal',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'differentFrom' },
@@ -1394,7 +1394,7 @@ describe('findValidationContradictions — fifth-wave Finding 5: singleton boole
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" must differ but their rules pin both to the same value',
+      'Attributes "a", "b" must differ but their rules pin both to the same value',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
     expect(result[0]?.strips).toEqual([
@@ -1508,7 +1508,7 @@ describe('findValidationContradictions — sixth-wave Finding 2: pinned-equal di
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" must differ but their rules pin both to the same value',
+      'Attributes "a", "b" must differ but their rules pin both to the same value',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
     expect(result[0]?.strips).toEqual([
@@ -1719,7 +1719,7 @@ describe('findValidationContradictions — seventeenth-wave Finding 2: component
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+      'Attributes "a", "b" are joined by sameAs but store dates at different resolutions',
     );
   });
 
@@ -1828,7 +1828,7 @@ describe('findValidationContradictions — tenth-wave Finding 2: pinned option-d
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" must differ but their rules pin both to the same value',
+      'Attributes "a", "b" must differ but their rules pin both to the same value',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['a', 'b']);
     expect(result[0]?.strips).toEqual([
@@ -2018,7 +2018,7 @@ describe('findValidationContradictions — third-wave Finding 3: mixed-resolutio
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+      'Attributes "a", "b" are joined by sameAs but store dates at different resolutions',
     );
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
@@ -2097,7 +2097,7 @@ describe('findValidationContradictions — seventh-wave Finding 1: comparator-on
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+      'Attributes "a", "b" are joined by sameAs but store dates at different resolutions',
     );
   });
 
@@ -2161,7 +2161,7 @@ describe('findValidationContradictions — tenth-wave Finding 5: resolution unif
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+      'Attributes "a", "b" are joined by sameAs but store dates at different resolutions',
     );
     expect(result[0]?.strips).toEqual([{ variableId: 'a', rule: 'sameAs' }]);
   });
@@ -2281,7 +2281,7 @@ describe('findValidationContradictions — fifth-wave Finding 3: fixed-anchor Re
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but store dates at different resolutions',
+      'Attributes "a", "b" are joined by sameAs but store dates at different resolutions',
     );
   });
 });
@@ -2323,7 +2323,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('pinnedEqualDifferentFrom');
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" must differ but their rules pin both to the same value',
+      'Attributes "a", "b" must differ but their rules pin both to the same value',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'differentFrom' },
@@ -2893,7 +2893,7 @@ describe('R2 — reference target type must equal the source type', () => {
     if (!result.success) {
       expect(
         result.error.issues.some((issue) =>
-          issue.message.includes('must reference another text variable'),
+          issue.message.includes('must reference another text attribute'),
         ),
       ).toBe(true);
     }
@@ -3577,7 +3577,7 @@ describe('findValidationContradictions — twentieth-wave Finding 2: hybrid grou
     validation,
   });
 
-  // The comparator SCC between the two pinned variables is what empties the
+  // The comparator SCC between the two pinned attributes is what empties the
   // group; c's sameAs is satisfiable and unrelated, so it must survive.
   it('strips the comparator cycle rather than an unrelated sameAs', () => {
     const result = findValidationContradictions({
@@ -3980,7 +3980,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variables "c", "b", "a" form a comparison chain their value ranges can never satisfy',
+      'Attributes "c", "b", "a" form a comparison chain their value ranges can never satisfy',
     );
     expect(result[0]?.variableIds).toEqual(['c', 'b', 'a']);
   });
@@ -4190,7 +4190,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.message).toBe(
-      'Variables "a", "b" are joined by sameAs but their rules leave no value they can share',
+      'Attributes "a", "b" are joined by sameAs but their rules leave no value they can share',
     );
   });
 
@@ -4203,7 +4203,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.message).toBe(
-      'Variable "a": greaterThanVariable "b" can never be satisfied because their value ranges do not overlap',
+      'Attribute "a": greaterThanVariable "b" can never be satisfied because their value ranges do not overlap',
     );
   });
 
@@ -4224,7 +4224,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
       'disjointBounds',
     ]);
     expect(result[0]?.message).toBe(
-      'Variable "m2": lessThanOrEqualToVariable "ceiling" can never be satisfied because their value ranges do not overlap',
+      'Attribute "m2": lessThanOrEqualToVariable "ceiling" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[1]?.variableIds).toEqual(['m', 'x', 'ceiling']);
     expect(result[1]?.strips).toEqual([
@@ -4252,7 +4252,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
       'disjointBounds',
     ]);
     expect(result[0]?.message).toBe(
-      'Variable "nearCeiling": greaterThanOrEqualToVariable "floor" can never be satisfied because their value ranges do not overlap',
+      'Attribute "nearCeiling": greaterThanOrEqualToVariable "floor" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[1]?.variableIds).toEqual(['floor', 'x', 'farCeiling']);
     expect(result[1]?.strips).toEqual([
@@ -6559,7 +6559,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+      'Attribute "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
     expect(result[0]?.strips).toEqual([
@@ -6614,7 +6614,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+      'Attribute "b": differentFrom rules against pinned attributes "a", "e" leave no selectable date',
     );
     expect(result[0]?.variableIds).toEqual(['b', 'a', 'e']);
     expect(result[0]?.strips).toEqual([
@@ -6699,7 +6699,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+      'Attribute "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
     expect(result[0]?.strips).toEqual([
@@ -6734,7 +6734,7 @@ describe('findValidationContradictions — Twenty-eighth wave: pinned disequalit
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
+      'Attribute "b": lessThanVariable "c" can never be satisfied because their value ranges do not overlap',
     );
     expect(result[0]?.variableIds.toSorted()).toEqual(['b', 'c']);
     expect(result[0]?.strips).toEqual([
@@ -6938,7 +6938,7 @@ describe('findValidationContradictions — Twenty-ninth wave: uniformly coarse s
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "e": differentFrom rules against pinned variables "f", "g1" leave no selectable date',
+      'Attribute "e": differentFrom rules against pinned attributes "f", "g1" leave no selectable date',
     );
     expect(result[0]?.variableIds).toEqual(['e', 'f', 'g1']);
     expect(result[0]?.strips).toEqual([
@@ -7864,7 +7864,7 @@ describe('findValidationContradictions — Thirty-first wave: two-instant dateti
     expect(result).toHaveLength(1);
     expect(result[0]?.class).toBe('disjointBounds');
     expect(result[0]?.message).toBe(
-      'Variable "b": differentFrom rules against pinned variables "a", "e" leave no selectable date',
+      'Attribute "b": differentFrom rules against pinned attributes "a", "e" leave no selectable date',
     );
     expect(result[0]?.strips).toEqual([
       { variableId: 'a', rule: 'differentFrom' },

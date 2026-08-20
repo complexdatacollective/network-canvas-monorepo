@@ -111,14 +111,16 @@ const RESERVED_NOTE_VALUE = 'reserved-value';
 // [category option, other bin] — the other bin is always index 1 here.
 const OTHER_BIN_INDEX = 1;
 
-const node: NcNode = {
-  [entityPrimaryKeyProperty]: 'node-1',
-  type: NODE_TYPE,
-  [entityAttributesProperty]: {
-    [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
-    [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
-  },
-};
+function buildNode(): NcNode {
+  return {
+    [entityPrimaryKeyProperty]: 'node-1',
+    type: NODE_TYPE,
+    [entityAttributesProperty]: {
+      [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
+      [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+    },
+  };
+}
 
 function buildCodebook(
   otherValidation?: Validation,
@@ -128,6 +130,7 @@ function buildCodebook(
   // test below exercises.
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): Codebook {
   return {
     node: {
@@ -151,7 +154,7 @@ function buildCodebook(
           ...(omitOtherVariable
             ? {}
             : {
-                [OTHER_VARIABLE]: {
+                [otherVariable]: {
                   name: 'Other reason',
                   type: 'text' as const,
                   ...(omitOtherComponent ? {} : { component: 'Text' as const }),
@@ -178,7 +181,7 @@ function buildCodebook(
 
 type CategoricalBinStage = StageProps<'CategoricalBin'>['stage'];
 
-function buildStage(): CategoricalBinStage {
+function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
@@ -189,7 +192,7 @@ function buildStage(): CategoricalBinStage {
         id: PROMPT_ID,
         text: 'Which category?',
         variable: asEntityAttributeReference(CATEGORY_VARIABLE),
-        otherVariable: asEntityAttributeReference(OTHER_VARIABLE),
+        otherVariable: asEntityAttributeReference(otherVariable),
         otherVariablePrompt: OTHER_PROMPT_TEXT,
         otherOptionLabel: 'Other',
       },
@@ -198,6 +201,7 @@ function buildStage(): CategoricalBinStage {
 }
 
 function buildSession(): SessionState {
+  const node = buildNode();
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
@@ -219,6 +223,7 @@ function buildProtocol(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -231,8 +236,9 @@ function buildProtocol(
       otherValidation,
       omitOtherComponent,
       omitOtherVariable,
+      otherVariable,
     ),
-    stages: [buildStage()],
+    stages: [buildStage(otherVariable)],
   };
 }
 
@@ -252,6 +258,7 @@ function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
+  otherVariable = OTHER_VARIABLE,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -261,6 +268,7 @@ function renderCategoricalBin(
         otherValidation,
         omitOtherComponent,
         omitOtherVariable,
+        otherVariable,
       ),
     },
     middleware: (getDefaultMiddleware) =>
@@ -282,7 +290,7 @@ function renderCategoricalBin(
             {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
             <CategoricalBin
-              stage={buildStage()}
+              stage={buildStage(otherVariable)}
               getNavigationHelpers={() => ({
                 moveForward: () => {},
                 moveBackward: () => {},
@@ -305,6 +313,7 @@ async function dropNodeIntoBin(
   binIndex: number,
 ) {
   const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, binIndex);
+  const node = buildNode();
 
   act(() => {
     getDndStore().getState().startDrag(
@@ -336,14 +345,14 @@ async function dropNodeIntoOtherBin(getDndStore: () => StoreApi<DndStore>) {
 
 function getOtherAttribute(
   store: ReturnType<typeof renderCategoricalBin>['store'],
+  otherVariable = OTHER_VARIABLE,
 ) {
   const updatedNode = store
     .getState()
     .session.network?.nodes.find(
-      (candidate: NcNode) =>
-        candidate[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
+      (candidate: NcNode) => candidate[entityPrimaryKeyProperty] === 'node-1',
     );
-  return updatedNode?.[entityAttributesProperty][OTHER_VARIABLE];
+  return updatedNode?.[entityAttributesProperty][otherVariable];
 }
 
 async function waitForDialogToClose() {
@@ -402,10 +411,84 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     ).toBeInTheDocument();
     expect(celebrate).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith('node_binned', {
-      node_id: node[entityPrimaryKeyProperty],
-      node_type: node.type,
+      node_id: 'node-1',
+      node_type: NODE_TYPE,
       bin_index: OTHER_BIN_INDEX,
     });
+  });
+
+  it('removes the mutually exclusive category value when placing a node in Other', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [CATEGORY_VARIABLE]: [1] },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoOtherBin(getDndStore);
+    await screen.findByRole('textbox');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+    await waitForDialogToClose();
+
+    const attributes =
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+      {};
+    expect(Object.hasOwn(attributes, CATEGORY_VARIABLE)).toBe(false);
+    expect(attributes[OTHER_VARIABLE]).toBe('');
+  });
+
+  it('removes the Other value when placing a node in a regular bin', async () => {
+    const { store, getDndStore } = renderCategoricalBin(undefined);
+    await store.dispatch({
+      type: 'NETWORK/UPDATE_NODE/fulfilled',
+      payload: {
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [OTHER_VARIABLE]: 'Previous response' },
+          unset: [],
+        },
+        newModelData: undefined,
+        secureSet: undefined,
+      },
+    });
+
+    await dropNodeIntoBin(getDndStore, 0);
+
+    await waitFor(() => {
+      const attributes =
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty] ??
+        {};
+      expect(attributes[CATEGORY_VARIABLE]).toEqual([1]);
+      expect(Object.hasOwn(attributes, OTHER_VARIABLE)).toBe(false);
+    });
+  });
+
+  it('treats a dotted otherVariable containing a dangerous segment as one opaque identifier', async () => {
+    const dottedOtherVariable = 'safe.__proto__.polluted';
+    const { store, getDndStore } = renderCategoricalBin(
+      undefined,
+      false,
+      false,
+      dottedOtherVariable,
+    );
+
+    await dropNodeIntoOtherBin(getDndStore);
+
+    const input = await screen.findByRole('textbox');
+    fireEvent.change(input, { target: { value: 'opaque value' } });
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitForDialogToClose();
+
+    expect(getOtherAttribute(store, dottedOtherVariable)).toBe('opaque value');
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
   });
 
   it('returns a cancelled drop to the drawer without success feedback or analytics', async () => {

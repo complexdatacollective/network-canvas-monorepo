@@ -7,7 +7,6 @@ import { cx } from '~/utils/cva';
 import {
   thumbnailBase,
   thumbnailExisting,
-  thumbnailFullWidth,
   thumbnailIcon,
   thumbnailInteractive,
   thumbnailLabel,
@@ -19,20 +18,17 @@ type NetworkThumbnailProps = {
     name: string;
   };
   interactive?: boolean;
-  fullWidth?: boolean;
 };
 
 const NetworkThumbnail = ({
   id,
   meta = { name: '' },
   interactive,
-  fullWidth,
 }: NetworkThumbnailProps) => (
   <div
     className={cx(
       thumbnailBase,
       id === 'existing' && thumbnailExisting,
-      fullWidth && thumbnailFullWidth,
       interactive && thumbnailInteractive,
     )}
   >
@@ -46,5 +42,4 @@ const NetworkThumbnail = ({
 export default withAssetMeta(NetworkThumbnail) as React.ComponentType<{
   id: string;
   interactive?: boolean;
-  fullWidth?: boolean;
 }>;

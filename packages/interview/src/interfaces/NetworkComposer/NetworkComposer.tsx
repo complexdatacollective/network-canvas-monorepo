@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
+import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -24,6 +25,7 @@ import StageBackground from '../../canvas/StageBackground';
 import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { useVariableLabels } from '../../forms/buildVariableLabels';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -134,6 +136,17 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // stage's subject — mirror useProtocolForm's ValidationContext. Quick-add
   // only ever creates a new node, so currentEntityId is omitted: there is no
   // entity yet to scope `unique` exclusions or sibling comparisons to.
+  // ...and a comparison rule on the quick-add variable names its TARGET, which
+  // is one of the node attributes the drawer collects. Those carry the
+  // researcher's authored captions, and the participant has read them there, so
+  // the popover words its errors exactly as the drawer does rather than falling
+  // back to a label-free sentence for the same rule on the same variable. The
+  // quick-add variable itself has nothing authored on this stage — no prompts
+  // array exists — and the codebook entity-type name is a researcher
+  // identifier, so it is deliberately absent.
+  const nodeFormVariableLabels = useVariableLabels(
+    stage.nodeForm?.fields ?? [],
+  );
   const baseValidationContext = useStageSelector(getValidationContext);
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
@@ -141,6 +154,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           codebook: baseValidationContext.codebook,
           network: baseValidationContext.network,
           stageSubject: baseValidationContext.stageSubject,
+          variableLabels: nodeFormVariableLabels,
         }
       : undefined;
 
@@ -265,7 +279,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         void dispatch(
           updateNode({
             nodeId,
-            newAttributeData: { [layoutVariable]: position },
+            attributePatch: {
+              set: { [layoutVariable]: position },
+              unset: [],
+            },
             currentStep,
           }),
         );
@@ -294,8 +311,15 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   }, [composerStore]);
 
   const handleNodeTap = useCallback(
-    async (tappedId: string, modifiers: NodeTapModifiers) => {
-      rootRef.current?.focus();
+    async (
+      tappedId: string,
+      modifiers: NodeTapModifiers,
+      activationSource: ActivationSource = 'pointer',
+    ) => {
+      // A pointer tap has no focus of its own to preserve, so the stage root
+      // takes it to keep its shortcuts live. Taking it from a keyboard user
+      // would throw them back to the tool palette after every selection.
+      if (activationSource !== 'keyboard') rootRef.current?.focus();
       const {
         activeTool,
         pendingEdgeSource,
@@ -715,8 +739,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         lassoInSelectMode={groupVariable !== null}
         simulation={simulationHandlers}
         onBackgroundTap={handleBackgroundTap}
-        onNodeTap={(nodeId, modifiers) => {
-          void handleNodeTap(nodeId, modifiers);
+        onNodeTap={(nodeId, modifiers, source) => {
+          void handleNodeTap(nodeId, modifiers, source);
         }}
         onEdgeTap={handleEdgeTap}
         onNodeDragEnd={handleNodeDragEnd}

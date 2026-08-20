@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fieldElementIds } from '@codaco/fresco-ui/form/Field/fieldElements';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -44,6 +45,7 @@ function AddNodeField({
   ...validationProps
 }: AddNodeInputProps) {
   const validateForm = useFormStore((state) => state.validateForm);
+  const pathOperations = useFormStore((state) => state.pathOperations);
   const resetField = useFormStore((state) => state.resetField);
   const [fieldToReset, setFieldToReset] = useState<string>();
   const submissionInProgress = useRef(false);
@@ -53,19 +55,29 @@ function AddNodeField({
 
   const { id, meta, fieldProps, containerProps } = useField({
     name: targetVariable,
+    nameMode: 'opaque',
     initialValue: '',
     disabled: isSubmitting,
     validateOnChange: true,
     validateOnChangeDelay: 0,
     validationContext,
+    // This field is not wrapped in a BaseField: the only element it renders
+    // around the control is its own FieldErrors region below, so that is the
+    // only one `fieldProps` may name. It takes its accessible name from
+    // `aria-label`, so there is no label element to point at either.
+    renderedElements: { error: true },
     ...validationProps,
   });
 
   useEffect(() => {
     if (fieldToReset === undefined) return;
-    resetField(fieldToReset);
+    if (pathOperations) {
+      pathOperations.resetField([fieldToReset]);
+    } else {
+      resetField(fieldToReset);
+    }
     setFieldToReset(undefined);
-  }, [fieldToReset, resetField]);
+  }, [fieldToReset, pathOperations, resetField]);
 
   useEffect(() => {
     if (isSubmitting || !shouldRestoreFocus.current) return;
@@ -127,7 +139,7 @@ function AddNodeField({
         onKeyDown={handleKeyDown}
       />
       <FieldErrors
-        id={`${id}-error`}
+        id={fieldElementIds(id).error}
         name={targetVariable}
         errors={meta.errors}
         show={meta.shouldShowError}

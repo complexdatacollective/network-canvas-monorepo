@@ -46,6 +46,11 @@ describe('assetResolver decrypts encrypted-at-rest assets', () => {
     );
   });
   afterEach(async () => {
+    // The resolver's URL cache is module-global and outlives a test, so drop
+    // this protocol's entries the way deleting it would — otherwise a later
+    // test's older `importedAt` is served the URL an earlier test cached.
+    const { revokeProtocolAssetUrls } = await import('../assetResolver');
+    revokeProtocolAssetUrls('h1');
     await db.protocols.clear();
     await db.assets.clear();
     setSessionDek(null);

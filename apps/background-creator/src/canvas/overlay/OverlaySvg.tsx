@@ -1,13 +1,14 @@
 import { useId, type ReactElement } from 'react';
 
 import { zonesOf } from '~/geometry/zones';
+import { nearlyEqual } from '~/model/polygonGeometry';
 import type {
   BackgroundDocument,
   LineElement,
   Vec,
   ZoneElement,
 } from '~/model/types';
-import { type Bounds, nearlyEqual } from '~/state/documentGeometry';
+import type { Bounds } from '~/state/documentGeometry';
 import { type Draft, useEditorStore } from '~/state/editorStore';
 import type { SnapGuides } from '~/state/snapping';
 

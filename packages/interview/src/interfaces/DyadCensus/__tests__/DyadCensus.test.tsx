@@ -17,6 +17,7 @@ import {
   type NcEdge,
 } from '@codaco/shared-consts';
 
+import { withAnimationsEnabled } from '../../../__tests__/withAnimationsEnabled';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -272,14 +273,16 @@ describe('DyadCensus interface', () => {
   });
 
   it('waits for the selection animation before advancing normally', async () => {
-    const { advancePastIntro, noButton, moveForward } =
-      renderInterface(onePromptStage);
-    await advancePastIntro();
+    await withAnimationsEnabled(async () => {
+      const { advancePastIntro, noButton, moveForward } =
+        renderInterface(onePromptStage);
+      await advancePastIntro();
 
-    fireEvent.click(noButton());
+      fireEvent.click(noButton());
 
-    expect(moveForward).not.toHaveBeenCalled();
-    await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+      expect(moveForward).not.toHaveBeenCalled();
+      await waitFor(() => expect(moveForward).toHaveBeenCalledOnce());
+    });
   });
 
   it('advances immediately when animations are disabled', async () => {

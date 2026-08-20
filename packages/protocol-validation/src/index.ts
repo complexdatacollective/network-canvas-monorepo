@@ -1,19 +1,27 @@
 import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
+import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
   type ExtractedAsset,
   extractProtocol,
   extractProtocolFromZip,
+  loadNetcanvasArchive,
   MAX_INFLATED_BYTES,
   NetcanvasInflationLimitError,
 } from './utils/extractProtocol.ts';
 import { hashProtocol } from './utils/hashProtocol.ts';
+import {
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
+} from './utils/malformedNetcanvasError.ts';
 import {
   getVariableNamesFromNetwork,
   type Network,
@@ -55,10 +63,26 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// `findExclusiveVariableConflicts` stays internal: it exists to feed the
+// protocol schema's own refinement and the repair below, and a host that wants
+// to know whether a protocol is admissible should call `validateProtocol`.
+export {
+  type ExclusiveVariableSlot,
+  findExclusiveVariableSlots,
+  findInterfaceOwnedOptionBindings,
+  type InterfaceOwnedOptionBinding,
+} from './utils/findExclusiveVariableConflicts.ts';
+export {
+  type ConfigurationProblem,
+  repairConfigurationConflicts,
+} from './utils/repairConfigurationConflicts.ts';
 export {
   asEntityAttributeReference,
+  type AssetReferenceHit,
+  collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
   type ExtractedAsset,
@@ -68,6 +92,9 @@ export {
   getAssetMimeType,
   getVariableNamesFromNetwork,
   hashProtocol,
+  loadNetcanvasArchive,
+  MalformedNetcanvasError,
+  type MalformedNetcanvasReason,
   MAX_INFLATED_BYTES,
   type Network,
   NetcanvasInflationLimitError,

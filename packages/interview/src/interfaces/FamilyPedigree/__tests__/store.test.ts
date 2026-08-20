@@ -182,7 +182,8 @@ describe('updateNode', () => {
     });
 
     store.getState().updateNode(id, {
-      [testConfig.nodeLabelVariable]: 'updated',
+      set: { [testConfig.nodeLabelVariable]: 'updated' },
+      unset: [],
     });
 
     const node = store.getState().network.nodes.get(id);
@@ -192,6 +193,71 @@ describe('updateNode', () => {
     expect(node?.[entityAttributesProperty][testConfig.egoVariable]).toBe(
       false,
     );
+  });
+
+  it('removes explicitly unset attributes and preserves defined empty values', () => {
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+    );
+    const id = store.getState().addNode({
+      attributes: {
+        [testConfig.egoVariable]: false,
+        [testConfig.nodeLabelVariable]: 'test',
+        removed: 'old answer',
+      },
+    });
+
+    store.getState().updateNode(id, {
+      set: { emptyText: '', emptySelection: [] },
+      unset: ['removed'],
+    });
+
+    const attributes = store.getState().network.nodes.get(id)?.[
+      entityAttributesProperty
+    ];
+    expect(attributes).not.toHaveProperty('removed');
+    expect(attributes?.emptyText).toBe('');
+    expect(attributes?.emptySelection).toEqual([]);
+    expect(attributes?.[testConfig.nodeLabelVariable]).toBe('test');
+  });
+
+  it('writes __proto__ updates as inert own attributes', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+    );
+    const id = store.getState().addNode({
+      attributes: { [testConfig.egoVariable]: false },
+    });
+    const updates: Record<string, string[]> = {};
+    Object.defineProperty(updates, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
+
+    store.getState().updateNode(id, {
+      set: updates,
+      unset: [],
+    });
+
+    const attributes = store.getState().network.nodes.get(id)?.[
+      entityAttributesProperty
+    ];
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toEqual(['preserved']);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
   });
 });
 
@@ -320,6 +386,43 @@ describe('addEdge', () => {
     expect(id).toBe('custom-edge');
     const edge = store.getState().network.edges.get(id);
     expect(edge?._uid).toBe('custom-edge');
+  });
+
+  it('writes __proto__ updates as inert own attributes', async () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const store = createFamilyPedigreeStore(
+      new Map(),
+      new Map(),
+      new Map(),
+      testConfig,
+    );
+    const id = store.getState().addEdge({
+      from: 'n1',
+      to: 'n2',
+      attributes: {
+        [testConfig.relationshipTypeVariable]: ['biological'],
+      },
+    });
+    const updates: Record<string, string[]> = {};
+    Object.defineProperty(updates, '__proto__', {
+      enumerable: true,
+      value: ['preserved'],
+    });
+
+    await store.getState().updateEdge(id, updates);
+
+    const attributes = store.getState().network.edges.get(id)?.[
+      entityAttributesProperty
+    ];
+    expect(Object.hasOwn(attributes ?? {}, '__proto__')).toBe(true);
+    expect(attributes?.['__proto__']).toEqual(['preserved']);
+    expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
   });
 });
 

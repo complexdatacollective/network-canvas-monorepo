@@ -1,34 +1,40 @@
-import { useCallback } from 'react';
+import { useCallback, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
-import {
-  change,
-  formValueSelector,
-  getFormInitialValues,
-  SubmissionError,
-} from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,
 } from '~/components/Validations/contradictions';
-import { useAppDispatch } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { EMPTY_VARIABLES, getVariablesForSubject } from '~/selectors/codebook';
-import { getVariableRoleMap, roleMapKey } from '~/selectors/indexes';
+import {
+  getExclusiveVariableSlotMap,
+  getVariableRoleMap,
+} from '~/selectors/indexes';
+import {
+  hasValidatedUse,
+  interfaceOwnedPickIssue,
+} from '~/selectors/roleFilters';
 
 import NominationPromptFields from './NominationPromptFields';
 import NominationPromptPreview from './NominationPromptPreview';
 
-// The shared row-editor form name every DialogArrayField editor requests
-// (see this file's own `requestedEditFormName`) — only one editor dialog is
-// ever open at a time, so this is safe to read unqualified.
-const EDIT_FORM_NAME = 'editable-list-form';
+// `NominationPromptPreview` declares `text`/`variable` as required props
+// rather than the array field's generic `Renderer` bag; DialogArrayField
+// always spreads the row's own properties into the preview, so the cast is
+// safe.
+type Renderer = ComponentType<Record<string, unknown>>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -37,55 +43,84 @@ const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
-const NominationPrompts = ({ form }: StageEditorSectionProps) => {
-  const dispatch = useAppDispatch();
+
+type NominationPrompt = { id?: string; variable?: string };
+
+const NominationPrompts = (_props: StageEditorSectionProps) => {
   const { confirm } = useDialog();
-  const getFormValue = formValueSelector(form);
-  const nodeType = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'nodeConfig.type') as string | undefined,
-  );
-  const hasNominationPrompts = useSelector(
-    (state: RootState) =>
-      getFormValue(state, 'nominationPrompts') as unknown[] | undefined,
-  );
+  const setStageValue = useSetStageValue();
+  const nodeType = useStageFormValue<string>('nodeConfig.type');
+  const hasNominationPrompts =
+    useStageFormValue<unknown[]>('nominationPrompts');
+  const nominationPromptsInitial =
+    useStageInitialValue<Record<string, unknown>[]>('nominationPrompts');
+  const committedNominationPrompts =
+    useStageInitialValue<NominationPrompt[]>('nominationPrompts');
   const allVariables = useSelector((state: RootState) =>
     nodeType
       ? getVariablesForSubject(state, { entity: 'node', type: nodeType })
       : EMPTY_VARIABLES,
   );
   const roleMap = useSelector(getVariableRoleMap);
-  const originalVariable = useSelector((state: RootState) => {
-    const initial = getFormInitialValues(EDIT_FORM_NAME)(state);
-    return isRecord(initial) && typeof initial.variable === 'string'
-      ? initial.variable
-      : '';
-  });
+  const exclusiveSlotMap = useSelector(getExclusiveVariableSlotMap);
   // Cross-class exclusivity gate: the nomination toggle is an UNVALIDATED
   // writer, so its variable may not be one a form elsewhere already collects
   // (the save-time backstop for a stale draft that bypassed the picker
   // exclusion — see NominationPromptFields.tsx's excludeValidatedUses call).
-  // `variable` is a plain field on the prompt form (NominationPromptFields.tsx's
-  // ValidatedField name="variable"), so a STRING value renders correctly.
+  //
+  // DELIBERATELY not converted to the shared `useCrossClassEditorValidate`
+  // (CategoricalBin/OrdinalBin/TieStrengthCensus/Sociogram/Geospatial). Its
+  // escape is anchored to the row the DIALOG opened on; this one is anchored
+  // to the stage's own COMMITTED `nominationPrompts`, found by row id. The
+  // two differ once a prompt has been edited more than once within a single
+  // unsaved stage session, and only the committed anchor keeps a variable the
+  // protocol ALREADY binds here restorable — a pre-existing conflict an
+  // import introduced, which the timeline alert reports non-destructively
+  // rather than trapping the researcher. `NominationPromptsOnBeforeSave.test`
+  // pins both halves: the committed pick escapes, and no row borrows
+  // another's.
   const onBeforeSave = useCallback(
     (value: unknown) => {
       if (!nodeType || !isRecord(value)) return value;
       const subject = { entity: 'node' as const, type: nodeType };
       const variable = typeof value.variable === 'string' ? value.variable : '';
+      const id = typeof value.id === 'string' ? value.id : undefined;
+      const originalVariable =
+        committedNominationPrompts?.find((prompt) => prompt.id === id)
+          ?.variable ?? '';
+      // A variable the pedigree derives structurally (its ego marker, its
+      // relationship variable) can never be a nomination toggle. The picker
+      // already drops those, so this catches a stale draft or an imported
+      // protocol — and unlike the cross-class gate it has no unchanged-pick
+      // escape: re-saving such a prompt would keep writing the ego flag.
+      const ownedIssue = interfaceOwnedPickIssue(
+        exclusiveSlotMap,
+        subject,
+        variable,
+      );
+      if (ownedIssue) {
+        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+      }
       const issue = crossClassPickIssue({
         variableId: variable,
         originalVariableId: originalVariable,
         hasConflictingUse: (variableId) =>
-          (roleMap[roleMapKey(subject, variableId)]?.validated ?? 0) > 0,
+          hasValidatedUse(roleMap, subject, variableId),
         allVariables,
         message: validatedElsewhereMessage,
       });
       if (issue) {
-        throw new SubmissionError({ variable: issue });
+        return { success: false, fieldErrors: { variable: [issue] } };
       }
       return value;
     },
-    [nodeType, roleMap, allVariables, originalVariable],
+    [
+      nodeType,
+      roleMap,
+      exclusiveSlotMap,
+      allVariables,
+      committedNominationPrompts,
+    ],
   );
   const isDisabled = !nodeType;
   const handleToggleChange = useCallback(
@@ -103,12 +138,18 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         onConfirm: () => {},
       });
       if (confirmed) {
-        dispatch(change(form, 'nominationPrompts', null));
+        // `undefined`, not `null`: the toggle handler runs while the array
+        // field is still mounted (the confirm dialog resolves before the
+        // Section's own `isOpen` flips), and fresco-ui's `ArrayField` only
+        // defaults `undefined` to its own empty array — `null` reaches
+        // `useArrayFieldItems`'s unconditional `value.forEach` and throws
+        // (see IntroScreen.tsx's identical fix).
+        setStageValue('nominationPrompts', undefined);
         return true;
       }
       return false;
     },
-    [confirm, dispatch, form, hasNominationPrompts],
+    [confirm, setStageValue, hasNominationPrompts],
   );
   return (
     <Section
@@ -117,7 +158,7 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
         <Paragraph>
           Optionally add prompts to collect attribute information about family
           members. Each prompt should ask about a specific condition or trait
-          and will store the response in the selected boolean variable.
+          and will store the response in the selected boolean attribute.
         </Paragraph>
       }
       title="Nomination Prompts"
@@ -125,25 +166,25 @@ const NominationPrompts = ({ form }: StageEditorSectionProps) => {
       startExpanded={!!hasNominationPrompts?.length}
       handleToggleChange={handleToggleChange}
     >
-      <ValidatedFieldArray
+      <ArchitectArrayField
         name="nominationPrompts"
         label="Nomination prompts"
         labelHidden
         component={DialogArrayField}
+        addButtonLabel="Create new nomination prompt"
         validation={{ notEmpty }}
-        componentProps={{
-          addTitle: 'Edit Prompt',
-          previewComponent: NominationPromptPreview,
-          editorFieldsComponent: NominationPromptFields,
-          editorTitle: 'Edit Prompt',
-          editorProps: { nodeType },
-          itemLabel: 'prompt',
-          onBeforeSave,
-          sortable: true,
-          requestedEditFormName: 'editable-list-form',
-          emptyStateMessage:
-            'No nomination prompts have been created yet. Click "Create new" to add your first prompt.',
-        }}
+        initialValue={nominationPromptsInitial ?? []}
+        addTitle="Edit Prompt"
+        previewComponent={NominationPromptPreview as unknown as Renderer}
+        editorFieldsComponent={NominationPromptFields}
+        editorTitle="Edit Prompt"
+        editorProps={{ nodeType }}
+        itemLabel="prompt"
+        editorDialogSize="editor"
+        onBeforeSave={onBeforeSave}
+        sortable
+        requestedEditFormName="editable-list-form"
+        emptyStateMessage='No nomination prompts have been created yet. Click "Create new nomination prompt" to add your first one.'
       />
     </Section>
   );

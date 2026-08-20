@@ -1,9 +1,9 @@
 import { type StageEditor } from '../stage-editor.js';
 import {
-  addRule,
+  addFilterRule,
   assertJoinMatchesRules,
   chooseJoin,
-  type RuleSpec,
+  type FilterRuleSpec,
 } from './rule-builder.js';
 
 // Stage-level network filter (sections/Filter.tsx, `Section title="Filter"`,
@@ -11,23 +11,22 @@ import {
 // "Node Type" section by FilteredNodeType (NodeType.tsx `withFilter`), but
 // `[data-name="Filter"]` is globally unique on the sample-protocol stage
 // types, so `editor.section('Filter')` resolves it directly. The rules UI is
-// the shared Query primitive with `type="filter"` — no ego rules here.
-// Toggling ON writes nothing; a single-rule filter writes no `join` key.
+// the shared Query primitive with `type="filter"` — no ego rules here, which
+// is why the specs it accepts are `FilterRuleSpec`. Toggling ON writes
+// nothing; a single-rule filter writes no `join` key.
 //
 // ORDER: the subject (Node Type) must be selected BEFORE configuring the
 // filter — changing the subject afterwards resets `filter` (and `skipLogic`)
 // via useResetStageOnSubjectChange.
 export async function configureStageFilter(
   editor: StageEditor,
-  opts: { rules: RuleSpec[]; join?: 'All rules' | 'Any rule' },
+  opts: { rules: FilterRuleSpec[]; join?: 'All rules' | 'Any rule' },
 ): Promise<void> {
   assertJoinMatchesRules(opts.rules, opts.join);
   const section = editor.section('Filter');
-  await section
-    .getByRole('switch', { name: 'Turn this feature on or off' })
-    .click();
+  await section.getByRole('switch', { name: 'Filter' }).click();
   for (const rule of opts.rules) {
-    await addRule(section, rule);
+    await addFilterRule(section, rule);
   }
   if (opts.join) {
     await chooseJoin(section, opts.join);

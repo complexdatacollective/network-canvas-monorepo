@@ -1,6 +1,7 @@
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
 import type { CommitBatch, VariableConfig } from '../../../store';
+import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 import { buildParentageBatch } from './buildParentageBatch';
 import { extractCustomAttributes, readBiologicalSex } from './personAttributes';
 
@@ -29,7 +30,9 @@ export function childCellTransform(
   // whose sex is needed for sex-linked genetics).
   const childSex = readBiologicalSex(childValues?.biologicalSex);
   if (childSex !== undefined) {
-    childAttributes[variableConfig.biologicalSexVariable] = [childSex];
+    writeOwnAttribute(childAttributes, variableConfig.biologicalSexVariable, [
+      childSex,
+    ]);
   }
 
   batch.nodes.push({

@@ -52,16 +52,25 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
   additionalAttributes: AdditionalAttributesSchema.optional(),
 });
 
+// ONE declaration of the highlight variable, shared by the loose shape the
+// reference collector reads and by both narrowed union branches, so the two
+// cannot disagree about what the site is. Tapping a node writes the attribute,
+// but only when `allowHighlighting` is on: a prompt that sets `variable` alone
+// merely colours nodes by a value something else recorded, which is a read (see
+// `usageRequiresSibling`, and the Canvas's display-only highlight).
+const highlightVariableReference = entityAttributeReference({
+  subject: 'stageSubject',
+  usage: 'unvalidatedAttribute',
+  usageRequiresSibling: 'allowHighlighting',
+});
+
 // Loose shape + superRefine for the author-facing message, piped into a union
 // so the static type proves `variable` exists whenever highlighting is on.
 // The union must accept exactly what the refine accepts.
 const sociogramHighlightSchema = z
   .strictObject({
     allowHighlighting: z.boolean().optional(),
-    variable: entityAttributeReference({
-      subject: 'stageSubject',
-      usage: 'unvalidatedAttribute',
-    }).optional(),
+    variable: highlightVariableReference.optional(),
   })
   .superRefine((highlight, ctx) => {
     if (highlight.allowHighlighting && !highlight.variable) {
@@ -78,17 +87,11 @@ const sociogramHighlightSchema = z
       z.union([
         z.strictObject({
           allowHighlighting: z.literal(true),
-          variable: entityAttributeReference({
-            subject: 'stageSubject',
-            usage: 'unvalidatedAttribute',
-          }),
+          variable: highlightVariableReference,
         }),
         z.strictObject({
           allowHighlighting: z.literal(false).optional(),
-          variable: entityAttributeReference({
-            subject: 'stageSubject',
-            usage: 'unvalidatedAttribute',
-          }).optional(),
+          variable: highlightVariableReference.optional(),
         }),
       ]),
     ),
@@ -196,7 +199,7 @@ export const categoricalBinPromptSchema = promptSchema
     if (prompt.otherVariable === '') {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'otherVariable must name a variable.',
+        message: 'otherVariable must name an attribute.',
         path: ['otherVariable'],
       });
       return;

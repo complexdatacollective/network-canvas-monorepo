@@ -1,0 +1,33 @@
+- main:
+  - heading "About you" [level=1]
+  - paragraph: Please answer the questions below.
+  - text: Text question Required
+  - textbox "Text question"
+  - text: Long text question Required
+  - textbox "Long text question"
+  - text: Number question Required
+  - button "Decrease value"
+  - spinbutton "Number question"
+  - button "Increase value"
+  - text: Radio question Required
+  - radiogroup "Radio question":
+    - radio "Alpha"
+    - text: Alpha
+    - radio "Beta"
+    - text: Beta
+  - text: Boolean question Required
+  - radiogroup "Boolean question":
+    - radio "Yes"
+    - radio "No"
+  - text: Scale question Required
+  - group "Scale question":
+    - slider "Scale question": "0.5"
+  - text: Date question Required
+  - textbox "Date question"
+  - text: Relative date question Required
+  - textbox "Relative date question"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

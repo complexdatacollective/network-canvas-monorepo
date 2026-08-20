@@ -1,23 +1,25 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ComponentType } from 'react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
-import { describe, expect, it, vi } from 'vitest';
+import { useContext, type ContextType } from 'react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import ValidatedField from '../../ValidatedField';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+
+import ArchitectField from '../../ArchitectField';
 import NativeSelect from '../NativeSelect';
 
-type FormValues = { choice?: string | null };
+beforeAll(() => {
+  // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field into
+  // view; jsdom implements no scrolling at all.
+  Element.prototype.scrollTo ??= () => undefined;
+});
 
-type HarnessOwnProps = {
-  allowPlaceholderSelect?: boolean;
-  onCreateOption?: (value: string) => Promise<void> | void;
-  onCreateNew?: () => void;
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
 };
 
 const options = [
@@ -25,76 +27,71 @@ const options = [
   { label: 'Disabled', value: 'disabled', disabled: true },
 ];
 
-const Harness = ({
-  handleSubmit,
-  allowPlaceholderSelect,
-  onCreateOption,
-  onCreateNew,
-}: InjectedFormProps<FormValues, HarnessOwnProps> & HarnessOwnProps) => (
-  <form onSubmit={handleSubmit(vi.fn())}>
-    <ValidatedField
-      name="choice"
-      label="Choice"
-      component={NativeSelect as ComponentType<Record<string, unknown>>}
-      validation={{ required: true }}
-      componentProps={{
-        options,
-        reserved: [{ label: 'Reserved', value: 'reserved' }],
-        entity: 'person',
-        placeholder: 'Choose one',
-        allowPlaceholderSelect,
-        onCreateOption,
-        onCreateNew,
-        createInputLabel: 'New choice',
-        validation: { allowedNMToken: 'choice name' },
-      }}
-    />
-  </form>
-);
-
-const ReduxHarness = reduxForm<FormValues, HarnessOwnProps>({
-  form: 'native-select-test',
-  touchOnBlur: true,
-  touchOnChange: false,
-})(Harness);
+type SetupOptions = {
+  allowPlaceholderSelect?: boolean;
+  onCreateOption?: (value: string) => Promise<void> | void;
+  onCreateNew?: () => void;
+  /** Labels already defined on the entity, for the duplicate check. */
+  existingOptions?: { label: string; value: string; disabled?: boolean }[];
+  /**
+   * Rules applied to the typed name. Defaulted to the NMToken rule most
+   * callers pass; a test about the duplicate check has to be able to drop it,
+   * because NMToken refuses any character outside `[a-zA-Z0-9._\-:]` and so
+   * short-circuits before the duplicate check is reached.
+   */
+  createValidation?: Record<string, unknown>;
+};
 
 const setup = ({
-  initialValues = {},
   allowPlaceholderSelect = false,
   onCreateOption,
   onCreateNew,
-}: HarnessOwnProps & { initialValues?: FormValues } = {}) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+  existingOptions = options,
+  createValidation = { allowedNMToken: 'choice name' },
+}: SetupOptions = {}) => {
+  storeApi = null;
 
-  render(
-    <Provider store={store}>
-      <ReduxHarness
-        initialValues={initialValues}
+  const view = render(
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      <ArchitectField
+        name="choice"
+        label="Choice"
+        component={NativeSelect}
+        validation={{ required: true }}
+        options={existingOptions}
+        reserved={[{ label: 'Reserved', value: 'reserved' }]}
+        entity="person"
+        placeholder="Choose one"
         allowPlaceholderSelect={allowPlaceholderSelect}
         onCreateOption={onCreateOption}
         onCreateNew={onCreateNew}
+        createInputLabel="New choice"
+        createValidation={createValidation}
       />
-    </Provider>,
+      <button type="submit">Save</button>
+    </Form>,
   );
 
-  const getForm = () => store.getState().form['native-select-test'];
-  return { getForm, store };
+  return {
+    ...view,
+    getChoice: () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState().getFormValues().choice as string | undefined;
+    },
+  };
 };
 
 describe('NativeSelect', () => {
-  it('maps selections and placeholders to the Redux value contract', () => {
-    const { getForm } = setup({ allowPlaceholderSelect: true });
+  it('maps selections and the placeholder to the form value contract', () => {
+    const { getChoice } = setup({ allowPlaceholderSelect: true });
     const select = screen.getByRole('combobox', { name: /Choice/ });
 
     fireEvent.change(select, { target: { value: 'alpha' } });
-    expect(getForm()?.values?.choice).toBe('alpha');
+    expect(getChoice()).toBe('alpha');
 
     fireEvent.change(select, { target: { value: '' } });
-    expect(getForm()?.values?.choice).toBeNull();
+    expect(getChoice()).toBeUndefined();
   });
 
   it('preserves disabled placeholder and option semantics', () => {
@@ -106,33 +103,29 @@ describe('NativeSelect', () => {
     expect(screen.getByRole('option', { name: 'Disabled' })).toBeDisabled();
   });
 
-  it('shows parent validation through the shared field error UI', () => {
+  it('shows field validation through the shared field error UI', async () => {
     setup();
     const select = screen.getByRole('combobox', { name: /Choice/ });
 
-    fireEvent.focus(select);
-    fireEvent.blur(select);
-
-    expect(screen.getByText('Required', { selector: 'p' })).toBeInTheDocument();
-    expect(select).toHaveAttribute('aria-invalid', 'true');
     expect(select).toHaveAttribute('aria-required', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByTestId('choice-field-error'),
+    ).not.toBeEmptyDOMElement();
+    await waitFor(() => expect(select).toHaveAttribute('aria-invalid', 'true'));
   });
 
-  it('untouches the parent while creating and resets draft state on cancel', async () => {
-    const { getForm } = setup({ onCreateOption: vi.fn() });
+  it('resets the create-option draft when creation is cancelled', async () => {
+    setup({ onCreateOption: vi.fn() });
     let select = screen.getByRole('combobox', { name: /Choice/ });
 
-    fireEvent.blur(select);
-    expect(getForm()?.fields?.choice?.touched).toBe(true);
-
     fireEvent.change(select, { target: { value: '_create' } });
-    expect(getForm()?.fields?.choice?.touched).not.toBe(true);
 
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'New choice' }),
-      {
-        target: { value: 'Draft' },
-      },
+      { target: { value: 'Draft' } },
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -163,6 +156,34 @@ describe('NativeSelect', () => {
     expect(create).toBeDisabled();
   });
 
+  /**
+   * The uniqueness question this control asks has to be the one every other
+   * Architect control asks — `normalizeForComparison`: case-insensitive AND
+   * Unicode-canonical. It compared raw case, so a label whose accented
+   * character was encoded the other way round was accepted as new here and
+   * then refused by the schema's `findDuplicateName` on save. The pair also
+   * reaches the participant as two choices nothing distinguishes.
+   */
+  it('refuses a created option that differs only in how an accent is encoded', async () => {
+    setup({
+      onCreateOption: vi.fn(),
+      existingOptions: [{ label: 'Caf\u00e9', value: 'cafe' }],
+      // No NMToken rule: it refuses any character outside
+      // `[a-zA-Z0-9._\\-:]` and would short-circuit before the duplicate check.
+      createValidation: {},
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: /Choice/ }), {
+      target: { value: '_create' },
+    });
+    const input = await screen.findByRole('textbox', { name: 'New choice' });
+
+    // The same text, spelled `e` + U+0301 rather than the precomposed U+00E9.
+    fireEvent.change(input, { target: { value: 'Cafe\u0301' } });
+
+    expect(screen.getByText(/already defined/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+  });
+
   it('submits a valid created option and returns to the select', async () => {
     const onCreateOption = vi.fn(async () => undefined);
     setup({ onCreateOption });
@@ -171,9 +192,7 @@ describe('NativeSelect', () => {
     });
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'New choice' }),
-      {
-        target: { value: 'NewChoice' },
-      },
+      { target: { value: 'NewChoice' } },
     );
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 

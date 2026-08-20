@@ -3,23 +3,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import type { StoredProtocolRow } from '../assetDB';
-import { markStoredProtocolValidated } from '../protocolLibrary';
+import {
+  markStoredProtocolValidated,
+  putStoredProtocolIfUnchanged,
+} from '../protocolLibrary';
 
 const db = vi.hoisted(() => ({
   get: vi.fn(),
+  put: vi.fn(),
   update: vi.fn(),
-  transaction: vi.fn(
-    async (_mode: string, _table: unknown, operation: () => Promise<void>) =>
-      await operation(),
-  ),
+  // Dexie takes a variable number of tables before the operation, so read the
+  // operation off the end rather than by position.
+  transaction: vi.fn(async (...args: unknown[]) => {
+    const operation = args.at(-1) as () => Promise<unknown>;
+    return await operation();
+  }),
 }));
 
 vi.mock('../assetDB', () => ({
   assetDb: {
     protocols: {
       get: db.get,
+      put: db.put,
       update: db.update,
     },
+    assets: {},
     transaction: db.transaction,
   },
 }));
@@ -91,5 +99,65 @@ describe('markStoredProtocolValidated', () => {
     );
 
     expect(db.update).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The write for a caller whose protocol was derived from a snapshot taken
+ * before some slow asynchronous work — where another tab holding the same
+ * library row can have autosaved into it in the meantime.
+ */
+describe('putStoredProtocolIfUnchanged', () => {
+  const repaired: CurrentProtocol = { ...protocol, name: 'Study (repaired)' };
+  const write = () =>
+    putStoredProtocolIfUnchanged(expectedRow, {
+      id: expectedRow.id,
+      protocol: repaired,
+      name: repaired.name,
+    });
+
+  beforeEach(() => {
+    db.get.mockReset();
+    db.put.mockReset().mockResolvedValue(undefined);
+    db.update.mockReset();
+    db.transaction.mockClear();
+  });
+
+  it('writes when the stored row is still the one the caller read', async () => {
+    db.get.mockResolvedValue(structuredClone(expectedRow));
+
+    await expect(write()).resolves.toBe(true);
+
+    expect(db.put).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1', protocol: repaired }),
+    );
+  });
+
+  it('refuses when another tab has saved over the row', async () => {
+    db.get.mockResolvedValue({
+      ...expectedRow,
+      protocol: { ...protocol, name: 'Saved by the other tab' },
+      updatedAt: 3,
+    });
+
+    await expect(write()).resolves.toBe(false);
+
+    expect(db.put).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the row has been deleted', async () => {
+    db.get.mockResolvedValue(undefined);
+
+    await expect(write()).resolves.toBe(false);
+
+    expect(db.put).not.toHaveBeenCalled();
+  });
+
+  it('compares and writes inside one transaction', async () => {
+    db.get.mockResolvedValue(structuredClone(expectedRow));
+
+    await write();
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
   });
 });

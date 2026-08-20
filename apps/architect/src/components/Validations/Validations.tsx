@@ -1,28 +1,94 @@
 import { isEqual, map, omit } from 'es-toolkit/compat';
-import { useId, useMemo, useState, type ReactNode } from 'react';
-import { Field } from 'redux-form';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { compose } from '@codaco/fresco-ui/utils/cva';
 import type { Variable } from '@codaco/protocol-validation';
+import { cx } from '~/utils/cva';
 
+import ArchitectField from '../Form/ArchitectField';
 import {
   findDraftContradictions,
   findLegalReferenceTargets,
-  floorIssue,
 } from './contradictions';
 import {
+  getGroupedValidationsForVariableType,
   isValidationWithListValue,
+  isValidationWithNumberValue,
   isValidationWithoutValue,
   type ValidationGroup,
 } from './options';
-import { formatCommitted, isDraftComplete, parseForRule } from './ruleValue';
+import {
+  completeRuleValues,
+  floorIssue,
+  formatCommitted,
+  incompleteRuleIssue,
+  isRuleValueComplete,
+  parseForRule,
+  type ValidationMap,
+} from './ruleValue';
+import { ruleMapIssue, type RuleMapContext } from './validateRuleMap';
 import ValidationRule, { type TargetOption } from './ValidationRule';
 
-const EMPTY_KEYS: ReadonlySet<string> = new Set();
-const EMPTY_RECORD: Record<string, unknown> = {};
+// `initialValue` is a register-effect dependency (`useField`'s registration
+// effect): an absent committed value must fall back to a REFERENTIALLY STABLE
+// empty object, not a fresh `{}` literal recreated every render — the latter
+// re-registers the field on every render of a parent that also happens to
+// re-render for an unrelated reason (e.g. a sibling `errors` update), which
+// silently drops any error the store had just attached to this field name.
+const EMPTY_VALIDATION: ValidationMap = {};
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+const EMPTY_KEYS: ReadonlySet<string> = new Set();
+
+const NUMERIC_RULE_DEFAULTS: Readonly<Record<string, number>> = {
+  minLength: 1,
+  maxLength: 1,
+  minValue: 0,
+  maxValue: 0,
+  minSelected: 1,
+  maxSelected: 1,
+};
+
+const OPPOSITE_BOUND: Readonly<Record<string, string>> = {
+  minLength: 'maxLength',
+  maxLength: 'minLength',
+  minValue: 'maxValue',
+  maxValue: 'minValue',
+  minSelected: 'maxSelected',
+  maxSelected: 'minSelected',
+};
+
+/**
+ * A numeric rule starts valid and useful instead of briefly entering the form
+ * as `null`. If its opposite bound already exists, matching that value keeps
+ * the pair satisfiable; otherwise counts start at one and scalar bounds at
+ * zero.
+ */
+const initialNumericRuleValue = (
+  ruleKey: string,
+  rules: ValidationMap,
+): number => {
+  const oppositeValue = rules[OPPOSITE_BOUND[ruleKey] ?? ''];
+  return typeof oppositeValue === 'number'
+    ? oppositeValue
+    : (NUMERIC_RULE_DEFAULTS[ruleKey] ?? 0);
+};
+
+/**
+ * The passphrase substitute codebook. Stable at module scope because
+ * `findDraftContradictions` caches its draft-free baseline run in a WeakMap
+ * keyed by this very object — a fresh `{}` per call would miss that cache on
+ * every keystroke.
+ */
+const NO_VARIABLES: Record<string, unknown> = {};
+
+const isRecord = (value: unknown): value is ValidationMap =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
@@ -34,58 +100,39 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * whose value happens to be absent. Key presence alone would render it on and
  * then parse the displayed rule as `true`, inventing a contradiction the
  * saved protocol does not have.
+ *
+ * A VALUE-taking rule is on as soon as its key is present, `null` included:
+ * that is how a switched-on-but-unanswered row is carried (see `handleToggle`).
  */
-const holdsRule = (rules: Record<string, unknown>, ruleKey: string) =>
+const holdsRule = (rules: ValidationMap, ruleKey: string) =>
   Object.hasOwn(rules, ruleKey) &&
   (!isValidationWithoutValue(ruleKey) || rules[ruleKey] === true);
 
-type ValidationsFieldProps = {
-  meta: {
-    submitFailed: boolean;
-    error?: string;
-  };
-  children?: ReactNode;
-};
-
-const ValidationsField = ({
-  meta: { submitFailed, error },
-  children = null,
-}: ValidationsFieldProps) => {
-  const errorId = useId();
-
-  return (
-    <div className="flex flex-col gap-2">
-      {children}
-      <FieldErrors
-        id={errorId}
-        errors={error ? [error] : []}
-        show={!!(submitFailed && error)}
-      />
-    </div>
-  );
-};
-
-type CheckDraft = (
-  ruleKey: string,
-  ruleValue: unknown,
-  base?: Record<string, unknown>,
-) => string[];
-
-type SettleOutcome = {
-  next: Record<string, unknown>;
-  /** The keys this pass resolved — the only rows safe to clear. */
-  settled: string[];
-};
+type CheckDraft = (ruleKey: string, ruleValue: unknown) => string[];
 
 type RuleListProps = {
   groups: ValidationGroup[];
-  committed: Record<string, unknown>;
-  update: (value: Record<string, unknown>) => void;
+  committed: ValidationMap;
+  update: (value: ValidationMap) => void;
   checkDraft: CheckDraft;
   legalTargetsByRule: ReadonlyMap<string, Set<string>>;
   existingVariableOptions: TargetOption[];
   candidateCount: number;
   uniqueValueCount?: number;
+  /**
+   * The `validation` field's current form error, or `undefined` while it has
+   * none. Each new reason marks the rows that are unanswered AT THAT MOMENT
+   * as ones the researcher has been told about — see `revealedIncomplete`.
+   */
+  fieldErrorToken?: string;
+  /**
+   * Whether leaving an unanswered value control should reveal its error. True
+   * only on a surface that has no save to object WITH —
+   * `CodebookVariableValidationSection` writes complete rules to the codebook
+   * on every change, but a newly focused picker still gets a chance to be
+   * answered before it is marked invalid.
+   */
+  revealIncompleteOnBlur?: boolean;
 };
 
 const RuleList = ({
@@ -97,134 +144,143 @@ const RuleList = ({
   existingVariableOptions,
   candidateCount,
   uniqueValueCount,
+  fieldErrorToken,
+  revealIncompleteOnBlur = false,
 }: RuleListProps) => {
-  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(EMPTY_KEYS);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [focusRequest, setFocusRequest] = useState<string | null>(null);
 
-  const isOn = (ruleKey: string) =>
-    holdsRule(committed, ruleKey) || openKeys.has(ruleKey);
+  /**
+   * Rules the researcher has already been TOLD are unanswered.
+   *
+   * Naming a rule as unanswered the instant it is switched on would scold
+   * them before they have interacted with its value control. A row only says
+   * so once that control has been left empty, or a save has objected while the
+   * row was unanswered. Membership is per rule, not a single form-wide flag:
+   * a rule switched on AFTER a refusal has not been objected to yet, and must
+   * not inherit the standing complaint about a different one.
+   */
+  const [revealedIncomplete, setRevealedIncomplete] =
+    useState<ReadonlySet<string>>(EMPTY_KEYS);
+  const committedRef = useRef(committed);
+  committedRef.current = committed;
+
+  useEffect(() => {
+    if (fieldErrorToken === undefined) {
+      setRevealedIncomplete((current) =>
+        current.size === 0 ? current : EMPTY_KEYS,
+      );
+      return;
+    }
+    setRevealedIncomplete((current) => {
+      const next = new Set(current);
+      for (const [ruleKey, value] of Object.entries(committedRef.current)) {
+        if (!isRuleValueComplete(ruleKey, value)) next.add(ruleKey);
+      }
+      return next.size === current.size ? current : next;
+    });
+  }, [fieldErrorToken]);
+
+  const isOn = (ruleKey: string) => holdsRule(committed, ruleKey);
 
   const textFor = (ruleKey: string) =>
     Object.hasOwn(drafts, ruleKey)
       ? drafts[ruleKey]!
       : formatCommitted(committed[ruleKey]);
 
-  const settle = (
-    base: Record<string, unknown>,
-    skip?: string,
-  ): SettleOutcome => {
+  /**
+   * Every row's typed-but-uncommitted text, applied to the map.
+   *
+   * A number row commits on blur, and the row a researcher is typing in has
+   * not necessarily blurred when another row commits: a stepper settles its
+   * own row on click, and Safari does not move focus to a button at all. Any
+   * commit therefore carries the whole rule list with it, so an edit cannot be
+   * left behind uncommitted while the map moves on without it. Rows that are
+   * no longer present (switched off, or rolled back by an undo) are skipped —
+   * their draft must not resurrect them.
+   */
+  const applyDrafts = (base: ValidationMap): ValidationMap => {
     const next = { ...base };
-    const settled: string[] = [];
-    // A row that still holds a draft is pending even when `base` already
-    // carries a committed value for it: that value is only the fallback the row
-    // would show if the edit were abandoned, and `applyCommit` clears the draft
-    // of every key it settles — so settling the fallback would discard the edit.
-    // `skip` is the row whose own commit started this pass, whose value in
-    // `base` is authoritative (a stepper commits a value its draft has not
-    // caught up with). Settling each key at most once keeps the pass finite.
-    const pending = new Set(
-      [...openKeys].filter(
-        (ruleKey) =>
-          ruleKey !== skip &&
-          (Object.hasOwn(drafts, ruleKey) || !holdsRule(next, ruleKey)),
-      ),
-    );
-    let settledAny = true;
-
-    while (settledAny) {
-      settledAny = false;
-      for (const ruleKey of pending) {
-        const parsed = parseForRule(ruleKey, textFor(ruleKey));
-        if (
-          !isDraftComplete(ruleKey, parsed) ||
-          checkDraft(ruleKey, parsed, next).length > 0
-        ) {
-          continue;
-        }
-        next[ruleKey] = parsed;
-        pending.delete(ruleKey);
-        settled.push(ruleKey);
-        settledAny = true;
-      }
+    for (const [ruleKey, text] of Object.entries(drafts)) {
+      if (!Object.hasOwn(next, ruleKey)) continue;
+      next[ruleKey] = parseForRule(ruleKey, text);
     }
-
-    // The row whose own commit started this pass is settled by that commit
-    // whenever its value survived into `next`; a REJECTED commit removes it
-    // instead, and must keep its draft displayed and flagged.
-    if (skip !== undefined && Object.hasOwn(next, skip)) {
-      settled.push(skip);
-    }
-
-    return { next, settled };
+    return next;
   };
 
-  // Only rows this pass actually resolved lose their draft and open state. A
-  // draft that still contradicts once another row commits stays exactly as
-  // typed — displayed, and flagged by `issuesFor` — instead of reverting to
-  // the committed fallback, which would discard typed input without a trace
-  // and leave the researcher nothing to correct.
-  const applyCommit = ({ next, settled }: SettleOutcome) => {
-    setOpenKeys((current) => {
-      const remaining = new Set(current);
-      settled.forEach((ruleKey) => remaining.delete(ruleKey));
-      return remaining.size === current.size ? current : remaining;
-    });
-    setDrafts((current) =>
-      settled.some((ruleKey) => Object.hasOwn(current, ruleKey))
-        ? omit(current, settled)
-        : current,
-    );
-
+  /**
+   * Commits exactly what the researcher configured, contradictory or not. The
+   * rule editor used to delete the rule instead whenever its value failed a
+   * check, which destroyed the rule's previous value AND left a map that was
+   * trivially consistent — so every later gate waved the save through. Holding
+   * the value keeps it on screen for correction and gives the `validation`
+   * field something to be invalid about.
+   */
+  const commit = (change: (base: ValidationMap) => ValidationMap) => {
+    const next = change(applyDrafts(committed));
+    setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
     if (!isEqual(next, committed)) {
       update(next);
     }
   };
 
+  /**
+   * Switching a rule on writes it into the committed map immediately: `true`
+   * for a value-less rule, a valid initial number for a numeric rule, and
+   * `null` for a comparison rule still waiting on an explicit target. Carrying
+   * the ON state in the value rather than in local component state is what lets
+   * the field validate itself instead of quietly dropping half-configured
+   * rules.
+   */
   const handleToggle = (ruleKey: string, nextState: boolean) => {
     if (!nextState) {
-      setOpenKeys((current) => {
+      // Switching a rule off answers the complaint about it, so switching it
+      // back on later starts from silence again.
+      setRevealedIncomplete((current) => {
+        if (!current.has(ruleKey)) return current;
         const next = new Set(current);
         next.delete(ruleKey);
         return next;
       });
-      setDrafts((current) => omit(current, ruleKey));
-      setFocusRequest((current) => (current === ruleKey ? null : current));
-      applyCommit(settle(omit(committed, ruleKey), ruleKey));
+      commit((base) => omit(base, ruleKey));
       return;
     }
-
-    setOpenKeys((current) => new Set(current).add(ruleKey));
 
     if (isValidationWithoutValue(ruleKey)) {
-      const parsed = parseForRule(ruleKey, '');
-      if (checkDraft(ruleKey, parsed).length === 0) {
-        applyCommit(settle({ ...committed, [ruleKey]: parsed }, ruleKey));
-      }
+      commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, '') }));
       return;
     }
 
-    setFocusRequest(ruleKey);
+    if (isValidationWithNumberValue(ruleKey)) {
+      commit((base) => ({
+        ...base,
+        [ruleKey]: initialNumericRuleValue(ruleKey, base),
+      }));
+      return;
+    }
+
+    commit((base) => ({ ...base, [ruleKey]: null }));
   };
 
   const handleTextChange = (ruleKey: string, text: string) => {
-    setOpenKeys((current) =>
-      current.has(ruleKey) ? current : new Set(current).add(ruleKey),
-    );
     setDrafts((current) => ({ ...current, [ruleKey]: text }));
   };
 
   const handleCommit = (ruleKey: string, text: string) => {
-    const parsed = parseForRule(ruleKey, text);
-    const rejected =
-      !isDraftComplete(ruleKey, parsed) ||
-      checkDraft(ruleKey, parsed).length > 0;
+    commit((base) => ({ ...base, [ruleKey]: parseForRule(ruleKey, text) }));
+  };
 
-    applyCommit(
-      rejected
-        ? settle(omit(committed, ruleKey), ruleKey)
-        : settle({ ...committed, [ruleKey]: parsed }, ruleKey),
-    );
+  const handleValueExit = (ruleKey: string, text: string) => {
+    handleCommit(ruleKey, text);
+    if (
+      !revealIncompleteOnBlur ||
+      isRuleValueComplete(ruleKey, parseForRule(ruleKey, text))
+    ) {
+      return;
+    }
+    setRevealedIncomplete((current) => {
+      if (current.has(ruleKey)) return current;
+      return new Set(current).add(ruleKey);
+    });
   };
 
   const issuesFor = (ruleKey: string): string[] => {
@@ -232,23 +288,26 @@ const RuleList = ({
       return [];
     }
     const parsed = parseForRule(ruleKey, textFor(ruleKey));
-    if (!isDraftComplete(ruleKey, parsed)) {
-      return [];
+    if (!isRuleValueComplete(ruleKey, parsed)) {
+      if (!revealedIncomplete.has(ruleKey)) {
+        return [];
+      }
+      const incomplete = incompleteRuleIssue({ [ruleKey]: parsed });
+      return incomplete ? [incomplete] : [];
     }
-    if (isEqual(committed[ruleKey], parsed)) {
-      return [];
-    }
+    const floor = floorIssue(ruleKey, parsed);
+    if (floor) return [floor];
     return checkDraft(ruleKey, parsed);
   };
 
   const hintFor = (ruleKey: string, isUnavailable: boolean) => {
     if (isUnavailable) {
       return candidateCount === 0
-        ? 'No other variable of this type exists to compare against.'
-        : 'Every comparable variable would make this rule impossible to satisfy.';
+        ? 'No other attribute of this type exists to compare against.'
+        : 'Every comparable attribute would make this rule impossible to satisfy.';
     }
     if (ruleKey === 'unique' && uniqueValueCount !== undefined) {
-      return `This variable has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
+      return `This attribute has only ${uniqueValueCount} possible values. Interview preview will refuse to generate synthetic data if more than ${uniqueValueCount} entities can hold a value while ‘Must be unique’ is enabled.`;
     }
     return undefined;
   };
@@ -264,57 +323,79 @@ const RuleList = ({
     );
   };
 
-  return (
-    <div className="flex w-full flex-col gap-8">
-      {groups.map((group) => (
-        <fieldset key={group.id} className="flex min-w-0 flex-col gap-1">
-          <legend className="mb-2">
-            <Heading level="h4">{group.heading}</Heading>
-          </legend>
-          {group.rules.map((rule) => {
-            const on = isOn(rule.value);
-            const isUnavailable =
-              !on &&
-              isValidationWithListValue(rule.value) &&
-              (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+  );
 
-            return (
-              <ValidationRule
-                key={rule.value}
-                ruleKey={rule.value}
-                label={rule.label}
-                isOn={on}
-                isUnavailable={isUnavailable}
-                hint={hintFor(rule.value, isUnavailable)}
-                text={textFor(rule.value)}
-                issues={issuesFor(rule.value)}
-                targetOptions={targetOptionsFor(rule.value)}
-                onToggle={handleToggle}
-                onTextChange={handleTextChange}
-                onCommit={handleCommit}
-                shouldFocusValue={focusRequest === rule.value}
-              />
-            );
-          })}
+  return (
+    <div className="flex w-full flex-col">
+      {groups.map((group) => (
+        <fieldset
+          key={group.id}
+          className={cx(
+            variants(),
+            'relative my-4 flex w-full min-w-0 flex-col overflow-visible whitespace-normal',
+            // When last item, remove bottom margin to avoid double spacing with the next section
+            'last:mb-0',
+          )}
+        >
+          <legend className="bg-input absolute -top-4 left-6 z-10 rounded px-4 py-1 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:rounded-t before:border-x-2 before:border-t-2 before:content-['']">
+            <Heading level="label">{group.heading}</Heading>
+          </legend>
+          <div className="flex w-full flex-col gap-4 pt-4">
+            {group.rules.map((rule) => {
+              const on = isOn(rule.value);
+              const isUnavailable =
+                !on &&
+                isValidationWithListValue(rule.value) &&
+                (legalTargetsByRule.get(rule.value)?.size ?? 0) === 0;
+
+              return (
+                <ValidationRule
+                  key={rule.value}
+                  ruleKey={rule.value}
+                  label={rule.label}
+                  isOn={on}
+                  isUnavailable={isUnavailable}
+                  hint={hintFor(rule.value, isUnavailable)}
+                  text={textFor(rule.value)}
+                  issues={issuesFor(rule.value)}
+                  targetOptions={targetOptionsFor(rule.value)}
+                  onToggle={handleToggle}
+                  onTextChange={handleTextChange}
+                  onCommit={handleCommit}
+                  onValueExit={handleValueExit}
+                />
+              );
+            })}
+          </div>
         </fieldset>
       ))}
     </div>
   );
 };
 
-type ValidationsProps = {
-  name: string;
+type ValidationsFieldProps = {
+  /** The field's resolved name, supplied by `Field` — see `getFieldErrors`. */
+  name?: string;
+  value?: ValidationMap;
+  onChange?: (value: ValidationMap) => void;
   entity?: string;
-  /**
-   * Identity of whatever owns these rules when it is not a codebook variable —
-   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
-   * uncommitted row state, which `currentVariableId` cannot scope there.
-   */
   scopeId?: string;
-  validationGroups?: ValidationGroup[];
-  value?: Record<string, unknown> | null;
-  update: (value: Record<string, unknown>) => void;
-  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  existingVariables: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+  revealIncompleteOnBlur?: boolean;
+};
+
+type RuleMapContextInput = {
   variableType?: string;
   allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
   currentVariableId?: string;
@@ -324,14 +405,14 @@ type ValidationsProps = {
   draftVariableName?: unknown;
 };
 
-const Validations = ({
-  name,
-  entity,
-  scopeId,
-  validationGroups = [],
-  existingVariables = {},
-  value,
-  update,
+/**
+ * The one place the analyser's inputs are assembled, shared by the row-level
+ * check, the reference-target picker and the field-level validator so the
+ * three can never judge different drafts. The Anonymisation passphrase is not
+ * a codebook variable, so it is analysed as a lone text surrogate — which is
+ * what keeps the local length-pair check working there.
+ */
+const ruleMapContextFor = ({
   variableType,
   allVariables,
   currentVariableId,
@@ -339,8 +420,96 @@ const Validations = ({
   draftComponent,
   draftParameters,
   draftVariableName,
-}: ValidationsProps) => {
-  const committed = isRecord(value) ? value : EMPTY_RECORD;
+}: RuleMapContextInput): RuleMapContext => {
+  const isPassphrase = variableType === 'passphrase';
+  return {
+    allVariables: isPassphrase ? NO_VARIABLES : (allVariables ?? NO_VARIABLES),
+    currentVariableId: currentVariableId ?? '',
+    variableType: isPassphrase ? 'text' : (variableType ?? ''),
+    options: draftOptions,
+    component: draftComponent,
+    parameters: draftParameters,
+    draftVariableName,
+  };
+};
+
+/**
+ * The `withStoreState`/`withAddNew`/`withUpdateHandlers` HOC stack collapsed
+ * into the field component itself: `value`/`onChange` (from `ArchitectField`)
+ * replace the old `formValueSelector`/`change` reads and writes, and the rule
+ * list's uncommitted row state — previously spread across `withState`
+ * injections — is local state inside `RuleList`.
+ */
+const ValidationsField = ({
+  name = 'validation',
+  value,
+  onChange,
+  entity,
+  scopeId,
+  existingVariables,
+  variableType,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+  revealIncompleteOnBlur,
+}: ValidationsFieldProps) => {
+  const committed = isRecord(value) ? value : EMPTY_VALIDATION;
+
+  const validationGroups = useMemo(
+    () =>
+      getGroupedValidationsForVariableType(variableType ?? '', entity ?? ''),
+    [variableType, entity],
+  );
+
+  const context = useMemo(
+    () =>
+      ruleMapContextFor({
+        variableType,
+        allVariables,
+        currentVariableId,
+        draftOptions,
+        draftComponent,
+        draftParameters,
+        draftVariableName,
+      }),
+    [
+      variableType,
+      allVariables,
+      currentVariableId,
+      draftOptions,
+      draftComponent,
+      draftParameters,
+      draftVariableName,
+    ],
+  );
+
+  // The reason the save was refused, as the form store holds it. Read here
+  // rather than passed in: this field is nested in whichever form surrounds
+  // it (a row-editor dialog, the stage form, or the codebook section's own
+  // isolated form) and the error always lands on this field's own name.
+  const fieldErrors = useFormStore((store) => store.getFieldErrors(name));
+  const fieldErrorToken =
+    fieldErrors && fieldErrors.length > 0 ? fieldErrors.join('|') : undefined;
+
+  // A standing objection has to keep up with the map it is about. Editing a
+  // rule row does not blur OUT of this field — every rule row is inside it —
+  // so nothing else revalidates, and the message would go on naming a value
+  // that is no longer on screen. Only ever while an error already stands: the
+  // first one is the save's to raise, not this field's to volunteer.
+  const validateField = useFormStore((store) => store.validateField);
+  const revalidatedFor = useRef<ValidationMap | undefined>(undefined);
+  useEffect(() => {
+    if (fieldErrorToken === undefined) {
+      revalidatedFor.current = undefined;
+      return;
+    }
+    if (revalidatedFor.current === committed) return;
+    revalidatedFor.current = committed;
+    void validateField(name);
+  }, [committed, fieldErrorToken, name, validateField]);
 
   const uniqueValueCount = useMemo(() => {
     if (variableType !== 'boolean' && variableType !== 'ordinal') {
@@ -374,47 +543,20 @@ const Validations = ({
 
   const checkDraft = useMemo(
     (): CheckDraft =>
-      (
-        ruleKey: string,
-        ruleValue: unknown,
-        base?: Record<string, unknown>,
-      ): string[] => {
-        // R1 floor check runs ahead of the contradiction analyser: a
-        // below-floor value is input the schema would reject outright, so
-        // there is no point feeding it into findDraftContradictions.
-        const floor = floorIssue(ruleKey, ruleValue);
-        if (floor) return [floor];
-        const prospective: Record<string, unknown> = { ...(base ?? committed) };
-        prospective[ruleKey] = ruleValue;
-        // The Anonymisation passphrase is not a codebook variable; a text
-        // surrogate lets the local length-pair check still apply.
-        const isPassphrase = variableType === 'passphrase';
+      (ruleKey: string, ruleValue: unknown): string[] => {
+        // Unanswered rules are stripped before the analyser sees the map: a
+        // `null` is "switched on, not typed into yet", and the analyser would
+        // read it as a bound.
+        const prospective = completeRuleValues({
+          ...committed,
+          [ruleKey]: ruleValue,
+        });
         return findDraftContradictions({
-          allVariables: isPassphrase ? {} : (allVariables ?? {}),
-          currentVariableId: currentVariableId ?? '',
-          variableType: isPassphrase ? 'text' : (variableType ?? ''),
+          ...context,
           validation: prospective,
-          options: draftOptions,
-          // Nineteenth-wave Finding 4: without these the row check analysed
-          // the COMMITTED variable, so a parameters edit and a new reference
-          // rule made in the same dialog session disagreed with the
-          // form-level validator — the row rejected an edit that saves
-          // perfectly well once the dialog is closed and reopened.
-          component: draftComponent,
-          parameters: draftParameters,
-          draftVariableName,
         }).map((contradiction) => contradiction.message);
       },
-    [
-      committed,
-      allVariables,
-      currentVariableId,
-      variableType,
-      draftOptions,
-      draftComponent,
-      draftParameters,
-      draftVariableName,
-    ],
+    [committed, context],
   );
 
   const candidateIds = useMemo(
@@ -445,55 +587,144 @@ const Validations = ({
   // the list asks: "may this rule be switched on at all" (is it non-empty)
   // and "which targets may it offer" (the set itself).
   const legalTargetsByRule = useMemo(() => {
-    const isPassphrase = variableType === 'passphrase';
+    // As in `checkDraft`: the picker's baseline is the map as it would be
+    // saved, so an unanswered row contributes nothing to it.
+    const validation = completeRuleValues(committed);
     const byRule = new Map<string, Set<string>>();
     for (const ruleKey of referenceRuleKeys) {
       byRule.set(
         ruleKey,
         findLegalReferenceTargets({
-          allVariables: isPassphrase ? {} : (allVariables ?? {}),
-          currentVariableId: currentVariableId ?? '',
-          variableType: isPassphrase ? 'text' : (variableType ?? ''),
-          validation: committed,
+          ...context,
+          validation,
           ruleKey,
           candidateIds,
-          options: draftOptions,
-          component: draftComponent,
-          parameters: draftParameters,
-          draftVariableName,
         }),
       );
     }
     return byRule;
-  }, [
-    referenceRuleKeys,
-    candidateIds,
-    committed,
+  }, [referenceRuleKeys, candidateIds, committed, context]);
+
+  return (
+    <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
+      <RuleList
+        key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
+        groups={validationGroups}
+        committed={committed}
+        update={(next) => onChange?.(next)}
+        checkDraft={checkDraft}
+        legalTargetsByRule={legalTargetsByRule}
+        existingVariableOptions={existingVariableOptions}
+        candidateCount={candidateIds.length}
+        uniqueValueCount={uniqueValueCount}
+        fieldErrorToken={fieldErrorToken}
+        revealIncompleteOnBlur={revealIncompleteOnBlur}
+      />
+    </div>
+  );
+};
+
+type ValidationsProps = {
+  name: string;
+  /** The committed validation record, for the field's `initialValue`. */
+  initialValue?: ValidationMap;
+  existingVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  variableType?: string;
+  entity?: string;
+  /**
+   * Identity of whatever owns these rules when it is not a codebook variable —
+   * the Anonymisation passphrase belongs to a stage. Scopes the rule list's
+   * uncommitted row state, which `currentVariableId` cannot scope there.
+   */
+  scopeId?: string;
+  allVariables?: Record<string, Pick<Variable, 'name' | 'type'>>;
+  currentVariableId?: string;
+  /**
+   * Sibling draft values from whatever form surrounds this field — read (and
+   * kept reactive) by the caller, since this component may be nested inside
+   * the field-editor dialog (where they are live sibling fields) or inside
+   * `CodebookVariableValidationSection`'s isolated form (where they are not
+   * fields at all, just the committed variable's own values).
+   */
+  draftOptions?: unknown;
+  draftComponent?: unknown;
+  draftParameters?: unknown;
+  draftVariableName?: unknown;
+  /**
+   * Set by a host that writes every change straight through rather than
+   * collecting them for a save — `CodebookVariableValidationSection`. There
+   * being no save to refuse, an unanswered rule is reported when the user
+   * leaves its value control empty; complete rules are written immediately.
+   */
+  commitsImmediately?: boolean;
+};
+
+/**
+ * A validation-rule editor bound to one stage or codebook-variable form
+ * field. Renders the whole `Record<ruleName, value>` as ONE opaque field
+ * value (the same governing rule every array/record field follows in this
+ * migration) — individual rows are rendered from that value locally, never
+ * registered as their own form fields.
+ *
+ * Save-backed hosts validate the field's OWN value (`ruleMapIssue`) and refuse
+ * an unanswered or contradictory map through the ordinary `validateForm`
+ * path. The codebook section has no save boundary, so it omits field-level
+ * validation and uses the same predicate before each direct write instead;
+ * this prevents one blurred rule from making later untouched rules inherit
+ * its form-field error. Row errors keep `aria-invalid` and
+ * `aria-describedby` attached to the exact control that needs correction.
+ */
+const Validations = ({
+  name,
+  initialValue,
+  existingVariables = {},
+  variableType,
+  entity,
+  scopeId,
+  allVariables,
+  currentVariableId,
+  draftOptions,
+  draftComponent,
+  draftParameters,
+  draftVariableName,
+  commitsImmediately = false,
+}: ValidationsProps): ReactNode => {
+  const context = ruleMapContextFor({
+    variableType,
     allVariables,
     currentVariableId,
-    variableType,
     draftOptions,
     draftComponent,
     draftParameters,
     draftVariableName,
-  ]);
+  });
+  // Rebuilt every render, which is free: `useValidationProps` keeps ONE
+  // `custom` entry for the field's lifetime and reads the current config
+  // through a ref, so a fresh closure never re-registers the field.
+  const validation = {
+    ruleMap: (ruleMap: unknown) => ruleMapIssue(ruleMap, context),
+  };
 
   return (
-    <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
-      <Field name={name} component={ValidationsField}>
-        <RuleList
-          key={`${scopeId ?? ''}|${currentVariableId ?? ''}|${variableType ?? ''}|${entity ?? ''}`}
-          groups={validationGroups}
-          committed={committed}
-          update={update}
-          checkDraft={checkDraft}
-          legalTargetsByRule={legalTargetsByRule}
-          existingVariableOptions={existingVariableOptions}
-          candidateCount={candidateIds.length}
-          uniqueValueCount={uniqueValueCount}
-        />
-      </Field>
-    </div>
+    <ArchitectField
+      name={name}
+      component={ValidationsField}
+      label="Validation rules"
+      hint="Enable one or more validation rules to apply to this attribute."
+      initialValue={initialValue ?? EMPTY_VALIDATION}
+      validation={commitsImmediately ? undefined : validation}
+      revealIncompleteOnBlur={commitsImmediately}
+      existingVariables={existingVariables}
+      variableType={variableType}
+      entity={entity}
+      scopeId={scopeId}
+      allVariables={allVariables}
+      currentVariableId={currentVariableId}
+      draftOptions={draftOptions}
+      draftComponent={draftComponent}
+      draftParameters={draftParameters}
+      draftVariableName={draftVariableName}
+    />
   );
 };
 

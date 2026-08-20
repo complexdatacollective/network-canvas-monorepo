@@ -29,7 +29,7 @@ describe('MailingListForm', () => {
     expect(submit).toHaveClass(
       'h-12',
       'elevation-low',
-      'not-disabled:active:translate-y-[2px]',
+      'ui-enabled:active:translate-y-[2px]',
     );
 
     fireEvent.change(email, { target: { value: 'researcher@example.com' } });

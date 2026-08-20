@@ -1,0 +1,29 @@
+- main:
+  - heading "About You" [level=1]
+  - paragraph: This form has enough fields to overflow the viewport.
+  - text: Question 1 Required
+  - textbox "Question 1": An answer
+  - text: Question 2
+  - textbox "Question 2"
+  - text: Question 3
+  - textbox "Question 3"
+  - text: Question 4
+  - textbox "Question 4"
+  - text: Question 5
+  - textbox "Question 5"
+  - text: Question 6
+  - textbox "Question 6"
+  - text: Question 7
+  - textbox "Question 7"
+  - text: Question 8
+  - textbox "Question 8"
+  - text: Question 9
+  - textbox "Question 9"
+  - status:
+    - button "Scroll to see more questions":
+      - heading "Scroll to see more questions" [level=4]
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

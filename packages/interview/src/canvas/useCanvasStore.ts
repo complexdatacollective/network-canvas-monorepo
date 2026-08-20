@@ -199,8 +199,11 @@ export const createCanvasStore = () =>
           void dispatch(
             updateNode({
               nodeId,
-              newAttributeData: {
-                [layoutVariable]: { x: position.x, y: position.y },
+              attributePatch: {
+                set: {
+                  [layoutVariable]: { x: position.x, y: position.y },
+                },
+                unset: [],
               },
               currentStep,
             }),

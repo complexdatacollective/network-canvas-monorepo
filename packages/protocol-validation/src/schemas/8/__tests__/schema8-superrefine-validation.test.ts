@@ -208,7 +208,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
         expect(result.error.issues[0]?.message).toBe(
-          'The variable "nonexistentVariable" does not exist in the codebook',
+          'The attribute "nonexistentVariable" does not exist in the codebook',
         );
         expect(result.error.issues[0]?.path).toEqual([
           'stages',
@@ -472,7 +472,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const variableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(variableError).toBeDefined();
@@ -546,7 +546,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((candidate) =>
           candidate.message.includes(
-            'The variable "category" must be of type text',
+            'The attribute "category" must be of type text',
           ),
         );
         expect(issue?.path).toEqual([
@@ -588,7 +588,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const otherVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(otherVariableError).toBeDefined();
@@ -748,7 +748,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const edgeVariableError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(edgeVariableError).toBeDefined();
@@ -796,7 +796,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "duration" must be of type ordinal',
+            'The attribute "duration" must be of type ordinal',
           ),
         );
         expect(typeError).toBeDefined();
@@ -877,7 +877,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(layoutError).toBeDefined();
@@ -975,7 +975,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -1114,7 +1114,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            '"nonexistentAttribute" is not a valid variable ID',
+            '"nonexistentAttribute" is not a valid attribute ID',
           ),
         );
         expect(attributeError).toBeDefined();
@@ -1344,7 +1344,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Operator "CONTAINS" is not valid for variable type "number"',
+            'Operator "CONTAINS" is not valid for attribute type "number"',
           ),
         );
         expect(operatorError).toBeDefined();
@@ -1389,7 +1389,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'Operator "GREATER_THAN" is not valid for variable type "text"',
+            'Operator "GREATER_THAN" is not valid for attribute type "text"',
           ),
         );
         expect(operatorError).toBeDefined();
@@ -1709,7 +1709,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1780,7 +1780,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1905,7 +1905,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -1976,7 +1976,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentVariable" does not exist in the codebook',
+            'The attribute "nonexistentVariable" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -2068,7 +2068,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "nonexistentEgoVar" does not exist in the codebook',
+            'The attribute "nonexistentEgoVar" does not exist in the codebook',
           ),
         );
         expect(crossRefError).toBeDefined();
@@ -2443,7 +2443,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const refError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The variable "age" does not exist in the codebook',
+            'The attribute "age" does not exist in the codebook',
           ),
         );
         expect(refError).toBeDefined();
@@ -2675,7 +2675,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
           i.message.includes(
-            'FamilyPedigree biological sex variable "bioSex" must use its fixed set of options',
+            'FamilyPedigree biological sex attribute "bioSex" must use its fixed set of options',
           ),
         );
         expect(issue).toBeDefined();
@@ -2702,7 +2702,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree relationship type variable "relType"',
+              'FamilyPedigree relationship type attribute "relType"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
@@ -2730,7 +2730,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree gamete role variable "gameteRole"',
+              'FamilyPedigree gamete role attribute "gameteRole"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();
@@ -2761,7 +2761,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         const issue = result.error.issues.find(
           (i) =>
             i.message.includes(
-              'FamilyPedigree biological sex variable "bioSex"',
+              'FamilyPedigree biological sex attribute "bioSex"',
             ) && i.message.includes('must use its fixed set of options'),
         );
         expect(issue).toBeDefined();

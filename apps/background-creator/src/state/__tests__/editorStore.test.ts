@@ -383,6 +383,19 @@ describe('polygon draft', () => {
     expect(state().activeTool).toBe('polygon');
   });
 
+  it('refuses a self-intersecting polygon with non-zero shoelace area', () => {
+    state().setTool('polygon');
+    state().beginDraft('polygon', { x: 0.5, y: 0.1 });
+    state().addDraftPoint({ x: 0.735, y: 0.824 });
+    state().addDraftPoint({ x: 0.12, y: 0.376 });
+    state().addDraftPoint({ x: 0.88, y: 0.376 });
+    state().addDraftPoint({ x: 0.265, y: 0.824 });
+    state().closeDraftPolygon();
+    expect(state().doc.elements).toHaveLength(0);
+    expect(state().draft).not.toBeNull();
+    expect(state().activeTool).toBe('polygon');
+  });
+
   it('drops a closing press on the first vertex from a valid polygon', () => {
     state().beginDraft('polygon', { x: 0.2, y: 0.2 });
     state().addDraftPoint({ x: 0.6, y: 0.3 });

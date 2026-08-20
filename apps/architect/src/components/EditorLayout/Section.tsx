@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -46,6 +46,13 @@ const Section = ({
   required = true,
 }: SectionProps) => {
   const [internalOpen, setInternalOpen] = useState(startExpanded);
+  // The toggle is named BY the section heading rather than carrying a name of
+  // its own. Every stage editor stacks several of these, and a constant
+  // ("Turn this feature on or off") made them one indistinguishable control to
+  // anyone listing the page's switches. `role="switch"` plus `aria-checked`
+  // already say what the control does; the heading is the only part that says
+  // what it does it TO.
+  const sectionLabelId = useId();
   // Eleventh-wave Finding 3: a forced expansion wins over the internal toggle
   // state without destroying it, so releasing the force restores whatever the
   // user (or startExpanded) last chose.
@@ -72,10 +79,11 @@ const Section = ({
 
   const sectionLabel = (
     <span
+      id={sectionLabelId}
       className={cx(
         layout === 'vertical' &&
           headingVariants({
-            level: 'h4',
+            level: 'label',
             margin: 'none',
           }),
         layout === 'horizontal' &&
@@ -97,7 +105,7 @@ const Section = ({
     <div>
       <div
         className={cx(
-          'flex items-center gap-4 text-right',
+          'mb-2 flex items-center gap-4 text-right',
           // `tablet-landscape:top-24` (6rem) pins the heading just below
           // the sticky top menu bar so it never overlaps it; `z-1` keeps
           // it above the section content but below the nav.
@@ -108,14 +116,18 @@ const Section = ({
         {sectionLabel}
         {toggleable && (
           <ToggleField
-            title="Turn this feature on or off"
+            aria-labelledby={sectionLabelId}
             value={isOpen}
             onChange={() => void changeToggleState()}
             disabled={disabled}
-            className={cx(
-              'shrink-0 grow-0',
-              disabled && 'cursor-not-allowed opacity-50',
-            )}
+            className={
+              disabled && layout === 'horizontal'
+                ? cx(
+                    '[&>span]:bg-input-contrast/60 opacity-100',
+                    isOpen ? 'bg-input-contrast/40' : 'bg-input-contrast/20',
+                  )
+                : undefined
+            }
           />
         )}
       </div>
@@ -123,25 +135,25 @@ const Section = ({
     </div>
   );
 
-  const fieldsetContent = disabled ? (
+  const sectionContent = disabled ? (
     layout === 'horizontal' ? (
-      <div className="bg-surface-2/75 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center font-semibold italic">
+      <div className="bg-surface-2 text-text/70 max-tablet-landscape:rounded max-tablet-landscape:p-8 max-tablet-landscape:text-center tablet-landscape:absolute tablet-landscape:inset-0 tablet-landscape:h-full tablet-landscape:w-full flex items-center justify-center rounded font-semibold italic">
         {disabledMessage}
       </div>
     ) : (
-      <div className="bg-surface-2/75 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
+      <div className="bg-surface-2 text-text/70 flex items-center justify-center rounded p-8 text-center font-semibold italic">
         {disabledMessage}
       </div>
     )
+  ) : isOpen ? (
+    <fieldset className="relative min-w-0">{children}</fieldset>
   ) : (
-    <>
-      {isOpen && children}
-      {toggleable && !isOpen && layout !== 'vertical' && (
-        <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
-          Click the toggle to enable this feature...
-        </div>
-      )}
-    </>
+    toggleable &&
+    layout !== 'vertical' && (
+      <div className="text-text/70 max-tablet-landscape:hidden flex min-h-32 w-full items-center justify-center font-semibold italic">
+        Click the toggle to enable this feature...
+      </div>
+    )
   );
 
   if (layout === 'horizontal') {
@@ -163,7 +175,7 @@ const Section = ({
           shadow="sm"
           className="relative overflow-visible!"
         >
-          <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
+          {sectionContent}
         </Surface>
       </section>
     );
@@ -183,7 +195,7 @@ const Section = ({
       )}
     >
       {sectionHeader}
-      <fieldset className="relative min-w-0">{fieldsetContent}</fieldset>
+      {sectionContent}
     </Surface>
   );
 };

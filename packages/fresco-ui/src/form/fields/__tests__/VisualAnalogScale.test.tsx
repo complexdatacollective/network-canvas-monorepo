@@ -50,3 +50,37 @@ describe('VisualAnalogScaleField — normalised 0-1 scale', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Issue #1385: an unanswered required scale rendered — and announced — its
+ * resting midpoint as though the participant had chosen it, while `required`
+ * still blocked them. The thumb has to rest somewhere and a native range
+ * input always carries an `aria-valuenow`, so `aria-valuetext` is what has to
+ * tell the truth.
+ */
+describe('VisualAnalogScaleField — unanswered state', () => {
+  it('announces that no value has been chosen yet', () => {
+    render(<VisualAnalogScaleField value={undefined} onChange={vi.fn()} />);
+
+    expect(screen.getByRole('slider')).toHaveAttribute(
+      'aria-valuetext',
+      'No value chosen yet',
+    );
+  });
+
+  it('announces the chosen value once one is recorded', () => {
+    render(<VisualAnalogScaleField value={0.5} onChange={vi.fn()} />);
+
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuetext', '50%');
+  });
+
+  it('marks the unanswered scale for tests and styling', () => {
+    const { container, rerender } = render(
+      <VisualAnalogScaleField value={undefined} onChange={vi.fn()} />,
+    );
+    expect(container.querySelector('[data-unanswered]')).not.toBeNull();
+
+    rerender(<VisualAnalogScaleField value={0.5} onChange={vi.fn()} />);
+    expect(container.querySelector('[data-unanswered]')).toBeNull();
+  });
+});

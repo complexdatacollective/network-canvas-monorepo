@@ -1,42 +1,26 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { invariant } from 'es-toolkit';
-import { compact } from 'es-toolkit/compat';
-import { v1 as uuid } from 'uuid';
 
 import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
 
+import { commitStageEditorDraft } from './commitStageEditorDraft';
 import { deleteStage } from './deleteStage';
 
 type StagesState = Stage[];
-
-type CreateStagePayload = {
-  stage: Stage;
-  index?: number;
-};
-
-type UpdateStagePayload = {
-  stageId: string;
-  stage: Partial<Stage>;
-  overwrite?: boolean;
-};
 
 type MoveStagePayload = {
   oldIndex: number;
   newIndex: number;
 };
 
-type DeletePromptPayload = {
-  stageId: string;
-  promptId: string | number;
-  deleteEmptyStage?: boolean;
-};
-
 // Initial state
 const initialState: StagesState = [];
 
+// The base every newly created stage is built on. Kept as a spread base rather
+// than a fallback so a created stage's key order stays `label, id, type, …`,
+// which the committed interface snapshots record.
 const initialStage = {
   label: '',
 };
@@ -114,20 +98,6 @@ export const getInvalidSkipDestinationReferences = <
   });
 
 // Async thunks
-const createStageAsync = createAppAsyncThunk(
-  'stages/createStageAsync',
-  async (
-    { options, index }: { options: Partial<Stage>; index?: number },
-    { dispatch },
-  ) => {
-    const stageId = uuid();
-    const stage = { ...initialStage, ...options, id: stageId } as Stage;
-
-    dispatch(stagesSlice.actions.createStage({ stage, index }));
-    return stage;
-  },
-);
-
 const deleteStageAsync = createAppAsyncThunk(
   'stages/deleteStageAsync',
   async (stageId: string, { dispatch, getState }) => {
@@ -164,32 +134,6 @@ const stagesSlice = createSlice({
   name: 'stages',
   initialState,
   reducers: {
-    createStage: (state, action: PayloadAction<CreateStagePayload>) => {
-      const { stage, index } = action.payload;
-      const insertAtIndex = index ?? state.length;
-
-      const prunedStage = prune(stage);
-      state.splice(insertAtIndex, 0, prunedStage);
-    },
-    updateStage: (state, action: PayloadAction<UpdateStagePayload>) => {
-      const { stageId, stage: stageUpdate, overwrite = false } = action.payload;
-
-      const stageIndex = state.findIndex((stage) => stage.id === stageId);
-      if (stageIndex === -1) return;
-
-      const currentStage = state[stageIndex];
-      invariant(currentStage, `Stage with ID ${stageId} not found`);
-
-      const previousStage = !overwrite ? currentStage : ({} as Partial<Stage>);
-
-      const newStage: Stage = {
-        ...previousStage,
-        ...stageUpdate,
-        id: currentStage.id,
-      } as Stage;
-
-      state[stageIndex] = prune(newStage);
-    },
     moveStage: (state, action: PayloadAction<MoveStagePayload>) => {
       const { oldIndex, newIndex } = action.payload;
 
@@ -227,101 +171,63 @@ const stagesSlice = createSlice({
       state.splice(oldIndex, 1);
       state.splice(newIndex, 0, movedStage);
     },
-    deletePrompt: (state, action: PayloadAction<DeletePromptPayload>) => {
-      const { stageId, promptId, deleteEmptyStage = false } = action.payload;
-      const stageIsSkipDestination = isStageReferencedAsSkipDestination(
-        state,
-        stageId,
-      );
-
-      if (deleteEmptyStage && stageIsSkipDestination) {
-        const targetStage = state.find((stage) => stage.id === stageId);
-
-        if (
-          targetStage &&
-          'prompts' in targetStage &&
-          (targetStage.prompts?.filter(({ id }) => id !== promptId).length ??
-            0) === 0
-        ) {
-          return;
-        }
-      }
-
-      return compact(
-        state.map((stage) => {
-          if (stage.id !== stageId) {
-            return stage;
-          }
-
-          invariant(
-            'prompts' in stage,
-            `Stage with ID ${stageId} has no prompts to delete`,
-          );
-
-          const prompts =
-            stage.prompts?.filter(({ id }) => id !== promptId) || [];
-
-          // If prompt is empty, we can delete the stage too
-          if (deleteEmptyStage && prompts.length === 0) {
-            return null;
-          }
-
-          return {
-            ...stage,
-            prompts,
-          };
-        }),
-      ) as Stage[];
-    },
   },
   extraReducers: (builder) => {
-    builder.addCase(deleteStage, (state, action) => {
-      const { stageId } = action.payload;
+    builder
+      .addCase(deleteStage, (state, action) => {
+        const { stageId } = action.payload;
 
-      if (isStageReferencedAsSkipDestination(state, stageId)) {
-        return;
-      }
+        if (isStageReferencedAsSkipDestination(state, stageId)) {
+          return;
+        }
 
-      return state.filter((stage) => stage.id !== stageId);
-    });
+        return state.filter((stage) => stage.id !== stageId);
+      })
+      // The stage half of the stage editor's atomic commit; `codebook` handles
+      // the other half of the very same action. This is the ONLY way a stage is
+      // created, and it always saves the whole stage (overwrite, not merge),
+      // because a key the form no longer carries has been removed rather than
+      // left untouched.
+      .addCase(commitStageEditorDraft, (state, action) => {
+        const { stageId, stage, index } = action.payload;
+
+        if (!stageId) {
+          state.splice(
+            index ?? state.length,
+            0,
+            prune({ ...initialStage, ...stage }),
+          );
+          return;
+        }
+
+        const stageIndex = state.findIndex(({ id }) => id === stageId);
+        if (stageIndex === -1) return;
+
+        state[stageIndex] = prune({ ...stage, id: stageId });
+      });
   },
 });
 
-// Export slice actions for middleware listeners
-export const createStage = stagesSlice.actions.createStage;
-
 // Export action creators (thunks)
+//
+// Writing a stage is NOT here: `commitStageEditorDraft` is the only way a stage
+// is created or edited, because a stage write and the codebook write that goes
+// with it have to land as one action (see the extra reducer above). The
+// merge-in-place `updateStage` and `deletePrompt` reducers this slice used to
+// carry were left with no callers by that change and have been deleted, so
+// there is no second, non-transactional way back in.
 export const actionCreators = {
-  createStage: createStageAsync,
-  updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
-    stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
   deleteStage: deleteStageAsync,
   moveStage: (oldIndex: number, newIndex: number) =>
     stagesSlice.actions.moveStage({ oldIndex, newIndex }),
-  deletePrompt: (
-    stageId: string,
-    promptId: string | number,
-    deleteEmptyStage = false,
-  ) =>
-    stagesSlice.actions.deletePrompt({ stageId, promptId, deleteEmptyStage }),
 };
 
 // Export for backwards compatibility and testing
 export const test = {
-  createStage: (stage: Stage, index?: number) =>
-    stagesSlice.actions.createStage({ stage, index }),
-  updateStage: (stageId: string, stage: Partial<Stage>, overwrite = false) =>
-    stagesSlice.actions.updateStage({ stageId, stage, overwrite }),
   deleteStage: (stageId: string) =>
     deleteStage({ stageId, clearEncryptedVariables: false }),
   moveStage: (oldIndex: number, newIndex: number) =>
     stagesSlice.actions.moveStage({ oldIndex, newIndex }),
-  deletePrompt: (
-    stageId: string,
-    promptId: string | number,
-    deleteEmptyStage = false,
-  ) =>
-    stagesSlice.actions.deletePrompt({ stageId, promptId, deleteEmptyStage }),
 };
 
 // Note: StagesState is only used internally

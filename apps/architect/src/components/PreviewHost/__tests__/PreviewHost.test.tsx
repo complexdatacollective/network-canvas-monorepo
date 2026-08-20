@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type FinishHandler,
   getLastAvailableAuthoredStageIndex,
   type InterviewPayload,
 } from '@codaco/interview';
@@ -435,10 +436,10 @@ describe('PreviewHost', () => {
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] === null,
+      (n) => !Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
-    const placed = nodes.filter(
-      (n) => n[entityAttributesProperty]['var-ord'] !== null,
+    const placed = nodes.filter((n) =>
+      Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
     );
     expect(unplaced.length).toBeGreaterThan(0);
     expect(placed.length).toBeGreaterThan(0);
@@ -835,5 +836,134 @@ describe('PreviewHost', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  /**
+   * Issue #1398: the Shell was handed a `noopFinish`, so confirming Finish
+   * Interview closed the dialog back onto the identical Finish screen — no
+   * completed state, no next action, and Finish repeatable forever.
+   *
+   * The Shell is mocked in this file, so these drive the contract's `onFinish`
+   * directly. What the real dialog does either side of that call (its copy,
+   * where focus lands once Base UI tears it down, and that Finish is gone
+   * afterwards) is `e2e/specs/preview-finish.spec.ts`.
+   */
+  describe('finishing the preview', () => {
+    const lastShellProps = () =>
+      shellMock.mock.calls.at(-1)?.[0] as {
+        onFinish: FinishHandler;
+        finishConfirmationDescription?: string;
+        payload: InterviewPayload;
+      };
+
+    async function finishInterview() {
+      const { onFinish, payload } = lastShellProps();
+      await act(async () => {
+        await onFinish(payload.session.id, new AbortController().signal);
+      });
+      return payload.session.id;
+    }
+
+    async function mountFinishedPreview() {
+      render(<PreviewHost />);
+      postPayload(openerStub, makePayload());
+      await screen.findByTestId('shell-mounted');
+      return finishInterview();
+    }
+
+    it('replaces the interview with a completed state the finish cannot repeat', async () => {
+      await mountFinishedPreview();
+
+      expect(
+        screen.getByRole('heading', { name: /preview finished/i }),
+      ).toBeInTheDocument();
+      // The Finish screen and its button live inside the Shell, so unmounting
+      // it is what makes a second confirmation unreachable.
+      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    });
+
+    it('moves focus to the completion heading and describes it with what happened to the responses', async () => {
+      await mountFinishedPreview();
+
+      const heading = screen.getByRole('heading', {
+        name: /preview finished/i,
+      });
+      // The Finish button the researcher activated unmounted with the Shell,
+      // so without this focus would be left on <body>.
+      expect(heading).toHaveFocus();
+
+      // A focused bare heading announces only its own text. The sentence that
+      // matters — that nothing was saved — has to reach the accessible
+      // description to be spoken with it.
+      const describedBy = heading.getAttribute('aria-describedby') ?? '';
+      expect(describedBy).not.toBe('');
+      expect(document.getElementById(describedBy)).toHaveTextContent(
+        /nothing was saved/i,
+      );
+    });
+
+    it('asks the finish confirmation to state that a preview is never saved', async () => {
+      render(<PreviewHost />);
+      postPayload(openerStub, makePayload());
+      await screen.findByTestId('shell-mounted');
+
+      // Without this the Shell falls back to the participant default
+      // ("…satisfied with your responses"), which promises a permanence the
+      // preview never had.
+      expect(lastShellProps().finishConfirmationDescription).toMatch(
+        /nothing is saved/i,
+      );
+    });
+
+    it('restarts into a fresh session when the researcher starts the preview again', async () => {
+      const finishedSessionId = await mountFinishedPreview();
+      openerStub.postMessage.mockClear();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /start the preview again/i }),
+      );
+
+      // The restart re-runs the handshake rather than reviving the finished
+      // run, and shows neither the completed screen nor the spent interview
+      // while it waits.
+      expect(openerStub.postMessage).toHaveBeenCalledWith(
+        { type: 'preview:ready' },
+        window.location.origin,
+      );
+      expect(
+        screen.queryByRole('heading', { name: /preview finished/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+
+      postPayload(openerStub, makePayload());
+      expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+      expect(lastShellProps().payload.session.id).not.toBe(finishedSessionId);
+    });
+
+    it('shows the ended-preview screen, not the completed one, once Architect has closed', async () => {
+      const { rerender } = render(<PreviewHost />);
+      postPayload(openerStub, makePayload());
+      await screen.findByTestId('shell-mounted');
+      await finishInterview();
+      expect(
+        screen.getByRole('heading', { name: /preview finished/i }),
+      ).toBeInTheDocument();
+
+      Object.defineProperty(window, 'opener', {
+        value: null,
+        configurable: true,
+      });
+      rerender(<PreviewHost />);
+
+      // "Start the preview again" needs an opener to hand the payload back, so
+      // a completed run must not keep offering it after Architect has gone.
+      expect(screen.getByText(/preview has ended/i)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: /preview finished/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /start the preview again/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

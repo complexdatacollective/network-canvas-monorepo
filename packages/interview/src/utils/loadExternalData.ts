@@ -1,5 +1,4 @@
 import csv from 'csvtojson';
-import { mapKeys } from 'es-toolkit';
 import { hash } from 'ohash';
 
 // import CSVWorker from './csvDecoder.worker';
@@ -9,6 +8,8 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
+  VariableValueSchema,
 } from '@codaco/shared-consts';
 
 import getParentKeyByNameValue from './getParentKeyByNameValue';
@@ -31,18 +32,74 @@ import getParentKeyByNameValue from './getParentKeyByNameValue';
 //   };
 // });
 
-const CSVToJSONNetworkFormat = async (data: string) => {
-  const withTypeAndAttributes = (node: NcNode[EntityAttributesProperty]) => ({
-    [entityAttributesProperty]: {
-      ...node,
-    },
-  });
+type ExternalNode = Record<string, unknown> & {
+  [entityAttributesProperty]?: NcNode[EntityAttributesProperty];
+};
 
-  const network = (await csv().fromString(
-    data,
-  )) as NcNode[EntityAttributesProperty][];
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-  return network.map((entry) => withTypeAndAttributes(entry));
+const parseExternalAttributes = (
+  value: unknown,
+): Record<string, VariableValue> => {
+  if (!isRecord(value)) {
+    throw new TypeError('External node attributes must be an object.');
+  }
+
+  const attributes: Record<string, VariableValue> = {};
+
+  for (const [name, attributeValue] of Object.entries(value)) {
+    if (attributeValue !== null && attributeValue !== undefined) {
+      attributes[name] = VariableValueSchema.parse(attributeValue);
+    }
+  }
+
+  return attributes;
+};
+
+const parseExternalNode = (value: unknown): ExternalNode => {
+  if (!isRecord(value)) {
+    throw new TypeError('External network nodes must be objects.');
+  }
+
+  const attributes = value[entityAttributesProperty];
+
+  if (attributes === undefined) {
+    return { ...value };
+  }
+
+  return {
+    ...value,
+    [entityAttributesProperty]: parseExternalAttributes(attributes),
+  };
+};
+
+const parseExternalNetwork = (value: unknown): { nodes: ExternalNode[] } => {
+  if (!isRecord(value)) {
+    throw new TypeError('External network data must be an object.');
+  }
+
+  const nodes = value.nodes;
+
+  if (nodes === null || nodes === undefined) {
+    return { nodes: [] };
+  }
+
+  if (!Array.isArray(nodes)) {
+    throw new TypeError('External network nodes must be an array.');
+  }
+
+  return { nodes: nodes.map(parseExternalNode) };
+};
+
+const CSVToJSONNetworkFormat = async (
+  data: string,
+): Promise<ExternalNode[]> => {
+  const network: unknown[] = await csv({ flatKeys: true }).fromString(data);
+
+  return network.map((entry) => ({
+    [entityAttributesProperty]: parseExternalAttributes(entry),
+  }));
 };
 
 const convertCSVToJsonWithWorker = async (data: string) => {
@@ -56,17 +113,15 @@ const loadExternalData = async (fileName: string, url: string) => {
   const isCSV = fileName.split('.').pop() === 'csv';
 
   const data = await fetch(url);
-  let nodes: Partial<NcNode>[] = [];
 
   if (isCSV) {
     const text = await data.text();
-    nodes = await convertCSVToJsonWithWorker(text);
-  } else {
-    const json = (await data.json()) as { nodes: Partial<NcNode>[] };
-    nodes = json.nodes ?? [];
+    const nodes = await convertCSVToJsonWithWorker(text);
+    return { nodes };
   }
 
-  return { nodes };
+  const json: unknown = await data.json();
+  return parseExternalNetwork(json);
 };
 
 export default loadExternalData;
@@ -77,7 +132,7 @@ export const makeVariableUUIDReplacer =
     protocolCodebook: Codebook,
     subjectType: Extract<StageSubject, { entity: 'node' }>['type'],
   ) =>
-  (node: Partial<NcNode>, index: number): NcNode => {
+  (node: ExternalNode, index: number): NcNode => {
     const codebookDefinition = protocolCodebook.node?.[subjectType];
 
     // Salt the content hash with the row's data-file position so byte-identical
@@ -88,18 +143,22 @@ export const makeVariableUUIDReplacer =
     // it was parsed for, keeping primary keys unique within a single network.
     const uuid = `${subjectType}_${hash({ node, index })}`;
 
-    const attributes = mapKeys(
+    const attributes: NcNode[EntityAttributesProperty] = {};
+
+    for (const [attributeKey, attributeValue] of Object.entries(
       node[entityAttributesProperty] ?? {},
-      (_attributeValue, attributeKey) =>
+    )) {
+      const variableId =
         getParentKeyByNameValue(
           codebookDefinition?.variables ?? {},
           attributeKey,
-        ) ?? attributeKey,
-    );
+        ) ?? attributeKey;
+      attributes[variableId] = attributeValue;
+    }
 
     return {
       type: subjectType,
       [entityPrimaryKeyProperty]: uuid,
       [entityAttributesProperty]: attributes,
-    } as NcNode;
+    };
   };

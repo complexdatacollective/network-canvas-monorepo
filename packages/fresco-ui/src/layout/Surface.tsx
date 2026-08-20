@@ -63,6 +63,7 @@ export const surfaceVariants = compose(
         1: 'text-surface-1-contrast bg-surface-1 [--surface-depth:1]',
         2: 'text-surface-2-contrast bg-surface-2 [--surface-depth:2]',
         3: 'text-surface-3-contrast bg-surface-3 [--surface-depth:3]',
+        4: 'text-surface-4-contrast bg-surface-4 [--surface-depth:4]',
       },
       floating: {
         true: 'text-surface-popover-contrast bg-surface-popover border-2 [--surface-depth:0]',
@@ -82,18 +83,14 @@ export const surfaceVariants = compose(
   }),
 );
 
-// `process.env.NODE_ENV` is replaced statically by consuming bundlers (the
-// library-safe convention React itself uses); declared here because the web
-// tsconfig deliberately excludes Node globals.
-declare const process: { env: { NODE_ENV?: string } };
+const MAX_SURFACE_DEPTH = 4;
 
-const MAX_SURFACE_DEPTH = 3;
-
-const clampDepth = (depth: number): 0 | 1 | 2 | 3 => {
+const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {
   if (depth <= 0) return 0;
   if (depth === 1) return 1;
   if (depth === 2) return 2;
-  return 3;
+  if (depth === 3) return 3;
+  return 4;
 };
 
 const SurfaceDepthContext = createContext(0);
@@ -175,13 +172,10 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
     const childDepth = floating ? 1 : depth + 1;
 
     useEffect(() => {
-      // Consumer bundlers replace NODE_ENV, so the warning (and this whole
-      // effect body) is dead-code-eliminated from production builds.
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        !floating &&
-        depth > MAX_SURFACE_DEPTH
-      ) {
+      // Consumer bundlers replace this Vite environment flag, so the warning
+      // (and this whole effect body) is dead-code-eliminated from production
+      // builds without requiring Node globals in browser consumers.
+      if (import.meta.env.DEV && !floating && depth > MAX_SURFACE_DEPTH) {
         console.warn(
           `Surface: nested ${depth} levels deep, which exceeds the surface token scale (0–${MAX_SURFACE_DEPTH}). Rendering with the level-${MAX_SURFACE_DEPTH} tokens. Consider flattening the layout.`,
         );

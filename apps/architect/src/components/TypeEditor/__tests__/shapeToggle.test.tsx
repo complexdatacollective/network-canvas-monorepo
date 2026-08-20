@@ -1,35 +1,41 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useContext, type ContextType } from 'react';
 import { Provider } from 'react-redux';
-import {
-  formValueSelector,
-  reducer as formReducer,
-  reduxForm,
-} from 'redux-form';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+
+import type { ShapeMappingDraft } from '../shapeMappingTypes';
 import ShapeVariableMapping from '../ShapeVariableMapping';
+import validateEntityType from '../validateEntityType';
 
-const FORM = 'TEST_FORM';
-
-type FormValues = {
-  variables: Record<string, { name: string; type: string }>;
-  shape: Record<string, unknown>;
-};
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 const MAPPING = {
   variable: 'v1',
   type: 'breakpoints',
   thresholds: [{ value: 1, shape: 'square' }],
-};
+} as ShapeMappingDraft;
 
-const Harness = () => <ShapeVariableMapping form={FORM} />;
-const ReduxHarness = reduxForm<FormValues>({ form: FORM })(Harness);
+const VARIABLES = { v1: { name: 'age', type: 'number' as const } };
 
-const renderWithShape = (shape: Record<string, unknown>) => {
+const renderWithShape = (shape: {
+  default: string;
+  dynamic?: ShapeMappingDraft;
+}) => {
+  let storeApi: StoreApi | null = null;
+  const CaptureStore = () => {
+    storeApi = useContext(FormStoreContext) ?? null;
+    return null;
+  };
+
+  // The real variable picker renders a connected variable pill.
   const store = configureStore({
     reducer: {
-      form: formReducer,
       activeProtocol: () => ({
         present: { codebook: { node: {}, edge: {} }, stages: [] },
       }),
@@ -39,48 +45,111 @@ const renderWithShape = (shape: Record<string, unknown>) => {
 
   render(
     <Provider store={store}>
-      <ReduxHarness
-        initialValues={{
-          variables: { v1: { name: 'age', type: 'number' } },
-          shape,
-        }}
-      />
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        {/* Stands in for TypeEditor's default-shape field, which shares the
+            `shape` object with the mapping in the saved values. */}
+        <Field
+          name="shape.default"
+          label="Shape"
+          component={InputField}
+          initialValue={shape.default}
+        />
+        <ShapeVariableMapping
+          variables={VARIABLES}
+          initialMapping={shape.dynamic}
+        />
+      </Form>
     </Provider>,
   );
 
-  return store;
+  const getValues = (): Record<string, unknown> =>
+    storeApi?.getState().getFormValues() ?? {};
+
+  const getShape = () => (getValues().shape ?? {}) as Record<string, unknown>;
+
+  return { getShape, getValues };
 };
 
 describe('ShapeVariableMapping toggle', () => {
   it('turns shape mapping on', () => {
-    const store = renderWithShape({ default: 'circle' });
+    const { getShape } = renderWithShape({ default: 'circle' });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
-    expect(formValueSelector(FORM)(store.getState(), 'shape.dynamic')).toEqual(
-      {},
-    );
+    expect(getShape().dynamic).toEqual({});
   });
 
-  // redux-form only deletes a value whose `initial` counterpart is undefined,
-  // so a mapping that came from the saved protocol could not be turned off.
+  // The mapping is one opaque field, so turning it off has to clear the value
+  // explicitly: an unregistered field's last value is parked dormant, and
+  // `getFormValues()` must stop reporting `shape.dynamic` entirely.
   it('turns off a mapping that was loaded from the protocol', () => {
-    const store = renderWithShape({ default: 'diamond', dynamic: MAPPING });
+    const { getShape } = renderWithShape({
+      default: 'diamond',
+      dynamic: MAPPING,
+    });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
-    expect(
-      formValueSelector(FORM)(store.getState(), 'shape.dynamic'),
-    ).toBeUndefined();
+    expect(getShape().dynamic).toBeUndefined();
   });
 
   it('keeps the default shape when turning a mapping off', () => {
-    const store = renderWithShape({ default: 'diamond', dynamic: MAPPING });
+    const { getShape } = renderWithShape({
+      default: 'diamond',
+      dynamic: MAPPING,
+    });
 
-    fireEvent.click(screen.getByLabelText('Map variable to shape'));
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
-    expect(formValueSelector(FORM)(store.getState(), 'shape.default')).toBe(
-      'diamond',
-    );
+    expect(getShape().default).toBe('diamond');
+  });
+
+  it('does not resurrect the cleared mapping when switched back on', () => {
+    const { getShape } = renderWithShape({
+      default: 'diamond',
+      dynamic: MAPPING,
+    });
+
+    const toggle = screen.getByLabelText('Map attribute to shape');
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+
+    // Empty, not the mapping the author just deleted — and not absent either:
+    // see the completeness test below.
+    expect(getShape().dynamic).toEqual({});
+  });
+
+  // Off-then-on and a first-time enable are the same state on screen ("mapping
+  // on, no variable chosen"), so they have to reach `validateEntityType` the
+  // same way. Leaving the disable's cleared value parked dormant made the
+  // re-enabled toggle report no `shape.dynamic` at all, which the validator
+  // reads as the perfectly valid "this type has no mapping" — so the dialog
+  // saved a type whose toggle still read ON, while the identical fresh enable
+  // was refused.
+  const INCOMPLETE_MAPPING_ERRORS = {
+    'shape.dynamic':
+      'Select an attribute to map to a shape, or turn off shape mapping.',
+  };
+
+  it('refuses to save a mapping enabled for the first time and left empty', () => {
+    const { getValues } = renderWithShape({ default: 'circle' });
+
+    fireEvent.click(screen.getByLabelText('Map attribute to shape'));
+
+    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
+  });
+
+  it('refuses to save a re-enabled mapping left empty, exactly as a fresh one', () => {
+    const { getValues } = renderWithShape({
+      default: 'diamond',
+      dynamic: MAPPING,
+    });
+
+    const toggle = screen.getByLabelText('Map attribute to shape');
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+
+    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
   });
 });

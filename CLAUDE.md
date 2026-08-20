@@ -154,6 +154,22 @@ pnpm publish-packages
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
 
+#### Hotfix releases for Architect and Interviewer
+
+Both apps' production jobs build `main`, so the normal lane cannot ship a patch
+without everything else merged since the last release. When `main` holds work
+that must not go out yet, cut `hotfix/<app>-<version>` from the released tag,
+cherry-pick the fix, bump `package.json` + `CHANGELOG.md`, and run the
+**Hotfix Release** workflow (`.github/workflows/hotfix-release.yml`) from
+`main`, naming that branch in `source_ref`. The lane only ships the newest
+line — one production site per app means a `--prod` deploy always replaces what
+is live. Afterwards, merge the hotfix branch into `main` (dropping only that
+app's entry from the changeset it consumed). Both release lanes refuse to
+deploy a tree that does not contain the newest released commit, and the
+tag-driven guard skips a version whose tag already exists — so until that merge
+lands, `main` cannot release the app at all. Cherry-picking does not count: the
+guard checks commit ancestry. Full procedure in each app's `RELEASING.md`.
+
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own
@@ -384,6 +400,17 @@ instead of silently comparing container baselines against a runner's fonts.
 Feature PRs never inherit an E2E verdict from an earlier commit: suite
 selection uses the cumulative merge-base-to-current-head diff, so every
 required verdict describes the exact head under review.
+
+Each PR run upserts one sticky **E2E status** comment (the informational
+`e2e-report` job): a single Status/Name/Report/Reason table over all six
+suite jobs, where Reason is the policy's per-suite selection explanation
+(the witness changed path, lane membership, or reuse). Only FAILED jobs
+publish their Playwright report, to GitHub Pages at
+`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
+each branch keeps only its latest run's report, and a later green run removes
+the stale one. Every report run also sweeps directories whose slug matches no
+live branch, so reports for merged or deleted branches disappear on the next
+publish from any branch.
 
 Generated release branches use equivalence reuse: a suite is skipped when the
 newest equivalent native pull-request verdict across the generated release

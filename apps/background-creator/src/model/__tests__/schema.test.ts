@@ -105,6 +105,31 @@ describe('backgroundDocumentSchema', () => {
     ).toBe(false);
   });
 
+  it('rejects a self-intersecting polygon with non-zero shoelace area', () => {
+    expect(
+      backgroundDocumentSchema.safeParse(
+        docWith([
+          {
+            id: 'p1',
+            kind: 'polygon',
+            points: [
+              { x: 0.5, y: 0.1 },
+              { x: 0.735, y: 0.824 },
+              { x: 0.12, y: 0.376 },
+              { x: 0.88, y: 0.376 },
+              { x: 0.265, y: 0.824 },
+            ],
+            fill: '#ffffff',
+            fillOpacity: 1,
+            stroke: null,
+            strokeWidth: 1,
+            zoneLabel: 'star',
+          },
+        ]),
+      ).success,
+    ).toBe(false);
+  });
+
   it('rejects text with no lines', () => {
     expect(
       backgroundDocumentSchema.safeParse(docWith([{ ...baseText, lines: [] }]))

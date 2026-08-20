@@ -3,7 +3,7 @@
 import posthog from 'posthog-js';
 import { useEffect } from 'react';
 
-import { POSTHOG_APP_NAME } from '~/fresco.config';
+import { POSTHOG_APP_PROPERTIES } from '~/fresco.config';
 
 /**
  * Adds the installation ID and app name as super properties to all PostHog events,
@@ -27,7 +27,7 @@ export function PostHogIdentify({
     if (!installationId) return;
 
     posthog.register({
-      app: POSTHOG_APP_NAME,
+      ...POSTHOG_APP_PROPERTIES,
       installation_id: installationId,
     });
 

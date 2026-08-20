@@ -327,7 +327,7 @@ describe('emptyGroupBounds', () => {
       {
         rules: ['minSelected', 'options'],
         detail:
-          'minSelected 3 exceeds the 2 options shared by "Foods A" (1, 2) and by "Foods B" (1, 2), which one of these variables already declares on its own',
+          'minSelected 3 exceeds the 2 options shared by "Foods A" (1, 2) and by "Foods B" (1, 2), which one of these attributes already declares on its own',
       },
     ]);
   });

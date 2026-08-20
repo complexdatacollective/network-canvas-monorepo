@@ -318,6 +318,81 @@ record so subsequent loads pass schema validation.
 
 ---
 
+## Sparse entity attribute flow
+
+Interview stores entity attributes as sparse records. An own attribute key
+always has a defined `VariableValue`; a missing key means the variable is
+unset. `false`, `0`, `''`, and `[]` are defined responses and remain present.
+
+```mermaid
+flowchart LR
+  Form[Mounted form fields] --> Adapter[Coerce values and build patch]
+  Direct[Direct participant edit] --> Patch[AttributePatch: set and unset]
+  Adapter --> Patch
+  Patch --> Validate[Validate keys and overlap]
+  Validate --> Apply[Apply attributes and secure metadata]
+  Protocol[Protocol-derived prompt attributes] --> Apply
+  Apply --> Network[Sparse session.network]
+  Network --> Sync[onSync session]
+  Sync --> Persistence[Host persistence]
+  Persistence --> HostParse[Host read via NcNetworkSchema]
+  HostParse --> Payload[Shell payload]
+  Payload --> Network
+  Persistence --> ExportParse[Exporter parse via NcNetworkSchema]
+  ExportParse --> Output[CSV and GraphML]
+```
+
+The internal `AttributePatch` contract separates setting defined values from
+removing properties:
+
+```ts
+type AttributePatch = Readonly<{
+  set: Readonly<Record<string, VariableValue>>;
+  unset: readonly string[];
+}>;
+```
+
+Form submission first coerces values to their protocol variable types. The
+adapter then considers exactly the mounted field names: each defined value goes
+to `set`, each `undefined` value goes to `unset`, and unmounted fields are
+ignored. If any mounted defined value is not a `VariableValue`, conversion
+fails as a whole and no partial patch is dispatched.
+
+Creation and editing deliberately use different parts of that result:
+
+- Creating an entity writes only `set`, so unanswered fields are omitted.
+- Editing applies both `set` and `unset`, so clearing a mounted field deletes
+  that key while attributes outside the form remain unchanged.
+- Direct participant edits, such as bins and layout controls, produce the same
+  patch shape instead of writing nullish sentinels.
+
+The node, edge, and ego update thunks validate that participant-edit patch keys
+belong to the applicable codebook definition and reject a key that appears in
+both `set` and `unset`. Node and edge creation apply the same key check to their
+initial attributes; controlled roster and pedigree imports can explicitly
+allow external node attributes. Validation completes before the fulfilled
+reducer can mutate session state. Prompt-membership patches are derived directly
+from the protocol's `additionalAttributes`, so reducers apply those trusted
+keys without repeating patch validation.
+
+The shared applicator produces new attribute and secure-metadata maps for both
+validated and protocol-derived patches. An `unset` removes the attribute and
+its matching `_secureAttributes` entry in the same reducer transition; an empty
+secure-metadata map collapses to `undefined`.
+
+Network Composer undo history is presence-sensitive. For every touched key, an
+inverse patch restores a prior own value with `set`, but restores prior absence
+with `unset`. This distinction is required when a defined empty value such as
+`[]` is edited and then undone.
+
+`onSync` hands the host the sparse session after reducer commits. Hosts parse
+stored or received networks with `NcNetworkSchema` before constructing the next
+`Shell` payload; this accepts nullish input entries but emits sparse output.
+`@codaco/network-exporters` repeats that parse per session before formatting,
+so persistence and export do not reintroduce nullish attribute values.
+
+---
+
 ## Public API reference
 
 Everything below is exported from `'@codaco/interview'`. There are no

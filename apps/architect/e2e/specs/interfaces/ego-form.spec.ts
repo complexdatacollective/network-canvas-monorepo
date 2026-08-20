@@ -31,7 +31,7 @@ test('creates a valid EgoForm stage from scratch', async ({
   // `label ?? input.name` fallback, so the rendered control's accessible name
   // (wired via fresco-ui's UnconnectedField `aria-labelledby` -> a real
   // `<label>`) is the literal string "Introduction text" — NOT the field's
-  // redux-form name `introductionPanel.text`. Confirmed against
+  // field name `introductionPanel.text`. Confirmed against
   // IntroductionPanel.tsx / RichText/Field.tsx / UnconnectedField.tsx source,
   // not guessed.
   await editor.fillRichText(

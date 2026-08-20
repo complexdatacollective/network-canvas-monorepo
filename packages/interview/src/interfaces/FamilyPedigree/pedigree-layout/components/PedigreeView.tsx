@@ -1,16 +1,15 @@
 'use client';
 
-import { invariant } from 'es-toolkit';
-import { useContext } from 'react';
-
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import Node from '@codaco/fresco-ui/Node';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
 
+import { formValuesToAttributePatch } from '../../../../forms/formValuesToAttributePatch';
 import { useNodeMeasurement } from '../../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import AddPersonFields from '../../components/AddPersonForm';
@@ -24,11 +23,8 @@ import {
   countGeneticParents,
 } from '../../components/wizards/parentTypeOptions';
 import { readBiologicalSex } from '../../components/wizards/transforms/personAttributes';
-import {
-  FamilyPedigreeContext,
-  FamilyPedigreeStoreBridge,
-  useFamilyPedigreeStore,
-} from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
+import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
 import type { VariableConfig } from '../../store';
 import {
   getEdgeRelationshipType,
@@ -46,6 +42,7 @@ import {
   getRelationshipVariable,
   getResolvedNodeFormFields,
 } from '../../utils/nodeUtils';
+import { writeOwnAttribute } from '../../utils/writeOwnAttributes';
 import NodeContextMenu, { type NodeContextMenuAction } from './NodeContextMenu';
 import PedigreeLayout from './PedigreeLayout';
 import PedigreeNode, { computeNodeDisplayLabels } from './PedigreeNode';
@@ -67,12 +64,6 @@ export default function PedigreeView({
   onToggleAttribute,
   isFinalized = false,
 }: PedigreeViewProps = {}) {
-  const familyPedigreeStore = useContext(FamilyPedigreeContext);
-  invariant(
-    familyPedigreeStore,
-    'PedigreeView must be used within a FamilyPedigreeProvider',
-  );
-
   const storeNodes = useFamilyPedigreeStore((s) => s.network.nodes);
   const storeEdges = useFamilyPedigreeStore((s) => s.network.edges);
   const storeActiveNominationVariable = useFamilyPedigreeStore(
@@ -122,7 +113,12 @@ export default function PedigreeView({
     biologicalSexVariable,
   };
 
-  const { confirm, openDialog } = useDialog();
+  const { confirm, openDialog } = useFamilyPedigreeDialog();
+
+  // Saving the person editor changes the pedigree without a page change and
+  // without altering the member count the stage's own live region reports, so
+  // a screen-reader participant would otherwise get no confirmation at all.
+  const { announce } = useAccessibilityAnnouncements();
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -137,21 +133,21 @@ export default function PedigreeView({
     storeFraming ?? 'gamete',
   );
 
-  const handleAddPerson = async (nodeId: string) => {
+  const handleAddPerson = async (
+    nodeId: string,
+  ): Promise<FormSubmissionResult | undefined> => {
     const result = await openDialog({
       type: 'form',
       title: 'Add partner',
       submitLabel: 'Add',
       cancelLabel: 'Cancel',
       children: (
-        <FamilyPedigreeStoreBridge store={familyPedigreeStore}>
-          <AddPersonFields
-            anchorNodeId={nodeId}
-            nodes={nodes}
-            edges={edges}
-            variableConfig={variableConfig}
-          />
-        </FamilyPedigreeStoreBridge>
+        <AddPersonFields
+          anchorNodeId={nodeId}
+          nodes={nodes}
+          edges={edges}
+          variableConfig={variableConfig}
+        />
       ),
     });
 
@@ -169,20 +165,28 @@ export default function PedigreeView({
           [isActiveVariable]: result.current !== 'ex',
         },
       });
-      return;
+      return { success: true };
     }
 
     const name = typeof result.name === 'string' ? result.name : '';
 
-    const formAttrs: Record<string, VariableValue> = {};
-    for (const field of resolvedFormFields) {
-      if (result[field.variableId] !== undefined) {
-        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
-      }
+    const formPatchResult = formValuesToAttributePatch(
+      result,
+      resolvedFormFields.map((field) => field.variableId),
+    );
+    if (!formPatchResult.success) {
+      return {
+        success: false,
+        formErrors: ['An error occurred while submitting the form.'],
+      };
     }
+
+    const formAttrs: Record<string, VariableValue> = {
+      ...formPatchResult.patch.set,
+    };
     const biologicalSex = readBiologicalSex(result.biologicalSex);
     if (biologicalSex) {
-      formAttrs[biologicalSexVariable] = [biologicalSex];
+      writeOwnAttribute(formAttrs, biologicalSexVariable, [biologicalSex]);
     }
 
     const newNodeId = addNode({
@@ -221,9 +225,13 @@ export default function PedigreeView({
         });
       }
     }
+
+    return { success: true };
   };
 
-  const handleEdit = async (nodeId: string) => {
+  const handleEdit = async (
+    nodeId: string,
+  ): Promise<FormSubmissionResult | undefined> => {
     const currentNode = nodes.get(nodeId);
     if (!currentNode) return;
 
@@ -303,21 +311,33 @@ export default function PedigreeView({
 
     const name = typeof result.name === 'string' ? result.name : '';
 
-    const formAttrs: Record<string, VariableValue> = {};
-    for (const field of resolvedFormFields) {
-      if (result[field.variableId] !== undefined) {
-        formAttrs[field.variableId] = result[field.variableId] as VariableValue;
-      }
-    }
-    const biologicalSex = readBiologicalSex(result.biologicalSex);
-    if (biologicalSex) {
-      formAttrs[biologicalSexVariable] = [biologicalSex];
+    const formPatchResult = formValuesToAttributePatch(
+      result,
+      resolvedFormFields.map((field) => field.variableId),
+    );
+    if (!formPatchResult.success) {
+      return {
+        success: false,
+        formErrors: ['An error occurred while submitting the form.'],
+      };
     }
 
-    updateNode(nodeId, {
-      ...currentNode[entityAttributesProperty],
+    const set: Record<string, VariableValue> = {
+      ...formPatchResult.patch.set,
       [nodeLabelVariable]: name,
-      ...formAttrs,
+    };
+    const biologicalSex = readBiologicalSex(result.biologicalSex);
+    if (biologicalSex) {
+      writeOwnAttribute(set, biologicalSexVariable, [biologicalSex]);
+    }
+
+    const unset = biologicalSex
+      ? formPatchResult.patch.unset
+      : [...formPatchResult.patch.unset, biologicalSexVariable];
+
+    updateNode(nodeId, {
+      set,
+      unset: unset.filter((fieldName) => !Object.hasOwn(set, fieldName)),
     });
 
     const internalResult = result[INTERNAL_EDIT_NAMESPACE];
@@ -345,12 +365,16 @@ export default function PedigreeView({
       }
     }
     if (partnershipChanged && isFinalized) syncMetadata();
+    // The submitted name, never the one this dialog opened with: a participant
+    // is free to clear the name (it is explicitly optional), and naming the
+    // person they just erased would be worse than not naming them at all.
+    announce(name ? `Details updated for ${name}.` : 'Details updated.');
+    return { success: true };
   };
 
   const handleAddChild = async (nodeId: string) => {
     const result = await openAddChildWizard(
       openDialog,
-      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -367,7 +391,6 @@ export default function PedigreeView({
   const handleAddSibling = async (nodeId: string) => {
     const result = await openAddSiblingWizard(
       openDialog,
-      familyPedigreeStore,
       nodeId,
       nodes,
       edges,
@@ -386,7 +409,6 @@ export default function PedigreeView({
       geneticCount >= 2
         ? await openAddParentWizard(
             openDialog,
-            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
@@ -396,7 +418,6 @@ export default function PedigreeView({
           )
         : await openDefineParentsWizard(
             openDialog,
-            familyPedigreeStore,
             nodeId,
             nodes,
             edges,
@@ -477,8 +498,14 @@ export default function PedigreeView({
                   node[entityAttributesProperty][activeNominationVariable] ===
                   true
                 }
-                onClick={() =>
-                  onToggleAttribute?.(node.id, activeNominationVariable)
+                // Wrapping an absent handler would still hand the node a
+                // function, which it reads as "this can be tapped" and
+                // answers with a pointer cursor, press feedback and a tab
+                // stop for a nomination nothing would record.
+                onClick={
+                  onToggleAttribute
+                    ? () => onToggleAttribute(node.id, activeNominationVariable)
+                    : undefined
                 }
               />
             ) : (

@@ -1,9 +1,5 @@
-import type { ComponentType, ReactNode } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
-
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
-
-import FrescoReduxField from '../FrescoReduxField';
 
 export const DATE_TYPES = [
   {
@@ -28,30 +24,26 @@ export const DATE_FORMATS = {
 
 type DatePickerType = (typeof DATE_TYPES)[number]['value'];
 
+/**
+ * The variable's `parameters` block as authored in the editor — untyped here
+ * because it is being edited and may hold anything mid-edit.
+ */
 type DatePickerParameters = {
   type?: unknown;
   min?: unknown;
   max?: unknown;
 };
 
-type DatePickerReduxFieldProps = WrappedFieldProps & {
-  parameters?: DatePickerParameters;
-  label?: string | null;
-  fieldLabel?: string | null;
-  hint?: ReactNode;
-  placeholder?: string | null;
-  className?: string | null;
-  hidden?: boolean | null;
-  disabled?: boolean;
-  readOnly?: boolean;
-  inline?: boolean;
-};
-
-const FrescoDatePickerField = DatePickerField as ComponentType<
-  Record<string, unknown>
->;
-const FrescoReduxFieldComponent = FrescoReduxField as ComponentType<
-  DatePickerReduxFieldProps & Record<string, unknown>
+type DatePickerProps = CreateFormFieldProps<
+  string,
+  'input',
+  {
+    parameters?: DatePickerParameters;
+    placeholder?: string;
+    // Narrows the `size` an <input> would otherwise contribute (a number) to
+    // the control-size scale `DatePickerField` expects.
+    size?: 'sm' | 'md' | 'lg';
+  }
 >;
 
 const datePickerTypes = new Set<DatePickerType>(
@@ -66,41 +58,27 @@ const getDatePickerType = (value: unknown): DatePickerType =>
 const getOptionalString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
-const fromReduxDateValue = (value: unknown) =>
-  typeof value === 'string' ? value : '';
-
-const toReduxDateValue = (value: unknown) =>
-  typeof value === 'string' && value.length > 0 ? value : null;
-
+/**
+ * Date input driven by a variable's `parameters` block. Labelling belongs to
+ * the surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ */
 const DatePicker = ({
-  input,
   parameters = {},
-  label = null,
-  fieldLabel = null,
-  placeholder = null,
-  className = null,
-  hidden = null,
+  value,
+  onChange,
+  placeholder,
   ...props
-}: DatePickerReduxFieldProps) => {
-  if (hidden) {
-    return null;
-  }
-
-  return (
-    <FrescoReduxFieldComponent
-      {...props}
-      input={input}
-      fieldComponent={FrescoDatePickerField}
-      label={fieldLabel ?? label ?? input.name ?? 'Date'}
-      placeholder={placeholder ?? undefined}
-      type={getDatePickerType(parameters.type)}
-      min={getOptionalString(parameters.min)}
-      max={getOptionalString(parameters.max)}
-      className={className ?? undefined}
-      fromReduxValue={fromReduxDateValue}
-      toReduxValue={toReduxDateValue}
-    />
-  );
-};
+}: DatePickerProps) => (
+  <DatePickerField
+    {...props}
+    value={typeof value === 'string' ? value : ''}
+    // An emptied picker must clear the stored value rather than persist ''.
+    onChange={(nextValue) => onChange?.(nextValue ? nextValue : undefined)}
+    placeholder={placeholder}
+    type={getDatePickerType(parameters.type)}
+    min={getOptionalString(parameters.min)}
+    max={getOptionalString(parameters.max)}
+  />
+);
 
 export default DatePicker;

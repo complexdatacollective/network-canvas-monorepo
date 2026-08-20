@@ -629,7 +629,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes('cannot render a number variable'),
+      candidate.message.includes('cannot render a number attribute'),
     );
     expect(issue?.message).toContain('Valid controls: Number');
     expect(issue?.path).toEqual([
@@ -655,7 +655,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     if (result.success) return;
     expect(
       result.error.issues.some((candidate) =>
-        candidate.message.includes('cannot render a categorical variable'),
+        candidate.message.includes('cannot render a categorical attribute'),
       ),
     ).toBe(true);
   });
@@ -705,7 +705,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((candidate) =>
-      candidate.message.includes('cannot render a number variable'),
+      candidate.message.includes('cannot render a number attribute'),
     );
     expect(issue?.path).toEqual([
       'stages',

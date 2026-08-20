@@ -79,22 +79,70 @@ The host's only responsibilities are:
 
 ---
 
+## Sparse attributes and stable output schemas
+
+The formatting stage parses every session network with `NcNetworkSchema` before
+any CSV or GraphML formatter receives it. Nullish input entries become absent
+properties, while defined values such as `false`, `0`, `''`, and `[]` remain.
+An invalid defined value produces a `session-processing` failure for that
+session; it does not abort other sessions in the run.
+
+Output schema comes from both the protocol codebook and the sparse entity data:
+
+- Codebook declarations keep fully unanswered variables visible. This makes
+  file structure stable instead of depending on which questions a participant
+  happened to answer.
+- Defined entity attributes without an applicable codebook declaration are
+  external attributes. They remain in CSV and GraphML rather than being
+  discarded.
+- Absence controls data output only; it does not erase a declared column or
+  key.
+
+### CSV
+
+Node and edge CSV files are partitioned by represented entity type. Each file's
+headers include every variable declared for that type, even when the variable
+is absent from every row. Ego CSV headers similarly include every declared ego
+variable. When a session has zero nodes or zero edges, the header-only file
+uses all node or edge definitions in the codebook.
+
+Categorical variables expand to one column per declared option, and layout
+variables expand to coordinate columns. An absent value produces empty cells.
+A defined empty categorical array produces explicit `false` option cells, so it
+remains distinguishable from an unanswered categorical variable. Present
+external attributes add data-driven columns using their attribute IDs.
+
+### GraphML
+
+GraphML declares keys for all ego, node, and edge variables in the codebook,
+including variables belonging to unrepresented entity types and documents with
+zero nodes or zero edges. A fully unanswered declared variable therefore keeps
+its `<key>` but emits no `<data>` element.
+
+Present external attributes receive deterministic hashed key IDs that cannot
+collide with codebook variable IDs. Key allocation happens once for the whole
+document, and every `<data>` element uses the allocated ID. If the same external
+attribute appears on more than one entity kind, GraphML emits one `for="all"`
+key rather than conflicting node and edge keys.
+
+---
+
 ## Public surface
 
 Imports use sub-paths — the package has no barrel export.
 
-| Sub-path                                                 | Exports                                                                                                                                                                |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@codaco/network-exporters/pipeline`                     | `exportPipeline`, type `ExportedProtocol`                                                                                                                              |
-| `@codaco/network-exporters/options`                      | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat`                                                                                                            |
-| `@codaco/network-exporters/input`                        | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `SessionWithResequencedIDs`) |
-| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                        |
-| `@codaco/network-exporters/events`                       | `ExportEvent`, `stageMessages`                                                                                                                                         |
-| `@codaco/network-exporters/errors`                       | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError`                  |
-| `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag                                                                                                                                              |
-| `@codaco/network-exporters/services/ProtocolRepository`  | `ProtocolRepository` Tag                                                                                                                                               |
-| `@codaco/network-exporters/services/Output`              | `Output` Tag                                                                                                                                                           |
-| `@codaco/network-exporters/layers/ZipOutput`             | `makeZipOutput`, type `ZipSink`                                                                                                                                        |
+| Sub-path                                                 | Exports                                                                                                                                                                                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@codaco/network-exporters/pipeline`                     | `exportPipeline`, type `ExportedProtocol`                                                                                                                                                                                |
+| `@codaco/network-exporters/options`                      | `ExportOptions`, `ExportOptionsSchema`, type `ExportFormat`                                                                                                                                                              |
+| `@codaco/network-exporters/input`                        | `InterviewExportInput`, `ProtocolExportInput`, plus session shape types (`FormattedSession`, `SessionVariables`, `SessionWithNetworkEgo`, `NodeWithResequencedID`, `EdgeWithResequencedID`, `SessionWithResequencedIDs`) |
+| `@codaco/network-exporters/output`                       | `ExportResult`, `ExportSuccess`, `ExportFailure`, `ExportReturn`, `OutputEntry`, `OutputResult`, `OutputHandle`                                                                                                          |
+| `@codaco/network-exporters/events`                       | `ExportEvent`, `stageMessages`                                                                                                                                                                                           |
+| `@codaco/network-exporters/errors`                       | `DatabaseError`, `OutputError`, `ExportGenerationError`, `ProtocolNotFoundError`, `SessionProcessingError`, type `ExportError`, `describeExportError`                                                                    |
+| `@codaco/network-exporters/services/InterviewRepository` | `InterviewRepository` Tag                                                                                                                                                                                                |
+| `@codaco/network-exporters/services/ProtocolRepository`  | `ProtocolRepository` Tag                                                                                                                                                                                                 |
+| `@codaco/network-exporters/services/Output`              | `Output` Tag                                                                                                                                                                                                             |
+| `@codaco/network-exporters/layers/ZipOutput`             | `makeZipOutput`, type `ZipSink`                                                                                                                                                                                          |
 
 Everything else (formatters, session helpers, dispatch logic, internal zip stream helpers) is internal and not exported.
 

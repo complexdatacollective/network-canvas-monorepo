@@ -1,9 +1,23 @@
 import posthog from 'posthog-js';
 
+import {
+  buildAppSuperProperties,
+  POSTHOG_API_KEY,
+  POSTHOG_HOST,
+} from '@codaco/shared-consts';
 import { isProductionHost } from '~/lib/analytics/isProductionHost';
 
-const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
-const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
+import pkg from './package.json' with { type: 'json' };
+
+// Built from the shared helper so this site's events carry the same
+// super-property schema as every other Network Canvas product, and a mistyped
+// key is a compile error rather than a dimension that quietly stops reporting.
+const POSTHOG_APP_PROPERTIES = buildAppSuperProperties({
+  appKey: 'Website',
+  appName: 'Website',
+  version: pkg.version,
+  installationId: 'website-production',
+});
 
 if (isProductionHost(window.location.hostname)) {
   posthog.init(POSTHOG_API_KEY, {
@@ -23,8 +37,5 @@ if (isProductionHost(window.location.hostname)) {
     persistence: 'localStorage+cookie',
   });
 
-  posthog.register({
-    app: 'Website',
-    installation_id: 'website-production',
-  });
+  posthog.register(POSTHOG_APP_PROPERTIES);
 }

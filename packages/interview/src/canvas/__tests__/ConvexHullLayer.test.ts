@@ -72,7 +72,7 @@ describe('groupNodesByVariable', () => {
     const nodes = [
       makeNode('node-with', { color: 'red' }),
       makeNode('node-without', { size: 10 }),
-      makeNode('node-null', { color: null }),
+      makeNode('node-missing', { shape: 'round' }),
     ];
 
     const result = groupNodesByVariable(nodes, 'color', OPTIONS);
@@ -81,7 +81,7 @@ describe('groupNodesByVariable', () => {
     const group = result.get('red')!;
     expect(group.nodeIds).toContain('node-with');
     expect(group.nodeIds).not.toContain('node-without');
-    expect(group.nodeIds).not.toContain('node-null');
+    expect(group.nodeIds).not.toContain('node-missing');
   });
 
   it('handles numeric scalar values', () => {

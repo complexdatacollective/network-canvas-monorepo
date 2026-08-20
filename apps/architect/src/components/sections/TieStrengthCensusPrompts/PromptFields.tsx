@@ -1,72 +1,149 @@
-import { compose } from '@reduxjs/toolkit';
+import { useEffect, useRef } from 'react';
 import type { ComponentType } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Row, Section } from '~/components/EditorLayout';
+import { Section } from '~/components/EditorLayout';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import Options, {
+  optionsValidation,
+} from '~/components/Form/arrayFields/Options';
 import NativeSelect from '~/components/Form/Fields/NativeSelect';
-import RichText from '~/components/Form/Fields/RichText/Field';
-import ValidatedField from '~/components/Form/ValidatedField';
+import RichTextField from '~/components/Form/Fields/RichText/Field';
 import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import Options from '~/components/Options';
+import LockedOptions from '~/components/Options/LockedOptions';
+import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
+import {
+  getVariableOptionsForSubject,
+  getVariablesForSubject,
+} from '~/selectors/codebook';
+import {
+  excludeInterfaceOwned,
+  excludeValidatedUses,
+} from '~/selectors/roleFilters';
 import { getFieldId } from '~/utils/issues';
 
-import VariablePicker from '../../Form/Fields/VariablePicker/VariablePicker';
-import withCreateEdgeHandlers from './withCreateEdgeHandler';
-import withEdgesOptions from './withEdgesOptions';
-import withVariableOptions from './withVariableOptions';
+import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
+import { getEdgesForSubject } from '../SociogramPrompts/selectors';
+import { useLockedOptions } from '../useLockedOptions';
+
 type SelectOption = {
   label: string;
   value: string;
   type?: string;
   [key: string]: unknown;
 };
+
 type PromptFieldsProps = {
-  form: string;
-  changeForm: (form: string, field: string, value: unknown) => void;
-  edgesForSubject?: SelectOption[];
-  handleCreateEdge: (option: string) => Promise<string>;
-  handleChangeCreateEdge: (value: string) => void;
-  createEdge: string;
-  edgeVariable?: string | null;
+  text?: string;
+  createEdge?: string;
+  edgeVariable?: string;
+  negativeLabel?: string;
   variableOptions?: SelectOption[];
-  optionsForVariableDraft?: SelectOption[];
 };
+
+/** Stable empty list: `initialValue` is a register-effect dependency. */
+const NO_OPTIONS: SelectOption[] = [];
+
 const PromptFields = ({
-  form,
-  changeForm,
-  edgesForSubject = [],
-  handleCreateEdge,
-  handleChangeCreateEdge,
+  text,
   createEdge,
-  edgeVariable = null,
-  variableOptions = [],
-  optionsForVariableDraft = [],
+  edgeVariable,
+  negativeLabel,
+  variableOptions = NO_OPTIONS,
 }: PromptFieldsProps) => {
-  const newVariableWindowInitialProps: {
-    entity: Entity;
-    type: string;
-    initialValues: {
-      name: string;
-      type: string;
-    };
-  } = {
-    entity: 'edge',
-    type: createEdge,
+  const dispatch = useAppDispatch();
+  const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const {
+    createEdge: liveCreateEdge,
+    edgeVariable: liveEdgeVariable,
+    variableOptions: liveVariableOptions,
+  } = useFormValue(['createEdge', 'edgeVariable', 'variableOptions'] as const);
+  const currentCreateEdge =
+    typeof liveCreateEdge === 'string' ? liveCreateEdge : createEdge;
+  const currentEdgeVariable =
+    typeof liveEdgeVariable === 'string' ? liveEdgeVariable : edgeVariable;
+  const currentVariableOptions = Array.isArray(liveVariableOptions)
+    ? (liveVariableOptions as SelectOption[])
+    : variableOptions;
+
+  const edgesForSubject = useAppSelector(getEdgesForSubject) as SelectOption[];
+  const edgeSubject = {
+    entity: 'edge' as const,
+    type: currentCreateEdge ?? undefined,
+  };
+  // TSC's edge-variable picker is an UNVALIDATED writer: drop options a form
+  // elsewhere already validates, and drop any variable an interface derives
+  // from the structure a participant builds — a Family Pedigree's edge slots
+  // above all, which its genetics engine reads back.
+  const ordinalVariableOptions = useAppSelector((state) => {
+    const ordinalOptions = getVariableOptionsForSubject(
+      state,
+      edgeSubject,
+    ).filter(({ type: variableType }) => variableType === 'ordinal');
+    return excludeInterfaceOwned(
+      state,
+      edgeSubject,
+      excludeValidatedUses(
+        state,
+        edgeSubject,
+        ordinalOptions,
+        currentEdgeVariable,
+      ),
+      currentEdgeVariable,
+    ) as SelectOption[];
+  });
+
+  // An interface that branches on the variable's exact values owns its option
+  // list, so the editor renders it read-only.
+  const lockedOptions = useLockedOptions(edgeSubject, currentEdgeVariable);
+  const optionsForCurrentEdgeVariable = useAppSelector((state) => {
+    const variables = getVariablesForSubject(state, edgeSubject);
+    const found = currentEdgeVariable
+      ? variables[currentEdgeVariable]
+      : undefined;
+    return found && 'options' in found ? (found.options ?? []) : [];
+  });
+
+  // Picking a different edge variable replaces the draft options with that
+  // variable's already-committed ones — but only on an actual change, so
+  // opening the
+  // dialog on an already-configured prompt doesn't clobber its live draft.
+  const previousEdgeVariableRef = useRef(currentEdgeVariable);
+  useEffect(() => {
+    if (previousEdgeVariableRef.current === currentEdgeVariable) return;
+    previousEdgeVariableRef.current = currentEdgeVariable;
+    setFieldValue('variableOptions', optionsForCurrentEdgeVariable);
+  }, [currentEdgeVariable, optionsForCurrentEdgeVariable, setFieldValue]);
+
+  const totalOptionsLength = currentVariableOptions.length;
+  const showVariableOptionsTip = totalOptionsLength > 5;
+
+  // createEdgeAsync is awaited before the id becomes the field's value:
+  // writing the pending Promise into the field corrupts codebook.edge with
+  // an "[object Promise]" key.
+  const handleCreateEdge = async (name: string) => {
+    const { type } = await dispatch(createEdgeAsync({ name })).unwrap();
+    setFieldValue('createEdge', type);
+    return type;
+  };
+
+  const newVariableWindowInitialProps = {
+    entity: 'edge' as Entity,
+    type: currentCreateEdge ?? '',
     initialValues: { name: '', type: '' },
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
-    const [id, params] = args as [
-      string,
-      {
-        field: string;
-      },
-    ];
-    changeForm(form, params.field, id);
+    const [id, params] = args as [string, { field: string }];
+    setFieldValue(params.field, id);
   };
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
@@ -78,8 +155,7 @@ const PromptFields = ({
       { initialValues: { name, type: 'ordinal' } },
       { field: 'edgeVariable' },
     );
-  const totalOptionsLength = optionsForVariableDraft?.length;
-  const showVariableOptionsTip = totalOptionsLength > 5;
+
   return (
     <>
       <Section
@@ -87,7 +163,7 @@ const PromptFields = ({
         id={getFieldId('text')}
         layout="vertical"
       >
-        <Row>
+        <>
           <Paragraph>
             Tie-Strength Census prompts explain to your participant which
             relationship they should evaluate (for example,
@@ -106,17 +182,16 @@ const PromptFields = ({
             &apos; to indicate that the participant should focus on the visible
             pair.
           </Paragraph>
-          <ValidatedField
+          <ArchitectField
             name="text"
-            component={RichText as ComponentType<Record<string, unknown>>}
+            label="Prompt Text"
+            component={RichTextField}
             validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              label: 'Prompt Text',
-              placeholder: 'Enter text for the prompt here...',
-            }}
+            initialValue={text}
+            singleLine
+            placeholder="Enter text for the prompt here..."
           />
-        </Row>
+        </>
       </Section>
       <Section
         title="Tie-Strength Configuration"
@@ -130,7 +205,7 @@ const PromptFields = ({
             <ul>
               <li>
                 Create an edge between two alters, and simultaneously assign a
-                value to an ordinal variable.
+                value to an ordinal attribute.
               </li>
               <li>Decline to create an edge</li>
             </ul>
@@ -143,84 +218,86 @@ const PromptFields = ({
           summary={
             <Paragraph>
               Begin by selecting or creating an edge type. You will then be able
-              to select or create an ordinal variable on this edge type. The
-              options of this ordinal variable will represent the choices
+              to select or create an ordinal attribute on this edge type. The
+              options of this ordinal attribute will represent the choices
               provided to the user when creating an edge.
             </Paragraph>
           }
           layout="vertical"
         >
-          <Row>
-            <ValidatedField
+          <>
+            <ArchitectField
               name="createEdge"
+              label="Select an edge type"
               component={NativeSelect as ComponentType<Record<string, unknown>>}
               validation={{ required: true, allowedNMToken: 'edge type name' }}
-              componentProps={{
-                label: 'Select an edge type',
-                options: edgesForSubject,
-                onCreateOption: async (option: string) => {
-                  // handleCreateEdge is async (dispatches createEdgeAsync and
-                  // resolves to the new edge type's id). It must be awaited:
-                  // writing the pending Promise into the createEdge field
-                  // corrupts codebook.edge with an "[object Promise]" key and
-                  // triggers the "Misconfigured Protocol" recovery dialog.
-                  const type = await handleCreateEdge(option);
-                  handleChangeCreateEdge(type);
-                },
-                onChange: (_e: unknown, value: string) =>
-                  handleChangeCreateEdge(value),
-                placeholder: 'Select or create an edge type',
-                createLabelText: '✨ Create new edge type ✨',
-                createInputLabel: 'New edge type name',
-                createInputPlaceholder: 'Enter an edge type...',
-                validation: {
-                  required: true,
-                  allowedNMToken: 'edge type name',
-                },
+              initialValue={createEdge}
+              options={edgesForSubject}
+              onCreateOption={handleCreateEdge}
+              placeholder="Select or create an edge type"
+              createLabelText="✨ Create new edge type ✨"
+              createInputLabel="New edge type name"
+              createInputPlaceholder="Enter an edge type..."
+              createValidation={{
+                required: true,
+                allowedNMToken: 'edge type name',
               }}
             />
-          </Row>
+          </>
         </Section>
-        {createEdge && (
-          <Section title="Ordinal Variable" layout="vertical">
-            <Row>
-              <ValidatedField
+        {currentCreateEdge && (
+          <Section title="Ordinal Attribute" layout="vertical">
+            <>
+              <ArchitectField
                 name="edgeVariable"
+                label="Select an ordinal attribute for this edge type"
                 component={VariablePicker}
                 validation={{ required: true }}
-                componentProps={{
-                  entity: 'edge',
-                  type: createEdge ?? undefined,
-                  label: 'Select an ordinal variable for this edge type',
-                  options: variableOptions,
-                  onCreateOption: handleNewVariable,
-                }}
+                initialValue={edgeVariable}
+                entity="edge"
+                type={currentCreateEdge}
+                options={ordinalVariableOptions}
+                onCreateOption={handleNewVariable}
               />
-            </Row>
-            {edgeVariable && (
-              <Row>
+            </>
+            {currentEdgeVariable && (
+              <>
                 <Heading level="h4" id={getFieldId('variableOptions')}>
-                  Variable Options
+                  Attribute Options
                 </Heading>
-                <Paragraph>
-                  The following choices or &apos;options&apos; are configured
-                  for this variable. We suggest no more than four options should
-                  be used on this interface.
-                </Paragraph>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong> including the
-                      negative label. Using more will create a sub-optimal
-                      experience for participants, and might reduce data
-                      quality.
-                    </AlertDescription>
-                  </Alert>
+                {lockedOptions ? (
+                  <LockedOptions options={lockedOptions} />
+                ) : (
+                  <>
+                    <Paragraph>
+                      The following choices or &apos;options&apos; are
+                      configured for this attribute. We suggest no more than
+                      four options should be used on this interface.
+                    </Paragraph>
+                    {showVariableOptionsTip && (
+                      <Alert variant="destructive" className="my-7">
+                        <AlertTitle>Too many option values</AlertTitle>
+                        <AlertDescription>
+                          The ordinal bin interface is designed to use{' '}
+                          <strong>up to 5 option values</strong> including the
+                          negative label. Using more will create a sub-optimal
+                          experience for participants, and might reduce data
+                          quality.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    <ArchitectArrayField
+                      name="variableOptions"
+                      label="Options"
+                      labelHidden
+                      component={Options}
+                      addButtonLabel="Create new option"
+                      validation={optionsValidation}
+                      initialValue={variableOptions}
+                    />
+                  </>
                 )}
-                <Options name="variableOptions" label="Options" />
-              </Row>
+              </>
             )}
           </Section>
         )}
@@ -236,24 +313,23 @@ const PromptFields = ({
           id={getFieldId('negativeLabel')}
           layout="vertical"
         >
-          <ValidatedField
+          <ArchitectField
             name="negativeLabel"
-            component={RichText}
+            label="Label for the decline option"
+            component={RichTextField}
             validation={{ required: true }}
-            componentProps={{
-              inline: true,
-              label: 'Label for the decline option',
-              placeholder: 'Enter text for the negative label here...',
-            }}
+            initialValue={negativeLabel}
+            singleLine
+            placeholder="Enter text for the negative label here..."
           />
         </Section>
       </Section>
-      <NewVariableWindow {...newVariableWindowProps} />
+      <NewVariableWindow
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...newVariableWindowProps}
+      />
     </>
   );
 };
-export default compose<PromptFieldsProps>(
-  withCreateEdgeHandlers,
-  withEdgesOptions,
-  withVariableOptions,
-)(PromptFields);
+
+export default PromptFields;

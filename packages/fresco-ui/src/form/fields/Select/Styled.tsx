@@ -68,7 +68,13 @@ function SelectField(props: SelectProps) {
   return (
     <Select.Root
       {...rest}
-      value={value}
+      // `null` — never `undefined`. Base UI decides controlled-ness by
+      // `value !== undefined`, so an unanswered field would mount the select
+      // UNCONTROLLED and then flip to controlled on the first choice, which is
+      // the state React and Base UI both warn about. `null` is Base UI's own
+      // "controlled, nothing selected", and `Select.Value`'s render prop below
+      // already branches on it.
+      value={value ?? null}
       onValueChange={handleValueChange}
       disabled={disabled}
       readOnly={readOnly}

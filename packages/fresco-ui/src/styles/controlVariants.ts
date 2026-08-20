@@ -262,6 +262,26 @@ export const stateVariants = cva({
   },
 });
 
+// `stateVariants.readOnly` deliberately stays pointer-interactive: native text
+// controls (Input, TextArea, RichTextEditor, Combobox/Select triggers) must
+// keep focus, caret placement, and text selection while readOnly. Controls
+// whose root element *is* the thing being pressed (Checkbox, ToggleButtonGroup
+// options) need the opposite — compose this alongside `stateVariants` so they
+// stop advertising hover/press affordances for an activation they swallow.
+// Declares the same `state` keys as `stateVariants` (rather than `readOnly`
+// alone) so `compose()` keeps the full `state` union on the composed variant
+// function instead of narrowing it to whichever key this contributes to.
+export const inertReadOnlyVariants = cva({
+  variants: {
+    state: {
+      disabled: '',
+      readOnly: 'pointer-events-none',
+      invalid: '',
+      normal: '',
+    },
+  },
+});
+
 // As above, but adding focus and hover styles for interactive elements.
 // The ring is applied in two ways so every control variant gets the same look:
 //   1. `has-[…]:focus-styles` — wrapper <div> lights up when a nested
@@ -338,10 +358,20 @@ export const groupOptionVariants = cva({
       true: 'cursor-not-allowed',
       false: 'cursor-pointer',
     },
+    // `<label>`-wrapped options (CheckboxGroup) associate the label with the
+    // control's hidden native input, not the visible pointer-events-none
+    // control — so a read-only option needs pointer-events-none on the label
+    // itself, or clicking anywhere on it still forwards a native label-click
+    // activation to that hidden input, bypassing the control's own inertness.
+    readOnly: {
+      true: 'pointer-events-none cursor-default',
+      false: '',
+    },
   },
   defaultVariants: {
     size: 'md',
     disabled: false,
+    readOnly: false,
   },
 });
 

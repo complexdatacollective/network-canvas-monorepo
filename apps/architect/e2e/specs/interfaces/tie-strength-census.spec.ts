@@ -129,7 +129,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
     await architectPage.getByRole('button', { name: 'Create' }).click();
 
     await expect(
-      architectPage.getByRole('button', { name: 'Select variable' }),
+      architectPage.getByRole('button', { name: 'Select attribute' }),
     ).toBeVisible();
 
     await createVariableViaSpotlight(architectPage, {

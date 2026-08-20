@@ -96,6 +96,9 @@ export type InterviewerFlags = {
  */
 export type InterviewAnalyticsMetadata = {
   installationId: string;
+  /** Stable custom `app` discriminator retained for historical analytics. */
   hostApp: string;
+  /** Human-readable name used by PostHog's built-in App name property. */
+  appName?: string;
   hostVersion?: string;
 };

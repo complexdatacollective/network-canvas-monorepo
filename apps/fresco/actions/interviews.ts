@@ -4,17 +4,22 @@ import { createId } from '@paralleldrive/cuid2';
 import { after } from 'next/server';
 
 import { createInitialNetwork } from '@codaco/interview/contract';
-import { addEvent } from '~/actions/activityFeed';
+import { ensureError } from '@codaco/shared-consts';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
+import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeRevalidateTag, safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureException, shutdownPostHog } from '~/lib/posthog-server';
+import { Prisma } from '~/lib/db/generated/client';
+import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 import { getInterviewIdsMatching } from '~/queries/interviews';
-import type { CreateInterview, DeleteInterviews } from '~/schemas/interviews';
+import type {
+  CreateInterview,
+  CreateInterviewResult,
+  DeleteInterviews,
+} from '~/schemas/interviews';
 import { participantIdentifierSchema } from '~/schemas/participant';
-import { ensureError } from '~/utils/ensureError';
 
 export async function deleteInterviews(data: DeleteInterviews) {
   const session = await requireApiAuth();
@@ -139,26 +144,62 @@ export async function getIncompleteInterviewUrlData(
   }
 }
 
-export async function createInterview(data: CreateInterview) {
+/**
+ * Prisma raises P2025 when a nested `connect` cannot resolve the record it
+ * points at. For `createInterview` that can only be the protocol connect, so
+ * it means the protocol was deleted between the existence check below and the
+ * write — the one gap that check cannot close on its own.
+ */
+function isMissingProtocol(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2025'
+  );
+}
+
+export async function createInterview(
+  data: CreateInterview,
+): Promise<CreateInterviewResult> {
   const { participantIdentifier, protocolId } = data;
 
-  // The participant identifier may arrive unauthenticated via /onboard, so
-  // validate it (length, trim, non-whitespace) before it is persisted and
-  // later embedded in activity-feed messages and CSV exports.
-  let validatedIdentifier: string | undefined;
-  if (participantIdentifier !== undefined && participantIdentifier !== '') {
-    const parsed = participantIdentifierSchema.safeParse(participantIdentifier);
-    if (!parsed.success) {
+  try {
+    // A protocol that no longer exists is the whole answer: nothing else about
+    // the request can be acted on, and reporting any other reason sends the
+    // researcher after a fix that cannot help — enabling anonymous
+    // recruitment, or correcting an identifier on a link that is dead either
+    // way. So this precedes every other return, rather than being reached only
+    // when nothing else fails first.
+    const protocol = await prisma.protocol.findUnique({
+      where: { id: protocolId },
+      select: { id: true },
+    });
+
+    if (!protocol) {
       return {
-        errorType: 'invalid-identifier',
-        error: 'Invalid participant identifier',
+        errorType: 'no-protocol',
+        error: 'Protocol not found',
         createdInterviewId: null,
       };
     }
-    validatedIdentifier = parsed.data;
-  }
 
-  try {
+    // The participant identifier may arrive unauthenticated via /onboard, so
+    // validate it (length, trim, non-whitespace) before it is persisted and
+    // later embedded in activity-feed messages and CSV exports.
+    let validatedIdentifier: string | undefined;
+    if (participantIdentifier !== undefined && participantIdentifier !== '') {
+      const parsed = participantIdentifierSchema.safeParse(
+        participantIdentifier,
+      );
+      if (!parsed.success) {
+        return {
+          errorType: 'invalid-identifier',
+          error: 'Invalid participant identifier',
+          createdInterviewId: null,
+        };
+      }
+      validatedIdentifier = parsed.data;
+    }
+
     if (!validatedIdentifier) {
       const allowAnonymousRecruitment = await getAppSetting(
         'allowAnonymousRecruitment',
@@ -234,15 +275,26 @@ export async function createInterview(data: CreateInterview) {
       errorType: null,
     };
   } catch (error) {
+    // A participant following a link to a protocol that no longer exists is an
+    // expected outcome of an unauthenticated, user-supplied id — report it to
+    // the caller so it can be explained, but never as an application exception.
+    if (isMissingProtocol(error)) {
+      return {
+        errorType: 'no-protocol',
+        error: 'Protocol not found',
+        createdInterviewId: null,
+      };
+    }
+
     const e = ensureError(error);
 
     after(async () => {
       await captureException(e);
-      await shutdownPostHog();
+      await flushPostHog();
     });
 
     return {
-      errorType: e.message,
+      errorType: 'unknown',
       error: 'Failed to create interview',
       createdInterviewId: null,
     };

@@ -1,5 +1,20 @@
 # @codaco/documentation
 
+## 0.3.3
+
+### Patch Changes
+
+- Populate PostHog's built-in app name and version metadata for Documentation
+  events.
+
+## 0.3.2
+
+### Patch Changes
+
+- Update the Architect preview guidance for the default-off Respect skip logic setting and explain how to test both every stage and participant routes.
+- Add an advanced tutorial for implementing the Colored Eco-Genetic Relationship Map (CEGRM) method in Network Canvas, including a worked template architecture, screenshots, analysis guidance, ethical cautions, and links to the foundational literature.
+- Update analytics sanitization dependencies to resolve security vulnerabilities.
+
 ## 0.3.1
 
 ### Patch Changes

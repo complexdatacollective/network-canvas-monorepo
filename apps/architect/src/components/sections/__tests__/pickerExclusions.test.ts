@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAdditionalAttributesOptionsForSubject } from '~/components/AssignAttributes/AssignAttributes';
+import { getAdditionalAttributesOptionsForSubject } from '~/components/sections/NameGeneratorPrompts/PromptFields';
 import {
   getComposerQuickAddOptionsForSubject,
   getConvexHullOptionsForSubject,
@@ -16,6 +16,7 @@ import {
 const stateWith = (protocol: unknown): RootState =>
   ({
     activeProtocol: { present: protocol },
+    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 // Same shape as the Task 7 role-map fixture: `cat` is written both by a form
@@ -289,7 +290,7 @@ describe('getComposerQuickAddOptionsForSubject (NetworkComposer quickAdd picker,
 // writers, so their shared row pool excludes in the OPPOSITE direction to the
 // quickAdd blocks below — and its escape is the multi-row committed set, not
 // a single currentValue.
-describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVALIDATED writer)', () => {
+describe('getAdditionalAttributesOptionsForSubject (additionalAttributes pool, UNVALIDATED writer)', () => {
   it('drops a variable a form elsewhere already validates', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(validatedOnly),
@@ -301,9 +302,35 @@ describe('getAdditionalAttributesOptionsForSubject (AssignAttributes pool, UNVAL
   });
 
   it('keeps a variable only an unvalidated writer elsewhere already claims', () => {
+    // `catUnvalidatedOnly`, not `qaUnvalidatedOnly`: two unvalidated writers
+    // may share a variable, which a bin's prompt shows. The pedigree fixture
+    // would prove the wrong thing here, because a structural pedigree slot is
+    // owned by that interface outright (see the next case).
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(catUnvalidatedOnly),
+      subject,
+    );
+
+    expect(result.map((o) => o.value)).toContain('cat');
+  });
+
+  // A Family Pedigree derives `relationshipVariable` from the tree the
+  // participant draws; an additionalAttributes rule writing it would overwrite
+  // that derived value with a fixed one on every node the prompt names.
+  it('drops a variable a Family Pedigree slot owns outright', () => {
     const result = getAdditionalAttributesOptionsForSubject(
       stateWith(qaUnvalidatedOnly),
       subject,
+    );
+
+    expect(result.map((o) => o.value)).not.toContain('qa');
+  });
+
+  it('keeps an interface-owned variable a committed row already names', () => {
+    const result = getAdditionalAttributesOptionsForSubject(
+      stateWith(qaUnvalidatedOnly),
+      subject,
+      ['qa'],
     );
 
     expect(result.map((o) => o.value)).toContain('qa');

@@ -444,7 +444,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           await expect(
             page.getByRole('heading', { level: 4, name: 'Low' }),
           ).toBeVisible();
-          // Gina is unplaced again: her Availability attribute is still null.
+          // Gina is unplaced again: her Availability response is still absent.
           expect(await stage.ordinalBin.getUnplacedCount()).toBe(1);
 
           let network = await protocol.getNetworkState(interview.interviewId);
@@ -454,7 +454,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           expect(gina?.[entityAttributesProperty][closenessVarId]).toBe(3);
           expect(
             gina?.[entityAttributesProperty][availabilityVarId],
-          ).toBeNull();
+          ).toBeUndefined();
 
           await stage.ordinalBin.dragNodeToBin('Gina', 'High');
           // Last prompt: nextButton now advances the stage, changing the URL
@@ -745,7 +745,9 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           const grace = network?.nodes.find(
             (n) => n[entityPrimaryKeyProperty] === graceUid,
           );
-          expect(grace?.[entityAttributesProperty][closenessVarId]).toBeNull();
+          expect(
+            grace?.[entityAttributesProperty][closenessVarId],
+          ).toBeUndefined();
           // All 6 seeded nodes (4 Person + 2 Place) survive in the shared
           // network — the stage filter/subject only affect what renders and
           // what blocks readiness, never what's persisted.

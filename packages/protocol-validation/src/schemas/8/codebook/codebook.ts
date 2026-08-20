@@ -46,7 +46,7 @@ export const CodebookSchema = z
         if (seenRecordKeys.has(key)) {
           ctx.addIssue({
             code: 'custom' as const,
-            message: `Variable record key "${key}" is reused across entity types`,
+            message: `Attribute record key "${key}" is reused across entity types`,
             path: [],
           });
         }

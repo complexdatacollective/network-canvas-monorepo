@@ -148,7 +148,7 @@ test('surfaces a form+bin variable role conflict in the timeline alert and Stage
   await expect(
     architectPage.getByRole('heading', {
       level: 4,
-      name: 'A variable is written both with and without validation',
+      name: 'An attribute is written both with and without validation',
     }),
   ).toBeVisible();
 
@@ -167,7 +167,7 @@ test('surfaces a form+bin variable role conflict in the timeline alert and Stage
   // accessible name.
   await expect(
     architectPage.getByRole('link', {
-      name: /Stages.*has variables written both with and without validation/,
+      name: /Stages.*has attributes written both with and without validation/,
     }),
   ).toBeVisible();
 });
@@ -194,7 +194,7 @@ test("excludes each writer's picker from offering the other class's variable, wh
     .click();
   const fieldDialog = architectPage.getByRole('dialog', { name: 'Edit Field' });
   await expect(fieldDialog).toBeVisible();
-  await fieldDialog.getByRole('button', { name: 'Change variable' }).click();
+  await fieldDialog.getByRole('button', { name: 'Change attribute' }).click();
 
   const formPickerItems = architectPage.getByTestId('spotlight-list-item');
   await expect(formPickerItems).toHaveCount(3);
@@ -223,7 +223,7 @@ test("excludes each writer's picker from offering the other class's variable, wh
     name: 'Edit Prompt',
   });
   await expect(promptDialog).toBeVisible();
-  await promptDialog.getByRole('button', { name: 'Change variable' }).click();
+  await promptDialog.getByRole('button', { name: 'Change attribute' }).click();
 
   const binPickerItems = architectPage.getByTestId('spotlight-list-item');
   await expect(binPickerItems).toHaveCount(3);

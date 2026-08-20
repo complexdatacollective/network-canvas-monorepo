@@ -9,7 +9,7 @@ type ControlsColumnProps = {
 };
 
 const ControlsColumn = ({ id, inUse, onDelete }: ControlsColumnProps) => {
-  const label = inUse ? 'In use — cannot be deleted' : 'Delete variable';
+  const label = inUse ? 'In use — cannot be deleted' : 'Delete attribute';
 
   // The title lives on the wrapping span rather than the IconButton: a disabled
   // button gets `pointer-events-none`, so a `title` on it would never show on

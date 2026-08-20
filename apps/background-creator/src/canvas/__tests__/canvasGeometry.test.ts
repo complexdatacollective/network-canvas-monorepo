@@ -335,7 +335,7 @@ describe('polygon vertex resize', () => {
     expect(out).toBe(el);
   });
 
-  it('allows a coincident vertex when three distinct positions remain', () => {
+  it('rejects a coincident vertex even when three distinct positions remain', () => {
     const el = polygon({
       points: [
         { x: 0.2, y: 0.2 },
@@ -344,11 +344,21 @@ describe('polygon vertex resize', () => {
         { x: 0.4, y: 0.5 },
       ],
     });
-    // Dragging vertex 3 onto vertex 0 leaves three distinct vertices — allowed.
+    // The repeated non-adjacent vertex makes the boundary touch itself.
     const out = resizeElement(el, vertex(3), { x: 0.2, y: 0.2 });
-    if (out.kind === 'polygon') {
-      expect(out.points).toHaveLength(4);
-      expect(out.points[3]).toEqual({ x: 0.2, y: 0.2 });
-    }
+    expect(out).toBe(el);
+  });
+
+  it('rejects a vertex drag that crosses a non-adjacent edge', () => {
+    const el = polygon({
+      points: [
+        { x: 0.2, y: 0.2 },
+        { x: 0.8, y: 0.2 },
+        { x: 0.8, y: 0.8 },
+        { x: 0.2, y: 0.8 },
+      ],
+    });
+    const out = resizeElement(el, vertex(2), { x: 0.5, y: 0.1 });
+    expect(out).toBe(el);
   });
 });

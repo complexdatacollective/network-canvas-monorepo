@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { LayoutGroup } from 'motion/react';
 import { useState } from 'react';
+import { useArgs } from 'storybook/preview-api';
 import { expect, userEvent, within } from 'storybook/test';
 
 import Heading from '../../typography/Heading';
@@ -76,14 +77,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState(false);
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
 
     return (
       <div className="w-full max-w-md">
         <ToggleField
-          value={value}
-          onChange={(v) => setValue(v ?? false)}
+          {...args}
+          onChange={(value) => {
+            updateArgs({ value });
+            args.onChange?.(value);
+          }}
           aria-label="Enable Option"
         />
       </div>

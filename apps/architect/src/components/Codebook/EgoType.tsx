@@ -57,7 +57,7 @@ const EgoType = ({
           size="sm"
           onClick={() => setShowAddVariable(true)}
         >
-          Add variable
+          Add attribute
         </Button>
       </div>
       {filteredVariables.length > 0 ? (
@@ -65,8 +65,8 @@ const EgoType = ({
       ) : (
         <Paragraph className="text-muted mt-5">
           {variableArray.length === 0
-            ? 'No ego variables yet.'
-            : 'No ego variables match the current filter.'}
+            ? 'No ego attributes yet.'
+            : 'No ego attributes match the current filter.'}
         </Paragraph>
       )}
       <NewVariableWindow

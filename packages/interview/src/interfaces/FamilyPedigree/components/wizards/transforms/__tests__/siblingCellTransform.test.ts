@@ -21,9 +21,9 @@ const variableConfig: VariableConfig = {
 
 const relTypeOf = (e: {
   data: { attributes: Record<string, VariableValue> };
-}): VariableValue => {
+}): VariableValue | undefined => {
   const value = e.data.attributes[variableConfig.relationshipTypeVariable];
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  return Array.isArray(value) ? value[0] : value;
 };
 
 function makeNodes(
@@ -76,6 +76,49 @@ function makeEdges(
 }
 
 describe('siblingCellTransform', () => {
+  it('writes dangerous configured variable names as own attributes', () => {
+    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      '__proto__',
+    );
+    const dangerousConfig: VariableConfig = {
+      ...variableConfig,
+      biologicalSexVariable: '__proto__',
+      gameteRoleVariable: 'constructor',
+      isGestationalCarrierVariable: 'prototype',
+    };
+    const batch = siblingCellTransform(
+      {
+        'sibling': { biologicalSex: 'female', name: 'Alice' },
+        'egg-parent-carried': true,
+        'egg-source': 'parent-a',
+        'sperm-source': 'parent-b',
+      },
+      'anchor',
+      makeNodes([
+        ['anchor', { name: 'Anchor' }],
+        ['parent-a', { name: 'Mom' }],
+        ['parent-b', { name: 'Dad' }],
+      ]),
+      makeEdges([]),
+      dangerousConfig,
+    );
+    const siblingAttributes = batch.nodes[0]?.data.attributes;
+    const eggEdgeAttributes = batch.edges.find(
+      (edge) => edge.source === 'parent-a',
+    )?.data.attributes;
+
+    expect(Object.hasOwn(siblingAttributes ?? {}, '__proto__')).toBe(true);
+    expect(siblingAttributes?.['__proto__']).toEqual(['female']);
+    expect(Object.hasOwn(eggEdgeAttributes ?? {}, 'prototype')).toBe(true);
+    expect(eggEdgeAttributes?.prototype).toBe(true);
+    expect(Object.hasOwn(eggEdgeAttributes ?? {}, 'constructor')).toBe(true);
+    expect(eggEdgeAttributes?.constructor).toEqual(['egg']);
+    expect(
+      Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
+    ).toEqual(prototypeDescriptor);
+  });
+
   it('creates full sibling sharing all existing parents', () => {
     const nodes = makeNodes([
       ['anchor', { isEgo: false, name: 'Anchor' }],

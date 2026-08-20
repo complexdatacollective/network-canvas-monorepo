@@ -19,7 +19,12 @@ vi.mock('posthog-js', () => ({
 }));
 
 vi.mock('~/fresco.config', () => ({
-  POSTHOG_APP_NAME: 'Fresco',
+  POSTHOG_APP_PROPERTIES: {
+    app: 'Fresco',
+    $app_name: 'Fresco',
+    host_version: '4.1.1',
+    $app_version: '4.1.1',
+  },
 }));
 
 import { PostHogIdentify } from '../PosthogIdentify';
@@ -46,6 +51,9 @@ describe('PostHogIdentify', () => {
     expect(mockOptInCapturing).toHaveBeenCalled();
     expect(mockRegister).toHaveBeenCalledWith({
       app: 'Fresco',
+      $app_name: 'Fresco',
+      host_version: '4.1.1',
+      $app_version: '4.1.1',
       installation_id: 'install-123',
     });
     expect(mockIdentify).toHaveBeenCalledWith('install-123');

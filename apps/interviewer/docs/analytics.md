@@ -43,8 +43,8 @@ Both routes go through `AnalyticsProvider.setEnabled()`, which:
   uncaught JS errors and unhandled rejections are reported.
 - `AnalyticsProvider.tsx` — React context exposing `enabled`, `client`,
   `setEnabled`, `track`, and `captureException`. Registers anonymous super
-  properties (`app`, `installation_id`, `host_version`) and identifies by
-  installation id.
+  properties (`app`, `$app_name`, `installation_id`, `host_version`,
+  `$app_version`) and identifies by installation id.
 
 The same client is passed into the `@codaco/interview` `Shell`
 (`routes/Interview.tsx`) via `posthogClient`, with `disableAnalytics` bound to

@@ -1,33 +1,38 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import {
+  controlVariants,
+  groupSpacingVariants,
+  inputControlVariants,
+  stateVariants,
+} from '@codaco/fresco-ui/styles/controlVariants';
+import { compose } from '@codaco/fresco-ui/utils/cva';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
-import FrescoReduxField from '../FrescoReduxField';
 
-type ResourcePickerControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: React.FocusEventHandler;
-  'onFocus'?: React.FocusEventHandler;
-  'showBrowser'?: boolean;
-  'onCloseBrowser'?: () => void;
-  'type'?: string;
-  'selected'?: string;
-  'className'?: string;
-  'children'?: (id: string) => ReactNode;
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-};
+export type FileInputProps = CreateFormFieldProps<
+  string,
+  'fieldset',
+  {
+    /** Externally forces the resource browser open (see `DataSource`). */
+    showBrowser?: boolean;
+    onCloseBrowser?: () => void;
+    /** Asset type the browser is filtered to. */
+    type?: string;
+    /** Asset highlighted in the browser; defaults to the field's value. */
+    selected?: string;
+    children?: (id: string) => ReactNode;
+  }
+>;
 
-const ResourcePickerControl = ({
+/**
+ * Picks a protocol asset from the resource browser. Labelling belongs to the
+ * surrounding field — pass it through `ArchitectField`'s `label`/`hint`.
+ */
+const ResourcePicker = ({
   id,
   name,
   value = '',
@@ -44,8 +49,9 @@ const ResourcePickerControl = ({
   readOnly = false,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
+  'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
-}: ResourcePickerControlProps) => {
+}: FileInputProps) => {
   const [browserOpen, setBrowserOpen] = useState(Boolean(showBrowser));
 
   useEffect(() => {
@@ -63,27 +69,59 @@ const ResourcePickerControl = ({
     onCloseBrowser?.();
   };
 
+  const variants = compose(
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+  );
+
+  const getState = () => {
+    if (disabled) return 'disabled';
+    if (readOnly) return 'readOnly';
+    if (ariaInvalid) return 'invalid';
+    return 'normal';
+  };
+
   return (
-    <fieldset
-      id={id}
-      aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
-      aria-describedby={ariaDescribedBy}
-      aria-disabled={readOnly || undefined}
-      disabled={disabled}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      className={cx(
-        'bg-input text-input-contrast flex w-full flex-col gap-4 rounded border-2 border-transparent p-4',
-        ariaInvalid && 'border-destructive',
-        disabled && 'opacity-50',
-        readOnly && 'opacity-70',
-        className,
-      )}
-      data-name={name}
-    >
-      {value && (
-        <div className="relative overflow-hidden">{children?.(value)}</div>
-      )}
+    <>
+      <fieldset
+        id={id}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
+        aria-describedby={ariaDescribedBy}
+        aria-disabled={readOnly || undefined}
+        disabled={disabled}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        className={cx(
+          variants({
+            state: getState(),
+          }),
+          'mb-4',
+          className,
+        )}
+        data-name={name}
+      >
+        {value && (
+          <div className="relative overflow-hidden">{children?.(value)}</div>
+        )}
+        {!value && (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="text-text/70 flex h-32 w-full items-center justify-center text-center font-semibold italic">
+              No resource selected.
+            </div>
+          </div>
+        )}
+
+        <AssetBrowserWindow
+          show={browserOpen}
+          type={type}
+          selected={selected ?? value}
+          onSelect={handleSelectAsset}
+          onCancel={closeBrowser}
+        />
+      </fieldset>
       <Button
         type="button"
         onClick={() => setBrowserOpen(true)}
@@ -93,63 +131,8 @@ const ResourcePickerControl = ({
       >
         {!value ? 'Select resource' : 'Update resource'}
       </Button>
-      <AssetBrowserWindow
-        show={browserOpen}
-        type={type}
-        selected={selected ?? value}
-        onSelect={handleSelectAsset}
-        onCancel={closeBrowser}
-      />
-    </fieldset>
+    </>
   );
 };
 
-export type FileInputPropsWithoutHOC = WrappedFieldProps & {
-  showBrowser?: boolean;
-  onCloseBrowser?: () => void;
-  label?: string;
-  type?: string;
-  selected?: string;
-  className?: string;
-  children?: (id: string) => ReactNode;
-  disabled?: boolean;
-  readOnly?: boolean;
-  required?: boolean;
-};
-
-export type FileInputProps = FileInputPropsWithoutHOC;
-
-const FrescoResourcePickerControl = ResourcePickerControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const getDefaultLabel = (type?: string) => {
-  switch (type) {
-    case 'audio':
-      return 'Audio resource';
-    case 'geojson':
-      return 'Geospatial data file';
-    case 'image':
-      return 'Image resource';
-    case 'network':
-      return 'Network data file';
-    case 'video':
-      return 'Video resource';
-    default:
-      return 'Resource';
-  }
-};
-
-const FileInput = ({ label, type, ...props }: FileInputPropsWithoutHOC) => (
-  <ReduxFieldAdapter
-    {...props}
-    type={type}
-    label={label ?? getDefaultLabel(type)}
-    fieldComponent={FrescoResourcePickerControl}
-  />
-);
-
-export default FileInput;
+export default ResourcePicker;

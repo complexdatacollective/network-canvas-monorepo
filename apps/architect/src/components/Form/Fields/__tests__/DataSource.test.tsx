@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import { useContext, type ContextType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 vi.mock('../File', () => ({
   default: ({
@@ -8,20 +11,17 @@ vi.mock('../File', () => ({
     onCloseBrowser,
     disabled,
     readOnly,
-    required,
   }: {
     showBrowser?: boolean;
     onCloseBrowser?: () => void;
     disabled?: boolean;
     readOnly?: boolean;
-    required?: boolean;
   }) => (
     <div
       data-testid="file-picker"
       data-open={String(Boolean(showBrowser))}
       data-disabled={String(Boolean(disabled))}
       data-readonly={String(Boolean(readOnly))}
-      data-required={String(Boolean(required))}
     >
       <button type="button" onClick={onCloseBrowser}>
         Close browser
@@ -34,11 +34,16 @@ vi.mock('~/components/Thumbnail/Network', () => ({
   default: () => null,
 }));
 
+import ArchitectField from '../../ArchitectField';
 import DataSource from '../DataSource';
 
-const DataSourceField = DataSource as unknown as ComponentType<
-  Record<string, unknown>
->;
+type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
+
+let storeApi: StoreApi | null = null;
+const CaptureStore = () => {
+  storeApi = useContext(FormStoreContext) ?? null;
+  return null;
+};
 
 type DataSourceTestProps = {
   disabled?: boolean;
@@ -46,32 +51,41 @@ type DataSourceTestProps = {
   required?: boolean;
 };
 
-const renderDataSource = (value: string, props: DataSourceTestProps = {}) => {
-  const onChange = vi.fn();
-  const onBlur = vi.fn();
-  const onFocus = vi.fn();
+const renderDataSource = (
+  value: string,
+  { disabled, readOnly, required }: DataSourceTestProps = {},
+) => {
+  storeApi = null;
+
   render(
-    <DataSourceField
-      canUseExisting
-      {...props}
-      input={{
-        name: 'dataSource',
-        value,
-        onChange,
-        onBlur,
-        onFocus,
-        onDragStart: vi.fn(),
-        onDrop: vi.fn(),
-      }}
-      meta={{}}
-    />,
+    <Form onSubmit={() => ({ success: true })}>
+      <CaptureStore />
+      <ArchitectField
+        name="dataSource"
+        label="Roster data"
+        component={DataSource}
+        canUseExisting
+        initialValue={value}
+        disabled={disabled}
+        readOnly={readOnly}
+        validation={required ? { required: true } : undefined}
+      />
+    </Form>,
   );
-  return { onBlur, onChange, onFocus };
+
+  return {
+    getValue: () => {
+      if (!storeApi) throw new Error('form store was not captured');
+      return storeApi.getState().getFormValues().dataSource as
+        | string
+        | undefined;
+    },
+  };
 };
 
 describe('DataSource', () => {
   it('opens the network asset picker without changing the value prematurely', () => {
-    const { onChange } = renderDataSource('existing');
+    const { getValue } = renderDataSource('existing');
 
     expect(screen.queryByTestId('file-picker')).toBeNull();
     fireEvent.click(
@@ -82,11 +96,11 @@ describe('DataSource', () => {
       'data-open',
       'true',
     );
-    expect(onChange).not.toHaveBeenCalled();
+    expect(getValue()).toBe('existing');
   });
 
   it('switches an asset-backed field to the interview network', () => {
-    const { onChange } = renderDataSource('network-asset-id');
+    const { getValue } = renderDataSource('network-asset-id');
 
     fireEvent.click(
       screen.getByRole('radio', {
@@ -94,7 +108,7 @@ describe('DataSource', () => {
       }),
     );
 
-    expect(onChange).toHaveBeenCalledWith('existing');
+    expect(getValue()).toBe('existing');
   });
 
   it('resets the controlled browser state when the picker closes', () => {
@@ -107,30 +121,20 @@ describe('DataSource', () => {
     expect(screen.queryByTestId('file-picker')).toBeNull();
   });
 
-  it('forwards required semantics and Redux focus metadata', () => {
-    const { onBlur, onFocus } = renderDataSource('network-asset-id', {
-      required: true,
-    });
-    const group = screen.getByRole('radiogroup', { name: 'Data source' });
-    const existingOption = screen.getByRole('radio', {
-      name: 'Use the network from the in-progress interview',
-    });
+  it('takes its name from the call site rather than a hardcoded label', () => {
+    renderDataSource('network-asset-id', { required: true });
 
+    // Regression: every panel used to render an identical `aria-label="Data
+    // source"`, so the choice could not be told apart between panels.
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Data source' }),
+    ).toBeNull();
+    const group = screen.getByRole('radiogroup', { name: 'Roster data' });
     expect(group).toHaveAttribute('aria-required', 'true');
-    expect(screen.getByTestId('file-picker')).toHaveAttribute(
-      'data-required',
-      'true',
-    );
-
-    fireEvent.focus(existingOption);
-    fireEvent.blur(existingOption);
-
-    expect(onFocus).toHaveBeenCalled();
-    expect(onBlur).toHaveBeenCalledWith('network-asset-id');
   });
 
   it('disables both source selection and the asset picker', () => {
-    const { onChange } = renderDataSource('network-asset-id', {
+    const { getValue } = renderDataSource('network-asset-id', {
       disabled: true,
     });
     const existingOption = screen.getByRole('radio', {
@@ -143,14 +147,14 @@ describe('DataSource', () => {
       'true',
     );
     fireEvent.click(existingOption);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(getValue()).toBe('network-asset-id');
   });
 
   it('keeps both source selection and the asset picker read-only', () => {
-    const { onChange } = renderDataSource('network-asset-id', {
+    const { getValue } = renderDataSource('network-asset-id', {
       readOnly: true,
     });
-    const group = screen.getByRole('radiogroup', { name: 'Data source' });
+    const group = screen.getByRole('radiogroup', { name: 'Roster data' });
     const existingOption = screen.getByRole('radio', {
       name: 'Use the network from the in-progress interview',
     });
@@ -161,6 +165,6 @@ describe('DataSource', () => {
       'true',
     );
     fireEvent.click(existingOption);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(getValue()).toBe('network-asset-id');
   });
 });

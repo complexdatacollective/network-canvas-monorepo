@@ -1,8 +1,71 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { getValue, setValue } from './objectPath';
+import {
+  createObjectPathWriter,
+  formatObjectPath,
+  getValue,
+  parseObjectPath,
+  setValue,
+} from './objectPath';
+
+const pollutionKey = 'frescoUiPolluted';
+
+const expectObjectPrototypeUnchanged = () => {
+  expect(Object.hasOwn(Object.prototype, pollutionKey)).toBe(false);
+  expect(
+    Object.getOwnPropertyDescriptor(Object.prototype, pollutionKey),
+  ).toBeUndefined();
+};
 
 describe('Object Path Utils', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(Object.prototype, pollutionKey);
+  });
+
+  describe('path parsing', () => {
+    it('round-trips an opaque dotted segment without making it structural', () => {
+      const path = ['favorite.color'];
+      const formatted = formatObjectPath(path);
+
+      expect(formatted).toBe('["favorite.color"]');
+      expect(parseObjectPath(formatted)).toEqual(path);
+    });
+
+    it('preserves a legacy nonnumeric bracketed name as one key', () => {
+      expect(parseObjectPath('weight[kg]')).toEqual(['weight[kg]']);
+      expect(parseObjectPath('measurements.weight[kg]')).toEqual([
+        'measurements',
+        'weight[kg]',
+      ]);
+    });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'preserves the terminal legacy key %s as an inert leaf',
+      (path) => {
+        expect(parseObjectPath(path)).toEqual([path]);
+      },
+    );
+
+    it.each([
+      '__proto__.polluted',
+      'safe.__proto__.polluted',
+      'constructor.prototype',
+      'prototype.polluted',
+    ])('rejects the unsafe structural path %s', (path) => {
+      expect(parseObjectPath(path)).toBeNull();
+    });
+
+    it.each([
+      '__proto__[0]',
+      'constructor[0]',
+      'prototype[0]',
+      'safe.constructor[0]',
+    ])('preserves the safe forced-array path %s', (path) => {
+      expect(parseObjectPath(path)).not.toBeNull();
+      expectObjectPrototypeUnchanged();
+    });
+  });
+
   describe('getValue', () => {
     it('should get simple property', () => {
       const obj = { name: 'John', age: 30 };
@@ -81,9 +144,52 @@ describe('Object Path Utils', () => {
 
       expect(getValue(obj, 'steps[5].name')).toBeUndefined();
     });
+
+    it('does not read through inherited properties', () => {
+      const obj: Record<string, unknown> = {
+        __proto__: { inherited: 'secret' },
+      };
+
+      expect(getValue(obj, 'inherited')).toBeUndefined();
+      expect(getValue(obj, 'constructor')).toBeUndefined();
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('reads an opaque dotted key only when passed as one segment', () => {
+      const obj = { 'favorite.color': 'blue' };
+
+      expect(getValue(obj, ['favorite.color'])).toBe('blue');
+      expect(getValue(obj, 'favorite.color')).toBeUndefined();
+    });
   });
 
   describe('setValue', () => {
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'treats the typed dangerous leaf %s as an inert own key',
+      (key) => {
+        const obj: Record<string, unknown> = {};
+
+        setValue(obj, [key], 'preserved');
+
+        expect(obj).toEqual({ [key]: 'preserved' });
+        expect(getValue(obj, [key])).toBe('preserved');
+        expectObjectPrototypeUnchanged();
+      },
+    );
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'treats the terminal legacy string %s as an inert own key',
+      (key) => {
+        const obj: Record<string, unknown> = {};
+
+        setValue(obj, key, 'preserved');
+
+        expect(Object.hasOwn(obj, key)).toBe(true);
+        expect(getValue(obj, key)).toBe('preserved');
+        expectObjectPrototypeUnchanged();
+      },
+    );
+
     it('should set simple property', () => {
       const obj: Record<string, unknown> = {};
 
@@ -142,6 +248,7 @@ describe('Object Path Utils', () => {
       setValue(obj, 'users.2.name', 'Bob');
 
       const users = obj.users as Record<string, unknown>[];
+      expect(Array.isArray(users)).toBe(true);
       expect(users[0]?.name).toBe('Johnny');
       expect(users[1]?.age).toBe(25);
       expect(users[2]?.name).toBe('Bob');
@@ -163,6 +270,7 @@ describe('Object Path Utils', () => {
           },
         },
       });
+      expect(Object.getPrototypeOf(obj.a)).toBe(Object.prototype);
     });
 
     it('should handle mixed object and array paths', () => {
@@ -257,6 +365,150 @@ describe('Object Path Utils', () => {
       expect(
         Array.isArray((obj.data as Record<string, unknown>[])[0]?.items),
       ).toBe(true);
+    });
+
+    it.each([
+      '__proto__.frescoUiPolluted',
+      'safe.__proto__.frescoUiPolluted',
+      'constructor.prototype',
+      'prototype.frescoUiPolluted',
+    ])('does not write the unsafe structural path %s', (path) => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, path, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+      expect(getValue(obj, path)).toBeUndefined();
+    });
+
+    it.each([
+      ['__proto__[0]', '__proto__'],
+      ['constructor[0]', 'constructor'],
+      ['prototype[0]', 'prototype'],
+    ])('writes %s through an inert own array', (path, key) => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, path, 'preserved');
+
+      expect(Object.hasOwn(obj, key)).toBe(true);
+      expect(getValue(obj, path)).toBe('preserved');
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('writes a nested constructor bracket path through an inert own array', () => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, 'safe.constructor[0]', 'preserved');
+
+      expect(obj).toEqual({ safe: { constructor: ['preserved'] } });
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('does not mutate a prototype reached through an own property', () => {
+      const obj: Record<string, unknown> = { safe: Object.prototype };
+
+      setValue(obj, `safe.${pollutionKey}`, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+      expect(getValue(obj, `safe.${pollutionKey}`)).toBe('polluted');
+      expect(obj.safe).not.toBe(Object.prototype);
+    });
+
+    it('does not write when the root object is itself a prototype', () => {
+      const prototype: Record<string, unknown> = Object.getPrototypeOf({});
+
+      setValue(prototype, pollutionKey, 'polluted');
+
+      expectObjectPrototypeUnchanged();
+    });
+
+    it('writes an opaque dotted key as one property', () => {
+      const obj: Record<string, unknown> = {};
+
+      setValue(obj, ['favorite.color'], 'blue');
+
+      expect(obj).toEqual({ 'favorite.color': 'blue' });
+      expect(getValue(obj, ['favorite.color'])).toBe('blue');
+      expect(getValue(obj, 'favorite.color')).toBeUndefined();
+    });
+
+    it('copies frozen containers before writing nested values', () => {
+      const obj: Record<string, unknown> = {
+        settings: Object.freeze({ theme: 'dark' }),
+      };
+
+      setValue(obj, 'settings.locale', 'en');
+
+      expect(obj).toEqual({ settings: { theme: 'dark', locale: 'en' } });
+    });
+
+    it.each(['__proto__', 'constructor', 'prototype'])(
+      'preserves the inert own key %s while cloning an overlapping container',
+      (key) => {
+        const settings: Record<string, unknown> = { theme: 'dark' };
+        Object.defineProperty(settings, key, {
+          configurable: true,
+          enumerable: true,
+          value: 'preserved',
+          writable: true,
+        });
+        const obj: Record<string, unknown> = { settings };
+
+        setValue(obj, 'settings.locale', 'en');
+
+        expect(obj).toEqual({
+          settings: {
+            theme: 'dark',
+            [key]: 'preserved',
+            locale: 'en',
+          },
+        });
+        expect(getValue(obj, 'settings.locale')).toBe('en');
+        expectObjectPrototypeUnchanged();
+      },
+    );
+
+    it('reuses containers created by one scoped writer for sibling paths', () => {
+      const obj: Record<string, unknown> = {};
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('group.first', 'one');
+      const createdGroup = obj.group;
+      writeValue('group.second', 'two');
+
+      expect(obj.group).toBe(createdGroup);
+      expect(obj).toEqual({ group: { first: 'one', second: 'two' } });
+    });
+
+    it('copies a field-owned container before a scoped writer extends it', () => {
+      const existing = Object.freeze({ first: 'one' });
+      const obj: Record<string, unknown> = { group: existing };
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('group.second', 'two');
+
+      expect(obj.group).not.toBe(existing);
+      expect(existing).toEqual({ first: 'one' });
+      expect(obj).toEqual({ group: { first: 'one', second: 'two' } });
+    });
+
+    it('preserves the native descriptor when writing an array length path', () => {
+      const obj: Record<string, unknown> = {};
+      const writeValue = createObjectPathWriter(obj);
+
+      writeValue('items[0]', 'first');
+      writeValue('items.length', 3);
+
+      const items = obj.items;
+      expect(Array.isArray(items)).toBe(true);
+      if (!Array.isArray(items)) throw new Error('Expected an array');
+      expect(items).toEqual(['first', undefined, undefined]);
+      expect(Object.getOwnPropertyDescriptor(items, 'length')).toEqual({
+        configurable: false,
+        enumerable: false,
+        value: 3,
+        writable: true,
+      });
     });
   });
 });

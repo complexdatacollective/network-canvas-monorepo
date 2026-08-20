@@ -11,6 +11,7 @@ import {
 
 import { FamilyPedigreeFixture } from '../fixtures/family-pedigree-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
+import { pedigreeField } from '../fixtures/pedigree-field-driver.js';
 import type { ProtocolFixture } from '../fixtures/protocol-fixture.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
@@ -353,12 +354,11 @@ function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
       // Egg-parent step: the disease field shows only its authored hint; the
       // notes field additionally surfaces its validation-requirement summary
       // (showValidationHints), which the disease field must NOT.
-      const diseaseField = fp.dialog.locator(
-        `[data-field-name="egg-parent.${diseaseVar.id}"]`,
+      const diseaseField = pedigreeField(
+        fp.dialog,
+        `egg-parent.${diseaseVar.id}`,
       );
-      const notesField = fp.dialog.locator(
-        `[data-field-name="egg-parent.${notesVar.id}"]`,
-      );
+      const notesField = pedigreeField(fp.dialog, `egg-parent.${notesVar.id}`);
       await expect(
         diseaseField.getByText('Leave blank if unsure'),
       ).toBeVisible();
@@ -1176,11 +1176,124 @@ function checklistRestingState(): ScenarioDefinition {
   };
 }
 
+/**
+ * The node context menu's Edit action — the only pedigree dialog no test had
+ * ever opened, which is how issue #1390 shipped: its `PersonFields` were
+ * rendered without the store bridge every other pedigree dialog carries, so
+ * `PersonNameField` threw the moment the editor mounted.
+ *
+ * Covers the whole editor round trip rather than just "it opens": cancelling
+ * discards, saving writes the name AND a protocol-authored `nodeConfig.form`
+ * value, and the rest of the pedigree survives the edit.
+ */
+function personEditorRoundTrip(): ScenarioDefinition {
+  const si = new SyntheticInterview();
+  const base = buildBaseFamilyPedigree(si);
+  const { nameVar, isEgoVar } = base;
+
+  const conditionVar = base.nodeType.addVariable({
+    name: 'diagnosedConditionY',
+    type: 'boolean',
+    component: 'Boolean',
+  });
+
+  si.addStage('FamilyPedigree', {
+    ...commonConfig(base),
+    nodeConfig: nodeConfigOf(base, [
+      {
+        variable: conditionVar.id,
+        prompt: 'Has this person been diagnosed with condition Y?',
+      },
+    ]),
+    framing: FIXED_GAMETE,
+    boundaries: BOUNDARIES_OFF,
+  });
+
+  return {
+    id: 'person-editor-round-trip',
+    covers: ['nodeConfig.form'],
+    slow: true,
+    build: () => si,
+    run: async ({ page, interview, protocol }) => {
+      const fp = new FamilyPedigreeFixture(page);
+
+      await fp.clickGetStarted();
+      await fp.selectEgoSex();
+
+      await fp.setField('egg-parent.is-donor', false);
+      await fp.setField('egg-parent.name', 'Linda');
+      await fp.setField('egg-parent.gestationalCarrier', true);
+      await fp.clickWizardNext();
+
+      await fp.setField('sperm-parent.is-donor', false);
+      await fp.setField('sperm-parent.name', 'Robert');
+      await fp.clickWizardNext();
+
+      await fp.setField('hasOtherParents', false);
+      await fp.clickWizardNext();
+
+      await fp.setPartnership('egg-parent', 'Robert', 'current');
+      await fp.clickWizardNext();
+
+      await fp.setField('hasPartner', false);
+      await fp.clickWizardNext();
+      await fp.dismissBuildHint();
+
+      // Open the editor, change the name, then cancel: nothing is written.
+      await fp.openNodeContextMenu('Linda');
+      await fp.clickMenuItem('edit');
+      await expect(
+        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
+      ).toHaveValue('Linda');
+      await fp.setField('name', 'Discarded Name');
+      await fp.clickDialogCancel();
+      // Wait the dialog out rather than reopening straight into its close
+      // animation, which would briefly leave two `role="dialog"` elements for
+      // `fp.dialog` to resolve.
+      await expect(fp.dialog).toBeHidden();
+      await expect(fp.node('Linda')).toBeVisible();
+
+      // Reopen — the cancelled edit left no trace — then save a new name and a
+      // protocol-authored form value.
+      await fp.openNodeContextMenu('Linda');
+      await fp.clickMenuItem('edit');
+      await expect(
+        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
+      ).toHaveValue('Linda');
+      await fp.setField('name', 'Linda Edited');
+      await fp.setField(conditionVar.id, true);
+      await fp.clickDialogSubmit();
+      await expect(fp.dialog).toBeHidden();
+
+      await expect(fp.node('Linda Edited')).toBeVisible();
+      // The edit must not disturb the rest of the pedigree.
+      await expect(fp.node('Robert')).toBeVisible();
+
+      await interview.nextButton.click();
+      await fp.confirmFinalize();
+
+      const network = await pollCommittedNetwork(
+        protocol,
+        interview.interviewId,
+        3,
+      );
+      const edited = nodeByName(network, nameVar.id, 'Linda Edited');
+      expect(edited).toBeDefined();
+      expect(edited?.[ATTR][conditionVar.id]).toBe(true);
+      expect(edited?.[ATTR][isEgoVar.id]).not.toBe(true);
+      expect(nodeByName(network, nameVar.id, 'Linda')).toBeUndefined();
+      expect(nodeByName(network, nameVar.id, 'Discarded Name')).toBeUndefined();
+      expect(nodeByName(network, nameVar.id, 'Robert')).toBeDefined();
+    },
+  };
+}
+
 export const familyPedigreeScenarios: InterfaceScenarios = {
   interfaceType: 'FamilyPedigree',
   scenarios: [
     smokeNuclearFamily(),
     checklistRestingState(),
+    personEditorRoundTrip(),
     relationshipFormFieldsAndActivePartnerEdge(),
     framingParticipantChoiceWithIntro(),
     framingFixedGendered(),

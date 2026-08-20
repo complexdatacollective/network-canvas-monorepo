@@ -8,10 +8,10 @@ import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
+import { ensureError } from '@codaco/shared-consts';
+import { getCanonicalProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
-import { ensureError } from '~/utils/ensureError';
 import { enqueueProtocolValidationDialogEvent } from '~/utils/protocolValidationDialogQueue';
 
 import {
@@ -21,10 +21,10 @@ import {
 } from '../modules/activeProtocol';
 import {
   getActiveProtocolId,
-  getProtocolOpenElsewhere,
+  getProtocolOwnedHere,
   getStorageUnavailable,
   setActiveProtocolId,
-  setProtocolOpenElsewhere,
+  setProtocolLockState,
 } from '../modules/app';
 import {
   clearValidation,
@@ -79,7 +79,7 @@ const beginTrustedSession = (state: RootState): void => {
   activeSession += 1;
   closeInvalidDialog();
 
-  const protocol = getProtocol(state);
+  const protocol = getCanonicalProtocol(state);
   const locusId = getTimelineLocus(state);
   lastValidState =
     protocol && locusId
@@ -101,7 +101,7 @@ const resetInvalidProtocolSession = (listenerApi: AppListenerApi): void => {
   disarmInMemoryUnloadGuard();
   listenerApi.dispatch(resetDraft(null));
   listenerApi.dispatch(clearValidation());
-  listenerApi.dispatch(setProtocolOpenElsewhere(false));
+  listenerApi.dispatch(setProtocolLockState('owned'));
   listenerApi.dispatch(setActiveProtocolId(null));
   listenerApi.dispatch(clearActiveProtocol());
   // clearActiveProtocol changes `present`, while reset removes every past and
@@ -269,16 +269,19 @@ startAppListening({
       return false;
     }
 
-    const currentProtocol = getProtocol(currentState);
+    // Canonical, never the stage editor's draft overlay: a codebook edit made
+    // inside an open editor must not be validated or persisted until the stage
+    // is committed (#1382).
+    const currentProtocol = getCanonicalProtocol(currentState);
     return (
       currentProtocol !== null &&
-      currentProtocol !== getProtocol(previousState) &&
+      currentProtocol !== getCanonicalProtocol(previousState) &&
       getTimelineLocus(currentState) !== null
     );
   },
   effect: async (_action, listenerApi) => {
     const state = listenerApi.getState();
-    const protocol = getProtocol(state);
+    const protocol = getCanonicalProtocol(state);
     const locusId = getTimelineLocus(state);
     if (!protocol || !locusId) return;
 
@@ -289,7 +292,7 @@ startAppListening({
       locusId,
       protocol,
       persistenceAllowed:
-        !getStorageUnavailable(state) && !getProtocolOpenElsewhere(state),
+        !getStorageUnavailable(state) && getProtocolOwnedHere(state),
     };
 
     const run = validationQueue.then(() =>

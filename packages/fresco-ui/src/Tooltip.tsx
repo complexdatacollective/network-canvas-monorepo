@@ -26,6 +26,11 @@ type TooltipContentProps = Omit<
   side?: 'top' | 'bottom' | 'left' | 'right';
   align?: 'start' | 'center' | 'end';
   showArrow?: boolean;
+  /**
+   * `none` makes the popup transparent to the pointer, for tooltips that are
+   * purely decorative and must never intercept a gesture underneath them.
+   */
+  pointerEvents?: 'auto' | 'none';
   children?: React.ReactNode;
 };
 
@@ -40,6 +45,7 @@ const TooltipContent = React.forwardRef<
       side = 'top',
       align = 'center',
       showArrow = true,
+      pointerEvents = 'auto',
       children,
       ...props
     },
@@ -53,6 +59,9 @@ const TooltipContent = React.forwardRef<
           sideOffset={sideOffset}
           align={align}
           arrowPadding={POPOVER_ARROW_PADDING}
+          // The portal container re-enables pointer events on its children, so
+          // opting out has to win over that rule.
+          className={cx(pointerEvents === 'none' && 'pointer-events-none!')}
         >
           {/* Deliberately no exit animation: Base UI keeps a closing popup
               mounted until its animations finish, so an exit tween lets stale

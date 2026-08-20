@@ -6,6 +6,7 @@ import {
   Edit,
   Heart,
   Info,
+  Loader2,
   Mail,
   Plus,
   Search,
@@ -16,7 +17,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { Fragment } from 'react';
+import { type ComponentProps, Fragment } from 'react';
 
 import { IconButton } from './Button';
 import { BUTTON_VARIANTS, ICON_BUTTON_COLORS } from './button-constants';
@@ -40,11 +41,52 @@ const iconMap = {
   chevronRight: <ChevronRight />,
 };
 
+type IconButtonStoryArgs = ComponentProps<typeof IconButton> & {
+  pressed?: boolean;
+  expanded?: boolean;
+  busy?: boolean;
+};
+
+const renderIconButton = (args: IconButtonStoryArgs) => {
+  const iconButtonArgs = { ...args };
+  delete iconButtonArgs.pressed;
+  delete iconButtonArgs.expanded;
+  delete iconButtonArgs.busy;
+
+  return (
+    <IconButton
+      {...iconButtonArgs}
+      aria-pressed={args.pressed ? true : undefined}
+      aria-expanded={args.expanded ? true : undefined}
+      aria-busy={args.busy ? true : undefined}
+      icon={
+        args.busy ? <Loader2 aria-hidden className="animate-spin" /> : args.icon
+      }
+    />
+  );
+};
+
 const meta = {
   title: 'Components/IconButton',
   component: IconButton,
+  render: renderIconButton,
   parameters: {
     layout: 'centered',
+    docs: {
+      description: {
+        component: `An icon-only button for compact actions. Give it exactly one accessible name with \`aria-label\` or \`aria-labelledby\`; keep that name stable when its icon or state changes.
+
+Its semantic states are independent and may overlap:
+
+- **Normal:** enabled with no state ARIA attributes.
+- **Disabled:** use the native \`disabled\` prop to prevent activation.
+- **Pressed:** use \`aria-pressed\` for an icon toggle button.
+- **Expanded:** use \`aria-expanded\` when the button controls a disclosure or popup. For a menu, also use \`aria-haspopup="menu"\` and, when the popup has a stable ID, \`aria-controls\`.
+- **Busy:** use \`aria-busy\` and replace or supplement the icon with visible progress feedback. Busy does not inherently mean disabled.
+
+The story controls map these states to their native or ARIA props while allowing combinations.`,
+      },
+    },
   },
   tags: ['autodocs'],
   argTypes: {
@@ -62,6 +104,25 @@ const meta = {
     },
     disabled: {
       control: 'boolean',
+      description:
+        'Prevents activation. This state is independent of pressed, expanded, and busy.',
+      table: { category: 'State' },
+    },
+    pressed: {
+      control: 'boolean',
+      description: 'Story control that maps the pressed state to aria-pressed.',
+      table: { category: 'State' },
+    },
+    expanded: {
+      control: 'boolean',
+      description:
+        'Story control that maps the expanded state to aria-expanded.',
+      table: { category: 'State' },
+    },
+    busy: {
+      control: 'boolean',
+      description: 'Story control that maps the busy state to aria-busy.',
+      table: { category: 'State' },
     },
     icon: {
       control: 'select',
@@ -69,12 +130,13 @@ const meta = {
       mapping: iconMap,
     },
   },
-} satisfies Meta<typeof IconButton>;
+} satisfies Meta<IconButtonStoryArgs>;
 
 export default meta;
 type Story = StoryObj<typeof IconButton>;
+type ControlledStory = StoryObj<IconButtonStoryArgs>;
 
-export const Default: Story = {
+export const Default: ControlledStory = {
   args: {
     'icon': <Plus />,
     'aria-label': 'Add',
@@ -82,6 +144,9 @@ export const Default: Story = {
     'color': 'default',
     'size': 'md',
     'disabled': false,
+    'pressed': false,
+    'expanded': false,
+    'busy': false,
   },
 };
 
@@ -169,28 +234,23 @@ export const DifferentIcons: Story = {
   ),
 };
 
-export const States: Story = {
-  render: () => (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-4">
-        <IconButton icon={<Plus />} aria-label="Normal" />
-        <IconButton icon={<Plus />} aria-label="Disabled" disabled />
-      </div>
-      <div className="flex gap-4">
-        <IconButton
-          icon={<Plus />}
-          aria-label="Normal Outline"
-          variant="outline"
-        />
-        <IconButton
-          icon={<Plus />}
-          aria-label="Disabled Outline"
-          variant="outline"
-          disabled
-        />
-      </div>
-    </div>
-  ),
+export const States: ControlledStory = {
+  args: {
+    'aria-label': 'Favorite',
+    'icon': <Star />,
+    'disabled': false,
+    'pressed': false,
+    'expanded': false,
+    'busy': false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Disabled, pressed, expanded, and busy are independent states. Use their controls together to inspect combinations such as an expanded menu trigger that is also busy or disabled.',
+      },
+    },
+  },
 };
 
 export const ColorVariantCombinations: Story = {

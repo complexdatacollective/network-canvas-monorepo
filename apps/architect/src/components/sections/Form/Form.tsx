@@ -1,29 +1,22 @@
-import { type ComponentType, useCallback, useMemo } from 'react';
-import { compose } from 'react-recompose';
+import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
-import { formValueSelector } from 'redux-form';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import withDisabledFormTitle from '~/components/enhancers/withDisabledFormTitle';
-import withDisabledSubjectRequired from '~/components/enhancers/withDisabledSubjectRequired';
-import withSubject from '~/components/enhancers/withSubject';
-import DialogArrayField from '~/components/Form/DialogArrayField';
-import FrescoReduxField from '~/components/Form/FrescoReduxField';
-import ValidatedField from '~/components/Form/ValidatedField';
-import ValidatedFieldArray from '~/components/Form/ValidatedFieldArray';
+import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import ArchitectField from '~/components/Form/ArchitectField';
+import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
+import {
+  useStageFormValue,
+  useStageInitialValue,
+  useSubject,
+} from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
-import {
-  EMPTY_VARIABLES,
-  getVariablesForSubjectSelector,
-} from '~/selectors/codebook';
-import {
-  getVariableRoleMapOutsideStage,
-  roleMapKey,
-} from '~/selectors/indexes';
+import { getVariablesForSubjectSelector } from '~/selectors/codebook';
+import { getVariableRoleMapOutsideStage } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
+import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 
 import {
   draftUnvalidatedElsewhereMessage,
@@ -33,56 +26,64 @@ import {
 import { draftAdditionalAttributeVariableIds } from '../../Validations/draftWriterRoles';
 import {
   composerValidationViews,
+  isVariableUsedBySibling,
   sharedFormValidationView,
 } from './composerHelpers';
+import { useFormFieldCommit } from './fieldCommit';
+import FieldEditorPreview from './FieldEditorPreview';
 import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
-import withFormHandlers from './withFormHandlers';
 
-// Narrows the form's loosely-typed subject entity (sourced from redux-form
-// state via withSubject) to the literal union getVariablesForSubjectSelector
-// requires.
-const isSubjectEntity = (
-  value: string | null,
-): value is 'node' | 'edge' | 'ego' =>
-  value === 'node' || value === 'edge' || value === 'ego';
+// DialogArrayField renders these with the edited row's own properties, so it
+// types them by the only shape it can know.
+const EditorFields = FieldFields as ComponentType<Record<string, unknown>>;
+const EditorPreview = FieldEditorPreview as ComponentType<
+  Record<string, unknown>
+>;
+const Preview = FieldPreview as ComponentType<Record<string, unknown>>;
 
-const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
+/** Stable empty array: `initialValue` is a register-effect dependency. */
+const NO_FIELDS: Record<string, unknown>[] = [];
+
 const notEmpty = (value: unknown) =>
   value && Array.isArray(value) && value.length > 0
     ? undefined
     : 'You must create at least one item.';
 
-type FormProps = StageEditorSectionProps & {
-  handleChangeFields: (field: Record<string, unknown>) => unknown;
-  disabled?: boolean;
-  disabledMessage?: string;
-  disableFormTitle?: boolean;
-  type?: string | null;
-  entity?: string | null;
-};
+// The three interfaces whose form IS the whole stage have no separate heading
+// to author: the stage's own title does that job.
+const INTERFACES_WITHOUT_FORM_TITLE = new Set([
+  'EgoForm',
+  'AlterForm',
+  'AlterEdgeForm',
+]);
+
 const Form = ({
-  form,
-  handleChangeFields,
-  disabled = false,
-  disabledMessage,
-  type = null,
-  entity = null,
-  disableFormTitle = false,
   stagePath,
   stagePosition,
-}: FormProps) => {
+  interfaceType,
+}: StageEditorSectionProps) => {
+  const { entity, type } = useSubject();
+  const disableFormTitle = INTERFACES_WITHOUT_FORM_TITLE.has(interfaceType);
+  // Without a subject there is no codebook to draw variables from, so the
+  // section is inert until one is chosen. EgoForm needs no subject at all.
+  const disabled = interfaceType !== 'EgoForm' && !type;
+  const disabledMessage = disabled
+    ? `Select ${
+        interfaceType === 'AlterEdgeForm' ? 'an edge' : 'a node'
+      } type above to configure this section.`
+    : undefined;
+
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
   // memoization instead of defeating it every render.
   const subject = useMemo(
-    () =>
-      isSubjectEntity(entity) ? { entity, type: type ?? undefined } : null,
+    () => ({ entity, type: type ?? undefined }),
     [entity, type],
   );
   const allVariables = useSelector((state: RootState) =>
-    subject ? getVariablesForSubjectSelector(state, subject) : EMPTY_VARIABLES,
+    getVariablesForSubjectSelector(state, subject),
   );
   const currentStageIndex = stagePath === null ? undefined : stagePosition;
   const roleMap = useSelector((state: RootState) =>
@@ -91,21 +92,11 @@ const Form = ({
   const stages = useSelector((state: RootState) => getProtocol(state)?.stages);
   const resolvedComposerViews = useMemo(
     () =>
-      subject && subject.entity !== 'ego'
-        ? composerValidationViews(stages, {
-            entity: subject.entity,
-            type: subject.type ?? null,
-          })
-        : [],
-    [stages, subject],
+      entity === 'ego' ? [] : composerValidationViews(stages, { entity, type }),
+    [stages, entity, type],
   );
-  const stageFormSelector = useMemo(() => formValueSelector(form), [form]);
-  const formFields = useSelector((state: RootState) =>
-    stageFormSelector(state, 'form.fields'),
-  );
-  const promptDrafts = useSelector((state: RootState) =>
-    stageFormSelector(state, 'prompts'),
-  );
+  const formFields = useStageFormValue('form.fields');
+  const promptDrafts = useStageFormValue('prompts');
   const draftUnvalidatedVariables = useMemo(
     () => draftAdditionalAttributeVariableIds(promptDrafts),
     [promptDrafts],
@@ -116,28 +107,78 @@ const Form = ({
   );
   // Backs makeFieldEditorValidate's save-time gate: other stages' saved roles
   // and this stage's live prompt roles replace this stage's stale saved roles.
-  const hasUnvalidatedUse = useCallback(
+  const hasUnvalidatedUseForSubject = useCallback(
     (variableId: string): boolean | string => {
-      if (!subject) return false;
       if (draftUnvalidatedVariables.has(variableId)) {
         return draftUnvalidatedElsewhereMessage(
           variableDisplayName(allVariables, variableId),
         );
       }
-      return (roleMap[roleMapKey(subject, variableId)]?.unvalidated ?? 0) > 0;
+      return hasUnvalidatedUse(roleMap, subject, variableId);
     },
     [roleMap, subject, draftUnvalidatedVariables, allVariables],
   );
-  const editorValidate = useMemo(
-    () =>
-      makeFieldEditorValidate(
-        allVariables,
-        undefined,
-        undefined,
-        hasUnvalidatedUse,
-        resolvedFormViews,
-      ),
-    [allVariables, hasUnvalidatedUse, resolvedFormViews],
+  const handleChangeFields = useFormFieldCommit({
+    entity,
+    type: type ?? '',
+  });
+
+  const initialFields =
+    useStageInitialValue<Record<string, unknown>[]>('form.fields');
+  const initialTitle = useStageInitialValue<string>('form.title');
+
+  const editorValidate = useMemo(() => {
+    const validateField = makeFieldEditorValidate(
+      allVariables,
+      undefined,
+      undefined,
+      hasUnvalidatedUseForSubject,
+      resolvedFormViews,
+    );
+    return (
+      values: Record<string, unknown>,
+      props?: { editIndex?: number; initialValues?: unknown },
+    ): Record<string, unknown> => {
+      const variable =
+        typeof values.variable === 'string' ? values.variable : '';
+      // One form may not collect a variable twice: every field renders under
+      // its variable's name, so two fields share one value while each still
+      // contributes its own control and rules. The picker already drops a
+      // sibling's variable; this is the backstop for a stale draft or an
+      // imported protocol that already repeats one. Same predicate as the
+      // composer editor's gate, so the two surfaces cannot drift.
+      //
+      // Read from the LIVE rows, not the committed snapshot. A field added in
+      // this editing session is not in `form.fields` on the saved stage yet,
+      // so a committed list would let the researcher pick its variable a
+      // second time — and the picker, given the same list, would not even hide
+      // it — leaving a stage that the schema refuses on save. The converse
+      // costs them too: a variable freed by a row they just deleted would go
+      // on being rejected. `useStageFormValue` holds its reference while the
+      // value is unchanged, so this does not churn on unrelated keystrokes.
+      if (isVariableUsedBySibling(formFields, variable, props?.editIndex)) {
+        return {
+          variable:
+            'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
+        };
+      }
+      return validateField(values, props);
+    };
+  }, [
+    allVariables,
+    hasUnvalidatedUseForSubject,
+    resolvedFormViews,
+    formFields,
+  ]);
+
+  const editorProps = useMemo(
+    () => ({ type, entity, currentStageIndex, siblingFields: formFields }),
+    [currentStageIndex, entity, type, formFields],
+  );
+  const previewProps = useMemo(() => ({ entity, type }), [entity, type]);
+  const rowItemSelector = useMemo(
+    () => itemSelector(entity, type),
+    [entity, type],
   );
 
   return (
@@ -146,54 +187,48 @@ const Form = ({
       disabledMessage={disabledMessage}
       group
       title="Form"
-      summary={
-        <Paragraph>
-          Add one or more fields to your form to collect attributes about each
-          node the participant creates. Use the drag handle on the left of each
-          prompt adjust its order.
-        </Paragraph>
-      }
+      summary="A Network Canvas form collects attributes by mapping them to input controls and defining validation rules."
     >
       {!disableFormTitle && (
-        <ValidatedField
+        <ArchitectField
           name="form.title"
-          component={FrescoReduxField}
+          label="Form title"
+          hint="Shown at the top of the form. Use a short descriptive title such as 'Add a contact'."
+          component={InputField}
+          initialValue={initialTitle}
           validation={{ required: true }}
-          label="Form heading text (e.g 'Add a person')"
-          componentProps={{
-            fieldComponent: FrescoInputField,
-            placeholder: 'Enter your title here',
-          }}
+          placeholder="Enter a title..."
         />
       )}
-      <ValidatedFieldArray
+      <ArchitectArrayField
         name="form.fields"
-        label={disableFormTitle ? undefined : 'Form Fields'}
+        label="Form fields"
+        hint="Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order."
         component={DialogArrayField}
+        addButtonLabel="Create new form field"
+        initialValue={initialFields ?? NO_FIELDS}
         validation={{ notEmpty }}
-        componentProps={{
-          addTitle: 'Edit Field',
-          editorFieldsComponent: FieldFields,
-          editorProps: { type, entity, currentStageIndex },
-          editorTitle: 'Edit Field',
-          editorValidate,
-          itemLabel: 'field',
-          itemSelector: itemSelector(entity, type),
-          normalizeItem: (value: unknown) =>
-            normalizeField(value as Record<string, unknown>),
-          onBeforeSave: (value: unknown) =>
-            handleChangeFields(value as Record<string, unknown>),
-          previewComponent: FieldPreview,
-          requestedEditFormName: 'editable-list-form',
-          sortable: true,
-        }}
+        addTitle="Edit Field"
+        editorTitle="Edit Field"
+        editorFieldsComponent={EditorFields}
+        editorPreviewComponent={EditorPreview}
+        editorProps={editorProps}
+        editorValidate={editorValidate}
+        itemLabel="field"
+        itemSelector={rowItemSelector}
+        normalizeItem={(value: unknown) =>
+          normalizeField(value as Record<string, unknown>)
+        }
+        onBeforeSave={(value: unknown) =>
+          handleChangeFields(value as Record<string, unknown>)
+        }
+        previewComponent={Preview}
+        previewProps={previewProps}
+        requestedEditFormName="editable-list-form"
+        sortable
       />
     </Section>
   );
 };
-export default compose<FormProps, StageEditorSectionProps>(
-  withSubject,
-  withFormHandlers,
-  withDisabledFormTitle,
-  withDisabledSubjectRequired,
-)(Form);
+
+export default Form;

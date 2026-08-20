@@ -42,6 +42,7 @@ const mockState = {
       codebook: mockCodebook,
     },
   },
+  stageEditorDraft: { ui: { liveValues: null } },
 } as unknown as RootState;
 
 describe('NarrativePresets', () => {

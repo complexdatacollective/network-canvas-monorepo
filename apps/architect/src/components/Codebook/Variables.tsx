@@ -11,6 +11,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { ensureError } from '@codaco/shared-consts';
 import { ConnectedVariablePill } from '~/components/VariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
@@ -53,13 +54,37 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
       const { name } = variable || { name: 'Unknown' };
 
       void confirm({
-        title: `Delete ${name}`,
-        description: `Are you sure you want to delete the variable called ${name}? This cannot be undone.`,
-        confirmLabel: `Delete ${name}`,
+        // Fixed, localisable action strings. A variable name is a
+        // researcher-authored identifier that may run to hundreds of characters
+        // with no break opportunity; interpolated into the confirm button it
+        // pushed Cancel clean out of the dialog (#1392). The identifier belongs
+        // in the body text, which wraps.
+        title: 'Delete attribute',
+        // `codebook/deleteVariable` is inside the protocol timeline, so Undo
+        // restores it (#1400) — wording shared with the stage, type and
+        // resource dialogs.
+        description: `Are you sure you want to delete the attribute “${name}”? You can restore it with Undo while this protocol remains open.`,
+        confirmLabel: 'Delete attribute',
         cancelLabel: 'Cancel',
         intent: 'destructive',
-        onConfirm: () => {
-          void dispatch(deleteVariableAsync({ entity, type, variable: id }));
+        // `.unwrap()` re-throws a rejected thunk so `confirm` can surface the
+        // refusal in the dialog's error paragraph and keep the dialog open.
+        // Without it the dispatch promise RESOLVES even when the thunk
+        // rejected, and the dialog closes reporting a deletion that never
+        // happened.
+        //
+        // `ensureError` because `.unwrap()` throws Redux Toolkit's plain
+        // `SerializedError`, not an `Error` — and the dialog only shows a
+        // caught value's `message` when it `instanceof Error`, so without this
+        // the researcher gets "An error occurred" instead of the reason.
+        onConfirm: async () => {
+          try {
+            await dispatch(
+              deleteVariableAsync({ entity, type, variable: id }),
+            ).unwrap();
+          } catch (error) {
+            throw ensureError(error);
+          }
         },
       });
     },
@@ -130,7 +155,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
       <DataTable
         table={table}
         showPagination={false}
-        emptyText="No variables."
+        emptyText="No attributes."
       />
     </div>
   );

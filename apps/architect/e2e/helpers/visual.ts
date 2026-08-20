@@ -1,4 +1,12 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { existsSync } from 'node:fs';
+import { relative } from 'node:path';
+
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 
 // Hide ambient chrome and focus indicators that are outside the snapshot's
 // subject. Mirrors the interview suite's VISUAL_STYLES.
@@ -9,7 +17,18 @@ const VISUAL_STYLES = `
   *:focus-visible { box-shadow: none !important; }
 `;
 
-type CaptureOptions = { mask?: Locator[]; fullPage?: boolean };
+type CaptureOptions = {
+  mask?: Locator[];
+  fullPage?: boolean;
+  /**
+   * Capture this element instead of the page. Use it to keep a long printed
+   * document reviewable: one 1280x20190 baseline cannot be diffed by a human
+   * (the commit that last adopted this suite's `summary-print.png` recorded
+   * that its author could not find what had changed in it), whereas a
+   * per-section baseline names the section that moved in the filename.
+   */
+  locator?: Locator;
+};
 export type CaptureFn = (
   name: string,
   options?: CaptureOptions,
@@ -29,6 +48,73 @@ function assertNotNativeLane(name: string): void {
         'test must carry the @visual tag to be routed to the Docker job.',
     );
   }
+}
+
+/**
+ * Fail ONCE, before a single capture runs, if the committed baselines for
+ * `names` are not in the tree.
+ *
+ * Playwright's default `updateSnapshots: 'missing'` already handles an absent
+ * baseline correctly — it writes the actual, attaches a `softError`, and sets
+ * `shouldNotRetryTest`, so the test fails and `retries` cannot rescue it. What
+ * it cannot do is say what to run: a spec that derives one baseline per
+ * section of a printed document turns a single missing set into dozens of
+ * identical "a snapshot doesn't exist at …" failures with no next action.
+ *
+ * This does NOT weaken that gate. It is not a skip and not conditional on
+ * `CI`: a `test.skip` when baselines are absent would be an invisible green —
+ * an assertion that cannot fail — and the whole point of the pixel gate is to
+ * keep an unreviewed rendering change out of the tree. The run stays red until
+ * the images land, and this check goes inert the moment they do.
+ *
+ * The caller passes the exact set it is about to capture, so deleting a SUBSET
+ * fails here too; this is not a "some baselines exist" smoke check. Paths come
+ * from `testInfo.snapshotPath(…, { kind: 'screenshot' })` — the same
+ * resolution `toHaveScreenshot` performs — so it cannot drift from the
+ * config's `snapshotDir` / `snapshotPathTemplate`.
+ */
+export function assertBaselinesCommitted(
+  testInfo: TestInfo,
+  names: readonly string[],
+): void {
+  // Stand aside during an explicit regeneration run, or this guard deadlocks
+  // the very workflow it points at: it throws before the first capture, so
+  // `--update-snapshots` never reaches the code that would WRITE the baselines
+  // it is complaining are absent. (Observed exactly that on run 32273797683.)
+  //
+  // Gated on the EXPLICIT modes only. Playwright's default is `'missing'`,
+  // which is the normal-run case this guard exists for — under it a missing
+  // baseline is written and the test still fails, non-retriably, which is the
+  // pile of opaque per-image errors we are replacing with one message. Passing
+  // `--update-snapshots` sets `'changed'` (or `'all'` with an argument), and
+  // only those mean "I am here to produce baselines".
+  const regenerating =
+    testInfo.config.updateSnapshots === 'all' ||
+    testInfo.config.updateSnapshots === 'changed';
+  if (regenerating) return;
+
+  const missing = names
+    .map((name) => testInfo.snapshotPath(`${name}.png`, { kind: 'screenshot' }))
+    .filter((path) => !existsSync(path));
+  if (missing.length === 0) return;
+
+  throw new Error(
+    [
+      `[visual] ${missing.length} of ${names.length} committed pixel baseline(s) are missing:`,
+      ...missing.map((path) => `  ${relative(process.cwd(), path)}`),
+      '',
+      'Generate them with the "Regenerate E2E Visual Snapshots" GitHub Actions',
+      'workflow, with input suite: architect. It runs',
+      '  ./apps/architect/e2e/scripts/run.sh --grep @visual --update-snapshots',
+      'in the pinned Playwright image on --platform linux/amd64. The baselines',
+      'are amd64-truth, so an arm64 host can neither produce nor compare them.',
+      'Download the artifact and inspect every image before committing it.',
+      '',
+      'Do NOT skip this test to get a green run: a skipped visual assertion is',
+      'an invisible pass, and this gate is what keeps an unreviewed rendering',
+      'change out of the tree.',
+    ].join('\n'),
+  );
 }
 
 // Returns a capture function that is a no-op unless running in CI. This keeps
@@ -65,6 +151,12 @@ export function makeCapture(page: Page): CaptureFn {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         ),
     );
+    if (options.locator) {
+      await expect(options.locator).toHaveScreenshot(`${name}.png`, {
+        mask: options.mask,
+      });
+      return;
+    }
     await expect(page).toHaveScreenshot(`${name}.png`, {
       fullPage: options.fullPage ?? false,
       mask: options.mask,

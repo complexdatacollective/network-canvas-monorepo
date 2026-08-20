@@ -1,22 +1,31 @@
-import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { Provider } from 'react-redux';
 import {
-  change,
-  formValueSelector,
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
-import { describe, expect, it } from 'vitest';
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { useContext, type ContextType } from 'react';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-// The connected component (withStoreState around the presentational
-// Validations.tsx) is rendered for real, inside a redux-form + Provider
-// harness — the same idiom DialogArrayField.test.tsx and NativeSelect.test.tsx
-// use — so these behaviours are exercised through the actual wiring (real
-// checkDraft, real findDraftContradictions, real ToggleField/NativeSelectField),
-// not a hand-rolled restatement of the logic.
-import Validations from '../index';
+import Form from '@codaco/fresco-ui/form/Form';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+
+// The real component is rendered inside a real fresco-ui form — the same idiom
+// DialogArrayField.test.tsx and NativeSelect.test.tsx use — so these behaviours
+// are exercised through the actual wiring (real checkDraft, real
+// findDraftContradictions, real ToggleField/InputField/NativeSelectField), not
+// a hand-rolled restatement of the logic.
+import Validations from '../Validations';
+
+beforeAll(() => {
+  // fresco-ui's default `onSubmitInvalid` scrolls the first invalid field
+  // into view; jsdom implements no scrolling (see ArchitectField.test.tsx).
+  Element.prototype.scrollTo ??= () => undefined;
+});
+
+type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 type TestVariable = {
   name: string;
@@ -35,66 +44,123 @@ type OwnProps = {
   currentVariableId: string;
 };
 
-type HarnessProps = InjectedFormProps<Record<string, unknown>, OwnProps> &
-  OwnProps;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const FORM_NAME = 'validations-behaviour-test';
-
-const Harness = ({
-  variableType,
-  entity,
-  existingVariables,
-  allVariables,
-  currentVariableId,
-}: HarnessProps) => (
-  <Validations
-    form={FORM_NAME}
-    name="validation"
-    variableType={variableType}
-    entity={entity}
-    existingVariables={existingVariables}
-    allVariables={allVariables}
-    currentVariableId={currentVariableId}
-  />
-);
-
-const ReduxHarness = reduxForm<Record<string, unknown>, OwnProps>({
-  form: FORM_NAME,
-})(Harness);
-
-// `component`/`parameters` are seeded as ordinary form values, exactly as the
-// field editor's own controls write them — the connected Validations reads
-// them off the same form through `formValueSelector`.
+// `component`/`parameters` stand in for sibling fields in the surrounding
+// field-editor dialog — the real `ValidationSection` reads them reactively off
+// that form and forwards them as `draftComponent`/`draftParameters`; none of
+// these scenarios change them mid-test, so passing them straight through as
+// static props here is equivalent.
 const setup = ({
   validation = {},
   component,
   parameters,
   ...ownProps
 }: OwnProps & {
-  validation?: Record<string, unknown>;
+  validation?: Record<string, boolean | number | string | null>;
   component?: string;
   parameters?: Record<string, unknown>;
 }) => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
+  let captured: FormStoreApi | null = null;
+  let submitCount = 0;
 
-  render(
-    <Provider store={store}>
-      <ReduxHarness
-        initialValues={{ validation, component, parameters }}
+  const StoreProbe = () => {
+    captured = useContext(FormStoreContext) ?? null;
+    return null;
+  };
+
+  const { container } = render(
+    <Form
+      onSubmit={() => {
+        submitCount += 1;
+        return { success: true };
+      }}
+    >
+      <StoreProbe />
+      <Validations
+        name="validation"
+        initialValue={validation}
+        draftComponent={component}
+        draftParameters={parameters}
         {...ownProps}
       />
-    </Provider>,
+    </Form>,
   );
 
-  const committedValidation = (): Record<string, unknown> =>
-    (formValueSelector(FORM_NAME)(store.getState(), 'validation') ??
-      {}) as Record<string, unknown>;
+  const storeApi = (): FormStoreApi => {
+    if (!captured) throw new Error('form store was not captured');
+    return captured;
+  };
 
-  return { store, committedValidation };
+  const committedValidation = (): Record<string, unknown> => {
+    const { validation: value } = storeApi().getState().getFormValues();
+    return isRecord(value) ? value : {};
+  };
+
+  /**
+   * Stands in for the stage editor's Undo, or for a reinitialize: the
+   * committed map is rewritten from outside the rule list entirely.
+   */
+  const rollBackTo = (next: Record<string, unknown>) => {
+    act(() => {
+      storeApi().getState().setFieldValue('validation', next);
+    });
+  };
+
+  /**
+   * Runs the real submit path — `useForm`'s handler, which runs
+   * `validateForm` over every registered field and only then calls
+   * `onSubmit`. That is the whole point of the rule map now carrying its own
+   * invalid values: the `validation` field validates itself, so a save that
+   * would persist them never reaches the handler. (The store's own
+   * `submitForm` deliberately skips validation, so it cannot be used here.)
+   *
+   * The trailing macrotask drain is for the rule list's own focus handoff (see
+   * `ValidationRule`). It is NOT for `onSubmitInvalid`, which no longer defers:
+   * fresco-ui runs it from a layout effect keyed on the store's
+   * `errorFocusRequest`, and `focusFirstError` is synchronous. Don't take this
+   * drain as a pattern to copy around every invalid submit.
+   */
+  const submit = async (): Promise<{ reachedHandler: boolean }> => {
+    const before = submitCount;
+    const form = container.querySelector('form');
+    if (!form) throw new Error('form element was not rendered');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    return { reachedHandler: submitCount > before };
+  };
+
+  const validationFieldErrors = (): string[] =>
+    storeApi().getState().getFieldErrors('validation') ?? [];
+
+  /** Asserts the save was refused, and reports why. */
+  const expectSaveBlocked = async (): Promise<string> => {
+    const { reachedHandler } = await submit();
+    expect(reachedHandler).toBe(false);
+    const errors = validationFieldErrors();
+    expect(errors.length).toBeGreaterThan(0);
+    return errors.join(' ');
+  };
+
+  const expectSaveAllowed = async () => {
+    const { reachedHandler } = await submit();
+    expect(validationFieldErrors()).toEqual([]);
+    expect(reachedHandler).toBe(true);
+  };
+
+  return {
+    committedValidation,
+    expectSaveAllowed,
+    expectSaveBlocked,
+    rollBackTo,
+  };
 };
 
 const toggle = (label: string) =>
@@ -127,13 +193,14 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      expect(
-        screen.getByRole('group', { name: 'Requirements' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Requirements' })).toHaveClass(
+        'w-full',
+        'min-w-0',
+      );
       expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
       expect(
-        screen.getByRole('group', { name: 'Compare to another variable' }),
-      ).toBeInTheDocument();
+        screen.getByRole('group', { name: 'Compare to another attribute' }),
+      ).toHaveClass('w-full', 'min-w-0');
 
       expect(toggle('Minimum value')).not.toBeChecked();
       expect(toggle('Maximum value')).not.toBeChecked();
@@ -170,7 +237,7 @@ describe('Validations behaviour', () => {
         screen.queryByRole('group', { name: 'Requirements' }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('group', { name: 'Compare to another variable' }),
+        screen.queryByRole('group', { name: 'Compare to another attribute' }),
       ).not.toBeInTheDocument();
     });
   });
@@ -229,25 +296,31 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ required: true });
     });
 
-    it('settles a held false rule once another row makes room for it', () => {
-      const { committedValidation } = setup({
-        variableType: 'text',
-        entity: 'node',
-        currentVariableId: 'text-var',
-        allVariables: {},
-        existingVariables: {},
-        validation: { required: false, maxLength: 0 },
-      });
+    it('switches a held false rule on and blocks the save while it contradicts', async () => {
+      const { committedValidation, expectSaveAllowed, expectSaveBlocked } =
+        setup({
+          variableType: 'text',
+          entity: 'node',
+          currentVariableId: 'text-var',
+          allVariables: {},
+          existingVariables: {},
+          validation: { required: false, maxLength: 0 },
+        });
 
       fireEvent.click(toggle('Required'));
+      // Both rules are implicated, so both rows carry the reason.
       expect(
-        screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
-      ).toBeInTheDocument();
-      expect(committedValidation()).toEqual({ required: false, maxLength: 0 });
+        screen.getAllByText(/required answers cannot satisfy maxLength \(0\)/),
+      ).toHaveLength(2);
+      expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
+      expect(await expectSaveBlocked()).toMatch(
+        /required answers cannot satisfy maxLength \(0\)/,
+      );
 
       fireEvent.blur(typeValue('Maximum length', '5'));
 
       expect(committedValidation()).toEqual({ required: true, maxLength: 5 });
+      await expectSaveAllowed();
     });
   });
 
@@ -282,7 +355,10 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ minLength: 2 });
     });
 
-    it('writes a number only on blur, not on every keystroke', () => {
+    // Switching a numeric rule on records a useful, valid starting value. An
+    // edit is still only written on blur, so a half-typed number never lands
+    // in the map.
+    it('records a numeric rule with an initial value and writes edits on blur', () => {
       const { committedValidation } = setup({
         variableType: 'text',
         entity: 'node',
@@ -293,14 +369,65 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Minimum length'));
-      expect(committedValidation()).toEqual({});
+      expect(committedValidation()).toEqual({ minLength: 1 });
+      expect(numberValue('Minimum length')).toHaveValue(1);
 
       const input = typeValue('Minimum length', '1');
       fireEvent.change(input, { target: { value: '10' } });
-      expect(committedValidation()).toEqual({});
+      expect(committedValidation()).toEqual({ minLength: 1 });
 
       fireEvent.blur(input);
       expect(committedValidation()).toEqual({ minLength: 10 });
+    });
+
+    it.each([
+      ['text', 'Minimum length', 'minLength', 1],
+      ['text', 'Maximum length', 'maxLength', 1],
+      ['number', 'Minimum value', 'minValue', 0],
+      ['number', 'Maximum value', 'maxValue', 0],
+      ['categorical', 'Minimum selected', 'minSelected', 1],
+      ['categorical', 'Maximum selected', 'maxSelected', 1],
+    ])(
+      'starts %s %s valid before the value control is edited',
+      async (variableType, label, ruleKey, initialValue) => {
+        const { committedValidation, expectSaveAllowed } = setup({
+          variableType,
+          entity: 'node',
+          currentVariableId: `${variableType}-var`,
+          allVariables: {},
+          existingVariables: {},
+          validation: {},
+        });
+
+        const ruleToggle = toggle(label);
+        ruleToggle.focus();
+        fireEvent.click(ruleToggle);
+
+        expect(committedValidation()).toEqual({ [ruleKey]: initialValue });
+        expect(ruleToggle).toHaveFocus();
+        expect(numberValue(label)).not.toHaveFocus();
+        expect(numberValue(label)).toHaveValue(initialValue);
+        await expectSaveAllowed();
+      },
+    );
+
+    it('uses an existing opposite bound as the initial value', () => {
+      const { committedValidation } = setup({
+        variableType: 'text',
+        entity: 'node',
+        currentVariableId: 'text-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { maxLength: 7 },
+      });
+
+      fireEvent.click(toggle('Minimum length'));
+
+      expect(committedValidation()).toEqual({
+        maxLength: 7,
+        minLength: 7,
+      });
+      expect(numberValue('Minimum length')).toHaveValue(7);
     });
 
     it('commits on Enter as well as blur', () => {
@@ -334,7 +461,7 @@ describe('Validations behaviour', () => {
       const input = typeValue('Minimum value', '-');
 
       expect(input).toHaveValue(null);
-      expect(committedValidation()).toEqual({});
+      expect(committedValidation()).toEqual({ minValue: 0 });
 
       fireEvent.change(input, { target: { value: '-5' } });
       fireEvent.blur(input);
@@ -342,8 +469,11 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ minValue: -5 });
     });
 
-    it('drops a committed rule when its value is cleared', () => {
-      const { committedValidation } = setup({
+    // Clearing the box is not the same as switching the rule off. The rule
+    // stays on and unanswered, which the save then refuses — before this, the
+    // key was deleted outright and the save went through without it.
+    it('keeps a cleared rule switched on, and refuses to save it', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -355,12 +485,20 @@ describe('Validations behaviour', () => {
       const input = typeValue('Minimum length', '');
       fireEvent.blur(input);
 
-      expect(committedValidation()).toEqual({});
+      expect(committedValidation()).toEqual({ minLength: null });
       expect(toggle('Minimum length')).toBeChecked();
+      expect(await expectSaveBlocked()).toBe(
+        'Enter a value for "Minimum length", or switch the rule off.',
+      );
     });
   });
 
-  describe('contradictions are never committed', () => {
+  // Issue #1383. A contradictory or below-floor value used to be kept OUT of
+  // the committed map — which blocked nothing, because a map with the
+  // offending rule already deleted is trivially consistent. The dialog saved,
+  // and the rule was silently gone. The contract now: the value is committed,
+  // the `validation` field is invalid, and the save is refused.
+  describe('invalid rule values are kept and block the save', () => {
     it('allows an optional zero maximum', () => {
       const { committedValidation } = setup({
         variableType: 'text',
@@ -381,8 +519,8 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ maxLength: 0 });
     });
 
-    it('still rejects a required variable with a zero maximum', () => {
-      const { committedValidation } = setup({
+    it('still rejects a required variable with a zero maximum', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -399,7 +537,10 @@ describe('Validations behaviour', () => {
       ).toBeInTheDocument();
 
       fireEvent.blur(input);
-      expect(committedValidation()).toEqual({ required: true });
+      expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
+      expect(await expectSaveBlocked()).toMatch(
+        /required answers cannot satisfy maxLength \(0\)/,
+      );
     });
 
     it.each([
@@ -410,9 +551,9 @@ describe('Validations behaviour', () => {
       ['categorical', 'minSelected', 'Minimum selected'],
       ['categorical', 'maxSelected', 'Maximum selected'],
     ])(
-      'gates a fractional %s %s draft',
-      (variableType, validationRule, label) => {
-        const { committedValidation } = setup({
+      'keeps a fractional %s %s and blocks the save',
+      async (variableType, validationRule, label) => {
+        const { committedValidation, expectSaveBlocked } = setup({
           variableType,
           entity: 'node',
           currentVariableId: `${variableType}-var`,
@@ -429,12 +570,57 @@ describe('Validations behaviour', () => {
         ).toBeInTheDocument();
 
         fireEvent.blur(input);
-        expect(committedValidation()).toEqual({});
+        expect(committedValidation()).toEqual({ [validationRule]: 1.5 });
+        expect(await expectSaveBlocked()).toBe(
+          `${validationRule} must be a whole number`,
+        );
       },
     );
 
-    it('reports an inverted bound against the pending row and withholds it', () => {
-      const { committedValidation } = setup({
+    // Issue #1383's first finding, in miniature: the inverted bound is now
+    // held for correction instead of being dropped on the way out.
+    it.each([
+      ['text', 'Minimum length', 'Maximum length', '10', '3', 'maxLength'],
+      ['number', 'Minimum value', 'Maximum value', '100', '50', 'maxValue'],
+      [
+        'categorical',
+        'Minimum selected',
+        'Maximum selected',
+        '2',
+        '1',
+        'maxSelected',
+      ],
+    ])(
+      'holds an inverted %s bound pair and blocks the save',
+      async (variableType, minLabel, maxLabel, minText, maxText, maxRule) => {
+        const { committedValidation, expectSaveAllowed, expectSaveBlocked } =
+          setup({
+            variableType,
+            entity: 'node',
+            currentVariableId: `${variableType}-var`,
+            allVariables: {},
+            existingVariables: {},
+            validation: {},
+          });
+
+        fireEvent.click(toggle(minLabel));
+        fireEvent.blur(typeValue(minLabel, minText));
+        fireEvent.click(toggle(maxLabel));
+        const maxInput = typeValue(maxLabel, maxText);
+        fireEvent.blur(maxInput);
+
+        expect(committedValidation()[maxRule]).toBe(Number(maxText));
+        expect(await expectSaveBlocked()).toMatch(/is greater than/);
+
+        fireEvent.change(maxInput, { target: { value: '999' } });
+        fireEvent.blur(maxInput);
+        expect(committedValidation()[maxRule]).toBe(999);
+        await expectSaveAllowed();
+      },
+    );
+
+    it('reports an inverted bound against the row and keeps it for correction', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
         variableType: 'number',
         entity: 'node',
         currentVariableId: 'number-var',
@@ -451,7 +637,8 @@ describe('Validations behaviour', () => {
       ).toBeInTheDocument();
 
       fireEvent.blur(input);
-      expect(committedValidation()).toEqual({ maxValue: 6 });
+      expect(committedValidation()).toEqual({ maxValue: 6, minValue: 10 });
+      await expectSaveBlocked();
 
       fireEvent.change(input, { target: { value: '2' } });
       fireEvent.blur(input);
@@ -460,6 +647,41 @@ describe('Validations behaviour', () => {
   });
 
   describe('comparison rules', () => {
+    it.each([
+      'Different from',
+      'Same as',
+      'Less than',
+      'Greater than',
+      'Less than or equal to',
+      'Greater than or equal to',
+    ])('does not focus or immediately invalidate the %s picker', (label) => {
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: { c: { name: 'C', type: 'number' } },
+        validation: {},
+      });
+
+      const ruleToggle = toggle(label);
+      ruleToggle.focus();
+      fireEvent.click(ruleToggle);
+
+      const picker = targetSelect(label);
+      expect(ruleToggle).toHaveFocus();
+      expect(picker).not.toHaveFocus();
+      expect(picker).not.toHaveAttribute('aria-invalid');
+      expect(
+        screen.queryByText(
+          `Choose a comparison attribute for "${label}", or switch the rule off.`,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
     it('filters a candidate that would form a strict comparator cycle out of the reference picker', () => {
       // a already requires a < b. On b's existing "less than c" rule, a
       // candidate of "a" would close a < b < a — an impossible strict cycle —
@@ -545,11 +767,92 @@ describe('Validations behaviour', () => {
       });
 
       fireEvent.click(toggle('Less than'));
-      expect(committedValidation()).toEqual({});
+      expect(committedValidation()).toEqual({ lessThanVariable: null });
 
       fireEvent.change(targetSelect('Less than'), { target: { value: 'c' } });
 
       expect(committedValidation()).toEqual({ lessThanVariable: 'c' });
+    });
+
+    // Issue #1383: a comparison rule switched on and left without a target
+    // used to save as if the rule had never been switched on at all.
+    it('refuses to save a comparison rule with no target chosen', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: { c: { name: 'C', type: 'number' } },
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Less than'));
+
+      expect(committedValidation()).toEqual({ lessThanVariable: null });
+      expect(await expectSaveBlocked()).toBe(
+        'Choose a comparison attribute for "Less than", or switch the rule off.',
+      );
+    });
+
+    // An unanswered rule now lives in the committed map as `null`. The
+    // reference picker must never see it: the analyser would read the `null`
+    // as a bound and could rule every candidate out.
+    it('keeps offering legal comparison targets while another rule is unanswered', () => {
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: { name: 'B', type: 'number', validation: {} },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: { c: { name: 'C', type: 'number' } },
+        validation: { minValue: null },
+      });
+
+      expect(toggle('Less than')).not.toHaveAttribute('aria-disabled');
+
+      fireEvent.click(toggle('Less than'));
+      const optionLabels = within(targetSelect('Less than'))
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+      expect(optionLabels).toContain('C');
+    });
+
+    // A contradiction resident in the map DOES empty the variable's domain,
+    // so no comparison against it can be satisfied and the picker correctly
+    // closes — but only for as long as the contradiction stands. It must come
+    // back the moment the pair is fixed, rather than staying stuck.
+    it('reopens the comparison picker once a resident contradiction is fixed', () => {
+      setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'b',
+        allVariables: {
+          b: {
+            name: 'B',
+            type: 'number',
+            validation: { minValue: 10, maxValue: 2 },
+          },
+          c: { name: 'C', type: 'number', validation: {} },
+        },
+        existingVariables: { c: { name: 'C', type: 'number' } },
+        validation: { minValue: 10, maxValue: 2 },
+      });
+
+      expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
+
+      fireEvent.blur(typeValue('Maximum value', '20'));
+
+      expect(toggle('Less than')).not.toHaveAttribute('aria-disabled');
+      fireEvent.click(toggle('Less than'));
+      const optionLabels = within(targetSelect('Less than'))
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+      expect(optionLabels).toContain('C');
     });
 
     it('renders a rule with zero legal targets read-only, with a reason', () => {
@@ -575,11 +878,25 @@ describe('Validations behaviour', () => {
       });
 
       expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
-      expect(
-        screen.getAllByText(
-          'Every comparable variable would make this rule impossible to satisfy.',
-        ).length,
-      ).toBeGreaterThan(0);
+      const unavailableHint = screen.getAllByText(
+        'Every comparable attribute would make this rule impossible to satisfy.',
+      )[0];
+
+      if (!unavailableHint) {
+        throw new Error('Expected the unavailable comparison hint to render.');
+      }
+
+      expect(unavailableHint).toBeVisible();
+      expect(unavailableHint.parentElement).toHaveClass(
+        'w-full',
+        'max-w-full',
+        'min-w-0',
+        'whitespace-normal',
+      );
+      expect(unavailableHint.closest('fieldset')).toHaveClass(
+        'min-w-0',
+        'whitespace-normal',
+      );
     });
 
     it('explains an empty codebook differently from an exhausted one', () => {
@@ -595,7 +912,7 @@ describe('Validations behaviour', () => {
       expect(toggle('Same as')).toHaveAttribute('aria-disabled', 'true');
       expect(
         screen.getAllByText(
-          'No other variable of this type exists to compare against.',
+          'No other attribute of this type exists to compare against.',
         ).length,
       ).toBeGreaterThan(0);
     });
@@ -726,7 +1043,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -755,7 +1072,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 1 possible values/),
+        screen.getByText(/This attribute has only 1 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -779,7 +1096,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -807,7 +1124,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 2 possible values/),
+        screen.getByText(/This attribute has only 2 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -832,7 +1149,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This variable has only 3 possible values/),
+        screen.getByText(/This attribute has only 3 possible values/),
       ).toBeInTheDocument();
     });
 
@@ -869,8 +1186,8 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ maxLength: 4 });
     });
 
-    it('gates a stepped value through the contradiction check', () => {
-      const { committedValidation } = setup({
+    it('reports a stepped value that contradicts, and keeps it', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
         variableType: 'number',
         entity: 'node',
         currentVariableId: 'number-var',
@@ -884,9 +1201,10 @@ describe('Validations behaviour', () => {
       fireEvent.click(stepper('Increase Minimum value'));
 
       expect(
-        screen.getByText(/minValue \(7\) is greater than maxValue \(6\)/),
-      ).toBeInTheDocument();
-      expect(committedValidation()).toEqual({ maxValue: 6 });
+        screen.getAllByText(/minValue \(7\) is greater than maxValue \(6\)/),
+      ).toHaveLength(2);
+      expect(committedValidation()).toEqual({ maxValue: 6, minValue: 7 });
+      await expectSaveBlocked();
     });
 
     it('names each rule’s steppers after that rule', () => {
@@ -910,20 +1228,22 @@ describe('Validations behaviour', () => {
     });
   });
 
-  describe('rules held back by a contradiction', () => {
-    it('commits a held rule once another row resolves the contradiction', () => {
-      const { committedValidation } = setup({
-        variableType: 'number',
-        entity: 'node',
-        currentVariableId: 'number-var',
-        allVariables: {},
-        existingVariables: {},
-        validation: { minValue: 5 },
-      });
+  describe('rules that contradict each other', () => {
+    it('clears the objection once another row resolves the contradiction', async () => {
+      const { committedValidation, expectSaveAllowed, expectSaveBlocked } =
+        setup({
+          variableType: 'number',
+          entity: 'node',
+          currentVariableId: 'number-var',
+          allVariables: {},
+          existingVariables: {},
+          validation: { minValue: 5 },
+        });
 
       fireEvent.click(toggle('Maximum value'));
       fireEvent.blur(typeValue('Maximum value', '2'));
-      expect(committedValidation()).toEqual({ minValue: 5 });
+      expect(committedValidation()).toEqual({ minValue: 5, maxValue: 2 });
+      await expectSaveBlocked();
 
       fireEvent.blur(typeValue('Minimum value', '1'));
 
@@ -931,10 +1251,11 @@ describe('Validations behaviour', () => {
       expect(
         screen.queryByText(/is greater than maxValue/),
       ).not.toBeInTheDocument();
+      await expectSaveAllowed();
     });
 
-    it('commits a held rule once the contradicting rule is switched off', () => {
-      const { committedValidation } = setup({
+    it('clears the objection once the contradicting rule is switched off', async () => {
+      const { committedValidation, expectSaveAllowed } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -945,34 +1266,41 @@ describe('Validations behaviour', () => {
 
       fireEvent.click(toggle('Maximum length'));
       fireEvent.blur(typeValue('Maximum length', '0'));
-      expect(committedValidation()).toEqual({ required: true });
+      expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
 
       fireEvent.click(toggle('Required'));
 
       expect(committedValidation()).toEqual({ maxLength: 0 });
+      await expectSaveAllowed();
     });
 
-    // A rejected commit removes the rule from the committed map, so the row is
-    // left pending with its typed value and nothing stale is left behind for
-    // the settling loop to prefer over it.
-    it('settles a rejected edit to an existing rule once another row makes room', () => {
-      const { committedValidation } = setup({
-        variableType: 'number',
-        entity: 'node',
-        currentVariableId: 'number-var',
-        allVariables: {},
-        existingVariables: {},
-        validation: { minValue: 5, maxValue: 10 },
-      });
+    // Issue #1383's sharpest edge: editing a rule that ALREADY held a valid
+    // value into a contradictory one used to delete the rule outright, so the
+    // save both dropped the edit and destroyed the value being edited. Now the
+    // edit is held, the other rule is untouched, and the save is refused — so
+    // the committed protocol keeps whatever it had.
+    it('keeps both the edit and the rule it contradicts, and blocks the save', async () => {
+      const { committedValidation, expectSaveAllowed, expectSaveBlocked } =
+        setup({
+          variableType: 'number',
+          entity: 'node',
+          currentVariableId: 'number-var',
+          allVariables: {},
+          existingVariables: {},
+          validation: { minValue: 5, maxValue: 10 },
+        });
 
       fireEvent.blur(typeValue('Minimum value', '20'));
-      expect(committedValidation()).toEqual({ maxValue: 10 });
+      expect(committedValidation()).toEqual({ minValue: 20, maxValue: 10 });
       expect(numberValue('Minimum value')).toHaveValue(20);
+      expect(numberValue('Maximum value')).toHaveValue(10);
+      await expectSaveBlocked();
 
       fireEvent.blur(typeValue('Maximum value', '30'));
 
       expect(committedValidation()).toEqual({ minValue: 20, maxValue: 30 });
       expect(numberValue('Minimum value')).toHaveValue(20);
+      await expectSaveAllowed();
     });
 
     // The row a researcher is typing in has not necessarily blurred when
@@ -1015,37 +1343,39 @@ describe('Validations behaviour', () => {
     });
 
     // The same Safari path, but the in-flight edit still contradicts once the
-    // other row lands. It cannot be applied yet — and must not be discarded
-    // either: reverting the field to the committed fallback loses typed input
-    // without a trace, leaving the researcher nothing to correct.
-    it('keeps an in-flight edit that still contradicts after another row commits', () => {
-      const { committedValidation } = setup({
-        variableType: 'number',
-        entity: 'node',
-        currentVariableId: 'number-var',
-        allVariables: {},
-        existingVariables: {},
-        validation: { minValue: 5, maxValue: 10 },
-      });
+    // other row lands. It is applied anyway — a typed value that vanishes
+    // leaves the researcher nothing to correct — and the save is refused
+    // until the pair agrees.
+    it('applies an in-flight edit that still contradicts after another row commits', async () => {
+      const { committedValidation, expectSaveAllowed, expectSaveBlocked } =
+        setup({
+          variableType: 'number',
+          entity: 'node',
+          currentVariableId: 'number-var',
+          allVariables: {},
+          existingVariables: {},
+          validation: { minValue: 5, maxValue: 10 },
+        });
 
       typeValue('Minimum value', '20');
       fireEvent.click(stepper('Increase Maximum value'));
 
-      expect(committedValidation()).toEqual({ minValue: 5, maxValue: 11 });
+      expect(committedValidation()).toEqual({ minValue: 20, maxValue: 11 });
       expect(numberValue('Minimum value')).toHaveValue(20);
       expect(
-        screen.getByText(/minValue \(20\) is greater than maxValue \(11\)/),
-      ).toBeInTheDocument();
+        screen.getAllByText(/minValue \(20\) is greater than maxValue \(11\)/),
+      ).toHaveLength(2);
+      await expectSaveBlocked();
 
-      // Still live, so a later commit that makes room applies it.
       fireEvent.blur(typeValue('Maximum value', '30'));
 
       expect(committedValidation()).toEqual({ minValue: 20, maxValue: 30 });
       expect(numberValue('Minimum value')).toHaveValue(20);
+      await expectSaveAllowed();
     });
 
-    it('withholds a value-less rule that contradicts a committed bound', () => {
-      const { committedValidation } = setup({
+    it('switches on a value-less rule that contradicts a committed bound, and blocks the save', async () => {
+      const { committedValidation, expectSaveBlocked } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -1057,15 +1387,173 @@ describe('Validations behaviour', () => {
       fireEvent.click(toggle('Required'));
 
       expect(
-        screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
-      ).toBeInTheDocument();
-      expect(committedValidation()).toEqual({ maxLength: 0 });
+        screen.getAllByText(/required answers cannot satisfy maxLength \(0\)/),
+      ).toHaveLength(2);
+      expect(committedValidation()).toEqual({ maxLength: 0, required: true });
+      await expectSaveBlocked();
+    });
+
+    // A refused save reports at the FIELD, so fresco-ui's own
+    // `focusFirstError` scrolls the rule list into view and focuses its first
+    // control. Landing on the exact offending row would need to outrun that
+    // handler, which is not something this component can do deterministically
+    // — so the reason is carried by the announcement instead, and focus is
+    // simply inside the rule list the researcher has to fix.
+    it('moves focus into the rule list after a refused save', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5 },
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', '2'));
+      await expectSaveBlocked();
+
+      const ruleList = toggle('Minimum value').closest(
+        '[data-field-name="validation"]',
+      );
+      expect(ruleList).not.toBeNull();
+      expect(ruleList?.contains(document.activeElement)).toBe(true);
+    });
+
+    // Both ends of the pair carry the reason, each in its own `aria-live`
+    // region and each linked to its control by `aria-describedby`, so the
+    // researcher hears why wherever focus lands.
+    it('announces the reason against every rule it implicates', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5 },
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', '2'));
+      await expectSaveBlocked();
+
+      for (const label of ['Minimum value', 'Maximum value']) {
+        const input = numberValue(label);
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        const describedBy = input.getAttribute('aria-describedby');
+        const description = describedBy
+          ? document.getElementById(describedBy)
+          : null;
+        expect(description).toHaveAttribute('aria-live', 'polite');
+        expect(description).toHaveTextContent(/is greater than maxValue/);
+      }
+    });
+
+    // Adversarial review: the "have they been told yet" state is per RULE,
+    // not one flag for the whole field. A standing complaint about one rule
+    // must not scold a different rule the researcher has only just switched
+    // on and not yet had a chance to answer.
+    it('does not scold a rule switched on after an earlier refusal', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Minimum value'));
+      fireEvent.blur(typeValue('Minimum value', ''));
+      await expectSaveBlocked();
+      expect(
+        screen.getAllByText(/Enter a value for "Minimum value"/).length,
+      ).toBeGreaterThan(0);
+
+      fireEvent.click(toggle('Maximum value'));
+
+      expect(
+        screen.queryByText(/Enter a value for "Maximum value"/),
+      ).not.toBeInTheDocument();
+    });
+
+    it('starts silent again for a rule switched off and back on', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: {},
+      });
+
+      fireEvent.click(toggle('Minimum value'));
+      fireEvent.blur(typeValue('Minimum value', ''));
+      await expectSaveBlocked();
+      fireEvent.click(toggle('Minimum value'));
+      fireEvent.click(toggle('Minimum value'));
+
+      expect(
+        screen.queryByText(/Enter a value for "Minimum value"/),
+      ).not.toBeInTheDocument();
+    });
+
+    // Every rule row lives INSIDE this field, so editing one never blurs out
+    // of it and nothing else would revalidate. A standing complaint would go
+    // on naming a value that is no longer on screen.
+    it('withdraws a standing objection as soon as the map stops contradicting', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 10 },
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', '2'));
+      await expectSaveBlocked();
+
+      fireEvent.blur(typeValue('Maximum value', '20'));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/is greater than maxValue/),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('names an unanswered rule only once a save has objected', async () => {
+      const { expectSaveBlocked } = setup({
+        variableType: 'number',
+        entity: 'node',
+        currentVariableId: 'number-var',
+        allVariables: {},
+        existingVariables: {},
+        validation: { minValue: 5 },
+      });
+
+      fireEvent.click(toggle('Maximum value'));
+      fireEvent.blur(typeValue('Maximum value', ''));
+      expect(
+        screen.queryByText(/Enter a value for "Maximum value"/),
+      ).not.toBeInTheDocument();
+
+      await expectSaveBlocked();
+
+      // Once against the row, and once through the field's own error slot.
+      expect(
+        screen.getAllByText(
+          'Enter a value for "Maximum value", or switch the rule off.',
+        ).length,
+      ).toBeGreaterThan(0);
     });
   });
 
   describe('rolling the committed map back', () => {
     it('switches a rule back off when its commit is undone', () => {
-      const { store, committedValidation } = setup({
+      const { committedValidation, rollBackTo } = setup({
         variableType: 'text',
         entity: 'node',
         currentVariableId: 'text-var',
@@ -1079,9 +1567,7 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ maxLength: 4 });
       expect(toggle('Maximum length')).toBeChecked();
 
-      act(() => {
-        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
-      });
+      rollBackTo({});
 
       expect(committedValidation()).toEqual({});
       expect(toggle('Maximum length')).not.toBeChecked();
@@ -1091,7 +1577,7 @@ describe('Validations behaviour', () => {
     });
 
     it('does not write a rolled-back value out again on the next commit', () => {
-      const { store, committedValidation } = setup({
+      const { committedValidation, rollBackTo } = setup({
         variableType: 'number',
         entity: 'node',
         currentVariableId: 'number-var',
@@ -1103,9 +1589,7 @@ describe('Validations behaviour', () => {
       fireEvent.click(toggle('Minimum value'));
       fireEvent.blur(typeValue('Minimum value', '3'));
 
-      act(() => {
-        store.dispatch(change(FORM_NAME, 'validation', {}) as UnknownAction);
-      });
+      rollBackTo({});
 
       fireEvent.click(toggle('Maximum value'));
       fireEvent.blur(typeValue('Maximum value', '9'));

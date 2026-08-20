@@ -1,37 +1,41 @@
-import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { Provider } from 'react-redux';
-import { reducer as formReducer, reduxForm } from 'redux-form';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import Form from '@codaco/fresco-ui/form/Form';
 
 // The heavy editor chrome is stubbed the way ComposerAttributeFields' test
 // stubs it; what matters here is the props FieldFields hands ValidationSection,
 // which the stub below surfaces as a data attribute.
 vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => (
-    <div data-testid="section">{children}</div>
+  Section: ({
+    children,
+    title,
+  }: {
+    children: ReactNode;
+    title?: ReactNode;
+  }) => (
+    <section data-testid="section" data-has-title={title != null}>
+      {children}
+    </section>
   ),
   Subsection: ({ children }: { children: ReactNode }) => (
     <section>{children}</section>
   ),
 }));
-vi.mock('~/components/Form/ValidatedField', () => ({
+vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({ name }: { name: string }) => (
     <div data-testid={`field-${name}`} />
   ),
 }));
-vi.mock('~/components/Form/Fields/RichText/Field', () => ({
-  default: () => <div data-testid="rich-text" />,
+vi.mock('~/components/Form/ArchitectArrayField', () => ({
+  default: ({ name }: { name: string }) => (
+    <div data-testid={`array-field-${name}`} />
+  ),
 }));
-vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
-  default: () => <div data-testid="variable-picker" />,
-}));
-vi.mock('~/components/Form/Fields/InputPreview', () => ({
-  default: () => <div data-testid="input-preview" />,
-}));
-vi.mock('~/components/Options', () => ({
+vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => <div data-testid="options" />,
+  optionsValidation: {},
 }));
 vi.mock('~/components/Parameters', () => ({
   default: () => <div data-testid="parameters" />,
@@ -45,10 +49,17 @@ vi.mock('~/components/ExternalLink', () => ({
 
 // Surfaces the identity the ROW-level contradiction check is given.
 vi.mock('~/components/sections/ValidationSection', () => ({
-  default: ({ currentVariableId }: { currentVariableId: string }) => (
+  default: ({
+    currentVariableId,
+    showHeading,
+  }: {
+    currentVariableId: string;
+    showHeading?: boolean;
+  }) => (
     <div
       data-testid="validation-section"
       data-current-variable-id={currentVariableId}
+      data-show-heading={showHeading}
     />
   ),
 }));
@@ -63,32 +74,20 @@ const fieldHandlers = {
   metaForType: { label: 'Number' },
   existingVariables: {},
   handleNewVariable: vi.fn(),
-  handleChangeVariable: vi.fn(),
-  handleChangeComponent: vi.fn(),
 };
 vi.mock('../withFieldsHandlers', () => ({
   useFieldHandlers: () => fieldHandlers,
+  CREATE_NEW_VARIABLE_FIELD: '_createNewVariable',
+  HiddenFieldValue: () => null,
 }));
 
 import FieldFields from '../FieldFields';
 
-const FORM = 'field-fields-test';
-
-const Harness = reduxForm({ form: FORM })(() => (
-  <FieldFields form={FORM} entity="node" type="person" />
-));
-
 const renderFields = () => {
-  const store = configureStore({
-    reducer: { form: formReducer },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
   render(
-    <Provider store={store}>
-      <Harness />
-    </Provider>,
+    <Form onSubmit={() => ({ success: true })}>
+      <FieldFields entity="node" type="person" />
+    </Form>,
   );
 };
 
@@ -110,6 +109,20 @@ beforeEach(() => {
 // a real codebook id let the row OFFER a reference rule the dialog then
 // rejected on save.
 describe('FieldFields validation identity', () => {
+  it('restores untitled Section surfaces around dialog fields', () => {
+    renderFields();
+
+    const sections = screen.getAllByTestId('section');
+    expect(sections.length).toBeGreaterThan(0);
+    sections.forEach((section) => {
+      expect(section).toHaveAttribute('data-has-title', 'false');
+    });
+    expect(screen.getByTestId('validation-section')).toHaveAttribute(
+      'data-show-heading',
+      'false',
+    );
+  });
+
   it('passes an empty id for a variable that does not exist yet', () => {
     fieldHandlers.isNewVariable = true;
     renderFields();

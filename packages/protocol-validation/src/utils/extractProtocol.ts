@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 
 import type { VersionedProtocol } from '../schemas/index.ts';
 import { getAssetMimeType } from './asset-mime-type.ts';
+import { MalformedNetcanvasError } from './malformedNetcanvasError.ts';
 
 // A .netcanvas is a zip of protocol.json plus media assets. Inflating an entry
 // with JSZip's `.async()` pipes the whole DEFLATE stream through pako and only
@@ -126,16 +127,30 @@ const getProtocolJsonAsObject = async (
   const entry = zip.file('protocol.json');
 
   if (!entry) {
-    throw new Error('protocol.json not found in zip');
+    throw new MalformedNetcanvasError(
+      'missing-protocol',
+      'protocol.json not found in zip',
+    );
   }
 
   const protocolString = await inflateEntryToString(entry, budget);
 
-  // Asserted, not validated — callers run the parsed object through this
-  // package's schema validation. Written as an explicit cast because consumers
-  // using `@total-typescript/ts-reset` (Fresco) type `JSON.parse` as `unknown`
-  // rather than `any`, so an implicit widening does not compile there.
-  return JSON.parse(protocolString) as VersionedProtocol;
+  try {
+    // Asserted, not validated — callers run the parsed object through this
+    // package's schema validation. Written as an explicit cast because consumers
+    // using `@total-typescript/ts-reset` (Fresco) type `JSON.parse` as `unknown`
+    // rather than `any`, so an implicit widening does not compile there.
+    return JSON.parse(protocolString) as VersionedProtocol;
+  } catch (cause) {
+    // A `SyntaxError` names a byte offset in a file the researcher has never
+    // seen the inside of. Keep it on `cause` for the console and for exception
+    // reporting; the host describes the failure from `reason`.
+    throw new MalformedNetcanvasError(
+      'unreadable-protocol-json',
+      'protocol.json is not valid JSON',
+      { cause },
+    );
+  }
 };
 
 export type ExtractedAsset = {
@@ -173,8 +188,12 @@ const extractProtocolAssets = async (
 
       const entry = zip.file(`assets/${assetDefinition.source}`);
       if (!entry) {
-        throw new Error(
+        throw new MalformedNetcanvasError(
+          'missing-asset',
           `Asset file "${assetDefinition.source}" not found in zip for asset ID "${assetId}"`,
+          // The manifest's own display name, not the zip path: it is what the
+          // researcher named the resource in the protocol.
+          { assetName: assetDefinition.name },
         );
       }
 
@@ -186,17 +205,43 @@ const extractProtocolAssets = async (
       assets.push({ id: assetId, name: assetDefinition.name, data: fileData });
       continue;
     }
-    throw new Error(`Invalid asset definition for asset ID "${assetId}"`);
+    throw new MalformedNetcanvasError(
+      'invalid-asset-definition',
+      `Invalid asset definition for asset ID "${assetId}"`,
+    );
   }
 
   return assets;
+};
+
+/**
+ * Parse a `.netcanvas` archive's central directory, without inflating anything.
+ *
+ * The only supported way to open one: JSZip's own rejection describes zip
+ * internals and links to its documentation, which is not something to put in
+ * front of a researcher who picked the wrong file. Every entry point must go
+ * through here so no caller can leak that message by loading the archive
+ * itself.
+ */
+export const loadNetcanvasArchive = async (
+  data: Uint8Array | Buffer,
+): Promise<Zip> => {
+  try {
+    return await JSZip.loadAsync(data);
+  } catch (cause) {
+    throw new MalformedNetcanvasError(
+      'not-an-archive',
+      'The file could not be read as a .netcanvas archive',
+      { cause },
+    );
+  }
 };
 
 export const extractProtocol = async (
   protocolBuffer: Buffer,
   maxInflatedBytes: number = MAX_INFLATED_BYTES,
 ): Promise<{ protocol: VersionedProtocol; assets: Array<ExtractedAsset> }> => {
-  const zip = await JSZip.loadAsync(protocolBuffer);
+  const zip = await loadNetcanvasArchive(protocolBuffer);
   return extractProtocolFromZip(zip, maxInflatedBytes);
 };
 

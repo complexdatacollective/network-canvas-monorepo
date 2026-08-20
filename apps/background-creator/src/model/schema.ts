@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isInvalidPolygon } from '~/model/polygonGeometry';
 import type { BackgroundDocument } from '~/model/types';
 
 // Normalized document-space values (fractions of the canvas) are bounded to
@@ -129,6 +130,14 @@ export const backgroundDocumentSchema = z
         });
       }
       seen.add(element.id);
+      if (element.kind === 'polygon' && isInvalidPolygon(element.points)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['elements', index, 'points'],
+          message:
+            'Polygon points must form a simple, non-self-intersecting shape',
+        });
+      }
     });
   });
 

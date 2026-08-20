@@ -7,13 +7,29 @@ import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
 import type { ExtractedAsset } from '@codaco/protocol-validation';
-import { setStorageUnavailable } from '~/ducks/modules/app';
+import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
+import {
+  getProtocolLockState,
+  setStorageUnavailable,
+} from '~/ducks/modules/app';
+import type { RootState } from '~/ducks/modules/root';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
+import {
+  assetImportSurface,
+  refusedCommitMessage,
+  type RefusalMessage,
+} from '~/utils/protocolLockMessages';
 import { validateAsset } from '~/utils/protocols/assetTools';
 import { getSupportedAssetType } from '~/utils/protocols/importAsset';
 
 // Types
-type AssetType = 'video' | 'audio' | 'image' | 'network' | 'geojson' | 'apikey';
+export type AssetType =
+  | 'video'
+  | 'audio'
+  | 'image'
+  | 'network'
+  | 'geojson'
+  | 'apikey';
 
 type Asset = {
   id: string;
@@ -33,49 +49,121 @@ type ImportAssetCompletePayload = {
   duplicateCount: number;
 };
 
-type ImportAssetFailedPayload = {
-  filename: string;
-  error: Error;
-};
-
 type AddApiKeyAssetPayload = {
   id: string;
   name: string;
   value: string;
 };
 
-export type ImportAssetErrorInfo = {
-  filename: string;
-  message: string;
-  code?: string;
-};
+export type ImportAssetErrorInfo =
+  | {
+      filename: string;
+      message: string;
+      code?: string;
+    }
+  | {
+      filename: string;
+      /**
+       * This tab no longer holds the saved copy. The sentence has to come from
+       * `protocolLockMessages` — `RefusalMessage` is producible nowhere else,
+       * so this is a build error rather than a fourth set of hand-written
+       * sentences that says the same thing differently, which is exactly what
+       * this surface used to carry.
+       */
+      message: RefusalMessage;
+      code: 'PROTOCOL_NOT_OWNED_HERE';
+    };
+
+// Researcher-facing text for any import failure that is not one of the coded
+// validation errors. Those carry a `code` and a message already written for a
+// researcher; every other message is internal ("Cannot save asset: no active
+// protocol scope", "Unsupported asset type for file: …") and must not reach a
+// dialog verbatim.
+export const GENERIC_IMPORT_FAILURE_MESSAGE =
+  'Check that it is a supported file type, and try again.';
 
 const getImportAssetErrorInfo = (
   error: unknown,
   filename: string,
 ): ImportAssetErrorInfo => {
-  const normalized =
-    error instanceof Error
-      ? error
-      : new Error('The file could not be imported.');
-  const codedError = normalized as Error & { code?: string };
+  const codedError: (Error & { code?: unknown }) | null =
+    error instanceof Error ? error : null;
+  const rawCode = codedError?.code;
+  const code = typeof rawCode === 'string' ? rawCode : undefined;
   return {
     filename,
-    message: normalized.message,
-    code: codedError.code,
+    // A code is only ever set on errors whose message was written for a
+    // researcher; everything else is internal and is replaced.
+    message:
+      codedError && code ? codedError.message : GENERIC_IMPORT_FAILURE_MESSAGE,
+    code,
   };
 };
 
-// Async thunks
-export const importAssetAsync = createAsyncThunk(
+// Async thunks. `state` is narrowed to the slice this thunk actually reads, so
+// it stays dispatchable from a store built with only those reducers.
+export const importAssetAsync = createAsyncThunk<
+  ImportAssetCompletePayload,
+  File,
+  { state: Pick<RootState, 'app'> }
+>(
   'assetManifest/importAssetAsync',
-  async (file: File, { dispatch, rejectWithValue }) => {
+  async (file, { dispatch, getState, rejectWithValue }) => {
     const name = file.name;
     const assetId = uuid();
+
+    // The asset blob is written into a store keyed by protocol id, with no
+    // exclusivity check of its own, so a tab that no longer owns the protocol
+    // could drop a file into the owning tab's scope — a durable write from a
+    // tab whose manifest entry naming it can never be saved. Refuse before
+    // anything is written, and say why — in the words the other three refusing
+    // surfaces use, from the one table that holds them.
+    //
+    // A blocked reclaim has two shapes since #1387: an unresolved stage-draft
+    // choice, and an editor still open with unsaved changes in it. The blocker
+    // is what decides which dialog is on screen, so it is what the refusal is
+    // keyed on; asking whether a stage editor happens to be open instead named
+    // the wrong one, and sent the researcher looking for a question nobody was
+    // asking.
+    //
+    // Both questions are asked at the moment of the call rather than sampled
+    // once, because an import spans two awaits and this tab can be demoted
+    // across either of them — `useProtocolTabLock`'s
+    // `onExclusivityChange(false)` dispatches `setProtocolLockState`, so a
+    // throttled peer answering `held` while a large file validates is enough.
+    // A decision taken on entry is stale by the time anything is written.
+    const refuseIfNotOwned = () => {
+      const refusal = refusedCommitMessage(
+        getProtocolLockState(getState()),
+        assetImportSurface(hasOpenNestedEditor()),
+      );
+      return refusal
+        ? ({
+            filename: name,
+            code: 'PROTOCOL_NOT_OWNED_HERE',
+            message: refusal,
+          } satisfies ImportAssetErrorInfo)
+        : null;
+    };
+
+    const refusedOnEntry = refuseIfNotOwned();
+    if (refusedOnEntry) {
+      return rejectWithValue(refusedOnEntry);
+    }
 
     try {
       // Validate asset
       const validationResult = await validateAsset(file);
+
+      // Ask again now the await has resolved, while the durable write is still
+      // the only thing left to await: this is the last point at which refusing
+      // leaves nothing behind at all. Returned, never thrown — the `catch`
+      // below rewrites a thrown error through `getImportAssetErrorInfo`, which
+      // drops the branded `RefusalMessage` for the generic failure sentence.
+      const refusedBeforeWrite = refuseIfNotOwned();
+      if (refusedBeforeWrite) {
+        return rejectWithValue(refusedBeforeWrite);
+      }
 
       // Convert File to Blob and create ExtractedAsset
       const blob = new Blob([file], { type: file.type });
@@ -110,15 +198,23 @@ export const importAssetAsync = createAsyncThunk(
         duplicateCount: validationResult.duplicateCount,
       };
 
+      // The blob is already written by this point, so refusing here still
+      // leaves it behind — but an unreferenced blob is collected by the durable
+      // save path, whereas a manifest entry added in a tab whose writes are
+      // dropped is a resource the researcher can see and never save.
+      const refusedBeforeCommit = refuseIfNotOwned();
+      if (refusedBeforeCommit) {
+        return rejectWithValue(refusedBeforeCommit);
+      }
+
       dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
       return importPayload;
     } catch (error) {
-      dispatch(
-        assetManifestSlice.actions.importAssetFailed({
-          filename: name,
-          error: error as Error,
-        }),
-      );
+      // Deliberately dispatches nothing. A refused import changed no resource,
+      // so it must not reach the protocol timeline: the thunk's own
+      // `pending`/`rejected` lifecycle actions are excluded from it
+      // (`ducks/modules/root.ts`), and the rejection value below is what the
+      // caller shows the researcher.
       return rejectWithValue(getImportAssetErrorInfo(error, name));
     }
   },
@@ -144,12 +240,16 @@ const assetManifestSlice = createSlice({
         source: filename,
       };
     },
-    importAssetFailed: (
-      _state,
-      _action: PayloadAction<ImportAssetFailedPayload>,
-    ) => {},
     deleteAsset: (state, action: PayloadAction<string>) => {
       const assetId = action.payload;
+      // `omit` builds a new object even when the key was never there, and a new
+      // object is a change as far as the timeline is concerned — an id that is
+      // not in the manifest would record an undoable point that undoes nothing.
+      // `hasOwn`, not `in`: an id matching an inherited key (`toString`) would
+      // otherwise pass the guard and fall through to the rebuild below.
+      if (!Object.hasOwn(state, assetId)) {
+        return state;
+      }
       // Keep the blob on disk so an undo can restore this manifest entry. The
       // durable save path GCs blobs no longer referenced by the manifest.
       return omit(state, assetId);

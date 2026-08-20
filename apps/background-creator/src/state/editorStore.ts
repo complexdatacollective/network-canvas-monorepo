@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { isInvalidPolygon, nearlyEqual } from '~/model/polygonGeometry';
 import {
   createBlankDocument,
   createConcentricCirclesTemplate,
@@ -22,8 +23,6 @@ import { assertNever } from './assertNever';
 import {
   constrainLine45,
   constrainRegular,
-  isDegeneratePolygon,
-  nearlyEqual,
   type StageBox,
   translateElement,
 } from './documentGeometry';
@@ -687,12 +686,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         break;
       }
     }
-    if (isDegeneratePolygon(points)) {
+    if (isInvalidPolygon(points)) {
       // Keep the trimmed vertices: the failed double-click's duplicate would
       // otherwise linger mid-list once more points are added, and a later
       // successful close (which only trims trailing duplicates) would commit a
-      // polygon with a zero-length edge. Three distinct but collinear points
-      // enclose no area, so they are rejected here too.
+      // polygon with a zero-length edge. Collinear or self-intersecting points
+      // are rejected here too because rendered fill and zone membership would
+      // otherwise disagree.
       set({ draft: { ...draft, points } });
       return;
     }

@@ -6,6 +6,7 @@ import { cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
 import Hint from '../Hint';
+import { fieldElementIds } from './fieldElements';
 
 // Exclude event handlers that conflict with Framer Motion
 type ExcludeMotionConflicts<T> = Omit<
@@ -66,12 +67,28 @@ export function BaseField({
   containerProps,
 }: BaseFieldProps) {
   const hasVisibleHint = Boolean(hint ?? validationSummary);
+  const elementIds = fieldElementIds(id);
   return (
     <div
       {...containerProps}
-      className={cx('group w-full grow not-last:mb-8', 'flex flex-col')}
+      className={cx('group/field w-full grow not-last:mb-8', 'flex flex-col')}
     >
-      <div className="@container flex flex-col">
+      {/*
+        Only `inline` fields query this element (see the `@min-[28rem]:`
+        utilities below), so only they make it a query container. Every other
+        container-query consumer in the design system establishes its own
+        container, so nothing else is scoped to this one.
+
+        Making EVERY field a size container also has a cost beyond the
+        redundant containment: Chromium lays a size container's subtree out on
+        a separate, interleaved path, and can lose the invalidation for it
+        when a large sibling subtree mounts in the same commit — the subtree
+        keeps its computed styles but loses its layout boxes entirely, so the
+        control renders at zero height and never recovers. Architect's
+        quick-add variable picker hit exactly that when picking a variable
+        mounted the codebook validation section beside it.
+      */}
+      <div className={cx(inline && '@container', 'flex flex-col')}>
         <div
           className={cx(
             // `inline` fields lay out as two columns (label | control) once the
@@ -92,7 +109,7 @@ export function BaseField({
             )}
           >
             <FieldLabel
-              id={`${id}-label`}
+              id={elementIds.label}
               htmlFor={id}
               required={required}
               className={labelHidden ? 'sr-only' : undefined}
@@ -100,12 +117,12 @@ export function BaseField({
               {label}
             </FieldLabel>
             {required && (
-              <span id={`${id}-required`} className="sr-only">
+              <span id={elementIds.required} className="sr-only">
                 Required
               </span>
             )}
             {(hint ?? validationSummary) && (
-              <Hint id={`${id}-hint`}>
+              <Hint id={elementIds.hint}>
                 {hint}
                 {validationSummary}
               </Hint>
@@ -115,7 +132,7 @@ export function BaseField({
         </div>
       </div>
       <FieldErrors
-        id={`${id}-error`}
+        id={elementIds.error}
         name={name}
         errors={errors}
         show={showErrors}

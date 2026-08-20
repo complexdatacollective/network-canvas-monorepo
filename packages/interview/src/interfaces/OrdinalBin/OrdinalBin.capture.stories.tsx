@@ -41,7 +41,7 @@ const build = () => {
   // Clear the ordinal value on the first few nodes so they appear in the
   // bucket (unassigned) alongside nodes already sorted into bins.
   for (let i = 0; i < 3; i++) {
-    si.setNodeAttribute(i, closenessVar.id, null);
+    si.unsetNodeAttribute(i, closenessVar.id);
   }
 
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });

@@ -18,9 +18,82 @@ export const FormFieldSchema = z.strictObject({
 
 export type FormField = z.infer<typeof FormFieldSchema>;
 
+/**
+ * The positions of form fields that REPEAT a variable an earlier field in the
+ * same array already names — never the first occurrence, so array order alone
+ * decides which field is the real one.
+ *
+ * The rule below, the migration that brings a legacy protocol forward, and the
+ * repair Architect offers for a protocol already on this schema version all
+ * ask this one question, and they must agree exactly: a repair that judged
+ * duplicates differently from the schema would either drop a field the schema
+ * was happy with, or leave a protocol the schema still rejects — asking the
+ * researcher to approve a repair that fixes nothing, every time they open it.
+ *
+ * Takes `unknown` entries because two of those three callers work on
+ * unvalidated protocol data. A field whose `variable` is not a string is never
+ * a duplicate; the schema rejects it on its own terms.
+ */
+export const duplicateFormFieldIndices = (
+  fields: readonly unknown[],
+): number[] => {
+  const seen = new Set<string>();
+  const duplicates: number[] = [];
+  fields.forEach((field, index) => {
+    if (typeof field !== 'object' || field === null) return;
+    const { variable } = field as { variable?: unknown };
+    if (typeof variable !== 'string') return;
+    if (seen.has(variable)) {
+      duplicates.push(index);
+      return;
+    }
+    seen.add(variable);
+  });
+  return duplicates;
+};
+
+/**
+ * One form may not write the same variable twice — the rule
+ * `ComposerFormSchema` already applies to NetworkComposer forms, hoisted here
+ * so every surface holding an array of `FormFieldSchema` shares it instead of
+ * each call site remembering to add its own copy.
+ *
+ * Every field renders under its variable's name (the interview's
+ * `useProtocolForm` passes `name: field.variable` to each Field, and the form
+ * store keys its records by that name), so two fields for one variable collide
+ * on a single form value while each still contributes its own initial value,
+ * component and validation — the later registration silently replaces the
+ * earlier's. Two fields writing one attribute is incoherent authoring whatever
+ * the parameters, so reject the second occurrence outright.
+ *
+ * The scope is ONE form: separate forms resolve their references against
+ * different subjects and are checked independently.
+ */
+export const uniqueFormFieldVariables = (
+  fields: readonly { variable: string }[],
+  ctx: z.RefinementCtx,
+): void => {
+  for (const index of duplicateFormFieldIndices(fields)) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `Form fields contain duplicate attribute "${fields[index]?.variable}"`,
+      path: [index, 'variable'],
+    });
+  }
+};
+
+/**
+ * A bare array of form fields carrying the uniqueness rule — for the surfaces
+ * that hold fields without the surrounding `FormSchema` object (FamilyPedigree's
+ * `nodeConfig.form`).
+ */
+export const FormFieldArraySchema = z
+  .array(FormFieldSchema)
+  .superRefine(uniqueFormFieldVariables);
+
 export const FormSchema = z.strictObject({
   title: z.string().min(1),
-  fields: z.array(FormFieldSchema).min(1),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
 export type Form = z.infer<typeof FormSchema>;
@@ -28,7 +101,7 @@ export type Form = z.infer<typeof FormSchema>;
 // EgoForm/AlterForm/AlterEdgeForm never render form.title, so those stages use
 // this title-less variant to keep authored protocols honest.
 export const TitlelessFormSchema = z.strictObject({
-  fields: z.array(FormFieldSchema).min(1),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
 export type TitlelessForm = z.infer<typeof TitlelessFormSchema>;

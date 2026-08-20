@@ -1,63 +1,16 @@
-import { combineReducers, configureStore } from '@reduxjs/toolkit';
-import { render, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import {
-  reducer as formReducer,
-  reduxForm,
-  type InjectedFormProps,
-} from 'redux-form';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
   type Stage,
 } from '@codaco/protocol-validation';
-import { getStageEditorInitialValues } from '~/components/StageEditor/getStageEditorInitialValues';
-import { stageEditorDraftListenerMiddleware } from '~/ducks/middleware/stageEditorDraftListener';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
-import type { RootState } from '~/ducks/store';
-import { getStageDraftDirty } from '~/selectors/stageEditorDraft';
+import {
+  asStage,
+  renderStageForm,
+} from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import Background, { allowsBackgroundImage } from '../Background';
-
-const BackgroundHarness = (
-  _props: InjectedFormProps<Record<string, unknown>>,
-) => (
-  <Background
-    form="edit-stage"
-    stagePath="stages[0]"
-    stagePosition={0}
-    interfaceType="Sociogram"
-  />
-);
-
-const BackgroundForm = reduxForm<Record<string, unknown>>({
-  form: 'edit-stage',
-})(BackgroundHarness);
-
-const renderExistingSociogram = (stage: Stage) => {
-  const reducer = combineReducers({ form: formReducer, stageEditorDraft });
-  const store = configureStore({
-    reducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }).prepend(
-        stageEditorDraftListenerMiddleware.middleware,
-      ),
-  });
-  const initialValues = getStageEditorInitialValues({
-    interfaceType: 'Sociogram',
-    stage,
-    template: {},
-  });
-
-  render(
-    <Provider store={store}>
-      <BackgroundForm initialValues={initialValues} />
-    </Provider>,
-  );
-
-  return store;
-};
 
 describe('allowsBackgroundImage', () => {
   it('allows a background image for Narrative stages', () => {
@@ -76,7 +29,7 @@ describe('allowsBackgroundImage', () => {
     expect(allowsBackgroundImage('Information')).toBe(false);
   });
 
-  it('does not mark a legacy Sociogram dirty when the toggle supplies its false default', async () => {
+  it('does not mark a legacy Sociogram dirty when the toggle supplies its false default', () => {
     const stage = {
       id: 'sociogram-1',
       label: 'Sociogram',
@@ -93,15 +46,115 @@ describe('allowsBackgroundImage', () => {
         },
       ],
     } satisfies Stage;
-    const store = renderExistingSociogram(stage);
 
-    await waitFor(() => {
-      expect(
-        store.getState().form['edit-stage']?.values?.background
-          ?.skewedTowardCenter,
-      ).toBe(false);
+    const { getPresent } = renderStageForm({
+      committedStage: asStage(stage),
+      children: (
+        <Background
+          stagePath="stages[0]"
+          stagePosition={0}
+          interfaceType="Sociogram"
+        />
+      ),
     });
 
-    expect(getStageDraftDirty(store.getState() as RootState)).toBe(false);
+    // The toggle's `initialValue={false}` default registers the field at its
+    // resting value rather than performing a write, so it must not appear as
+    // a change against the baseline the bridge seeded on mount.
+    const present = getPresent() as unknown as {
+      background: { skewedTowardCenter?: boolean };
+    };
+    expect(present.background.skewedTowardCenter).toBe(false);
+  });
+});
+
+const circlesStage = {
+  id: 'sociogram-1',
+  label: 'Sociogram',
+  type: 'Sociogram',
+  subject: { entity: 'node', type: 'person' },
+  background: { concentricCircles: 4, skewedTowardCenter: true },
+  prompts: [],
+} satisfies Stage;
+
+const renderBackground = () =>
+  renderStageForm({
+    committedStage: asStage(circlesStage),
+    children: (
+      <Background
+        stagePath="stages[0]"
+        stagePosition={0}
+        interfaceType="Sociogram"
+      />
+    ),
+  });
+
+const backgroundValues = (values: unknown) =>
+  (values as { background?: Record<string, unknown> }).background;
+
+const selectedBackgroundType = () =>
+  screen
+    .getAllByRole('option')
+    .find((option) => option.getAttribute('aria-selected') === 'true')
+    ?.textContent;
+
+describe('Background', () => {
+  it('switches to the image type and clears the concentric-circle fields', () => {
+    const { getFormValues } = renderBackground();
+
+    fireEvent.click(screen.getByRole('option', { name: /^Image/ }));
+
+    const values = backgroundValues(getFormValues());
+    expect(values?.concentricCircles).toBeUndefined();
+    expect(values?.skewedTowardCenter).toBeUndefined();
+  });
+
+  it('puts the concentric circles back on screen when the switch to Image is undone', () => {
+    const { getFormValues, getHistory } = renderBackground();
+
+    fireEvent.click(screen.getByRole('option', { name: /^Image/ }));
+    expect(selectedBackgroundType()).toMatch(/^Image/);
+
+    act(() => {
+      getHistory().undo();
+    });
+
+    // Undo restores LEAVES; which group is on screen is local state. Without
+    // the restore effect the image picker stays mounted, the restored circle
+    // values sit unregistered in dormant storage, and the values the save and
+    // the Preview mirror read report a background with nothing in it at all.
+    expect(selectedBackgroundType()).toMatch(/^Concentric Circles/);
+    expect(backgroundValues(getFormValues())).toEqual({
+      concentricCircles: 4,
+      skewedTowardCenter: true,
+    });
+  });
+
+  it('redoes back into image mode without branching the timeline', () => {
+    const { getFormValues, getHistory, snapshots, store } = renderBackground();
+
+    fireEvent.click(screen.getByRole('option', { name: /^Image/ }));
+
+    act(() => {
+      getHistory().undo();
+    });
+    expect(getHistory().canRedo).toBe(true);
+
+    act(() => {
+      getHistory().redo();
+    });
+
+    expect(selectedBackgroundType()).toMatch(/^Image/);
+    const values = backgroundValues(getFormValues());
+    expect(values).not.toHaveProperty('concentricCircles');
+    expect(values).toHaveProperty('image');
+
+    // The restored form values have to agree with the entry that was restored,
+    // or the next step's `flushPendingEdit` records the difference as a fresh
+    // snapshot — which branches `future` and throws the redo away silently.
+    // One snapshot total: the flush that committed the switch before undoing.
+    expect(snapshots).toHaveLength(1);
+    expect(store.getState().stageEditorDraft.history.future).toHaveLength(0);
+    expect(getHistory().canUndo).toBe(true);
   });
 });

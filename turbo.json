@@ -105,6 +105,7 @@
         "public/**",
         "index.html",
         "preview/index.html",
+        "pwa-assets.config.ts",
         "vite.config.*",
         "tailwind.config.*",
         "tsconfig*.json",
@@ -125,6 +126,18 @@
       ],
       "outputs": ["dist/**"]
     },
+    "@codaco/studio-client#build": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "index.html",
+        "src/**",
+        "vite.config.*",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": ["dist/**"]
+    },
     "@codaco/interviewer#build": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -134,7 +147,9 @@
         "scripts/**",
         "public/**",
         "index.html",
+        "pwa-assets.config.ts",
         "vite.config.*",
+        "vite.renderer.config.ts",
         "tailwind.config.*",
         "tsconfig*.json",
         "package.json"
@@ -359,7 +374,8 @@
         "vitest.setup.*",
         "config/vitest/**",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -437,6 +453,18 @@
       "env": ["NODE_ENV"],
       "outputs": []
     },
+    "@codaco/studio-server#typecheck": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "*.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputs": []
+    },
     "@codaco/architect#test": {
       "dependsOn": ["^topo"],
       "inputs": [
@@ -448,7 +476,8 @@
         "vitest.config.*",
         "vite.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -466,7 +495,8 @@
         "vitest.config.*",
         "vitest.setup.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -483,7 +513,8 @@
         "__tests__/**",
         "vitest.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
@@ -502,12 +533,27 @@
         "vitest.config.*",
         "vite.config.*",
         "package.json",
-        ".env"
+        ".env",
+        ".env.development"
       ],
       "env": [
         "PROTOCOL_ENCRYPTION_KEY",
         "PROTOCOL_ENCRYPTION_IV",
         "GITHUB_TOKEN"
+      ],
+      "outputs": []
+    },
+    "@codaco/studio-server#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "vitest.config.*",
+        "package.json",
+        ".env",
+        ".env.development",
+        ".env.example",
+        "$TURBO_ROOT$/apps/studio/README.md"
       ],
       "outputs": []
     },

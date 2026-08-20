@@ -1,8 +1,12 @@
 import type { AttributeWriterUsage } from '../schemas/8/entity-attribute-reference.ts';
+import { collectEntityAttributeReferences } from './collectEntityAttributeReferences.ts';
 import {
-  collectEntityAttributeReferences,
-  type EntityAttributeReferenceHit,
-} from './collectEntityAttributeReferences.ts';
+  stageIndexOf,
+  subjectVariableKey,
+  toReferenceSubject,
+  variableNameFor,
+  type ReferenceSubject,
+} from './referenceSubjects.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -13,7 +17,7 @@ export type VariableRoleHit = {
 };
 
 export type VariableRoleConflict = {
-  subject: { entity: 'node' | 'edge' | 'ego'; type?: string };
+  subject: ReferenceSubject;
   variableId: string;
   variableName: string;
   validated: VariableRoleHit[];
@@ -21,7 +25,7 @@ export type VariableRoleConflict = {
 };
 
 export type VariableRoleGroup = {
-  subject: { entity: 'node' | 'edge' | 'ego'; type?: string };
+  subject: ReferenceSubject;
   variableId: string;
   validated: VariableRoleHit[];
   unvalidated: VariableRoleHit[];
@@ -33,61 +37,6 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const asRecord = (value: unknown): UnknownRecord | null =>
   isRecord(value) ? value : null;
 
-const stageIndexOf = (path: (string | number)[]): number | undefined =>
-  path[0] === 'stages' && typeof path[1] === 'number' ? path[1] : undefined;
-
-/**
- * FamilyPedigree declares no top-level `subject`, so its
- * `stageSubject`-resolved writers — `nominationPrompts[].variable` and
- * `nodeConfig.form[].variable` — collect with `hit.subject` undefined.
- * Recover it from the stage's own `nodeConfig` (or, symmetrically,
- * `edgeConfig`) type instead. FamilyPedigree's remaining writer fields (the
- * slots on `nodeConfig`/`edgeConfig` themselves) are sibling-resolved and
- * already carry a subject, so they never reach this fallback.
- * NarrativePedigree has neither `nodeConfig` nor `edgeConfig`, and its one
- * entity-attribute reference (`diseases[].variable`) carries no `usage` tag
- * today, so it never reaches this function at all.
- */
-const recoverSubject = (
-  protocol: UnknownRecord,
-  hit: EntityAttributeReferenceHit,
-): { entity: 'node' | 'edge' | 'ego'; type?: string } | undefined => {
-  if (hit.subject) {
-    const subject = hit.subject;
-    // StageSubject is a union whose ego member carries no `type` — the `in`
-    // check narrows to the node/edge members instead of asserting one shape.
-    return 'type' in subject
-      ? { entity: subject.entity, type: subject.type }
-      : { entity: subject.entity };
-  }
-  const index = stageIndexOf(hit.path);
-  if (index === undefined) return undefined;
-  const stages = protocol.stages;
-  const stage = Array.isArray(stages) ? asRecord(stages[index]) : null;
-  if (!stage) return undefined;
-  const edgeConfigHit = hit.path.includes('edgeConfig');
-  const config = asRecord(edgeConfigHit ? stage.edgeConfig : stage.nodeConfig);
-  const type = config?.type;
-  return typeof type === 'string'
-    ? { entity: edgeConfigHit ? 'edge' : 'node', type }
-    : undefined;
-};
-
-const variableNameFor = (
-  protocol: UnknownRecord,
-  subject: { entity: string; type?: string },
-  variableId: string,
-): string => {
-  const codebook = asRecord(protocol.codebook);
-  const owner =
-    subject.entity === 'ego'
-      ? asRecord(codebook?.ego)
-      : asRecord(asRecord(codebook?.[subject.entity])?.[subject.type ?? '']);
-  const variable = asRecord(asRecord(owner?.variables)?.[variableId]);
-  const name = variable?.name;
-  return typeof name === 'string' ? name : variableId;
-};
-
 export function collectVariableRoleHits(
   protocol: unknown,
 ): VariableRoleGroup[] {
@@ -98,9 +47,9 @@ export function collectVariableRoleHits(
 
   for (const hit of collectEntityAttributeReferences(protocolRecord)) {
     if (hit.usage === undefined) continue;
-    const subject = recoverSubject(protocolRecord, hit);
+    const subject = toReferenceSubject(hit.subject);
     if (!subject) continue;
-    const key = [subject.entity, subject.type ?? '', hit.variableId].join('\n');
+    const key = subjectVariableKey(subject, hit.variableId);
     let group = groups.get(key);
     if (!group) {
       group = {

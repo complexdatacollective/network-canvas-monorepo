@@ -2,13 +2,30 @@ import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { Panel, StageSubject } from '@codaco/protocol-validation';
+import { ensureError } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { useCaptureException } from '../analytics/useTrack';
 import { useContractHandlers } from '../contract/context';
 import { parseExternalNetworkAsset } from '../contract/rosterData';
 import { getAssetManifest, getCodebook } from '../store/modules/protocol';
-import { ensureError } from '../utils/ensureError';
+
+/**
+ * Where the external roster/panel data has got to.
+ *
+ * `idle` is a real state, not a synonym for "loaded nothing": it covers both a
+ * source that is not external at all and the render before the effect has
+ * started reading one. A caller that cannot tell it apart from `ready` reports
+ * an empty roster to the participant on the first frame of every roster stage —
+ * which is a statement about their data, and it is false.
+ */
+export type ExternalDataStatus =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'ready' }
+  | { state: 'error'; error: Error };
+
+const IDLE: ExternalDataStatus = { state: 'idle' };
 
 const useExternalData = (
   dataSource: Panel['dataSource'],
@@ -20,10 +37,7 @@ const useExternalData = (
   const captureException = useCaptureException();
 
   const [externalData, setExternalData] = useState<NcNode[] | null>(null);
-  const [status, setStatus] = useState<{
-    isLoading: boolean;
-    error: Error | null;
-  }>({ isLoading: false, error: null });
+  const [status, setStatus] = useState<ExternalDataStatus>(IDLE);
 
   useEffect(() => {
     if (
@@ -32,18 +46,22 @@ const useExternalData = (
       !subject ||
       subject.entity === 'ego'
     ) {
+      // Nothing external to read. Say so rather than leaving whatever the
+      // previous source left behind.
+      setExternalData(null);
+      setStatus((current) => (current.state === 'idle' ? current : IDLE));
       return;
     }
 
     let cancelled = false;
 
     setExternalData(null);
-    setStatus({ isLoading: true, error: null });
+    setStatus({ state: 'loading' });
 
     const asset = assetManifest[dataSource];
     if (!asset) {
       setStatus({
-        isLoading: false,
+        state: 'error',
         error: new Error(`Unknown asset id: ${dataSource}`),
       });
       return () => {
@@ -65,14 +83,14 @@ const useExternalData = (
         });
         if (!cancelled) {
           setExternalData(formatted);
-          setStatus({ isLoading: false, error: null });
+          setStatus({ state: 'ready' });
         }
       } catch (e) {
         const error = ensureError(e);
         captureException(error, { feature: 'external-data' });
         // eslint-disable-next-line no-console
         console.error(error);
-        if (!cancelled) setStatus({ isLoading: false, error });
+        if (!cancelled) setStatus({ state: 'error', error });
       }
     })();
 

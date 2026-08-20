@@ -2,7 +2,7 @@
 
 import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -22,17 +22,33 @@ type Props = {
 export default function GeospatialStubSearch({ className }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const reset = useCallback(() => {
     setIsOpen(false);
     setQuery('');
   }, []);
 
+  /**
+   * Mirrors GeospatialSearch's intentional-close rule: picking a suggestion or
+   * pressing Escape closes the panel AND returns focus to the toggle, so a
+   * keyboard assertion written against the real component holds here too.
+   *
+   * The stub deliberately stops there. It has no map and no Mapbox response,
+   * so it has no search outcome to announce — a stubbed "Map moved to …" would
+   * assert something the fixture never did.
+   */
+  const closeSearch = useCallback(() => {
+    reset();
+    buttonRef.current?.focus();
+  }, [reset]);
+
   const handleToggle = useCallback(
     (pressed: boolean) => {
       if (pressed) {
         setIsOpen(true);
       } else {
+        // Closing from the toggle itself: it already holds focus.
         reset();
       }
     },
@@ -56,6 +72,7 @@ export default function GeospatialStubSearch({ className }: Props) {
         onPressedChange={handleToggle}
         render={
           <IconButton
+            ref={buttonRef}
             icon={<Search />}
             color={isOpen ? 'secondary' : 'dynamic'}
             aria-label={isOpen ? 'Close search' : 'Search location'}
@@ -80,6 +97,11 @@ export default function GeospatialStubSearch({ className }: Props) {
               placeholder="Search for a place..."
               value={query}
               onChange={handleQueryChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  closeSearch();
+                }
+              }}
               data-testid="geospatial-search-input"
               role="combobox"
               aria-label="Search"
@@ -121,11 +143,13 @@ export default function GeospatialStubSearch({ className }: Props) {
                     role="option"
                     aria-selected="false"
                     tabIndex={0}
-                    onClick={reset}
+                    onClick={closeSearch}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        reset();
+                        closeSearch();
+                      } else if (e.key === 'Escape') {
+                        closeSearch();
                       }
                     }}
                     className="hover:bg-accent/10 flex cursor-pointer flex-col gap-0.5 px-3 py-2 transition-colors outline-none"

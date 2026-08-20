@@ -6,6 +6,7 @@ import { createElement, type ReactNode, useId } from 'react';
 import type { ValidationContext } from '../store/types';
 import type { ValidationPropKey } from '../validation/functions';
 import { BaseField } from './BaseField';
+import { fieldDescribedBy, fieldElementIds } from './fieldElements';
 import type {
   ExtractValue,
   ValidationPropsForValue,
@@ -91,13 +92,16 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
   const id = useId();
   const required = Boolean(componentProps.required);
 
-  const describedBy = [
-    required && `${id}-required`,
-    hint && `${id}-hint`,
-    errors?.length && `${id}-error`,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  // Names exactly the elements BaseField renders below, through the same owner
+  // the connected field uses. Unlike a connected field, this one is handed its
+  // `errors` as a prop by a caller that already knows them, so the error region
+  // is named only when it holds a message — there is no asynchronous arrival to
+  // have already described.
+  const describedBy = fieldDescribedBy(id, {
+    required,
+    hint: Boolean(hint),
+    error: Boolean(errors?.length),
+  });
 
   // Use createElement instead of JSX so we can hand React the merged props
   // without TS demanding they match the narrow ValidFieldComponent shape.
@@ -109,7 +113,8 @@ export default function UnconnectedField<C extends ValidFieldComponent>({
     id,
     name,
     'aria-required': required,
-    'aria-labelledby': componentProps['aria-labelledby'] ?? `${id}-label`,
+    'aria-labelledby':
+      componentProps['aria-labelledby'] ?? fieldElementIds(id).label,
     'aria-describedby': describedBy || undefined,
   } as React.ComponentProps<C>;
 

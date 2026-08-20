@@ -33,7 +33,7 @@ const DiseaseNominationPrompts = ({
                 rotated
                 rows={[
                   [
-                    'Variable',
+                    'Attribute',
                     <Variable key={prompt.variable} id={prompt.variable} />,
                   ],
                 ]}

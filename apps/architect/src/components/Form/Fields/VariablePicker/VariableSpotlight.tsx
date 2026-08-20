@@ -6,6 +6,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  type ComponentProps,
 } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -35,6 +36,8 @@ const CREATE_NEW_CLASSES =
   'flex items-center justify-center px-5 py-1 font-medium text-current [&_svg]:mr-5 [&_svg]:h-5';
 
 const RESULTS_ID = 'variable-spotlight-results';
+
+type ModalPopupProps = ComponentProps<typeof ModalPopup>;
 
 type VariableOption = {
   value: string;
@@ -70,9 +73,15 @@ type VariableSpotlightProps = {
   onSelect: (value: string) => void;
   entity?: string;
   type?: string;
-  onCancel: () => void;
   onCreateOption: (value: string) => void;
   options: VariableOption[];
+  /**
+   * Where focus RETURNS when the picker closes — the control in the parent
+   * dialog that opened it. Without one, dismissing the picker left focus on
+   * `<body>`, from where Tab walked out of the still-open parent dialog
+   * entirely.
+   */
+  finalFocus?: ModalPopupProps['finalFocus'];
 };
 
 const renderEmptyMessage = (icon: ReactNode, children: ReactNode) => (
@@ -88,21 +97,16 @@ const VariableSpotlight = ({
   entity,
   type,
   onSelect,
-  onCancel,
   onCreateOption,
   options,
   disallowCreation = false,
+  finalFocus,
 }: VariableSpotlightProps) => {
   const [filterTerm, setFilterTerm] = useState('');
 
   const resetState = useCallback(() => {
     setFilterTerm('');
   }, []);
-
-  const handleClose = useCallback(() => {
-    resetState();
-    onCancel();
-  }, [onCancel, resetState]);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -173,14 +177,14 @@ const VariableSpotlight = ({
         items.push({
           id: `invalid:${filterTerm}`,
           kind: 'invalid',
-          label: `Cannot create variable named "${filterTerm}"`,
+          label: `Cannot create attribute named "${filterTerm}"`,
           reason: invalidVariableName,
         });
       } else {
         items.push({
           id: `create:${filterTerm}`,
           kind: 'create',
-          label: `Create new variable called "${filterTerm}".`,
+          label: `Create new attribute called "${filterTerm}".`,
           value: filterTerm,
         });
       }
@@ -251,11 +255,10 @@ const VariableSpotlight = ({
 
   const handleInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Escape') {
-        handleClose();
-        return;
-      }
-
+      // Escape is deliberately NOT handled here. Closing the picker directly
+      // bypassed Base UI's dismissal, so its focus manager never ran and focus
+      // was left on `<body>`; letting the event reach Base UI makes its own
+      // close path — and the focus return below — the single one.
       if (
         (event.key === 'ArrowDown' || event.key === 'ArrowUp') &&
         collectionItems.length > 0
@@ -290,7 +293,6 @@ const VariableSpotlight = ({
       collectionItems.length,
       disallowCreation,
       filterTerm,
-      handleClose,
       handleCreateOption,
       hasExactFilterMatch,
       hasFilterTerm,
@@ -306,9 +308,9 @@ const VariableSpotlight = ({
         {...itemProps}
         data-testid="spotlight-list-item"
         className={cx(
-          'focusable flex w-full items-center justify-between rounded px-4 py-2.5 transition-colors',
+          'focusable hover:bg-surface-2 flex w-full items-center justify-between rounded px-4 py-2.5 transition-colors',
           'data-focused:bg-surface-2 data-selected:bg-primary data-selected:text-primary-contrast',
-          'data-disabled:cursor-not-allowed data-disabled:opacity-60',
+          'data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:bg-transparent',
         )}
       >
         {item.kind === 'variable' && (
@@ -345,6 +347,7 @@ const VariableSpotlight = ({
       />
       <ModalPopup
         key="variable-spotlight-popup"
+        finalFocus={finalFocus}
         className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
         <MotionSurface
@@ -360,15 +363,15 @@ const VariableSpotlight = ({
               type="search"
               placeholder={
                 disallowCreation
-                  ? 'Find a variable...'
-                  : 'Create or find a variable...'
+                  ? 'Find an attribute...'
+                  : 'Create or find an attribute...'
               }
               value={filterTerm}
               onChange={handleFilter}
               onKeyDown={handleInputKeyDown}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label="Find or create a variable"
+              aria-label="Find or create an attribute"
             />
           </header>
           <main className="min-h-0 flex-auto pb-1">
@@ -377,10 +380,10 @@ const VariableSpotlight = ({
                 {renderEmptyMessage(
                   <Info aria-hidden />,
                   <Paragraph margin="none">
-                    To create your first variable of this type, type a name
+                    To create your first attribute of this type, type a name
                     above and press enter. See our&nbsp;
                     <ExternalLink href={documentationLinks.variableNaming}>
-                      documentation on variable naming
+                      documentation on attribute naming
                     </ExternalLink>
                     &nbsp;for more information.
                   </Paragraph>,
@@ -393,8 +396,8 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  No variables exist for you to select, and you cannot create a
-                  new variable from here. Please create one or more variables
+                  No attributes exist for you to select, and you cannot create a
+                  new attribute from here. Please create one or more attributes
                   elsewhere in your protocol, and return here to select them.
                 </Paragraph>,
               )}
@@ -404,15 +407,15 @@ const VariableSpotlight = ({
               renderEmptyMessage(
                 <TriangleAlert aria-hidden />,
                 <Paragraph margin="none">
-                  You cannot create a new variable from here. Please create one
-                  or more variables elsewhere in your protocol, and return here
+                  You cannot create a new attribute from here. Please create one
+                  or more attributes elsewhere in your protocol, and return here
                   to select them.
                 </Paragraph>,
               )}
             {collectionItems.length > 0 && (
               <Collection
                 id={RESULTS_ID}
-                aria-label="Variable results"
+                aria-label="Attribute results"
                 items={collectionItems}
                 keyExtractor={(item) => item.id}
                 textValueExtractor={(item) => item.label}

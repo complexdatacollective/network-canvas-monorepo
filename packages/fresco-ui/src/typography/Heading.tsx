@@ -4,7 +4,12 @@ import * as React from 'react';
 import { cva, cx, type VariantProps } from '../utils/cva';
 
 export const headingVariants = cva({
-  base: 'font-heading scroll-m-20 text-pretty',
+  // `wrap-break-word`: headings carry researcher-authored identifiers (a
+  // variable name, a protocol name, a resource filename), any of which can be
+  // one unbroken token longer than its container. Without it such a heading
+  // overflows its box rather than breaking — inside a dialog, straight past the
+  // clipped edge (#1392).
+  base: 'font-heading scroll-m-20 text-pretty wrap-break-word',
   variants: {
     level: {
       h1: 'text-3xl font-bold',

@@ -63,4 +63,44 @@ describe('admitStoredProtocol', () => {
     ).resolves.toEqual({ success: false, error });
     expect(markValidated).not.toHaveBeenCalled();
   });
+
+  // The provenance mark records that a protocol passed the rules of the
+  // Architect that wrote it. The interface-ownership rules are newer, so a
+  // marked row still has to be checked against them — otherwise the fast path
+  // admits a protocol that fails on the researcher's first commit.
+  it('refuses a provenance-marked row that violates the interface-ownership rules', async () => {
+    const validate = vi.fn();
+    const markValidated = vi.fn();
+    const conflicted: CurrentProtocol = {
+      ...protocol,
+      name: 'Conflicted study',
+      stages: [
+        {
+          id: 'af1',
+          type: 'AlterForm',
+          label: 'Alter form',
+          subject: { entity: 'node', type: 'person' },
+          introductionPanel: { title: 'T', text: 'X' },
+          form: {
+            fields: [
+              { variable: 'name', prompt: 'Name?' },
+              { variable: 'name', prompt: 'Name again?' },
+            ],
+          },
+        },
+      ],
+    } as unknown as CurrentProtocol;
+
+    const result = await admitStoredProtocol(
+      { ...makeRow(true), protocol: conflicted },
+      { validate, markValidated },
+    );
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.message).toContain(
+      'the same attribute',
+    );
+    expect(validate).not.toHaveBeenCalled();
+    expect(markValidated).not.toHaveBeenCalled();
+  });
 });

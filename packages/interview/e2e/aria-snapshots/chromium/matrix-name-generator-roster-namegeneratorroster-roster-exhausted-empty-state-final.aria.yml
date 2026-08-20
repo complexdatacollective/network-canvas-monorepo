@@ -1,0 +1,13 @@
+- main:
+  - status:
+    - heading "Please add anyone you recognise." [level=2]
+  - button "Available to add":
+    - heading "Available to add" [level=3]
+  - listbox "Available Roster Nodes": There is nothing to add from this list.
+  - slider "Resize panel and node list areas"
+  - listbox "Added Nodes"
+  - navigation:
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

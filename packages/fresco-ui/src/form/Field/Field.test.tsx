@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import InputField from '../fields/InputField';
 import Form from '../Form';
 import useFormStore from '../hooks/useFormStore';
 import Field from './Field';
@@ -102,5 +103,51 @@ describe('Field value reset / clear', () => {
 
     fireEvent.click(screen.getByText('resetForm'));
     expect(received()).toBe('"init"');
+  });
+});
+
+/**
+ * Issue #1385 (adjacent): `aria-describedby` listed `-required` and `-hint`
+ * unconditionally, so every optional or hintless field shipped an IDREF
+ * pointing at nothing.
+ */
+describe('Field aria-describedby', () => {
+  function describedByIds(control: HTMLElement): string[] {
+    return (control.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .filter(Boolean);
+  }
+
+  function renderField(props: { required?: boolean; hint?: string }) {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <Field name="name" label="Name" component={InputField} {...props} />
+      </Form>,
+    );
+    return screen.getByRole('textbox', { name: 'Name' });
+  }
+
+  it.each([
+    { name: 'plain', props: {} },
+    { name: 'required', props: { required: true } },
+    { name: 'hinted', props: { hint: 'As it appears on your ID' } },
+    {
+      name: 'required and hinted',
+      props: { required: true, hint: 'As it appears on your ID' },
+    },
+  ])('names only elements that exist ($name)', ({ props }) => {
+    const control = renderField(props);
+    const ids = describedByIds(control);
+
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(document.getElementById(id)).not.toBeNull();
+    }
+  });
+
+  it('omits the required and hint references when neither is rendered', () => {
+    const control = renderField({});
+
+    expect(describedByIds(control)).toEqual([`${control.id}-error`]);
   });
 });

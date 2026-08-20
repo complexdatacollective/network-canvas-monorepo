@@ -11,6 +11,8 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { buildFieldValidationProps } from '../forms/buildFieldValidationProps';
+import { authoredFieldLabel } from '../forms/buildVariableLabels';
+import { resolveRenderedControl } from '../forms/resolveRenderedControl';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { getNetwork, getStageSubject } from './session';
@@ -60,7 +62,15 @@ type FieldMetadata = Variable extends infer V
         component: ComponentType;
         parameters?: Record<string, unknown>;
         variable: string;
+        /** What the participant reads as this field's caption. */
         label: string;
+        /**
+         * The researcher-authored part of that caption, absent when nothing
+         * was authored and `label` fell back to the codebook variable's name.
+         * This — never `label` — is what may be repeated back to a participant
+         * away from the field itself, e.g. by a comparison validator.
+         */
+        authoredLabel?: string;
         hint?: string;
         showValidationHints?: boolean;
       }
@@ -118,8 +128,19 @@ const createFieldMetadata = (
     const fieldComponent = 'component' in field ? field.component : undefined;
     const codebookComponent =
       'component' in codebookEntry ? codebookEntry.component : undefined;
-    const component = fieldComponent ?? codebookComponent;
-    invariant(component !== undefined, 'Missing component for form field');
+    const authoredComponent = fieldComponent ?? codebookComponent;
+    invariant(
+      authoredComponent !== undefined,
+      'Missing component for form field',
+    );
+    const { component, optionsApply } = resolveRenderedControl({
+      type: codebookEntry.type,
+      component: authoredComponent,
+      // Not every variable variant carries a validation block (`layout` does
+      // not), and the resolver only ever reads `required`.
+      validation:
+        'validation' in codebookEntry ? codebookEntry.validation : undefined,
+    });
 
     const fieldParameters =
       'parameters' in field ? field.parameters : undefined;
@@ -127,12 +148,36 @@ const createFieldMetadata = (
       'parameters' in codebookEntry ? codebookEntry.parameters : undefined;
     const parameters = fieldParameters ?? codebookParameters;
 
+    // `optionsApply` is false only for a control the resolver swapped, and it
+    // is the resolver — not this function — that decides what that costs the
+    // codebook's options.
+    // The `type` test is redundant at runtime — only a boolean is ever swapped
+    // — but it narrows the union so the spread below stays type-safe.
+    const renderedEntry =
+      optionsApply ||
+      codebookEntry.type !== 'boolean' ||
+      !('options' in codebookEntry)
+        ? codebookEntry
+        : { ...codebookEntry, options: undefined };
+
+    // The one rule for what this field is called. `authoredLabel` is the
+    // researcher's participant-facing caption, and it is what the
+    // variable-comparison validators may name this variable by; `label` adds
+    // the fallbacks a rendered control needs, which include the codebook
+    // variable's `name` — a researcher identifier that must not travel any
+    // further than the caption it is standing in for.
+    const authoredLabel = authoredFieldLabel({
+      label: fieldLabel,
+      prompt: fieldPrompt,
+    });
+
     return {
-      ...codebookEntry,
+      ...renderedEntry,
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      label: fieldLabel ?? fieldPrompt ?? codebookEntry.name ?? variable,
+      label: authoredLabel ?? codebookEntry.name ?? variable,
+      authoredLabel,
       hint,
       showValidationHints,
     };

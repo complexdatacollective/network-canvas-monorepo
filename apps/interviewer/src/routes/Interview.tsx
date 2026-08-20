@@ -18,6 +18,7 @@ import {
 } from '@codaco/interview';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
 import {
   buildResolvedAssets,
@@ -231,7 +232,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     () => ({
       installationId: getInstallationId(),
       // No Electron/Capacitor host remains; this app is the only host.
-      hostApp: 'interviewer',
+      hostApp: POSTHOG_APP_KEY,
+      appName: POSTHOG_APP_NAME,
       hostVersion: APP_VERSION,
     }),
     [],
@@ -246,9 +248,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       await updateSession(id, {
         network: session.network,
         currentStep: currentStepRef.current,
-        stageMetadata: session.stageMetadata as
-          | Record<string, unknown>
-          | undefined,
+        stageMetadata: session.stageMetadata,
       });
     },
     [],
@@ -370,6 +370,6 @@ function hydrateSession(stored: StoredSession): SessionPayload {
     lastUpdated: stored.lastUpdatedAt,
     network: stored.network,
     promptIndex: 0,
-    stageMetadata: stored.stageMetadata as SessionPayload['stageMetadata'],
+    stageMetadata: stored.stageMetadata,
   };
 }

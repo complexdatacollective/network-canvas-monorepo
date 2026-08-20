@@ -1,21 +1,22 @@
 import { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { change, Field, formValueSelector } from 'redux-form';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
+import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
-import { useAppDispatch } from '~/ducks/hooks';
-import type { RootState } from '~/ducks/store';
+import {
+  useSetStageValue,
+  useStageFormValue,
+  useStageInitialValue,
+} from '~/components/StageEditor/stageFormHooks';
 import { getFieldId } from '~/utils/issues';
+
 const InterviewerScript = (_props: StageEditorSectionProps) => {
-  const getFormValue = formValueSelector('edit-stage');
-  const currentValue = useSelector((state: RootState) =>
-    getFormValue(state, 'interviewScript'),
-  );
-  const dispatch = useAppDispatch();
+  const currentValue = useStageFormValue('interviewScript');
+  const initialValue = useStageInitialValue<string>('interviewScript');
+  const setStageValue = useSetStageValue();
   const { confirm } = useDialog();
   const handleToggleChange = useCallback(
     async (newState: boolean) => {
@@ -32,12 +33,12 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
         onConfirm: () => {},
       });
       if (confirmed) {
-        dispatch(change('edit-stage', 'interviewScript', null));
+        setStageValue('interviewScript', undefined);
         return true;
       }
       return false;
     },
-    [confirm, dispatch, currentValue],
+    [confirm, setStageValue, currentValue],
   );
   return (
     <Section
@@ -52,12 +53,13 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
       startExpanded={!!currentValue}
       handleToggleChange={handleToggleChange}
     >
-      <Field
+      <ArchitectField
         name="interviewScript"
         component={RichText}
+        initialValue={initialValue}
         label="Interviewer script text"
         labelHidden
-        placeholder="Enter text for the interviewer here."
+        placeholder="Enter text for the interviewer here..."
       />
     </Section>
   );

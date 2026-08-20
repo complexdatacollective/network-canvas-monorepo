@@ -96,6 +96,13 @@ type ResizableFlexPanelProps = {
   /** Additional class names applied to the outer flex container. */
   'className'?: string;
   /**
+   * Keep the resize handle centred in the nearest scroll viewport while the
+   * panel itself is taller or wider than that viewport.
+   *
+   * @default false
+   */
+  'stickyHandle'?: boolean;
+  /**
    * Accessible label for the resize handle, announced by screen readers.
    *
    * @default "Resize panels"
@@ -140,6 +147,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
       reverse = false,
       children,
       className,
+      stickyHandle = false,
       'aria-label': ariaLabel,
     },
     forwardedRef,
@@ -189,7 +197,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
         <div
           id={firstPanelId}
           className={cx(
-            'flex shrink-0 flex-col',
+            'flex shrink-0 flex-col self-stretch',
             // Allow the pane to honour its flex-basis even when its content has a
             // larger intrinsic size: without a 0 main-axis minimum, wide/tall
             // content sets `min-width/height: auto` and overrides the basis,
@@ -229,9 +237,14 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
           aria-label={ariaLabel ?? 'Resize panels'}
           className={cx(
             'group',
-            'focusable relative z-10 flex shrink-0 items-center justify-center',
+            'focusable z-10 flex shrink-0 items-center justify-center',
             'touch-none border-0 bg-transparent p-0 select-none',
             isHorizontal ? 'w-4 cursor-col-resize' : 'h-4 cursor-row-resize',
+            stickyHandle
+              ? isHorizontal
+                ? 'sticky top-1/2 -translate-y-1/2 self-start'
+                : 'sticky left-1/2 -translate-x-1/2 self-start'
+              : 'relative self-stretch',
             isOverridden && 'pointer-events-none hidden opacity-0',
             'transition-opacity duration-(--animation-duration-standard) ease-(--animation-easing)',
           )}
@@ -256,7 +269,7 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
         {/* Second panel */}
         <div
           id={secondPanelId}
-          className={cx('flex min-h-0 min-w-0 flex-1 flex-col')}
+          className={cx('flex min-h-0 min-w-0 flex-1 flex-col self-stretch')}
         >
           {secondChild}
         </div>

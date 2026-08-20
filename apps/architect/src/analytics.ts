@@ -1,8 +1,16 @@
 import posthog from 'posthog-js';
 
-const POSTHOG_API_KEY = 'phc_OThPUolJumHmf142W78TKWtjoYYAxGlF0ZZmhcV7J3c';
-const POSTHOG_HOST = 'https://ph-relay.networkcanvas.com';
+import {
+  buildAppSuperProperties,
+  POSTHOG_API_KEY,
+  POSTHOG_HOST,
+} from '@codaco/shared-consts';
+
+import { appVersion } from './utils/appVersion';
+
 const INSTALLATION_ID_KEY = 'network-canvas-architect-installation-id';
+const APP_KEY = 'ArchitectWeb';
+const APP_NAME = 'Architect';
 
 function getOrCreateInstallationId(): string {
   const existing = localStorage.getItem(INSTALLATION_ID_KEY);
@@ -15,7 +23,23 @@ function getOrCreateInstallationId(): string {
   return id;
 }
 
-if (import.meta.env.VITE_DISABLE_ANALYTICS !== 'true') {
+type AnalyticsEnvironment = {
+  disabled: boolean;
+  isDevelopment: boolean;
+};
+
+export function initializeAnalytics({
+  disabled,
+  isDevelopment,
+}: AnalyticsEnvironment): void {
+  // The two ways analytics is off are both deliberate and both local: a Vite
+  // development server, or an explicit opt-out for e2e/preview builds. The
+  // project key is a compiled-in shared constant, so there is no third,
+  // accidental way — a release build that forgot to set something.
+  if (isDevelopment || disabled) {
+    return;
+  }
+
   posthog.init(POSTHOG_API_KEY, {
     api_host: POSTHOG_HOST,
     capture_pageview: true,
@@ -35,16 +59,24 @@ if (import.meta.env.VITE_DISABLE_ANALYTICS !== 'true') {
     },
     cross_subdomain_cookie: false,
     persistence: 'localStorage+cookie',
+    // Architect has no user accounts. Keep its events anonymous rather than
+    // creating PostHog person profiles for random installation UUIDs.
+    person_profiles: 'identified_only',
   });
 
-  posthog.register({
-    app: 'ArchitectWeb',
-    installation_id: getOrCreateInstallationId(),
-  });
-
-  if (import.meta.env.DEV) {
-    posthog.debug();
-  }
+  posthog.register(
+    buildAppSuperProperties({
+      appKey: APP_KEY,
+      appName: APP_NAME,
+      version: appVersion,
+      installationId: getOrCreateInstallationId(),
+    }),
+  );
 }
+
+initializeAnalytics({
+  disabled: import.meta.env.VITE_DISABLE_ANALYTICS === 'true',
+  isDevelopment: import.meta.env.DEV,
+});
 
 export { posthog };

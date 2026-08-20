@@ -1,44 +1,42 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
-import type { ComponentType, FocusEventHandler } from 'react';
-import type { WrappedFieldProps } from 'redux-form';
 
+import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import { getColorSwatchName } from '~/config';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
-
-import FrescoReduxField from '../FrescoReduxField';
 
 type ColorOption = {
   label: string;
   value: string;
 };
 
-type ColorPickerControlProps = {
-  'id'?: string;
-  'name'?: string;
-  'value'?: string;
-  'onChange'?: (value: string) => void;
-  'onBlur'?: FocusEventHandler;
-  'onFocus'?: FocusEventHandler;
-  'palette'?: string;
-  'paletteRange'?: number;
-  'options'?: ColorOption[];
-  'disabled'?: boolean;
-  'readOnly'?: boolean;
-  'required'?: boolean;
-  'aria-describedby'?: string;
-  'aria-invalid'?: boolean;
-  'aria-labelledby'?: string;
-  'aria-required'?: boolean;
-};
+type ColorPickerProps = CreateFormFieldProps<
+  string,
+  'fieldset',
+  {
+    /** Generates swatches `${palette}-1` … `${palette}-${paletteRange}`. */
+    palette?: string;
+    paletteRange?: number;
+    /** Explicit swatches. Ignored when `palette` is supplied. */
+    options?: ColorOption[];
+    /** Only reaches the control through `UnconnectedField`; `Field` strips
+     * validation props and signals the same thing via `aria-required`. */
+    required?: boolean;
+  }
+>;
 
 const asColorOption = (name: string): ColorOption => ({
-  label: name,
+  label: getColorSwatchName(name),
   value: name,
 });
 
-const ColorPickerControl = ({
+/**
+ * Protocol-colour swatch picker. Labelling belongs to the surrounding field —
+ * pass it through `ArchitectField`'s `label`/`hint`.
+ */
+const ColorPicker = ({
   id,
   name,
   value,
@@ -55,14 +53,29 @@ const ColorPickerControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: ColorPickerControlProps) => {
+}: ColorPickerProps) => {
   // range() is end-exclusive, so run to paletteRange + 1 — otherwise the
   // palette's last colour can never be picked.
-  const colors = palette
+  const offered = palette
     ? range(1, paletteRange + 1).map((index) =>
         asColorOption(`${palette}-${index}`),
       )
     : options;
+
+  // A stored colour the list no longer offers still gets a swatch of its own,
+  // at the end. Protocols exist that were authored against a wider range than
+  // the picker now shows (Narrative Pedigree offered ten swatches of an
+  // eight-colour palette), and the alternatives are both worse: a picker with
+  // nothing selected is a dead end that hides what the protocol actually
+  // holds, and silently rewriting the value would change an authored colour
+  // without asking. Shown, named, and replaceable — and only replaceable by
+  // something the palette really has.
+  const colors =
+    value && !offered.some((color) => color.value === value)
+      ? [...offered, asColorOption(value)]
+      : offered;
+
+  const isRequired = required || Boolean(ariaRequired);
 
   return (
     <RadioGroup
@@ -74,14 +87,14 @@ const ColorPickerControl = ({
       }}
       disabled={disabled}
       readOnly={readOnly}
-      required={required}
+      required={isRequired}
       onBlur={onBlur}
       onFocus={onFocus}
       render={<fieldset />}
       aria-labelledby={ariaLabelledBy ?? (id ? `${id}-label` : undefined)}
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid || undefined}
-      aria-required={ariaRequired || required || undefined}
+      aria-required={isRequired || undefined}
       className={cx(
         'bg-input text-input-contrast @container flex w-full flex-wrap gap-3 rounded border-2 p-4',
         ariaInvalid && 'border-destructive',
@@ -113,6 +126,11 @@ const ColorPickerControl = ({
               )}
               style={
                 {
+                  // `resolveProtocolColor` carries its own fallback, which
+                  // only ever applies to the out-of-range swatch above whose
+                  // theme variable does not exist: without it the chip has no
+                  // background at all and the researcher cannot see the colour
+                  // their protocol is holding.
                   '--color': resolveProtocolColor(color.value),
                 } as React.CSSProperties
               }
@@ -123,29 +141,5 @@ const ColorPickerControl = ({
     </RadioGroup>
   );
 };
-
-type ColorPickerProps = WrappedFieldProps & {
-  palette?: string;
-  paletteRange?: number;
-  options?: ColorOption[];
-  label?: string;
-  disabled?: boolean;
-  readOnly?: boolean;
-};
-
-const FrescoColorPickerControl = ColorPickerControl as ComponentType<
-  Record<string, unknown>
->;
-const ReduxFieldAdapter = FrescoReduxField as unknown as ComponentType<
-  Record<string, unknown>
->;
-
-const ColorPicker = ({ label = 'Color', ...props }: ColorPickerProps) => (
-  <ReduxFieldAdapter
-    {...props}
-    label={label}
-    fieldComponent={FrescoColorPickerControl}
-  />
-);
 
 export default ColorPicker;
