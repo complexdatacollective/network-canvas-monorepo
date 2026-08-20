@@ -31,7 +31,10 @@ export type EngineCodebook = {
   ego?: { variables?: Record<string, unknown> };
 };
 
-type PromptRef = { id: string };
+type PromptRef = {
+  id: string;
+  additionalAttributes?: readonly { variable: unknown; value: boolean }[];
+};
 type StageRef = { id: string; prompts?: readonly PromptRef[] };
 
 export type SessionDraft = {
@@ -41,26 +44,26 @@ export type SessionDraft = {
   lastUpdated: string;
 };
 
-const isCensusTuple = (
-  entry: unknown,
-): entry is [number, string, string, boolean] =>
-  Array.isArray(entry) && entry.length === 4;
-
 /**
- * The runtime strips null/undefined from `set` before applying
- * (`applyEntityAttributePatch`), and refuses a key named in both halves
- * (`validateAttributePatch`). Reproduced verbatim.
+ * The runtime applies `set` VERBATIM — `applyEntityAttributePatch` strips
+ * null/undefined only from the PRE-EXISTING attributes, never from the patch
+ * itself — and refuses a key named in both halves (`validateAttributePatch`).
+ * A simulator has no business writing null (`unset` is the vocabulary for
+ * removal), so rather than silently diverging from the reducer the engine
+ * refuses a null in `set` outright.
  */
 const normalisePatch = (patch: AttributePatch): AttributePatch => {
-  const set: Record<string, VariableValue> = {};
   for (const [key, value] of Object.entries(patch.set)) {
-    if (value !== null && value !== undefined) set[key] = value;
+    invariant(
+      value !== null && value !== undefined,
+      `attribute "${key}" set to ${String(value)} — use unset to remove an attribute`,
+    );
     invariant(
       !patch.unset.includes(key),
       `attribute "${key}" appears in both set and unset`,
     );
   }
-  return { set, unset: patch.unset };
+  return patch;
 };
 
 export class SessionEngine {
@@ -68,16 +71,6 @@ export class SessionEngine {
   private readonly stages: readonly Stage[];
   private readonly clock: SessionClock;
   private readonly trace: SyntheticSessionAction[] | null;
-  /**
-   * Prompt `additionalAttributes` looked up by prompt id, for
-   * `removeNodeFromPrompt`'s reconciliation (the runtime re-resolves a
-   * removed prompt's variables from the node's REMAINING prompts, last
-   * declaring prompt winning — session.ts:507-559).
-   */
-  private readonly promptAttributesById: ReadonlyMap<
-    string,
-    Readonly<Record<string, boolean>>
-  >;
 
   readonly draft: SessionDraft;
 
@@ -112,25 +105,6 @@ export class SessionEngine {
       promptIndex: 0,
       lastUpdated: clock.startTime,
     };
-
-    const promptAttributes = new Map<string, Record<string, boolean>>();
-    for (const stage of stages) {
-      if (!('prompts' in stage) || !stage.prompts) continue;
-      for (const prompt of stage.prompts) {
-        if ('additionalAttributes' in prompt && prompt.additionalAttributes) {
-          promptAttributes.set(
-            prompt.id,
-            Object.fromEntries(
-              prompt.additionalAttributes.map(({ variable, value }) => [
-                String(variable),
-                value,
-              ]),
-            ),
-          );
-        }
-      }
-    }
-    this.promptAttributesById = promptAttributes;
   }
 
   /** The captured trace, when the run asked for one. */
@@ -199,18 +173,48 @@ export class SessionEngine {
     return edge;
   }
 
-  /** The runtime's undirected same-type match (session.ts `edgeExists`). */
+  /**
+   * The current stage's prompts, each with its `additionalAttributes` as a
+   * variable→value map, in stage-authored order. `removeNodeFromPrompt`
+   * reconciles against exactly this scope: the runtime re-resolves a removed
+   * prompt's variables from the CURRENT stage's prompts alone
+   * (`getPrompts(state, currentStep)`), so a promptID the node still carries
+   * from another stage contributes nothing.
+   */
+  private stagePrompts(
+    currentStep: number,
+  ): { id: string; attributes: Readonly<Record<string, boolean>> }[] {
+    const stage = this.stages[currentStep] as StageRef | undefined;
+    invariant(stage, `no stage at step ${currentStep}`);
+    return (stage.prompts ?? []).map((prompt) => ({
+      id: prompt.id,
+      attributes: prompt.additionalAttributes
+        ? Object.fromEntries(
+            prompt.additionalAttributes.map(({ variable, value }) => [
+              String(variable),
+              value,
+            ]),
+          )
+        : {},
+    }));
+  }
+
+  /**
+   * The runtime's undirected same-type match (session.ts `edgeExists`): a
+   * forwards match wins over a reverse one regardless of array position.
+   */
   private existingEdgeId(
     from: string,
     to: string,
     edgeType: string,
   ): string | null {
-    const match = this.draft.network.edges.find(
-      (edge) =>
-        edge.type === edgeType &&
-        ((edge.from === from && edge.to === to) ||
-          (edge.from === to && edge.to === from)),
+    const forwards = this.draft.network.edges.find(
+      (edge) => edge.type === edgeType && edge.from === from && edge.to === to,
     );
+    const reverse = this.draft.network.edges.find(
+      (edge) => edge.type === edgeType && edge.from === to && edge.to === from,
+    );
+    const match = forwards ?? reverse;
     return match ? match[entityPrimaryKeyProperty] : null;
   }
 
@@ -295,20 +299,23 @@ export class SessionEngine {
     const node = this.node(payload.nodeId);
     const { promptId } = this.sessionMeta(payload.currentStep);
     invariant(promptId, 'removeNodeFromPrompt on a stage with no prompts');
+    const prompts = this.stagePrompts(payload.currentStep);
     const remaining = (node.promptIDs ?? []).filter((id) => id !== promptId);
-    const removedAttributes = this.promptAttributesById.get(promptId) ?? {};
+    const removedAttributes =
+      prompts.find((prompt) => prompt.id === promptId)?.attributes ?? {};
 
-    // Re-resolve each removed-prompt variable from the remaining prompts
-    // (last remaining prompt that declares it wins), unsetting the ones no
-    // remaining prompt declares (session.ts:530-551).
+    // Re-resolve each removed-prompt variable from the CURRENT stage's other
+    // prompts the node remains on, in stage-authored order (last declaring
+    // prompt wins); a variable no such prompt declares is unset. PromptIDs
+    // from other stages stay on the node but contribute no resolution.
     const set: Record<string, VariableValue> = {};
     const unset: string[] = [];
     for (const variable of Object.keys(removedAttributes)) {
       let resolved: boolean | undefined;
-      for (const remainingPrompt of remaining) {
-        const attributes = this.promptAttributesById.get(remainingPrompt);
-        if (attributes && variable in attributes)
-          resolved = attributes[variable];
+      for (const prompt of prompts) {
+        if (!remaining.includes(prompt.id)) continue;
+        if (variable in prompt.attributes)
+          resolved = prompt.attributes[variable];
       }
       if (resolved === undefined) unset.push(variable);
       else set[variable] = resolved;
@@ -320,13 +327,13 @@ export class SessionEngine {
     this.touch();
   }
 
-  addEdge(payload: {
+  /** Validates and inserts; the caller records and touches. */
+  private insertEdge(payload: {
     edgeType: string;
     uid: string;
     from: string;
     to: string;
     attributeData?: Readonly<Record<string, VariableValue>>;
-    currentStep: number;
   }): NcEdge {
     const attributes: Record<string, VariableValue> = {};
     for (const [key, value] of Object.entries(payload.attributeData ?? {})) {
@@ -351,6 +358,26 @@ export class SessionEngine {
       [entityAttributesProperty]: attributes,
     };
     this.draft.network.edges.push(edge);
+    return edge;
+  }
+
+  /** Removes by id; the caller records and touches. */
+  private removeEdgeById(edgeId: string): void {
+    this.edge(edgeId);
+    this.draft.network.edges = this.draft.network.edges.filter(
+      (edge) => edge[entityPrimaryKeyProperty] !== edgeId,
+    );
+  }
+
+  addEdge(payload: {
+    edgeType: string;
+    uid: string;
+    from: string;
+    to: string;
+    attributeData?: Readonly<Record<string, VariableValue>>;
+    currentStep: number;
+  }): NcEdge {
+    const edge = this.insertEdge(payload);
     this.record({ type: 'addEdge', payload });
     this.touch();
     return edge;
@@ -360,6 +387,12 @@ export class SessionEngine {
    * The Sociogram/OneToManyDyadCensus semantic: an existing same-type edge in
    * EITHER direction is deleted, otherwise one is created with no attributes.
    * Returns the surviving edge id, or null when the toggle deleted.
+   *
+   * The trace carries the participant's GESTURE, not its resolution: replay
+   * re-resolves through the runtime's own `toggleEdge` thunk, so any drift in
+   * dedupe or tie-break between this fold and the reducer is a parity failure
+   * rather than an invisible pre-resolution. The uid is consumed only when
+   * the replayed toggle also creates.
    */
   toggleEdge(payload: {
     edgeType: string;
@@ -373,12 +406,11 @@ export class SessionEngine {
       payload.to,
       payload.edgeType,
     );
-    if (existing) {
-      this.deleteEdge({ edgeId: existing });
-      return null;
-    }
-    this.addEdge({ ...payload, attributeData: {} });
-    return payload.uid;
+    if (existing) this.removeEdgeById(existing);
+    else this.insertEdge({ ...payload, attributeData: {} });
+    this.record({ type: 'toggleEdge', payload });
+    this.touch();
+    return existing ? null : payload.uid;
   }
 
   updateNode(payload: {
@@ -393,6 +425,10 @@ export class SessionEngine {
       this.variablesFor('node', node.type),
       `node attributes for type "${node.type}"`,
     );
+    // The reducer folds the node's promptIDs through a Set on every update —
+    // a no-op until a duplicate exists, mirrored so the fold cannot preserve
+    // duplicates the reducer would collapse.
+    node.promptIDs = Array.from(new Set(node.promptIDs ?? []));
     this.applyPatch(node[entityAttributesProperty], patch);
     this.record({ type: 'updateNode', payload });
     this.touch();
@@ -454,9 +490,12 @@ export class SessionEngine {
   }
 
   /**
-   * Removes the node, every incident edge, and any census tuples naming it —
-   * array-shaped metadata entries only, object entries untouched
-   * (session.ts:88-110, 717-737).
+   * Removes the node, every incident edge, and any metadata tuples naming it.
+   * The reducer destructures EVERY item of an array-shaped entry positionally
+   * — no tuple-shape guard (`pruneStageMetadataForNode`) — so any array item
+   * naming the node in slot 1 or 2 is pruned, whatever its length; object
+   * entries are untouched. A non-array item inside an array entry would throw
+   * there; the engine fails the same way, loudly.
    */
   deleteNode(payload: { nodeId: string }): void {
     this.node(payload.nodeId);
@@ -468,21 +507,20 @@ export class SessionEngine {
     );
     for (const [step, entry] of Object.entries(this.draft.stageMetadata)) {
       if (!Array.isArray(entry)) continue;
-      this.draft.stageMetadata[step] = entry.filter(
-        (item) =>
-          !isCensusTuple(item) ||
-          (item[1] !== payload.nodeId && item[2] !== payload.nodeId),
-      ) as StageMetadataEntry & unknown[];
+      this.draft.stageMetadata[step] = entry.filter((item) => {
+        invariant(
+          Array.isArray(item),
+          'array-shaped stage metadata holds a non-array item',
+        );
+        return item[1] !== payload.nodeId && item[2] !== payload.nodeId;
+      }) as StageMetadataEntry & unknown[];
     }
     this.record({ type: 'deleteNode', payload });
     this.touch();
   }
 
   deleteEdge(payload: { edgeId: string }): void {
-    this.edge(payload.edgeId);
-    this.draft.network.edges = this.draft.network.edges.filter(
-      (edge) => edge[entityPrimaryKeyProperty] !== payload.edgeId,
-    );
+    this.removeEdgeById(payload.edgeId);
     this.record({ type: 'deleteEdge', payload });
     this.touch();
   }

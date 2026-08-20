@@ -1019,3 +1019,50 @@ describe('byte-level reproducibility (C9)', () => {
     expect(four.slice(0, 3)).toStrictEqual(three);
   });
 });
+
+describe('a stopped walk is a prefix of the full one (C5)', () => {
+  it('stops exactly on the full walk’s trace prefix', () => {
+    // Not merely "the same node ids": every action the stopped walk emitted,
+    // in order, must be exactly what the full walk emitted before that point.
+    // Node ids alone would still pass if value draws desynchronised, because
+    // ids come from their own substream.
+    const full = run(FULL_PROTOCOL, { captureTrace: true });
+    const stopped = run(FULL_PROTOCOL, {
+      captureTrace: true,
+      stopAt: { stageIndex: 3 },
+    });
+
+    const fullTrace = full.trace ?? [];
+    const stoppedTrace = stopped.trace ?? [];
+    expect(stoppedTrace.length).toBeGreaterThan(0);
+    expect(stoppedTrace.length).toBeLessThan(fullTrace.length);
+    expect(fullTrace.slice(0, stoppedTrace.length)).toStrictEqual(stoppedTrace);
+  });
+
+  it('holds under a prompt bound too', () => {
+    const full = run(FULL_PROTOCOL, { captureTrace: true });
+    const stopped = run(FULL_PROTOCOL, {
+      captureTrace: true,
+      stopAt: { stageIndex: 2, promptIndex: 1 },
+    });
+
+    const fullTrace = full.trace ?? [];
+    const stoppedTrace = stopped.trace ?? [];
+    expect(fullTrace.slice(0, stoppedTrace.length)).toStrictEqual(stoppedTrace);
+  });
+
+  it('attributes every stopped write to a visited stage', () => {
+    const stopped = run(FULL_PROTOCOL, {
+      captureTrace: true,
+      stopAt: { stageIndex: 3, promptIndex: 1 },
+    });
+    const visited = new Set(stopped.visitedStages);
+
+    expect(stopped.trace?.length ?? 0).toBeGreaterThan(0);
+    for (const action of stopped.trace ?? []) {
+      if ('currentStep' in action.payload) {
+        expect(visited.has(action.payload.currentStep)).toBe(true);
+      }
+    }
+  });
+});

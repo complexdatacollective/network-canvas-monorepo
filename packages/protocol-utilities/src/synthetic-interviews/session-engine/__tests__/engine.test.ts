@@ -369,20 +369,21 @@ describe('the session engine fold', () => {
       ).toThrow(/appears in both set and unset/);
     });
 
-    it('drops a null from a patch rather than writing it', () => {
-      // An unanswered variable is ABSENT from attributes, never null.
+    it('refuses a null in set rather than diverging from the reducer', () => {
+      // The reducer applies `set` VERBATIM — a null would be WRITTEN there,
+      // while a fold that silently dropped it would diverge. An unanswered
+      // variable is ABSENT (that is what unset is for), so a simulator
+      // putting null in set is a bug the engine surfaces immediately.
       const engine = engineFor();
       addPerson(engine, 'a');
-      engine.updateNode({
-        nodeId: 'a',
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        attributePatch: { set: { close: null } as never, unset: [] },
-        currentStep: 0,
-      });
-
-      expect('close' in nodeById(engine, 'a')[entityAttributesProperty]).toBe(
-        false,
-      );
+      expect(() =>
+        engine.updateNode({
+          nodeId: 'a',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          attributePatch: { set: { close: null } as never, unset: [] },
+          currentStep: 0,
+        }),
+      ).toThrow(/use unset/);
     });
   });
 
@@ -403,5 +404,236 @@ describe('the session engine fold', () => {
       'addNodeToPrompt',
       'transitionStage',
     ]);
+  });
+});
+
+describe('reducer-divergence pins', () => {
+  // Each case here pins a semantic where the OBVIOUS fold diverges from the
+  // reducer in a way the parity suite cannot currently reach — either the
+  // divergent state needs an action sequence no simulator emits yet, or the
+  // decision happens before anything lands in the trace. Adversarial review
+  // of Phase 2 found each of these as a live or latent divergence; the pin
+  // fails on the divergent implementation.
+
+  const engineWith = (customStages: Stage[]): SessionEngine =>
+    new SessionEngine({
+      codebook,
+      stages: customStages,
+      clock: createSessionClock(
+        '2026-08-14T12:00:00.000Z',
+        createSessionStreams(1234, 0),
+      ),
+      egoUid: 'ego-uid',
+      captureTrace: true,
+    });
+
+  it('ignores prompt ids from other stages when reconciling a removal', () => {
+    // The runtime re-resolves a removed prompt's variables from the CURRENT
+    // stage's prompts alone (getPrompts(state, currentStep)) — a promptID
+    // the node still carries from ANOTHER stage contributes nothing, however
+    // identical its declaration. A protocol-global prompt map gets this
+    // wrong: it would keep `close` alive through the other stage's prompt.
+    const twoStages = [
+      {
+        id: 'stage-a',
+        prompts: [
+          {
+            id: 'a1',
+            additionalAttributes: [{ variable: 'close', value: true }],
+          },
+        ],
+      },
+      {
+        id: 'stage-b',
+        prompts: [
+          {
+            id: 'b1',
+            additionalAttributes: [{ variable: 'close', value: true }],
+          },
+        ],
+      },
+    ] as unknown as Stage[];
+    const engine = engineWith(twoStages);
+
+    engine.addNode({
+      nodeType: 'person',
+      uid: 'n',
+      attributeData: { name: 'n' },
+      currentStep: 0,
+    });
+    engine.transitionStage();
+    engine.addNodeToPrompt({
+      nodeId: 'n',
+      promptAttributes: { close: true },
+      currentStep: 1,
+    });
+    engine.removeNodeFromPrompt({ nodeId: 'n', currentStep: 1 });
+
+    const node = engine.draft.network.nodes[0];
+    expect(node?.promptIDs).toEqual(['a1']);
+    expect(node ? 'close' in node[entityAttributesProperty] : undefined).toBe(
+      false,
+    );
+  });
+
+  it('resolves a removal in stage-authored order, not node order', () => {
+    // q1 says true, q2 says false, q3 says true. The node reached q2 first,
+    // so its promptIDs order is [q2, q1] after q3 is removed — but the
+    // runtime iterates the STAGE's prompts, so the last declaring prompt in
+    // AUTHORED order (q2) wins. Node-order iteration would take q1's value.
+    const threeDeclaring = [
+      {
+        id: 'stage-q',
+        prompts: [
+          {
+            id: 'q1',
+            additionalAttributes: [{ variable: 'close', value: true }],
+          },
+          {
+            id: 'q2',
+            additionalAttributes: [{ variable: 'close', value: false }],
+          },
+          {
+            id: 'q3',
+            additionalAttributes: [{ variable: 'close', value: true }],
+          },
+        ],
+      },
+    ] as unknown as Stage[];
+    const engine = engineWith(threeDeclaring);
+
+    engine.updatePrompt({ promptIndex: 1 });
+    engine.addNode({
+      nodeType: 'person',
+      uid: 'n',
+      attributeData: { name: 'n' },
+      currentStep: 0,
+    });
+    engine.updatePrompt({ promptIndex: 0 });
+    engine.addNodeToPrompt({
+      nodeId: 'n',
+      promptAttributes: { close: true },
+      currentStep: 0,
+    });
+    engine.updatePrompt({ promptIndex: 2 });
+    engine.addNodeToPrompt({
+      nodeId: 'n',
+      promptAttributes: { close: true },
+      currentStep: 0,
+    });
+    engine.removeNodeFromPrompt({ nodeId: 'n', currentStep: 0 });
+
+    const node = engine.draft.network.nodes[0];
+    expect(node?.promptIDs).toEqual(['q2', 'q1']);
+    expect(node?.[entityAttributesProperty].close).toBe(false);
+  });
+
+  it('deletes the forwards edge when both directions of a pair exist', () => {
+    // The reducer's edgeExists checks forwards before reverse regardless of
+    // array position; a first-match-in-array-order fold would delete e1.
+    const engine = engineFor();
+    addPerson(engine, 'a');
+    addPerson(engine, 'b');
+    engine.addEdge({
+      edgeType: 'knows',
+      uid: 'e1',
+      from: 'b',
+      to: 'a',
+      currentStep: 0,
+    });
+    engine.addEdge({
+      edgeType: 'knows',
+      uid: 'e2',
+      from: 'a',
+      to: 'b',
+      currentStep: 0,
+    });
+
+    engine.toggleEdge({
+      edgeType: 'knows',
+      uid: 'e3',
+      from: 'a',
+      to: 'b',
+      currentStep: 0,
+    });
+
+    expect(
+      engine.draft.network.edges.map((edge) => edge[entityPrimaryKeyProperty]),
+    ).toEqual(['e1']);
+  });
+
+  it('records a toggle as the gesture, not its resolution', () => {
+    // Replay must re-resolve through the runtime's own toggleEdge thunk —
+    // a trace carrying the resolved addEdge/deleteEdge would make dedupe
+    // and tie-break divergences invisible to the parity suite forever.
+    const engine = engineFor();
+    addPerson(engine, 'a');
+    addPerson(engine, 'b');
+    engine.toggleEdge({
+      edgeType: 'knows',
+      uid: 'e1',
+      from: 'a',
+      to: 'b',
+      currentStep: 0,
+    });
+    engine.toggleEdge({
+      edgeType: 'knows',
+      uid: 'e2',
+      from: 'b',
+      to: 'a',
+      currentStep: 0,
+    });
+
+    expect(engine.capturedTrace()?.map((action) => action.type)).toEqual([
+      'addNode',
+      'addNode',
+      'toggleEdge',
+      'toggleEdge',
+    ]);
+    expect(engine.draft.network.edges).toEqual([]);
+  });
+
+  it('prunes metadata tuples of any length naming the node', () => {
+    // The reducer destructures every array item positionally with no shape
+    // guard — a length-4-only check would keep this three-slot tuple.
+    const engine = engineFor();
+    addPerson(engine, 'a');
+    addPerson(engine, 'b');
+    engine.updateStageMetadata({
+      currentStep: 1,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      metadata: [[0, 'a', 'b']] as never,
+    });
+
+    engine.deleteNode({ nodeId: 'a' });
+
+    expect(engine.draft.stageMetadata['1']).toEqual([]);
+  });
+
+  it('collapses duplicate prompt ids on update, as the reducer does', () => {
+    // addNodeToPrompt appends unconditionally on both sides, so a repeat
+    // nomination on the same prompt is reachable; the reducer folds
+    // promptIDs through a Set on every updateNode.
+    const engine = engineFor();
+    addPerson(engine, 'a', 2);
+    engine.addNodeToPrompt({
+      nodeId: 'a',
+      promptAttributes: {},
+      currentStep: 0,
+    });
+    engine.addNodeToPrompt({
+      nodeId: 'a',
+      promptAttributes: {},
+      currentStep: 0,
+    });
+    expect(nodeById(engine, 'a').promptIDs).toEqual(['p1', 'p1']);
+
+    engine.updateNode({
+      nodeId: 'a',
+      attributePatch: { set: { band: 1 }, unset: [] },
+      currentStep: 0,
+    });
+
+    expect(nodeById(engine, 'a').promptIDs).toEqual(['p1']);
   });
 });

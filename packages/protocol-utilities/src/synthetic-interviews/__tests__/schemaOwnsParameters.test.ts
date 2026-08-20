@@ -129,6 +129,48 @@ describe('the schema owns every generation parameter', () => {
           /Math\.(?:max|min)\([^)]*(?:\bsynthetic\b|\bdescriptor\b)\??\.[\w.?]+[^)]*,\s*-?\d/,
         complaint: 'clamps a resolved value against a literal',
       },
+      // `Math.max(18, descriptor.min)` — the same clamp, literal first
+      {
+        pattern:
+          /Math\.(?:max|min)\(\s*-?\d[^)]*,[^)]*(?:\bsynthetic\b|\bdescriptor\b)\??\.[\w.?]+/,
+        complaint: 'clamps a resolved value against a leading literal',
+      },
+    ];
+
+    /**
+     * One aliasing assignment is all it takes to slip past receiver-keyed
+     * patterns: `const b = stage.synthetic; b.responseBurden ?? 99` reads a
+     * resolved value through a name none of the patterns above know. So any
+     * identifier bound to a resolved value is put through the same three
+     * questions under its own name. Parameters are out of reach of this
+     * net (a descriptor passed INTO a function keeps its open-tail identity
+     * reads, e.g. `sampleCount`'s `count.min ?? 0`) — the boundary between
+     * alias and parameter is exactly the boundary between "supplied a value
+     * of its own" and "intersected with the window it was given".
+     */
+    const aliasFallbacksFor = (alias: string) => [
+      {
+        pattern: new RegExp(`\\b${alias}\\??\\.[\\w.?]+\\s*\\?\\?`),
+        complaint: `applies ?? to \`${alias}\`, an alias of a resolved value`,
+      },
+      {
+        pattern: new RegExp(
+          `Math\\.(?:max|min)\\([^)]*\\b${alias}\\??\\.[\\w.?]+[^)]*,\\s*-?\\d`,
+        ),
+        complaint: `clamps \`${alias}\` (alias of a resolved value) against a literal`,
+      },
+      {
+        pattern: new RegExp(
+          `Math\\.(?:max|min)\\(\\s*-?\\d[^)]*,[^)]*\\b${alias}\\??\\.[\\w.?]+`,
+        ),
+        complaint: `clamps \`${alias}\` (alias of a resolved value) against a leading literal`,
+      },
+      {
+        pattern: new RegExp(
+          `const\\s*\\{[^}]*=\\s*[^}]*\\}\\s*=\\s*${alias}\\b`,
+        ),
+        complaint: `destructures \`${alias}\` (alias of a resolved value) with a default`,
+      },
     ];
 
     // Sizes the distinct-value sequence a `unique` text variable walks rather
@@ -153,6 +195,20 @@ describe('the schema owns every generation parameter', () => {
       }
       for (const { pattern, complaint } of fallbacks) {
         if (pattern.test(source)) offences.push(`${where} ${complaint}`);
+      }
+      const aliases = [
+        ...source.matchAll(
+          /(?:const|let)\s+(\w+)\s*=\s*[^;\n]*(?:\.synthetic\b|\bdescriptorOf\(|\bresolveVariableSynthetic\()/g,
+        ),
+      ]
+        .map(([, name]) => name)
+        .filter((name): name is string => name !== undefined)
+        // Names the receiver-keyed patterns already watch add nothing.
+        .filter((name) => name !== 'synthetic' && name !== 'descriptor');
+      for (const alias of new Set(aliases)) {
+        for (const { pattern, complaint } of aliasFallbacksFor(alias)) {
+          if (pattern.test(source)) offences.push(`${where} ${complaint}`);
+        }
       }
       for (const [, declared] of source.matchAll(/const (DEFAULT_\w+)/g)) {
         if (declared !== undefined && !runLimits.has(declared)) {

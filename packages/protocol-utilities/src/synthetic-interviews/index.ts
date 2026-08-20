@@ -81,8 +81,10 @@ export const generateInterviewsOptions = z
      * ISO instant anchoring the start window: sessions start uniformly within
      * the schema's `SYNTHETIC_START_WINDOW_DAYS` before it. Defaults to one
      * clock read per batch; pin it for byte-reproducible output across runs.
+     * Validated as a full ISO datetime: a zone-less string would be parsed in
+     * the machine's local time, silently making output timezone-dependent.
      */
-    startWindow: z.string().optional(),
+    startWindow: z.string().datetime().optional(),
     /** Capture the engine's write trace for parity testing. */
     captureTrace: z.boolean().default(false),
   })

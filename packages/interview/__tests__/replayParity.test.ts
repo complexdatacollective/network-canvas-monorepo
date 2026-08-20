@@ -4,6 +4,7 @@ import { buildStageAvailabilityMap } from '@codaco/network-query';
 import {
   generateInterviews,
   type GenerateInterviewsOptions,
+  type SyntheticInterviewResult,
   type SyntheticSessionAction,
 } from '@codaco/protocol-utilities';
 import {
@@ -251,7 +252,7 @@ const persisted = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const assertReplayParity = async (
   protocol: CurrentProtocol,
   options: GenerateInterviewsOptions,
-): Promise<void> => {
+): Promise<SyntheticInterviewResult | undefined> => {
   const respectSkipLogic = options.respectSkipLogic ?? true;
   const [result] = generateInterviews(protocol, {
     ...options,
@@ -259,40 +260,42 @@ const assertReplayParity = async (
     captureTrace: true,
   });
   expect(result).toBeDefined();
-  if (!result) return;
+  if (!result) return undefined;
   const { session, trace, currentStep, droppedOut, visitedStages } = result;
   expect(trace).toBeDefined();
-  if (!trace) return;
+  if (!trace) return result;
 
   const replayStore = createStore(payloadFor(protocol, session), {
     onSync: async () => undefined,
   });
+
+  // The runtime's own answer to "where does the walk go after `from`",
+  // evaluated over the network as the REPLAYED store now holds it.
+  const nextExpectedAfter = (from: number): number | undefined => {
+    if (!respectSkipLogic) {
+      // Routing off is the preview contract: strictly sequential.
+      return from + 1 < protocol.stages.length ? from + 1 : undefined;
+    }
+    const network = replayStore.getState().session.network;
+    const availability = buildStageAvailabilityMap(
+      [...protocol.stages, { id: '__finish__' }],
+      network,
+    );
+    for (let index = from + 1; index < protocol.stages.length; index += 1) {
+      if (availability[index]?.kind === 'available') return index;
+    }
+    return undefined;
+  };
 
   // Route parity: after each stage transition, the walk's next visited stage
   // must be exactly the next available one by the runtime's OWN availability
   // rules over the state the runtime now holds.
   let transitionsSeen = 0;
   const expectRouteParity = () => {
-    const network = replayStore.getState().session.network;
-    const availability = buildStageAvailabilityMap(
-      [...protocol.stages, { id: '__finish__' }],
-      network,
-    );
     const from = visitedStages[transitionsSeen];
     expect(from).toBeDefined();
     if (from === undefined) return;
-    let expected: number | undefined;
-    if (respectSkipLogic) {
-      for (let index = from + 1; index < protocol.stages.length; index += 1) {
-        if (availability[index]?.kind === 'available') {
-          expected = index;
-          break;
-        }
-      }
-    } else {
-      // Routing off is the preview contract: strictly sequential.
-      expected = from + 1 < protocol.stages.length ? from + 1 : undefined;
-    }
+    const expected = nextExpectedAfter(from);
     const actual = visitedStages[transitionsSeen + 1];
     // A transition with no following visit means the interview ended: the
     // resume position must agree that no authored stage remained.
@@ -318,6 +321,19 @@ const assertReplayParity = async (
   expect(replayed.promptIndex ?? 0).toBe(session.promptIndex ?? 0);
   expect(typeof session.lastUpdated).toBe('string');
   expect(droppedOut ? session.finishTime === null : true).toBe(true);
+
+  if (droppedOut) {
+    // C1's dropped leg: an abandoned walk ends without a transition, so the
+    // boundary is never route-checked above — instead the recorded resume
+    // position must be the runtime's own next stage after the one the
+    // participant abandoned, evaluated over the replayed final network.
+    const last = visitedStages[visitedStages.length - 1];
+    expect(last).toBeDefined();
+    if (last === undefined) return result;
+    expect(currentStep).toBe(nextExpectedAfter(last) ?? protocol.stages.length);
+  }
+
+  return result;
 };
 
 // ---------------------------------------------------------------------------
@@ -492,8 +508,14 @@ const fiveInterfaceProtocol = (): CurrentProtocol =>
         introductionPanel: { title: 'About you', text: 'A little about you.' },
         form: {
           fields: [
-            { variable: asEntityAttributeReference('egoName'), prompt: 'Your name?' },
-            { variable: asEntityAttributeReference('consent'), prompt: 'Happy to continue?' },
+            {
+              variable: asEntityAttributeReference('egoName'),
+              prompt: 'Your name?',
+            },
+            {
+              variable: asEntityAttributeReference('consent'),
+              prompt: 'Happy to continue?',
+            },
           ],
         },
       },
@@ -517,8 +539,14 @@ const fiveInterfaceProtocol = (): CurrentProtocol =>
         form: {
           title: 'Add a person',
           fields: [
-            { variable: asEntityAttributeReference('name'), prompt: 'Their name?' },
-            { variable: asEntityAttributeReference('age'), prompt: 'Their age?' },
+            {
+              variable: asEntityAttributeReference('name'),
+              prompt: 'Their name?',
+            },
+            {
+              variable: asEntityAttributeReference('age'),
+              prompt: 'Their age?',
+            },
           ],
         },
         panels: [
@@ -537,7 +565,9 @@ const fiveInterfaceProtocol = (): CurrentProtocol =>
         type: 'Information',
         label: 'Skipped when anyone exists',
         title: 'Skipped',
-        items: [{ id: 'sk', type: 'text', content: 'Hidden once people exist.' }],
+        items: [
+          { id: 'sk', type: 'text', content: 'Hidden once people exist.' },
+        ],
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -645,16 +675,95 @@ describe('the five-interface fixture is not vacuous', () => {
     const nodes = network?.nodes ?? [];
     expect(nodes.length).toBeGreaterThanOrEqual(4);
 
-    const names = nodes.map(
-      (node) => node[entityAttributesProperty]['name'],
-    );
-    expect(names.every((name) => typeof name === 'string' && name.length > 0)).toBe(true);
+    const names = nodes.map((node) => node[entityAttributesProperty]['name']);
+    expect(
+      names.every((name) => typeof name === 'string' && name.length > 0),
+    ).toBe(true);
     expect(new Set(names).size).toBe(names.length);
 
     const attrs = nodes.map((node) => node[entityAttributesProperty]);
-    expect(attrs.some((a) => [1, 2, 3].includes(a['contactFreq'] as number))).toBe(true);
-    expect(attrs.some((a) => Array.isArray(a['support']) && a['support'].length > 0)).toBe(true);
+    expect(
+      attrs.some((a) => [1, 2, 3].includes(a['contactFreq'] as number)),
+    ).toBe(true);
+    expect(
+      attrs.some((a) => Array.isArray(a['support']) && a['support'].length > 0),
+    ).toBe(true);
 
-    expect(typeof result.session.network?.ego?.[entityAttributesProperty]?.['egoName']).toBe('string');
+    expect(
+      typeof result.session.network?.ego?.[entityAttributesProperty]?.[
+        'egoName'
+      ],
+    ).toBe('string');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dropped sessions: the drop boundary ends the walk without a transition, so
+// this is the one leg the transition-driven route checks can never reach.
+// Burden here is authored punishingly high so the hazard actually fires —
+// at responseBurden 3000 the first roll's drop probability is ~96%.
+// ---------------------------------------------------------------------------
+
+const exhaustingProtocol = (): CurrentProtocol =>
+  CurrentProtocolSchema.parse({
+    name: 'Replay parity: exhausting content',
+    schemaVersion: 8,
+    codebook: {
+      ego: {
+        variables: {
+          consent: { name: 'consent', type: 'boolean', component: 'Toggle' },
+        },
+      },
+    },
+    stages: [0, 1, 2, 3].map((index) => ({
+      id: `slog-${index}`,
+      type: 'Information',
+      label: `Slog ${index}`,
+      title: `Slog ${index}`,
+      items: [{ id: `s${index}`, type: 'text', content: 'On and on it goes.' }],
+      synthetic: { generatesData: false, responseBurden: 3000 },
+    })),
+  }) as CurrentProtocol;
+
+describe('replay parity (C1) — dropped sessions', () => {
+  it('replays a dropped walk and lands on the runtime resume position', async () => {
+    const result = await assertReplayParity(exhaustingProtocol(), {
+      seed: 42,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      count: 1,
+      respectSkipLogic: true,
+      simulateDropOut: true,
+      minimumCompletedRatio: 0,
+    });
+
+    // Not vacuous: this seed must actually abandon mid-protocol, leaving a
+    // resume position inside the stage list.
+    expect(result?.droppedOut).toBe(true);
+    expect(result?.visitedStages.length).toBeLessThan(4);
+    expect(result?.currentStep).toBeLessThan(4);
+    expect(result?.session.finishTime ?? null).toBeNull();
+  });
+
+  it('drops at seed-determined points across a small batch', async () => {
+    const results = generateInterviews(exhaustingProtocol(), {
+      seed: 7,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      count: 4,
+      simulateDropOut: true,
+      minimumCompletedRatio: 0,
+      captureTrace: true,
+    });
+
+    expect(results.some((r) => r.droppedOut)).toBe(true);
+    for (const result of results.filter((r) => r.droppedOut)) {
+      // Every dropped member individually satisfies the dropped-leg checks;
+      // parity for batch members is covered by the seeded single runs above,
+      // so here we pin the envelope: truncated visits, in-range resume.
+      expect(result.visitedStages.length).toBeLessThan(4);
+      expect(result.currentStep).toBeGreaterThan(
+        result.visitedStages[result.visitedStages.length - 1] ?? -1,
+      );
+      expect(result.session.finishTime ?? null).toBeNull();
+    }
   });
 });

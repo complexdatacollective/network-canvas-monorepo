@@ -33,19 +33,26 @@ const drawRosterShare = (
 const uidOf = (node: NcNode): string => node[entityPrimaryKeyProperty];
 
 /**
- * Apply a panel's filter with the semantics the runtime's panel selector uses.
- *
- * The ego stands in for a real one so ego-scoped rules have something to read;
- * edges are excluded because a panel filters a flat list of candidates, not a
- * connected network.
+ * Apply an existing-network panel's filter with the semantics the runtime's
+ * panel selector uses: candidates are filtered against the REAL network —
+ * edges and ego included — so an ego- or edge-scoped rule reads the session
+ * as it stands (`getPanelNodes`' existing branch). Roster panels never come
+ * here: their filters were applied host-side over a flat candidate list.
  */
-const applyPanelFilter = (nodes: NcNode[], panelFilter?: Filter): NcNode[] => {
+const applyPanelFilter = (
+  nodes: NcNode[],
+  network: NcNetwork,
+  panelFilter?: Filter,
+): NcNode[] => {
   if (!panelFilter) return nodes;
 
   return buildFilter(panelFilter)({
     nodes,
-    edges: [],
-    ego: { [entityPrimaryKeyProperty]: '', [entityAttributesProperty]: {} },
+    edges: network.edges,
+    ego: network.ego ?? {
+      [entityPrimaryKeyProperty]: '',
+      [entityAttributesProperty]: {},
+    },
   }).nodes;
 };
 
@@ -103,7 +110,7 @@ const displayedExistingNodes = (
       node.type === subjectType && !(node.promptIDs ?? []).includes(promptId),
   );
 
-  return applyPanelFilter(candidates, panel.filter);
+  return applyPanelFilter(candidates, network, panel.filter);
 };
 
 /**
