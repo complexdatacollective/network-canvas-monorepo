@@ -1,5 +1,11 @@
 # @codaco/documentation
 
+## 0.4.0
+
+### Minor Changes
+
+- Document the Background Creator — draw responsive canvas backgrounds, define zones, and export ready-to-run Python or R scripts that classify nodes by zone — as the recommended way to build responsive SVG backgrounds, alongside the existing manual template and graphics-editor workflows. Links to the hosted tool at bg-creator.networkcanvas.com and shows it in use with annotated screenshots.
+
 ## 0.3.3
 
 ### Patch Changes
