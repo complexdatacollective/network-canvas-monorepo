@@ -271,6 +271,7 @@ test('all release policies share the central snapshot PR target', () => {
     ['pull_request', 'changeset-release/main'],
     ['workflow_dispatch', NORMAL_RELEASE_REF],
     ['workflow_dispatch', 'changeset-release/documentation'],
+    ['workflow_dispatch', 'changeset-release/studio'],
     ['workflow_dispatch', 'changeset-release/website'],
   ]) {
     assert.deepEqual(

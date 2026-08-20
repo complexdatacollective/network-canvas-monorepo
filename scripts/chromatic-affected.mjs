@@ -28,6 +28,7 @@ const LOCKFILE_GRAPH_KEYS = new Set([
 const RELEASE_REFS = new Set([
   'changeset-release/documentation',
   'changeset-release/main',
+  'changeset-release/studio',
   'changeset-release/website',
 ]);
 const SPECIAL_PATHS = new Set(['pnpm-lock.yaml', 'pnpm-workspace.yaml']);
@@ -407,6 +408,7 @@ export function applyReleaseSeeds({
   }
   if (
     releaseRef === 'changeset-release/documentation' ||
+    releaseRef === 'changeset-release/studio' ||
     releaseRef === 'changeset-release/website'
   ) {
     return;
