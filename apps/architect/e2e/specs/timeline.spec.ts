@@ -629,13 +629,17 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   // control, and the settle below deliberately moves focus into the
   // description field to make its edit.
   await expect(openControl).toBeFocused();
-  // Sampled twice, either side of a real round-trip. The regression this
-  // guards is a LATE focus claim — the reorder handle used to take focus on
-  // the NEXT index change from any cause, arriving a frame or more after the
-  // interaction that caused it — and `toBeFocused` stops retrying the moment
-  // it first passes, so one sample taken immediately cannot see one land. The
-  // store read is the wait, rather than a timeout: it is real work with a real
-  // answer, so it cannot pass by being slow.
+  // Sampled again after a real round-trip, which guards focus drifting OFF
+  // the control while the dialog's exit settles. It does NOT guard the other
+  // direction — a refused press leaving `useKeyboardReorder` still waiting to
+  // reclaim focus. That claim only fires when the row's `index` changes, and
+  // nothing here changes one; adding a reorder to provoke it would invert the
+  // oracle, since a keyboard move legitimately hands focus to the row that
+  // moved. It is pinned where it can be observed directly instead:
+  // `ArrayFieldDragHandle.test.tsx`'s "drops its claim on focus when the list
+  // refuses the move" refuses a move, parks focus elsewhere, drives an
+  // unrelated index change and waits two frames. Deleting the disarm in
+  // `useKeyboardReorder` turns that test red and leaves this spec green.
   await readProtocolJson(architectPage);
   await expect(openControl).toBeFocused();
 
