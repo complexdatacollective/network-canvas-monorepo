@@ -23,3 +23,15 @@ export {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from './SyntheticInterview';
+export type {
+  AssetData,
+  SimulationContext,
+  StageSimulator,
+  SyntheticInterviewResult,
+  SyntheticSessionAction,
+} from './synthetic-interviews';
+export {
+  generateInterviews,
+  generateInterviewsOptions,
+  type GenerateInterviewsOptions,
+} from './synthetic-interviews';

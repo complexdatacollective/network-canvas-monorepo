@@ -164,6 +164,7 @@ export const generateInterviews = (
       finished: outcome.finished,
       currentStep: outcome.currentStep,
       droppedOut: outcome.droppedOut,
+      visitedStages: outcome.visitedStages,
       trace: engine.capturedTrace(),
     });
   };

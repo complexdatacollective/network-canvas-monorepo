@@ -17,6 +17,8 @@ export type SyntheticInterviewResult = {
   /** The resume position: next unreached stage, or stages.length when done. */
   currentStep: number;
   droppedOut: boolean;
+  /** The stage indices the walk visited, in order. */
+  visitedStages: readonly number[];
   /** Present when the run asked for a trace (`captureTrace`). */
   trace?: readonly SyntheticSessionAction[];
 };
@@ -28,6 +30,7 @@ export const finaliseSession = ({
   finished,
   currentStep,
   droppedOut,
+  visitedStages,
   trace,
 }: {
   id: string;
@@ -36,6 +39,7 @@ export const finaliseSession = ({
   finished: boolean;
   currentStep: number;
   droppedOut: boolean;
+  visitedStages: readonly number[];
   trace: readonly SyntheticSessionAction[] | null;
 }): SyntheticInterviewResult => {
   const session: SessionPayload = {
@@ -55,6 +59,7 @@ export const finaliseSession = ({
     session,
     currentStep,
     droppedOut,
+    visitedStages,
     ...(trace ? { trace } : {}),
   };
 };

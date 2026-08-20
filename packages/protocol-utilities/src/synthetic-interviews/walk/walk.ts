@@ -32,6 +32,13 @@ export type WalkOutcome = {
   droppedOut: boolean;
   /** Whether the walk ran to the end of the route (stopAt runs never do). */
   finished: boolean;
+  /**
+   * The stage indices the participant reached, in visit order (a stop-at
+   * stage is included even when its prompt bound ran nothing). The parity
+   * suite checks this route against the runtime's own availability map, and
+   * C5 attributes writes to it.
+   */
+  visitedStages: number[];
 };
 
 /**
@@ -64,6 +71,7 @@ export const walkSession = ({
 }): WalkOutcome => {
   const { engine } = context;
   const completedStages: Stage[] = [];
+  const visitedStages: number[] = [];
 
   let index = nextStageIndex(
     stages,
@@ -75,6 +83,7 @@ export const walkSession = ({
   while (index !== undefined) {
     const stage = stages[index];
     invariant(stage, `no stage at step ${index}`);
+    visitedStages.push(index);
 
     const atStopStage = stopAt !== undefined && index >= stopAt.stageIndex;
     const promptBound = atStopStage ? (stopAt.promptIndex ?? 0) : undefined;
@@ -97,7 +106,12 @@ export const walkSession = ({
     if (atStopStage) {
       // Arrived and (partially) worked, never left: no transition, no
       // dropout, resume position is this stage.
-      return { currentStep: index, droppedOut: false, finished: false };
+      return {
+        currentStep: index,
+        droppedOut: false,
+        finished: false,
+        visitedStages,
+      };
     }
 
     completedStages.push(stage);
@@ -116,6 +130,7 @@ export const walkSession = ({
         currentStep: resume ?? stages.length,
         droppedOut: true,
         finished: false,
+        visitedStages,
       };
     }
 
@@ -131,5 +146,10 @@ export const walkSession = ({
     );
   }
 
-  return { currentStep: stages.length, droppedOut: false, finished: true };
+  return {
+    currentStep: stages.length,
+    droppedOut: false,
+    finished: true,
+    visitedStages,
+  };
 };
