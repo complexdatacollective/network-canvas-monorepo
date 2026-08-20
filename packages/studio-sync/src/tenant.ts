@@ -2,7 +2,7 @@
 // SQL against tenant tables. transaction() stamps app.workspace_id as a
 // transaction-local GUC so row-level security can enforce the same boundary
 // later; until then every statement carries an explicit workspace predicate.
-import type pg from 'pg';
+import pg from 'pg';
 
 export type TenantTransactionOptions = {
   isolation?: 'repeatable read';
@@ -31,7 +31,7 @@ export function createTenantDb(pool: pg.Pool, workspaceId: string): TenantDb {
             ? 'BEGIN ISOLATION LEVEL REPEATABLE READ'
             : 'BEGIN';
         await client.query(
-          `${begin}; SET LOCAL app.workspace_id = ${client.escapeLiteral(workspaceId)}`,
+          `${begin}; SET LOCAL app.workspace_id = ${pg.escapeLiteral(workspaceId)}`,
         );
         const result = await work(client);
         await client.query('COMMIT');
