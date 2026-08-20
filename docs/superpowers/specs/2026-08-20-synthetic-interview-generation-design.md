@@ -474,9 +474,11 @@ p(drop after stage k) = 1 − exp(−DROPOUT_HAZARD_RATE × Σ_{j≤k} burden_j)
 (`DEFAULT_RESPONSE_BURDEN`: Information 0, censuses 1.0, Sociogram 0.6, forms
 0.3–0.4, …) unless the researcher overrode it on the stage. "Normalised", in
 the brief's sense, is the default table's scale convention: per-type defaults
-live in [0, 1] with the heaviest interface class (the censuses,
-FamilyPedigree) anchored at 1.0, which is what makes burdens comparable
-across stage types and the hazard constant calibratable. Authored overrides
+live in [0, 1] with the heaviest interfaces (DyadCensus, TieStrengthCensus,
+FamilyPedigree) anchored at 1.0 — OneToManyDyadCensus sits at 0.5, since
+tap-all-that-apply asks far less per pair than a per-pair question — which is
+what makes burdens comparable across stage types and the hazard constant
+calibratable. Authored overrides
 are unbounded non-negative **rates**, not probabilities (a researcher must be
 able to say their sociogram costs 1.5 of the usual one); risk grows
 monotonically with fatigue and never reaches certainty. Skipped stages contribute nothing — a
