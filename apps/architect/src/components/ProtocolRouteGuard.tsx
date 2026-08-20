@@ -5,6 +5,7 @@ import { navigate } from 'wouter/use-browser-location';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import SummaryPage from '~/components/pages/SummaryPage';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
+import { focusRouteTarget } from '~/components/RouteFocus';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { guardState, isProtocolPath } from '~/hooks/useProtocolNavGuard';
 
@@ -49,23 +50,43 @@ const ProtocolRouteGuard = ({ children }: ProtocolRouteGuardProps) => {
   const onProtocolRoute = isProtocolPath(location);
   const blocked = onProtocolRoute && mode === 'no-protocol';
 
-  // Imperative dialogs (`useDialog`) are portalled outside the route tree, so
-  // replacing the editor would leave one on screen with a confirm that writes
-  // into a protocol this tab no longer owns. Dismiss on the transition only: on
-  // a first render already in read-only mode there is nothing of this tab's to
-  // dismiss, and startup dialogs are not ours to close.
+  // Both directions of the read-only swap need something done at the moment it
+  // happens, and both tell a transition from a first render by the same
+  // remembered mode, so they share one effect.
+  //
+  // Entering read-only: imperative dialogs (`useDialog`) are portalled outside
+  // the route tree, so replacing the editor would leave one on screen with a
+  // confirm that writes into a protocol this tab no longer owns. Dismiss on the
+  // transition only: on a first render already in read-only mode there is
+  // nothing of this tab's to dismiss, and startup dialogs are not ours to
+  // close.
   //
   // This does NOT cover the route-tree editor dialogs (a new variable, an
   // entity type, an array row): those are rendered by the routes themselves,
   // die by unmount rather than through `closeDialog`, and so never run their
   // own discard confirmation. `held-nested-editor` is what keeps them mounted;
   // by the time this transition to read-only runs, none is open.
+  //
+  // Leaving read-only (the other tab closed, so this one reclaimed the lock):
+  // the editor comes back as a different root type, so the whole subtree
+  // remounts, and ProtocolLockBanner — which took focus when the read-only view
+  // arrived — returns null. That drops focus to `<body>`, leaving a restored
+  // editor nobody was told about and a Tab that restarts at the header logo.
+  // RouteFocus cannot cover it: its effect is keyed on the location, and the
+  // location is exactly what this transition does not change.
   const previousMode = useRef(mode);
   useEffect(() => {
     const previous = previousMode.current;
     previousMode.current = mode;
-    if (mode !== 'read-only' || previous === 'read-only') return;
-    closeAllDialogs();
+
+    if (mode === 'read-only') {
+      if (previous === 'read-only') return;
+      closeAllDialogs();
+      return;
+    }
+
+    if (previous !== 'read-only') return;
+    focusRouteTarget();
   }, [mode, closeAllDialogs]);
 
   useEffect(() => {

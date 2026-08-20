@@ -212,6 +212,67 @@ describe('protocol/assetManifest', () => {
       });
     });
 
+    /*
+      An import spans two awaits, so owning the protocol when the file was
+      dropped says nothing about owning it when the blob is written.
+      `useProtocolTabLock` demotes this tab from `onExclusivityChange(false)`,
+      which a throttled peer can answer at any point — including while a large
+      file is still validating.
+    */
+    it('refuses the write when this tab is demoted while the file validates', async () => {
+      mockedValidateAsset.mockImplementation(async () => {
+        store.dispatch(setProtocolLockState('open-elsewhere'));
+        return { duplicateCount: 0 };
+      });
+
+      const result = await store.dispatch(
+        importAssetAsync(
+          new File(['test'], 'roster.csv', { type: 'text/csv' }),
+        ),
+      );
+
+      // Nothing durable, and nothing in the manifest naming something durable.
+      expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
+      expect(Object.values(store.getState().assetManifest)).toHaveLength(0);
+      // The branded sentence, not the generic failure text: a refusal that went
+      // through the `catch` would have been rewritten into the latter.
+      expect(result.payload).toMatchObject({
+        code: 'PROTOCOL_NOT_OWNED_HERE',
+        filename: 'roster.csv',
+        message: refusedCommitMessage(
+          'open-elsewhere',
+          'asset-import-stage-draft',
+        )!,
+      });
+    });
+
+    // The same demotion one await later. The blob is already written by then —
+    // an unreferenced blob is GC'd by the next durable save — but a manifest
+    // entry would be a resource on screen that this tab can never save.
+    it('adds nothing to the manifest when this tab is demoted during the blob write', async () => {
+      mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
+      mockedSaveAssetWithFallback.mockImplementation(async () => {
+        store.dispatch(setProtocolLockState('open-elsewhere'));
+        return { persisted: true };
+      });
+
+      const result = await store.dispatch(
+        importAssetAsync(
+          new File(['test'], 'roster.csv', { type: 'text/csv' }),
+        ),
+      );
+
+      expect(mockedSaveAssetWithFallback).toHaveBeenCalled();
+      expect(Object.values(store.getState().assetManifest)).toHaveLength(0);
+      expect(result.payload).toMatchObject({
+        code: 'PROTOCOL_NOT_OWNED_HERE',
+        message: refusedCommitMessage(
+          'open-elsewhere',
+          'asset-import-stage-draft',
+        )!,
+      });
+    });
+
     it('returns zero duplicate rows when duplicateCount is 0', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
 

@@ -125,22 +125,45 @@ export const importAssetAsync = createAsyncThunk<
     // keyed on; asking whether a stage editor happens to be open instead named
     // the wrong one, and sent the researcher looking for a question nobody was
     // asking.
-    const lockState = getProtocolLockState(getState());
-    const refusal = refusedCommitMessage(
-      lockState,
-      assetImportSurface(hasOpenNestedEditor()),
-    );
-    if (refusal) {
-      return rejectWithValue({
-        filename: name,
-        code: 'PROTOCOL_NOT_OWNED_HERE',
-        message: refusal,
-      } satisfies ImportAssetErrorInfo);
+    //
+    // Both questions are asked at the moment of the call rather than sampled
+    // once, because an import spans two awaits and this tab can be demoted
+    // across either of them — `useProtocolTabLock`'s
+    // `onExclusivityChange(false)` dispatches `setProtocolLockState`, so a
+    // throttled peer answering `held` while a large file validates is enough.
+    // A decision taken on entry is stale by the time anything is written.
+    const refuseIfNotOwned = () => {
+      const refusal = refusedCommitMessage(
+        getProtocolLockState(getState()),
+        assetImportSurface(hasOpenNestedEditor()),
+      );
+      return refusal
+        ? ({
+            filename: name,
+            code: 'PROTOCOL_NOT_OWNED_HERE',
+            message: refusal,
+          } satisfies ImportAssetErrorInfo)
+        : null;
+    };
+
+    const refusedOnEntry = refuseIfNotOwned();
+    if (refusedOnEntry) {
+      return rejectWithValue(refusedOnEntry);
     }
 
     try {
       // Validate asset
       const validationResult = await validateAsset(file);
+
+      // Ask again now the await has resolved, while the durable write is still
+      // the only thing left to await: this is the last point at which refusing
+      // leaves nothing behind at all. Returned, never thrown — the `catch`
+      // below rewrites a thrown error through `getImportAssetErrorInfo`, which
+      // drops the branded `RefusalMessage` for the generic failure sentence.
+      const refusedBeforeWrite = refuseIfNotOwned();
+      if (refusedBeforeWrite) {
+        return rejectWithValue(refusedBeforeWrite);
+      }
 
       // Convert File to Blob and create ExtractedAsset
       const blob = new Blob([file], { type: file.type });
@@ -174,6 +197,15 @@ export const importAssetAsync = createAsyncThunk<
         assetType,
         duplicateCount: validationResult.duplicateCount,
       };
+
+      // The blob is already written by this point, so refusing here still
+      // leaves it behind — but an unreferenced blob is collected by the durable
+      // save path, whereas a manifest entry added in a tab whose writes are
+      // dropped is a resource the researcher can see and never save.
+      const refusedBeforeCommit = refuseIfNotOwned();
+      if (refusedBeforeCommit) {
+        return rejectWithValue(refusedBeforeCommit);
+      }
 
       dispatch(assetManifestSlice.actions.importAssetComplete(importPayload));
       return importPayload;

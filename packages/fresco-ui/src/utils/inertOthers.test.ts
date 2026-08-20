@@ -6,7 +6,28 @@ const build = (html: string) => {
   document.body.innerHTML = html;
 };
 
+/**
+ * Every sweep goes through `sweep` so `afterEach` can release the ones a
+ * failing test never reached. A sweep holds a MutationObserver for its
+ * lifetime, and resetting `innerHTML` does not disconnect one, so an
+ * unreleased sweep leaves an observer live on nodes that have left the
+ * document, and reference counts standing on them.
+ *
+ * That cannot reach the next test: `<body>` is never an observed target,
+ * because a target has to contain no inside element and every inside element
+ * is one `body.contains`. This is hygiene, not a cascade guard. Releasing
+ * twice is a no-op, so it sits happily alongside each test's own `release()`.
+ */
+const outstanding: (() => void)[] = [];
+
+const sweep = (insideElements: Element[]) => {
+  const release = inertOthers(insideElements);
+  outstanding.push(release);
+  return release;
+};
+
 afterEach(() => {
+  while (outstanding.length > 0) outstanding.pop()?.();
   document.body.innerHTML = '';
 });
 
@@ -15,6 +36,12 @@ const el = (id: string) => {
   if (!found) throw new Error(`no #${id}`);
   return found;
 };
+
+/**
+ * MutationObserver records are delivered on a microtask, so every assertion
+ * about content added during a sweep has to wait for one first.
+ */
+const flushMutations = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('inertOthers', () => {
   it('inerts every element outside the inside element, and restores on release', () => {
@@ -25,7 +52,7 @@ describe('inertOthers', () => {
       </div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(el('app').hasAttribute('inert')).toBe(true);
     // The portal container is on the keep path, so it is walked rather than
@@ -49,7 +76,7 @@ describe('inertOthers', () => {
       </div>
     `);
 
-    const release = inertOthers([el('child-modal')]);
+    const release = sweep([el('child-modal')]);
 
     expect(el('parent-modal').hasAttribute('inert')).toBe(true);
     expect(el('child-modal').hasAttribute('inert')).toBe(false);
@@ -69,7 +96,7 @@ describe('inertOthers', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(el('live').hasAttribute('inert')).toBe(false);
     expect(el('app').hasAttribute('inert')).toBe(true);
@@ -83,8 +110,8 @@ describe('inertOthers', () => {
       <div id="portals"><div id="first"></div><div id="second"></div></div>
     `);
 
-    const releaseFirst = inertOthers([el('first')]);
-    const releaseSecond = inertOthers([el('second')]);
+    const releaseFirst = sweep([el('first')]);
+    const releaseSecond = sweep([el('second')]);
 
     expect(el('app').hasAttribute('inert')).toBe(true);
 
@@ -106,7 +133,7 @@ describe('inertOthers', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     const laterPopup = document.createElement('div');
     laterPopup.id = 'select-listbox';
@@ -122,7 +149,7 @@ describe('inertOthers', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
     release();
 
     expect(el('app').hasAttribute('inert')).toBe(true);
@@ -132,7 +159,7 @@ describe('inertOthers', () => {
     build(`<div id="app"></div>`);
     const detached = document.createElement('div');
 
-    const release = inertOthers([detached]);
+    const release = sweep([detached]);
 
     expect(el('app').hasAttribute('inert')).toBe(false);
     expect(() => release()).not.toThrow();
@@ -144,8 +171,8 @@ describe('inertOthers', () => {
       <div id="portals"><div id="first"></div><div id="second"></div></div>
     `);
 
-    const releaseFirst = inertOthers([el('first')]);
-    const releaseSecond = inertOthers([el('second')]);
+    const releaseFirst = sweep([el('first')]);
+    const releaseSecond = sweep([el('second')]);
 
     releaseFirst();
     releaseFirst();
@@ -177,7 +204,7 @@ describe('inertOthers live-region scope', () => {
       </div>
     `);
 
-    const release = inertOthers([el('child-portal')]);
+    const release = sweep([el('child-portal')]);
 
     expect(el('parent-portal').hasAttribute('inert')).toBe(true);
     expect(el('parent-viewport').closest('[inert]')).not.toBeNull();
@@ -192,7 +219,7 @@ describe('inertOthers live-region scope', () => {
       <div id="portals"><div id="modal"><div role="dialog"></div></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(el('announcer').closest('[inert]')).toBeNull();
     release();
@@ -215,7 +242,7 @@ describe('inertOthers keep-path containment', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(el('scroller').getAttribute('tabindex')).toBe('-1');
     expect(el('app').getAttribute('tabindex')).toBe('-1');
@@ -229,13 +256,193 @@ describe('inertOthers keep-path containment', () => {
     expect(el('app').hasAttribute('tabindex')).toBe(false);
   });
 
+  it('inerts content mounted onto the keep path DURING the sweep', async () => {
+    // The keep path is walked, not inerted, so a sweep-time snapshot leaves
+    // anything mounted onto it afterwards fully exposed. Architect's
+    // protocol-lock banner is a direct child of the app column and mounts only
+    // once the lock is lost — after the editor modal has already swept — so its
+    // button had no inert ancestor while that dialog was open.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const banner = document.createElement('div');
+    banner.id = 'lock-banner';
+    banner.innerHTML = '<button id="show-me">Show Me What to Do</button>';
+    el('app').append(banner);
+
+    await flushMutations();
+    expect(el('show-me').closest('[inert]')).not.toBeNull();
+
+    release();
+    expect(el('show-me').closest('[inert]')).toBeNull();
+  });
+
+  it('does not inert a popup portalled in DURING the sweep', async () => {
+    // The other half of the rule above, and the reason the observer is not
+    // pointed at the whole keep path: the shared portal container, `<body>` and
+    // the app root all contain the modal, and a nested dialog's portal node is
+    // added under that container after this sweep ran. Observing them would
+    // inert the dialog on top of this one — and every Select, Combobox,
+    // Popover or Tooltip opened from inside it.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const laterPopup = document.createElement('div');
+    laterPopup.id = 'select-listbox';
+    el('portals').append(laterPopup);
+
+    const bodyLevelPortal = document.createElement('div');
+    bodyLevelPortal.id = 'toast-viewport';
+    document.body.append(bodyLevelPortal);
+
+    await flushMutations();
+    expect(laterPopup.hasAttribute('inert')).toBe(false);
+    expect(bodyLevelPortal.hasAttribute('inert')).toBe(false);
+
+    release();
+  });
+
+  it('does not inert a message added INTO an exempt live region', async () => {
+    // The walk stops at an exempt region, and so does the observer. Every
+    // fresco-ui field keeps its `[aria-live]` wrapper mounted and empty, then
+    // appends the error box as an element when the first message arrives —
+    // inerting that is precisely the silencing the exemption exists to prevent.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const message = document.createElement('div');
+    message.id = 'error-box';
+    el('field-errors').append(message);
+
+    await flushMutations();
+    expect(message.closest('[inert]')).toBeNull();
+
+    release();
+  });
+
+  it('exempts a live region that MOUNTS during the sweep', async () => {
+    // The walk exempts every `[aria-live]` element it meets. The observer has
+    // to exempt them by the same RULE, not by membership of the set the sweep
+    // froze: a region that did not exist then is not in it, and inerting a
+    // region removes it from the accessibility tree — the silencing the
+    // exemption exists to prevent, and one Base UI's own snapshot never
+    // produces, since a snapshot leaves a late region untouched. Interview's
+    // `GeospatialOfflineIndicator` mounts its `aria-live` node conditionally
+    // rather than filling a pre-existing one.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const offline = document.createElement('div');
+    offline.id = 'offline';
+    offline.setAttribute('aria-live', 'polite');
+    offline.textContent = 'You are offline';
+    el('app').append(offline);
+
+    await flushMutations();
+    expect(el('offline').closest('[inert]')).toBeNull();
+
+    release();
+  });
+
+  it('keeps a live region nested inside a subtree mounted during the sweep', async () => {
+    // The same rule one level down, which is how such an indicator actually
+    // arrives: a wrapper mounts with the region inside it. `inert` is
+    // inherited, so inerting the wrapper silences the region just as surely.
+    // The kept wrapper gets exactly what the walk gives an exempt region's
+    // ancestors — out of the tab order, with its off-path children inert — so
+    // keeping it does not hand Tab a way back out of the dialog.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const indicator = document.createElement('div');
+    indicator.id = 'indicator';
+    indicator.innerHTML =
+      '<p id="offline-status" aria-live="polite">You are offline</p>' +
+      '<button id="retry">Retry</button>';
+    el('app').append(indicator);
+
+    await flushMutations();
+    expect(el('offline-status').closest('[inert]')).toBeNull();
+    expect(el('indicator').getAttribute('tabindex')).toBe('-1');
+    expect(el('retry').closest('[inert]')).not.toBeNull();
+
+    release();
+    expect(el('indicator').hasAttribute('tabindex')).toBe(false);
+    expect(el('retry').closest('[inert]')).toBeNull();
+  });
+
+  it('goes on catching content mounted into a subtree kept for a late region', async () => {
+    // Keeping that wrapper extends the keep path, and an unobserved keep path
+    // is the hole the observer exists to close: the next thing the app mounts
+    // beside the region would have no inert ancestor at all.
+    build(`
+      <div id="app">
+        <div id="field-errors" aria-live="polite"></div>
+      </div>
+      <div id="portals"><div id="modal"></div></div>
+    `);
+
+    const release = sweep([el('modal')]);
+
+    const indicator = document.createElement('div');
+    indicator.id = 'indicator';
+    indicator.innerHTML =
+      '<p id="offline-status" aria-live="polite">You are offline</p>';
+    el('app').append(indicator);
+
+    await flushMutations();
+    expect(el('offline-status').closest('[inert]')).toBeNull();
+
+    const banner = document.createElement('div');
+    banner.id = 'lock-banner';
+    banner.innerHTML = '<button id="show-me">Show Me What to Do</button>';
+    el('indicator').append(banner);
+
+    await flushMutations();
+    expect(el('show-me').closest('[inert]')).not.toBeNull();
+    expect(el('offline-status').closest('[inert]')).toBeNull();
+
+    release();
+    expect(el('show-me').closest('[inert]')).toBeNull();
+  });
+
   it('restores a tabindex the element already had', () => {
     build(`
       <div id="app" tabindex="0"><div id="live" aria-live="polite"></div></div>
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
     expect(el('app').getAttribute('tabindex')).toBe('-1');
 
     release();
@@ -256,7 +463,7 @@ describe('inertOthers keep-path containment', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
     expect(el('app').getAttribute('tabindex')).toBe('-1');
 
     // A different owner takes the attribute over mid-sweep.
@@ -275,7 +482,7 @@ describe('inertOthers keep-path containment', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
     expect(el('app').getAttribute('tabindex')).toBe('-1');
 
     release();
@@ -294,7 +501,7 @@ describe('inertOthers boundaries', () => {
       <div id="portals"><div id="modal"></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(document.documentElement.hasAttribute('tabindex')).toBe(false);
     expect(document.documentElement.hasAttribute('inert')).toBe(false);
@@ -315,7 +522,7 @@ describe('inertOthers boundaries', () => {
       <div id="portals"><div id="modal"><div role="dialog"></div></div></div>
     `);
 
-    const release = inertOthers([el('modal')]);
+    const release = sweep([el('modal')]);
 
     expect(el('dismiss').closest('[inert]')).not.toBeNull();
 

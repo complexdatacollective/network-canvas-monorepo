@@ -33,21 +33,53 @@ export const routeFocusTargetProps = {
  * so the two agree on everything currently on screen; the point is that focus
  * sitting on one is still focus, and the destination predicate would call a
  * real focus owner "lost" and drag the researcher to the heading — exactly the
- * fighting-another-owner behaviour the component comment below rules out.
+ * fighting-another-owner behaviour `focusRouteTarget` below rules out.
  * `RouteFocus.test.tsx` pins that case and fails if this is rewritten in terms
  * of the destination helper.
  */
 const focusWasLost = () => !holdsFocus(document.activeElement);
 
 /**
- * Route-change focus and announcement, mounted once above the router.
+ * Lands focus on the current route's landing point, and returns it so the
+ * caller can say where the researcher has been put.
  *
- * Deliberately narrow: focus only moves when the navigation LOST focus. Any
+ * Deliberately narrow: focus only moves when the view change LOST focus. Any
  * other owner — a dialog that navigated and then returned focus to its opener,
  * the new-stage flow's autofocused name input, a persistent nav control — is
  * left alone, so this cannot fight `focusFirstError`, a modal's focus trap, or
- * a `finalFocus` target. The destination is announced on every route change,
- * because a screen-reader user gets no other signal that the page changed.
+ * a `finalFocus` target.
+ *
+ * Exported for the one other place a route's content is replaced without the
+ * location changing: `ProtocolRouteGuard` swapping the read-only view back for
+ * the editor when another tab releases the protocol lock. The effect below
+ * cannot see that, so the guard calls this — and this is the single statement
+ * of "land on the route heading, without fighting another owner".
+ */
+export const focusRouteTarget = () => {
+  const target = document.querySelector<HTMLElement>(
+    ROUTE_FOCUS_TARGET_SELECTOR,
+  );
+  if (!target) return null;
+
+  if (!focusWasLost()) return target;
+  // Base UI marks the rest of the document `inert` while a modal is open.
+  // Focusing an inert element silently fails and leaves focus on `<body>` —
+  // worse than not trying.
+  if (target.closest('[inert]')) return target;
+
+  // `preventScroll` so this does not fight ProjectLayout's scroll restoration,
+  // which runs in a layout effect in the same commit — on the location change
+  // when a route changes, and on mount when the guard swaps the layout out.
+  target.focus({ preventScroll: true });
+  return target;
+};
+
+/**
+ * Route-change focus and announcement, mounted once above the router.
+ *
+ * The destination is announced on every route change, because a screen-reader
+ * user gets no other signal that the page changed. Focus moves under the
+ * narrower rule `focusRouteTarget` states.
  */
 const RouteFocus = () => {
   const [location] = useLocation();
@@ -61,22 +93,12 @@ const RouteFocus = () => {
     // on boot keeps it.
     if (previous === null || previous === location) return;
 
-    const target = document.querySelector<HTMLElement>(
-      ROUTE_FOCUS_TARGET_SELECTOR,
-    );
+    // The announcement is not conditional on focus having moved: the page
+    // changed under the researcher either way.
+    const target = focusRouteTarget();
     if (!target) return;
 
     setDestination(target.textContent?.trim() ?? '');
-
-    if (!focusWasLost()) return;
-    // Base UI marks the rest of the document `inert` while a modal is open.
-    // Focusing an inert element silently fails and leaves focus on `<body>` —
-    // worse than not trying.
-    if (target.closest('[inert]')) return;
-
-    // `preventScroll` so this does not fight ProjectLayout's scroll
-    // restoration, which runs in a layout effect on the same location change.
-    target.focus({ preventScroll: true });
   }, [location]);
 
   return (

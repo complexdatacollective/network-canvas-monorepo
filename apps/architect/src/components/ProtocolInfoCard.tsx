@@ -184,6 +184,44 @@ const ProtocolInfoCard = () => {
     setNotice(null);
   };
 
+  /**
+   * Blur changes the value without a keystroke — it trims, or rolls a blank
+   * draft back — so everything ELSE derived from the name has to arrive at the
+   * committed value with it. Resyncing only `localName` moves the phantom out
+   * of the field and into the control's own description: the paragraph below
+   * renders `notice` IN PREFERENCE to the live count and forces itself visible
+   * whenever one exists, so a notice left on the phantom's reading has the
+   * control's `aria-describedby` describing a name it does not hold.
+   *
+   * The baseline re-bases to the committed value's band, exactly as the
+   * external-rename effect above does. It decides what the NEXT keystroke
+   * counts as a crossing, so a baseline stranded on the phantom's band
+   * swallows the next genuine one in silence.
+   *
+   * The allowance notice is dropped rather than recomputed, because the only
+   * announcement a blur could produce is one nobody should hear: trimming can
+   * only shorten the name, and `announceThresholdFor` is monotonic in what
+   * remains, so the committed band is always the same or LOOSER than the
+   * phantom's — the message would always be "you have more room than I just
+   * told you", spoken after focus has already left the control. Dropping it is
+   * not a loss of information: the paragraph falls straight back to
+   * `describeAllowance` of the committed count, which is the true reading, at
+   * the visibility that count earns.
+   *
+   * A refusal survives, because it is not a measurement of the value. It says
+   * an edit was rejected; the value never took those characters, and trimming
+   * whitespace off what the researcher was left with does not make it untrue.
+   * Clearing it here would delete the only visible evidence that a paste was
+   * dropped, at the moment the researcher looks away. The next accepted
+   * keystroke clears it, as it always has.
+   */
+  const resyncNameChannels = (committed: string) => {
+    lastAnnouncedThreshold.current = announceThresholdFor(
+      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(committed),
+    );
+    setNotice((current) => (current?.isRefusal ? current : null));
+  };
+
   const [localDescription, setLocalDescription] = useState(description);
 
   // Only adopt the prop when it actually changes, so an unrelated store update
@@ -269,8 +307,26 @@ const ProtocolInfoCard = () => {
               const trimmed = localName.trim();
               if (!trimmed) {
                 setLocalName(name ?? '');
+                resyncNameChannels(name ?? '');
                 return;
               }
+              // Resync unconditionally, before the dispatch guard. A
+              // whitespace-only edit trims back to the stored name, so the
+              // guard below correctly declines to dispatch — but without this
+              // the control would keep the untrimmed string, and everything
+              // measured from it (the size tier, the remaining allowance, the
+              // counter's visibility) would read off a value that was never
+              // saved. When the value carries no surrounding whitespace this
+              // is not a re-render at all — React bails out on an identical
+              // state value — and when a real rename carries whitespace (the
+              // `'  Blur commit  '` case in the tests) it is a genuine state
+              // change that repaints the control with what was committed.
+              setLocalName(trimmed);
+              // The value is one of three channels the name feeds. The notice
+              // and the announcement baseline are the other two, and a blur
+              // that corrects only the first leaves them describing the
+              // uncommitted string. See `resyncNameChannels`.
+              resyncNameChannels(trimmed);
               // Clicking into the field and out again is not an edit, so it
               // does not dispatch one — the same guard the description field
               // below has always had. (The timeline refuses to record a change

@@ -642,14 +642,27 @@ export default function ArrayField<T extends Record<string, unknown>>({
 
   const getEditorTrigger = useCallback(() => {
     const session = lastEditingRef.current;
-    if (session && !session.isNew) {
-      const trigger = editTriggerElements.current.get(session.internalId);
-      // A row deleted while its editor was open has no trigger to go back to.
-      if (trigger?.isConnected) return trigger;
+    const rowTrigger = session
+      ? editTriggerElements.current.get(session.internalId)
+      : undefined;
+    // A row deleted while its editor was open has no trigger to go back to.
+    const connectedRowTrigger = rowTrigger?.isConnected ? rowTrigger : null;
+
+    if (session && !session.isNew && connectedRowTrigger) {
+      return connectedRowTrigger;
     }
+
     // A new item was never a row, so its opener is the add button — which is
     // also the best remaining answer for an edited row that has since gone.
-    return addButtonRef.current;
+    //
+    // Except at `maxItems`, where there IS no add button: saving the item that
+    // fills the list unmounts it in the same commit that mounts the saved
+    // row. Answering null there loses focus altogether — the caller's fallback
+    // is that same detached button, which every `finalFocus` resolver rejects
+    // for being disconnected — so hand back the row this session just
+    // committed. `saveEditing` keeps the draft's `_internalId`, so the map
+    // lookup above resolves to that freshly mounted control.
+    return addButtonRef.current ?? connectedRowTrigger;
   }, []);
 
   const latestItemsRef = useRef(items);

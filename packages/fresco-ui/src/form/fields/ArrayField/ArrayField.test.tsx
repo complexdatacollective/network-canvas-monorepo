@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
@@ -78,6 +78,58 @@ function TestEditor({
   return (
     <dialog open data-index={index}>
       <span>{isNewItem ? 'New editor' : 'Existing editor'}</span>
+      <button
+        type="button"
+        onClick={() => onSave?.({ id: item.id, label: item.label })}
+      >
+        Save editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel editor
+      </button>
+    </dialog>
+  );
+}
+
+/** An item whose edit control is registered as the row's focus-return target. */
+function TriggerItem({
+  item,
+  onEdit,
+  editTriggerRef,
+}: ArrayFieldItemProps<Item>) {
+  return (
+    <div data-testid={`item-${item.label}`}>
+      <button type="button" ref={editTriggerRef} onClick={onEdit}>
+        Edit {item.label}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * An external editor that returns focus the way a modal one does: it resolves
+ * `getEditorTrigger` in an effect once the close has committed, not when the
+ * editor opened. The timing is the point — the add button and the saved row
+ * swap places in that same commit.
+ */
+function ReturnFocusEditor({
+  item,
+  onSave,
+  onCancel,
+  getEditorTrigger,
+}: ArrayFieldEditorProps<Item>) {
+  const wasOpen = useRef(false);
+  const isOpen = item !== undefined;
+
+  useEffect(() => {
+    if (wasOpen.current && !isOpen) getEditorTrigger()?.focus();
+    wasOpen.current = isOpen;
+  }, [isOpen, getEditorTrigger]);
+
+  if (!item) return null;
+
+  return (
+    <dialog open>
       <button
         type="button"
         onClick={() => onSave?.({ id: item.id, label: item.label })}
@@ -376,6 +428,27 @@ describe('ArrayField', () => {
     expect(
       screen.queryByRole('button', { name: 'Add Item' }),
     ).not.toBeInTheDocument();
+  });
+
+  // Regression: `getEditorTrigger` answered the add button for every new-item
+  // session, so saving the item that reaches `maxItems` returned null — the
+  // button it named had just unmounted — and focus escaped the list entirely.
+  it('returns focus to the new row when saving the item that fills the list', async () => {
+    const user = userEvent.setup();
+    renderField({
+      maxItems: 1,
+      itemComponent: TriggerItem,
+      editorComponent: ReturnFocusEditor,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Add Item' }));
+    await user.click(screen.getByRole('button', { name: 'Save editor' }));
+
+    // The add button is gone, so it cannot be the focus target.
+    expect(
+      screen.queryByRole('button', { name: 'Add Item' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit new' })).toHaveFocus();
   });
 
   it('blocks add, edit, delete, and reorder while disabled', async () => {

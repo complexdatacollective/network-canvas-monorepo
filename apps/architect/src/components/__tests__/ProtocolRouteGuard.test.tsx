@@ -1,11 +1,12 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import { routeFocusTargetProps } from '~/components/RouteFocus';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -18,6 +19,7 @@ import stageEditorDraft, {
   setLiveValues,
   type StageEditorDraftPresent,
 } from '~/ducks/modules/stageEditorDraft';
+import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { guardState } from '~/hooks/useProtocolNavGuard';
 import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 
@@ -112,6 +114,43 @@ const renderGuardWithNestedEditor = (store: TestStore, dirty = true) =>
       </ProtocolRouteGuard>
     </Provider>,
   );
+
+const ROUTE_TITLE = 'Codebook';
+
+// Stands in for ProtocolLockBanner, which App renders as a sibling above the
+// routes. What matters here is its lifecycle, not its copy: it exists only in
+// read-only mode, takes focus when it arrives (so the researcher is not left on
+// `<body>` when the editor is replaced), and unmounts the moment the lock comes
+// back — taking focus with it.
+const LockBanner = () => {
+  const mode = useProtocolAccessMode();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mode !== 'read-only') return;
+    ref.current?.focus();
+  }, [mode]);
+
+  if (mode !== 'read-only') return null;
+  return <div ref={ref} tabIndex={-1} data-testid="lock-banner" />;
+};
+
+// The restored editor as the real routes render it: a heading carrying the
+// route's landing point, which is what focus has to end up on.
+const renderGuardWithBanner = (store: TestStore, children?: ReactNode) =>
+  render(
+    <Provider store={store}>
+      <LockBanner />
+      <ProtocolRouteGuard>
+        <h1 {...routeFocusTargetProps}>{ROUTE_TITLE}</h1>
+        <div data-testid="editor">Editor</div>
+        {children}
+      </ProtocolRouteGuard>
+    </Provider>,
+  );
+
+const routeHeading = () =>
+  screen.getByRole('heading', { level: 1, name: ROUTE_TITLE });
 
 describe('ProtocolRouteGuard', () => {
   let store: TestStore;
@@ -248,6 +287,59 @@ describe('ProtocolRouteGuard', () => {
     });
 
     expect(closeAllDialogs).toHaveBeenCalledTimes(1);
+  });
+
+  // The other tab closed, so this one reclaimed the lock: the read-only view is
+  // replaced by the editor and the banner that held focus unmounts. RouteFocus
+  // is keyed on the location, which this transition does not change, so nothing
+  // else can put the researcher back into the restored page.
+  it('lands focus on the restored route when the other tab releases the lock', () => {
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuardWithBanner(store);
+
+    // The precondition: focus is on the banner, and the editor — heading and
+    // all — is not on the page at all.
+    expect(screen.getByTestId('lock-banner')).toHaveFocus();
+    expect(screen.queryByTestId('editor')).not.toBeInTheDocument();
+
+    act(() => {
+      store.dispatch(setProtocolLockState('owned'));
+    });
+
+    expect(screen.queryByTestId('lock-banner')).not.toBeInTheDocument();
+    expect(routeHeading()).toHaveFocus();
+  });
+
+  // Same narrowness as RouteFocus: the restored editor may focus something of
+  // its own (the stage editor autofocuses its name input on a new stage), and
+  // dragging the researcher back to the heading would undo it.
+  it('leaves a control that took focus in the restored route alone', () => {
+    const Autofocusing = () => {
+      const ref = useRef<HTMLButtonElement>(null);
+      useEffect(() => {
+        ref.current?.focus();
+      }, []);
+      return (
+        <button ref={ref} type="button">
+          Stage name
+        </button>
+      );
+    };
+    store.dispatch(setActiveProtocol(protocol));
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    mockLocation.mockReturnValue('/protocol/codebook');
+
+    renderGuardWithBanner(store, <Autofocusing />);
+
+    act(() => {
+      store.dispatch(setProtocolLockState('owned'));
+    });
+
+    expect(screen.getByRole('button', { name: 'Stage name' })).toHaveFocus();
+    expect(routeHeading()).not.toHaveFocus();
   });
 
   it('leaves dialogs alone on a first render that is already read-only', () => {

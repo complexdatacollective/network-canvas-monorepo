@@ -86,6 +86,12 @@ const allowanceElement = () => {
 
 const allowanceText = () => allowanceElement().textContent;
 
+// `toHaveTextContent('')` is a substring check, so it passes against ANY
+// content — silence is the one thing that matcher cannot assert. Equality on
+// the text is what actually fails when the region is still holding a message.
+const expectStatusSilent = () =>
+  expect(screen.getByRole('status').textContent).toBe('');
+
 // jsdom applies no stylesheet, so `sr-only` is asserted as the class it is.
 // What it means in the browser — a 1x1 clipped box — is measured for real in
 // `e2e/specs/responsive.spec.ts`, which reads the element's bounding box.
@@ -139,6 +145,29 @@ describe('ProtocolInfoCard', () => {
     expect(store.getState().activeProtocol.present?.name).toBe(
       'Original protocol',
     );
+  });
+
+  // A whitespace-only edit trims back to the value already stored, so neither
+  // the blank-name rollback above nor the dispatch guard below fires. Nothing
+  // wrong reaches the store — but unless blur resyncs the control, it keeps the
+  // untrimmed string, and every measurement taken from that phantom value (the
+  // heading size tier, the remaining-character readout, the counter's
+  // visibility) describes a name that was never saved.
+  it('resyncs the control when a whitespace-only edit trims back to the stored name', () => {
+    // 64 graphemes sits exactly on the text-2xl/text-lg tier boundary, so one
+    // phantom space is enough to move the heading a whole size tier.
+    const name = 'A'.repeat(64);
+    const store = renderCard(name);
+
+    fireEvent.change(nameControl(), { target: { value: `${name} ` } });
+    fireEvent.blur(nameControl());
+
+    expect(nameControl()).toHaveValue(name);
+    expect(allowanceText()).toBe(
+      `${PROTOCOL_NAME_MAX_LENGTH - 64} of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+    );
+    expect(nameControl()).toHaveClass('text-2xl');
+    expect(store.getState().activeProtocol.present?.name).toBe(name);
   });
 
   // Pinned because nothing pinned it: this guard lives in the same JSX block
@@ -336,6 +365,32 @@ describe('ProtocolInfoCard', () => {
       );
     });
 
+    // The counterweight to the blur-resync tests below: blur must correct what
+    // the value made false, and only that. A refusal is not a measurement of
+    // the value — it says an edit was rejected, and trimming whitespace off the
+    // value the researcher was left with does not make that untrue. Clearing
+    // notices wholesale on blur would delete the only visible evidence that a
+    // paste was dropped, at the exact moment the researcher looks away.
+    it('keeps a refusal on screen when blur trims the value it was refused against', () => {
+      renderCard('Wave 2 pilot');
+
+      // Accepted, and leaves trailing whitespace for blur to trim.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 2 pilot ' } });
+      // Refused, so the value stays as it was and the refusal is painted.
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      fireEvent.blur(nameControl());
+
+      expect(nameControl()).toHaveValue('Wave 2 pilot');
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+
+      // ...and the next accepted edit still resolves it, as it always has.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 3 pilot' } });
+      expect(allowanceElement()).not.toHaveTextContent(TOO_LONG_MESSAGE);
+    });
+
     it('keeps a legacy over-limit name editable downward', () => {
       const legacy = 'م'.repeat(342);
       const store = renderCard(legacy);
@@ -402,7 +457,7 @@ describe('ProtocolInfoCard', () => {
       fireEvent.change(nameControl(), {
         target: { value: 'A'.repeat(PROTOCOL_NAME_MAX_LENGTH - 21) },
       });
-      expect(status).toHaveTextContent('');
+      expectStatusSilent();
       expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
 
       // 20 remaining: the live region speaks. The counter has to appear at the
@@ -423,7 +478,7 @@ describe('ProtocolInfoCard', () => {
 
       // Far from the limit: nothing to say.
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(50) } });
-      expect(status).toHaveTextContent('');
+      expectStatusSilent();
 
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(85) } });
       expect(status).toHaveTextContent(
@@ -433,7 +488,7 @@ describe('ProtocolInfoCard', () => {
       // Same threshold band: silence, rather than one announcement per
       // keystroke flooding the screen reader.
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(86) } });
-      expect(status).toHaveTextContent('');
+      expectStatusSilent();
 
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(93) } });
       expect(status).toHaveTextContent(
@@ -449,10 +504,96 @@ describe('ProtocolInfoCard', () => {
       });
 
       expect(nameControl()).toHaveValue('A'.repeat(99));
-      expect(screen.getByRole('status')).toHaveTextContent('');
+      expectStatusSilent();
       expect(allowanceText()).toBe(
         `1 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
       );
+    });
+
+    // The value is only one of three channels a whitespace-only edit moves.
+    // The two tests immediately below cover the other two — the notice and the
+    // announcement baseline — and their fixtures are chosen to sit INSIDE an
+    // announcement band: the resync test further up uses a 64-grapheme name,
+    // where 36 and 35 remaining both fall short of every threshold, so `notice`
+    // stays null throughout it and neither channel is ever live enough to go
+    // stale.
+    it('leaves the description agreeing with the value after a whitespace-only blur', () => {
+      // 79 graphemes — 21 remaining, one short of the first threshold, so the
+      // single phantom space is a threshold crossing and sets `notice`.
+      const name = 'A'.repeat(79);
+      renderCard(name);
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+
+      fireEvent.change(nameControl(), { target: { value: `${name} ` } });
+      expect(allowanceText()).toBe(
+        `20 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+
+      fireEvent.blur(nameControl());
+
+      // The description renders the notice IN PREFERENCE to the live count and
+      // is the control's own `aria-describedby`, so a notice left on the
+      // phantom's reading has the control describing itself as a name it does
+      // not hold — and forces the counter into view at a count that has not
+      // earned it. Resyncing only the value moves the phantom out of the field
+      // and into the description.
+      expect(nameControl()).toHaveValue(name);
+      expect(allowanceText()).toBe(
+        `21 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+      expectStatusSilent();
+    });
+
+    it('still announces the next genuine crossing after a whitespace-only blur', () => {
+      // 89 graphemes — 11 remaining, inside the 20 band. The phantom space
+      // crosses into the 10 band, which is what moves the baseline.
+      const name = 'A'.repeat(89);
+      renderCard(name);
+      const status = screen.getByRole('status');
+
+      fireEvent.change(nameControl(), { target: { value: `${name} ` } });
+      expect(status).toHaveTextContent(
+        `10 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+
+      fireEvent.blur(nameControl());
+      expect(nameControl()).toHaveValue(name);
+
+      // Blur put the value back in the 20 band, so a real 90th character
+      // crosses into the 10 band for the first time and has to speak. A
+      // baseline still sitting on the phantom's band reads this as the band it
+      // is already in and says nothing: the announcement is lost to a space
+      // typed and trimmed minutes earlier.
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(90) } });
+      expect(status).toHaveTextContent(
+        `10 of ${PROTOCOL_NAME_MAX_LENGTH} characters remaining`,
+      );
+    });
+
+    // The blank-name rollback is the same resync in the other direction, and it
+    // strands the baseline the other way round: outside every band rather than
+    // inside a tighter one, so the next edit announces something the researcher
+    // has not crossed instead of swallowing something they have.
+    it('re-baselines the announcement after a blank name is rolled back', () => {
+      // 89 graphemes — 11 remaining, inside the 20 band.
+      const name = 'A'.repeat(89);
+      renderCard(name);
+
+      // Selecting the whole name and typing over it drops the count to 1, far
+      // outside every band. Blur rolls the value back, and the baseline has to
+      // come back with it.
+      fireEvent.change(nameControl(), { target: { value: ' ' } });
+      fireEvent.blur(nameControl());
+      expect(nameControl()).toHaveValue(name);
+
+      // Shortening to 85 stays inside the 20 band, so it crosses nothing and
+      // must stay silent. Against a baseline left on the abandoned blank draft
+      // it reads as a fresh crossing and announces an allowance the researcher
+      // has been sitting inside all along.
+      fireEvent.change(nameControl(), { target: { value: 'A'.repeat(85) } });
+      expectStatusSilent();
     });
   });
 });
