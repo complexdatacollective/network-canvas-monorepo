@@ -391,6 +391,98 @@ describe('ProtocolInfoCard', () => {
       expect(allowanceElement()).not.toHaveTextContent(TOO_LONG_MESSAGE);
     });
 
+    // The test above trims back to the name already stored, so its blur never
+    // dispatches — and a refusal that survives `resyncNameChannels` is not yet
+    // safe. The moment the blur DOES commit a rename, the store's `name`
+    // changes, the synchronisation effect runs, and its unconditional
+    // `setNotice(null)` deletes the refusal after the fact: exactly the case
+    // the survival rule was written for, reached by the other door. A genuine
+    // rename that also carries whitespace is what walks through it.
+    it('keeps a refusal on screen when blur commits a genuine rename', () => {
+      const store = renderCard('Wave 2 pilot');
+
+      // Accepted, a real rename, and carrying whitespace for blur to trim — so
+      // the dispatch guard fires rather than declining.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 3 pilot ' } });
+      // Refused, so the value stays as it was and the refusal is painted.
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      fireEvent.blur(nameControl());
+
+      // The rename commits...
+      expect(store.getState().activeProtocol.present?.name).toBe(
+        'Wave 3 pilot',
+      );
+      expect(nameControl()).toHaveValue('Wave 3 pilot');
+      // ...and the researcher can still see that their paste was dropped.
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).not.toHaveClass(SCREEN_READER_ONLY);
+
+      // ...and the next accepted edit still resolves it, as it always has.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 4 pilot' } });
+      expect(allowanceElement()).not.toHaveTextContent(TOO_LONG_MESSAGE);
+    });
+
+    // The negative control for the two above. A refusal survives a rename this
+    // component committed itself, because the researcher is still looking at
+    // the value they were refused against. An EXTERNAL rename replaces that
+    // value outright, so the refusal stops describing anything on screen and
+    // has to go — which is why the fix is a provenance test and not the
+    // deletion of the effect's `setNotice(null)`.
+    it('clears a refusal when an external rename replaces the value it was refused against', () => {
+      const store = renderCard('Wave 2 pilot');
+
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      act(() => {
+        store.dispatch(updateProtocolName({ name: 'Renamed elsewhere' }));
+      });
+
+      expect(nameControl()).toHaveValue('Renamed elsewhere');
+      expect(allowanceElement()).not.toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+      expectStatusSilent();
+    });
+
+    // ...and the provenance test has to be spent when it is used, not left
+    // standing as a string comparison. Undo/redo makes the collision real: the
+    // name this component committed comes back through the store later, from
+    // somewhere else entirely. Same string, different provenance — the refusal
+    // must clear, because the second arrival is an external rename like any
+    // other.
+    it('clears a refusal when an external rename carries the name the researcher last committed', () => {
+      const store = renderCard('Wave 2 pilot');
+
+      // A self-initiated commit: 'Wave 3 pilot' is now the string the component
+      // has recognised as its own — once.
+      fireEvent.change(nameControl(), { target: { value: 'Wave 3 pilot' } });
+      fireEvent.blur(nameControl());
+      expect(store.getState().activeProtocol.present?.name).toBe(
+        'Wave 3 pilot',
+      );
+
+      // Something else moves the name away...
+      act(() => {
+        store.dispatch(updateProtocolName({ name: 'Wave 4 pilot' }));
+      });
+
+      fireEvent.change(nameControl(), { target: { value: 'B'.repeat(300) } });
+      expect(allowanceElement()).toHaveTextContent(TOO_LONG_MESSAGE);
+
+      // ...and then brings that exact string back. The researcher did not
+      // commit this one.
+      act(() => {
+        store.dispatch(updateProtocolName({ name: 'Wave 3 pilot' }));
+      });
+
+      expect(nameControl()).toHaveValue('Wave 3 pilot');
+      expect(allowanceElement()).not.toHaveTextContent(TOO_LONG_MESSAGE);
+      expect(allowanceElement()).toHaveClass(SCREEN_READER_ONLY);
+      expectStatusSilent();
+    });
+
     it('keeps a legacy over-limit name editable downward', () => {
       const legacy = 'م'.repeat(342);
       const store = renderCard(legacy);

@@ -131,6 +131,31 @@ const ProtocolInfoCard = () => {
     announceThresholdFor(PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? '')),
   );
 
+  /**
+   * The name this component last sent to the store, held only until the store
+   * hands it back. It answers exactly one question, in the effect below: is
+   * this `name` change the one I just dispatched, or did it arrive from
+   * somewhere else?
+   *
+   * It is a single-use token rather than a standing `committed === name`
+   * comparison, and that difference is the whole design. A standing comparison
+   * would go on matching forever, so undo/redo — which can bring the
+   * researcher's own committed string back through the store later, from a
+   * surface this component knows nothing about — would keep being read as
+   * self-initiated when it is external like any other rename. So the effect
+   * SPENDS the token on every run, matched or not: the window in which a
+   * commit can be recognised as this component's own is the single `name`
+   * change its dispatch produces, and nothing wider. A token whose dispatch
+   * somehow never landed cannot lie in wait for a later collision either — the
+   * next change spends it and falls back to clearing, which is the safe
+   * direction.
+   *
+   * A ref rather than anything module-scoped, so it cannot leak across
+   * unmounts: it is created with the instance and dies with it, and a remount
+   * begins with no claim on any name.
+   */
+  const selfCommittedName = useRef<string | null>(null);
+
   useEffect(() => {
     setLocalName(name ?? '');
     // An external rename (undo, autosave round-trip, another surface) is not
@@ -139,7 +164,24 @@ const ProtocolInfoCard = () => {
     lastAnnouncedThreshold.current = announceThresholdFor(
       PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
     );
-    setNotice(null);
+
+    const wasSelfCommitted = selfCommittedName.current === name;
+    selfCommittedName.current = null;
+
+    // Dropping the notice is right for an external rename and wrong for a
+    // rename this component just committed, so the two cannot share one
+    // unconditional clear. External: the value the notice was measured against
+    // has been replaced by one the researcher never typed, so a refusal left
+    // standing would accuse a name that never saw the refused edit. Its own:
+    // nothing has been invalidated, and `resyncNameChannels` has ALREADY ruled
+    // on this exact commit — dropping an allowance reading, deliberately
+    // keeping a refusal — with the dispatch it guards being the one thing that
+    // can bring control back here to overrule it. Clearing regardless would
+    // therefore delete a refusal precisely when blur commits a real rename:
+    // the case that rule exists for, reached through the other door.
+    if (!wasSelfCommitted) {
+      setNotice(null);
+    }
   }, [name]);
 
   const handleNameChange = (raw: string) => {
@@ -214,6 +256,12 @@ const ProtocolInfoCard = () => {
    * Clearing it here would delete the only visible evidence that a paste was
    * dropped, at the moment the researcher looks away. The next accepted
    * keystroke clears it, as it always has.
+   *
+   * Surviving this function is only half of it: when the blur also commits a
+   * rename, the store hands `name` straight back to the synchronisation effect
+   * above, whose job is to reset these same channels for renames from
+   * elsewhere. `selfCommittedName` is what stops that effect from undoing the
+   * decision made here — see the reasoning on the token.
    */
   const resyncNameChannels = (committed: string) => {
     lastAnnouncedThreshold.current = announceThresholdFor(
@@ -333,6 +381,12 @@ const ProtocolInfoCard = () => {
               // that isn't one, so this is about not dispatching something
               // meaningless rather than about the history.)
               if (trimmed !== name) {
+                // Claim the commit before it leaves, because it comes back:
+                // the store re-renders this component with the new `name` and
+                // runs the synchronisation effect, which must not read this
+                // rename as somebody else's and clear the refusal the resync
+                // above just kept.
+                selfCommittedName.current = trimmed;
                 dispatch(updateProtocolName({ name: trimmed }));
               }
             }}
