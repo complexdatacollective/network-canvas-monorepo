@@ -171,8 +171,11 @@ describe('the schema owns every generation parameter', () => {
  * The failure mode this guards is specific: a resolved default that
  * contradicts a variable's own rules turns a protocol that was valid into one
  * that is refused, and the schema's refusals are addressed to an author who
- * wrote nothing. `sample/protocol.json` is the canary — it bins 13 categorical
- * variables, so a selection-count default of "1 or 2" would take it down.
+ * wrote nothing. Categorical bins are the canary: the bundled corpus bins
+ * categorical variables that a selection-count default of "1 or 2" would take
+ * down. `resolveVariableSynthetic.test.ts` pins how many there are and proves
+ * the derivation cannot produce such a default; this half proves the corpus
+ * still parses either way.
  *
  * Reads the JSON by relative path rather than through a dependency, following
  * `bundled-protocols-role-conflicts.test.ts`: packages/protocols is pure data

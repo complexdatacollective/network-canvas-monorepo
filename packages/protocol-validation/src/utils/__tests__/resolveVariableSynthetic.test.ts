@@ -676,12 +676,14 @@ describe('a derived default cannot invalidate a valid protocol', () => {
   );
 
   it('resolves every binned categorical to a single selection', () => {
-    // The spec's own measurement, re-run: 13 categorical variables across the
+    // The spec's own measurement, re-run: 14 categorical variables across the
     // bundled protocols are binned by a CategoricalBin, `sample/protocol.json`
     // and `development/protocol.json` among them. The exact figure is a
     // property of packages/protocols rather than of this derivation, so a
     // deliberate change to those protocols is expected to move it — but it
-    // moving on its own means a writer stopped being recognised as one.
+    // moving on its own means a writer stopped being recognised as one. It was
+    // 13 until `e2e/synthetic-showcase/protocol.json` joined the corpus,
+    // contributing its `support_types` bin.
     let binned = 0;
     for (const protocolFile of protocolFiles) {
       const parsed = CurrentProtocolSchema.parse(
@@ -707,7 +709,7 @@ describe('a derived default cannot invalidate a valid protocol', () => {
       }
     }
 
-    expect(binned).toBe(13);
+    expect(binned).toBe(14);
   });
 
   it('resolves every quick-added variable as always answered', () => {

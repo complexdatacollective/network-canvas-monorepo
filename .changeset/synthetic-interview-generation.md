@@ -1,0 +1,47 @@
+---
+'@codaco/protocol-validation': minor
+'@codaco/shared-consts': minor
+'@codaco/network-query': minor
+'@codaco/interview': major
+'@codaco/protocol-utilities': minor
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
+'@codaco/protocols': patch
+---
+
+Protocols can now describe how a synthetic interview should answer them. Every
+stage, panel, prompt, and codebook variable accepts an optional `synthetic`
+block carrying the parameters generation needs — how many people a name
+generator draws, how likely a nomination from a panel is, how the options of a
+question are weighted, how often an answer is left blank, and how much of a
+participant's attention a stage asks for. The surface is entirely additive: a
+protocol that authors none of it validates exactly as it did before, and
+wherever an author writes nothing, the default is derived from the rules that
+variable is already held to rather than looked up in a table, so no protocol
+that was valid becomes invalid. A demonstration protocol exercising the whole
+authored surface ships with the bundled protocols as `synthetic-showcase`.
+
+Two pieces of the interview contract move to the packages that own them.
+`SessionPayload` and `StageMetadataEntry` now live in `@codaco/shared-consts`,
+and stage availability — `buildStageAvailabilityMap` with its
+`StageAvailability` and `UnavailableStage` types — now lives in
+`@codaco/network-query`. `@codaco/interview` re-exports all of them from the
+entry points that exported them before, so existing imports keep resolving
+unchanged. One published type narrows: `SessionPayload` no longer carries
+`stageRequiresEncryption`. No code ever set it and no host persisted it, so
+removing it loses nothing, but a host that names the field in its own types
+should drop it.
+
+Interviewer and Fresco now identify an imported protocol by the contents of the
+file it arrived in, read before validation fills in anything the author left
+unwritten. A protocol saved in the current format keeps the identity it was
+stored under as the format grows, so importing the same file again is still
+recognised as the copy you already have. The one exception is a protocol
+containing a Narrative Pedigree stage that leaves its at-risk display setting
+unwritten: the first import after this release records it under a new identity.
+
+Architect keeps authored generation parameters intact through editing. Opening
+and saving a stage, adding or reordering or removing a panel, and editing a
+variable all leave any `synthetic` block written alongside them exactly as its
+author wrote it, and a stage that carries none is saved exactly as before.

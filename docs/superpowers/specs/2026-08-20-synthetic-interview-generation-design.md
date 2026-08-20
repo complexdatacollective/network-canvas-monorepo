@@ -820,9 +820,9 @@ policy once consumers migrate (Phases 5–6).
 ## The sample protocol
 
 A companion purpose-built protocol
-(`docs/superpowers/specs/2026-08-20-synthetic-showcase/protocol.json` with
-`assets/colleagues-roster.json`; its end-state home is a `packages/protocols`
-manifest entry, wired in Phase 1 when the schema exists to validate it in CI)
+(`packages/protocols/e2e/synthetic-showcase/protocol.json` with
+`assets/colleagues-roster.json`, carrying a `packages/protocols` manifest entry
+so CI validates it alongside every other bundled protocol)
 demonstrates the full authored surface: quick-add nomination `normal(8, 2)`
 (the brief's own example), form name-generator with a `poisson` count and an
 existing panel at `nominationProbability 0.5`, roster nomination

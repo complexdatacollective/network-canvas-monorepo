@@ -104,8 +104,8 @@ const MINIMAL_PROTOCOL = {
 
 /**
  * The showcase protocol carrying authored stage/panel/prompt/variable
- * `synthetic` blocks. It moves into `packages/protocols/e2e/` in Phase 1
- * (plan §1.5), which is where this resolves; nothing reads it before then.
+ * `synthetic` blocks, bundled under `packages/protocols/e2e/` with its own
+ * manifest entry.
  */
 const SYNTHETIC_SHOWCASE = path.resolve(
   import.meta.dirname,

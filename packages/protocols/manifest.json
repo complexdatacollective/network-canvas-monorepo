@@ -118,6 +118,15 @@
       "architectTemplate": false
     },
     {
+      "id": "synthetic-showcase",
+      "kind": "e2e",
+      "name": "Synthetic Showcase",
+      "description": "Demonstration protocol for synthetic interview generation: every stage carries authored synthetic parameters (distributions, roster and panel nomination, burden overrides).",
+      "protocolPath": "e2e/synthetic-showcase/protocol.json",
+      "assetDir": "e2e/synthetic-showcase/assets",
+      "architectTemplate": false
+    },
+    {
       "id": "documentation-hbh-ps-v21",
       "kind": "documentation",
       "name": "HBH-PS v21",
