@@ -16,11 +16,13 @@ const NodePanelStub = ({
   index,
   committedIndex,
   onDelete,
+  onMove,
 }: {
   item: { id?: string };
   index: number;
   committedIndex?: number;
   onDelete: () => void;
+  onMove?: (targetIndex: number) => void | boolean;
 }) => {
   // The real row's slot binding, from the same hook, so these tests exercise
   // the ownership rule rather than a copy of it.
@@ -54,6 +56,18 @@ const NodePanelStub = ({
       <button type="button" onClick={onDelete}>
         Remove side panel {index + 1}
       </button>
+      {/*
+        The real row reorders by pointer drag, which jsdom cannot deliver. This
+        drives the same `onMove` the drag handle does, so a test can exercise
+        the gesture that rewrites EVERY slot from the assembled list — the one
+        that turns any gap between `usePanelAt` and `writePanelAt` into
+        mis-slotted or dropped panel data.
+      */}
+      {onMove && index > 0 ? (
+        <button type="button" onClick={() => onMove(index - 1)}>
+          Move side panel {index + 1} up
+        </button>
+      ) : null}
     </div>
   );
 };

@@ -171,6 +171,30 @@ const StageEditor = (props: StageEditorProps) => {
         ...(!stageFormCarriesSkipLogic && committedStage.skipLogic !== undefined
           ? { skipLogic: committedStage.skipLogic }
           : {}),
+        // A committed `synthetic` — the stage's generation parameters, which
+        // the schema allows on every stage type — is carried the same way,
+        // and for the same reason: without the merge the overwrite save would
+        // silently delete authored generation parameters on the first
+        // Finished Editing.
+        //
+        // UNCONDITIONAL, unlike `skipLogic` above, because no interface's
+        // section list authors `synthetic` today: on EVERY interface it is a
+        // key `values` structurally cannot carry, so there is no interface on
+        // which an absent key could mean "the researcher removed it". A gate
+        // here would therefore be a branch that is never taken. When Architect
+        // does gain a synthetic editor (#1420) it must add one — at that point
+        // the absence becomes a deletion on the interfaces that render it, and
+        // restoring the committed value would resurrect exactly what was
+        // removed.
+        //
+        // Costs nothing for a stage that never had one: no interface template
+        // seeds the key (see `interfaces.skipLogic.test.ts`), so
+        // `committedStage.synthetic` is `undefined` on a fresh stage, and both
+        // `prune` boundaries — the commit reducer and `buildProtocolWithStage`
+        // — strip an `undefined` value anyway.
+        ...(committedStage.synthetic !== undefined
+          ? { synthetic: committedStage.synthetic }
+          : {}),
       }) as unknown as Stage,
     [committedStage, stageFormCarriesSkipLogic],
   );

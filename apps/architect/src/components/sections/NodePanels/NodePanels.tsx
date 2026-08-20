@@ -41,6 +41,10 @@ import { MAX_PANELS } from './panelSlots';
 // empty array keeps the "no panels" case a no-op for that comparison.
 const EMPTY_PANELS: NodePanelValue[] = [];
 
+// No `synthetic` key: the block is authored, never invented. Seeding one here
+// would put generation parameters into every panel a researcher adds — and
+// into the committed protocol JSON, where the whole-document e2e oracle
+// (`00-sample-protocol.spec.ts`) would see a panel it never built.
 const createNodePanel = (): NodePanelValue => ({
   id: uuid(),
   title: undefined,
@@ -72,6 +76,14 @@ const usePanelAt = (index: number): NodePanelValue | undefined => {
   const title = useStageFormValue<string>(`panels[${index}].title`);
   const dataSource = useStageFormValue<string>(`panels[${index}].dataSource`);
   const filter = useStageFormValue<RuleSetValue>(`panels[${index}].filter`);
+  // Authored generation parameters, which this editor renders no control for
+  // (see the registration below). Read here because the list this assembles is
+  // what `handlePanelsChange` writes back on every add, delete, reorder and
+  // toggle-off — a key missing from it is dropped by the very next gesture,
+  // long before any save.
+  const synthetic = useStageFormValue<Record<string, unknown>>(
+    `panels[${index}].synthetic`,
+  );
 
   return useMemo(() => {
     if (typeof id !== 'string') return undefined;
@@ -84,8 +96,12 @@ const usePanelAt = (index: number): NodePanelValue | undefined => {
       title,
       dataSource: dataSource ?? 'existing',
       filter,
+      // Optional like `filter`: returned only when the panel actually has one,
+      // so a panel the author gave no parameters keeps the key absent rather
+      // than gaining an explicit `undefined`.
+      ...(synthetic !== undefined ? { synthetic } : {}),
     };
-  }, [dataSource, filter, id, title]);
+  }, [dataSource, filter, id, synthetic, title]);
 };
 
 export const handlePanelToggleChange = async (
@@ -203,6 +219,11 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
         panel?.dataSource ?? 'existing',
       );
       setStageValue(`panels[${index}].filter`, panel?.filter);
+      // The read in `usePanelAt` and this write are a closed pair: every
+      // gesture rewrites the whole bounded slot set from the assembled list,
+      // so a key read but not written is mis-slotted by a reorder, and a key
+      // written but not read is erased by the next one.
+      setStageValue(`panels[${index}].synthetic`, panel?.synthetic);
     },
     [setStageValue],
   );
@@ -287,6 +308,28 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
           key={`panel-id-${index}`}
           name={`panels[${index}].id`}
           initialValue={typeof panel?.id === 'string' ? panel.id : undefined}
+        />
+      ))}
+      {/*
+        A panel's authored `synthetic` block — its generation parameters — has
+        no control of its own either, and needs the registration for exactly
+        the same reason the id does: `getFormValues()` reports REGISTERED
+        fields only, so without it the value `writePanelAt` parks would sit in
+        dormant storage where the save cannot see it, and the overwrite save
+        would delete parameters the editor never showed.
+
+        Here rather than in `NodePanel` for the id's reason too: this component
+        never remounts, so the registration outlives the row churn a delete or
+        a reorder puts the list through. A panel that carries no block
+        registers with `initialValue: undefined`, which `getFormValues()`
+        writes as `synthetic: undefined` and both `prune` boundaries strip —
+        so a panel built in the editor is byte-identical with and without this.
+      */}
+      {(panels ?? EMPTY_PANELS).map((panel, index) => (
+        <HiddenFieldValue
+          key={`panel-synthetic-${index}`}
+          name={`panels[${index}].synthetic`}
+          initialValue={panel?.synthetic}
         />
       ))}
       <UnconnectedField

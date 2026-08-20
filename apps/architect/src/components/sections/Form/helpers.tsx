@@ -14,6 +14,11 @@ import {
 import type { RootState } from '~/ducks/modules/root';
 import { getVariablesForSubject } from '~/selectors/codebook';
 
+// Deliberately NOT including `synthetic`: this list doubles as the
+// `replaceProperties` set handed to `getStateWithUpdatedVariable`, which
+// preserves every property NOT named here — and that merge is the only thing
+// carrying a variable's authored generation parameters through a field edit.
+// Naming it here would delete them on the first edit to any other property.
 export const CODEBOOK_PROPERTIES = [
   'options',
   'parameters',
