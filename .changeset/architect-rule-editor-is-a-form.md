@@ -21,19 +21,7 @@ so a rule with a fractional count could be authored and saved and then failed
 validation later, away from the editor that produced it. Both now offer the
 same whole-number control, because they are now the same control.
 
-**A rule no longer keeps choices that its new subject cannot support.**
-Changing the attribute a rule compares clears the operator and value chosen for
-the previous one, rather than leaving a comparison behind that the new
-attribute cannot be put through — including when the rule's target changes from
-a node or edge to Ego.
-
 **Closing the editor with unsaved work now asks first, everywhere.** The rule
-editor used to run its own copy of that confirmation; it now uses the same one
-as every other Architect editor dialog, so it is guarded on the same terms as
-the rest — including by a browser refresh and a cross-tab reclaim.
-
-**A rule reads the same in the printable protocol summary as it does in the
-editor.** The two were rendered by separate copies of the same sentence, and
-the summary's copy had lost the text describing the attribute being compared,
-leaving a coloured chip that read as a bare name. There is now one renderer for
-both.
+editor used to close without asking, discarding the rule in progress; it now
+uses the same confirmation as every other Architect editor dialog, so it is
+guarded on the same terms as the rest.

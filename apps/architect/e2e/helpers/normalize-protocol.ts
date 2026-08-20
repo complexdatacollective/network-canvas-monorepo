@@ -100,23 +100,10 @@ const pathMatches =
 //    (every Sociogram: the Layout Mode section always registers the field
 //    and defaults it to Manual) is left holding `behaviours: {}` once the
 //    key goes, so an emptied `behaviours` is dropped too — same shape as
-//    rule 9. A `behaviours` with any surviving key still compares strictly.
-// 7. Filter/skip-logic presence rules' `options.value: ''` ≡ absent —
-//    Historically `withRuleChangeHandler` unconditionally appended
-//    `value: ''` to every node/edge rule and prune kept empty strings, while
-//    the canonical EXISTS/NOT_EXISTS rules have no value key. Meaningful
-//    values are never empty strings, so this cannot mask a real difference.
-//
-//    LIKELY DEAD. That handler was deleted when the rule editor moved onto
-//    the form system, and a presence rule no longer writes the key at all —
-//    so this rule should now be a no-op. It is kept only because "the app
-//    never emits it" is a claim about RUNTIME output that no committed
-//    fixture can settle (this normalizes protocol JSON read back from
-//    IndexedDB, not a checked-in file). Confirm with a full Architect e2e
-//    run, then delete `RULE_OPTIONS_VALUE` and this entry together.
-// 8. RichText-backed strings — canonicalized on both sides (see
+//    rule 8. A `behaviours` with any surviving key still compares strictly.
+// 7. RichText-backed strings — canonicalized on both sides (see
 //    `canonicalizeMarkdown`).
-// 9. Empty `variables: {}` on codebook entity types ≡ absent — the type
+// 8. Empty `variables: {}` on codebook entity types ≡ absent — the type
 //    editor always writes a variables map when creating a type, while the
 //    canonical file omits the key for variable-less types (know/conflict
 //    edges, the Classmate node). Non-empty maps still compare strictly.
@@ -126,31 +113,6 @@ type DeletionRule = {
   matches: PathMatcher;
   when?: (value: unknown) => boolean;
 };
-
-const RULE_OPTIONS_VALUE = [
-  pathMatches(
-    'stages',
-    '*',
-    'skipLogic',
-    'filter',
-    'rules',
-    '*',
-    'options',
-    'value',
-  ),
-  pathMatches('stages', '*', 'filter', 'rules', '*', 'options', 'value'),
-  pathMatches(
-    'stages',
-    '*',
-    'panels',
-    '*',
-    'filter',
-    'rules',
-    '*',
-    'options',
-    'value',
-  ),
-];
 
 const DELETED_PATHS: DeletionRule[] = [
   { matches: pathMatches('lastModified') },
@@ -166,10 +128,6 @@ const DELETED_PATHS: DeletionRule[] = [
     matches: pathMatches('stages', '*', 'behaviours', 'automaticLayout'),
     when: (value) => value === false,
   },
-  ...RULE_OPTIONS_VALUE.map((matches) => ({
-    matches,
-    when: (value: unknown) => value === '',
-  })),
   ...(['node', 'edge'] as const).map((entity) => ({
     matches: pathMatches('codebook', entity, '*', 'variables'),
     when: (value: unknown) =>
@@ -360,12 +318,12 @@ export function normalizeProtocol(input: unknown): unknown {
 // gaps, its per-run timestamp) is checked as an invariant of what Architect
 // writes today instead.
 //
-// The three conditional deletions are the exception, deliberately: each fires
+// The two conditional deletions are the exception, deliberately: each fires
 // only when the value IS the default it treats as equivalent to absent
-// (`skewedTowardCenter: false`, `automaticLayout: false`, a rule's
-// `options.value: ''`). A changed value still compares, and for those three
-// "written as the default" and "not written at all" are indistinguishable to
-// every consumer — so no regression survives the tolerance.
+// (`skewedTowardCenter: false`, `automaticLayout: false`). A changed value
+// still compares, and for those two "written as the default" and "not written
+// at all" are indistinguishable to every consumer — so no regression survives
+// the tolerance.
 export function assertBuiltProtocolInvariants(built: unknown): void {
   const problems: string[] = [];
   if (!isRecord(built)) throw new Error('built protocol is not an object');
