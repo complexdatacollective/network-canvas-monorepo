@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type ComponentType,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
   type Stage,
   type StructuralCodebook,
 } from '@codaco/protocol-validation';
@@ -92,6 +95,14 @@ function composerStage(options: {
   return {
     id: options.id ?? 'composer-1',
     type: 'NetworkComposer',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NetworkComposer,
+      count: DEFAULT_NODE_COUNT,
+      topology: DEFAULT_EDGE_TOPOLOGY,
+    },
     label: 'Compose',
     subject: { entity: 'node', type: 'person' },
     quickAdd: asEntityAttributeReference('name'),
@@ -116,6 +127,10 @@ function alterFormStage(variable: string): Stage {
   return {
     id: 'ordinary-form',
     type: 'AlterForm',
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.AlterForm,
+    },
     label: 'Edit person',
     subject: { entity: 'node', type: 'person' },
     introductionPanel: { title: 'Introduction', text: 'Continue' },

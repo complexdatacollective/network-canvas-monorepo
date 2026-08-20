@@ -6,10 +6,12 @@ import {
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageValuesSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const categoricalBinStage = baseStageSchema.extend({
   type: z.literal('CategoricalBin'),
+  synthetic: stageValuesSynthetic('CategoricalBin').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z

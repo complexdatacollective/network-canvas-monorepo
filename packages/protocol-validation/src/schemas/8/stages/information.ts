@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
+import { stageNoDataSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
@@ -35,6 +36,9 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
+  synthetic: stageNoDataSynthetic('Information').prefault({
+    generatesData: false,
+  }),
   title: z.string().min(1),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });

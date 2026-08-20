@@ -3,7 +3,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Provider } from 'react-redux';
 import { expect, userEvent, within } from 'storybook/test';
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  DEFAULT_RESPONSE_BURDEN,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -158,6 +161,12 @@ type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 const narrativeStage: NarrativeStage = {
   id: 'np-1',
   type: 'NarrativePedigree',
+  // Schema-injected generation metadata: a parsed stage always carries
+  // it, and nothing in this test reads it.
+  synthetic: {
+    generatesData: false,
+    responseBurden: DEFAULT_RESPONSE_BURDEN.NarrativePedigree,
+  },
   label: 'Disease Pedigree',
   sourceStageId: SOURCE_STAGE_ID,
   showAtRiskStatuses: false,

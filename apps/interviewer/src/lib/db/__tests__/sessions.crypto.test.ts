@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -54,6 +55,12 @@ function informationStage(id: string): InformationStage {
     label: id,
     title: id,
     items: [],
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: false,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+    },
   };
 }
 

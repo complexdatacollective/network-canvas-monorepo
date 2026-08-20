@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
   type Stage,
   type StructuralCodebook,
   VARIABLE_REFERENCE_VALIDATIONS,
@@ -969,6 +971,13 @@ describe('a date field whose floor is later than today, through feasibility', ()
   const nameGenerator: Stage = {
     id: 'stage-1',
     type: 'NameGenerator',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NameGenerator,
+      count: DEFAULT_NODE_COUNT,
+    },
     label: 'Name generator',
     subject: { entity: 'node', type: 'person' },
     form: { title: 'About this person', fields: [] },

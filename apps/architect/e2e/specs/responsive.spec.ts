@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 
 import { PROTOCOL_NAME_TOO_LONG_MESSAGE } from '../../src/config/index.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -406,6 +407,12 @@ function protocolWithStages(): CurrentProtocol {
       type: 'Information',
       title: `Information ${index}`,
       items: [],
+      // Schema-injected generation metadata: a parsed stage always carries
+      // it, and nothing in this spec reads it.
+      synthetic: {
+        generatesData: false,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+      },
     })),
   };
 }

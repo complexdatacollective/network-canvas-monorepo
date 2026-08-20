@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   asEntityAttributeReference,
   type Codebook,
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
   type Filter,
   type FormField,
   type Panel,
@@ -59,6 +61,13 @@ function rosterStage(id: string, dataSource: string): Stage {
     id,
     label: 'Roster',
     type: 'NameGeneratorRoster',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NameGeneratorRoster,
+      count: DEFAULT_NODE_COUNT,
+    },
     subject: { entity: 'node', type: 'person' },
     dataSource,
     prompts: [{ id: 'p1', text: 'Pick people' }],
@@ -74,6 +83,11 @@ function nameGeneratorStage(
     id,
     label: 'Name Generator',
     type: 'NameGenerator',
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NameGenerator,
+      count: DEFAULT_NODE_COUNT,
+    },
     form: { title: 'Add people', fields: [nameField] },
     subject: { entity: 'node', type: subjectType },
     panels,
@@ -330,6 +344,11 @@ describe('collectRosterExternalData', () => {
           id: 'as-place',
           label: 'Roster',
           type: 'NameGeneratorRoster',
+          synthetic: {
+            generatesData: true,
+            responseBurden: DEFAULT_RESPONSE_BURDEN.NameGeneratorRoster,
+            count: DEFAULT_NODE_COUNT,
+          },
           subject: { entity: 'node', type: 'place' },
           dataSource: 'roster',
           prompts: [{ id: 'p1', text: 'Pick places' }],
@@ -448,6 +467,11 @@ describe('collectRosterExternalData', () => {
       id: 'draft-no-subject',
       label: 'Roster',
       type: 'NameGeneratorRoster',
+      synthetic: {
+        generatesData: true,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.NameGeneratorRoster,
+        count: DEFAULT_NODE_COUNT,
+      },
       dataSource: 'draft-roster',
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;
@@ -455,6 +479,11 @@ describe('collectRosterExternalData', () => {
       id: 'draft-no-source',
       label: 'Roster',
       type: 'NameGeneratorRoster',
+      synthetic: {
+        generatesData: true,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.NameGeneratorRoster,
+        count: DEFAULT_NODE_COUNT,
+      },
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;
@@ -606,6 +635,10 @@ describe('collectRosterExternalData', () => {
           id: 'info',
           label: 'Info',
           type: 'Information',
+          synthetic: {
+            generatesData: false,
+            responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+          },
           title: 'Info',
           items: [],
         },

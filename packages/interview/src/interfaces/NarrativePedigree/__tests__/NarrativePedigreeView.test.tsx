@@ -5,7 +5,10 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  DEFAULT_RESPONSE_BURDEN,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -183,6 +186,12 @@ function makeNarrativeStage(): NarrativeStage {
   return {
     id: 'np-1',
     type: 'NarrativePedigree',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: false,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NarrativePedigree,
+    },
     label: 'Disease Pedigree',
     sourceStageId: SOURCE_STAGE_ID,
     showAtRiskStatuses: false,
@@ -506,6 +515,10 @@ function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
   return {
     id: 'np-cousin',
     type: 'NarrativePedigree',
+    synthetic: {
+      generatesData: false,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NarrativePedigree,
+    },
     label: 'Cousin Union Disease Pedigree',
     sourceStageId: SOURCE_STAGE_ID_COUSIN,
     showAtRiskStatuses,
@@ -749,6 +762,10 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
     const stage: NarrativeStage = {
       id: 'np-social',
       type: 'NarrativePedigree',
+      synthetic: {
+        generatesData: false,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.NarrativePedigree,
+      },
       label: 'Social Parent Pedigree',
       sourceStageId: SRC_SOCIAL,
       showAtRiskStatuses: false,

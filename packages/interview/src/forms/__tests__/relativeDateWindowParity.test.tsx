@@ -6,6 +6,7 @@ import { generateNetwork } from '@codaco/protocol-utilities';
 import {
   asEntityAttributeReference,
   type Codebook,
+  DEFAULT_RESPONSE_BURDEN,
   type Stage,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
@@ -147,6 +148,12 @@ const egoStages: Stage[] = [
   {
     id: 'stage-ego',
     type: 'EgoForm',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.EgoForm,
+    },
     label: 'About you',
     introductionPanel: { title: 'About you', text: 'A few questions.' },
     form: {

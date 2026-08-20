@@ -7,6 +7,7 @@ import {
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageValuesSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 const mapboxStyleOptions = [
@@ -59,6 +60,7 @@ export type MapOptions = z.infer<typeof mapOptions>;
 
 export const geospatialStage = baseStageSchema.extend({
   type: z.literal('Geospatial'),
+  synthetic: stageValuesSynthetic('Geospatial').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   mapOptions: mapOptions,

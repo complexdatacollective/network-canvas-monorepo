@@ -8,6 +8,11 @@ import {
   uniqueFormFieldVariables,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import {
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+  stageNodeAndEdgeSynthetic,
+} from '../synthetic/index.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import {
   datePickerParametersSchema,
@@ -101,6 +106,10 @@ export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 
 export const networkComposerStage = baseStageSchema.extend({
   type: z.literal('NetworkComposer'),
+  synthetic: stageNodeAndEdgeSynthetic('NetworkComposer').prefault({
+    count: DEFAULT_NODE_COUNT,
+    topology: DEFAULT_EDGE_TOPOLOGY,
+  }),
   subject: NodeStageSubjectSchema,
   // The text variable populated by the inline quick-add name field when a node
   // is added from the tool palette. The quick-add field now runs the variable's

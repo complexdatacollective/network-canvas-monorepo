@@ -14,6 +14,7 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
+import { stageValuesSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 // Reserved id used by the interview for the synthetic census/scaffolding prompt;
@@ -159,6 +160,7 @@ export const EdgeConfigSchema = z.strictObject({
 // use the stage subject.
 const familyPedigreeStageShape = baseStageSchema.extend({
   type: z.literal('FamilyPedigree'),
+  synthetic: stageValuesSynthetic('FamilyPedigree').prefault({}),
   nodeConfig: NodeConfigSchema,
   edgeConfig: EdgeConfigSchema,
 

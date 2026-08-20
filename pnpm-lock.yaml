@@ -2641,6 +2641,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/protocols':
+        specifier: workspace:^
+        version: link:../protocols
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript

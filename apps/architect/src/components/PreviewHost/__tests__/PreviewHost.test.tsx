@@ -13,6 +13,9 @@ import {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -127,6 +130,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
             },
           ],
         },
+        // Schema-injected generation metadata: a parsed stage always carries
+        // it, and nothing in this test reads it.
+        synthetic: {
+          generatesData: true,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.EgoForm,
+        },
       },
       {
         id: 'background',
@@ -134,6 +143,10 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         label: 'Background',
         title: 'Background',
         items: [],
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -168,6 +181,11 @@ function makeConsentRouteProtocol(): CurrentProtocol {
             },
           ],
         },
+        synthetic: {
+          generatesData: true,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.NameGenerator,
+          count: DEFAULT_NODE_COUNT,
+        },
       },
       {
         id: 'support',
@@ -184,6 +202,11 @@ function makeConsentRouteProtocol(): CurrentProtocol {
             },
           },
         ],
+        synthetic: {
+          generatesData: true,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Sociogram,
+          topology: DEFAULT_EDGE_TOPOLOGY,
+        },
       },
       {
         id: 'following',
@@ -191,6 +214,10 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         label: 'Following stage',
         title: 'Following stage',
         items: [],
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
       },
     ],
     codebook: {

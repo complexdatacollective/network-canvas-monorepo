@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  DEFAULT_RESPONSE_BURDEN,
   type SkipLogic,
   type SkipLogicDestination,
   type Stage,
@@ -28,10 +29,21 @@ type ZodOptionShape = { shape: { type: ZodLiteralDef } };
  * are added to the schema but not handled by generateNetwork.
  */
 function getAllStageTypes(): string[] {
-  const options = (stageSchema as unknown as { options: ZodOptionShape[] })
-    .options;
-  return options.map((s) => {
-    const value = s.shape.type._zod.def.values[0];
+  const options = (stageSchema as unknown as { options: unknown[] }).options;
+  return options.map((option) => {
+    // A branch carrying a transform (a name generator, which resolves a
+    // default synthetic count) is a pipe rather than an object, and has no
+    // `.shape` of its own — its input side is the object that declares the
+    // stage's fields. Probed structurally rather than with
+    // `instanceof z.ZodPipe`, because this package does not depend on zod.
+    const node =
+      typeof option === 'object' &&
+      option !== null &&
+      !('shape' in option) &&
+      'in' in option
+        ? (option as { in: unknown }).in
+        : option;
+    const value = (node as ZodOptionShape).shape.type._zod.def.values[0];
     if (!value) throw new Error('Could not extract stage type from schema');
     return value;
   });
@@ -176,6 +188,12 @@ function makeInformationStage(id: string, skipLogic?: SkipLogic): Stage {
     id,
     label: id,
     type: 'Information',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: false,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+    },
     title: id,
     items: [],
     skipLogic,

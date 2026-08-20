@@ -2,6 +2,7 @@ import { render, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -52,6 +53,12 @@ const payload = {
       {
         id: 'available-stage',
         type: 'Information',
+        // Schema-injected generation metadata: a parsed stage always carries
+        // it, and nothing in this test reads it.
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
         label: 'Available stage',
         title: 'Available stage',
         items: [],
@@ -59,6 +66,10 @@ const payload = {
       {
         id: 'unavailable-stage',
         type: 'Information',
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
         label: 'Unavailable stage',
         title: 'Unavailable stage',
         items: [],
@@ -79,6 +90,10 @@ const noActiveAuthoredStagePayload = {
       {
         id: 'route-controlling-stage',
         type: 'Information',
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
         label: 'Route-controlling stage',
         title: 'Route-controlling stage',
         items: [],
@@ -91,6 +106,10 @@ const noActiveAuthoredStagePayload = {
       {
         id: 'bypassed-stage',
         type: 'Information',
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
         label: 'Bypassed stage',
         title: 'Bypassed stage',
         items: [],

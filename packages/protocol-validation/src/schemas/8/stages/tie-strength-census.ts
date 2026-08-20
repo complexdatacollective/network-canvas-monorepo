@@ -7,10 +7,12 @@ import {
   tieStrengthCensusPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageEdgeSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const tieStrengthCensusStage = baseStageSchema.extend({
   type: z.literal('TieStrengthCensus'),
+  synthetic: stageEdgeSynthetic('TieStrengthCensus').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z
