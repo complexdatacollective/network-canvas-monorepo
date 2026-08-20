@@ -222,7 +222,30 @@ export default function PresetSwitcher({
             if (!open && event.reason !== 'trigger-press') return;
             setPopoverOpen(open);
           }}
-          trigger={<ToolbarButton>{currentPreset.label}</ToolbarButton>}
+          trigger={
+            // A deliberately quieter `aria-expanded` treatment than the one
+            // `Button` gives every disclosure by default.
+            //
+            // That default — a solid `--selected` fill, which the interview
+            // theme resolves to pure WHITE, with contrast-flipped text — is
+            // sized for a TRANSIENT state: the brief moment a menu or popover
+            // is open. This popover is different. It opens itself on mount
+            // (`useState(true)` above) and a researcher normally leaves it
+            // open for the whole stage, so `aria-expanded` here is the
+            // RESTING state of the control, not a flash of one. At full
+            // strength it reads as the loudest thing on the canvas and
+            // competes with the network the participant is meant to be
+            // looking at.
+            //
+            // So: keep the fill, drop it to a tint, and keep the toolbar's own
+            // text colour instead of flipping to `--selected-contrast`. The
+            // segment still reads as active and still looks pressable; it just
+            // stops shouting. Scoped to this trigger on purpose — every other
+            // disclosure in the app is transient and wants the default.
+            <ToolbarButton className="aria-expanded:bg-selected/15 aria-expanded:text-(--component-text)">
+              {currentPreset.label}
+            </ToolbarButton>
+          }
           contentProps={{
             align: 'center',
             sideOffset: 14,
