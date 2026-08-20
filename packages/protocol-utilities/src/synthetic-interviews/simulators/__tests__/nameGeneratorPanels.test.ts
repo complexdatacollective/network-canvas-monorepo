@@ -95,11 +95,13 @@ const setUp = ({
   rosterNodes,
   priorAlters = 0,
   unprompted = 0,
+  seed,
 }: {
   stage?: Record<string, unknown>;
   rosterNodes?: NcNode[];
   priorAlters?: number;
   unprompted?: number;
+  seed?: number;
 } = {}): Harness => {
   const protocol = parseProtocol(codebook, [
     priorStage,
@@ -109,7 +111,10 @@ const setUp = ({
   const assetData: AssetData = rosterNodes
     ? { rosterNodes: { 'quick-add': rosterNodes } }
     : {};
-  const harness = harnessFor(protocol, { assetData });
+  const harness = harnessFor(
+    protocol,
+    seed === undefined ? { assetData } : { assetData, seed },
+  );
 
   harness.seedAlters(priorAlters, {
     currentStep: 0,
@@ -274,24 +279,30 @@ describe('name generator panels', () => {
 
     it('hides roster rows already in the interview network', () => {
       // The person is already an alter, so the panel would not offer them and
-      // the roster's whole displayed size is one, not two.
-      const harness = setUp({
-        stage: stageWith({ count: 4, panels }),
-        rosterNodes: roster('a', 2),
-      });
-      harness.engine.addNode({
-        nodeType: 'person',
-        uid: 'a-0',
-        attributeData: { name: 'Already named', close: true },
-        currentStep: 0,
-      });
-      runStage(harness);
+      // the roster's whole displayed size is one, not two. One seed is not an
+      // oracle here — the roster-share draw can land on zero and satisfy any
+      // assertion vacuously — so this sweeps seeds and pins the union: the
+      // hidden row NEVER lands, and the visible one actually does.
+      const takenIds = new Set<string>();
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const harness = setUp({
+          stage: stageWith({ count: 4, panels }),
+          rosterNodes: roster('a', 2),
+          seed,
+        });
+        harness.engine.addNode({
+          nodeType: 'person',
+          uid: 'a-0',
+          attributeData: { name: 'Already named', close: true },
+          currentStep: 0,
+        });
+        runStage(harness);
+        for (const node of fromRoster(harness, 'a-')) {
+          takenIds.add(node[entityPrimaryKeyProperty]);
+        }
+      }
 
-      const taken = fromRoster(harness, 'a-');
-      expect(taken.map((node) => node[entityPrimaryKeyProperty])).not.toContain(
-        'a-0',
-      );
-      expect(taken.length).toBeLessThanOrEqual(1);
+      expect([...takenIds]).toEqual(['a-1']);
     });
 
     it('keeps the roster row attributes and uid', () => {

@@ -185,9 +185,14 @@ describe('simulateNetworkComposer', () => {
       expect(harness.nodes()).toEqual([]);
     });
 
-    it('adds nobody the palette could not have named', () => {
-      // The interface refuses to create a node from a blank quick-add field, so
-      // a variable whose descriptor always goes missing produces nobody.
+    it('names everybody even when the quick-add variable courts missingness', () => {
+      // The interface refuses to create a node from a blank quick-add field,
+      // so the schema imposes `required` on the variable behind the palette —
+      // an authored `missingProbability`, even 1, describes nodes the
+      // interface cannot make, and the interface-implied rule wins
+      // (stricter-never-looser). Every drawn person therefore has a name;
+      // the simulator's own blank-name guard stays as defence-in-depth for
+      // input that never went through the schema.
       const harness = setUp({
         codebook: {
           ...codebookWith(),
@@ -209,7 +214,12 @@ describe('simulateNetworkComposer', () => {
       });
       runStage(harness);
 
-      expect(harness.nodes()).toEqual([]);
+      expect(harness.nodes().length).toBeGreaterThan(0);
+      for (const node of harness.nodes()) {
+        const name = node[entityAttributesProperty]['name'];
+        expect(typeof name).toBe('string');
+        expect(String(name).length).toBeGreaterThan(0);
+      }
     });
   });
 

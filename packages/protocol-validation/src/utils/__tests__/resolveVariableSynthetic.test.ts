@@ -477,6 +477,25 @@ describe('the rules a protocol’s interfaces impose', () => {
     };
     expect(rulesFor(protocol, 'hobbies')).toEqual({ maxSelected: 1 });
   });
+
+  it('requires a composer’s quick-add variable, like the quick-add generator’s', () => {
+    // Both palettes refuse to create a node from an empty name field
+    // (`AddNodeInput`), so a `missingProbability` on the variable behind
+    // either would describe nodes neither interface can make.
+    const composerProtocol = {
+      stages: [
+        {
+          id: 'composer',
+          type: 'NetworkComposer',
+          label: 'Compose',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'position',
+        },
+      ],
+    };
+    expect(rulesFor(composerProtocol, 'name')).toEqual({ required: true });
+  });
 });
 
 describe('the variables only a bin drop writes', () => {

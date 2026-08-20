@@ -1067,7 +1067,7 @@ describe('replay parity (C1) — edge-heavy interfaces', () => {
     expect(nodes.length).toBe(6);
     expect(
       nodes.filter((node) =>
-        String(node[entityPrimaryKeyProperty]).startsWith('roster-'),
+        node[entityPrimaryKeyProperty].startsWith('roster-'),
       ).length,
     ).toBe(2);
 

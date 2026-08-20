@@ -8,6 +8,7 @@ import {
 
 import { generateEntityAttributes } from '../constraints/generateEntityAttributes';
 import type { EntityConstraints } from '../constraints/types';
+import { chooseLinkedPairs, unorderedPairs } from '../utils/edgeTopology';
 import { invariant } from '../utils/invariant';
 import { sampleCount, countUniform } from '../utils/sampleCount';
 import {
@@ -16,10 +17,6 @@ import {
 } from './shared/composerValues';
 import { nextGridPosition, readCanvasPosition } from './shared/gridPlacement';
 import { currentStepOf, generationFor } from './shared/stageContext';
-import {
-  chooseWithoutReplacement,
-  topologyEdgeTarget,
-} from './shared/topology';
 import type { SimulationContext, StageSimulator } from './types';
 
 type ComposerStage = Extract<Stage, { type: 'NetworkComposer' }>;
@@ -61,19 +58,6 @@ const asHullMembership = (value: VariableValue): string[] =>
     .map(String);
 
 /** The unordered pairs of a node list, in node-list order. */
-const pairsOf = (nodes: readonly NcNode[]): [string, string][] => {
-  const pairs: [string, string][] = [];
-  for (let first = 0; first < nodes.length; first += 1) {
-    for (let second = first + 1; second < nodes.length; second += 1) {
-      const a = nodes[first];
-      const b = nodes[second];
-      if (a === undefined || b === undefined) continue;
-      pairs.push([a[entityPrimaryKeyProperty], b[entityPrimaryKeyProperty]]);
-    }
-  }
-  return pairs;
-};
-
 /**
  * Simulate a Network Composer session.
  *
@@ -337,18 +321,18 @@ function drawComposedEdges({
     const connected = new Set(
       engine.draft.network.edges
         .filter((edge) => edge.type === edgeType)
-        .map((edge) => [edge.from, edge.to].toSorted().join(' ')),
+        .map((edge) => [edge.from, edge.to].toSorted().join('\u0000')),
     );
-    const available = pairsOf(nodes).filter(
-      ([from, to]) => !connected.has([from, to].toSorted().join(' ')),
+    const available = unorderedPairs(nodes).filter(
+      ([from, to]) => !connected.has([from, to].toSorted().join('\u0000')),
     );
 
-    const target = topologyEdgeTarget(
+    const linked = chooseLinkedPairs({
       topology,
+      pairs: available,
+      nodeCount: nodes.length,
       streams,
-      available.length,
-      nodes.length,
-    );
+    });
 
     const scope = { entity: 'edge', type: edgeType } as const;
     const fields = formFields(edgeEntry.form);
@@ -362,33 +346,35 @@ function drawComposedEdges({
             interfaceRules: context.interfaceRules,
           });
 
-    chooseWithoutReplacement(available, target, streams).forEach(
-      ([from, to], index) => {
-        // Created bare, exactly as `connect` dispatches it: the inspector is a
-        // separate act, and an edge nobody opened carries nothing.
-        const edge = engine.addEdge({
-          edgeType,
-          uid: streams.uuid(),
-          from,
-          to,
-          currentStep,
-        });
+    let linkedIndex = 0;
+    for (const [position, [from, to]] of available.entries()) {
+      if (!linked.has(position)) continue;
+      // Created bare, exactly as `connect` dispatches it: the inspector is a
+      // separate act, and an edge nobody opened carries nothing.
+      const edge = engine.addEdge({
+        edgeType,
+        uid: streams.uuid(),
+        from,
+        to,
+        currentStep,
+      });
+      const index = linkedIndex;
+      linkedIndex += 1;
 
-        if (constraints === undefined) return;
-        const values = generateEntityAttributes(
-          constraints,
-          generation,
-          scope,
-          index,
-          { only: fields },
-        );
-        if (Object.keys(values).length === 0) return;
+      if (constraints === undefined) continue;
+      const values = generateEntityAttributes(
+        constraints,
+        generation,
+        scope,
+        index,
+        { only: fields },
+      );
+      if (Object.keys(values).length === 0) continue;
 
-        engine.updateEdge({
-          edgeId: edge[entityPrimaryKeyProperty],
-          attributePatch: { set: values, unset: [] },
-        });
-      },
-    );
+      engine.updateEdge({
+        edgeId: edge[entityPrimaryKeyProperty],
+        attributePatch: { set: values, unset: [] },
+      });
+    }
   }
 }

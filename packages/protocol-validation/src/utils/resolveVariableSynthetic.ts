@@ -759,12 +759,19 @@ const isBinPromptAssignment = (
 };
 
 /**
- * Whether a writer's path is a NameGeneratorQuickAdd's own `quickAdd` field.
+ * Whether a writer's path is a stage's own `quickAdd` field — a
+ * NameGeneratorQuickAdd's, or a NetworkComposer's palette input.
  *
- * That interface collects one thing and will not create a node from an empty
- * one, so the variable behind it is answered whenever the stage produces
- * anybody at all.
+ * Both interfaces collect one thing and will not create a node from an empty
+ * one (`AddNodeInput` refuses a blank name in each), so the variable behind
+ * the field is answered whenever the stage produces anybody at all — a
+ * `missingProbability` on it would describe nodes neither interface can make.
  */
+const QUICK_ADD_STAGE_TYPES = new Set([
+  'NameGeneratorQuickAdd',
+  'NetworkComposer',
+]);
+
 const isQuickAddField = (
   path: readonly (string | number)[],
   stages: readonly unknown[],
@@ -774,7 +781,11 @@ const isQuickAddField = (
   if (root !== 'stages' || typeof stageIndex !== 'number') return false;
   if (key !== 'quickAdd') return false;
   const stage = stages[stageIndex];
-  return isRecord(stage) && stage.type === 'NameGeneratorQuickAdd';
+  return (
+    isRecord(stage) &&
+    typeof stage.type === 'string' &&
+    QUICK_ADD_STAGE_TYPES.has(stage.type)
+  );
 };
 
 /**
