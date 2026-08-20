@@ -27,7 +27,7 @@ export {
 } from './forms/ProtocolField';
 
 export { createInitialNetwork } from './contract/network';
-// Public utilities (consumed by sibling monorepo packages, e.g. network-exporters)
+// Public utilities (consumed by the host apps — Interviewer, Architect, Fresco)
 export { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 export { getInterviewProgress } from './selectors/utils';
 export { getNodeLabelAttribute } from './utils/getNodeLabelAttribute';

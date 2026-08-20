@@ -112,16 +112,32 @@ const SYNTHETIC_SHOWCASE = path.resolve(
   '../../../../packages/protocols/e2e/synthetic-showcase/protocol.json',
 );
 
-/** A zip stand-in exposing only what the import flow reads from one. */
-const zipContaining = (document: unknown) => ({
-  file: (name: string) =>
-    name === 'protocol.json'
-      ? { async: () => Promise.resolve(JSON.stringify(document)) }
-      : null,
+/**
+ * A zip stand-in exposing only what the import flow reads from one:
+ * protocol.json as a string, and any `assets/<source>` entries as Blobs (the
+ * asset fetch calls `.async('blob')` and throws on a manifest source the
+ * archive lacks).
+ */
+const zipContaining = (
+  document: unknown,
+  assets: Record<string, string> = {},
+) => ({
+  file: (name: string) => {
+    if (name === 'protocol.json') {
+      return { async: () => Promise.resolve(JSON.stringify(document)) };
+    }
+    const asset = assets[name.replace(/^assets\//, '')];
+    return asset === undefined
+      ? null
+      : { async: () => Promise.resolve(new Blob([asset])) };
+  },
 });
 
-const runImport = async (document: unknown) => {
-  loadAsync.mockResolvedValue(zipContaining(document));
+const runImport = async (
+  document: unknown,
+  assets: Record<string, string> = {},
+) => {
+  loadAsync.mockResolvedValue(zipContaining(document, assets));
 
   const { result } = renderHook(() => useProtocolImport());
   result.current.importProtocols([
@@ -181,12 +197,21 @@ describe('hash boundary (plan §1.3)', () => {
   // Still skipped after Phase 1.3: the showcase protocol this reads lands in
   // the parallel §1.5 workstream. Un-skip when integrating that work — the
   // hash boundary it depends on is already in place.
-  it.skip('imports a protocol carrying authored synthetic blocks cleanly', async () => {
+  it('imports a protocol carrying authored synthetic blocks cleanly', async () => {
     const showcase: unknown = JSON.parse(
       readFileSync(SYNTHETIC_SHOWCASE, 'utf8'),
     );
+    // The showcase's assetManifest names its roster; the asset fetch throws
+    // on a manifest source the archive lacks, so the stand-in must carry it.
+    const roster = readFileSync(
+      path.resolve(
+        path.dirname(SYNTHETIC_SHOWCASE),
+        'assets/colleagues-roster.json',
+      ),
+      'utf8',
+    );
 
-    await runImport(showcase);
+    await runImport(showcase, { 'colleagues-roster.json': roster });
 
     expect(insertProtocol).toHaveBeenCalledTimes(1);
   });

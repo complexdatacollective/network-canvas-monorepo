@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 // Named import: the archive builder below already binds `path` as a loop
 // variable, and a default import would shadow it.
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -240,9 +240,15 @@ describe('hash boundary (plan §1.3)', () => {
   // Still skipped after Phase 1.3: the showcase protocol this reads lands in
   // the parallel §1.5 workstream. Un-skip when integrating that work — the
   // hash boundary it depends on is already in place.
-  it.skip('imports a protocol carrying authored synthetic blocks cleanly', async () => {
+  it('imports a protocol carrying authored synthetic blocks cleanly', async () => {
+    // The showcase's assetManifest names its roster; extraction fails fast on
+    // a manifest source missing from assets/, so the archive must carry it.
     const bytes = await buildArchive({
       'protocol.json': readFileSync(SYNTHETIC_SHOWCASE, 'utf8'),
+      'assets/colleagues-roster.json': readFileSync(
+        resolve(dirname(SYNTHETIC_SHOWCASE), 'assets/colleagues-roster.json'),
+        'utf8',
+      ),
     });
 
     const result = await importProtocolFromFile(asFile(bytes));
