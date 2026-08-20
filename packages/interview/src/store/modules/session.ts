@@ -118,7 +118,6 @@ export type SessionState = {
   network: NcNetwork;
   promptIndex?: number;
   stageMetadata?: StageMetadata; // Used as temporary storage by DyadCensus/TieStrengthCensus
-  stageRequiresEncryption?: boolean; // Set to true by the stage if it detects that nodes it creates require encryption
 };
 
 const actionTypes = {
@@ -362,8 +361,8 @@ export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
  * Signals that the host-controlled `currentStep` has changed and any
  * stage-local Redux state should be reset. The reducer resets
- * `promptIndex` to 0 and clears `stageRequiresEncryption`. The `currentStep`
- * itself is NOT stored in Redux — it lives in `CurrentStepContext`.
+ * `promptIndex` to 0. The `currentStep` itself is NOT stored in Redux — it
+ * lives in `CurrentStepContext`.
  */
 export const transitionStage = createAction(actionTypes.transitionStage);
 
@@ -776,7 +775,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
     return withLastUpdated({
       ...state,
       promptIndex: 0,
-      stageRequiresEncryption: false,
     });
   });
 

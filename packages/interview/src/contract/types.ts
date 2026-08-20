@@ -1,5 +1,12 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
+import type { SessionPayload } from '@codaco/shared-consts';
+
+/**
+ * `SessionPayload` lives in `@codaco/shared-consts` so authoring-side callers
+ * can build a session without depending on the interview runtime. Re-exported
+ * here so both of this package's public entry points keep exposing it.
+ */
+export type { SessionPayload } from '@codaco/shared-consts';
 
 /**
  * Package-internal asset representation. Has only the fields the interviewer
@@ -33,22 +40,6 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
   hash: string;
   importedAt: string; // ISO
   assets: ResolvedAsset[];
-};
-
-/**
- * Session payload. Matches the persisted session state used by the reducer,
- * but is kept explicit so the public contract does not expose Redux internals.
- */
-export type SessionPayload = {
-  id: string;
-  startTime: string;
-  finishTime: string | null;
-  exportTime: string | null;
-  lastUpdated: string;
-  network: NcNetwork;
-  promptIndex?: number;
-  stageMetadata?: StageMetadata;
-  stageRequiresEncryption?: boolean;
 };
 
 export type InterviewPayload = {

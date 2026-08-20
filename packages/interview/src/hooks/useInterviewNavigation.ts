@@ -359,11 +359,11 @@ export default function useInterviewNavigation(
 
   // AnimatePresence's onExitComplete callback. Runs synchronously after the
   // previous stage has fully exited and is about to be unmounted. We must
-  // reset stage-local Redux state (`transitionStage` clears promptIndex,
-  // stageRequiresEncryption, and the passphrase prompter) BEFORE the new
-  // stage's first render — otherwise the new stage's components see a
-  // stale promptIndex from the previous stage and may crash trying to
-  // access a prompt that doesn't exist on the new stage type.
+  // reset stage-local Redux state (`transitionStage` clears promptIndex and
+  // the passphrase prompter) BEFORE the new stage's first render — otherwise
+  // the new stage's components see a stale promptIndex from the previous
+  // stage and may crash trying to access a prompt that doesn't exist on the
+  // new stage type.
   const handleExitComplete = useCallback(() => {
     commitDisplayedStep();
     dispatch(transitionStage());

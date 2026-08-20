@@ -54,3 +54,109 @@ export const isStageSkipped = (
 
   return skipLogic.action === 'SKIP' ? matches : !matches;
 };
+
+export type AvailableStage = { kind: 'available' };
+
+export type LocallySkippedStage = {
+  kind: 'local-skip';
+  destination?: SkipLogicDestination;
+};
+
+export type BypassedStage = {
+  kind: 'bypassed';
+  by: {
+    stageId: string;
+    stageIndex: number;
+    destination: SkipLogicDestination;
+  };
+};
+
+export type StageAvailability =
+  | AvailableStage
+  | LocallySkippedStage
+  | BypassedStage;
+
+export type UnavailableStage = LocallySkippedStage | BypassedStage;
+
+export type RoutableStage = {
+  id: string;
+  skipLogic?: SkipLogic;
+};
+
+const AVAILABLE: AvailableStage = { kind: 'available' };
+
+/**
+ * Build the active interview route in protocol order.
+ *
+ * A hidden, reachable stage may bypass the stages before its configured
+ * destination. Rules on those bypassed stages are deliberately not evaluated;
+ * the destination itself remains reachable and is evaluated normally, which
+ * allows destinations to chain when they are also hidden.
+ *
+ * `stages` includes the synthetic FinishSession entry as its final item.
+ *
+ * Lives here rather than in the interview runtime because it is not only the
+ * runtime's question: synthetic generation walks the same route, and a second
+ * implementation of these bypass rules would be a second answer to "which
+ * stages does this participant see".
+ */
+export const buildStageAvailabilityMap = (
+  stages: readonly RoutableStage[],
+  network: NcNetwork,
+): Record<number, StageAvailability> => {
+  const availability = Object.fromEntries(
+    stages.map((_, index) => [index, AVAILABLE]),
+  ) as Record<number, StageAvailability>;
+  const finishIndex = stages.length - 1;
+  const protocolStages = stages.slice(0, finishIndex);
+
+  for (let stageIndex = 0; stageIndex < stages.length; stageIndex += 1) {
+    if (availability[stageIndex]?.kind === 'bypassed') {
+      continue;
+    }
+
+    const stage = stages[stageIndex];
+    if (!stage?.skipLogic || !isStageSkipped(stage.skipLogic, network)) {
+      continue;
+    }
+
+    const { destination } = stage.skipLogic;
+    availability[stageIndex] = {
+      kind: 'local-skip',
+      ...(destination ? { destination } : {}),
+    };
+
+    if (!destination) {
+      continue;
+    }
+
+    const destinationIndex = resolveSkipLogicDestinationIndex(
+      destination,
+      protocolStages,
+      stageIndex,
+    );
+
+    // Protocol validation guarantees a real forward target. Keep this
+    // defensive for preview/host payloads that may not have been validated.
+    if (destinationIndex === undefined) {
+      continue;
+    }
+
+    for (
+      let bypassedIndex = stageIndex + 1;
+      bypassedIndex < destinationIndex;
+      bypassedIndex += 1
+    ) {
+      availability[bypassedIndex] = {
+        kind: 'bypassed',
+        by: {
+          stageId: stage.id,
+          stageIndex,
+          destination,
+        },
+      };
+    }
+  }
+
+  return availability;
+};

@@ -1,127 +1,31 @@
 import { createSelector } from '@reduxjs/toolkit';
 
 import {
-  isStageSkipped,
-  resolveSkipLogicDestinationIndex,
+  buildStageAvailabilityMap,
+  type RoutableStage,
+  type StageAvailability,
 } from '@codaco/network-query';
-import type {
-  SkipLogic,
-  SkipLogicDestination,
-} from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import { getStages } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { getNetwork, getStageIndex } from './session';
 
-type RoutableStage = {
-  id: string;
-  skipLogic?: SkipLogic;
-};
-
-export type AvailableStage = {
-  kind: 'available';
-};
-
-export type LocallySkippedStage = {
-  kind: 'local-skip';
-  destination?: SkipLogicDestination;
-};
-
-export type BypassedStage = {
-  kind: 'bypassed';
-  by: {
-    stageId: string;
-    stageIndex: number;
-    destination: SkipLogicDestination;
-  };
-};
-
-export type StageAvailability =
-  | AvailableStage
-  | LocallySkippedStage
-  | BypassedStage;
-
-export type UnavailableStage = LocallySkippedStage | BypassedStage;
+/**
+ * The availability types describe the route `buildStageAvailabilityMap` walks,
+ * so they live beside it in `@codaco/network-query`. Re-exported here to keep
+ * one import path for the runtime components that consume them.
+ */
+export type {
+  StageAvailability,
+  UnavailableStage,
+} from '@codaco/network-query';
 
 export type NavigableStages = {
   currentAvailability: StageAvailability | undefined;
   isCurrentStepValid: boolean;
   nextValidStageIndex: number;
   previousValidStageIndex: number;
-};
-
-const AVAILABLE: AvailableStage = { kind: 'available' };
-
-/**
- * Build the active interview route in protocol order.
- *
- * A hidden, reachable stage may bypass the stages before its configured
- * destination. Rules on those bypassed stages are deliberately not evaluated;
- * the destination itself remains reachable and is evaluated normally, which
- * allows destinations to chain when they are also hidden.
- *
- * `stages` includes the synthetic FinishSession entry as its final item.
- */
-export const buildStageAvailabilityMap = (
-  stages: readonly RoutableStage[],
-  network: NcNetwork,
-): Record<number, StageAvailability> => {
-  const availability = Object.fromEntries(
-    stages.map((_, index) => [index, AVAILABLE]),
-  ) as Record<number, StageAvailability>;
-  const finishIndex = stages.length - 1;
-  const protocolStages = stages.slice(0, finishIndex);
-
-  for (let stageIndex = 0; stageIndex < stages.length; stageIndex += 1) {
-    if (availability[stageIndex]?.kind === 'bypassed') {
-      continue;
-    }
-
-    const stage = stages[stageIndex];
-    if (!stage?.skipLogic || !isStageSkipped(stage.skipLogic, network)) {
-      continue;
-    }
-
-    const { destination } = stage.skipLogic;
-    availability[stageIndex] = {
-      kind: 'local-skip',
-      ...(destination ? { destination } : {}),
-    };
-
-    if (!destination) {
-      continue;
-    }
-
-    const destinationIndex = resolveSkipLogicDestinationIndex(
-      destination,
-      protocolStages,
-      stageIndex,
-    );
-
-    // Protocol validation guarantees a real forward target. Keep the runtime
-    // defensive for preview/host payloads that may not have been validated.
-    if (destinationIndex === undefined) {
-      continue;
-    }
-
-    for (
-      let bypassedIndex = stageIndex + 1;
-      bypassedIndex < destinationIndex;
-      bypassedIndex += 1
-    ) {
-      availability[bypassedIndex] = {
-        kind: 'bypassed',
-        by: {
-          stageId: stage.id,
-          stageIndex,
-          destination,
-        },
-      };
-    }
-  }
-
-  return availability;
 };
 
 /**
