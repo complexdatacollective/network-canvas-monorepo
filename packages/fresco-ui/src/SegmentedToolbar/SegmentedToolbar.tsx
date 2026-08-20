@@ -933,7 +933,24 @@ export function SegmentedToolbar({
           'relative flex min-w-0 items-center gap-1',
           orientation === 'vertical'
             ? 'flex-col'
-            : 'm-[-5px] overflow-x-auto overscroll-x-contain p-[5px]',
+            : // The horizontal lane scrolls so that segments which do not fit
+              // stay reachable, with 5px of headroom because a non-`visible`
+              // `overflow-x` clips the other axis too and would otherwise slice
+              // the focus ring off every segment.
+              //
+              // It scrolls WITHOUT scrollbar chrome, because the only thing
+              // that reliably paints one is the toolbar's own motion. Swapping
+              // the segments pins each departing control at its old coordinates
+              // with `position: absolute` (AnimatePresence `popLayout`) and
+              // writes layout-projection transforms on the ones that stay, so
+              // `scrollWidth` runs some 80px past `clientWidth` for the length
+              // of every hand-off. At rest the two are equal. Left to `auto`,
+              // that overshoot flashes a scrollbar across the pill — and where
+              // the platform reserves space for one, grows it 15px taller
+              // mid-animation — to advertise content that was never out of
+              // reach. Genuine overflow still scrolls by wheel, by touch, and
+              // by the toolbar's roving focus.
+              'm-[-5px] scrollbar-none overflow-x-auto overscroll-x-contain p-[5px] [&::-webkit-scrollbar]:hidden',
         )}
       >
         <GroupDisabledContext.Provider value={disabled}>
