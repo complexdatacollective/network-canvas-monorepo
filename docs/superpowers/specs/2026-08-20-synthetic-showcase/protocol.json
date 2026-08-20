@@ -1,0 +1,607 @@
+{
+  "name": "Synthetic Showcase",
+  "description": "Purpose-built demonstration protocol for the synthetic interview generation design (2026-08-20). Every stage that creates or writes data carries authored `synthetic` parameters exercising the full proposed surface: node-count distributions, edge topology, roster and panel nomination, option weights, selection counts, missingness, text generators, relative date windows, burden overrides, and a consent skip-to-finish route. Stripped of its `synthetic` blocks it validates against the shipped v8 schema.",
+  "schemaVersion": 8,
+  "stages": [
+    {
+      "id": "information-welcome",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "About this interview",
+      "items": [
+        {
+          "id": "welcome-text",
+          "type": "text",
+          "content": "This interview asks about the important people in your life and how they are connected to each other. It takes most people about twenty minutes.\n\nYour answers are saved as you go."
+        }
+      ]
+    },
+    {
+      "id": "ego-consent",
+      "type": "EgoForm",
+      "label": "Consent",
+      "introductionPanel": {
+        "title": "Taking part",
+        "text": "Before we begin, please tell us your name and confirm that you are happy to take part. Your responses cannot be changed after you finish the interview."
+      },
+      "form": {
+        "fields": [
+          { "variable": "ego_name", "prompt": "What is your name?" },
+          {
+            "variable": "consent",
+            "prompt": "Are you happy to take part in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ego-details",
+      "type": "EgoForm",
+      "label": "About you",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "rule-consent-declined",
+              "type": "ego",
+              "options": {
+                "attribute": "consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": { "type": "finish" }
+      },
+      "introductionPanel": {
+        "title": "A little about you",
+        "text": "These questions help us understand your answers later in the interview."
+      },
+      "form": {
+        "fields": [
+          { "variable": "dob", "prompt": "What is your date of birth?" },
+          {
+            "variable": "favourite_day",
+            "prompt": "Pick a day from the last year that was special to you."
+          },
+          {
+            "variable": "household_size",
+            "prompt": "How many people live in your household, including you?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ng-quickadd-support",
+      "type": "NameGeneratorQuickAdd",
+      "label": "Quick add: people who matter",
+      "quickAdd": "name",
+      "subject": { "entity": "node", "type": "person" },
+      "behaviours": { "minNodes": 3, "maxNodes": 15 },
+      "synthetic": {
+        "responseBurden": 0.25,
+        "count": {
+          "distribution": "normal",
+          "mean": 8,
+          "sd": 2,
+          "min": 3,
+          "max": 15
+        }
+      },
+      "prompts": [
+        {
+          "id": "support-first",
+          "text": "Who are the people you talk to about things that matter to you?",
+          "additionalAttributes": [
+            { "variable": "close_friend", "value": true }
+          ]
+        },
+        {
+          "id": "support-more",
+          "text": "Is there anyone else who is important to you, even if you talk less often?"
+        }
+      ]
+    },
+    {
+      "id": "ng-form-family",
+      "type": "NameGenerator",
+      "label": "Family and detail",
+      "subject": { "entity": "node", "type": "person" },
+      "form": {
+        "title": "Add a person",
+        "fields": [
+          { "variable": "name", "prompt": "What is this person's name?" },
+          { "variable": "nickname", "prompt": "Do they go by a nickname?" },
+          { "variable": "age", "prompt": "How old are they?" },
+          {
+            "variable": "occupation",
+            "prompt": "What do they do for a living?"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": "panel-already-mentioned",
+          "title": "People you already mentioned",
+          "dataSource": "existing",
+          "synthetic": { "nominationProbability": 0.5 }
+        }
+      ],
+      "synthetic": {
+        "count": { "distribution": "poisson", "mean": 3 }
+      },
+      "prompts": [
+        {
+          "id": "family-members",
+          "text": "Which family members have you been in contact with during the last six months?"
+        }
+      ]
+    },
+    {
+      "id": "ng-roster-colleagues",
+      "type": "NameGeneratorRoster",
+      "label": "Colleagues roster",
+      "subject": { "entity": "node", "type": "person" },
+      "dataSource": "colleagues-roster",
+      "cardOptions": {
+        "additionalProperties": [
+          { "label": "Age", "variable": "age" },
+          { "label": "Role", "variable": "occupation" }
+        ]
+      },
+      "sortOptions": {
+        "sortOrder": [{ "property": "name", "direction": "asc" }],
+        "sortableProperties": [
+          { "label": "Name", "variable": "name" },
+          { "label": "Age", "variable": "age" }
+        ]
+      },
+      "searchOptions": {
+        "fuzziness": 0.3,
+        "matchProperties": ["name", "occupation"]
+      },
+      "behaviours": { "maxNodes": 6 },
+      "synthetic": {
+        "count": { "distribution": "uniform", "min": 2, "max": 6 }
+      },
+      "prompts": [
+        {
+          "id": "colleagues-known",
+          "text": "Which of these colleagues do you know personally?"
+        }
+      ]
+    },
+    {
+      "id": "sociogram-ties",
+      "type": "Sociogram",
+      "label": "Connections",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 4, "skewedTowardCenter": true },
+      "behaviours": { "automaticLayout": true },
+      "synthetic": {
+        "responseBurden": 0.9,
+        "topology": {
+          "metric": "meanDegree",
+          "distribution": {
+            "distribution": "normal",
+            "mean": 2.5,
+            "sd": 1,
+            "min": 0
+          }
+        }
+      },
+      "prompts": [
+        {
+          "id": "ties-draw",
+          "text": "Connect the people who know each other.",
+          "layout": { "layoutVariable": "sociogram_layout" },
+          "edges": { "create": "friend", "display": ["friend"] }
+        },
+        {
+          "id": "ties-supportive",
+          "text": "Tap the people you could rely on in a difficult time.",
+          "layout": { "layoutVariable": "sociogram_layout" },
+          "edges": { "display": ["friend", "colleague"] },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "is_supportive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "census-colleague-ties",
+      "type": "DyadCensus",
+      "label": "Working relationships",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "Working together",
+        "text": "We will now go through pairs of people you have mentioned and ask whether they work together."
+      },
+      "synthetic": {
+        "topology": {
+          "metric": "density",
+          "distribution": { "distribution": "beta", "mean": 0.2, "sd": 0.1 }
+        }
+      },
+      "prompts": [
+        {
+          "id": "census-work",
+          "text": "Do these two people work together?",
+          "createEdge": "colleague"
+        }
+      ]
+    },
+    {
+      "id": "tsc-closeness",
+      "type": "TieStrengthCensus",
+      "label": "How close are they?",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "Closeness between people",
+        "text": "For each pair of people, tell us how close they are to one another."
+      },
+      "synthetic": {
+        "responseBurden": 1.2,
+        "topology": {
+          "metric": "density",
+          "distribution": { "distribution": "uniform", "min": 0.3, "max": 0.5 }
+        }
+      },
+      "prompts": [
+        {
+          "id": "tsc-friend-strength",
+          "text": "How close are these two people to one another?",
+          "createEdge": "friend",
+          "edgeVariable": "closeness_rating",
+          "negativeLabel": "They don't know each other"
+        }
+      ]
+    },
+    {
+      "id": "ordbin-contact",
+      "type": "OrdinalBin",
+      "label": "Contact frequency",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "contact-how-often",
+          "text": "When did you last have contact with each person?",
+          "variable": "contact_freq",
+          "color": "ord-color-seq-3"
+        }
+      ]
+    },
+    {
+      "id": "catbin-support",
+      "type": "CategoricalBin",
+      "label": "Kinds of support",
+      "subject": { "entity": "node", "type": "person" },
+      "prompts": [
+        {
+          "id": "support-kind",
+          "text": "What kind of support does each person give you?",
+          "variable": "support_types",
+          "otherVariable": "support_other",
+          "otherVariablePrompt": "What other kind of support do they give you?",
+          "otherOptionLabel": "Something else",
+          "synthetic": { "otherBinProbability": 0.15 }
+        }
+      ]
+    },
+    {
+      "id": "alterform-details",
+      "type": "AlterForm",
+      "label": "About each person",
+      "subject": { "entity": "node", "type": "person" },
+      "introductionPanel": {
+        "title": "A few details about each person",
+        "text": "We will show you each person you mentioned and ask a few questions about them."
+      },
+      "form": {
+        "fields": [
+          { "variable": "age", "prompt": "How old are they?" },
+          {
+            "variable": "occupation",
+            "prompt": "What do they do for a living?"
+          },
+          {
+            "variable": "closeness",
+            "prompt": "How close do you feel to them?"
+          },
+          {
+            "variable": "first_met",
+            "prompt": "Roughly when did you first meet?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "alteredgeform-friendships",
+      "type": "AlterEdgeForm",
+      "label": "About each friendship",
+      "subject": { "entity": "edge", "type": "friend" },
+      "introductionPanel": {
+        "title": "About each friendship",
+        "text": "For each pair of people who know each other, tell us a little about their relationship."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "shared_interests",
+            "prompt": "What do these two people share?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "narrative-review",
+      "type": "Narrative",
+      "label": "Your network",
+      "subject": { "entity": "node", "type": "person" },
+      "background": { "concentricCircles": 2, "skewedTowardCenter": false },
+      "behaviours": { "freeDraw": true, "allowRepositioning": true },
+      "presets": [
+        {
+          "id": "preset-support",
+          "label": "Support network",
+          "layoutVariable": "sociogram_layout",
+          "edges": { "display": ["friend"] },
+          "highlight": ["is_supportive"]
+        }
+      ]
+    },
+    {
+      "id": "information-thanks",
+      "type": "Information",
+      "label": "Thank you",
+      "title": "Thank you",
+      "items": [
+        {
+          "id": "thanks-text",
+          "type": "text",
+          "content": "That is everything. Thank you for taking the time to share your answers.\n\nPress the button below to finish the interview."
+        }
+      ]
+    }
+  ],
+  "codebook": {
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text",
+          "validation": { "required": true },
+          "synthetic": { "generator": "personName" }
+        },
+        "consent": {
+          "name": "consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            { "label": "Yes, I am happy to take part", "value": true },
+            {
+              "label": "No, I do not want to take part",
+              "value": false,
+              "negative": true
+            }
+          ],
+          "validation": { "required": true },
+          "synthetic": { "probabilityTrue": 0.95 }
+        },
+        "dob": {
+          "name": "dob",
+          "type": "datetime",
+          "component": "DatePicker",
+          "parameters": {
+            "type": "full",
+            "min": "1940-01-01",
+            "max": "2008-12-31"
+          },
+          "validation": { "required": true }
+        },
+        "favourite_day": {
+          "name": "favourite_day",
+          "type": "datetime",
+          "component": "RelativeDatePicker",
+          "parameters": { "before": 365 },
+          "validation": { "differentFrom": "dob" }
+        },
+        "household_size": {
+          "name": "household_size",
+          "type": "number",
+          "component": "Number",
+          "validation": { "minValue": 1, "maxValue": 15 },
+          "synthetic": {
+            "distribution": "normal",
+            "mean": 2.8,
+            "sd": 1.4,
+            "min": 1
+          }
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": { "required": true, "unique": true },
+            "synthetic": { "generator": "personName" }
+          },
+          "nickname": {
+            "name": "nickname",
+            "type": "text",
+            "component": "Text",
+            "validation": { "differentFrom": "name" }
+          },
+          "age": {
+            "name": "age",
+            "type": "number",
+            "component": "Number",
+            "validation": { "minValue": 18, "maxValue": 90 },
+            "synthetic": { "distribution": "normal", "mean": 35, "sd": 12 }
+          },
+          "occupation": {
+            "name": "occupation",
+            "type": "text",
+            "component": "Text",
+            "synthetic": {
+              "generator": "occupation",
+              "missingProbability": 0.2
+            }
+          },
+          "closeness": {
+            "name": "closeness",
+            "type": "scalar",
+            "component": "VisualAnalogScale",
+            "parameters": {
+              "minLabel": "Not close at all",
+              "maxLabel": "Extremely close"
+            },
+            "synthetic": { "distribution": "beta", "mean": 0.6, "sd": 0.2 }
+          },
+          "is_supportive": {
+            "name": "is_supportive",
+            "type": "boolean",
+            "component": "Toggle",
+            "synthetic": { "probabilityTrue": 0.25 }
+          },
+          "close_friend": {
+            "name": "close_friend",
+            "type": "boolean"
+          },
+          "contact_freq": {
+            "name": "contact_freq",
+            "type": "ordinal",
+            "options": [
+              { "label": "Within the last week", "value": 4 },
+              { "label": "Within the last month", "value": 3 },
+              { "label": "Within the last year", "value": 2 },
+              { "label": "More than a year ago", "value": 1 },
+              { "label": "Never", "value": -1 }
+            ],
+            "synthetic": {
+              "optionWeights": [
+                { "value": 4, "weight": 3 },
+                { "value": 3, "weight": 4 },
+                { "value": 2, "weight": 2 },
+                { "value": 1, "weight": 1 },
+                { "value": -1, "weight": 0.5 }
+              ]
+            }
+          },
+          "support_types": {
+            "name": "support_types",
+            "type": "categorical",
+            "options": [
+              { "label": "Emotional support", "value": "emotional" },
+              { "label": "Practical help", "value": "practical" },
+              { "label": "Financial help", "value": "financial" },
+              { "label": "Advice", "value": "advice" }
+            ],
+            "synthetic": {
+              "optionWeights": [
+                { "value": "emotional", "weight": 4 },
+                { "value": "practical", "weight": 2 },
+                { "value": "financial", "weight": 1 },
+                { "value": "advice", "weight": 3 }
+              ]
+            }
+          },
+          "support_other": {
+            "name": "support_other",
+            "type": "text",
+            "component": "Text",
+            "validation": { "minLength": 2 }
+          },
+          "first_met": {
+            "name": "first_met",
+            "type": "datetime",
+            "component": "DatePicker",
+            "parameters": { "type": "month", "min": "1990-01" },
+            "synthetic": {
+              "distribution": "uniform",
+              "relative": { "before": 3650, "after": 0 },
+              "missingProbability": 0.1
+            }
+          },
+          "sociogram_layout": {
+            "name": "sociogram_layout",
+            "type": "layout"
+          }
+        }
+      }
+    },
+    "edge": {
+      "friend": {
+        "name": "Friend",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "closeness_rating": {
+            "name": "closeness_rating",
+            "type": "ordinal",
+            "options": [
+              { "label": "Very close", "value": 3 },
+              { "label": "Somewhat close", "value": 2 },
+              { "label": "Not very close", "value": 1 }
+            ],
+            "synthetic": {
+              "optionWeights": [
+                { "value": 3, "weight": 1 },
+                { "value": 2, "weight": 3 },
+                { "value": 1, "weight": 2 }
+              ]
+            }
+          },
+          "shared_interests": {
+            "name": "shared_interests",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              { "label": "Sports or exercise", "value": "sports" },
+              { "label": "Music or the arts", "value": "music" },
+              { "label": "Work or study", "value": "work" },
+              { "label": "Family life", "value": "family" }
+            ],
+            "validation": { "maxSelected": 2 },
+            "synthetic": {
+              "selectionCount": {
+                "probabilities": [
+                  { "count": 1, "probability": 0.6 },
+                  { "count": 2, "probability": 0.4 }
+                ]
+              },
+              "optionWeights": [
+                { "value": "sports", "weight": 2 },
+                { "value": "music", "weight": 2 },
+                { "value": "work", "weight": 3 },
+                { "value": "family", "weight": 1 }
+              ]
+            }
+          }
+        }
+      },
+      "colleague": {
+        "name": "Colleague",
+        "color": "edge-color-seq-2"
+      }
+    }
+  },
+  "assetManifest": {
+    "colleagues-roster": {
+      "type": "network",
+      "name": "colleagues-roster.json",
+      "source": "colleagues-roster.json"
+    }
+  }
+}
