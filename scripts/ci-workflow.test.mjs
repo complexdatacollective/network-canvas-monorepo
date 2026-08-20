@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { GATED_PRODUCT_RELEASE_LANES } from './changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
 
 const workflow = readFileSync(
@@ -477,6 +478,27 @@ test('generated release PRs use the dedicated PAT and rely on native PR CI', () 
   );
   assert.doesNotMatch(productReleaseJob, /gh workflow run ci-and-release\.yml/);
   assert.doesNotMatch(productReleaseJob, /actions: write/);
+});
+
+test('product release PR matrix covers every gated release lane completely', () => {
+  // The matrix and GATED_PRODUCT_RELEASE_LANES must not drift: a lane missing
+  // here never gets a release PR, and a lane package missing from package_args
+  // makes version-gated-products.mjs reject the invocation as incomplete.
+  const productReleaseJob = job('product-release-pr');
+  assert.ok(productReleaseJob, 'product release PR job exists');
+  for (const [lane, packages] of Object.entries(GATED_PRODUCT_RELEASE_LANES)) {
+    assert.match(
+      productReleaseJob,
+      new RegExp(`slug: ${lane}\\b`),
+      `matrix has an entry for the ${lane} lane`,
+    );
+    for (const pkg of packages) {
+      assert.ok(
+        productReleaseJob.includes(`--package '${pkg}'`),
+        `${lane} lane passes --package '${pkg}'`,
+      );
+    }
+  }
 });
 
 test('normal-lane apps do not get separate generated release PRs', () => {

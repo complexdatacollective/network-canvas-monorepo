@@ -6,6 +6,7 @@ import { test } from 'node:test';
 
 import {
   classifyChangeset,
+  GATED_PRODUCT_PACKAGES,
   isMixedChangeset,
   isMultiProductLaneChangeset,
   nextStableVersion,
@@ -22,6 +23,19 @@ test('normal Changesets versions private Architect and Interviewer packages', ()
   assert.deepEqual(config.privatePackages, { version: true, tag: false });
   assert.ok(!config.ignore.includes('@codaco/architect'));
   assert.ok(!config.ignore.includes('@codaco/interviewer'));
+});
+
+test('every separately gated product is in the changesets ignore list', () => {
+  // `changeset version` must never consume a gated product's changesets — a
+  // gated package missing from `ignore` rides the normal Version Packages PR
+  // (dependency bumps included), which is exactly the lane split this module
+  // exists to prevent.
+  const config = JSON.parse(
+    readFileSync(new URL('../.changeset/config.json', import.meta.url), 'utf8'),
+  );
+  for (const pkg of GATED_PRODUCT_PACKAGES) {
+    assert.ok(config.ignore.includes(pkg), `${pkg} must be ignored`);
+  }
 });
 
 test('parseChangeset extracts releases and summary', () => {
@@ -102,6 +116,10 @@ test('releaseLaneForProduct maps only separately gated products', () => {
   assert.equal(releaseLaneForProduct('@codaco/interviewer'), null);
   assert.equal(releaseLaneForProduct('@codaco/documentation'), 'documentation');
   assert.equal(releaseLaneForProduct('@codaco/interview'), null);
+  assert.equal(releaseLaneForProduct('@codaco/studio-client'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-rpc'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-server'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-sync'), 'studio');
 });
 
 test('isMultiProductLaneChangeset allows products in one release lane', () => {
@@ -113,9 +131,23 @@ test('isMultiProductLaneChangeset allows products in one release lane', () => {
       { name: 'networkcanvas.com', type: 'patch' },
     ],
   };
+  const studioLane = {
+    releases: [
+      { name: '@codaco/studio-server', type: 'minor' },
+      { name: '@codaco/studio-sync', type: 'patch' },
+    ],
+  };
+  const studioPlusDocs = {
+    releases: [
+      { name: '@codaco/studio-server', type: 'minor' },
+      { name: '@codaco/documentation', type: 'patch' },
+    ],
+  };
   assert.equal(isMultiProductLaneChangeset(app), false);
   assert.equal(isMultiProductLaneChangeset(lib), false);
   assert.equal(isMultiProductLaneChangeset(twoLanes), true);
+  assert.equal(isMultiProductLaneChangeset(studioLane), false);
+  assert.equal(isMultiProductLaneChangeset(studioPlusDocs), true);
 });
 
 test('nextStableVersion applies the highest requested semver bump', () => {

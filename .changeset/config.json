@@ -16,7 +16,11 @@
     "@codaco/architect-classic",
     "@codaco/interviewer-classic",
     "@codaco/documentation",
-    "networkcanvas.com"
+    "networkcanvas.com",
+    "@codaco/studio-client",
+    "@codaco/studio-rpc",
+    "@codaco/studio-server",
+    "@codaco/studio-sync"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

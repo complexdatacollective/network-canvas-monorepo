@@ -115,7 +115,14 @@ test('release lane suites match the workspace dependency graph', () => {
   // the real package.json files so SUITES_BY_RELEASE_REF cannot silently
   // drift when an app gains or drops a suite subject as a dependency.
   const dependenciesByName = new Map();
-  for (const group of ['packages', 'apps', 'tooling', 'workers']) {
+  // apps/studio nests its two deployable halves one level deeper.
+  for (const group of [
+    'packages',
+    'apps',
+    'apps/studio',
+    'tooling',
+    'workers',
+  ]) {
     for (const entry of readdirSync(join(REPO_ROOT, group), {
       withFileTypes: true,
     })) {
@@ -150,6 +157,12 @@ test('release lane suites match the workspace dependency graph', () => {
   const productLanes = {
     [NORMAL_RELEASE_REF]: ['@codaco/architect', '@codaco/interviewer'],
     'changeset-release/documentation': ['@codaco/documentation'],
+    'changeset-release/studio': [
+      '@codaco/studio-client',
+      '@codaco/studio-rpc',
+      '@codaco/studio-server',
+      '@codaco/studio-sync',
+    ],
     'changeset-release/website': ['networkcanvas.com'],
   };
   for (const [releaseRef, products] of Object.entries(productLanes)) {
@@ -258,6 +271,7 @@ test('all release policies share the central snapshot PR target', () => {
     ['pull_request', 'changeset-release/main'],
     ['workflow_dispatch', NORMAL_RELEASE_REF],
     ['workflow_dispatch', 'changeset-release/documentation'],
+    ['workflow_dispatch', 'changeset-release/studio'],
     ['workflow_dispatch', 'changeset-release/website'],
   ]) {
     assert.deepEqual(

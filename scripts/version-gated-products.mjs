@@ -85,15 +85,33 @@ export function applyProductReleases(cwd, plans, consumed) {
   }
 }
 
+// What merging each lane's release PR actually does. Documentation and
+// Website deploy to production from their release jobs; Studio has no
+// automated deploy lane yet, so its release PR only records versions and
+// changelogs.
+const LANE_MERGE_EFFECTS = {
+  documentation: (products) =>
+    `Merging this PR releases ${products} to Netlify **production**.`,
+  website: (products) =>
+    `Merging this PR releases ${products} to Netlify **production**.`,
+  studio: (products) =>
+    `Merging this PR versions ${products} and records the changelog entries below. Studio has no automated production deploy lane yet.`,
+};
+
 export function renderPrBody(plans) {
   if (plans.length === 0) return 'No product changes pending.\n';
   const lanes = new Set(plans.map((plan) => releaseLaneForProduct(plan.pkg)));
   if (lanes.size !== 1 || lanes.has(null)) {
     throw new Error('Each release PR must contain exactly one product lane.');
   }
+  const [lane] = lanes;
+  const mergeEffect = LANE_MERGE_EFFECTS[lane];
+  if (!mergeEffect) {
+    throw new Error(`Release lane "${lane}" has no merge-effect description.`);
+  }
   const products = plans.map((plan) => `\`${plan.pkg}\``);
   const lines = [
-    `Merging this PR releases ${products.join(' and ')} to Netlify **production**.`,
+    mergeEffect(products.join(' and ')),
     '',
     '| Product | From | To |',
     '| --- | --- | --- |',

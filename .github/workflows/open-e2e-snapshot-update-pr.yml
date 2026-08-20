@@ -46,6 +46,7 @@ jobs:
             const releaseRefs = new Set([
               'changeset-release/documentation',
               'changeset-release/main',
+              'changeset-release/studio',
               'changeset-release/website',
             ]);
             const snapshotBranch = 'e2e-snapshots/main';

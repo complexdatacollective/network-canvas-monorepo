@@ -145,11 +145,16 @@ pnpm publish-packages
   npm; changed apps deploy and receive a GitHub release after that PR merges —
   Architect, Background Creator, and Interviewer to Netlify, Fresco via the
   mirror described below.
-- **Separately gated products** are Documentation and networkcanvas.com. They
-  keep independent stable-semver release PRs, production deploys, and Git tags.
+- **Separately gated products** are Documentation, networkcanvas.com, and
+  Studio. Documentation and Website keep independent stable-semver release PRs,
+  production deploys, and Git tags. The Studio lane covers all four Studio
+  workspace packages (`@codaco/studio-client`, `@codaco/studio-server`,
+  `@codaco/studio-rpc`, `@codaco/studio-sync`); its release PR records versions
+  and changelogs only — Studio has no automated production deploy lane yet.
 - **One release lane per changeset.** A normal-lane changeset may combine
-  libraries, Architect, Background Creator, Interviewer, and Fresco. Never mix
-  Documentation or Website with the normal lane or with each other; the
+  libraries, Architect, Background Creator, Interviewer, and Fresco. A Studio
+  changeset may combine the Studio packages. Never mix Documentation, Website,
+  or Studio with the normal lane or with another gated lane; the
   `pnpm check:changesets` guard rejects it.
 - See the `creating-a-changeset` skill and
   `docs/superpowers/specs/2026-08-03-stable-app-release-design.md`.
@@ -376,8 +381,8 @@ unrecognised paths, or unreadable history.
 Generated release branches (`changeset-release/*`) keep their release-aware
 selection: only suites whose subjects ship in that release lane run. The normal
 Changesets lane (`changeset-release/main`) runs all three because it versions
-libraries, Architect, and Interviewer; the Documentation and Website lanes run
-none. The mapping and feature-PR classifier live in
+libraries, Architect, and Interviewer; the Documentation, Website, and Studio
+lanes run none. The mapping and feature-PR classifier live in
 `scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
 dependency graph. The required `quality` check requires exactly the suites the
 policy selects.
