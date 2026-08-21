@@ -2,13 +2,20 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SyncServer, forceExpire } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore } from '../store.ts';
-import { baseProtocol, makeStoreSchema, storeDb } from './helpers.ts';
+import {
+  GC_OPTS,
+  ageQuarantine,
+  baseProtocol,
+  makeStoreSchema,
+  storeDb,
+} from './helpers.ts';
 
 async function commitDescription(
-  db: pg.Pool,
+  db: TenantDb,
   draftId: string,
   value: string,
   clientSeq: bigint,
@@ -31,26 +38,15 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
   return res.rowCount === 1;
 }
 
-async function ageQuarantine(db: pg.Pool): Promise<void> {
-  await db.query(
-    `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'`,
-  );
-}
-
-const GC_OPTS = {
-  retainManifestsPerDraft: 0,
-  sectionGraceMs: 60_000,
-  commandRetryHorizonMs: 0,
-};
-
 describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb);
   });
   afterAll(async () => {
     await dispose();
@@ -65,14 +61,14 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const published = await store.publishDraft({ draftId });
     if (published.status !== 'published') throw new Error(published.status);
 
-    await commitDescription(db, draftId, 'intermediate', 1n);
+    await commitDescription(tenantDb, draftId, 'intermediate', 1n);
     const intermediateSettingsHash = (await store.getDraftSections(draftId))
       .sectionHashes.settings!;
-    await commitDescription(db, draftId, 'final', 2n);
+    await commitDescription(tenantDb, draftId, 'final', 2n);
     const head = await store.getDraftSections(draftId);
 
     // Expire the live lease: this case is about the manifest/section window.
-    await forceExpire(db, draftId, 'settings');
+    await forceExpire(tenantDb, draftId, 'settings');
     const marked = await gcProtocolStore(db, GC_OPTS);
 
     expect(marked.manifestsDeleted).toBe(2);
@@ -104,7 +100,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(draftId, 'settings', 'retry-tab');
     await sync.commit({
       draftId,
@@ -142,8 +138,8 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'kept', 30n);
-    await forceExpire(db, draftId, 'settings');
+    await commitDescription(tenantDb, draftId, 'kept', 30n);
+    await forceExpire(tenantDb, draftId, 'settings');
     const result = await gcProtocolStore(db, {
       ...GC_OPTS,
       commandRetryHorizonMs: 60_000,
@@ -155,15 +151,15 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'the resumed head', 40n);
-    const sync = new SyncServer(db);
+    await commitDescription(tenantDb, draftId, 'the resumed head', 40n);
+    const sync = new SyncServer(tenantDb);
     const resumed = (await sync.resume(draftId, 'reader-tab')).sectionHashes
       .settings!;
     await db.query(
       `UPDATE sections SET created_at = created_at - interval '1 hour'`,
     );
-    await commitDescription(db, draftId, 'superseding it', 41n);
-    await forceExpire(db, draftId, 'settings');
+    await commitDescription(tenantDb, draftId, 'superseding it', 41n);
+    await forceExpire(tenantDb, draftId, 'settings');
 
     await gcProtocolStore(db, GC_OPTS);
     expect(await sync.getSection(resumed)).toMatchObject({
@@ -195,8 +191,8 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'about to be superseded', 10n);
-    await commitDescription(db, draftId, 'head', 11n);
+    await commitDescription(tenantDb, draftId, 'about to be superseded', 10n);
+    await commitDescription(tenantDb, draftId, 'head', 11n);
 
     const result = await gcProtocolStore(db, GC_OPTS);
     expect(result.sectionsDeleted).toBe(0);
@@ -206,10 +202,10 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    await commitDescription(db, draftId, 'kept in window', 20n);
+    await commitDescription(tenantDb, draftId, 'kept in window', 20n);
     const superseded = (await store.getDraftSections(draftId)).sectionHashes
       .settings!;
-    await commitDescription(db, draftId, 'newest', 21n);
+    await commitDescription(tenantDb, draftId, 'newest', 21n);
 
     await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
     await ageQuarantine(db);

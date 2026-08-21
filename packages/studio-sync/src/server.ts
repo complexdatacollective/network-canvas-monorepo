@@ -11,6 +11,7 @@ import {
   manifestHash,
   type SectionDoc,
 } from './apply.ts';
+import type { TenantDb } from './tenant.ts';
 
 export class LeaseRejectedError extends Error {
   constructor(reason: string) {
@@ -42,10 +43,11 @@ export class UnknownSectionDocumentError extends Error {
 // and a transaction that waits on a row lock past the TTL would otherwise read
 // an expired lease as live.
 
-/** A section is real only if the draft's head manifest lists it. */
+/** A section is real only if the draft's head manifest lists it. Every
+ * embedding statement binds $1 = draft id, $2 = section id, $3 = workspace. */
 const SECTION_EXISTS = `SELECT 1 FROM drafts d
-   JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-   WHERE d.id = $1 AND m.section_hashes ->> $2 IS NOT NULL`;
+   JOIN manifests m ON m.draft_id = d.id AND m.workspace_id = d.workspace_id AND m.seq = d.head_seq
+   WHERE d.id = $1 AND d.workspace_id = $3 AND m.section_hashes ->> $2 IS NOT NULL`;
 
 export type Lease = { epoch: bigint; expiresAt: Date };
 
@@ -63,11 +65,15 @@ export type CommitResult = {
 };
 
 export class SyncServer {
-  private db: pg.Pool;
+  private db: TenantDb;
   private ttlMs: number;
   private validateSection: SectionValidator | undefined;
 
-  constructor(db: pg.Pool, ttlMs = 30_000, validateSection?: SectionValidator) {
+  constructor(
+    db: TenantDb,
+    ttlMs = 30_000,
+    validateSection?: SectionValidator,
+  ) {
     this.db = db;
     this.ttlMs = ttlMs;
     this.validateSection = validateSection;
@@ -75,36 +81,30 @@ export class SyncServer {
 
   async createDraft(draftId: string, sections: Record<string, SectionDoc>) {
     const sectionHashes: Record<string, string> = {};
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
+    const workspaceId = this.db.workspaceId;
+    await this.db.transaction(async (client) => {
       for (const [sectionId, doc] of Object.entries(sections)) {
         const hash = contentHash(doc);
         sectionHashes[sectionId] = hash;
         await client.query(
-          `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-           ON CONFLICT (hash) DO UPDATE
+          `INSERT INTO sections (workspace_id, hash, doc) VALUES ($1, $2, $3)
+           ON CONFLICT (workspace_id, hash) DO UPDATE
            SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-          [hash, doc],
+          [workspaceId, hash, doc],
         );
       }
       const mHash = manifestHash(sectionHashes, null);
       await client.query(
-        `INSERT INTO drafts (id, head_seq, head_manifest_hash) VALUES ($1, 0, $2)`,
-        [draftId, mHash],
+        `INSERT INTO drafts (id, workspace_id, head_seq, head_manifest_hash)
+         VALUES ($1, $2, 0, $3)`,
+        [draftId, workspaceId, mHash],
       );
       await client.query(
-        `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
-         VALUES ($1, 0, $2, NULL, $3)`,
-        [draftId, mHash, sectionHashes],
+        `INSERT INTO manifests (draft_id, workspace_id, seq, hash, parent_hash, section_hashes)
+         VALUES ($1, $2, 0, $3, NULL, $4)`,
+        [draftId, workspaceId, mHash, sectionHashes],
       );
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   /**
@@ -129,9 +129,9 @@ export class SyncServer {
   ): Promise<Lease | null> {
     const res = await this.lockedOnHead(draftId, (client) =>
       client.query(
-        `INSERT INTO leases (draft_id, section_id, owner, epoch, expires_at)
-         SELECT $1, $2, $3, 1,
-                clock_timestamp() + make_interval(secs => $4::float / 1000)
+        `INSERT INTO leases (draft_id, workspace_id, section_id, owner, epoch, expires_at)
+         SELECT $1, $3, $2, $4, 1,
+                clock_timestamp() + make_interval(secs => $5::float / 1000)
          WHERE EXISTS (${SECTION_EXISTS})
          ON CONFLICT (draft_id, section_id) DO UPDATE
            SET owner = excluded.owner,
@@ -145,7 +145,7 @@ export class SyncServer {
            WHERE leases.expires_at < clock_timestamp()
               OR leases.owner = excluded.owner
          RETURNING epoch, expires_at`,
-        [draftId, sectionId, owner, this.ttlMs],
+        [draftId, sectionId, this.db.workspaceId, owner, this.ttlMs],
       ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
@@ -160,25 +160,21 @@ export class SyncServer {
     draftId: string,
     work: (client: pg.PoolClient) => Promise<pg.QueryResult>,
   ): Promise<pg.QueryResult> {
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT 1 FROM drafts WHERE id = $1 FOR SHARE`, [
-        draftId,
-      ]);
-      const res = await work(client);
-      await client.query('COMMIT');
-      return res;
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    return this.db.transaction(async (client) => {
+      await client.query(
+        `SELECT 1 FROM drafts WHERE id = $1 AND workspace_id = $2 FOR SHARE`,
+        [draftId, this.db.workspaceId],
+      );
+      return work(client);
+    });
   }
 
   private async assertSectionExists(draftId: string, sectionId: string) {
-    const known = await this.db.query(SECTION_EXISTS, [draftId, sectionId]);
+    const known = await this.db.query(SECTION_EXISTS, [
+      draftId,
+      sectionId,
+      this.db.workspaceId,
+    ]);
     if (known.rowCount === 0) {
       throw new UnknownSectionError(draftId, sectionId);
     }
@@ -199,12 +195,12 @@ export class SyncServer {
     const res = await this.lockedOnHead(draftId, (client) =>
       client.query(
         `UPDATE leases
-         SET owner = $3, epoch = epoch + 1,
-             expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
-         WHERE draft_id = $1 AND section_id = $2
+         SET owner = $4, epoch = epoch + 1,
+             expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
+         WHERE draft_id = $1 AND section_id = $2 AND workspace_id = $3
            AND EXISTS (${SECTION_EXISTS})
          RETURNING epoch, expires_at`,
-        [draftId, sectionId, owner, this.ttlMs],
+        [draftId, sectionId, this.db.workspaceId, owner, this.ttlMs],
       ),
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
@@ -224,9 +220,17 @@ export class SyncServer {
       `UPDATE leases
        SET expires_at = clock_timestamp() + make_interval(secs => $5::float / 1000)
        WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+         AND workspace_id = $6
          AND expires_at > clock_timestamp()
        RETURNING epoch, expires_at`,
-      [draftId, sectionId, owner, String(epoch), this.ttlMs],
+      [
+        draftId,
+        sectionId,
+        owner,
+        String(epoch),
+        this.ttlMs,
+        this.db.workspaceId,
+      ],
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
     return row ? { epoch: BigInt(row.epoch), expiresAt: row.expires_at } : null;
@@ -245,8 +249,9 @@ export class SyncServer {
     await this.db.query(
       `UPDATE leases SET expires_at = clock_timestamp()
        WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+         AND workspace_id = $5
          AND expires_at > clock_timestamp()`,
-      [draftId, sectionId, owner, String(epoch)],
+      [draftId, sectionId, owner, String(epoch), this.db.workspaceId],
     );
   }
 
@@ -265,18 +270,17 @@ export class SyncServer {
     commands: Command[];
   }): Promise<CommitResult> {
     const { draftId, sectionId, owner, epoch, clientSeq, commands } = params;
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-
+    const workspaceId = this.db.workspaceId;
+    return this.db.transaction(async (client) => {
       // Per-draft serialization: every commit advances the head under this
       // row lock, so concurrent section commits cannot fork the chain. Taken
       // FIRST — the dedup and lease checks below are only meaningful at the
       // serialization point. (Lock order is head-then-lease in every
       // transaction, so the two locks cannot deadlock.)
       const head = await client.query(
-        `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
-        [draftId],
+        `SELECT head_seq, head_manifest_hash FROM drafts
+         WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
+        [draftId, workspaceId],
       );
       const headRow = head.rows[0] as
         | { head_seq: string; head_manifest_hash: string }
@@ -293,18 +297,25 @@ export class SyncServer {
       const dup = await client.query(
         `SELECT manifest_seq FROM command_log
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
-           AND client_seq = $5`,
-        [draftId, sectionId, owner, String(epoch), String(clientSeq)],
+           AND client_seq = $5 AND workspace_id = $6`,
+        [
+          draftId,
+          sectionId,
+          owner,
+          String(epoch),
+          String(clientSeq),
+          workspaceId,
+        ],
       );
       if (dup.rowCount && dup.rowCount > 0) {
         const seq = BigInt(
           (dup.rows[0] as { manifest_seq: string }).manifest_seq,
         );
         const m = await client.query(
-          `SELECT hash, section_hashes FROM manifests WHERE draft_id = $1 AND seq = $2`,
-          [draftId, String(seq)],
+          `SELECT hash, section_hashes FROM manifests
+           WHERE draft_id = $1 AND seq = $2 AND workspace_id = $3`,
+          [draftId, String(seq), workspaceId],
         );
-        await client.query('COMMIT');
         const row = m.rows[0] as {
           hash: string;
           section_hashes: Record<string, string>;
@@ -332,17 +343,19 @@ export class SyncServer {
       const lease = await client.query(
         `SELECT 1 FROM leases
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
+           AND workspace_id = $5
            AND expires_at > clock_timestamp()
          FOR UPDATE`,
-        [draftId, sectionId, owner, String(epoch)],
+        [draftId, sectionId, owner, String(epoch), workspaceId],
       );
       if (lease.rowCount === 0) {
         throw new LeaseRejectedError('lease not held (owner/epoch/expiry)');
       }
 
       const manifest = await client.query(
-        `SELECT section_hashes FROM manifests WHERE draft_id = $1 AND seq = $2`,
-        [draftId, headRow.head_seq],
+        `SELECT section_hashes FROM manifests
+         WHERE draft_id = $1 AND seq = $2 AND workspace_id = $3`,
+        [draftId, headRow.head_seq, workspaceId],
       );
       const sectionHashes = {
         ...(manifest.rows[0] as { section_hashes: Record<string, string> })
@@ -353,8 +366,8 @@ export class SyncServer {
         throw new LeaseRejectedError(`unknown section ${sectionId}`);
       }
       const currentDoc = await client.query(
-        `SELECT doc FROM sections WHERE hash = $1`,
-        [currentHash],
+        `SELECT doc FROM sections WHERE workspace_id = $1 AND hash = $2`,
+        [workspaceId, currentHash],
       );
 
       // The server runs the same shared apply engine as the client.
@@ -365,10 +378,10 @@ export class SyncServer {
       this.validateSection?.(sectionId, newDoc, Object.keys(sectionHashes));
       const newSectionHash = contentHash(newDoc);
       await client.query(
-        `INSERT INTO sections (hash, doc) VALUES ($1, $2)
-         ON CONFLICT (hash) DO UPDATE
+        `INSERT INTO sections (workspace_id, hash, doc) VALUES ($1, $2, $3)
+         ON CONFLICT (workspace_id, hash) DO UPDATE
            SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-        [newSectionHash, newDoc],
+        [workspaceId, newSectionHash, newDoc],
       );
 
       sectionHashes[sectionId] = newSectionHash;
@@ -378,10 +391,11 @@ export class SyncServer {
         headRow.head_manifest_hash,
       );
       await client.query(
-        `INSERT INTO manifests (draft_id, seq, hash, parent_hash, section_hashes)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO manifests (draft_id, workspace_id, seq, hash, parent_hash, section_hashes)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           draftId,
+          workspaceId,
           String(newSeq),
           newManifestHash,
           headRow.head_manifest_hash,
@@ -389,14 +403,16 @@ export class SyncServer {
         ],
       );
       await client.query(
-        `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3 WHERE id = $1`,
-        [draftId, String(newSeq), newManifestHash],
+        `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3
+         WHERE id = $1 AND workspace_id = $4`,
+        [draftId, String(newSeq), newManifestHash, workspaceId],
       );
       await client.query(
-        `INSERT INTO command_log (draft_id, section_id, owner, epoch, client_seq, commands, manifest_seq)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO command_log (draft_id, workspace_id, section_id, owner, epoch, client_seq, commands, manifest_seq)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           draftId,
+          workspaceId,
           sectionId,
           owner,
           String(epoch),
@@ -406,19 +422,13 @@ export class SyncServer {
         ],
       );
 
-      await client.query('COMMIT');
       return {
         deduped: false,
         manifestSeq: newSeq,
         manifestHash: newManifestHash,
         sectionHash: newSectionHash,
       };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   /**
@@ -432,64 +442,61 @@ export class SyncServer {
     // commit landing between them would pair pre-commit sectionHashes with a
     // post-commit lastApplied — the client would drop the acknowledged batch
     // yet load the older document, leaving its base behind the server.
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
-      const head = await client.query(
-        `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
-         FROM drafts d
-         JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-         WHERE d.id = $1`,
-        [draftId],
-      );
-      const acked = await client.query(
-        `SELECT section_id, epoch, max(client_seq) AS last_seq
-         FROM command_log WHERE draft_id = $1 AND owner = $2
-         GROUP BY section_id, epoch`,
-        [draftId, owner],
-      );
-      await client.query('COMMIT');
+    const { head, acked } = await this.db.transaction(
+      async (client) => {
+        const headRes = await client.query(
+          `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes
+           FROM drafts d
+           JOIN manifests m ON m.draft_id = d.id AND m.workspace_id = d.workspace_id AND m.seq = d.head_seq
+           WHERE d.id = $1 AND d.workspace_id = $2`,
+          [draftId, this.db.workspaceId],
+        );
+        const ackedRes = await client.query(
+          `SELECT section_id, epoch, max(client_seq) AS last_seq
+           FROM command_log
+           WHERE draft_id = $1 AND owner = $2 AND workspace_id = $3
+           GROUP BY section_id, epoch`,
+          [draftId, owner, this.db.workspaceId],
+        );
+        return { head: headRes, acked: ackedRes };
+      },
+      { isolation: 'repeatable read' },
+    );
 
-      const row = head.rows[0] as
-        | {
-            head_seq: string;
-            head_manifest_hash: string;
-            section_hashes: Record<string, string>;
-          }
-        | undefined;
-      if (row === undefined) throw new UnknownDraftError(draftId);
-      const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
-        {};
-      for (const r of acked.rows as {
-        section_id: string;
-        epoch: string;
-        last_seq: string;
-      }[]) {
-        const existing = lastApplied[r.section_id];
-        if (!existing || BigInt(r.epoch) > existing.epoch) {
-          lastApplied[r.section_id] = {
-            epoch: BigInt(r.epoch),
-            clientSeq: BigInt(r.last_seq),
-          };
+    const row = head.rows[0] as
+      | {
+          head_seq: string;
+          head_manifest_hash: string;
+          section_hashes: Record<string, string>;
         }
+      | undefined;
+    if (row === undefined) throw new UnknownDraftError(draftId);
+    const lastApplied: Record<string, { epoch: bigint; clientSeq: bigint }> =
+      {};
+    for (const r of acked.rows as {
+      section_id: string;
+      epoch: string;
+      last_seq: string;
+    }[]) {
+      const existing = lastApplied[r.section_id];
+      if (!existing || BigInt(r.epoch) > existing.epoch) {
+        lastApplied[r.section_id] = {
+          epoch: BigInt(r.epoch),
+          clientSeq: BigInt(r.last_seq),
+        };
       }
-      return {
-        head: { seq: BigInt(row.head_seq), hash: row.head_manifest_hash },
-        sectionHashes: row.section_hashes,
-        lastApplied,
-      };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
     }
+    return {
+      head: { seq: BigInt(row.head_seq), hash: row.head_manifest_hash },
+      sectionHashes: row.section_hashes,
+      lastApplied,
+    };
   }
 
   async getSection(hash: string): Promise<SectionDoc> {
     const res = await this.db.query(
-      `SELECT doc FROM sections WHERE hash = $1`,
-      [hash],
+      `SELECT doc FROM sections WHERE workspace_id = $1 AND hash = $2`,
+      [this.db.workspaceId, hash],
     );
     const row = res.rows[0] as { doc: SectionDoc } | undefined;
     if (row === undefined) throw new UnknownSectionDocumentError(hash);
@@ -499,8 +506,9 @@ export class SyncServer {
   /** The full manifest chain, oldest first — for linearity assertions. */
   async manifestChain(draftId: string) {
     const res = await this.db.query(
-      `SELECT seq, hash, parent_hash FROM manifests WHERE draft_id = $1 ORDER BY seq`,
-      [draftId],
+      `SELECT seq, hash, parent_hash FROM manifests
+       WHERE draft_id = $1 AND workspace_id = $2 ORDER BY seq`,
+      [draftId, this.db.workspaceId],
     );
     return res.rows as {
       seq: string;
@@ -513,13 +521,13 @@ export class SyncServer {
 /** Test helper: simulate the passage of time (a slept laptop) by expiring a
  * lease in place. Touches only expires_at — the machinery stays untouched. */
 export async function forceExpire(
-  db: pg.Pool,
+  db: TenantDb,
   draftId: string,
   sectionId: string,
 ) {
   await db.query(
     `UPDATE leases SET expires_at = now() - interval '1 millisecond'
-     WHERE draft_id = $1 AND section_id = $2`,
-    [draftId, sectionId],
+     WHERE draft_id = $1 AND section_id = $2 AND workspace_id = $3`,
+    [draftId, sectionId, db.workspaceId],
   );
 }

@@ -1,5 +1,6 @@
 import {
-  type AnyPgColumn,
+  foreignKey,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -12,24 +13,35 @@ import {
 
 import { drafts, sections } from '@codaco/studio-sync/schema';
 
-const protocols = pgTable('protocols', {
-  id: uuid('id').primaryKey(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+import { workspaces } from '../db/auth-schema.ts';
+
+const protocols = pgTable(
+  'protocols',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.id, table.workspaceId),
+    index('protocols_workspace_id_idx').on(table.workspaceId),
+  ],
+);
 
 const protocolVersions = pgTable(
   'protocol_versions',
   {
     id: uuid('id').primaryKey(),
-    protocolId: uuid('protocol_id')
-      .notNull()
-      .references(() => protocols.id),
+    protocolId: uuid('protocol_id').notNull(),
+    workspaceId: text('workspace_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     label: text('label'),
     versionHash: text('version_hash').notNull(),
@@ -38,9 +50,7 @@ const protocolVersions = pgTable(
     // No FK: draft rows are discardable.
     sourceDraftId: uuid('source_draft_id'),
     sourceManifestHash: text('source_manifest_hash').notNull(),
-    migratedFromVersionId: uuid('migrated_from_version_id').references(
-      (): AnyPgColumn => protocolVersions.id,
-    ),
+    migratedFromVersionId: uuid('migrated_from_version_id'),
     publishedAt: timestamp('published_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -48,6 +58,15 @@ const protocolVersions = pgTable(
   (table) => [
     unique().on(table.protocolId, table.versionNumber),
     unique().on(table.protocolId, table.versionHash),
+    unique().on(table.id, table.workspaceId),
+    foreignKey({
+      columns: [table.protocolId, table.workspaceId],
+      foreignColumns: [protocols.id, protocols.workspaceId],
+    }),
+    foreignKey({
+      columns: [table.migratedFromVersionId, table.workspaceId],
+      foreignColumns: [table.id, table.workspaceId],
+    }),
   ],
 );
 
@@ -56,31 +75,54 @@ const protocolVersions = pgTable(
 const versionSections = pgTable(
   'version_sections',
   {
-    versionId: uuid('version_id')
-      .notNull()
-      .references(() => protocolVersions.id),
+    versionId: uuid('version_id').notNull(),
+    workspaceId: text('workspace_id').notNull(),
     sectionId: text('section_id').notNull(),
-    sectionHash: text('section_hash')
-      .notNull()
-      .references(() => sections.hash),
+    sectionHash: text('section_hash').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.versionId, table.sectionId] })],
+  (table) => [
+    primaryKey({ columns: [table.versionId, table.sectionId] }),
+    foreignKey({
+      columns: [table.versionId, table.workspaceId],
+      foreignColumns: [protocolVersions.id, protocolVersions.workspaceId],
+    }),
+    foreignKey({
+      columns: [table.workspaceId, table.sectionHash],
+      foreignColumns: [sections.workspaceId, sections.hash],
+    }),
+    index('version_sections_workspace_id_section_hash_idx').on(
+      table.workspaceId,
+      table.sectionHash,
+    ),
+  ],
 );
 
-const protocolDrafts = pgTable('protocol_drafts', {
-  draftId: uuid('draft_id')
-    .primaryKey()
-    .references(() => drafts.id),
-  protocolId: uuid('protocol_id')
-    .notNull()
-    .references(() => protocols.id),
-  basedOnVersionId: uuid('based_on_version_id').references(
-    () => protocolVersions.id,
-  ),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+const protocolDrafts = pgTable(
+  'protocol_drafts',
+  {
+    draftId: uuid('draft_id').primaryKey(),
+    workspaceId: text('workspace_id').notNull(),
+    protocolId: uuid('protocol_id').notNull(),
+    basedOnVersionId: uuid('based_on_version_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.draftId, table.workspaceId],
+      foreignColumns: [drafts.id, drafts.workspaceId],
+    }),
+    foreignKey({
+      columns: [table.protocolId, table.workspaceId],
+      foreignColumns: [protocols.id, protocols.workspaceId],
+    }),
+    foreignKey({
+      columns: [table.basedOnVersionId, table.workspaceId],
+      foreignColumns: [protocolVersions.id, protocolVersions.workspaceId],
+    }),
+  ],
+);
 
 export const PROTOCOL_TABLES = {
   protocols,

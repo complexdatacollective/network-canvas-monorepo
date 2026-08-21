@@ -181,6 +181,27 @@ Studio consumes the schema-conformant protocol document exactly as
 assembled document with the canonical validator before freezing it. Sectioning
 is Studio-internal storage topology, not a protocol-schema change.
 
+### Tenancy
+
+Workspaces (#1249) are the tenant boundary. Every domain row — protocols,
+versions, drafts, sections, manifests, leases, the command log — carries a
+denormalized `workspace_id`, pinned to its parent through composite foreign
+keys, and section documents deduplicate **per workspace**: identical content in
+two workspaces is two rows, because a shared row would leak content across the
+boundary. The data layer only speaks through a `TenantDb`
+(`@codaco/studio-sync/tenant`), a pool handle pinned to one workspace: the
+`ProtocolStore` and `SyncServer` constructors take one instead of a pool, every
+statement carries an explicit workspace predicate, and `transaction()` stamps
+`app.workspace_id` as a transaction-local GUC so row-level security can be
+layered on later without reworking callers. A workspace's id enters a request
+explicitly — `requireWorkspace` in `server/src/rpc.ts` resolves the procedure
+input's `workspaceId` against the caller's membership (`AuthService.
+getMembership`) and yields the pinned `TenantDb`; the session's active
+workspace is never the authorization input. Garbage collection is the one
+deliberately cross-workspace caller: it iterates workspaces and runs each
+sweep under that workspace's `TenantDb`. Until RLS lands, scoping is opt-in
+per procedure — a workspace-scoped procedure must `.use(requireWorkspace)`.
+
 Live editing within a section is not here — that is the sync engine's lease and
 commit path in `@codaco/studio-sync`. The store owns what sync deliberately
 refuses: creation, structural add and remove, publishing, versions, diff,
@@ -191,13 +212,15 @@ on a machine with no container `pnpm --filter @codaco/studio-server test`
 passes having verified far less than it appears to. Read the reporter, not the
 exit code.
 
-No surface exposes the store yet — neither RPC procedure nor API route — so
+The store's RPC surface is minimal — `protocols.create` and `protocols.list`
+exist to prove the tenancy spine end to end, and no screen renders them yet —
+so
 
 ```bash
 pnpm --filter @codaco/studio-server protocol-demo
 ```
 
-is the only way to look at one. It sectionizes a protocol (the sample one, or
+remains the way to look at one. It sectionizes a protocol (the sample one, or
 `--protocol <path>`), prints its sections and their hashes (`--sections` for
 every row), assembles it back, publishes it, edits one prompt and publishes
 again to show how much of the second version is structurally shared with the

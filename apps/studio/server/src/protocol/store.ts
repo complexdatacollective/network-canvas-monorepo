@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import type pg from 'pg';
-
 import {
   type CurrentProtocol,
   type ProtocolValidationIssue,
@@ -9,6 +7,7 @@ import {
   validateProtocol,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { AssemblyError, assembleProtocol } from './assemble.ts';
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
@@ -46,6 +45,13 @@ export type VersionRow = {
   schemaVersion: number;
   migratedFromVersionId: string | null;
   publishedAt: Date;
+};
+
+export type ProtocolRow = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type DraftSections = {
@@ -113,9 +119,9 @@ function assertNoValidationFailures(sections: Record<string, SectionDoc>) {
 }
 
 export class ProtocolStore {
-  private db: pg.Pool;
+  private db: TenantDb;
 
-  constructor(db: pg.Pool) {
+  constructor(db: TenantDb) {
     this.db = db;
   }
 
@@ -131,26 +137,20 @@ export class ProtocolStore {
     const sections = sectionizeProtocol(params.protocol);
     assertNoValidationFailures(sections);
 
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`INSERT INTO protocols (id, name) VALUES ($1, $2)`, [
-        protocolId,
-        params.protocol.name,
-      ]);
-      await insertDraftRows(client, draftId, sections);
+    const workspaceId = this.db.workspaceId;
+    return this.db.transaction(async (client) => {
       await client.query(
-        `INSERT INTO protocol_drafts (draft_id, protocol_id) VALUES ($1, $2)`,
-        [draftId, protocolId],
+        `INSERT INTO protocols (id, workspace_id, name) VALUES ($1, $2, $3)`,
+        [protocolId, workspaceId, params.protocol.name],
       );
-      await client.query('COMMIT');
+      await insertDraftRows(client, workspaceId, draftId, sections);
+      await client.query(
+        `INSERT INTO protocol_drafts (draft_id, workspace_id, protocol_id)
+         VALUES ($1, $2, $3)`,
+        [draftId, workspaceId, protocolId],
+      );
       return { protocolId, draftId };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async createDraftFromVersion(params: {
@@ -158,12 +158,12 @@ export class ProtocolStore {
     draftId?: string;
   }): Promise<{ draftId: string; protocolId: string }> {
     const draftId = params.draftId ?? randomUUID();
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
+    const workspaceId = this.db.workspaceId;
+    return this.db.transaction(async (client) => {
       const version = await client.query(
-        `SELECT protocol_id FROM protocol_versions WHERE id = $1`,
-        [params.versionId],
+        `SELECT protocol_id FROM protocol_versions
+         WHERE id = $1 AND workspace_id = $2`,
+        [params.versionId, workspaceId],
       );
       const versionRow = version.rows[0] as { protocol_id: string } | undefined;
       if (versionRow === undefined) {
@@ -171,9 +171,10 @@ export class ProtocolStore {
       }
       const pins = await client.query(
         `SELECT vs.section_id, vs.section_hash, s.doc
-         FROM version_sections vs JOIN sections s ON s.hash = vs.section_hash
-         WHERE vs.version_id = $1`,
-        [params.versionId],
+         FROM version_sections vs
+         JOIN sections s ON s.workspace_id = vs.workspace_id AND s.hash = vs.section_hash
+         WHERE vs.version_id = $1 AND vs.workspace_id = $2`,
+        [params.versionId, workspaceId],
       );
       const sections: Record<string, SectionDoc> = {};
       for (const row of pins.rows as {
@@ -182,32 +183,27 @@ export class ProtocolStore {
       }[]) {
         sections[row.section_id] = row.doc;
       }
-      await insertDraftRows(client, draftId, sections);
+      await insertDraftRows(client, workspaceId, draftId, sections);
       await client.query(
-        `INSERT INTO protocol_drafts (draft_id, protocol_id, based_on_version_id)
-         VALUES ($1, $2, $3)`,
-        [draftId, versionRow.protocol_id, params.versionId],
+        `INSERT INTO protocol_drafts (draft_id, workspace_id, protocol_id, based_on_version_id)
+         VALUES ($1, $2, $3, $4)`,
+        [draftId, workspaceId, versionRow.protocol_id, params.versionId],
       );
-      await client.query('COMMIT');
       return { draftId, protocolId: versionRow.protocol_id };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getDraftSections(draftId: string): Promise<DraftSections> {
     const res = await this.db.query(
       `SELECT d.head_seq, d.head_manifest_hash, m.section_hashes,
               (SELECT jsonb_object_agg(s.hash, s.doc) FROM sections s
-                WHERE s.hash IN (SELECT jsonb_each_text.value
+                WHERE s.workspace_id = d.workspace_id
+                  AND s.hash IN (SELECT jsonb_each_text.value
                                  FROM jsonb_each_text(m.section_hashes))) AS docs
        FROM drafts d
-       JOIN manifests m ON m.draft_id = d.id AND m.seq = d.head_seq
-       WHERE d.id = $1`,
-      [draftId],
+       JOIN manifests m ON m.draft_id = d.id AND m.workspace_id = d.workspace_id AND m.seq = d.head_seq
+       WHERE d.id = $1 AND d.workspace_id = $2`,
+      [draftId, this.db.workspaceId],
     );
     const row = res.rows[0] as
       | {
@@ -301,12 +297,12 @@ export class ProtocolStore {
     }
     const name = typeof settings?.name === 'string' ? settings.name : null;
 
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
+    const workspaceId = this.db.workspaceId;
+    return this.db.transaction(async (client): Promise<PublishResult> => {
       const lockedHead = await client.query(
-        `SELECT head_seq, head_manifest_hash FROM drafts WHERE id = $1 FOR UPDATE`,
-        [params.draftId],
+        `SELECT head_seq, head_manifest_hash FROM drafts
+         WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
+        [params.draftId, workspaceId],
       );
       const lockedRow = lockedHead.rows[0] as
         | { head_seq: string; head_manifest_hash: string }
@@ -315,7 +311,6 @@ export class ProtocolStore {
         throw new ProtocolStoreError(`no draft ${params.draftId}`);
       }
       if (lockedRow.head_manifest_hash !== head.headManifestHash) {
-        await client.query('ROLLBACK');
         return {
           status: 'conflict',
           headManifestHash: lockedRow.head_manifest_hash,
@@ -323,8 +318,9 @@ export class ProtocolStore {
       }
 
       const draftRow = await client.query(
-        `SELECT protocol_id, based_on_version_id FROM protocol_drafts WHERE draft_id = $1`,
-        [params.draftId],
+        `SELECT protocol_id, based_on_version_id FROM protocol_drafts
+         WHERE draft_id = $1 AND workspace_id = $2`,
+        [params.draftId, workspaceId],
       );
       const draft = draftRow.rows[0] as
         | { protocol_id: string; based_on_version_id: string | null }
@@ -335,21 +331,21 @@ export class ProtocolStore {
         );
       }
 
-      await client.query(`SELECT 1 FROM protocols WHERE id = $1 FOR UPDATE`, [
-        draft.protocol_id,
-      ]);
+      await client.query(
+        `SELECT 1 FROM protocols WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
+        [draft.protocol_id, workspaceId],
+      );
 
       const versionHash = versionContentHash(head.sectionHashes);
       const existing = await client.query(
         `SELECT id, version_number FROM protocol_versions
-         WHERE protocol_id = $1 AND version_hash = $2`,
-        [draft.protocol_id, versionHash],
+         WHERE protocol_id = $1 AND version_hash = $2 AND workspace_id = $3`,
+        [draft.protocol_id, versionHash, workspaceId],
       );
       const existingRow = existing.rows[0] as
         | { id: string; version_number: number }
         | undefined;
       if (existingRow !== undefined) {
-        await client.query('ROLLBACK');
         return {
           status: 'unchanged',
           versionId: existingRow.id,
@@ -360,8 +356,9 @@ export class ProtocolStore {
       let migratedFrom: string | null = null;
       if (draft.based_on_version_id !== null) {
         const basis = await client.query(
-          `SELECT schema_version FROM protocol_versions WHERE id = $1`,
-          [draft.based_on_version_id],
+          `SELECT schema_version FROM protocol_versions
+           WHERE id = $1 AND workspace_id = $2`,
+          [draft.based_on_version_id, workspaceId],
         );
         const basisRow = basis.rows[0] as
           | { schema_version: number }
@@ -374,16 +371,17 @@ export class ProtocolStore {
       const versionId = randomUUID();
       const inserted = await client.query(
         `INSERT INTO protocol_versions
-           (id, protocol_id, version_number, label, version_hash, manifest,
-            schema_version, source_draft_id, source_manifest_hash,
+           (id, protocol_id, workspace_id, version_number, label, version_hash,
+            manifest, schema_version, source_draft_id, source_manifest_hash,
             migrated_from_version_id)
-         SELECT $1, $2,
+         SELECT $1, $2, $10,
                 COALESCE(MAX(v.version_number), 0) + 1,
                 $3, $4,
                 (SELECT to_jsonb(m) FROM manifests m
-                  WHERE m.draft_id = $5 AND m.seq = $6),
+                  WHERE m.draft_id = $5 AND m.workspace_id = $10 AND m.seq = $6),
                 $7, $5, $8, $9
-         FROM protocol_versions v WHERE v.protocol_id = $2
+         FROM protocol_versions v
+         WHERE v.protocol_id = $2 AND v.workspace_id = $10
          RETURNING version_number`,
         [
           versionId,
@@ -395,31 +393,27 @@ export class ProtocolStore {
           schemaVersion,
           head.headManifestHash,
           migratedFrom,
+          workspaceId,
         ],
       );
       const versionNumber = (inserted.rows[0] as { version_number: number })
         .version_number;
       for (const [id, hash] of Object.entries(head.sectionHashes)) {
         await client.query(
-          `INSERT INTO version_sections (version_id, section_id, section_hash)
-           VALUES ($1, $2, $3)`,
-          [versionId, id, hash],
+          `INSERT INTO version_sections (version_id, workspace_id, section_id, section_hash)
+           VALUES ($1, $2, $3, $4)`,
+          [versionId, workspaceId, id, hash],
         );
       }
       if (name !== null) {
         await client.query(
-          `UPDATE protocols SET name = $2, updated_at = now() WHERE id = $1`,
-          [draft.protocol_id, name],
+          `UPDATE protocols SET name = $2, updated_at = now()
+           WHERE id = $1 AND workspace_id = $3`,
+          [draft.protocol_id, name, workspaceId],
         );
       }
-      await client.query('COMMIT');
       return { status: 'published', versionId, versionNumber, versionHash };
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getVersionSections(versionId: string): Promise<{
@@ -428,9 +422,10 @@ export class ProtocolStore {
   }> {
     const res = await this.db.query(
       `SELECT vs.section_id, vs.section_hash, s.doc
-       FROM version_sections vs JOIN sections s ON s.hash = vs.section_hash
-       WHERE vs.version_id = $1`,
-      [versionId],
+       FROM version_sections vs
+       JOIN sections s ON s.workspace_id = vs.workspace_id AND s.hash = vs.section_hash
+       WHERE vs.version_id = $1 AND vs.workspace_id = $2`,
+      [versionId, this.db.workspaceId],
     );
     if (res.rowCount === 0) {
       throw new ProtocolStoreError(`no version ${versionId}`);
@@ -459,9 +454,9 @@ export class ProtocolStore {
     const res = await this.db.query(
       `SELECT id, protocol_id, version_number, label, version_hash,
               schema_version, migrated_from_version_id, published_at
-       FROM protocol_versions WHERE protocol_id = $1
+       FROM protocol_versions WHERE protocol_id = $1 AND workspace_id = $2
        ORDER BY version_number DESC`,
-      [protocolId],
+      [protocolId, this.db.workspaceId],
     );
     return (
       res.rows as {
@@ -483,6 +478,27 @@ export class ProtocolStore {
       schemaVersion: row.schema_version,
       migratedFromVersionId: row.migrated_from_version_id,
       publishedAt: row.published_at,
+    }));
+  }
+
+  async listProtocols(): Promise<ProtocolRow[]> {
+    const res = await this.db.query(
+      `SELECT id, name, created_at, updated_at FROM protocols
+       WHERE workspace_id = $1 ORDER BY created_at DESC, id`,
+      [this.db.workspaceId],
+    );
+    return (
+      res.rows as {
+        id: string;
+        name: string;
+        created_at: Date;
+        updated_at: Date;
+      }[]
+    ).map((row) => ({
+      id: row.id,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     }));
   }
 
@@ -510,29 +526,32 @@ export class ProtocolStore {
 
   // Section documents are left for garbage collection.
   async discardDraft(draftId: string): Promise<void> {
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT 1 FROM drafts WHERE id = $1 FOR UPDATE`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM leases WHERE draft_id = $1`, [draftId]);
-      await client.query(`DELETE FROM command_log WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM protocol_drafts WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM manifests WHERE draft_id = $1`, [
-        draftId,
-      ]);
-      await client.query(`DELETE FROM drafts WHERE id = $1`, [draftId]);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
+    const workspaceId = this.db.workspaceId;
+    await this.db.transaction(async (client) => {
+      await client.query(
+        `SELECT 1 FROM drafts WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
+        [draftId, workspaceId],
+      );
+      await client.query(
+        `DELETE FROM leases WHERE draft_id = $1 AND workspace_id = $2`,
+        [draftId, workspaceId],
+      );
+      await client.query(
+        `DELETE FROM command_log WHERE draft_id = $1 AND workspace_id = $2`,
+        [draftId, workspaceId],
+      );
+      await client.query(
+        `DELETE FROM protocol_drafts WHERE draft_id = $1 AND workspace_id = $2`,
+        [draftId, workspaceId],
+      );
+      await client.query(
+        `DELETE FROM manifests WHERE draft_id = $1 AND workspace_id = $2`,
+        [draftId, workspaceId],
+      );
+      await client.query(
+        `DELETE FROM drafts WHERE id = $1 AND workspace_id = $2`,
+        [draftId, workspaceId],
+      );
+    });
   }
 }

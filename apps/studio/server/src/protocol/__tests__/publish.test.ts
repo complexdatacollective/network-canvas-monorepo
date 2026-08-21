@@ -2,10 +2,12 @@ import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SyncServer } from '@codaco/studio-sync/server';
+import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { ProtocolStore } from '../store.ts';
 import {
   FIXTURES,
+  TEST_WORKSPACE_ID,
   baseProtocol,
   makeStoreSchema,
   readFixtureProtocol,
@@ -13,7 +15,7 @@ import {
 } from './helpers.ts';
 
 async function setDescription(
-  db: pg.Pool,
+  db: TenantDb,
   draftId: string,
   description: string,
 ) {
@@ -32,12 +34,13 @@ async function setDescription(
 
 describe.skipIf(!storeDb)('publishDraft', () => {
   let db: pg.Pool;
+  let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
-    store = new ProtocolStore(db);
+    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    store = new ProtocolStore(tenantDb);
   });
   afterAll(async () => {
     await dispose();
@@ -103,7 +106,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const { draftId } = await store.createProtocol({
       protocol: baseProtocol(),
     });
-    const sync = new SyncServer(db);
+    const sync = new SyncServer(tenantDb);
     const lease = await sync.acquire(
       draftId,
       'stage:nameGenerator1',
@@ -148,7 +151,7 @@ describe.skipIf(!storeDb)('publishDraft', () => {
     const first = await store.publishDraft({ draftId });
     if (first.status !== 'published') throw new Error(first.status);
 
-    await setDescription(db, draftId, 'second edition');
+    await setDescription(tenantDb, draftId, 'second edition');
     const second = await store.publishDraft({ draftId });
     if (second.status !== 'published') throw new Error(second.status);
     expect(second.versionNumber).toBe(first.versionNumber + 1);
@@ -188,8 +191,8 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       store.createDraftFromVersion({ versionId: base.versionId }),
       store.createDraftFromVersion({ versionId: base.versionId }),
     ]);
-    await setDescription(db, a.draftId, 'variant a');
-    await setDescription(db, b.draftId, 'variant b');
+    await setDescription(tenantDb, a.draftId, 'variant a');
+    await setDescription(tenantDb, b.draftId, 'variant b');
 
     const results = await Promise.all([
       store.publishDraft({ draftId: a.draftId }),
@@ -238,9 +241,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
 
     await expect(
       db.query(
-        `INSERT INTO version_sections (version_id, section_id, section_hash)
-         VALUES ($1, 'stage:smuggled', $2)`,
-        [result.versionId, pinnedHash],
+        `INSERT INTO version_sections (version_id, workspace_id, section_id, section_hash)
+         VALUES ($1, $2, 'stage:smuggled', $3)`,
+        [result.versionId, TEST_WORKSPACE_ID, pinnedHash],
       ),
     ).rejects.toThrow(/immutable/);
   });
