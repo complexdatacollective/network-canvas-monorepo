@@ -2,6 +2,7 @@
 
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
+import { isEventFromFooter } from '../isEventFromFooter';
 import { isEventFromOwnSubtree } from '../isEventFromOwnSubtree';
 import type { SelectionManager } from '../selection/SelectionManager';
 import type { KeyboardDelegate } from './types';
@@ -89,6 +90,9 @@ export function useSelectableCollection(
       // driving list navigation, type-ahead or `clearSelection()` from inside
       // an open overlay is never what the researcher asked for.
       if (!isEventFromOwnSubtree(e)) return;
+      // The footer is inside this element so it scrolls with the items, but its
+      // controls are not collection items and their keystrokes are their own.
+      if (isEventFromFooter(e)) return;
 
       // If an item-level handler (e.g. DnD keyboard drag) already handled
       // this event, don't interfere.
@@ -271,6 +275,11 @@ export function useSelectableCollection(
       // the item's focus effect, which drags focus out of the open popup and
       // onto the row behind it.
       if (!isEventFromOwnSubtree(e)) {
+        return;
+      }
+      // Focus landing on a footer control is not focus entering the list, and
+      // delegating it to the first item would take it straight back off again.
+      if (isEventFromFooter(e)) {
         return;
       }
 

@@ -14,6 +14,7 @@ import {
 import { useCollectionSetup } from '../hooks/useCollectionSetup';
 import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
+import { COLLECTION_FOOTER_ATTRIBUTE } from '../isEventFromFooter';
 import type { SortState } from '../sorting/types';
 import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
 import { StaticRenderer } from './StaticRenderer';
@@ -220,7 +221,9 @@ function CollectionContent<T extends Record<string, unknown>>({
         {collection.size === 0 && emptyState && (
           <div className="text-center text-current/70">{emptyState}</div>
         )}
-        {footer}
+        {footer !== undefined && footer !== null && footer !== false && (
+          <div {...{ [COLLECTION_FOOTER_ATTRIBUTE]: '' }}>{footer}</div>
+        )}
       </ScrollArea>
     </div>
   );
