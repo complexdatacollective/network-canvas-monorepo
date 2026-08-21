@@ -29,36 +29,38 @@ const items: TestItem[] = [
 
 const layout = new ListLayout<TestItem>({ gap: 0 });
 
-const renderCollection = () =>
-  render(
-    <>
-      <button type="button">Before</button>
-      <Collection<TestItem>
-        id="footer-collection"
-        items={items}
-        keyExtractor={(item) => item.id}
-        textValueExtractor={(item) => item.name}
-        layout={layout}
-        selectionMode="none"
-        animate={false}
-        aria-label="Rows"
-        footer={
-          <div role="group" aria-label="More">
-            <a href="https://example.com">Gallery link</a>
-            <button type="button">Dismiss</button>
-          </div>
-        }
-        renderItem={(item, itemProps) => (
-          <div {...itemProps} data-testid={`item-${item.id}`}>
-            {item.name}
-          </div>
-        )}
-      >
-        {(CollectionElements) => CollectionElements}
-      </Collection>
-      <button type="button">After</button>
-    </>,
-  );
+const CollectionUnderTest = ({ visible = items }: { visible?: TestItem[] }) => (
+  <>
+    <button type="button">Before</button>
+    <Collection<TestItem>
+      id="footer-collection"
+      items={visible}
+      keyExtractor={(item) => item.id}
+      textValueExtractor={(item) => item.name}
+      layout={layout}
+      selectionMode="none"
+      animate={false}
+      aria-label="Rows"
+      footer={
+        <div role="group" aria-label="More">
+          <a href="https://example.com">Gallery link</a>
+          <button type="button">Dismiss</button>
+        </div>
+      }
+      renderItem={(item, itemProps) => (
+        <div {...itemProps} data-testid={`item-${item.id}`}>
+          {item.name}
+        </div>
+      )}
+    >
+      {(CollectionElements) => CollectionElements}
+    </Collection>
+    <button type="button">After</button>
+  </>
+);
+
+const renderCollection = (visible: TestItem[] = items) =>
+  render(<CollectionUnderTest visible={visible} />);
 
 describe('a collection footer', () => {
   it('renders inside the scrolling listbox, so it scrolls with the items', () => {
@@ -109,6 +111,27 @@ describe('a collection footer', () => {
     await user.tab({ shift: true });
 
     expect(screen.getByRole('button', { name: 'Dismiss' })).toHaveFocus();
+  });
+
+  it('keeps focus on a footer control when the focused item is removed', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderCollection();
+
+    // Give the list a focusedKey, then tab on into the footer.
+    screen.getByRole('listbox', { name: 'Rows' }).focus();
+    await user.keyboard('{ArrowDown}');
+    const link = screen.getByRole('link', { name: 'Gallery link' });
+    link.focus();
+    expect(link).toHaveFocus();
+
+    // The item holding `focusedKey` goes away — filtered, or deleted by
+    // another tab. Repairing `focusedKey` must not reach out of the list and
+    // take focus off the control the researcher is on.
+    rerender(
+      <CollectionUnderTest visible={items.filter((item) => item.id !== '2')} />,
+    );
+
+    expect(link).toHaveFocus();
   });
 
   it('still navigates the items themselves', async () => {

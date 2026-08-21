@@ -277,15 +277,24 @@ export function useSelectableCollection(
       if (!isEventFromOwnSubtree(e)) {
         return;
       }
-      // Focus landing on a footer control is not focus entering the list, and
-      // delegating it to the first item would take it straight back off again.
+      // A footer control is inside this element but is not one of the items, so
+      // focus reaching it has LEFT the collection. Clearing the flag matters as
+      // much as not delegating: `handleBlur` only fires before this and sees a
+      // `relatedTarget` still inside `ref`, so it leaves the flag set — and a
+      // stale `isFocused` lets the item focus effect drag focus off the footer
+      // control the moment `focusedKey` is repaired (an item filtered away, or
+      // removed) behind it.
       if (isEventFromFooter(e)) {
+        selectionManager.setFocused(false);
         return;
       }
 
       // Only handle focus if it's entering the collection from outside
-      // (not when focus moves between items within the collection)
-      if (ref?.current?.contains(e.relatedTarget as Node)) {
+      // (not when focus moves between items within the collection). Coming back
+      // from the footer is an entry, not an internal move, even though the
+      // footer is contained.
+      const cameFromFooter = isEventFromFooter({ target: e.relatedTarget });
+      if (!cameFromFooter && ref?.current?.contains(e.relatedTarget as Node)) {
         return;
       }
 
