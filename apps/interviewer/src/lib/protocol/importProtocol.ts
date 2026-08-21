@@ -12,6 +12,7 @@ import {
   migrateProtocol,
   validateProtocol,
   type VersionedProtocol,
+  type VersionedProtocolDocument,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 
@@ -121,7 +122,7 @@ async function importParsedProtocol(
 ): Promise<ImportProtocolResult> {
   const version = detectSchemaVersion(document);
 
-  let migratedDocument: VersionedProtocol = document;
+  let migratedDocument: VersionedProtocolDocument = document;
   let didMigrate = false;
   if (version !== APP_SCHEMA_VERSION) {
     const info = getMigrationInfo(version, APP_SCHEMA_VERSION);

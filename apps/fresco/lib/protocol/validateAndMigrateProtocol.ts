@@ -1,6 +1,7 @@
 import {
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
+  type VersionedProtocolDocument,
   getMigrationInfo,
   migrateProtocol,
   validateProtocol,
@@ -22,7 +23,7 @@ type ProtocolValidationSuccess = {
    * caller can hash what it validated rather than what validation produced;
    * `validateAndMigrateProtocol` is the one place both are in scope.
    */
-  documentForHashing: VersionedProtocol;
+  documentForHashing: VersionedProtocolDocument;
 };
 
 export type ProtocolValidationError =
@@ -74,7 +75,7 @@ export async function validateAndMigrateProtocol(
   }
 
   // Migrate if needed
-  let protocolToValidate: CurrentProtocol;
+  let protocolToValidate: VersionedProtocolDocument;
 
   if (protocolVersion < CURRENT_SCHEMA_VERSION) {
     // Check required dependencies for migration
