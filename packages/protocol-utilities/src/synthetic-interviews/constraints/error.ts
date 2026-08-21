@@ -4,6 +4,19 @@ export type ConstraintConflict = {
   entityType?: string;
   /** The type's human-readable name, absent only when the codebook omits one. */
   entityTypeName?: string;
+  /**
+   * The stage that owns this conflict, where ONE stage does: a roster whose
+   * resolved pool cannot reach its own min-nodes gate, or a stage asked to
+   * enumerate more pairs than one stage may. Set structurally by the producer
+   * rather than read back out of `reason`, so a surface that routes conflicts
+   * to a stage editor never has to parse the prose written for a human.
+   *
+   * Absent where no single stage owns it — a `unique` slot exhausted across
+   * every stage that writes the type belongs to the protocol, not to any one
+   * screen, and a caller distributing conflicts over stages must leave those
+   * to its protocol-level verdict rather than repeat them on each stage.
+   */
+  stageId?: string;
   variableIds: string[];
   variableNames: string[];
   rules: string[];
