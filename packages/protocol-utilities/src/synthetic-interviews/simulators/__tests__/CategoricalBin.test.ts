@@ -134,38 +134,35 @@ describe('simulateCategoricalBin', () => {
     expect(work / 400).toBeGreaterThan(0.8);
   });
 
-  it('leaves alters unplaced at the declared missing rate', () => {
+  it('places every alter whatever missingness the author declares', () => {
+    // The bin affords no way to SKIP a node while placing the others — total
+    // placement is the interaction's design (maintainer ruling, 2026-08-21).
+    // The interface therefore implies `required`, and an authored
+    // missingProbability resolves to zero exactly as quick-add's does.
     const harness = setUp({
-      alters: 2000,
+      alters: 200,
       codebook: codebookWith({ missingProbability: 0.25 }),
     });
     runStage(harness);
 
-    const unplaced = harness
-      .nodes()
-      .filter(
-        (node) => node[entityAttributesProperty].group === undefined,
-      ).length;
-
-    expect(Math.abs(unplaced / 2000 - 0.25)).toBeLessThan(0.05);
+    for (const node of harness.nodes()) {
+      expect(node[entityAttributesProperty].group).toBeDefined();
+    }
   });
 
-  it('leaves an alter unplaced when the selection draws empty', () => {
-    // A selection-count table that draws nothing is the author saying this
-    // question often goes unanswered, and the schema admits it on a variable
-    // that is not `required`. An empty selection is not an empty bin
-    // assignment — it is an alter still sitting in the bucket.
-    const harness = setUp({
-      alters: 20,
-      codebook: codebookWith({
-        selectionCount: { probabilities: [{ count: 0, probability: 1 }] },
+  it('a selection table that can draw zero is refused at parse', () => {
+    // "Sometimes nothing" on a bin-written variable describes a state the
+    // interface cannot produce — the same affordance argument as authored
+    // missingness — so the schema's bin refinement refuses the table
+    // outright rather than generation quietly leaving alters in the bucket.
+    expect(() =>
+      setUp({
+        alters: 20,
+        codebook: codebookWith({
+          selectionCount: { probabilities: [{ count: 0, probability: 1 }] },
+        }),
       }),
-    });
-    runStage(harness);
-
-    for (const node of harness.nodes()) {
-      expect(node[entityAttributesProperty].group).toBeUndefined();
-    }
+    ).toThrow(/exactly one bin/);
   });
 
   describe('the other bin', () => {

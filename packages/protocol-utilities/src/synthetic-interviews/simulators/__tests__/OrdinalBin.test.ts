@@ -288,18 +288,17 @@ describe('simulateOrdinalBin', () => {
       expect(new Set(binnedValues(harness))).toEqual(new Set([3]));
     });
 
-    it('leaves alters unplaced at the declared missing rate', () => {
+    it('places every alter whatever missingness the author declares', () => {
+      // The bin affords no way to SKIP a node while placing the others —
+      // total placement is the interaction's design (maintainer ruling,
+      // 2026-08-21), so the implied `required` resolves missingness to zero.
       const harness = setUp({
-        alters: 2000,
+        alters: 200,
         codebook: codebookWith({ missingProbability: 0.25 }),
       });
       runStage(harness);
 
-      const unplaced = binnedValues(harness).filter(
-        (value) => value === undefined,
-      ).length;
-
-      expect(Math.abs(unplaced / 2000 - 0.25)).toBeLessThan(0.05);
+      expect(binnedValues(harness).filter((v) => v === undefined)).toEqual([]);
     });
 
     it('places everyone when the variable declares no missingness', () => {

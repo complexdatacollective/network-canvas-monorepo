@@ -441,10 +441,36 @@ describe('the rules a protocol’s interfaces impose', () => {
       .get(syntheticSubjectKey({ entity: 'node', type: 'person' }))
       ?.get(variableId);
 
-  it('holds a binned variable to one selection', () => {
+  it('holds a binned variable to one selection, answered on every node', () => {
+    // maxSelected: a bin drop places an alter in exactly one bin.
+    // required: a bin affords no way to SKIP a node while placing the others
+    // — total placement is the interaction's design (maintainer ruling,
+    // 2026-08-21), so missingness resolves to zero exactly as quick-add's.
     expect(
       rulesFor(binProtocol([{ id: 'p1', variable: 'hobbies' }]), 'hobbies'),
-    ).toEqual({ maxSelected: 1 });
+    ).toEqual({ maxSelected: 1, required: true });
+  });
+
+  it('requires an ordinal bin prompt variable the same way', () => {
+    const protocol = {
+      stages: [
+        {
+          id: 'obin',
+          type: 'OrdinalBin',
+          label: 'Rank',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'p1',
+              text: 'Rank them',
+              variable: 'rank',
+              color: 'ord-color-seq-1',
+            },
+          ],
+        },
+      ],
+    };
+    expect(rulesFor(protocol, 'rank')).toEqual({ required: true });
   });
 
   it('imposes nothing on a prompt’s other variable, which is a form field', () => {
@@ -475,7 +501,10 @@ describe('the rules a protocol’s interfaces impose', () => {
         ...binProtocol([{ id: 'p1', variable: 'hobbies' }]).stages,
       ],
     };
-    expect(rulesFor(protocol, 'hobbies')).toEqual({ maxSelected: 1 });
+    expect(rulesFor(protocol, 'hobbies')).toEqual({
+      maxSelected: 1,
+      required: true,
+    });
   });
 
   it('requires a composer’s quick-add variable, like the quick-add generator’s', () => {

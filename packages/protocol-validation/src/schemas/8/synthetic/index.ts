@@ -482,9 +482,19 @@ export const BooleanSyntheticSchema = z
   .superRefine(requireSomeField);
 export type BooleanSynthetic = z.infer<typeof BooleanSyntheticSchema>;
 
+/**
+ * The ceiling a single option weight may carry. Weights are RELATIVE, so no
+ * realistic declaration needs more than this — and an unbounded weight is a
+ * live defect, not head-room: two weights of 1e308 sum to Infinity, the
+ * weighted draw's countdown never crosses zero, and every draw lands
+ * deterministically on the last option. Bounding the input is what makes the
+ * overflow unrepresentable rather than defended against.
+ */
+export const MAX_SYNTHETIC_OPTION_WEIGHT = 1_000_000;
+
 const optionWeightSchema = z.strictObject({
   value: z.union([z.number().int(), z.string()]),
-  weight: z.number().min(0),
+  weight: z.number().min(0).max(MAX_SYNTHETIC_OPTION_WEIGHT),
 });
 export type SyntheticOptionWeight = z.infer<typeof optionWeightSchema>;
 

@@ -848,6 +848,15 @@ export function collectInterfaceImpliedRules(
     if (writers.some((hit) => isCategoricalBinAssignment(hit.path, stages))) {
       implied.maxSelected = 1;
     }
+    if (writers.some((hit) => isBinPromptAssignment(hit.path, stages))) {
+      // A bin affords no way to SKIP a node while placing the others — total
+      // placement is the interaction's design, and the next-button pulse
+      // encodes it. Missingness on a bin-written variable therefore
+      // describes a state the interface does not afford, and the implied
+      // rule resolves it to zero exactly as quick-add's does (maintainer
+      // ruling, 2026-08-21).
+      implied.required = true;
+    }
     if (writers.some((hit) => isQuickAddField(hit.path, stages))) {
       implied.required = true;
     }

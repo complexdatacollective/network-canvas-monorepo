@@ -399,7 +399,11 @@ unique registry. Two changes:
    falling back to the distinct-value sequence.
 2. **Effective validation is one derivation.** The per-type resolution table
    and the interface-implied rules table of the 2026-08-19 spec apply verbatim
-   (CategoricalBin ⇒ `maxSelected: 1`; bin-only variables ⇒ form rules not
+   (CategoricalBin ⇒ `maxSelected: 1`; **both bin interfaces ⇒ never
+   unanswered** — a bin affords no way to skip a node while placing the
+   others, so bin-written variables imply `required` exactly as quick-add's
+   do, and a selection table that can draw zero is refused at parse
+   (maintainer ruling, 2026-08-21); bin-only variables ⇒ form rules not
    enforced; quick-add ⇒ never unanswered; one-option Boolean ⇒ single-value
    domain; RelativeDatePicker ⇒ its window; datetime defaults are
    session-relative windows, never absolute dates). `collectVariableRoleHits`

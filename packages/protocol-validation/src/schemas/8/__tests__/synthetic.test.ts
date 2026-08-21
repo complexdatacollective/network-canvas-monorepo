@@ -8,6 +8,7 @@ import {
   DEFAULT_CATEGORICAL_OTHER_BIN_PROBABILITY,
   DEFAULT_PANEL_NOMINATION_PROBABILITY,
   DEFAULT_RESPONSE_BURDEN,
+  MAX_SYNTHETIC_OPTION_WEIGHT,
 } from '../synthetic/index.ts';
 
 type Loose = Record<string, unknown>;
@@ -1372,9 +1373,21 @@ describe('synthetic metadata (additive to schema 8)', () => {
         );
       });
 
-      it('accepts counts of 0 and 1', () => {
-        // An alter left in the bucket is a state the interface produces, and
-        // being binned does not stop the variable being optional.
+      it('accepts a table drawing exactly one', () => {
+        const result = parse(
+          withBinnedCategory({
+            selectionCount: { probabilities: [{ count: 1, probability: 1 }] },
+          }),
+        );
+        expect(result.success).toBe(true);
+      });
+
+      it('refuses a table that can draw zero', () => {
+        // The bin affords no way to SKIP a node while placing the others —
+        // total placement is the interaction's design (maintainer ruling,
+        // 2026-08-21) — so "sometimes nothing" describes a state the
+        // interface cannot produce, exactly like missingness on a quick-add
+        // variable.
         const result = parse(
           withBinnedCategory({
             selectionCount: {
@@ -1385,7 +1398,7 @@ describe('synthetic metadata (additive to schema 8)', () => {
             },
           }),
         );
-        expect(result.success).toBe(true);
+        expect(result.success).toBe(false);
       });
 
       it('leaves the same count legal where no bin stage collects it', () => {
@@ -1976,6 +1989,72 @@ describe('a RelativeDatePicker with a declared anchor', () => {
           { distribution: 'uniform', min: '2030-01-01', max: '2030-02-01' },
         ),
       ).success,
+    ).toBe(true);
+  });
+});
+
+describe('option weights are bounded so their sum cannot overflow', () => {
+  const weightBearer = (weight: number) => ({
+    name: 'Weight bounds',
+    schemaVersion: 8,
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            label: { name: 'label', type: 'text', component: 'Text' },
+            pick: {
+              name: 'pick',
+              type: 'ordinal',
+              component: 'RadioGroup',
+              options: [
+                { label: 'A', value: 1 },
+                { label: 'B', value: 2 },
+              ],
+              synthetic: {
+                optionWeights: [
+                  { value: 1, weight },
+                  { value: 2, weight: 1 },
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'ng',
+        type: 'NameGenerator',
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        form: {
+          title: 'About them',
+          fields: [
+            { variable: 'label', prompt: 'Name?' },
+            { variable: 'pick', prompt: 'Pick?' },
+          ],
+        },
+        prompts: [{ id: 'p1', text: 'Who?' }],
+      },
+    ],
+  });
+
+  it('refuses a weight above the ceiling', () => {
+    // Two weights of 1e308 sum to Infinity; the weighted draw's countdown
+    // then never crosses zero and every draw lands deterministically on the
+    // last option (found by the prior-failure evaluation — the same
+    // construction killed a #1235 review round). Bounding the input makes
+    // the overflow unrepresentable.
+    expect(ProtocolSchemaV8.safeParse(weightBearer(1e308)).success).toBe(false);
+  });
+
+  it('accepts the ceiling itself', () => {
+    expect(
+      ProtocolSchemaV8.safeParse(weightBearer(MAX_SYNTHETIC_OPTION_WEIGHT))
+        .success,
     ).toBe(true);
   });
 });

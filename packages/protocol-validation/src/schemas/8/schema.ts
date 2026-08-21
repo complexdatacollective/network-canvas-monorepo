@@ -1538,9 +1538,12 @@ const ProtocolSchema = z
             // descriptor rule exists: metadata that can never take effect is
             // better rejected than quietly dropped.
             //
-            // A count of 0 is untouched: an alter left in the bucket is a
-            // state the interface produces, and the variable being binned
-            // here does not stop it also being optional.
+            // A count of 0 is refused for the same reason: the bin affords no
+            // way to SKIP a node while placing the others — total placement
+            // is the interaction's design (maintainer ruling, 2026-08-21) —
+            // so an author declaring "sometimes nothing" describes a state
+            // the interface cannot produce, exactly like a missingProbability
+            // on a quick-add variable.
             //
             // This holds even where a form elsewhere collects the same
             // variable as a multi-select. The two askings would disagree
@@ -1553,10 +1556,10 @@ const ProtocolSchema = z
             ) {
               variable.synthetic.selectionCount.probabilities.forEach(
                 (candidate) => {
-                  if (candidate.count <= 1) return;
+                  if (candidate.count === 1) return;
                   ctx.addIssue({
                     code: 'custom' as const,
-                    message: `CategoricalBin prompt variable "${prompt.variable}" declares a selection count of ${candidate.count}, but a bin drop places an alter in exactly one bin — only 0 or 1 can be drawn here.`,
+                    message: `CategoricalBin prompt variable "${prompt.variable}" declares a selection count of ${candidate.count}, but a bin drop places an alter in exactly one bin — only 1 can be drawn here.`,
                     path: [
                       'stages',
                       stageIndex,
