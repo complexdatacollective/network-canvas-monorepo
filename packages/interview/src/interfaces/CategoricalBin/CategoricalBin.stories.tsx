@@ -20,6 +20,14 @@ const CATEGORY_LABELS = [
   'Other',
 ];
 
+// A researcher can author a category label of any length, and a participant
+// can name a person anything at all. Both end up inside a bin circle, which
+// clips to its own shape — so both are edge cases the layout has to survive.
+const LONG_CATEGORY_LABEL =
+  'People I know through my extended family and their close friends';
+const LONG_NODE_NAME =
+  'Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva';
+
 type StoryArgs = {
   categoryCount: number;
   hasMissingValue: boolean;
@@ -28,9 +36,14 @@ type StoryArgs = {
   initialNodeCount: number;
   unassignedCount: number;
   promptCount: number;
+  longLabels: boolean;
 };
 
-function buildOptions(categoryCount: number, hasMissingValue: boolean) {
+function buildOptions(
+  categoryCount: number,
+  hasMissingValue: boolean,
+  longLabels: boolean,
+) {
   const options: VariableOption[] = [];
 
   if (hasMissingValue) {
@@ -38,7 +51,10 @@ function buildOptions(categoryCount: number, hasMissingValue: boolean) {
   }
 
   for (let i = 0; i < categoryCount; i++) {
-    const label = CATEGORY_LABELS[i] ?? `Category ${i + 1}`;
+    const label =
+      longLabels && i === 0
+        ? LONG_CATEGORY_LABEL
+        : (CATEGORY_LABELS[i] ?? `Category ${i + 1}`);
     options.push({ label, value: i + 1 });
   }
 
@@ -47,7 +63,11 @@ function buildOptions(categoryCount: number, hasMissingValue: boolean) {
 
 function buildInterview(args: StoryArgs) {
   const interview = new SyntheticInterview();
-  const options = buildOptions(args.categoryCount, args.hasMissingValue);
+  const options = buildOptions(
+    args.categoryCount,
+    args.hasMissingValue,
+    args.longLabels,
+  );
 
   const nodeType = interview.addNodeType({ name: 'Person' });
 
@@ -115,6 +135,18 @@ function buildInterview(args: StoryArgs) {
     }
   }
 
+  if (args.longLabels) {
+    // `addNodeType` seeds the "name" text variable first, so it leads the
+    // type's variable list. Every node gets the long name, so whichever one
+    // sorts first into a bin is the one the bin summarises.
+    const nameVariableId = interview.getVariableIds(nodeType.id)[0];
+    if (nameVariableId) {
+      for (let i = 0; i < args.initialNodeCount; i++) {
+        interview.setNodeAttribute(i, nameVariableId, LONG_NODE_NAME);
+      }
+    }
+  }
+
   interview.addInformationStage({
     title: 'Complete',
     text: 'After the main stage.',
@@ -176,6 +208,11 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 1, max: 4 },
       description: 'Number of prompts (pips appear for 2+)',
     },
+    longLabels: {
+      control: 'boolean',
+      description:
+        'Give the first category and every person a label far longer than a bin can show',
+    },
   },
   args: {
     categoryCount: 4,
@@ -185,6 +222,7 @@ const meta: Meta<StoryArgs> = {
     initialNodeCount: 8,
     unassignedCount: 3,
     promptCount: 1,
+    longLabels: false,
   },
 };
 
@@ -193,6 +231,22 @@ type Story = StoryObj<StoryArgs>;
 
 export const Default: Story = {
   render: (args) => <CategoricalBinStoryWrapper {...args} />,
+};
+
+export const LabelsLongerThanTheBin: Story = {
+  args: {
+    longLabels: true,
+    unassignedCount: 2,
+  },
+  render: (args) => <CategoricalBinStoryWrapper {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Every person carries a name far longer than a bin circle can show, and the first category label overruns too. Both clamp to an ellipsis inside the circle rather than growing the stack — the category name stays visible, and the count of everyone else in the bin survives the truncation. The full membership is one tap away in the expanded panel.',
+      },
+    },
+  },
 };
 
 export const OtherBinRequiresAReason: Story = {
