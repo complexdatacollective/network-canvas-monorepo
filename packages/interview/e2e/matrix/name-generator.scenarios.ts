@@ -666,6 +666,10 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       visual: true,
       currentStep: 1,
       seedNetwork: true,
+      // Arrive at the name generator fresh: the setup people and their edge
+      // exist, the canvas is empty, and the capture drives the round-trip
+      // itself (plan D20).
+      stopAt: { stageIndex: 1 },
       build: () => {
         const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
