@@ -325,6 +325,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       ],
       currentStep: 1,
       seedNetwork: true,
+      // Arrive at the limited stage fresh: the setup node exists, the floor
+      // under test is unmet (plan D20).
+      stopAt: { stageIndex: 1 },
       build: () => {
         const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
@@ -477,6 +480,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       covers: ['subject.type'],
       currentStep: 1,
       seedNetwork: true,
+      // Arrive at the Person stage fresh: the Place nodes exist, the
+      // Person-scoped floor under test is unmet (plan D20).
+      stopAt: { stageIndex: 1 },
       build: () => {
         const synth = new ProtocolBuilder();
         const place = synth.addNodeType({ name: 'Place' });

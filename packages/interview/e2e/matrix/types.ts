@@ -38,6 +38,8 @@ export type ScenarioDefinition = {
    * rather than the untouched one (default false).
    */
   seedNetwork?: boolean;
+  /** With seedNetwork: stop the simulated walk on arrival at this stage. */
+  stopAt?: { stageIndex: number; promptIndex?: number };
   /** seeded stage metadata (e.g. NarrativePedigree source-stage state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */

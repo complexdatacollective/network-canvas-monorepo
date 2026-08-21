@@ -40,6 +40,14 @@ export type BuildSyntheticPayloadOptions = {
    * an unanswered stage does cannot express itself against pre-filled state.
    */
   seedNetwork?: boolean;
+  /**
+   * With `seedNetwork`, stop the simulated participant ON ARRIVAL at this
+   * stage instead of letting them finish the interview — the earlier stages'
+   * data exists, the stage under test is untouched (plan D20). A scenario
+   * that tests an unmet floor or an unanswered prompt needs this; one that
+   * revisits a completed stage does not.
+   */
+  stopAt?: { stageIndex: number; promptIndex?: number };
   stageMetadata?: unknown;
 };
 
@@ -80,7 +88,11 @@ export function buildSyntheticPayload(
   // pre-populated interview asks for `seedNetwork`.
   const raw = synth.getInterviewPayload({
     currentStep: opts.currentStep ?? 0,
-    ...(opts.seedNetwork ? {} : { stopAt: { stageIndex: 0 } }),
+    ...(opts.seedNetwork
+      ? opts.stopAt
+        ? { stopAt: opts.stopAt }
+        : {}
+      : { stopAt: { stageIndex: 0 } }),
   });
 
   const assetManifest = Object.fromEntries(

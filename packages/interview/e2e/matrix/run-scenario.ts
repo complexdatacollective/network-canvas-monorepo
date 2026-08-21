@@ -20,6 +20,7 @@ export async function installScenario(
     assets: scenario.assets,
     currentStep: scenario.currentStep,
     seedNetwork: scenario.seedNetwork,
+    ...(scenario.stopAt ? { stopAt: scenario.stopAt } : {}),
     stageMetadata: scenario.stageMetadata,
   });
   const { protocolId } = await ctx.protocol.installPayload(result);
