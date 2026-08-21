@@ -1,6 +1,6 @@
 ---
 name: creating-a-changeset
-description: 'Use when finishing a change and preparing to open a PR in the network-canvas monorepo — to decide whether a changeset is needed and author it in the correct lane. Keywords: changeset, do I need a changeset, release notes, pnpm changeset, version bump, before opening a PR, releasable change.'
+description: 'Use when finishing a change and preparing to open a PR in the network-canvas monorepo — to decide whether a changeset is needed and author it in the correct lane. Keywords: changeset, do I need a changeset, release notes, pnpm changeset, version bump, before opening a PR, releasable change, unreleased bug, never shipped.'
 ---
 
 # Creating a Changeset
@@ -18,10 +18,50 @@ released package or app:
   (`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`,
   `@codaco/studio-sync`).
 
-Skip it for repository-docs-only, test-only, CI/tooling-only, or internal
-refactors with no consumer-visible effect. Content changes to the released
+Skip it for repository-docs-only, test-only, CI/tooling-only, internal
+refactors with no consumer-visible effect, or a fix for a defect that never
+shipped (verify that — see below). Content changes to the released
 Documentation or Website products are consumer-visible and do need a changeset.
 Don't add an empty changeset just to have one.
+
+## Before writing one for a fix: was the bug ever released?
+
+A changeset is a release note, so a note for a defect nobody could encounter
+describes a version that never existed. When the change is a **fix**, establish
+whether the behaviour it corrects reached a release before deciding.
+
+Verify it; do not assume from the calendar. "Landed recently" is not
+"unreleased" — a package can ship several times a week — and the answer differs
+per package, because each has its own tag. Find the commit that introduced the
+behaviour you are fixing, then ask whether it is an ancestor of that package's
+newest release tag:
+
+```sh
+# What introduced it — `git log -S` finds the commit that added the code
+git log -S 'the-telltale-code' --oneline -- path/to/file.tsx
+
+# Newest release tag for each affected package
+git tag --list '@codaco/fresco-ui@*' | tail -1
+
+# Shipped, or still pending?
+git merge-base --is-ancestor <commit> '@codaco/fresco-ui@6.0.0' \
+  && echo shipped || echo unreleased
+```
+
+- **Shipped in any affected package** → write the changeset, naming at least
+  the packages whose released versions carry the defect.
+- **Unreleased everywhere** → no changeset. Say so in the PR description, with
+  the introducing commit, so a reviewer reads the omission as a decision rather
+  than an oversight.
+- **The pending changeset describes the behaviour you just changed** → edit
+  that changeset rather than adding a second one. Two notes about one shipped
+  behaviour read as two changes.
+
+Fetch tags first (`git fetch --tags`) or a stale local tag list will report a
+shipped defect as unreleased.
+
+This is about the defect, not the diff. A fix that also changes behaviour
+beyond restoring the original intent still needs a changeset for that part.
 
 ## Release lanes — never mix separately gated products
 
