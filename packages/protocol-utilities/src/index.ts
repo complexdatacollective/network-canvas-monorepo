@@ -23,6 +23,11 @@ export {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from './SyntheticInterview';
+// The ceiling a caller may ask a single batch for. Published because it is a
+// property of asking for synthetic data rather than of any one host, so the
+// hosts' request schemas and count inputs read it from here rather than each
+// keeping a number of their own (plan D1).
+export { MAX_SYNTHETIC_INTERVIEWS } from './synthetic-interviews/constants';
 export type {
   AssetData,
   SimulationContext,
