@@ -1511,10 +1511,11 @@ describe('replay parity (C1) — the bundled protocols, whole', () => {
       // Not vacuous: a real protocol's walk produces people.
       expect(result?.session.network?.nodes.length ?? 0).toBeGreaterThan(0);
     },
-    // A whole-protocol replay dispatches hundreds of thunks; under a full
-    // parallel suite the default five seconds is not a statement about
-    // correctness.
-    60_000,
+    // A whole-protocol replay dispatches hundreds of thunks; on a contended
+    // CI runner with every package's suite in parallel, sixty seconds proved
+    // too tight for the development protocol. The workload is deterministic —
+    // a generous ceiling is headroom, not a hang allowance.
+    180_000,
   );
 });
 
@@ -1554,7 +1555,7 @@ describe('replay parity (C1) — corpus slice', () => {
         );
       }
     },
-    60_000,
+    120_000,
   );
 
   it('the slice is not all refusals', () => {
