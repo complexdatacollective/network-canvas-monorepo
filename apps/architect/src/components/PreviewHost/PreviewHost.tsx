@@ -21,10 +21,10 @@ import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
+import { collectSyntheticAssetData } from '~/utils/syntheticAssetData';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
-import { collectPreviewAssetData } from './previewAssetData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
@@ -63,7 +63,7 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   // Draw roster people and Geospatial answers from the protocol's real assets.
   // Failures are isolated per-asset and never throw, so an asset problem
   // degrades to fabricated values rather than blocking the preview.
-  const assetData = await collectPreviewAssetData(
+  const assetData = await collectSyntheticAssetData(
     payload.protocol,
     payload.protocolId,
   );
