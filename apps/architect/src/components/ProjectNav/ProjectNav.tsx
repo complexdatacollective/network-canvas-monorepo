@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BookOpenText,
+  Dices,
   Eye,
   FileImage,
   type LucideIcon,
@@ -33,6 +34,7 @@ const TABS: Tab[] = [
   { href: '/protocol', label: 'Stages', Icon: Timeline },
   { href: '/protocol/assets', label: 'Resources', Icon: FileImage },
   { href: '/protocol/codebook', label: 'Codebook', Icon: BookOpenText },
+  { href: '/protocol/synthetic', label: 'Synthetic data', Icon: Dices },
   { href: '/protocol/summary', label: 'Summary', Icon: Printer },
 ];
 

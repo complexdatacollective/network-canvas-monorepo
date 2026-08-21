@@ -1,0 +1,422 @@
+import {
+  collectInterfaceImpliedRules,
+  collectVariableRoleHits,
+  type CurrentProtocol,
+  type EffectiveVariableRules,
+  narrowVariableRules,
+  type ResolvedVariableSynthetic,
+  resolveNumberWindow,
+  resolveVariableSynthetic,
+  SCALAR_DOMAIN,
+  type SyntheticOptionWeight,
+  type SyntheticSelectionCount,
+  type SyntheticTextGenerator,
+  syntheticSubjectKey,
+  type Variable,
+  type VariableType,
+  type Variables,
+} from '@codaco/protocol-validation';
+import {
+  formatProbability,
+  formatSyntheticDistribution,
+  type SyntheticWindow,
+} from '~/components/Synthetic/summaries';
+
+import {
+  isRecord,
+  readBoolean,
+  readNumber,
+  recordAt,
+  type UnknownRecord,
+} from './documentReaders';
+
+/**
+ * The variable half of the read-only overview (spec, Surfaces §4): one row per
+ * codebook attribute that synthetic generation can produce a value for, saying
+ * what that value will look like, whether the author said so or the schema did,
+ * and which of the protocol's own interfaces have already decided part of the
+ * answer for them.
+ *
+ * Every resolved value here comes from `resolveVariableSynthetic` — the
+ * schema's single definition of a variable-level default — asked with the
+ * EFFECTIVE rules the variable is held to: its own declared validation narrowed
+ * by whatever the interfaces collecting it impose, combined by the schema's own
+ * `narrowVariableRules`. Nothing in this module decides a default of its own.
+ */
+
+export type SyntheticVariableRow = {
+  /** Stable identity for the row: a variable id is unique protocol-wide. */
+  key: string;
+  entity: 'ego' | 'node' | 'edge';
+  /** The type's own name, e.g. "Person"; "Ego" where there is no type. */
+  entityLabel: string;
+  variableId: string;
+  name: string;
+  type: VariableType;
+  /** The resolved value behaviour, e.g. `normal(mean 40, sd 12)`. */
+  behaviour: string;
+  /** How many options a multi-select categorical picks, where that applies. */
+  selection: string | undefined;
+  /** How often the question goes unanswered. */
+  missing: string;
+  /** Whole sentences naming an interface-implied rule and its source stages. */
+  notes: string[];
+  /** True when the saved document gives this variable a `synthetic` block. */
+  authored: boolean;
+};
+
+/**
+ * How each text generator reads to a researcher. Exhaustive over the schema's
+ * own generator list, so a generator added there is a typecheck failure here
+ * rather than a blank cell.
+ */
+const TEXT_GENERATOR_LABELS: Record<SyntheticTextGenerator, string> = {
+  neutralWords: 'Neutral words',
+  personName: 'Person names',
+  firstName: 'First names',
+  lastName: 'Last names',
+  placeName: 'Place names',
+  organisationName: 'Organisation names',
+  occupation: 'Occupations',
+  email: 'Email addresses',
+  phoneNumber: 'Phone numbers',
+  streetAddress: 'Street addresses',
+  sentence: 'Sentences',
+  paragraph: 'Paragraphs',
+};
+
+const NEVER_MISSING = 'Never';
+
+/** The scale a scalar is recorded on, as the formatter's elision window. */
+const SCALAR_WINDOW: SyntheticWindow = {
+  min: SCALAR_DOMAIN.minValue,
+  max: SCALAR_DOMAIN.maxValue,
+};
+
+const trueShareLabel = (probability: number): string =>
+  `True ${formatProbability(probability)} of the time`;
+
+const quoted = (names: readonly string[]): string =>
+  names.map((name) => `“${name}”`).join(', ');
+
+/**
+ * The rules the variable itself declares, in the shape the schema's resolver
+ * and combiner both take. Read structurally because `validation` is a
+ * different object on every variable type, and only these fields shape a
+ * generated value.
+ */
+const declaredRules = (variable: Variable): EffectiveVariableRules => {
+  const validation =
+    'validation' in variable && isRecord(variable.validation)
+      ? variable.validation
+      : undefined;
+
+  const rules: EffectiveVariableRules = {};
+  const required = readBoolean(validation, 'required');
+  if (required !== undefined) rules.required = required;
+  const unique = readBoolean(validation, 'unique');
+  if (unique !== undefined) rules.unique = unique;
+  for (const key of [
+    'minValue',
+    'maxValue',
+    'minSelected',
+    'maxSelected',
+  ] as const) {
+    const bound = readNumber(validation, key);
+    if (bound !== undefined) rules[key] = bound;
+  }
+  return rules;
+};
+
+/** An option list's labels, keyed by the value a weight table names. */
+const optionLabels = (variable: Variable): Map<string, string> => {
+  const labels = new Map<string, string>();
+  if (!('options' in variable) || variable.options === undefined) return labels;
+  for (const option of variable.options) {
+    labels.set(String(option.value), option.label);
+  }
+  return labels;
+};
+
+const formatOptionWeights = (
+  weights: readonly SyntheticOptionWeight[],
+  labels: Map<string, string>,
+): string =>
+  weights
+    .map((entry) => {
+      const label = labels.get(String(entry.value)) ?? String(entry.value);
+      return `${label} ×${entry.weight}`;
+    })
+    .join(', ');
+
+const formatSelectionCount = (selection: SyntheticSelectionCount): string =>
+  selection.probabilities
+    .map((entry) => `${entry.count} (${formatProbability(entry.probability)})`)
+    .join(', ');
+
+/**
+ * A datetime descriptor's window, in the vocabulary the schema states it in.
+ *
+ * Datetime distributions parameterise over date STRINGS and a day offset from
+ * the session date, so the shared numeric formatters have nothing to say about
+ * them — see `summaries.ts`, which excludes them deliberately.
+ */
+const formatDatetimeWindow = (
+  descriptor: Extract<ResolvedVariableSynthetic, { type: 'datetime' }>,
+): string[] => {
+  const parts: string[] = [];
+  if (descriptor.min !== undefined) parts.push(`from ${descriptor.min}`);
+  if (descriptor.max !== undefined) parts.push(`to ${descriptor.max}`);
+  const { relative } = descriptor;
+  if (relative !== undefined) {
+    parts.push(
+      `${relative.before} days before to ${relative.after} days after ${
+        relative.anchor ?? 'the interview date'
+      }`,
+    );
+  }
+  return parts;
+};
+
+const formatDatetime = (
+  descriptor: Extract<ResolvedVariableSynthetic, { type: 'datetime' }>,
+): string => {
+  const parts =
+    descriptor.distribution === 'normal'
+      ? [
+          `mean ${descriptor.mean}`,
+          `sd ${descriptor.sdDays} days`,
+          ...formatDatetimeWindow(descriptor),
+        ]
+      : formatDatetimeWindow(descriptor);
+  return parts.length === 0
+    ? descriptor.distribution
+    : `${descriptor.distribution}(${parts.join(', ')})`;
+};
+
+type Behaviour = { behaviour: string; selection: string | undefined };
+
+const describeBehaviour = (
+  descriptor: ResolvedVariableSynthetic,
+  variable: Variable,
+  rules: EffectiveVariableRules,
+): Behaviour => {
+  switch (descriptor.type) {
+    case 'text':
+      return {
+        behaviour: TEXT_GENERATOR_LABELS[descriptor.generator],
+        selection: undefined,
+      };
+    case 'number':
+      return {
+        behaviour: formatSyntheticDistribution(descriptor, {
+          window: resolveNumberWindow(rules),
+        }),
+        selection: undefined,
+      };
+    case 'scalar':
+      return {
+        behaviour: formatSyntheticDistribution(descriptor, {
+          window: SCALAR_WINDOW,
+        }),
+        selection: undefined,
+      };
+    case 'boolean':
+      return {
+        behaviour: trueShareLabel(descriptor.probabilityTrue),
+        selection: undefined,
+      };
+    case 'ordinal':
+      return {
+        behaviour: formatOptionWeights(
+          descriptor.optionWeights,
+          optionLabels(variable),
+        ),
+        selection: undefined,
+      };
+    case 'categorical':
+      return {
+        behaviour: formatOptionWeights(
+          descriptor.optionWeights,
+          optionLabels(variable),
+        ),
+        selection: formatSelectionCount(descriptor.selectionCount),
+      };
+    case 'datetime':
+      return { behaviour: formatDatetime(descriptor), selection: undefined };
+  }
+};
+
+/**
+ * The stages that write a variable, by label, in protocol order.
+ *
+ * `collectInterfaceImpliedRules` reports WHICH rules a protocol's interfaces
+ * impose but not which stage imposed each one, so a note names every stage
+ * that writes the attribute. Every implied rule comes from one of those
+ * writers, so the list always contains the source; it may be wider than the
+ * source where a form collects the same attribute as a bin.
+ */
+const writerStageLabels = (
+  protocol: CurrentProtocol,
+): Map<string, string[]> => {
+  const byVariable = new Map<string, string[]>();
+
+  for (const group of collectVariableRoleHits(protocol)) {
+    const key = `${syntheticSubjectKey(group.subject)}/${group.variableId}`;
+    const labels = byVariable.get(key) ?? [];
+    for (const hit of [...group.validated, ...group.unvalidated]) {
+      if (hit.stageIndex === undefined) continue;
+      const label = protocol.stages[hit.stageIndex]?.label;
+      if (label === undefined || labels.includes(label)) continue;
+      labels.push(label);
+    }
+    byVariable.set(key, labels);
+  }
+
+  return byVariable;
+};
+
+const impliedRuleNotes = (
+  implied: EffectiveVariableRules | undefined,
+  declared: EffectiveVariableRules,
+  binOnly: boolean,
+  stageLabels: readonly string[],
+): string[] => {
+  const notes: string[] = [];
+  const named = stageLabels.length > 0 ? quoted(stageLabels) : undefined;
+
+  if (implied?.required === true && declared.required !== true) {
+    notes.push(
+      named === undefined
+        ? 'Always answered: the interfaces that collect this attribute cannot leave it blank.'
+        : `Always answered: ${named} cannot leave this attribute blank.`,
+    );
+  }
+
+  if (implied?.maxSelected === 1 && declared.maxSelected !== 1) {
+    notes.push(
+      named === undefined
+        ? 'Single choice: the interface that collects this attribute assigns exactly one option.'
+        : `Single choice: ${named} assigns exactly one option.`,
+    );
+  }
+
+  if (binOnly) {
+    notes.push(
+      named === undefined
+        ? 'Validation is not applied: this attribute is assigned by placement rather than through a form field.'
+        : `Validation is not applied: ${named} assigns this attribute by placement rather than through a form field.`,
+    );
+  }
+
+  return notes;
+};
+
+type Subject = {
+  entity: 'ego' | 'node' | 'edge';
+  type: string | undefined;
+  entityLabel: string;
+  variables: Variables | undefined;
+  /** The same variables as the saved document states them. */
+  document: UnknownRecord | undefined;
+};
+
+const subjectsOf = (
+  protocol: CurrentProtocol,
+  document: UnknownRecord | undefined,
+): Subject[] => {
+  const documentCodebook = recordAt(document, 'codebook');
+  const subjects: Subject[] = [];
+
+  const { codebook } = protocol;
+  if (codebook.ego?.variables) {
+    subjects.push({
+      entity: 'ego',
+      type: undefined,
+      entityLabel: 'Ego',
+      variables: codebook.ego.variables,
+      document: recordAt(recordAt(documentCodebook, 'ego'), 'variables'),
+    });
+  }
+
+  for (const entity of ['node', 'edge'] as const) {
+    for (const [type, definition] of Object.entries(codebook[entity] ?? {})) {
+      if (!definition.variables) continue;
+      subjects.push({
+        entity,
+        type,
+        entityLabel: definition.name ?? type,
+        variables: definition.variables,
+        document: recordAt(
+          recordAt(recordAt(documentCodebook, entity), type),
+          'variables',
+        ),
+      });
+    }
+  }
+
+  return subjects;
+};
+
+export const buildVariableRows = (
+  protocol: CurrentProtocol,
+  document: unknown,
+): SyntheticVariableRow[] => {
+  const documentRecord = isRecord(document) ? document : undefined;
+  const interfaceRules = collectInterfaceImpliedRules(protocol);
+  const stageLabels = writerStageLabels(protocol);
+  const rows: SyntheticVariableRow[] = [];
+
+  for (const subject of subjectsOf(protocol, documentRecord)) {
+    const subjectKey = syntheticSubjectKey({
+      entity: subject.entity,
+      type: subject.type,
+    });
+    const subjectRules = interfaceRules.get(subjectKey);
+    const binOnlyHere = interfaceRules.binOnlyVariables.get(subjectKey);
+
+    for (const [variableId, variable] of Object.entries(
+      subject.variables ?? {},
+    )) {
+      const declared = declaredRules(variable);
+      const implied = subjectRules?.get(variableId);
+      const effective = narrowVariableRules(declared, implied ?? {});
+      const descriptor = resolveVariableSynthetic(variable, effective);
+      // `layout` and `location` resolve to nothing: generation produces
+      // deterministic positions for both, so there is no behaviour to show
+      // and no row to be authored.
+      if (descriptor === undefined) continue;
+
+      const { behaviour, selection } = describeBehaviour(
+        descriptor,
+        variable,
+        effective,
+      );
+
+      rows.push({
+        key: `${subjectKey}/${variableId}`,
+        entity: subject.entity,
+        entityLabel: subject.entityLabel,
+        variableId,
+        name: variable.name,
+        type: variable.type,
+        behaviour,
+        selection,
+        missing:
+          descriptor.missingProbability === 0
+            ? NEVER_MISSING
+            : formatProbability(descriptor.missingProbability),
+        notes: impliedRuleNotes(
+          implied,
+          declared,
+          binOnlyHere?.has(variableId) ?? false,
+          stageLabels.get(`${subjectKey}/${variableId}`) ?? [],
+        ),
+        authored:
+          recordAt(subject.document, variableId)?.synthetic !== undefined,
+      });
+    }
+  }
+
+  return rows;
+};
