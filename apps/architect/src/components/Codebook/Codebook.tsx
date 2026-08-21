@@ -14,6 +14,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import { getCodebook } from '~/selectors/protocol';
 
+import { codebookEntityMarker, useCodebookDeepLink } from './deepLink';
 import EgoType from './EgoType';
 import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
@@ -53,6 +54,10 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
   const [search, setSearch] = useState('');
   const [unusedOnly, setUnusedOnly] = useState(false);
   const unusedOnlyId = useId();
+
+  // After the rows above have rendered, so a link naming one of them can find
+  // it. Filters are at their defaults on arrival, so a linked row is present.
+  useCodebookDeepLink();
 
   return (
     <div className="my-10">
@@ -99,7 +104,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         </div>
       )}
 
-      <div className="mb-14">
+      <div className="mb-14" {...codebookEntityMarker({ entity: 'ego' })}>
         <Heading level="h2" margin="none" className="mb-5!">
           Ego
         </Heading>
@@ -127,16 +132,20 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         ) : (
           <div className="space-y-8">
             {nodes.map((node) => (
-              <EntityType
+              <div
                 key={node.type}
-                entity={node.entity}
-                type={node.type}
-                inUse={node.inUse}
-                usage={[...node.usage]}
-                search={search}
-                unusedOnly={unusedOnly}
-                onEditEntity={onEditEntity}
-              />
+                {...codebookEntityMarker({ entity: 'node', type: node.type })}
+              >
+                <EntityType
+                  entity={node.entity}
+                  type={node.type}
+                  inUse={node.inUse}
+                  usage={[...node.usage]}
+                  search={search}
+                  unusedOnly={unusedOnly}
+                  onEditEntity={onEditEntity}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -161,16 +170,20 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
         ) : (
           <div className="space-y-8">
             {edges.map((edge) => (
-              <EntityType
+              <div
                 key={edge.type}
-                entity={edge.entity}
-                type={edge.type}
-                inUse={edge.inUse}
-                usage={[...edge.usage]}
-                search={search}
-                unusedOnly={unusedOnly}
-                onEditEntity={onEditEntity}
-              />
+                {...codebookEntityMarker({ entity: 'edge', type: edge.type })}
+              >
+                <EntityType
+                  entity={edge.entity}
+                  type={edge.type}
+                  inUse={edge.inUse}
+                  usage={[...edge.usage]}
+                  search={search}
+                  unusedOnly={unusedOnly}
+                  onEditEntity={onEditEntity}
+                />
+              </div>
             ))}
           </div>
         )}

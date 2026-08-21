@@ -17,6 +17,7 @@ import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 
 import ControlsColumn from './ControlsColumn';
+import { codebookVariableMarker } from './deepLink';
 import UsageColumn from './UsageColumn';
 
 type UsageItem = {
@@ -99,13 +100,20 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
           <DataTableColumnHeader column={column} table={table} title="Name" />
         ),
         sortingFn: caseInsensitiveSort,
+        // Wrapped rather than bare so the row carries the deep-link marker: a
+        // link from another screen lands on this attribute's own control.
         cell: ({ row }) => (
-          <ConnectedVariablePill
-            animated
-            editable
-            uuid={row.original.id}
-            width="25rem"
-          />
+          <span
+            className="inline-flex"
+            {...codebookVariableMarker({ entity, type }, row.original.id)}
+          >
+            <ConnectedVariablePill
+              animated
+              editable
+              uuid={row.original.id}
+              width="25rem"
+            />
+          </span>
         ),
       },
       {
@@ -137,7 +145,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
       },
     ],
-    [handleDelete],
+    [handleDelete, entity, type],
   );
 
   const table = useReactTable({
