@@ -419,14 +419,23 @@ describe('generateInterviews', () => {
       }),
     ]);
 
-    const walks = (simulateDropOut: boolean): SyntheticInterviewResult[] =>
-      Array.from({ length: 40 }, (_, seed) =>
+    // Each 40-walk batch is deterministic, so it is computed ONCE and shared
+    // by every assertion below — recomputing it per test quintupled the
+    // describe's cost and pushed a loaded CI runner past the test timeout.
+    const walksMemo = new Map<boolean, SyntheticInterviewResult[]>();
+    const walks = (simulateDropOut: boolean): SyntheticInterviewResult[] => {
+      const cached = walksMemo.get(simulateDropOut);
+      if (cached) return cached;
+      const computed = Array.from({ length: 40 }, (_, seed) =>
         run(longProtocol, {
           seed,
           simulateDropOut,
           minimumCompletedRatio: 0,
         }),
       );
+      walksMemo.set(simulateDropOut, computed);
+      return computed;
+    };
 
     /** How often the final stage was reached across the runs. */
     const reachedTheEnd = (simulateDropOut: boolean): number =>
