@@ -1,5 +1,5 @@
 import { values } from 'es-toolkit/compat';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   CreateFormFieldProps,
@@ -8,8 +8,19 @@ import type {
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import type { Variable, VariableOption } from '@codaco/protocol-validation';
+import type {
+  Variable,
+  VariableOption,
+  VariableSynthetic,
+  VariableType,
+} from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
+import type { SyntheticVariableDraft } from '~/components/Codebook/VariableSynthetic/draft';
+import { VariableSyntheticProvider } from '~/components/Codebook/VariableSynthetic/VariableSyntheticProvider';
+import {
+  SYNTHETIC_SECTION_TITLE,
+  VariableSyntheticSection,
+} from '~/components/Codebook/VariableSynthetic/VariableSyntheticSection';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import { Section, Subsection } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
@@ -78,6 +89,9 @@ type NewVariableFieldsProps = {
   initialValues: Record<string, unknown>;
   typeLocked: boolean;
   lockedOptions: LockedVariableOptions | null;
+  /** The synthetic block being authored alongside the definition. */
+  synthetic: VariableSynthetic | undefined;
+  onSyntheticChange: (next: VariableSynthetic | undefined) => void;
 };
 
 const NewVariableFields = ({
@@ -86,75 +100,140 @@ const NewVariableFields = ({
   initialValues,
   typeLocked,
   lockedOptions,
+  synthetic,
+  onSyntheticChange,
 }: NewVariableFieldsProps) => {
   const variableType = useFormStore((state) => {
     const value = state.getFieldState('type')?.value;
     return typeof value === 'string' ? value : undefined;
   });
+  // The synthetic editor describes the variable being defined right now, so it
+  // reads the live fields rather than the seed: choosing a type changes which
+  // controls it offers, and adding an option gives that option a weight.
+  const variableName = useFormStore((state) => {
+    const value = state.getFieldState('name')?.value;
+    return typeof value === 'string' ? value : '';
+  });
+  const variableOptions = useFormStore((state) => {
+    const value = state.getFieldState('options')?.value;
+    return Array.isArray(value) ? (value as OptionValue[]) : undefined;
+  });
   const initialOptions = Array.isArray(initialValues.options)
     ? (initialValues.options as OptionValue[])
     : NO_OPTIONS;
 
+  const draftVariable = useMemo<SyntheticVariableDraft | undefined>(() => {
+    if (variableType === undefined) return undefined;
+    return {
+      name: variableName,
+      // The select offers only the schema's own variable types.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      type: variableType as VariableType,
+      ...(lockedOptions
+        ? { options: lockedOptions }
+        : variableOptions
+          ? { options: variableOptions }
+          : {}),
+      ...(synthetic === undefined ? {} : { synthetic }),
+    };
+  }, [variableName, variableType, variableOptions, lockedOptions, synthetic]);
+
+  /**
+   * A block describes the values of ONE kind of attribute, so changing the kind
+   * discards it. Without this, a chance-of-true authored for a boolean would
+   * still be attached when the researcher switched the attribute to text, and
+   * the schema would refuse the whole variable at save with nothing on screen
+   * to say why.
+   */
+  const authoredForType = useRef(variableType);
+  useEffect(() => {
+    if (authoredForType.current === variableType) return;
+    authoredForType.current = variableType;
+    onSyntheticChange(undefined);
+  }, [variableType, onSyntheticChange]);
+
   return (
-    <Section layout="vertical">
-      <Subsection id={getFieldId('name')} title="Attribute Name">
-        <ArchitectField
-          name="name"
-          label="Attribute name"
-          hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
-          component={VariableNameField}
-          placeholder="e.g. Nickname"
-          initialValue={
-            typeof initialValues.name === 'string'
-              ? initialValues.name
-              : undefined
-          }
-          validation={{
-            required: true,
-            uniqueByList: existingVariableNames,
-            allowedVariableName: true,
-          }}
-        />
-      </Subsection>
-      <Subsection id={getFieldId('type')} title="Attribute Type">
-        <ArchitectField
-          name="type"
-          label="Attribute type"
-          labelHidden
-          component={StyledSelectField}
-          placeholder="Select attribute type"
-          options={variableTypeOptions}
-          initialValue={
-            typeof initialValues.type === 'string'
-              ? initialValues.type
-              : undefined
-          }
-          // Locked options only make sense for a categorical/ordinal type, so
-          // lock the type selector too — otherwise a caller passing
-          // lockedOptions without initialValues.type could switch away from
-          // that type while the options and readOnly flag stay locked.
-          disabled={typeLocked}
-          validation={{ required: true }}
-        />
-      </Subsection>
-      {isOrdinalOrCategoricalType(variableType) && (
-        <Subsection id={getFieldId('options')} title="Options">
-          {lockedOptions ? (
-            <LockedOptions options={lockedOptions} />
-          ) : (
-            <ArchitectArrayField
-              name="options"
-              label="Options"
-              hint="Create the values this input control offers the participant."
-              component={Options}
-              addButtonLabel="Create new option"
-              initialValue={initialOptions}
-              validation={optionsValidation}
-            />
-          )}
+    // The scope wraps the whole Section, and is rendered whether or not a type
+    // has been chosen, so choosing one does not change the SHAPE of the tree
+    // and remount every field inside it.
+    <VariableSyntheticProvider
+      variable={draftVariable}
+      namePrefix="synthetic"
+      onChange={onSyntheticChange}
+    >
+      <Section layout="vertical">
+        <Subsection id={getFieldId('name')} title="Attribute Name">
+          <ArchitectField
+            name="name"
+            label="Attribute name"
+            hint="The attribute name is how you will reference the attribute elsewhere, including in exported data."
+            component={VariableNameField}
+            placeholder="e.g. Nickname"
+            initialValue={
+              typeof initialValues.name === 'string'
+                ? initialValues.name
+                : undefined
+            }
+            validation={{
+              required: true,
+              uniqueByList: existingVariableNames,
+              allowedVariableName: true,
+            }}
+          />
         </Subsection>
-      )}
-    </Section>
+        <Subsection id={getFieldId('type')} title="Attribute Type">
+          <ArchitectField
+            name="type"
+            label="Attribute type"
+            labelHidden
+            component={StyledSelectField}
+            placeholder="Select attribute type"
+            options={variableTypeOptions}
+            initialValue={
+              typeof initialValues.type === 'string'
+                ? initialValues.type
+                : undefined
+            }
+            // Locked options only make sense for a categorical/ordinal type, so
+            // lock the type selector too — otherwise a caller passing
+            // lockedOptions without initialValues.type could switch away from
+            // that type while the options and readOnly flag stay locked.
+            disabled={typeLocked}
+            validation={{ required: true }}
+          />
+        </Subsection>
+        {isOrdinalOrCategoricalType(variableType) && (
+          <Subsection id={getFieldId('options')} title="Options">
+            {lockedOptions ? (
+              <LockedOptions options={lockedOptions} />
+            ) : (
+              <ArchitectArrayField
+                name="options"
+                label="Options"
+                hint="Create the values this input control offers the participant."
+                component={Options}
+                addButtonLabel="Create new option"
+                initialValue={initialOptions}
+                validation={optionsValidation}
+              />
+            )}
+          </Subsection>
+        )}
+        {/*
+        The synthetic sub-editor sits inside this Section so its disclosure and
+        the options editor above share one scope: expanding it is what reveals
+        the weight column on those options (spec, "Option weights reveal").
+      */}
+        {draftVariable !== undefined && (
+          <Subsection
+            id={getFieldId('synthetic')}
+            title={SYNTHETIC_SECTION_TITLE}
+          >
+            <VariableSyntheticSection />
+          </Subsection>
+        )}
+      </Section>
+    </VariableSyntheticProvider>
   );
 };
 
@@ -207,11 +286,28 @@ export default function NewVariableWindow({
     return initialValues ?? {};
   }, [initialValues, lockedOptions]);
 
+  /**
+   * The synthetic block, held beside the form rather than in it.
+   *
+   * It is one opaque value with no control of its own to register — every
+   * control inside the sub-editor writes into it — and the serialisation rule
+   * is presence: `undefined` here means the created variable carries no
+   * `synthetic` key at all (spec governing rule 4), which a registered field
+   * holding `undefined` could not say.
+   */
+  const [synthetic, setSynthetic] = useState<VariableSynthetic | undefined>(
+    undefined,
+  );
+
   const handleSubmit = useCallback(
     async (formValues: Record<string, FieldValue>) => {
       // Locked options are never rendered as a field, so they are carried over
       // from the seed rather than read back out of the form.
-      const configuration = { ...mergedInitialValues, ...formValues };
+      const configuration = {
+        ...mergedInitialValues,
+        ...formValues,
+        ...(synthetic === undefined ? {} : { synthetic }),
+      };
       // Locked options belong to an interface-owned value set the researcher may
       // not edit; persist readOnly so the shared options editors enforce it.
       const withReadOnly = lockedOptions
@@ -237,7 +333,15 @@ export default function NewVariableWindow({
         };
       }
     },
-    [dispatch, entity, type, onComplete, lockedOptions, mergedInitialValues],
+    [
+      dispatch,
+      entity,
+      type,
+      onComplete,
+      lockedOptions,
+      mergedInitialValues,
+      synthetic,
+    ],
   );
 
   /**
@@ -268,6 +372,10 @@ export default function NewVariableWindow({
     setWasShown(show);
     if (show) {
       setOpenCount((count) => count + 1);
+      // The synthetic block lives outside the keyed field store, so it has to
+      // be cleared on the same edge the store is: the next open is a different
+      // attribute, and must not inherit what the last one authored.
+      setSynthetic(undefined);
     }
   }
 
@@ -287,6 +395,8 @@ export default function NewVariableWindow({
         initialValues={mergedInitialValues}
         typeLocked={!!initialValues?.type || !!lockedOptions}
         lockedOptions={lockedOptions}
+        synthetic={synthetic}
+        onSyntheticChange={setSynthetic}
       />
     </DialogForm>
   );

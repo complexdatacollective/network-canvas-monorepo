@@ -15,6 +15,9 @@ vi.mock('../ShapeVariableMapping', () => ({ default: () => null }));
 
 vi.mock('~/selectors/protocol', () => ({
   getCodebook: () => ({ node: {}, edge: {} }),
+  // The synthetic-data section reads the whole protocol, to collect the rules
+  // its interfaces imply for each of the type's attributes.
+  getProtocol: () => ({ stages: [] }),
 }));
 vi.mock('~/ducks/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
@@ -56,7 +59,8 @@ describe('<TypeEditor /> name validation', () => {
   it('groups controls in untitled Sections', () => {
     const { container } = renderTypeEditor('node');
 
-    expect(container.querySelectorAll('section')).toHaveLength(4);
+    // Name, colour, shape, icon, and the synthetic-data section.
+    expect(container.querySelectorAll('section')).toHaveLength(5);
     expect(screen.getByText('Node type name')).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', {

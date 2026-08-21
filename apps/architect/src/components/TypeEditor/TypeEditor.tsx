@@ -4,11 +4,13 @@ import { useMemo } from 'react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
+import { CodebookVariablesSynthetic } from '~/components/Codebook/VariableSynthetic/CodebookVariablesSynthetic';
+import { SYNTHETIC_SECTION_TITLE } from '~/components/Codebook/VariableSynthetic/VariableSyntheticSection';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
-import { getCodebook } from '~/selectors/protocol';
+import { getCodebook, getProtocol } from '~/selectors/protocol';
 import { getFieldId } from '~/utils/issues';
 
 import ColorPicker from '../Form/Fields/ColorPicker';
@@ -22,6 +24,9 @@ import ShapeVariableMapping, {
 
 const DEFAULT_NODE_ICON = 'add-a-person';
 const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
+
+/** Stable empty record: `initialValue` is a register-effect dependency. */
+const NO_VARIABLES: Record<string, unknown> = {};
 
 /** The entity-type definition as the dialog holds it before it is committed. */
 export type EntityTypeValues = {
@@ -60,6 +65,9 @@ const TypeEditor = ({
   initialValues,
 }: TypeEditorProps) => {
   const codebook = useAppSelector((state: RootState) => getCodebook(state));
+  // The protocol, not just the codebook: interface-implied rules are collected
+  // from the stages that write each attribute.
+  const protocol = useAppSelector((state: RootState) => getProtocol(state));
   const existingTypes = useMemo(() => {
     if (!codebook) return [];
     const excludeType = !isNew && type;
@@ -160,6 +168,24 @@ const TypeEditor = ({
           </Section>
         </>
       )}
+
+      <Section id={getFieldId('variables')} layout="vertical">
+        <ArchitectField
+          component={CodebookVariablesSynthetic}
+          label={SYNTHETIC_SECTION_TITLE}
+          hint="Control what generated sample data looks like for each attribute of this type. These settings never affect how a real interview collects data."
+          name="variables"
+          // The WHOLE attribute record, because the type editor saves by
+          // replacing the definition and `getFormValues()` reports registered
+          // fields only — the properties this control does not touch have to
+          // travel with the ones it does.
+          initialValue={initialValues.variables ?? NO_VARIABLES}
+          validation={{}}
+          entity={entity === 'edge' ? 'edge' : 'node'}
+          type={type ?? undefined}
+          protocol={protocol}
+        />
+      </Section>
     </>
   );
 };
