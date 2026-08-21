@@ -15,9 +15,8 @@ export function getAnalyticsClient(): Promise<PostHog | null> {
 
 async function initClient(): Promise<PostHog | null> {
   // Skip analytics entirely when disabled at build time (e2e / CI / preview
-  // builds). This also prevents posthog-js's dynamic surveys.js `<script>`
-  // load — blocked by the app CSP under script-src — whose non-deterministic
-  // console error can otherwise flake Playwright actions.
+  // builds). This also prevents live PostHog dependency requests whose
+  // non-deterministic timing can otherwise flake Playwright actions.
   if (import.meta.env.VITE_DISABLE_ANALYTICS === 'true') {
     return null;
   }
