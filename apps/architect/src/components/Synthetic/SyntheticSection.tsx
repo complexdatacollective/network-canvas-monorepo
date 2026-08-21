@@ -28,8 +28,15 @@ import { cx } from '~/utils/cva';
  * variable's section is expanded (spec, option weights reveal).
  */
 
-const AUTHORED_BADGE_LABEL = 'Authored';
-const DEFAULT_BADGE_LABEL = 'Default';
+/**
+ * What the badge says about where a value came from (spec rule 4: authored =
+ * key present, default = key absent). Exported because the read-only overview
+ * makes the same claim about the same values in its own tables, and two
+ * spellings of one distinction would read as two distinctions.
+ */
+export const AUTHORED_BADGE_LABEL = 'Authored';
+export const DEFAULT_BADGE_LABEL = 'Default';
+
 const RESET_LABEL = 'Reset to default';
 
 export type SyntheticSectionProps = {

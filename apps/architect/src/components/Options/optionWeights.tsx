@@ -5,12 +5,14 @@ import {
   DEFAULT_OPTION_WEIGHT,
   OrdinalSyntheticSchema,
 } from '@codaco/protocol-validation';
-import { useNumericDraft } from '~/components/Codebook/VariableSynthetic/fields/useNumericDraft';
-import type { NumericWindow } from '~/components/Codebook/VariableSynthetic/schemaIntrospection';
 import {
   ARRAY_ELEMENT,
   describeFieldWindow,
 } from '~/components/Codebook/VariableSynthetic/schemaIntrospection';
+import {
+  type NumericWindow,
+  useNumericDraft,
+} from '~/components/Synthetic/useNumericDraft';
 
 /**
  * The option-weight column the options editor grows while a variable's

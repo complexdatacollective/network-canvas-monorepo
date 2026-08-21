@@ -65,8 +65,11 @@ describe('variable rows', () => {
   });
 
   it("states a datetime's session-relative window", () => {
+    // Grouped like every other number this screen shows: the shared summary
+    // formatters have one number format, and a datetime's day offsets are not
+    // an exception to it.
     expect(rowFor(rows, 'personRecent').behaviour).toBe(
-      'uniform(3650 days before to 0 days after the interview date)',
+      'uniform(3,650 days before to 0 days after the interview date)',
     );
   });
 

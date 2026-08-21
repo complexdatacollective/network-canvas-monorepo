@@ -8,11 +8,14 @@ import {
   DEFAULT_NOMINATION_SD,
   DEFAULT_RESPONSE_BURDEN,
   MAX_SYNTHETIC_POPULATION,
+  resolveVariableSynthetic,
   type StageEdgeSynthetic,
   type StageNodeSynthetic,
+  type VariableSynthetic,
 } from '@codaco/protocol-validation';
 
 import {
+  formatDatetimeSynthetic,
   formatEdgeTopology,
   formatProbability,
   formatResponseBurden,
@@ -304,6 +307,59 @@ describe('formatResponseBurden', () => {
     expect(formatResponseBurden(0.6)).toBe('0.6');
     expect(formatResponseBurden(1.5)).toBe('1.5');
     expect(formatResponseBurden(0)).toBe('0');
+  });
+});
+
+describe('formatDatetimeSynthetic', () => {
+  // Resolved by the schema rather than hand-built, for the reason at the top
+  // of this file: the default session-relative window is the schema's, and a
+  // literal here would be a second statement of it.
+  const resolved = (synthetic?: VariableSynthetic) => {
+    const descriptor = resolveVariableSynthetic(
+      { name: 'met_on', type: 'datetime', ...(synthetic ? { synthetic } : {}) },
+      {},
+    );
+    if (descriptor?.type !== 'datetime') {
+      throw new Error('a datetime variable did not resolve to a datetime');
+    }
+    return descriptor;
+  };
+
+  it('states a session-relative window in days, grouped like every other number', () => {
+    const descriptor = resolved();
+    expect(formatDatetimeSynthetic(descriptor)).toBe(
+      `uniform(${descriptor.relative!.before.toLocaleString('en')} days before to ` +
+        `${descriptor.relative!.after} days after the interview date)`,
+    );
+  });
+
+  it('names an absolute window by the dates it is written with', () => {
+    expect(
+      formatDatetimeSynthetic(
+        resolved({
+          distribution: 'uniform',
+          min: '1990-01-01',
+          max: '2000-12-31',
+        }),
+      ),
+    ).toBe('uniform(from 1990-01-01, to 2000-12-31)');
+  });
+
+  it('renders a normal datetime with its centre date and its spread in days', () => {
+    // The schema resolves a session-relative window alongside a declared
+    // normal, and the summary states both: the spread is not the whole of
+    // what the draw is held to.
+    const descriptor = resolved({
+      distribution: 'normal',
+      mean: '1995-06-15',
+      sdDays: 30,
+    });
+
+    expect(formatDatetimeSynthetic(descriptor)).toBe(
+      `normal(mean 1995-06-15, sd 30 days, ` +
+        `${descriptor.relative!.before.toLocaleString('en')} days before to ` +
+        `${descriptor.relative!.after} days after the interview date)`,
+    );
   });
 });
 

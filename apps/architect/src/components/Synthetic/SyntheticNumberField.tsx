@@ -3,17 +3,28 @@ import type { ReactNode } from 'react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import type { NumericWindow } from '../schemaIntrospection';
-import { useNumericDraft } from './useNumericDraft';
+import { type NumericWindow, useNumericDraft } from './useNumericDraft';
 
 /**
  * One numeric generation parameter, held inside the window its schema states
  * (spec governing rule 2: a value the schema would refuse must not be
- * enterable). The typing and refusal behaviour lives in `useNumericDraft`,
- * which the option-weight column shares.
+ * enterable). The single such control: the stage editor's distribution
+ * parameters and panel odds, and the codebook variable editor's parameters,
+ * are all this component, so a researcher meets one typing behaviour wherever
+ * a generation parameter is edited.
+ *
+ * The typing and refusal behaviour lives in `useNumericDraft`, which the
+ * option-weight column and the selection-count table share directly.
+ *
+ * REFUSAL rather than clamping. A window may be open or exclusive on the
+ * offending side — a beta's mean lives strictly between 0 and 1 — so clamping
+ * 1.4 to 1 hands back a number the schema refuses just as firmly as the one
+ * that was typed, and clamping 40 to 6 silently substitutes a value the
+ * researcher did not write. Refusing leaves the entry visible until blur,
+ * which is what makes the refusal legible.
  */
 
-export type SyntheticParameterFieldProps = {
+export type SyntheticNumberFieldProps = {
   /** Field name, used for the control's id and its error association. */
   name: string;
   label: string;
@@ -29,20 +40,23 @@ export type SyntheticParameterFieldProps = {
   window: NumericWindow;
   /** Whether clearing the box is a legal way to leave the parameter unstated. */
   clearable?: boolean;
+  /** The schema's own refusals for this parameter, rendered unparaphrased. */
+  errors?: readonly string[];
   disabled?: boolean;
   onCommit: (value: number | undefined) => void;
 };
 
-export function SyntheticParameterField({
+export function SyntheticNumberField({
   name,
   label,
   hint,
   value,
   window,
   clearable = false,
+  errors,
   disabled = false,
   onCommit,
-}: SyntheticParameterFieldProps) {
+}: SyntheticNumberFieldProps) {
   const { text, onChange, onBlur, inputAttributes } = useNumericDraft({
     value,
     window,
@@ -61,6 +75,9 @@ export function SyntheticParameterField({
       onChange={onChange}
       onBlur={onBlur}
       disabled={disabled}
+      {...(errors && errors.length > 0
+        ? { errors: [...errors], showErrors: true }
+        : {})}
     />
   );
 }

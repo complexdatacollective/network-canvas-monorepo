@@ -3,84 +3,21 @@ import {
   syntheticSubjectKey,
   type EffectiveVariableRules,
 } from '@codaco/protocol-validation';
+import { stagesImplying } from '~/components/Synthetic/impliedRuleSources';
 
 /**
  * What the protocol's own interfaces impose on a codebook variable, and which
  * stage imposes it.
  *
- * The RULES come from `collectInterfaceImpliedRules`, the schema's single
- * definition of them (spec governing rule 1). Their SOURCE — which stage a
- * rule came from, so the editor can name it — comes from running that same
- * collector over each stage on its own: a stage that implies the rule by
- * itself is a stage the rule came from. Deriving the source that way means the
- * editor never has to know which interfaces impose what, which is exactly the
- * knowledge the schema owns.
+ * Both come from `collectInterfaceImpliedRules`, the schema's single
+ * definition of them (spec governing rule 1): the rules it collects, and the
+ * per-stage sources it collects them FROM. The editor never has to know which
+ * interfaces impose what — the knowledge the schema owns — and the rule it
+ * applies and the stage it names come from one walk rather than two.
  */
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** One stage's contribution to one variable's implied rules. */
-type StageContribution = {
-  /** The stage's own label, as the researcher named it. */
-  label: string;
-  rules: EffectiveVariableRules;
-};
-
-type Provenance = Map<string, Map<string, StageContribution[]>>;
-
-/**
- * Per-stage collector runs are memoised against the protocol object, so
- * re-rendering the codebook editor does not re-walk the protocol once per
- * stage per keystroke. Keyed weakly: a superseded draft is collectable.
- */
-const provenanceCache = new WeakMap<object, Provenance>();
-
-/** The stage label a researcher would recognise, however sparse the draft. */
-const stageLabel = (stage: unknown): string => {
-  if (isRecord(stage)) {
-    if (typeof stage.label === 'string' && stage.label.trim() !== '') {
-      return stage.label;
-    }
-    if (typeof stage.type === 'string') return stage.type;
-  }
-  return 'this stage';
-};
-
-const buildProvenance = (protocol: Record<string, unknown>): Provenance => {
-  const provenance: Provenance = new Map();
-  const stages = Array.isArray(protocol.stages) ? protocol.stages : [];
-
-  stages.forEach((stage) => {
-    // One stage in isolation: whatever the collector reports for it is what
-    // this stage alone implies.
-    const single = collectInterfaceImpliedRules({
-      ...protocol,
-      stages: [stage],
-    });
-    const label = stageLabel(stage);
-    for (const [subjectKey, forSubject] of single) {
-      for (const [variableId, rules] of forSubject) {
-        const bySubject = provenance.get(subjectKey) ?? new Map();
-        const contributions = bySubject.get(variableId) ?? [];
-        contributions.push({ label, rules });
-        bySubject.set(variableId, contributions);
-        provenance.set(subjectKey, bySubject);
-      }
-    }
-  });
-
-  return provenance;
-};
-
-const provenanceFor = (protocol: unknown): Provenance => {
-  if (!isRecord(protocol)) return new Map();
-  const cached = provenanceCache.get(protocol);
-  if (cached) return cached;
-  const built = buildProvenance(protocol);
-  provenanceCache.set(protocol, built);
-  return built;
-};
 
 /** Everything one variable's editor needs to know about its implied rules. */
 export type VariableImpliedRules = {
@@ -123,23 +60,22 @@ export const variableImpliedRules = (
   const rules = collected.get(key)?.get(variableId) ?? {};
   const binOnly = collected.binOnlyVariables.get(key)?.has(variableId) === true;
 
-  const contributions = provenanceFor(protocol).get(key)?.get(variableId) ?? [];
-  const alwaysAnsweredBy: string[] = [];
-  const selectionPinnedBy: string[] = [];
-  for (const contribution of contributions) {
-    if (contribution.rules.required === true) {
-      alwaysAnsweredBy.push(contribution.label);
-    }
-    if (contribution.rules.maxSelected !== undefined) {
-      selectionPinnedBy.push(contribution.label);
-    }
-  }
+  const stages = Array.isArray(protocol.stages) ? protocol.stages : [];
+  const sources = collected.impliedRuleSources.get(key)?.get(variableId) ?? [];
 
   return {
     rules,
     binOnly,
-    alwaysAnsweredBy: [...new Set(alwaysAnsweredBy)],
-    selectionPinnedBy: [...new Set(selectionPinnedBy)],
+    alwaysAnsweredBy: stagesImplying(
+      sources,
+      stages,
+      (stageRules) => stageRules.required === true,
+    ),
+    selectionPinnedBy: stagesImplying(
+      sources,
+      stages,
+      (stageRules) => stageRules.maxSelected !== undefined,
+    ),
   };
 };
 

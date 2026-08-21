@@ -8,13 +8,12 @@ import {
   CategoricalSyntheticSchema,
   type SyntheticSelectionCount,
 } from '@codaco/protocol-validation';
-
 import {
-  ARRAY_ELEMENT,
-  describeFieldWindow,
   type NumericWindow,
-} from '../schemaIntrospection';
-import { useNumericDraft } from './useNumericDraft';
+  useNumericDraft,
+} from '~/components/Synthetic/useNumericDraft';
+
+import { ARRAY_ELEMENT, describeFieldWindow } from '../schemaIntrospection';
 
 /**
  * How many options a multi-select categorical is answered with, as a table of

@@ -15,6 +15,7 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import { useStageFormValues } from '~/components/StageEditor/useStageFormValues';
+import { conflictsForStage } from '~/components/Synthetic/conflicts';
 import {
   formatEdgeTopology,
   formatResponseBurden,
@@ -22,7 +23,9 @@ import {
   type SyntheticDistribution,
 } from '~/components/Synthetic/summaries';
 import { SyntheticFeasibilityAnnouncer } from '~/components/Synthetic/SyntheticFeasibilityAnnouncer';
+import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
+import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
 import { useSyntheticFeasibility } from '~/hooks/useSyntheticFeasibility';
 import { getProtocol } from '~/selectors/protocol';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
@@ -47,8 +50,6 @@ import {
   type SyntheticIssue,
   topologyMetricWindow,
 } from './stageSynthetic';
-import { conflictBelongsToStage } from './syntheticConflicts';
-import { SyntheticNumberField } from './SyntheticNumberField';
 
 /**
  * The stage editor's "Synthetic data" section: every generation parameter the
@@ -119,13 +120,13 @@ const TOPOLOGY_METRICS = [
  * participant has completed — so its floor is zero and it has no ceiling. The
  * shape of the quantity, not a bound copied from the schema.
  */
-const BURDEN_WINDOW = { min: 0, max: Number.POSITIVE_INFINITY };
+const BURDEN_WINDOW = numericWindowOf({
+  min: 0,
+  max: Number.POSITIVE_INFINITY,
+});
 
 /** A placeholder id for the resolution parse; no protocol is built from it. */
 const DRAFT_STAGE_ID = 'synthetic-draft-stage';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Refusals pathed under one parameter, re-pathed relative to it. */
 const issuesUnder = (
@@ -152,20 +153,6 @@ const familiesFrom = (
   current,
   ...DISTRIBUTION_FAMILIES.filter((family) => family !== current),
 ];
-
-/**
- * The stage's subject as the conflict matcher needs it — entity and type as
- * plain strings, which is how a `ConstraintConflict` carries them.
- */
-const asSubject = (
-  value: unknown,
-): { entity: string; type?: string } | undefined => {
-  if (!isRecord(value) || typeof value.entity !== 'string') return undefined;
-  const { entity } = value;
-  return typeof value.type === 'string'
-    ? { entity, type: value.type }
-    : { entity };
-};
 
 type TopologyEditorProps = {
   topology: EdgeTopology;
@@ -321,15 +308,25 @@ const SyntheticData = ({
     protocolId: getActiveProtocolScope(),
   });
 
-  const stageConflicts = useMemo(() => {
-    const identity = {
-      label: typeof draft.label === 'string' ? draft.label : undefined,
-      subject: asSubject(draft.subject),
-    };
-    return feasibility.conflicts.filter((conflict) =>
-      conflictBelongsToStage(conflict, identity),
-    );
-  }, [feasibility.conflicts, draft]);
+  /**
+   * The id the analysis knows this stage by.
+   *
+   * A saved stage is analysed under its own. A stage not yet saved is INSERTED
+   * into the analysed document by `buildProtocolWithStage`, which mints an id
+   * for it — so the id the engine will put on this stage's conflicts is read
+   * back off the document that was analysed rather than guessed at.
+   */
+  const analysedStageId = useMemo(() => {
+    if (stageId !== null) return stageId;
+    if (feasibilityDocument === null) return undefined;
+    const inserted = stagePosition ?? feasibilityDocument.stages.length - 1;
+    return feasibilityDocument.stages[inserted]?.id;
+  }, [feasibilityDocument, stageId, stagePosition]);
+
+  const stageConflicts = useMemo(
+    () => conflictsForStage(feasibility.conflicts, analysedStageId),
+    [feasibility.conflicts, analysedStageId],
+  );
 
   /**
    * Write the first candidate the schema accepts, and nothing at all when it
@@ -488,7 +485,12 @@ const SyntheticData = ({
             errors={issuesUnder(refusals, 'responseBurden').map(
               (issue) => issue.message,
             )}
-            onCommit={(responseBurden) => commit([{ responseBurden }])}
+            onCommit={(responseBurden) => {
+              // Not `clearable`: every stage resolves a burden, so there is
+              // no unstated one for an empty box to mean.
+              if (responseBurden === undefined) return;
+              commit([{ responseBurden }]);
+            }}
           />
         </div>
       </SyntheticSection>

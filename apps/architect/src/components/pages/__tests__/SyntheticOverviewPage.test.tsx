@@ -201,13 +201,19 @@ describe('the stage table', () => {
 });
 
 describe('the variable table', () => {
-  it('links each attribute to the codebook', async () => {
+  it('links each attribute to its own row in the codebook', async () => {
     renderPage(FIXTURE_DOCUMENT);
     await settle(DEBOUNCE);
 
+    // The whole destination rather than the page: a codebook listing every
+    // attribute in the protocol is not somewhere "open the Codebook to change
+    // them" usefully lands.
     expect(
       screen.getByRole('link', { name: 'age — open Person in the codebook' }),
-    ).toHaveAttribute('href', '/protocol/codebook');
+    ).toHaveAttribute(
+      'href',
+      '/protocol/codebook?entity=node%3Aperson&variable=personAge',
+    );
   });
 
   it('shows the resolved behaviour of an attribute nobody authored', async () => {

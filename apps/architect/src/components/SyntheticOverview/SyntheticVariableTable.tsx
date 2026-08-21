@@ -11,8 +11,12 @@ import {
   TableRow,
 } from '@codaco/fresco-ui/Table';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { codebookHref } from '~/components/Codebook/deepLink';
+import {
+  AUTHORED_BADGE_LABEL,
+  DEFAULT_BADGE_LABEL,
+} from '~/components/Synthetic/SyntheticSection';
 
-import { AUTHORED_LABEL, DEFAULT_LABEL } from './ParameterValue';
 import type { SyntheticVariableRow } from './variableRows';
 
 /**
@@ -22,7 +26,9 @@ import type { SyntheticVariableRow } from './variableRows';
  * Codebook where all of it is edited.
  *
  * Read-only: the attribute name is the only interactive element, and it goes to
- * the editor rather than opening one here.
+ * the editor rather than opening one here — to THIS attribute's row in the
+ * codebook (see `Codebook/deepLink`), not the top of a page the researcher then
+ * has to search.
  */
 
 const ATTRIBUTE_HEADER = 'Attribute';
@@ -34,7 +40,6 @@ const STATUS_HEADER = 'Status';
 const EMPTY_MESSAGE =
   'This protocol has no attributes that synthetic data can fill.';
 const SELECTION_LABEL = 'Selects';
-const CODEBOOK_HREF = '/protocol/codebook';
 
 export type SyntheticVariableTableProps = {
   rows: readonly SyntheticVariableRow[];
@@ -72,7 +77,14 @@ export function SyntheticVariableTable({
                   // in Name"); the rest names the destination, which a reader
                   // moving link to link would otherwise have to guess.
                   aria-label={`${row.name} — open ${row.entityLabel} in the codebook`}
-                  render={<Link href={CODEBOOK_HREF} />}
+                  render={
+                    <Link
+                      href={codebookHref(
+                        { entity: row.entity, type: row.entityType },
+                        row.variableId,
+                      )}
+                    />
+                  }
                 >
                   {row.name}
                 </NativeLink>
@@ -109,7 +121,7 @@ export function SyntheticVariableTable({
             </TableCell>
             <TableCell>
               <Badge variant="outline">
-                {row.authored ? AUTHORED_LABEL : DEFAULT_LABEL}
+                {row.authored ? AUTHORED_BADGE_LABEL : DEFAULT_BADGE_LABEL}
               </Badge>
             </TableCell>
           </TableRow>

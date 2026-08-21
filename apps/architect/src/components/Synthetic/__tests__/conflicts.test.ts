@@ -7,18 +7,15 @@ import {
   type VersionedProtocolDocument,
 } from '@codaco/protocol-validation';
 
-import {
-  conflictBelongsToStage,
-  conflictStageName,
-} from '../syntheticConflicts';
+import { conflictsForStage } from '../conflicts';
 
 /**
- * Which live-feasibility conflicts a stage editor shows.
+ * Which live-feasibility conflicts a stage owns.
  *
- * The conflicts here are produced by the ENGINE, not written by hand: the only
- * link between a `ConstraintConflict` and a stage is the wording the engine
- * chooses, so a test that invented that wording would prove nothing about the
- * matcher's fitness for the real thing.
+ * The conflicts here are produced by the ENGINE, not written by hand: the
+ * whole claim under test is that the engine says which stage owns a refusal
+ * and this reads that answer, so conflicts invented here would prove nothing
+ * about the real ones.
  */
 
 const ROSTER_STAGE = {
@@ -92,17 +89,7 @@ const engineConflicts = async () => {
   });
 };
 
-const rosterIdentity = {
-  label: ROSTER_STAGE.label,
-  subject: { entity: 'node', type: 'person' },
-};
-
-const nameGeneratorIdentity = {
-  label: NAME_GENERATOR_STAGE.label,
-  subject: { entity: 'node', type: 'person' },
-};
-
-describe('matching engine conflicts to a stage', () => {
+describe('the conflicts a stage owns', () => {
   it('produces both classes of conflict from the real analysis', async () => {
     const conflicts = await engineConflicts();
 
@@ -112,55 +99,39 @@ describe('matching engine conflicts to a stage', () => {
     expect(conflicts.some((c) => c.rules.includes('unique'))).toBe(true);
   });
 
-  it('keeps a stage-named conflict on the stage it names', async () => {
+  it('gives a stage-owned conflict to the stage that owns it, and no other', async () => {
     const conflicts = await engineConflicts();
     const roster = conflicts.find((c) =>
       c.rules.includes('behaviours.minNodes'),
     )!;
 
-    expect(conflictStageName(roster)).toBe(ROSTER_STAGE.label);
-    expect(conflictBelongsToStage(roster, rosterIdentity)).toBe(true);
+    expect(roster.stageId).toBe(ROSTER_STAGE.id);
+    expect(conflictsForStage(conflicts, ROSTER_STAGE.id)).toEqual([roster]);
     // The other stage elicits the very same node type, and must not inherit a
     // refusal about a roster it has nothing to do with.
-    expect(conflictBelongsToStage(roster, nameGeneratorIdentity)).toBe(false);
+    expect(conflictsForStage(conflicts, NAME_GENERATOR_STAGE.id)).toEqual([]);
   });
 
-  it('shows an entity-scoped conflict on every stage writing that entity', async () => {
+  it('leaves an entity-wide conflict to the protocol verdict', async () => {
     const conflicts = await engineConflicts();
     const unique = conflicts.find((c) => c.rules.includes('unique'))!;
 
-    expect(conflictStageName(unique)).toBeUndefined();
-    expect(conflictBelongsToStage(unique, rosterIdentity)).toBe(true);
-    expect(conflictBelongsToStage(unique, nameGeneratorIdentity)).toBe(true);
+    // The exhausted slot is the sum of what BOTH stages draw, so neither
+    // stage is the one to change and neither stage's editor claims it.
+    expect(unique.stageId).toBeUndefined();
+    expect(conflictsForStage(conflicts, ROSTER_STAGE.id)).not.toContain(unique);
+    expect(conflictsForStage(conflicts, NAME_GENERATOR_STAGE.id)).not.toContain(
+      unique,
+    );
   });
 
-  it('does not show an entity-scoped conflict on a stage of another entity', async () => {
-    const conflicts = await engineConflicts();
-    const unique = conflicts.find((c) => c.rules.includes('unique'))!;
-
-    expect(
-      conflictBelongsToStage(unique, {
-        label: 'About you',
-        subject: { entity: 'ego' },
-      }),
-    ).toBe(false);
-    expect(
-      conflictBelongsToStage(unique, {
-        label: 'Other people',
-        subject: { entity: 'node', type: 'venue' },
-      }),
-    ).toBe(false);
+  it('claims nothing for a stage that has no id yet', async () => {
+    expect(conflictsForStage(await engineConflicts(), undefined)).toEqual([]);
   });
 
-  it('shows nothing on a stage with no subject at all', async () => {
-    const conflicts = await engineConflicts();
-    const unique = conflicts.find((c) => c.rules.includes('unique'))!;
-
-    expect(
-      conflictBelongsToStage(unique, {
-        label: 'Read this',
-        subject: undefined,
-      }),
-    ).toBe(false);
+  it('claims nothing for a stage the analysis said nothing about', async () => {
+    expect(conflictsForStage(await engineConflicts(), 'another-stage')).toEqual(
+      [],
+    );
   });
 });

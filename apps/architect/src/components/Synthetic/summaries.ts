@@ -1,6 +1,7 @@
 import type {
   EdgeTopology,
   NumberSynthetic,
+  ResolvedVariableSynthetic,
   ScalarSynthetic,
   SyntheticCount,
 } from '@codaco/protocol-validation';
@@ -29,8 +30,9 @@ export type SyntheticWindow = { min: number; max: number };
 /**
  * The distribution shapes a stage or variable descriptor can carry, as the
  * schema types them: counts, edge-topology metrics, and numeric variable
- * values. (Datetime distributions parameterise over date strings and are
- * summarised by their own editor, not here.)
+ * values. Datetime distributions parameterise over date strings rather than
+ * numbers, so they are not one of these — {@link formatDatetimeSynthetic}
+ * summarises those.
  */
 export type SyntheticDistribution =
   | SyntheticCount
@@ -142,6 +144,60 @@ export const formatSyntheticCount = (
   count: SyntheticCount,
   options: FormatDistributionOptions = {},
 ): string => formatSyntheticDistribution(count, options);
+
+/** The anchor a session-relative datetime window is measured from by default. */
+const SESSION_DATE_ANCHOR = 'the interview date';
+
+type ResolvedDatetime = Extract<
+  ResolvedVariableSynthetic,
+  { type: 'datetime' }
+>;
+
+/**
+ * The window parts of a datetime descriptor, in the vocabulary the schema
+ * states it in: absolute endpoints as the date strings they are, and a
+ * session-relative window as the day offsets it carries.
+ */
+const datetimeWindowParts = (descriptor: ResolvedDatetime): string[] => {
+  const parts: string[] = [];
+  if (descriptor.min !== undefined) parts.push(`from ${descriptor.min}`);
+  if (descriptor.max !== undefined) parts.push(`to ${descriptor.max}`);
+  const { relative } = descriptor;
+  if (relative !== undefined) {
+    // Resolved to a local rather than defaulted inline: `??` binds looser than
+    // the `+` joining these segments, so an inline default would read as a
+    // default for the whole concatenation and never apply.
+    const anchor = relative.anchor ?? SESSION_DATE_ANCHOR;
+    parts.push(
+      `${formatValue(relative.before)} days before to ` +
+        `${formatValue(relative.after)} days after ${anchor}`,
+    );
+  }
+  return parts;
+};
+
+/**
+ * A resolved datetime descriptor, e.g.
+ * `uniform(3,650 days before to 0 days after the interview date)`.
+ *
+ * Its own formatter rather than a case inside
+ * {@link formatSyntheticDistribution}: a datetime's centre and endpoints are
+ * date STRINGS and its spread is a number of days, so none of the numeric
+ * formatting above has anything to say about them. The `family(parameters)`
+ * shape is shared deliberately — a researcher reading the overview beside a
+ * number's summary is reading one convention, not two.
+ */
+export const formatDatetimeSynthetic = (descriptor: ResolvedDatetime): string =>
+  withParams(
+    descriptor.distribution,
+    descriptor.distribution === 'normal'
+      ? [
+          `mean ${descriptor.mean}`,
+          `sd ${formatValue(descriptor.sdDays)} days`,
+          ...datetimeWindowParts(descriptor),
+        ]
+      : datetimeWindowParts(descriptor),
+  );
 
 const EDGE_TOPOLOGY_METRIC_LABELS: Record<EdgeTopology['metric'], string> = {
   density: 'density',

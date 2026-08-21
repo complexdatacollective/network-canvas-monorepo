@@ -1,13 +1,14 @@
 import {
   collectInterfaceImpliedRules,
-  collectVariableRoleHits,
   type CurrentProtocol,
   type EffectiveVariableRules,
+  type ImpliedRuleSource,
   narrowVariableRules,
   type ResolvedVariableSynthetic,
   resolveNumberWindow,
   resolveVariableSynthetic,
   SCALAR_DOMAIN,
+  type Stage,
   type SyntheticOptionWeight,
   type SyntheticSelectionCount,
   type SyntheticTextGenerator,
@@ -16,7 +17,9 @@ import {
   type VariableType,
   type Variables,
 } from '@codaco/protocol-validation';
+import { stagesImplying } from '~/components/Synthetic/impliedRuleSources';
 import {
+  formatDatetimeSynthetic,
   formatProbability,
   formatSyntheticDistribution,
   type SyntheticWindow,
@@ -48,6 +51,8 @@ export type SyntheticVariableRow = {
   /** Stable identity for the row: a variable id is unique protocol-wide. */
   key: string;
   entity: 'ego' | 'node' | 'edge';
+  /** The codebook key of the type this attribute belongs to, where it has one. */
+  entityType: string | undefined;
   /** The type's own name, e.g. "Person"; "Ego" where there is no type. */
   entityLabel: string;
   variableId: string;
@@ -154,46 +159,6 @@ const formatSelectionCount = (selection: SyntheticSelectionCount): string =>
     .map((entry) => `${entry.count} (${formatProbability(entry.probability)})`)
     .join(', ');
 
-/**
- * A datetime descriptor's window, in the vocabulary the schema states it in.
- *
- * Datetime distributions parameterise over date STRINGS and a day offset from
- * the session date, so the shared numeric formatters have nothing to say about
- * them — see `summaries.ts`, which excludes them deliberately.
- */
-const formatDatetimeWindow = (
-  descriptor: Extract<ResolvedVariableSynthetic, { type: 'datetime' }>,
-): string[] => {
-  const parts: string[] = [];
-  if (descriptor.min !== undefined) parts.push(`from ${descriptor.min}`);
-  if (descriptor.max !== undefined) parts.push(`to ${descriptor.max}`);
-  const { relative } = descriptor;
-  if (relative !== undefined) {
-    parts.push(
-      `${relative.before} days before to ${relative.after} days after ${
-        relative.anchor ?? 'the interview date'
-      }`,
-    );
-  }
-  return parts;
-};
-
-const formatDatetime = (
-  descriptor: Extract<ResolvedVariableSynthetic, { type: 'datetime' }>,
-): string => {
-  const parts =
-    descriptor.distribution === 'normal'
-      ? [
-          `mean ${descriptor.mean}`,
-          `sd ${descriptor.sdDays} days`,
-          ...formatDatetimeWindow(descriptor),
-        ]
-      : formatDatetimeWindow(descriptor);
-  return parts.length === 0
-    ? descriptor.distribution
-    : `${descriptor.distribution}(${parts.join(', ')})`;
-};
-
 type Behaviour = { behaviour: string; selection: string | undefined };
 
 const describeBehaviour = (
@@ -243,49 +208,43 @@ const describeBehaviour = (
         selection: formatSelectionCount(descriptor.selectionCount),
       };
     case 'datetime':
-      return { behaviour: formatDatetime(descriptor), selection: undefined };
+      return {
+        behaviour: formatDatetimeSynthetic(descriptor),
+        selection: undefined,
+      };
   }
 };
 
 /**
- * The stages that write a variable, by label, in protocol order.
+ * The sentences naming each interface-implied rule and the stages behind it.
  *
- * `collectInterfaceImpliedRules` reports WHICH rules a protocol's interfaces
- * impose but not which stage imposed each one, so a note names every stage
- * that writes the attribute. Every implied rule comes from one of those
- * writers, so the list always contains the source; it may be wider than the
- * source where a form collects the same attribute as a bin.
+ * The source of each rule is the schema's own answer —
+ * `collectInterfaceImpliedRules` reports which stage contributed which rule —
+ * so a note names the stage that actually imposed the rule rather than every
+ * stage that happens to write the attribute. A form that collects the same
+ * attribute as a bin is a writer but not a source, and is not named.
+ *
+ * Whole sentences rather than assembled fragments, so each can be localised as
+ * written; the only interpolation is the stages' own labels, which are
+ * researcher-authored data rather than copy.
  */
-const writerStageLabels = (
-  protocol: CurrentProtocol,
-): Map<string, string[]> => {
-  const byVariable = new Map<string, string[]>();
-
-  for (const group of collectVariableRoleHits(protocol)) {
-    const key = `${syntheticSubjectKey(group.subject)}/${group.variableId}`;
-    const labels = byVariable.get(key) ?? [];
-    for (const hit of [...group.validated, ...group.unvalidated]) {
-      if (hit.stageIndex === undefined) continue;
-      const label = protocol.stages[hit.stageIndex]?.label;
-      if (label === undefined || labels.includes(label)) continue;
-      labels.push(label);
-    }
-    byVariable.set(key, labels);
-  }
-
-  return byVariable;
-};
-
 const impliedRuleNotes = (
   implied: EffectiveVariableRules | undefined,
   declared: EffectiveVariableRules,
   binOnly: boolean,
-  stageLabels: readonly string[],
+  sources: readonly ImpliedRuleSource[],
+  stages: readonly Stage[],
 ): string[] => {
   const notes: string[] = [];
-  const named = stageLabels.length > 0 ? quoted(stageLabels) : undefined;
+  const naming = (
+    implies: (rules: EffectiveVariableRules) => boolean,
+  ): string | undefined => {
+    const labels = stagesImplying(sources, stages, implies);
+    return labels.length === 0 ? undefined : quoted(labels);
+  };
 
   if (implied?.required === true && declared.required !== true) {
+    const named = naming((rules) => rules.required === true);
     notes.push(
       named === undefined
         ? 'Always answered: the interfaces that collect this attribute cannot leave it blank.'
@@ -294,6 +253,7 @@ const impliedRuleNotes = (
   }
 
   if (implied?.maxSelected === 1 && declared.maxSelected !== 1) {
+    const named = naming((rules) => rules.maxSelected === 1);
     notes.push(
       named === undefined
         ? 'Single choice: the interface that collects this attribute assigns exactly one option.'
@@ -302,6 +262,10 @@ const impliedRuleNotes = (
   }
 
   if (binOnly) {
+    // Bin-only means EVERY writer is a binning prompt, so every source of
+    // this variable's rules is one of those bins — which is why this names
+    // them all rather than filtering on a rule.
+    const named = naming(() => true);
     notes.push(
       named === undefined
         ? 'Validation is not applied: this attribute is assigned by placement rather than through a form field.'
@@ -364,7 +328,6 @@ export const buildVariableRows = (
 ): SyntheticVariableRow[] => {
   const documentRecord = isRecord(document) ? document : undefined;
   const interfaceRules = collectInterfaceImpliedRules(protocol);
-  const stageLabels = writerStageLabels(protocol);
   const rows: SyntheticVariableRow[] = [];
 
   for (const subject of subjectsOf(protocol, documentRecord)) {
@@ -374,6 +337,7 @@ export const buildVariableRows = (
     });
     const subjectRules = interfaceRules.get(subjectKey);
     const binOnlyHere = interfaceRules.binOnlyVariables.get(subjectKey);
+    const sourcesHere = interfaceRules.impliedRuleSources.get(subjectKey);
 
     for (const [variableId, variable] of Object.entries(
       subject.variables ?? {},
@@ -396,6 +360,7 @@ export const buildVariableRows = (
       rows.push({
         key: `${subjectKey}/${variableId}`,
         entity: subject.entity,
+        entityType: subject.type,
         entityLabel: subject.entityLabel,
         variableId,
         name: variable.name,
@@ -410,7 +375,8 @@ export const buildVariableRows = (
           implied,
           declared,
           binOnlyHere?.has(variableId) ?? false,
-          stageLabels.get(`${subjectKey}/${variableId}`) ?? [],
+          sourcesHere?.get(variableId) ?? [],
+          protocol.stages,
         ),
         authored:
           recordAt(subject.document, variableId)?.synthetic !== undefined,

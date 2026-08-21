@@ -3,14 +3,14 @@ import { useMemo } from 'react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import type { SyntheticWindow } from '~/components/Synthetic/summaries';
+import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
+import { withinWindow } from '~/components/Synthetic/useNumericDraft';
 
 import { parameterWindow, seedParameterValue } from '../parameterWindows';
 import {
   describeDistributions,
   type SyntheticDistributionSpec,
 } from '../schemaIntrospection';
-import { SyntheticParameterField } from './SyntheticParameterField';
-import { withinWindow } from './useNumericDraft';
 
 /**
  * The value-distribution half of a variable's synthetic block: which family
@@ -175,7 +175,7 @@ export function DistributionEditor({
         const window = parameterWindow(parameter, valueWindow);
         const carried = synthetic?.[parameter.key];
         return (
-          <SyntheticParameterField
+          <SyntheticNumberField
             key={parameter.key}
             name={`${namePrefix}.${parameter.key}`}
             label={parameterLabel(parameter.key)}

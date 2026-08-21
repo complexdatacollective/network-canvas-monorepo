@@ -4,13 +4,14 @@ import {
   DEFAULT_PANEL_NOMINATION_PROBABILITY,
   PanelSyntheticSchema,
 } from '@codaco/protocol-validation';
-import { SyntheticNumberField } from '~/components/sections/SyntheticData/SyntheticNumberField';
 import {
   useSetStageValue,
   useStageFormValue,
 } from '~/components/StageEditor/stageFormHooks';
 import { formatProbability } from '~/components/Synthetic/summaries';
+import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
+import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
 
 /**
  * A panel's generation parameter: how readily the participant takes back the
@@ -44,7 +45,7 @@ const summaryFor = (probability: number): string =>
  * written, which is what holds the control to the schema rather than to this
  * statement of what a probability is.
  */
-const PROBABILITY_WINDOW = { min: 0, max: 1 };
+const PROBABILITY_WINDOW = numericWindowOf({ min: 0, max: 1 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -76,7 +77,11 @@ export function PanelSyntheticSection({
     : DEFAULT_PANEL_NOMINATION_PROBABILITY;
 
   const commit = useCallback(
-    (nominationProbability: number) => {
+    (nominationProbability: number | undefined) => {
+      // The field is not `clearable`: the panel's block is either written
+      // whole or removed by the reset, so there is no unstated probability
+      // for a cleared box to mean.
+      if (nominationProbability === undefined) return;
       const candidate = { nominationProbability };
       const parsed = PanelSyntheticSchema.safeParse(candidate);
       if (!parsed.success) {

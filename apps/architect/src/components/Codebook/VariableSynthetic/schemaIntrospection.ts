@@ -1,3 +1,5 @@
+import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
+
 /**
  * Reads the synthetic schemas for the things a control has to know: which
  * distribution families a variable type offers, which parameters each family
@@ -92,22 +94,6 @@ const literalStringOf = (schema: unknown): string | undefined => {
   if (!Array.isArray(list) || list.length !== 1) return undefined;
   const [only] = list;
   return typeof only === 'string' ? only : undefined;
-};
-
-/**
- * A numeric field's window, exactly as its schema states it.
- *
- * `min`/`max` are absent where the schema leaves that side open, and the
- * exclusivity flags carry the difference between `.min(0)` and `.gt(0)` — a
- * beta's mean lives strictly inside 0 and 1, and an input offering either
- * endpoint would offer a value the schema refuses.
- */
-export type NumericWindow = {
-  min?: number;
-  max?: number;
-  exclusiveMin: boolean;
-  exclusiveMax: boolean;
-  integer: boolean;
 };
 
 const NUMBER_FORMAT_INTEGERS = new Set(['safeint', 'int32', 'uint32', 'int64']);

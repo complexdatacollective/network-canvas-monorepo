@@ -17,7 +17,9 @@ import {
 } from '@codaco/protocol-validation';
 import { DistributionVisual } from '~/components/Synthetic/DistributionVisual';
 import { formatProbability } from '~/components/Synthetic/summaries';
+import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
+import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 
 import {
   admissibleSelectionCounts,
@@ -27,7 +29,6 @@ import {
 import { DistributionEditor } from './fields/DistributionEditor';
 import { InlineOptionWeights } from './fields/InlineOptionWeights';
 import { SelectionCountTable } from './fields/SelectionCountTable';
-import { SyntheticParameterField } from './fields/SyntheticParameterField';
 import {
   missingProbabilityDisabledReason,
   selectionCountDisabledReason,
@@ -35,7 +36,6 @@ import {
 import {
   describeFieldWindow,
   describeNestedWindow,
-  type NumericWindow,
 } from './schemaIntrospection';
 import { useVariableSynthetic } from './VariableSyntheticProvider';
 
@@ -131,7 +131,7 @@ function MissingProbabilityField() {
   const resolvedMissing = resolved?.missingProbability ?? 0;
 
   return (
-    <SyntheticParameterField
+    <SyntheticNumberField
       name={`${namePrefix}.missingProbability`}
       label="Chance of no answer"
       hint={
@@ -153,7 +153,7 @@ function BooleanControls() {
     resolved?.type === 'boolean' ? resolved.probabilityTrue : undefined;
 
   return (
-    <SyntheticParameterField
+    <SyntheticNumberField
       name={`${namePrefix}.probabilityTrue`}
       label="Chance of answering yes"
       hint={
@@ -331,7 +331,7 @@ function DatetimeControls() {
 
   return (
     <>
-      <SyntheticParameterField
+      <SyntheticNumberField
         name={`${namePrefix}.relative.before`}
         label="Days before the interview date"
         hint="How far back generated dates may reach from the day the interview runs."
@@ -340,7 +340,7 @@ function DatetimeControls() {
         clearable
         onCommit={(value) => commit('before', value)}
       />
-      <SyntheticParameterField
+      <SyntheticNumberField
         name={`${namePrefix}.relative.after`}
         label="Days after the interview date"
         hint="How far forward generated dates may reach from the day the interview runs."

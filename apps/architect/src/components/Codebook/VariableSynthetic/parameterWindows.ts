@@ -1,6 +1,10 @@
 import type { SyntheticWindow } from '~/components/Synthetic/summaries';
+import {
+  type NumericWindow,
+  numericWindowOf,
+} from '~/components/Synthetic/useNumericDraft';
 
-import type { NumericWindow, SyntheticParameter } from './schemaIntrospection';
+import type { SyntheticParameter } from './schemaIntrospection';
 
 /**
  * Where a distribution parameter's own window meets the window the VARIABLE
@@ -59,22 +63,16 @@ const tighterMax = (a: MaxPart, b: MaxPart): MaxPart => {
   return { max: a.max, exclusiveMax: a.exclusiveMax || b.exclusiveMax };
 };
 
-/** A value window read as a numeric one; an infinite side is an open side. */
-const asNumericWindow = (bounds: SyntheticWindow): NumericWindow => ({
-  ...(Number.isFinite(bounds.min) ? { min: bounds.min } : {}),
-  ...(Number.isFinite(bounds.max) ? { max: bounds.max } : {}),
-  exclusiveMin: false,
-  exclusiveMax: false,
-  integer: false,
-});
-
 /** The window one parameter is actually held to on one variable. */
 export const parameterWindow = (
   parameter: SyntheticParameter,
   valueWindow: SyntheticWindow,
 ): NumericWindow => {
   if (SPREAD_PARAMETERS.has(parameter.key)) return parameter.window;
-  const variable = asNumericWindow(valueWindow);
+  // Whether the parameter is a whole number is the SCHEMA's claim about the
+  // parameter, so it survives from the parameter's own window; the variable's
+  // validation range only ever narrows the endpoints.
+  const variable = numericWindowOf(valueWindow);
   return {
     ...tighterMin(parameter.window, variable),
     ...tighterMax(parameter.window, variable),

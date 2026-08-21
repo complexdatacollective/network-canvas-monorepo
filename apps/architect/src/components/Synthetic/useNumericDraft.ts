@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import type { NumericWindow } from '../schemaIntrospection';
+import type { SyntheticWindow } from './summaries';
 
 /**
  * The typing behaviour every numeric generation parameter shares.
@@ -17,6 +17,46 @@ import type { NumericWindow } from '../schemaIntrospection';
  * clamping 1.4 to 1 would hand back a number the schema refuses just as firmly
  * as the one that was typed.
  */
+
+/**
+ * A numeric field's window, exactly as its schema states it.
+ *
+ * `min`/`max` are absent where the schema leaves that side open, and the
+ * exclusivity flags carry the difference between `.min(0)` and `.gt(0)` — a
+ * beta's mean lives strictly inside 0 and 1, and an input offering either
+ * endpoint would offer a value the schema refuses.
+ *
+ * Defined beside the control it holds rather than beside any one of the
+ * readings that produce it: the schema introspection the codebook editor uses
+ * and the sibling-bound arithmetic the stage editor uses both answer this same
+ * question, and the control must not be able to tell which of them asked.
+ */
+export type NumericWindow = {
+  min?: number;
+  max?: number;
+  exclusiveMin: boolean;
+  exclusiveMax: boolean;
+  integer: boolean;
+};
+
+/**
+ * A closed value window read as a control's window: an infinite endpoint is an
+ * OPEN side, because an input cannot offer infinity and a spinner bounded by
+ * it would be bounded by nothing.
+ *
+ * `integer` is the caller's claim about the field, not something a pair of
+ * endpoints can say.
+ */
+export const numericWindowOf = (
+  bounds: SyntheticWindow,
+  integer = false,
+): NumericWindow => ({
+  ...(Number.isFinite(bounds.min) ? { min: bounds.min } : {}),
+  ...(Number.isFinite(bounds.max) ? { max: bounds.max } : {}),
+  exclusiveMin: false,
+  exclusiveMax: false,
+  integer,
+});
 
 export type NumericDraftOptions = {
   /** The committed value; `undefined` renders an empty box. */

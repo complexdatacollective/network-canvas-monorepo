@@ -8,6 +8,8 @@ import type {
   SyntheticDistribution,
   SyntheticWindow,
 } from '~/components/Synthetic/summaries';
+import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
+import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
 
 import {
   type DistributionFamily,
@@ -20,7 +22,6 @@ import {
   withParameter,
 } from './distributions';
 import type { SyntheticIssue } from './stageSynthetic';
-import { SyntheticNumberField } from './SyntheticNumberField';
 
 /**
  * The editor for one distribution: which family, its parameters, and a sketch
@@ -139,13 +140,19 @@ export function DistributionEditor({
               name={`${name}.${parameter}`}
               label={PARAMETER_LABELS[parameter]}
               value={parameterValue(distribution, parameter)}
-              window={parameterWindow(distribution, parameter, window)}
-              integral={integral}
+              window={numericWindowOf(
+                parameterWindow(distribution, parameter, window),
+                integral,
+              )}
               disabled={disabled}
               errors={issuesFor(issues, parameter)}
-              onCommit={(value) =>
-                onCandidates([withParameter(distribution, parameter, value)])
-              }
+              onCommit={(value) => {
+                // The field is not `clearable`, so it only ever commits a
+                // number; the union is the one contract every numeric
+                // parameter shares.
+                if (value === undefined) return;
+                onCandidates([withParameter(distribution, parameter, value)]);
+              }}
             />
           ))}
         </div>

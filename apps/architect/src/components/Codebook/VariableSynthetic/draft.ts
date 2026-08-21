@@ -12,6 +12,7 @@ import {
   type VariableType,
 } from '@codaco/protocol-validation';
 import {
+  formatDatetimeSynthetic,
   formatProbability,
   formatSyntheticDistribution,
   type SyntheticWindow,
@@ -379,11 +380,10 @@ export const summariseResolvedSynthetic = (
       );
       break;
     case 'datetime':
-      parts.push(
-        resolved.relative === undefined
-          ? `${resolved.distribution} dates`
-          : `${resolved.distribution} dates within ${numberFormat.format(resolved.relative.before)} days before the session`,
-      );
+      // The same formatter the overview's attribute table uses, so the
+      // collapsed row and the row that links to it describe one descriptor
+      // the same way.
+      parts.push(formatDatetimeSynthetic(resolved));
       break;
     case 'number':
     case 'scalar':

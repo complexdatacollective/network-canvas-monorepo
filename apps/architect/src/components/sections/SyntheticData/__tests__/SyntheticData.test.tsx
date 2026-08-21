@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_RESPONSE_BURDEN,
@@ -10,6 +10,7 @@ import {
   asStage,
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
+import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
 
 import SyntheticData from '../SyntheticData';
 
@@ -105,9 +106,37 @@ const NETWORK_COMPOSER = {
   edges: [{ subject: { entity: 'edge', type: 'friend' } }],
 };
 
+/**
+ * A roster stage whose own floor its pool cannot reach: one of the two
+ * refusals the engine lays at a single STAGE's door (the other is the pair
+ * ceiling). Nothing resolves `roster-asset` in this environment, which is the
+ * host reporting a source it could not resolve — an empty pool under the
+ * engine's three-way contract, and a floor of three that no seed can meet.
+ */
+const ROSTER = {
+  id: 'stage-1',
+  type: 'NameGeneratorRoster',
+  label: 'Pick from the roster',
+  subject: { entity: 'node', type: 'person' },
+  dataSource: 'roster-asset',
+  behaviours: { minNodes: 3 },
+  prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+};
+
+/** Declared so the draft PARSES; still nothing resolves it. */
+const ROSTER_MANIFEST = {
+  'roster-asset': {
+    id: 'roster-asset',
+    type: 'network',
+    name: 'roster.csv',
+    source: 'roster.csv',
+  },
+};
+
 const setup = (
   stage: Record<string, unknown>,
   protocolCodebook: unknown = codebook,
+  assetManifest: unknown = {},
 ) => {
   const committedStage = asStage(stage);
 
@@ -119,7 +148,7 @@ const setup = (
           name: 'Test protocol',
           schemaVersion: 8,
           codebook: protocolCodebook,
-          assetManifest: {},
+          assetManifest,
           stages: [committedStage],
         },
       }),
@@ -378,13 +407,19 @@ describe('a change the schema refuses', () => {
 });
 
 describe('live feasibility', () => {
+  // The pools a roster stage draws from are namespaced by protocol, and the
+  // hook resolves none at all without a scope — which the engine reads as a
+  // host that never looked, and refuses nothing on.
+  beforeEach(() => setActiveProtocolScope('test-protocol'));
+  afterEach(() => setActiveProtocolScope(null));
+
   it('shows the engine’s own refusal, unparaphrased, without expanding', async () => {
-    setup(NAME_GENERATOR, infeasibleCodebook);
+    setup(ROSTER, codebook, ROSTER_MANIFEST);
 
     // The analysis is debounced and asynchronous, so the verdict arrives after
     // the first render — which is the point of running it off the draft.
     const refusal = await screen.findByText(
-      /only 2 distinct values are possible/,
+      /must nominate at least 3 from its roster/,
       undefined,
       { timeout: 5000 },
     );
@@ -392,6 +427,26 @@ describe('live feasibility', () => {
     expect(refusal).toBeInTheDocument();
     // Above the disclosure, so a collapsed section still shows it.
     expect(disclosure()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('leaves a refusal no stage owns to the protocol-level verdict', async () => {
+    // A `unique` slot too small for the people the protocol can create is the
+    // sum of every stage that draws it, so no stage editor is the place to
+    // fix it — the overview's verdict lists it instead. Showing it here would
+    // put the same refusal on every stage that writes the type.
+    setup(NAME_GENERATOR, infeasibleCodebook);
+
+    // Long enough for the verdict to have arrived and rendered had this stage
+    // claimed it; the engine's own analysis of this fixture is pinned by
+    // `Synthetic/__tests__/conflicts.test.ts`.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    expect(
+      screen.queryByText(/only 2 distinct values are possible/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Synthetic data cannot be generated for this stage'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows nothing while the protocol is feasible', async () => {
@@ -421,25 +476,33 @@ describe('windows the schema owns', () => {
 
     fireEvent.change(mean, { target: { value: '40' } });
 
-    // Clamped rather than refused: a mean of 40 above a maximum of 6 is a
-    // count the schema would reject outright, so an unclamped entry would
-    // write nothing at all.
-    expect(syntheticValue(getFormValues)).toMatchObject({
-      count: { mean: 6 },
-    });
+    // Refused rather than clamped. Clamping would write 6 — a number the
+    // researcher did not type — and leave the box agreeing with it, so the
+    // substitution would be invisible. The entry stays on screen instead, and
+    // nothing is written until it is one the window admits.
+    expect(mean).toHaveValue(40);
+    expect(syntheticValue(getFormValues)).toBeUndefined();
+
+    fireEvent.change(mean, { target: { value: '5' } });
+    expect(syntheticValue(getFormValues)).toMatchObject({ count: { mean: 5 } });
   });
 
-  it('rounds a count to the whole number its schema admits', () => {
+  it('refuses a fraction where the count is a whole-number field', () => {
     const { getFormValues } = setup(NAME_GENERATOR);
     expand();
 
-    fireEvent.change(screen.getByLabelText('Mean'), {
-      target: { value: '5.5' },
-    });
+    const mean = screen.getByLabelText('Mean');
+    expect(mean).toHaveAttribute('step', '1');
 
-    expect(syntheticValue(getFormValues)).toMatchObject({
-      count: { mean: 6 },
-    });
+    fireEvent.change(mean, { target: { value: '5.5' } });
+
+    // Refused rather than rounded, for the same reason: 6 is not what was
+    // typed. The entry stays visible, and blur restores the value that was.
+    expect(mean).toHaveValue(5.5);
+    expect(syntheticValue(getFormValues)).toBeUndefined();
+
+    fireEvent.blur(mean);
+    expect(syntheticValue(getFormValues)).toBeUndefined();
   });
 
   it('accepts a fractional burden, which is a rate rather than a count', () => {

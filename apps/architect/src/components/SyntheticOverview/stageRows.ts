@@ -6,6 +6,7 @@ import {
   type Stage,
   topologyDrawWindow,
 } from '@codaco/protocol-validation';
+import { conflictsForStage } from '~/components/Synthetic/conflicts';
 import {
   formatEdgeTopology,
   formatProbability,
@@ -128,24 +129,6 @@ const topologyApplies = (stage: Stage): boolean =>
   stage.type !== 'Sociogram' ||
   stage.prompts.some((prompt) => prompt.edges?.create !== undefined);
 
-/**
- * The conflicts this stage owns.
- *
- * Matched on the engine's own naming of the stage inside the refusal it wrote.
- * `ConstraintConflict` carries no stage id — its structured fields name an
- * entity type and its variables — so the stage-scoped refusals (a roster too
- * small for its floor, a pair set larger than one stage may enumerate) can only
- * be recognised by the phrase the engine itself puts in `reason`. Matching
- * fails SAFE: a conflict this does not claim still appears in the protocol
- * verdict above, which lists every one of them, so nothing is ever hidden by a
- * miss.
- */
-export const conflictsForStage = (
-  conflicts: readonly ConstraintConflict[],
-  label: string,
-): ConstraintConflict[] =>
-  conflicts.filter((conflict) => conflict.reason.includes(`stage "${label}"`));
-
 const panelRows = (
   stage: Stage,
   documentStage: UnknownRecord | undefined,
@@ -229,7 +212,7 @@ export const buildStageRows = (
           ? NO_EDGE_PROMPTS_NOTE
           : undefined,
       panels: panelRows(stage, documentStage),
-      conflicts: conflictsForStage(conflicts, stage.label),
+      conflicts: conflictsForStage(conflicts, stage.id),
     };
   });
 };

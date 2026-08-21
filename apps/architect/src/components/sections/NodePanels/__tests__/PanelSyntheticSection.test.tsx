@@ -107,7 +107,16 @@ describe('PanelSyntheticSection', () => {
 
     fireEvent.change(input, { target: { value: '4' } });
 
-    expect(panelSynthetic(getFormValues)).toEqual({ nominationProbability: 1 });
+    // Refused rather than clamped: writing 1 would store odds nobody chose,
+    // and leave the box agreeing with them. The entry stays on screen instead,
+    // and nothing is written until it is one the domain admits.
+    expect(input).toHaveValue(4);
+    expect(panelSynthetic(getFormValues)).toBeUndefined();
+
+    fireEvent.change(input, { target: { value: '0.4' } });
+    expect(panelSynthetic(getFormValues)).toEqual({
+      nominationProbability: 0.4,
+    });
   });
 
   it('removes the block on reset', () => {
