@@ -1,4 +1,5 @@
-import { useId, useMemo } from 'react';
+import { get, isEqual } from 'es-toolkit/compat';
+import { useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -42,7 +43,6 @@ const PREVIEW_DRAFT_FIELDS = [
   'showValidationHints',
   'component',
   'options',
-  'parameters',
   'validation',
 ] as const;
 
@@ -92,6 +92,15 @@ const FieldEditorPreview = ({
   const registeredFields = useFormStore((state) => state.fields);
   const dormantFields = useFormStore((state) => state.dormantValues);
 
+  const draftParametersCache = useRef<unknown>(undefined);
+  const draftParameters = useFormStore((store) => {
+    const next = get(store.getFormValues(), 'parameters') as unknown;
+    if (!isEqual(draftParametersCache.current, next)) {
+      draftParametersCache.current = next;
+    }
+    return draftParametersCache.current;
+  });
+
   const draft = useMemo(() => {
     const values: Record<string, unknown> = { ...item };
     for (const name of PREVIEW_DRAFT_FIELDS) {
@@ -99,8 +108,16 @@ const FieldEditorPreview = ({
         values[name] = liveValues[name];
       }
     }
+    const isParameterLeaf = (name: string) =>
+      name.startsWith('parameters.') || name.startsWith('parameters[');
+    const hasParameterLeaf =
+      [...registeredFields.keys()].some(isParameterLeaf) ||
+      [...dormantFields.keys()].some(isParameterLeaf);
+    if (hasParameterLeaf) {
+      values.parameters = draftParameters;
+    }
     return values;
-  }, [dormantFields, item, liveValues, registeredFields]);
+  }, [dormantFields, draftParameters, item, liveValues, registeredFields]);
 
   const subject = useMemo(
     () => ({ entity, type: type ?? undefined }),
