@@ -24,15 +24,11 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# VITE_DISABLE_ANALYTICS=true skips client.ts's posthog.init entirely.
-# Without it, PostHog's client attempts a `<script src="…surveys.js">` load
-# against connect-src's ph-relay.networkcanvas.com host, which the app's own
-# CSP meta tag (vite.config.ts) allows for connect-src but blocks under
-# script-src — an expected, permanent CSP violation, not a bug, but its timing
-# is non-deterministic, so it can occasionally interleave with a spec's own
-# page.evaluate/addStyleTag calls and surface as a spurious action failure.
-# Reuse the app's build-time analytics gate so the build under test never
-# initializes PostHog at all.
+# VITE_DISABLE_ANALYTICS=true skips client.ts's posthog.init entirely. The
+# production CSP allows PostHog's controlled relay under both connect-src and
+# script-src, but E2E must not depend on live analytics requests or their
+# non-deterministic timing. Reuse the app's build-time analytics gate so the
+# build under test never initializes PostHog at all.
 docker run --rm \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \
