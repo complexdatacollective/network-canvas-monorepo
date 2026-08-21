@@ -182,6 +182,9 @@ export type CollectionProps<T> = SortProps &
      * scrolls with them. It is not a collection item: it takes no roving-focus
      * props and is skipped by type-ahead and arrow-key navigation, so give it
      * a non-`option` role and its own independently focusable controls.
+     *
+     * Vertical collections only — it is laid out below the items, which a
+     * horizontal viewport clips.
      */
     'footer'?: React.ReactNode;
     /** Additional CSS class names */

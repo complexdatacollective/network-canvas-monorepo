@@ -167,6 +167,21 @@ function CollectionContent<T extends Record<string, unknown>>({
   void tabIndex;
   const mergedRef = useMergeRefs({ containerRef, dndRef });
 
+  // The footer is a block sibling of the items renderer, which only puts it
+  // after the items on a vertical axis. A horizontal collection lays its items
+  // along a row, so the footer would start a second row at the viewport's left
+  // edge — and the horizontal viewport is `overflow-y-hidden`, which clips it.
+  // Supporting it properly means putting the footer in the items' own track;
+  // until something needs that, say so rather than rendering it somewhere the
+  // researcher may never see it.
+  useEffect(() => {
+    if (footer && orientation === 'horizontal') {
+      console.warn(
+        'Collection: `footer` is only supported on vertical collections. It is laid out below the items, which a horizontal viewport clips.',
+      );
+    }
+  }, [footer, orientation]);
+
   const collectionElements = (
     <div
       className={cx('min-h-0 w-full flex-1', className)}

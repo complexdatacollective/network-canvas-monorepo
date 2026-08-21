@@ -92,7 +92,7 @@ export function useSelectableCollection(
       if (!isEventFromOwnSubtree(e)) return;
       // The footer is inside this element so it scrolls with the items, but its
       // controls are not collection items and their keystrokes are their own.
-      if (isEventFromFooter(e)) return;
+      if (isEventFromFooter(e, ref?.current ?? null)) return;
 
       // If an item-level handler (e.g. DnD keyboard drag) already handled
       // this event, don't interfere.
@@ -263,6 +263,7 @@ export function useSelectableCollection(
       disallowSelectAll,
       options.disallowEmptySelection,
       handleTypeAhead,
+      ref,
     ],
   );
 
@@ -284,7 +285,7 @@ export function useSelectableCollection(
       // stale `isFocused` lets the item focus effect drag focus off the footer
       // control the moment `focusedKey` is repaired (an item filtered away, or
       // removed) behind it.
-      if (isEventFromFooter(e)) {
+      if (isEventFromFooter(e, ref?.current ?? null)) {
         selectionManager.setFocused(false);
         return;
       }
@@ -293,7 +294,10 @@ export function useSelectableCollection(
       // (not when focus moves between items within the collection). Coming back
       // from the footer is an entry, not an internal move, even though the
       // footer is contained.
-      const cameFromFooter = isEventFromFooter({ target: e.relatedTarget });
+      const cameFromFooter = isEventFromFooter(
+        { target: e.relatedTarget },
+        ref?.current ?? null,
+      );
       if (!cameFromFooter && ref?.current?.contains(e.relatedTarget as Node)) {
         return;
       }

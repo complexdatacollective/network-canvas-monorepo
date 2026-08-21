@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Collection } from '../components/Collection';
 import { ListLayout } from '../layout/ListLayout';
@@ -132,6 +132,82 @@ describe('a collection footer', () => {
     );
 
     expect(link).toHaveFocus();
+  });
+
+  it('leaves a collection nested inside a footer its own navigation', async () => {
+    const user = userEvent.setup();
+    render(
+      <Collection<TestItem>
+        id="outer"
+        items={items}
+        keyExtractor={(item) => item.id}
+        textValueExtractor={(item) => item.name}
+        layout={layout}
+        selectionMode="none"
+        animate={false}
+        aria-label="Outer"
+        footer={
+          <Collection<TestItem>
+            id="inner"
+            items={items}
+            keyExtractor={(item) => item.id}
+            textValueExtractor={(item) => item.name}
+            layout={layout}
+            selectionMode="none"
+            animate={false}
+            aria-label="Inner"
+            renderItem={(item, itemProps) => (
+              <div {...itemProps} data-testid={`inner-${item.id}`}>
+                {item.name}
+              </div>
+            )}
+          >
+            {(CollectionElements) => CollectionElements}
+          </Collection>
+        }
+        renderItem={(item, itemProps) => (
+          <div {...itemProps} data-testid={`outer-${item.id}`}>
+            {item.name}
+          </div>
+        )}
+      >
+        {(CollectionElements) => CollectionElements}
+      </Collection>,
+    );
+
+    // The inner collection sits below the outer footer's marker, so matching on
+    // the nearest marker alone would have it dismiss its own keystrokes.
+    screen.getByRole('listbox', { name: 'Inner' }).focus();
+    await user.keyboard('{ArrowDown}');
+
+    expect(screen.getByTestId('inner-2')).toHaveFocus();
+  });
+
+  it('warns rather than clipping when combined with a horizontal collection', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    render(
+      <Collection<TestItem>
+        id="horizontal"
+        items={items}
+        keyExtractor={(item) => item.id}
+        textValueExtractor={(item) => item.name}
+        layout={layout}
+        orientation="horizontal"
+        selectionMode="none"
+        animate={false}
+        aria-label="Across"
+        footer={<div role="group" aria-label="More" />}
+        renderItem={(item, itemProps) => <div {...itemProps}>{item.name}</div>}
+      >
+        {(CollectionElements) => CollectionElements}
+      </Collection>,
+    );
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/only supported on vertical collections/i),
+    );
+    warn.mockRestore();
   });
 
   it('still navigates the items themselves', async () => {
