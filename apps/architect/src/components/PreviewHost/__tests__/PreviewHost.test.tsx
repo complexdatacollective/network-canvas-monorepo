@@ -7,17 +7,15 @@ import {
   type InterviewPayload,
 } from '@codaco/interview';
 import {
-  DEFAULT_SYNTHETIC_SEED,
-  generateNetwork,
-} from '@codaco/protocol-utilities';
-import {
-  asEntityAttributeReference,
   type CurrentProtocol,
-  DEFAULT_EDGE_TOPOLOGY,
-  DEFAULT_NODE_COUNT,
-  DEFAULT_RESPONSE_BURDEN,
+  CurrentProtocolSchema,
 } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  entityAttributesProperty,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 
 import type { PreviewPayload } from '../messages';
 
@@ -42,22 +40,42 @@ vi.mock('~/utils/assetDB', () => ({
 
 import { PreviewHost } from '../PreviewHost';
 
-function makeProtocol() {
-  return {
+/**
+ * Every protocol a preview receives is SCHEMA-PARSE OUTPUT (`StageEditor`
+ * hands `validationResult.data` to `launchPreview`), and that is what supplies
+ * the per-stage `synthetic` descriptors synthetic generation refuses to run
+ * without. Fixtures therefore go through the real schema rather than being
+ * hand-written with descriptors attached, so a descriptor the schema stops
+ * supplying breaks these tests instead of hiding behind a literal.
+ */
+function makeProtocol(): CurrentProtocol {
+  return CurrentProtocolSchema.parse({
     name: 'T',
     description: '',
     schemaVersion: 8,
-    stages: [{ id: 's1', type: 'Information', label: 'A' }],
+    stages: [
+      { id: 's1', type: 'Information', label: 'A', title: 'A', items: [] },
+    ],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
-  };
+  });
 }
 
-// A protocol whose validation rules cannot all be satisfied: minLength exceeds
-// maxLength, so no value exists and generateNetwork throws
-// SyntheticDataConstraintError.
-function makeUnsatisfiableProtocol() {
-  return {
+/**
+ * A protocol whose validation rules cannot all be satisfied *together*: the
+ * stage collects six people, each of whom must pick exactly one of two options,
+ * and every pick must be unique. The sixth person has nothing left to pick, so
+ * generation refuses with the conflict list the preview's own screen renders.
+ *
+ * Every rule here is individually satisfiable, which is the point. A
+ * single-variable contradiction (a minimum above its own maximum, say) is
+ * refused by the schema itself, so it can never reach a preview —
+ * `StageEditor` shows "Cannot Preview" and never opens the window. What
+ * survives parsing and fails only once generation runs is a conflict like this
+ * one, between rules and the number of entities they have to cover.
+ */
+function makeUnsatisfiableProtocol(): CurrentProtocol {
+  return CurrentProtocolSchema.parse({
     name: 'T',
     description: '',
     schemaVersion: 8,
@@ -68,18 +86,35 @@ function makeUnsatisfiableProtocol() {
         label: 'NG',
         subject: { entity: 'node', type: 'node-1' },
         prompts: [{ id: 'p1', text: 'Add people' }],
-        behaviours: { minNodes: 1, maxNodes: 1 },
+        behaviours: { minNodes: 6, maxNodes: 6 },
+        synthetic: { count: { distribution: 'constant', value: 6 } },
+        form: {
+          title: 'About this person',
+          fields: [{ variable: 'var-pick', prompt: 'Pick one' }],
+        },
       },
+      // The stage the preview is launched from. The walk completes everything
+      // before it, so the generator above is what runs into the conflict —
+      // previewing the generator itself would stop on arrival, before a single
+      // person had been named, and find nothing to refuse.
+      { id: 's2', type: 'Information', label: 'I', title: 'I', items: [] },
     ],
     codebook: {
       node: {
         'node-1': {
           name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
           variables: {
-            'var-code': {
-              name: 'Code',
-              type: 'text',
-              validation: { minLength: 24, maxLength: 10 },
+            'var-pick': {
+              name: 'Pick',
+              type: 'categorical',
+              component: 'CheckboxGroup',
+              options: [
+                { label: 'X', value: 'x' },
+                { label: 'Y', value: 'y' },
+              ],
+              validation: { unique: true, minSelected: 1, maxSelected: 1 },
             },
           },
         },
@@ -88,24 +123,31 @@ function makeUnsatisfiableProtocol() {
       ego: {},
     },
     assetManifest: {},
-  };
+  });
 }
 
-// An unsupported stage type makes generateNetwork throw an ordinary error
-// during buildSession.
+/**
+ * A document that never went through the schema. The payload arrives over
+ * postMessage carrying whatever the opener sent, and generation refuses a stage
+ * with no `synthetic` descriptors rather than inventing defaults for it — so
+ * this is what an unparsed protocol reaching the preview actually looks like,
+ * and it must land on the generic failure screen rather than the conflict one.
+ */
 function makeUnbuildableProtocol() {
   return {
     name: 'T',
     description: '',
     schemaVersion: 8,
-    stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
+    stages: [
+      { id: 'x', type: 'Information', label: 'X', title: 'X', items: [] },
+    ],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
   };
 }
 
 function makeConsentRouteProtocol(): CurrentProtocol {
-  return {
+  return CurrentProtocolSchema.parse({
     name: 'Consent route',
     description: '',
     schemaVersion: 8,
@@ -120,21 +162,9 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         },
         form: {
           fields: [
-            {
-              variable: asEntityAttributeReference('screening'),
-              prompt: 'Are you eligible?',
-            },
-            {
-              variable: asEntityAttributeReference('consent'),
-              prompt: 'Do you consent?',
-            },
+            { variable: 'screening', prompt: 'Are you eligible?' },
+            { variable: 'consent', prompt: 'Do you consent?' },
           ],
-        },
-        // Schema-injected generation metadata: a parsed stage always carries
-        // it, and nothing in this test reads it.
-        synthetic: {
-          generatesData: true,
-          responseBurden: DEFAULT_RESPONSE_BURDEN.EgoForm,
         },
       },
       {
@@ -143,10 +173,6 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         label: 'Background',
         title: 'Background',
         items: [],
-        synthetic: {
-          generatesData: false,
-          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
-        },
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -155,7 +181,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
                 id: 'consent-refused',
                 type: 'ego',
                 options: {
-                  attribute: asEntityAttributeReference('consent'),
+                  attribute: 'consent',
                   operator: 'EXACTLY',
                   value: false,
                 },
@@ -174,17 +200,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         behaviours: { minNodes: 4, maxNodes: 4 },
         form: {
           title: 'About this person',
-          fields: [
-            {
-              variable: asEntityAttributeReference('name'),
-              prompt: 'What is their name?',
-            },
-          ],
-        },
-        synthetic: {
-          generatesData: true,
-          responseBurden: DEFAULT_RESPONSE_BURDEN.NameGenerator,
-          count: DEFAULT_NODE_COUNT,
+          fields: [{ variable: 'name', prompt: 'What is their name?' }],
         },
       },
       {
@@ -197,16 +213,9 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           {
             id: 'support-prompt',
             text: 'Place people',
-            layout: {
-              layoutVariable: asEntityAttributeReference('layout'),
-            },
+            layout: { layoutVariable: 'layout' },
           },
         ],
-        synthetic: {
-          generatesData: true,
-          responseBurden: DEFAULT_RESPONSE_BURDEN.Sociogram,
-          topology: DEFAULT_EDGE_TOPOLOGY,
-        },
       },
       {
         id: 'following',
@@ -214,10 +223,6 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         label: 'Following stage',
         title: 'Following stage',
         items: [],
-        synthetic: {
-          generatesData: false,
-          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
-        },
       },
     ],
     codebook: {
@@ -227,7 +232,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'Name', type: 'text' },
+            name: { name: 'Name', type: 'text', component: 'Text' },
             layout: { name: 'Layout', type: 'layout' },
           },
         },
@@ -235,13 +240,17 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       edge: {},
       ego: {
         variables: {
-          screening: { name: 'Screening', type: 'boolean' },
-          consent: { name: 'Consent', type: 'boolean' },
+          screening: {
+            name: 'Screening',
+            type: 'boolean',
+            component: 'Toggle',
+          },
+          consent: { name: 'Consent', type: 'boolean', component: 'Toggle' },
         },
       },
     },
     assetManifest: {},
-  };
+  });
 }
 
 type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
@@ -261,6 +270,16 @@ function makePayload(
     memoryAssets: [],
     ...overrides,
   };
+}
+
+/** A synthetic preview of `makeUnsatisfiableProtocol`, launched from its
+ * second stage so the generator before it actually runs. */
+function unsatisfiablePayload(): TestPreviewPayload {
+  return makePayload({
+    protocol: makeUnsatisfiableProtocol(),
+    startStage: 1,
+    useSyntheticData: true,
+  });
 }
 
 function postPayload(
@@ -408,9 +427,9 @@ describe('PreviewHost', () => {
     expect(call.currentStep).toBe(0);
   });
 
-  it('leaves the previewed stage partially complete in synthetic data', async () => {
+  it('runs the stages before the previewed one and leaves it untouched', async () => {
     render(<PreviewHost />);
-    const protocol = {
+    const protocol = CurrentProtocolSchema.parse({
       name: 'T',
       description: '',
       schemaVersion: 8,
@@ -422,22 +441,38 @@ describe('PreviewHost', () => {
           subject: { entity: 'node', type: 'node-1' },
           prompts: [{ id: 'p1', text: 'Add people' }],
           behaviours: { minNodes: 4, maxNodes: 8 },
+          form: {
+            title: 'About this person',
+            fields: [{ variable: 'var-name', prompt: 'Their name?' }],
+          },
         },
         {
           id: 's2',
           type: 'OrdinalBin',
           label: 'OB',
           subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p2', text: 'How close?', variable: 'var-ord' }],
+          prompts: [
+            {
+              id: 'p2',
+              text: 'How close?',
+              variable: 'var-ord',
+              color: 'ord-color-seq-1',
+            },
+          ],
         },
       ],
       codebook: {
         node: {
           'node-1': {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
             variables: {
+              'var-name': { name: 'Name', type: 'text', component: 'Text' },
               'var-ord': {
                 name: 'Closeness',
                 type: 'ordinal',
+                component: 'RadioGroup',
                 options: [
                   { label: 'Low', value: 1 },
                   { label: 'High', value: 2 },
@@ -450,7 +485,7 @@ describe('PreviewHost', () => {
         ego: {},
       },
       assetManifest: {},
-    };
+    });
     postPayload(
       openerStub,
       makePayload({ protocol, startStage: 1, useSyntheticData: true }),
@@ -461,113 +496,120 @@ describe('PreviewHost', () => {
       payload: InterviewPayload;
     };
     const nodes = call.payload.session.network.nodes;
+    // The name generator ran, so the bin has people to sort…
     expect(nodes.length).toBeGreaterThan(0);
-    const unplaced = nodes.filter(
-      (n) => !Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
-    );
-    const placed = nodes.filter((n) =>
-      Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
-    );
-    expect(unplaced.length).toBeGreaterThan(0);
-    expect(placed.length).toBeGreaterThan(0);
+    // …and the researcher arrives at it with every one of them still unplaced,
+    // which is the whole point of previewing an interaction-driven interface:
+    // pre-binned nodes would leave nothing to drag.
+    expect(
+      nodes.filter((n) =>
+        Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('previews the same network every time it builds the same protocol', async () => {
+    const protocol = makeConsentRouteProtocol();
+    const networkFor = async () => {
+      const view = render(<PreviewHost />);
+      postPayload(
+        openerStub,
+        makePayload({ protocol, startStage: 3, useSyntheticData: true }),
+      );
+      await screen.findAllByTestId('shell-mounted');
+      const call = shellMock.mock.calls.at(-1)?.[0] as {
+        payload: InterviewPayload;
+      };
+      const { network } = call.payload.session;
+      view.unmount();
+      return network;
+    };
+
+    const first = await networkFor();
+    // Guards the comparison below against passing on two empty networks.
+    expect(first.nodes.length).toBeGreaterThan(0);
+    // A fixed seed is what makes a preview a comparison: a researcher looking
+    // at a change wants to see the change, not a fresh draw either side of it.
+    expect(await networkFor()).toEqual(first);
   });
 
   it('disables skip routing across a synthetic preview when Respect skip logic is off', async () => {
     const protocol = makeConsentRouteProtocol();
-    const initial = generateNetwork({
-      codebook: protocol.codebook,
-      stages: protocol.stages,
-      seed: DEFAULT_SYNTHETIC_SEED,
-      inProgressStageIndex: 3,
-    });
-    expect(initial.network.ego[entityAttributesProperty].consent).toBe(false);
 
-    const randomSpy = vi
-      .spyOn(Math, 'random')
-      .mockReturnValue(DEFAULT_SYNTHETIC_SEED / 100_000);
-    try {
-      render(<PreviewHost />);
-      postPayload(
-        openerStub,
-        makePayload({
-          protocol,
-          startStage: 3,
-          useSyntheticData: true,
-          respectSkipLogic: false,
-        }),
-      );
+    render(<PreviewHost />);
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol,
+        startStage: 3,
+        useSyntheticData: true,
+        respectSkipLogic: false,
+      }),
+    );
 
-      await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        currentStep?: number;
-        initialStageOverrideIndex?: number;
-      };
+    await screen.findByTestId('shell-mounted');
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      payload: InterviewPayload;
+      currentStep?: number;
+      initialStageOverrideIndex?: number;
+    };
 
-      expect(call.currentStep).toBe(3);
-      expect(
-        call.payload.session.network.ego[entityAttributesProperty].consent,
-      ).toBe(false);
-      expect(
-        call.payload.protocol.stages.every(
-          (stage) => !Object.hasOwn(stage, 'skipLogic'),
-        ),
-      ).toBe(true);
-      expect(call.payload.protocol.stages[4]?.id).toBe('following');
-      expect(
-        getLastAvailableAuthoredStageIndex(
-          call.payload.protocol.stages,
-          call.payload.session.network,
-        ),
-      ).toBe(4);
-      expect(call.initialStageOverrideIndex).toBeUndefined();
-    } finally {
-      randomSpy.mockRestore();
-    }
+    expect(call.currentStep).toBe(3);
+    // The consent stage ran, so an answer to it exists — and the walk carried
+    // on past a route that answer would have ended, because generation for a
+    // preview is strictly sequential.
+    expect(
+      call.payload.session.network.ego[entityAttributesProperty],
+    ).toHaveProperty('consent');
+    expect(
+      call.payload.protocol.stages.every(
+        (stage) => !Object.hasOwn(stage, 'skipLogic'),
+      ),
+    ).toBe(true);
+    expect(call.payload.protocol.stages[4]?.id).toBe('following');
+    expect(
+      getLastAvailableAuthoredStageIndex(
+        call.payload.protocol.stages,
+        call.payload.session.network,
+      ),
+    ).toBe(4);
+    expect(call.initialStageOverrideIndex).toBeUndefined();
   });
 
   it('preserves routing but force-shows the selected stage when Respect skip logic is on', async () => {
     const protocol = makeConsentRouteProtocol();
-    const randomSpy = vi
-      .spyOn(Math, 'random')
-      .mockReturnValue(DEFAULT_SYNTHETIC_SEED / 100_000);
-    try {
-      render(<PreviewHost />);
-      postPayload(
-        openerStub,
-        makePayload({
-          protocol,
-          startStage: 3,
-          useSyntheticData: true,
-          respectSkipLogic: true,
-        }),
-      );
 
-      await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        initialStageOverrideIndex?: number;
-      };
+    render(<PreviewHost />);
+    postPayload(
+      openerStub,
+      makePayload({
+        protocol,
+        startStage: 3,
+        useSyntheticData: true,
+        respectSkipLogic: true,
+      }),
+    );
 
-      expect(
-        call.payload.session.network.ego[entityAttributesProperty].consent,
-      ).toBe(false);
-      expect(call.payload.protocol.stages[1]).toHaveProperty('skipLogic');
-      expect(
-        getLastAvailableAuthoredStageIndex(
-          call.payload.protocol.stages,
-          call.payload.session.network,
-        ),
-      ).toBe(0);
-      expect(call.initialStageOverrideIndex).toBe(3);
-    } finally {
-      randomSpy.mockRestore();
-    }
+    await screen.findByTestId('shell-mounted');
+    const call = shellMock.mock.calls.at(-1)?.[0] as {
+      payload: InterviewPayload;
+      initialStageOverrideIndex?: number;
+    };
+
+    expect(
+      call.payload.session.network.ego[entityAttributesProperty],
+    ).toHaveProperty('consent');
+    expect(call.payload.protocol.stages[1]).toHaveProperty('skipLogic');
+    expect(call.initialStageOverrideIndex).toBe(3);
   });
 
-  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', async () => {
+  it('seeds finalized stageMetadata from a FamilyPedigree the walk completed', async () => {
     render(<PreviewHost />);
-    const protocol = {
+    // Previewed from the stage AFTER the pedigree: the walk stops on arrival
+    // at the stage the researcher asked for, so a pedigree previewed from
+    // itself is one the participant has not started — it is the earlier stages
+    // that run, and it is their finalized state that has to survive.
+    const protocol = CurrentProtocolSchema.parse({
       name: 'T',
       description: '',
       schemaVersion: 8,
@@ -576,20 +618,96 @@ describe('PreviewHost', () => {
           id: 'fp',
           type: 'FamilyPedigree',
           label: 'Family',
-          nodeConfig: { type: 'node-1' },
-          edgeConfig: { type: 'edge-1' },
+          nodeConfig: {
+            type: 'family-member',
+            nodeLabelVariable: 'name',
+            egoVariable: 'isEgo',
+            relationshipVariable: 'relationship',
+            biologicalSexVariable: 'biologicalSex',
+          },
+          edgeConfig: {
+            type: 'family-edge',
+            relationshipTypeVariable: 'relationshipType',
+            isActiveVariable: 'isActive',
+            isGestationalCarrierVariable: 'isGestationalCarrier',
+            gameteRoleVariable: 'gameteRole',
+          },
+          framing: { mode: 'fixed', value: 'gamete' },
+          boundaries: {
+            requireGrandparents: 'required',
+            requireChildrenContributors: 'off',
+          },
+          censusPrompt: 'Build your family.',
+          nominationPrompts: [
+            {
+              id: 'condition-prompt',
+              text: 'Who has this?',
+              variable: 'condition',
+            },
+          ],
+        },
+        {
+          id: 'after',
+          type: 'Information',
+          label: 'After',
+          title: 'After',
+          items: [],
         },
       ],
       codebook: {
-        node: { 'node-1': { variables: {} } },
-        edge: { 'edge-1': { variables: {} } },
+        node: {
+          'family-member': {
+            name: 'Family member',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              name: {
+                name: 'name',
+                type: 'text',
+                component: 'Text',
+                validation: { unique: true },
+              },
+              isEgo: { name: 'isEgo', type: 'boolean' },
+              relationship: { name: 'relationship', type: 'text' },
+              biologicalSex: {
+                name: 'biologicalSex',
+                type: 'categorical',
+                options: BIOLOGICAL_SEX_OPTIONS,
+              },
+              condition: { name: 'condition', type: 'boolean' },
+            },
+          },
+        },
+        edge: {
+          'family-edge': {
+            name: 'Family edge',
+            color: 'edge-color-seq-1',
+            variables: {
+              relationshipType: {
+                name: 'relationshipType',
+                type: 'categorical',
+                options: RELATIONSHIP_TYPE_OPTIONS,
+              },
+              isActive: { name: 'isActive', type: 'boolean' },
+              isGestationalCarrier: {
+                name: 'isGestationalCarrier',
+                type: 'boolean',
+              },
+              gameteRole: {
+                name: 'gameteRole',
+                type: 'categorical',
+                options: GAMETE_ROLE_OPTIONS,
+              },
+            },
+          },
+        },
         ego: {},
       },
       assetManifest: {},
-    };
+    });
     postPayload(
       openerStub,
-      makePayload({ protocol, startStage: 0, useSyntheticData: true }),
+      makePayload({ protocol, startStage: 1, useSyntheticData: true }),
     );
 
     await screen.findByTestId('shell-mounted');
@@ -624,21 +742,14 @@ describe('PreviewHost', () => {
 
   it('names the conflicting variables and offers no retry when generation is unsatisfiable', async () => {
     render(<PreviewHost />);
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Person/)).toBeInTheDocument();
-    expect(screen.getByText(/Code/)).toBeInTheDocument();
+    expect(screen.getByText(/Person: Pick/)).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(/no value satisfies these rules/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /try again/i }),
@@ -652,13 +763,7 @@ describe('PreviewHost', () => {
     await screen.findByTestId('shell-mounted');
 
     shellMock.mockClear();
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
@@ -668,13 +773,7 @@ describe('PreviewHost', () => {
 
   it('drops the rule conflicts when a later rebuild fails for another reason', async () => {
     render(<PreviewHost />);
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
     await screen.findByText(/protocol can't be previewed/i);
 
     postPayload(
@@ -693,7 +792,7 @@ describe('PreviewHost', () => {
     expect(
       screen.queryByText(/protocol can't be previewed/i),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/minLength 24 exceeds maxLength 10/i)).toBeNull();
+    expect(screen.queryByText(/no value satisfies these rules/i)).toBeNull();
     expect(
       screen.getByRole('button', { name: /try again/i }),
     ).toBeInTheDocument();
@@ -710,19 +809,13 @@ describe('PreviewHost', () => {
     );
     await screen.findByText(/couldn't build the preview/i);
 
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(/no value satisfies these rules/i),
     ).toBeInTheDocument();
     // The generic screen's retry can only fail the same way here, so no part of
     // it may survive alongside the conflict list.
@@ -734,13 +827,7 @@ describe('PreviewHost', () => {
 
   it('shows the preview once a corrected protocol arrives', async () => {
     render(<PreviewHost />);
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
     await screen.findByText(/protocol can't be previewed/i);
 
     postPayload(openerStub, makePayload());
@@ -802,19 +889,13 @@ describe('PreviewHost', () => {
       vi.useRealTimers();
     }
 
-    postPayload(
-      openerStub,
-      makePayload({
-        protocol: makeUnsatisfiableProtocol(),
-        useSyntheticData: true,
-      }),
-    );
+    postPayload(openerStub, unsatisfiablePayload());
 
     expect(
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(/no value satisfies these rules/i),
     ).toBeInTheDocument();
     // Architect answered, so blaming the connection hides the rules the user
     // can actually correct.

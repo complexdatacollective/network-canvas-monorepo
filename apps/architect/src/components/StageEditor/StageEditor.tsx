@@ -16,6 +16,7 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
+  CURRENT_SCHEMA_VERSION,
   type Stage,
   type StageType,
   validateProtocol,
@@ -428,21 +429,39 @@ const StageEditor = (props: StageEditorProps) => {
       return;
     }
 
+    // The PARSED protocol is what the preview runs, not the working document
+    // it was built from: parsing is what supplies each stage's `synthetic`
+    // descriptors, and synthetic generation refuses a stage that carries none.
+    // `validateProtocol` answers for every schema version, so narrow on the
+    // discriminant — a protocol Architect edits is always the current one, so
+    // this is a guard rather than a path a researcher can reach.
+    const parsedProtocol = validationResult.data;
+    if (parsedProtocol.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: 'Cannot Preview',
+        description: `This protocol validated as schema version ${parsedProtocol.schemaVersion}, which Architect cannot preview.`,
+        actions: { primary: { label: 'OK', value: true } },
+      });
+      return;
+    }
+
     // Clamp to a valid index into the preview protocol (which includes the wip
     // stage for the create-new flow) so a missing/out-of-range position can't
     // launch preview one past the end.
     const desiredStartStage =
       stageIndex !== -1
         ? stageIndex
-        : (insertAtIndex ?? previewProtocol.stages.length - 1);
+        : (insertAtIndex ?? parsedProtocol.stages.length - 1);
     const startStage = Math.min(
       Math.max(desiredStartStage, 0),
-      previewProtocol.stages.length - 1,
+      parsedProtocol.stages.length - 1,
     );
     setIsOpeningPreview(true);
     try {
       const result = await launchPreview({
-        protocol: previewProtocol,
+        protocol: parsedProtocol,
         startStage,
         useSyntheticData,
         respectSkipLogic,
