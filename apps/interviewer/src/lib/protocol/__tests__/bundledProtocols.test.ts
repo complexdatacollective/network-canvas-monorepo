@@ -133,17 +133,24 @@ describe('resolveAssets manifest identity', () => {
     expect(assets.find((a) => a.id === 'mapbox-key')?.data).toBe('pk.test');
   });
 
-  it('resolves every Development protocol manifest entry', async () => {
-    const { loadBundledDevelopmentProtocol } =
-      await import('../bundledDevelopmentProtocol');
-    const bundled = await loadBundledDevelopmentProtocol();
-    const manifest =
-      (bundled.document as { assetManifest?: Record<string, unknown> })
-        .assetManifest ?? {};
+  // The dev bundle eagerly globs ~25MB of assets (a 24MB video included);
+  // transforming that to arraybuffer modules can exceed the default timeout
+  // on a contended CI runner, so this test gets generous headroom.
+  it(
+    'resolves every Development protocol manifest entry',
+    { timeout: 120_000 },
+    async () => {
+      const { loadBundledDevelopmentProtocol } =
+        await import('../bundledDevelopmentProtocol');
+      const bundled = await loadBundledDevelopmentProtocol();
+      const manifest =
+        (bundled.document as { assetManifest?: Record<string, unknown> })
+          .assetManifest ?? {};
 
-    expect(Object.keys(manifest).length).toBeGreaterThan(0);
-    expect(bundled.assets.map((asset) => asset.id).toSorted()).toEqual(
-      Object.keys(manifest).toSorted(),
-    );
-  });
+      expect(Object.keys(manifest).length).toBeGreaterThan(0);
+      expect(bundled.assets.map((asset) => asset.id).toSorted()).toEqual(
+        Object.keys(manifest).toSorted(),
+      );
+    },
+  );
 });

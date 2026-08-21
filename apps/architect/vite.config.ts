@@ -23,7 +23,9 @@ const repoRoot = resolve(rootDir, '../..');
 // the HTML, bumps its precache revision, and propagates on the next update.
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  // posthog-js loads its remote project config and enabled SDK extensions
+  // (including exception autocapture) as scripts from our controlled relay.
+  "script-src 'self' https://ph-relay.networkcanvas.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "img-src 'self' data: blob:",

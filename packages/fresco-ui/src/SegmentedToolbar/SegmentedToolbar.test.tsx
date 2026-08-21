@@ -603,6 +603,28 @@ describe('SegmentedToolbar — conditional motion', () => {
       expect(screen.queryByRole('separator')).not.toBeInTheDocument();
     });
   });
+
+  /**
+   * Swapping segments pins each departing control out of flow at its old
+   * coordinates and writes layout-projection transforms on the ones that stay,
+   * so the scroll lane's `scrollWidth` overshoots its `clientWidth` for the
+   * length of every hand-off even though nothing is out of reach. jsdom has no
+   * layout to measure that with, so this guards the decision it forces: the
+   * lane still scrolls, and never paints a bar for it.
+   */
+  it('scrolls the horizontal lane without painting scrollbar chrome', () => {
+    render(
+      <SegmentedToolbar aria-label="Editing tools">
+        <ToolbarIconButton aria-label="List" icon={<List />} />
+      </SegmentedToolbar>,
+    );
+
+    expect(screen.getByRole('toolbar', { name: 'Editing tools' })).toHaveClass(
+      'overflow-x-auto',
+      'scrollbar-none',
+      '[&::-webkit-scrollbar]:hidden',
+    );
+  });
 });
 
 describe('SegmentedToolbar — dragging', () => {
