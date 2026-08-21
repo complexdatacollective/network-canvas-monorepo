@@ -33,6 +33,15 @@ export {
   generateInterviewsOptions,
   type GenerateInterviewsOptions,
 } from './synthetic-interviews';
+// The pre-seed feasibility gate on its own: the exact analysis
+// `generateInterviews` refuses with, callable without generating anything.
+// Published so an authoring surface (Architect's live feasibility) can render
+// the same structured conflicts a generation run would throw — same inputs,
+// same wording, one implementation.
+export {
+  analyseSyntheticFeasibility,
+  type AnalyseSyntheticFeasibilityOptions,
+} from './synthetic-interviews';
 // The acceptance corpus: deterministic protocol shapes generated from an index
 // rather than written by hand. Published because two packages hold oracles over
 // the same shapes — this package's feasibility/validation corpus, and

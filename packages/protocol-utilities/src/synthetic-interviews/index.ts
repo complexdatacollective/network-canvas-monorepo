@@ -7,7 +7,10 @@ import {
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from './constants';
 import { createEntityConstraintCache } from './constraints/entityConstraintCache';
-import { SyntheticDataConstraintError } from './constraints/error';
+import {
+  type ConstraintConflict,
+  SyntheticDataConstraintError,
+} from './constraints/error';
 import {
   analyseFeasibility,
   FEASIBILITY_SUMMARY,
@@ -157,6 +160,65 @@ export type GenerateInterviewsOptions = z.input<
 >;
 
 /**
+ * `protocol` must be schema-parse output. Stage-level `synthetic` descriptors
+ * exist because parsing put them there, and both the walk and the feasibility
+ * analysis read them; a document that skipped the schema is refused rather
+ * than re-defaulted, because a default supplied here would be a second opinion
+ * about what the schema resolves (spec rule 2).
+ */
+const assertStagesCarrySyntheticDescriptors = (protocol: CurrentProtocol) => {
+  protocol.stages.forEach((stage) => {
+    invariant(
+      (stage as { synthetic?: unknown }).synthetic !== undefined,
+      `stage "${stage.id}" declares no synthetic parameters — default parameters are supplied by parsing the protocol through the schema`,
+    );
+  });
+};
+
+export type AnalyseSyntheticFeasibilityOptions = {
+  /**
+   * ISO instant anchoring the analysis date, the same field a
+   * `generateInterviews` run is anchored by — pass the run's own value to ask
+   * exactly the question that run will ask. Defaults to a clock read, which is
+   * what an unanchored generation run does too.
+   */
+  startWindow?: string;
+};
+
+/**
+ * The pre-seed feasibility gate (spec rule 5), asked on its own: every reason
+ * this protocol can never generate, as the structured conflicts generation
+ * itself refuses with, or an empty list when it always generates. Nothing is
+ * drawn and no session is produced.
+ *
+ * This IS the gate rather than a copy of it — `generateInterviews` calls this
+ * same function and throws a `SyntheticDataConstraintError` over a non-empty
+ * result — so a caller rendering these conflicts (Architect's live feasibility
+ * surface) can never disagree with what a generation run would refuse.
+ *
+ * `protocol` must be schema-parse output, exactly as `generateInterviews`
+ * requires; `assetData` carries the same host-resolved roster and Geospatial
+ * pools, under the same three-way key contract (rows present = draw from
+ * them, empty array = source known empty, key absent = source unresolved).
+ */
+export const analyseSyntheticFeasibility = (
+  protocol: CurrentProtocol,
+  assetData: AssetData = {},
+  options: AnalyseSyntheticFeasibilityOptions = {},
+): ConstraintConflict[] => {
+  assertStagesCarrySyntheticDescriptors(protocol);
+  const anchor = options.startWindow ?? new Date().toISOString();
+  return analyseFeasibility({
+    protocol,
+    assetData,
+    // The anchor's own day dates the analysis (date windows measure against
+    // it), so the verdict is a function of the arguments and nothing else.
+    today: anchor.slice(0, 10),
+    interfaceRules: collectInterfaceImpliedRules(protocol),
+  });
+};
+
+/**
  * Generate `count` synthetic interviews for a PARSED protocol, walking it
  * stage by stage as a participant would and returning complete
  * Interviewer-shaped sessions (spec: Public API). Drop-outs are genuine
@@ -178,34 +240,24 @@ export const generateInterviews = (
 ): SyntheticInterviewResult[] => {
   const options = generateInterviewsOptions.parse(userOptions);
 
-  protocol.stages.forEach((stage) => {
-    invariant(
-      (stage as { synthetic?: unknown }).synthetic !== undefined,
-      `stage "${stage.id}" declares no synthetic parameters — default parameters are supplied by parsing the protocol through the schema`,
-    );
-  });
-
-  // Walked once per batch: the answer is the same for every session.
-  const interfaceRules = collectInterfaceImpliedRules(protocol);
-
   // One clock read per batch when the caller pins nothing, so a batch is
   // internally consistent; a pinned startWindow makes the run byte-stable.
   const startWindowAnchor = options.startWindow ?? new Date().toISOString();
 
   // Pre-seed refusal (rule 5): a protocol either always generates or never
   // generates, decided once per batch from the protocol, the options, and the
-  // pools the caller resolved — never from a seed. The anchor's own day dates
-  // the analysis, so the verdict moves with the batch rather than with a clock
-  // read of its own.
-  const conflicts = analyseFeasibility({
-    protocol,
-    assetData,
-    today: startWindowAnchor.slice(0, 10),
-    interfaceRules,
+  // pools the caller resolved — never from a seed. Asked through the public
+  // analysis (which also refuses an unparsed protocol), so this gate and the
+  // one a host runs standalone are the same function by construction.
+  const conflicts = analyseSyntheticFeasibility(protocol, assetData, {
+    startWindow: startWindowAnchor,
   });
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts, FEASIBILITY_SUMMARY);
   }
+
+  // Walked once per batch: the answer is the same for every session.
+  const interfaceRules = collectInterfaceImpliedRules(protocol);
 
   const generateOne = (
     index: number,
