@@ -393,7 +393,11 @@ describe('generateInterviews', () => {
     });
   });
 
-  describe('dropout', () => {
+  // Contended-runner headroom: the first test to touch a memoised batch pays
+  // the whole 40-walk build inside its own budget, and a saturated CI runner
+  // has twice now stretched that past the default sixty seconds. The work is
+  // deterministic — the ceiling is headroom, not a hang allowance.
+  describe('dropout', { timeout: 180_000 }, () => {
     // Long and demanding: burden accumulates quadratically, so a protocol this
     // size makes leaving early the common case rather than a rare one.
     const longProtocol = parse([
