@@ -10,7 +10,7 @@ vi.mock('../../db/api', () => ({
   getProtocolAssets: (...args: unknown[]) => getProtocolAssets(...args),
 }));
 
-const { loadRosterNodesForStages } = await import('../loadRosterData');
+const { loadSyntheticAssetData } = await import('../loadAssetData');
 
 const HASH = 'protocol-hash';
 
@@ -22,6 +22,14 @@ function csvBlob(body: string): Blob {
 }
 
 const PEOPLE_CSV = 'Name,Age\nAda,36\nGrace,45\nAlan,41\n';
+
+const REGIONS_GEOJSON = JSON.stringify({
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', properties: { area: 'Govan' }, geometry: null },
+    { type: 'Feature', properties: { area: 'Partick' }, geometry: null },
+  ],
+});
 
 function storedAsset(partial: Partial<StoredAsset>): StoredAsset {
   return {
@@ -70,8 +78,27 @@ function rosterStage(overrides?: Record<string, unknown>) {
   };
 }
 
+function geospatialStage(overrides?: Record<string, unknown>) {
+  return {
+    id: 'stage-geo',
+    label: 'Map',
+    type: 'Geospatial',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [{ id: 'p1', text: 'Where?', variable: 'var-area' }],
+    mapOptions: {
+      dataSourceAssetId: 'regions',
+      targetFeatureProperty: 'area',
+    },
+    ...overrides,
+  };
+}
+
 const MANIFEST = {
   roster: { type: 'network', name: 'People', source: 'people.csv' },
+};
+
+const MAP_MANIFEST = {
+  regions: { type: 'geojson', name: 'Regions', source: 'regions.geojson' },
 };
 
 beforeEach(() => {
@@ -96,17 +123,17 @@ afterEach(() => {
 });
 
 // These tests cover only the adapter's own responsibilities — joining stored
-// assets to roster sources, gating on asset type/shape, the object-URL
+// assets to roster and map sources, gating on asset type/shape, the object-URL
 // create/revoke lifecycle, and the source-filename choice. The parse, merge,
 // and panel-filter semantics live in @codaco/interview and are tested there.
-describe('loadRosterNodesForStages', () => {
+describe('loadSyntheticAssetData', () => {
   it('resolves a roster asset to an object URL and revokes it once parsed', async () => {
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result['stage-ngr']).toHaveLength(3);
-    const [first] = result['stage-ngr']!;
+    expect(rosterNodes!['stage-ngr']).toHaveLength(3);
+    const [first] = rosterNodes!['stage-ngr']!;
     expect(first!.type).toBe('person');
     expect(first![entityAttributesProperty]['var-name']).toBe('Ada');
     expect(createObjectURL).toHaveBeenCalledOnce();
@@ -118,53 +145,53 @@ describe('loadRosterNodesForStages', () => {
     // `people.csv` source yields the CSV parse that produces rows.
     getProtocolAssets.mockResolvedValue([storedAsset({ name: 'roster.json' })]);
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result['stage-ngr']).toHaveLength(3);
+    expect(rosterNodes!['stage-ngr']).toHaveLength(3);
   });
 
   it('falls back to the stored asset name when the manifest has no source', async () => {
     getProtocolAssets.mockResolvedValue([storedAsset({ name: 'people.csv' })]);
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], {}),
     );
 
-    expect(result['stage-ngr']).toHaveLength(3);
+    expect(rosterNodes!['stage-ngr']).toHaveLength(3);
   });
 
   it('omits a stage whose roster asset is missing', async () => {
     getProtocolAssets.mockResolvedValue([]);
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(rosterNodes).toEqual({});
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 
   it('omits a stage whose asset is not a network asset', async () => {
     getProtocolAssets.mockResolvedValue([storedAsset({ type: 'image' })]);
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(rosterNodes).toEqual({});
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 
   it('omits a stage whose asset data is a string rather than a blob', async () => {
     getProtocolAssets.mockResolvedValue([storedAsset({ data: 'inline-data' })]);
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(rosterNodes).toEqual({});
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 
@@ -175,34 +202,108 @@ describe('loadRosterNodesForStages', () => {
     );
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await loadRosterNodesForStages(
+    const { rosterNodes } = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(rosterNodes).toEqual({});
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:roster');
   });
 
-  it('still resolves to {} when the whole asset read fails', async () => {
+  it('still resolves to empty pools when the whole asset read fails', async () => {
     getProtocolAssets.mockRejectedValue(new Error('undecryptable asset'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const result = await loadRosterNodesForStages(
+    const result = await loadSyntheticAssetData(
       storedProtocol([rosterStage()], MANIFEST),
     );
 
-    expect(result).toEqual({});
+    expect(result).toEqual({ rosterNodes: {}, geojsonPropertyValues: {} });
   });
 
-  it('never reads protocol assets when no stage uses a roster', async () => {
-    const result = await loadRosterNodesForStages(
+  it('never reads protocol assets when no stage needs one', async () => {
+    const result = await loadSyntheticAssetData(
       storedProtocol(
         [{ id: 'info', label: 'Info', type: 'Information', items: [] }],
         {},
       ),
     );
 
-    expect(result).toEqual({});
+    expect(result).toEqual({ rosterNodes: {}, geojsonPropertyValues: {} });
     expect(getProtocolAssets).not.toHaveBeenCalled();
+  });
+
+  it("collects a map stage's selectable areas from its GeoJSON asset", async () => {
+    getProtocolAssets.mockResolvedValue([
+      storedAsset({
+        assetId: 'regions',
+        name: 'Regions',
+        type: 'geojson',
+        data: new Blob([REGIONS_GEOJSON], { type: 'application/json' }),
+      }),
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(REGIONS_GEOJSON))),
+    );
+
+    const { geojsonPropertyValues } = await loadSyntheticAssetData(
+      storedProtocol([geospatialStage()], MAP_MANIFEST),
+    );
+
+    expect(geojsonPropertyValues!['stage-geo']).toEqual(['Govan', 'Partick']);
+    expect(revokeObjectURL).toHaveBeenCalled();
+  });
+
+  it('omits a map stage whose asset is not a geojson asset', async () => {
+    // Handing a roster CSV to the map parser would invent areas nobody drew,
+    // so the manifest's own type gates it.
+    getProtocolAssets.mockResolvedValue([
+      storedAsset({ assetId: 'regions', name: 'Regions', type: 'network' }),
+    ]);
+
+    const { geojsonPropertyValues } = await loadSyntheticAssetData(
+      storedProtocol([geospatialStage()], MAP_MANIFEST),
+    );
+
+    expect(geojsonPropertyValues).toEqual({});
+  });
+
+  it('resolves roster and map sources in one pass over the stored assets', async () => {
+    getProtocolAssets.mockResolvedValue([
+      storedAsset({}),
+      storedAsset({
+        assetId: 'regions',
+        name: 'Regions',
+        type: 'geojson',
+        data: new Blob([REGIONS_GEOJSON], { type: 'application/json' }),
+      }),
+    ]);
+    createObjectURL.mockImplementation((blob: unknown) =>
+      (blob as Blob).type === 'application/json' ? 'blob:map' : 'blob:roster',
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(url === 'blob:map' ? REGIONS_GEOJSON : PEOPLE_CSV),
+        ),
+      ),
+    );
+
+    const result = await loadSyntheticAssetData(
+      storedProtocol([rosterStage(), geospatialStage()], {
+        ...MANIFEST,
+        ...MAP_MANIFEST,
+      }),
+    );
+
+    expect(result.rosterNodes!['stage-ngr']).toHaveLength(3);
+    expect(result.geojsonPropertyValues!['stage-geo']).toEqual([
+      'Govan',
+      'Partick',
+    ]);
+    // One read of the (decrypted) asset table, however many sources need it.
+    expect(getProtocolAssets).toHaveBeenCalledOnce();
   });
 });

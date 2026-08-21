@@ -148,6 +148,7 @@ beforeEach(() => {
   mockIsPersisted.mockResolvedValue(false);
   mockCountSyntheticSessions.mockResolvedValue(0);
   mockDeleteSyntheticSessions.mockResolvedValue(0);
+  mockGenerateSyntheticSessions.mockResolvedValue({ created: 0, seed: 1 });
   // Mirrors the real DialogProvider.handleConfirm just enough for these
   // tests: it runs onConfirm and swallows a rejection rather than letting it
   // reach handleDeleteSynthetic's `await confirm(...)` — the real provider
@@ -393,6 +394,72 @@ async function generateWithSelectedProtocol() {
   await user.click(screen.getByRole('button', { name: 'Generate' }));
 }
 
+describe('SettingsDialog synthetic tab — batch options', () => {
+  it('respects skip logic and filtering unless the researcher turns it off', async () => {
+    // The protocol's own skip logic and filters are part of what it says an
+    // interview is, so generated data that ignored them would be data the
+    // protocol could not have produced.
+    await generateWithSelectedProtocol();
+
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalled(),
+    );
+    expect(mockGenerateSyntheticSessions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ respectSkipLogic: true }),
+    );
+  });
+
+  it('leaves the seed to the generator when none is pinned', async () => {
+    await generateWithSelectedProtocol();
+
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalled(),
+    );
+    expect(
+      mockGenerateSyntheticSessions.mock.calls.at(-1)?.[0],
+    ).not.toHaveProperty('seed');
+  });
+
+  it('passes a pinned seed through, so a batch can be regenerated', async () => {
+    mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+    await user.click(screen.getByRole('tab', { name: 'Synthetic data' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Protocol' })).toHaveValue(
+        'hash-1',
+      );
+    });
+    await user.type(screen.getByTestId('synthetic-seed'), '4321');
+    await user.click(screen.getByRole('button', { name: 'Generate' }));
+
+    await waitFor(() =>
+      expect(mockGenerateSyntheticSessions).toHaveBeenCalled(),
+    );
+    expect(mockGenerateSyntheticSessions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ seed: 4321 }),
+    );
+  });
+
+  it('reports the seed the batch ran on, which is what makes it repeatable', async () => {
+    mockGenerateSyntheticSessions.mockResolvedValueOnce({
+      created: 3,
+      seed: 987654,
+    });
+
+    await generateWithSelectedProtocol();
+
+    await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
+    expect(mockToastAdd).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Generated 3 synthetic sessions',
+        description: 'Seed 987654',
+        variant: 'success',
+      }),
+    );
+  });
+});
+
 describe('SettingsDialog synthetic tab — generation failure toast', () => {
   it('shows a plain failure and keeps it on screen until dismissed', async () => {
     mockGenerateSyntheticSessions.mockRejectedValueOnce(
@@ -510,7 +577,7 @@ describe('SettingsDialog synthetic tab — count after a failed generation', () 
     mockCountSyntheticSessions.mockImplementation(async () => storedCount);
     mockGenerateSyntheticSessions.mockImplementation(async () => {
       storedCount = 10;
-      return 10;
+      return { created: 10, seed: 1 };
     });
 
     await generateWithSelectedProtocol();
@@ -535,7 +602,10 @@ describe('SettingsDialog synthetic tab — post-generation refresh failure', () 
       }
       return 0;
     });
-    mockGenerateSyntheticSessions.mockResolvedValueOnce(5);
+    mockGenerateSyntheticSessions.mockResolvedValueOnce({
+      created: 5,
+      seed: 1,
+    });
     const onDataChange = vi.fn();
     mockListProtocols.mockResolvedValue([makeProtocol('Protocol A', 'hash-1')]);
 

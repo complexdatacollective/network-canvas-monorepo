@@ -3,7 +3,9 @@ import { resolve } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { generateNetwork } from '@codaco/protocol-utilities';
+import type { AssetData } from '@codaco/protocol-utilities';
+import { generateInterviews } from '@codaco/protocol-utilities';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 import {
   entityAttributesProperty,
@@ -18,7 +20,7 @@ vi.mock('../../db/api', () => ({
   getProtocolAssets: (...args: unknown[]) => getProtocolAssets(...args),
 }));
 
-const { loadRosterNodesForStages } = await import('../loadRosterData');
+const { loadSyntheticAssetData } = await import('../loadAssetData');
 
 const ASSET_DIR = resolve(
   import.meta.dirname,
@@ -41,12 +43,29 @@ function storedProtocol(): StoredProtocol {
   } as unknown as StoredProtocol;
 }
 
+// The generation boundary re-parses the stored document, so everything the
+// engine reads here — every stage's `synthetic` descriptor included — comes
+// from the schema rather than from this test.
+const parsedProtocol = CurrentProtocolSchema.parse(developmentProtocol);
+
+/** One seeded interview over the real protocol, with real asset content. */
+function generateOneSession(seed: number, assetData: AssetData) {
+  const [result] = generateInterviews(
+    parsedProtocol,
+    { count: 1, seed, simulateDropOut: false },
+    assetData,
+  );
+  expect(result).toBeDefined();
+  return result!.session;
+}
+
 beforeAll(() => {
   const manifest = developmentProtocol.assetManifest ?? {};
   const assets: StoredAsset[] = [];
 
   for (const [assetId, entry] of Object.entries(manifest)) {
-    if (entry.type !== 'network' || !('source' in entry)) continue;
+    if (entry.type !== 'network' && entry.type !== 'geojson') continue;
+    if (!('source' in entry)) continue;
     const bytes = readFileSync(resolve(ASSET_DIR, entry.source));
     const url = `blob:${assetId}`;
     bytesByUrl.set(url, bytes);
@@ -55,7 +74,7 @@ beforeAll(() => {
       protocolHash: HASH,
       assetId,
       name: entry.name,
-      type: 'network',
+      type: entry.type,
       data: new Blob([new Uint8Array(bytes)]),
     });
   }
@@ -88,9 +107,9 @@ afterAll(() => {
 
 describe('synthetic generation over the real Development Protocol', () => {
   it('parses every roster-backed stage from the real asset files', async () => {
-    const externalData = await loadRosterNodesForStages(storedProtocol());
+    const { rosterNodes } = await loadSyntheticAssetData(storedProtocol());
 
-    expect(Object.keys(externalData).toSorted()).toEqual([
+    expect(Object.keys(rosterNodes ?? {}).toSorted()).toEqual([
       'namegen1',
       'namegen1a',
       'namegenroster1',
@@ -99,16 +118,16 @@ describe('synthetic generation over the real Development Protocol', () => {
       'namegenroster3',
     ]);
 
-    expect(externalData.namegenroster1).toHaveLength(6);
-    expect(externalData.namegenroster2a!.length).toBeGreaterThan(200);
+    expect(rosterNodes!.namegenroster1).toHaveLength(6);
+    expect(rosterNodes!.namegenroster2a!.length).toBeGreaterThan(200);
 
-    expect(externalData.namegen1).toHaveLength(1);
+    expect(rosterNodes!.namegen1).toHaveLength(1);
   });
 
   it('maps roster columns onto real codebook variable ids', async () => {
-    const externalData = await loadRosterNodesForStages(storedProtocol());
+    const { rosterNodes } = await loadSyntheticAssetData(storedProtocol());
 
-    const person = externalData.namegenroster1![0]!;
+    const person = rosterNodes!.namegenroster1![0]!;
     expect(person.type).toBe('person_node_type');
 
     const nameVariable = Object.entries(
@@ -119,24 +138,32 @@ describe('synthetic generation over the real Development Protocol', () => {
     expect(Object.keys(attributes)).toContain(nameVariable);
   });
 
-  it('builds a network whose roster people come from the real rosters', async () => {
-    const protocol = storedProtocol();
-    const externalData = await loadRosterNodesForStages(protocol);
+  it('collects the map answers a Geospatial stage can produce', async () => {
+    const { geojsonPropertyValues } =
+      await loadSyntheticAssetData(storedProtocol());
 
-    const { network } = generateNetwork({
-      codebook: protocol.codebook,
-      stages: protocol.protocol.stages,
-      seed: 42,
-      externalData,
-    });
+    // The stage's `targetFeatureProperty` off every feature of its GeoJSON —
+    // exactly the values a tap inside a selectable area can store.
+    expect(Object.keys(geojsonPropertyValues ?? {})).toEqual([
+      'geospatial-dev',
+    ]);
+    const areas = geojsonPropertyValues!['geospatial-dev']!;
+    expect(areas.length).toBeGreaterThan(0);
+    expect(areas.every((value) => typeof value === 'string')).toBe(true);
+  });
+
+  it('builds sessions whose roster people come from the real rosters', async () => {
+    const assetData = await loadSyntheticAssetData(storedProtocol());
+
+    const session = generateOneSession(42, assetData);
 
     const rosterKeys = new Set(
-      Object.values(externalData)
+      Object.values(assetData.rosterNodes ?? {})
         .flat()
         .map((n) => n[entityPrimaryKeyProperty]),
     );
 
-    const venueNodes = network.nodes.filter(
+    const venueNodes = session.network.nodes.filter(
       (n) => n.type === 'venue_node_type' && n.stageId === 'namegenroster2a',
     );
     expect(venueNodes.length).toBeGreaterThan(0);
@@ -145,21 +172,42 @@ describe('synthetic generation over the real Development Protocol', () => {
     }
   });
 
-  it('never reuses one person across the stages sharing a roster', async () => {
-    const protocol = storedProtocol();
-    const externalData = await loadRosterNodesForStages(protocol);
+  it('places alters only on areas the real map offers', async () => {
+    const assetData = await loadSyntheticAssetData(storedProtocol());
+    const stage = parsedProtocol.stages.find((s) => s.id === 'geospatial-dev');
+    const areas = new Set(assetData.geojsonPropertyValues!['geospatial-dev']!);
 
-    const { network } = generateNetwork({
-      codebook: protocol.codebook,
-      stages: protocol.protocol.stages,
-      seed: 7,
-      externalData,
-    });
+    const session = generateOneSession(42, assetData);
+
+    // The map's `targetFeatureProperty` says which property is read off the
+    // tapped feature; the prompt says which variable the answer is stored in.
+    const variable = (stage as unknown as { prompts: { variable: string }[] })
+      .prompts[0]!.variable;
+    const placements = session.network.nodes
+      .map((node) => node[entityAttributesProperty][variable])
+      .filter((value): value is string => typeof value === 'string');
+
+    expect(placements.length).toBeGreaterThan(0);
+    for (const placement of placements) {
+      // Either a real area from the researcher's map, or the one word the
+      // interface writes for a tap that landed outside them all.
+      expect(
+        areas.has(placement) || placement === 'outside-selectable-areas',
+      ).toBe(true);
+    }
+  });
+
+  it('never reuses one person across the stages sharing a roster', async () => {
+    const assetData = await loadSyntheticAssetData(storedProtocol());
+
+    const session = generateOneSession(7, assetData);
 
     const shared = new Set(
-      externalData.namegenroster1!.map((n) => n[entityPrimaryKeyProperty]),
+      assetData.rosterNodes!.namegenroster1!.map(
+        (n) => n[entityPrimaryKeyProperty],
+      ),
     );
-    const drawn = network.nodes
+    const drawn = session.network.nodes
       .map((n) => n[entityPrimaryKeyProperty])
       .filter((key) => shared.has(key));
 
@@ -168,20 +216,19 @@ describe('synthetic generation over the real Development Protocol', () => {
     expect(drawn.length).toBeLessThanOrEqual(6);
   });
 
-  it('still generates when the protocol has no rosters at hand', async () => {
+  it('refuses when the host resolved none of the protocol’s sources', async () => {
     getProtocolAssets.mockResolvedValueOnce([]);
-    const protocol = storedProtocol();
 
-    const externalData = await loadRosterNodesForStages(protocol);
-    expect(externalData).toEqual({});
+    const assetData = await loadSyntheticAssetData(storedProtocol());
+    // Every stage's source failed to resolve, so no stage contributes a key —
+    // an unresolved pool, which the engine distinguishes from an empty one.
+    expect(assetData).toEqual({ rosterNodes: {}, geojsonPropertyValues: {} });
 
-    const { network } = generateNetwork({
-      codebook: protocol.codebook,
-      stages: protocol.protocol.stages,
-      seed: 42,
-      externalData,
-    });
-
-    expect(network.nodes.length).toBeGreaterThan(0);
+    // A participating host whose sources all failed is an unresolved-pool
+    // state, and a roster stage carrying a min-nodes floor refuses pre-seed
+    // with a conflict naming the stage (D18): the researcher gets an
+    // actionable screen instead of a batch that quietly violates the
+    // protocol they wrote.
+    expect(() => generateOneSession(42, assetData)).toThrow(/NG HIV Services/);
   });
 });

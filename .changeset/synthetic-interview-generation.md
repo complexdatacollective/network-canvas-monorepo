@@ -62,3 +62,14 @@ participant would, and the result is a complete session — network, stage
 metadata, timestamps, and resume position — rather than a bare network.
 `generateNetwork`, `GenerationConfig`, and the payload-generating half of the
 old builder are replaced by `generateInterviews` and `ProtocolBuilder`.
+
+Interviewer's synthetic data generator runs on that engine. Generated sessions
+now start spread across the days before the batch was made and finish after
+however long their stages would have taken a participant, and a session that is
+abandoned part-way stays abandoned — a genuine unfinished interview you can
+resume from where it stopped. Every batch reports the seed it ran on, and
+Settings takes a seed of your own: the same seed, protocol, and options always
+produce the same interviews, down to the case IDs. Skip logic and filtering are
+now respected by default, and roster-backed and map-backed stages draw from the
+protocol's own asset files, so generated answers are ones the protocol could
+actually have collected.
