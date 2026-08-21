@@ -15,7 +15,6 @@ export type BundledProtocol = {
 };
 
 type ManifestEntry = {
-  id: string;
   name: string;
   source?: string;
   type: string;
@@ -38,9 +37,8 @@ function hasAssetManifest(
 
 function isManifestEntry(value: unknown): value is ManifestEntry {
   if (!isRecord(value)) return false;
-  const { id, name, type, source, value: apiKeyValue } = value;
+  const { name, type, source, value: apiKeyValue } = value;
   return (
-    typeof id === 'string' &&
     typeof name === 'string' &&
     typeof type === 'string' &&
     (source === undefined || typeof source === 'string') &&
@@ -62,19 +60,26 @@ function bytesBySource(
 // Resolves a protocol document's assetManifest entries against a glob of
 // bundled asset bytes (keyed by file name), used by both the Sample and
 // Development bundled-protocol loaders.
+//
+// The manifest KEY is the asset's identity — stages reference it, and the
+// schema keeps the entry's inline `id` optional (a legacy echo of the key
+// that some exports carry and the canonical protocol sources omit) — so the
+// key is what lands on ExtractedAsset.id.
 export function resolveAssets(
   document: unknown,
   globbed: Record<string, ArrayBuffer>,
 ): ExtractedAsset[] {
   const bySource = bytesBySource(globbed);
   const manifestEntries = hasAssetManifest(document)
-    ? Object.values(document.assetManifest).filter(isManifestEntry)
+    ? Object.entries(document.assetManifest).filter(
+        (pair): pair is [string, ManifestEntry] => isManifestEntry(pair[1]),
+      )
     : [];
   const assets: ExtractedAsset[] = [];
-  for (const entry of manifestEntries) {
+  for (const [id, entry] of manifestEntries) {
     if (entry.type === 'apikey') {
       assets.push({
-        id: entry.id,
+        id,
         name: entry.name,
         data: entry.value ?? '',
       });
@@ -83,12 +88,10 @@ export function resolveAssets(
     if (!entry.source) continue;
     const bytes = bySource.get(entry.source);
     if (!bytes) {
-      throw new Error(
-        `Missing bundled asset "${entry.source}" for ${entry.id}`,
-      );
+      throw new Error(`Missing bundled asset "${entry.source}" for ${id}`);
     }
     assets.push({
-      id: entry.id,
+      id,
       name: entry.name,
       data: new Blob([bytes], { type: getAssetMimeType(entry.source) }),
     });
