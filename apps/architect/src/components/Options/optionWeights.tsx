@@ -13,6 +13,7 @@ import {
   type NumericWindow,
   useNumericDraft,
 } from '~/components/Synthetic/useNumericDraft';
+import { cx } from '~/utils/cva';
 
 /**
  * The option-weight column the options editor grows while a variable's
@@ -66,6 +67,24 @@ export const useOptionWeights = (): OptionWeightsController | null =>
  * cannot come to call the same column two things.
  */
 export const WEIGHT_COLUMN_LABEL = 'Weight';
+
+/**
+ * The size one weight box needs to hold a number.
+ *
+ * `InputField`'s number variant frames the control with two square steppers
+ * and pads what is left for the input, so the box gets the field's width MINUS
+ * both steppers and that padding — and the remainder goes to zero long before
+ * the field looks narrow. At the `w-24` this column first carried, the input
+ * measured no pixels at all: the weight was invisible and unclickable however
+ * it was styled (the component warns about exactly this beside its own
+ * `px-4`). The compact size shrinks the steppers and their padding, so this
+ * pair leaves a real box rather than a sliver.
+ *
+ * Stated here rather than at the three call sites so the column cannot be
+ * legible in the options editor and blank in the codebook.
+ */
+const WEIGHT_FIELD_WIDTH = 'w-36';
+const WEIGHT_FIELD_SIZE = 'sm';
 
 export type OptionWeightCellProps = {
   /** The option's own value, which is what a weight is keyed by. */
@@ -126,7 +145,8 @@ export function OptionWeightCell({
   const field = (
     <InputField
       {...inputAttributes}
-      className={className}
+      size={WEIGHT_FIELD_SIZE}
+      className={cx(WEIGHT_FIELD_WIDTH, className)}
       // Named by position rather than by label: an option label is
       // researcher-authored markdown that may be empty or run to a paragraph,
       // and every row in this column needs a name that tells it from its

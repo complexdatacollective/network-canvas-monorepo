@@ -43,7 +43,7 @@ export function InlineOptionWeights({ options }: InlineOptionWeightsProps) {
               optionValue={option.value}
               position={index + 1}
               accessibleName={`Weight for ${String(option.value)}`}
-              className="w-24 shrink-0"
+              className="shrink-0"
             />
           </li>
         ))}

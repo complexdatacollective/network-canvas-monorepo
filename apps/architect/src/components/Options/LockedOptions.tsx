@@ -51,7 +51,6 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
                   <OptionWeightCell
                     optionValue={option.value}
                     position={index + 1}
-                    className="w-24"
                   />
                 </td>
               )}
