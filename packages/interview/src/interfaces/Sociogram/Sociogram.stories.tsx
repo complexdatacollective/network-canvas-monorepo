@@ -3,20 +3,20 @@ import { useMemo } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createSociogramInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   const nt = si.addNodeType({ name: 'Person' });
   const layoutVar = nt.addVariable({
     type: 'layout',
-    name: 'Sociogram Layout',
+    name: 'SociogramLayout',
   });
   const highlightVar = nt.addVariable({
     type: 'boolean',
-    name: 'Close Friend',
+    name: 'CloseFriend',
   });
   const et = si.addEdgeType({ name: 'Friendship' });
   return { si, nt, layoutVar, highlightVar, et };
@@ -25,7 +25,7 @@ function createSociogramInterview(seed: number) {
 function SociogramStoryWrapper({
   buildFn,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -409,10 +409,19 @@ const buildEdgesAndHighlighting = () => {
   const { si, layoutVar, highlightVar, et } = createSociogramInterview(12);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', { initialNodes: { count: 6 } });
+  // A tap on the canvas either draws an edge or toggles a highlight, never
+  // both, so one prompt cannot offer both — the protocol schema says so.
+  // Two prompts is what "edges and highlighting" really looks like; the
+  // second keeps the edges on screen, so it shows both at once.
   stage.addPrompt({
-    text: 'Draw lines between people who know each other and highlight close friends.',
+    text: 'Draw lines between people who know each other.',
     layout: { layoutVariable: layoutVar.id },
     edges: { create: et.id, display: [et.id] },
+  });
+  stage.addPrompt({
+    text: 'Highlight the people you consider close friends.',
+    layout: { layoutVariable: layoutVar.id },
+    edges: { display: [et.id] },
     highlight: { variable: highlightVar.id },
   });
   const hlValues = [true, false, true, false, true, false];

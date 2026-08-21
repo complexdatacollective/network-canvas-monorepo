@@ -8,12 +8,7 @@ export type {
 } from './synthetic-interviews/simulators/familyPedigree/types';
 export type { ConstraintConflict } from './synthetic-interviews/constraints/error';
 export { SyntheticDataConstraintError } from './synthetic-interviews/constraints/error';
-export {
-  ProtocolBuilder,
-  // The old name, kept only so the ~80 consumer files keep compiling until
-  // the Phase 6 mechanical sweep renames them; the sweep deletes this alias.
-  ProtocolBuilder as SyntheticInterview,
-} from './ProtocolBuilder';
+export { ProtocolBuilder } from './ProtocolBuilder';
 // The seed a run falls back to and the ceiling a caller may ask a single
 // batch for. Published because they are properties of asking for synthetic
 // data rather than of any one host, so the hosts' request schemas and count

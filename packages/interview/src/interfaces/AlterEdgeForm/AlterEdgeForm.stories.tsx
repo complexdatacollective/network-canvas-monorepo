@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -33,7 +33,7 @@ type StoryArgs = {
 };
 
 function buildInterview(args: StoryArgs) {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
 
   const nt = si.addNodeType({ name: 'Person' });
   const et = si.addEdgeType({ name: 'Friendship' });
@@ -43,11 +43,20 @@ function buildInterview(args: StoryArgs) {
     text: 'Before the main stage.',
   });
 
-  // NameGenerator creates the nodes that edges will connect
-  si.addStage('NameGenerator', {
+  // NameGenerator creates the nodes that edges will connect. A name generator
+  // must carry at least one prompt and a form, so give it the minimum a real
+  // one would have.
+  const nameGenerator = si.addStage('NameGenerator', {
     label: 'Name Generator',
     initialNodes: { count: args.edgeCount + 1 },
     subject: { entity: 'node', type: nt.id },
+  });
+  nameGenerator.addPrompt({
+    text: 'Who are the people you spend time with?',
+  });
+  nameGenerator.addFormField({
+    component: 'Text',
+    prompt: 'What is their name?',
   });
 
   // Create consecutive edge pairs: [0,1], [1,2], [2,3], ...
@@ -151,7 +160,7 @@ export const ManyFields: Story = {
 };
 
 function buildValidatedInterview() {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const nt = si.addNodeType({ name: 'Person' });
   const et = si.addEdgeType({ name: 'Friendship' });
 
@@ -160,10 +169,17 @@ function buildValidatedInterview() {
     text: 'Before the main stage.',
   });
 
-  si.addStage('NameGenerator', {
+  const nameGenerator = si.addStage('NameGenerator', {
     label: 'Name Generator',
     initialNodes: { count: 3 },
     subject: { entity: 'node', type: nt.id },
+  });
+  nameGenerator.addPrompt({
+    text: 'Who are the people you spend time with?',
+  });
+  nameGenerator.addFormField({
+    component: 'Text',
+    prompt: 'What is their name?',
   });
 
   si.addEdges(

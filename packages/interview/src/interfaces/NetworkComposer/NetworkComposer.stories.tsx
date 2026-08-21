@@ -3,17 +3,17 @@ import { useMemo } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createComposerInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   const nt = si.addNodeType({ name: 'Person' });
   const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
   const layoutVar = nt.addVariable({
     type: 'layout',
-    name: 'Composer Layout',
+    name: 'ComposerLayout',
   });
   const friendship = si.addEdgeType({ name: 'Friendship' });
   return { si, nt, quickAddVar, layoutVar, friendship };
@@ -22,7 +22,7 @@ function createComposerInterview(seed: number) {
 function NetworkComposerStoryWrapper({
   buildFn,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -210,10 +210,10 @@ export const ManyAttributes: Story = {
 };
 
 const buildConvexHulls = () => {
-  const si = new SyntheticInterview(8);
+  const si = new ProtocolBuilder(8);
   const nt = si.addNodeType({ name: 'Person' });
   const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
-  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const layoutVar = nt.addVariable({ type: 'layout', name: 'ComposerLayout' });
   const community = nt.addVariable({
     type: 'categorical',
     name: 'Community',

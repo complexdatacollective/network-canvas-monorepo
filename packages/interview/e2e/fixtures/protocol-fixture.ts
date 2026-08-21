@@ -222,7 +222,7 @@ export class ProtocolFixture {
   }
 
   /**
-   * Install a SyntheticInterview-built payload (synthetic-payload adapter
+   * Install a ProtocolBuilder-built payload (synthetic-payload adapter
    * output). Mirrors install(): copies asset files under
    * e2e/.assets/<protocolId>/, registers the protocol and asset URLs via
    * window.__test.

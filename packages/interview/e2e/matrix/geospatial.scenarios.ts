@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -85,7 +85,7 @@ function chicagoMapOptions(
  * re-declared so its id is available for deterministic node labels.
  */
 function newPersonInterview(typeName = 'Person') {
-  const synth = new SyntheticInterview();
+  const synth = new ProtocolBuilder();
   const person = synth.addNodeType({ name: typeName });
   const nameVarId = person.addVariable({
     id: 'name',
@@ -103,7 +103,7 @@ function newPersonInterview(typeName = 'Person') {
  * seeded nodes arrive genuinely unanswered.
  */
 function clearNodeLocations(
-  synth: SyntheticInterview,
+  synth: ProtocolBuilder,
   nodeIndices: number[],
   locationVarIds: string[],
 ): void {

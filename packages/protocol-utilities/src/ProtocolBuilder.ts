@@ -228,6 +228,31 @@ const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 const PAYLOAD_START_ANCHOR = '2025-01-01T00:00:00.000Z';
 
 /**
+ * A codebook variable name derived from a field's participant-facing text.
+ *
+ * A form field may be written as `{ component, prompt }` (or the composer's
+ * `{ component, label }`) without naming a variable, and the builder then
+ * creates one named after that text. But the text is what a participant
+ * reads — "What is their name?" — while `VariableNameSchema` allows only
+ * `/^[a-zA-Z0-9._:-]+$/`, so using it verbatim writes a codebook the protocol
+ * schema rejects. Nothing caught that until `getProtocolParsed()` began
+ * parsing the document.
+ *
+ * Disallowed runs are dropped and the character after each is capitalised, so
+ * the words stay legible ("WhatIsTheirName") and the same text always yields
+ * the same name — the builder dedupes variables by name, so the mapping has
+ * to be a function of the text alone. Text with nothing usable in it yields
+ * undefined, leaving the caller's own default to name the variable.
+ */
+function variableNameFromDisplayText(text: string): string | undefined {
+  const name = text.replace(
+    /[^a-zA-Z0-9._:-]+(.)?/g,
+    (_match, next: string | undefined) => (next ? next.toUpperCase() : ''),
+  );
+  return name.length > 0 ? name : undefined;
+}
+
+/**
  * Fluent builder for synthetic protocols: codebooks, stages, prompts, and
  * forms, terminating in {@link ProtocolBuilder.getProtocol}. Used by
  * @codaco/interview's Storybook stories, capture stories, and the e2e matrix
@@ -1158,7 +1183,10 @@ export class ProtocolBuilder {
       // Auto-create variable from component type
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name:
+          input.prompt === undefined
+            ? undefined
+            : variableNameFromDisplayText(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1186,7 +1214,10 @@ export class ProtocolBuilder {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name:
+          input.prompt === undefined
+            ? undefined
+            : variableNameFromDisplayText(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1216,7 +1247,10 @@ export class ProtocolBuilder {
     if (!variableId) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.label,
+        name:
+          input.label === undefined
+            ? undefined
+            : variableNameFromDisplayText(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1243,7 +1277,10 @@ export class ProtocolBuilder {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.label,
+        name:
+          input.label === undefined
+            ? undefined
+            : variableNameFromDisplayText(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1267,7 +1304,10 @@ export class ProtocolBuilder {
     if (!variableId) {
       const ref = this.addEgoVariable({
         component: input.component,
-        name: input.prompt,
+        name:
+          input.prompt === undefined
+            ? undefined
+            : variableNameFromDisplayText(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });

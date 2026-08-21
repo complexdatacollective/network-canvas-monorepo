@@ -7,7 +7,7 @@ import {
 
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 
-// SyntheticInterview.getNetwork() fills any UNSET node attribute with a random
+// ProtocolBuilder.getNetwork() fills any UNSET node attribute with a random
 // faker value for count-based nodes; the fixture seeds every person via
 // addManualNode (which leaves unset attributes neutral, boolean -> false) so ego
 // identity and disease status stay deterministic across seeds.

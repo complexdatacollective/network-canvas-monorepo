@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { expect, screen, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -20,7 +20,7 @@ function buildFramingInterview({
 }: {
   withIntroScreen?: boolean;
 } = {}) {
-  const si = new SyntheticInterview(42);
+  const si = new ProtocolBuilder(42);
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -31,13 +31,13 @@ function buildFramingInterview({
     type: 'text',
     component: 'Text',
   });
-  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const isEgoVar = nodeType.addVariable({ name: 'IsEgo', type: 'boolean' });
   const relationshipToEgoVar = nodeType.addVariable({
-    name: 'Relationship to Ego',
+    name: 'RelationshipToEgo',
     type: 'text',
   });
   const biologicalSexVar = nodeType.addVariable({
-    name: 'Biological Sex',
+    name: 'BiologicalSex',
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
@@ -50,11 +50,11 @@ function buildFramingInterview({
     options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
-    name: 'Is Active',
+    name: 'IsActive',
     type: 'boolean',
   });
   const isGestCarrierVar = edgeType.addVariable({
-    name: 'Is Gestational Carrier',
+    name: 'IsGestationalCarrier',
     type: 'boolean',
   });
 
@@ -102,7 +102,7 @@ function buildFramingInterview({
 type FixedFramingMode = 'gamete' | 'gendered';
 
 function buildFixedFramingInterview(value: FixedFramingMode) {
-  const si = new SyntheticInterview(42);
+  const si = new ProtocolBuilder(42);
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -113,13 +113,13 @@ function buildFixedFramingInterview(value: FixedFramingMode) {
     type: 'text',
     component: 'Text',
   });
-  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const isEgoVar = nodeType.addVariable({ name: 'IsEgo', type: 'boolean' });
   const relationshipToEgoVar = nodeType.addVariable({
-    name: 'Relationship to Ego',
+    name: 'RelationshipToEgo',
     type: 'text',
   });
   const biologicalSexVar = nodeType.addVariable({
-    name: 'Biological Sex',
+    name: 'BiologicalSex',
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
@@ -132,11 +132,11 @@ function buildFixedFramingInterview(value: FixedFramingMode) {
     options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
-    name: 'Is Active',
+    name: 'IsActive',
     type: 'boolean',
   });
   const isGestCarrierVar = edgeType.addVariable({
-    name: 'Is Gestational Carrier',
+    name: 'IsGestationalCarrier',
     type: 'boolean',
   });
 
@@ -172,7 +172,7 @@ function buildFixedFramingInterview(value: FixedFramingMode) {
 function buildBoundaryInterview(
   requireGrandparents: 'required' | 'recommended',
 ) {
-  const si = new SyntheticInterview(42);
+  const si = new ProtocolBuilder(42);
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -183,13 +183,13 @@ function buildBoundaryInterview(
     type: 'text',
     component: 'Text',
   });
-  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const isEgoVar = nodeType.addVariable({ name: 'IsEgo', type: 'boolean' });
   const relationshipToEgoVar = nodeType.addVariable({
-    name: 'Relationship to Ego',
+    name: 'RelationshipToEgo',
     type: 'text',
   });
   const biologicalSexVar = nodeType.addVariable({
-    name: 'Biological Sex',
+    name: 'BiologicalSex',
     type: 'text',
   });
   const edgeType = si.addEdgeType({ name: 'Family' });
@@ -202,11 +202,11 @@ function buildBoundaryInterview(
     options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
-    name: 'Is Active',
+    name: 'IsActive',
     type: 'boolean',
   });
   const isGestCarrierVar = edgeType.addVariable({
-    name: 'Is Gestational Carrier',
+    name: 'IsGestationalCarrier',
     type: 'boolean',
   });
 
@@ -238,15 +238,22 @@ function buildBoundaryInterview(
   return si;
 }
 
-function FramingStoryWrapper({
-  buildFn,
-}: {
-  buildFn: () => SyntheticInterview;
-}) {
+function FramingStoryWrapper({ buildFn }: { buildFn: () => ProtocolBuilder }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
+  // `stopAt: { stageIndex: 0 }` is the blank session: the walk is stopped
+  // before the FamilyPedigree stage (index 0) runs, so the builder's engine
+  // never simulates a pedigree of its own. Every story here drives the
+  // quick-start wizard from an EMPTY pedigree — the get-started button only
+  // appears while the network has no nodes — so an unbounded walk (which
+  // seeds ~21 people) would leave nothing for the participant to start.
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 0 })),
+      SuperJSON.stringify(
+        interview.getInterviewPayload({
+          currentStep: 0,
+          stopAt: { stageIndex: 0 },
+        }),
+      ),
     [interview],
   );
 

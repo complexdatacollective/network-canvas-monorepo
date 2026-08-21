@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 // Shared fixture for the NarrativePedigree examples: one integrated five-
@@ -35,7 +35,7 @@ const XLH_VAR = 'hasHypophosphataemia'; // X-linked dominant
 const YHL_VAR = 'hasYLinkedHearingLoss'; // Y-linked
 const MITO_VAR = 'hasMitochondrialMyopathy'; // mitochondrial
 
-// SyntheticInterview.getNetwork() may fill an unset boolean on a manual node, so
+// ProtocolBuilder.getNetwork() may fill an unset boolean on a manual node, so
 // every condition flag (and the ego flag) is seeded false by default and only
 // the affected/ego nodes override it — keeping the pedigree deterministic.
 const BOOL_DEFAULTS = {
@@ -96,7 +96,7 @@ const BOOL_DEFAULTS = {
  *   sets it `true`.
  */
 export function addComprehensivePedigree(
-  si: SyntheticInterview,
+  si: ProtocolBuilder,
   showAtRisk = true,
   includeMrtBranch = false,
 ): void {
@@ -415,7 +415,7 @@ export function addComprehensivePedigree(
 }
 
 /**
- * Convenience wrapper: a fresh SyntheticInterview seeded with the comprehensive
+ * Convenience wrapper: a fresh ProtocolBuilder seeded with the comprehensive
  * pedigree. Used by the interface's default story, its capture story and the
  * genetics tests; the mutator form above is used where a caller needs to prepend
  * its own stages (the flow example adds an intro screen first).
@@ -428,7 +428,7 @@ export function buildComprehensivePedigree(
   showAtRisk = true,
   includeMrtBranch = false,
 ) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   addComprehensivePedigree(si, showAtRisk, includeMrtBranch);
   return si;
 }

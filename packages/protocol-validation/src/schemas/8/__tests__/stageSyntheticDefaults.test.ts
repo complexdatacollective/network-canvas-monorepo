@@ -11,7 +11,7 @@ import { DEFAULT_RESPONSE_BURDEN } from '../synthetic/index.ts';
  * Every stage schema supplies a `synthetic` descriptor when an author declares
  * none.
  *
- * `generateSyntheticInterview` treats a stage without one as a protocol that
+ * `generateInterviews` treats a stage without one as a protocol that
  * was never parsed and refuses to generate, so a branch that quietly stopped
  * defaulting would turn a whole product's protocols away at generation time
  * rather than failing here. That has already happened once in development, a

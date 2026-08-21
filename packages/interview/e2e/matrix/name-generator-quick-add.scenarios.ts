@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
@@ -21,7 +21,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         smoke: true,
         visual: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           // A variable distinct from the type's auto-seeded "name" (which
           // addVariable would silently dedupe onto, dropping this variable's
@@ -88,7 +88,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         id: 'quick-add-optional-empty-value',
         covers: [],
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({
             type: 'text',
@@ -134,7 +134,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       id: 'quick-add-required-variable',
       covers: ['codebook.variables.quickAdd.validation=required'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         // No `component` — the codebook `required` rule below must still be
         // honoured even though this is the component-less state Architect's
@@ -184,7 +184,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       id: 'prompts-and-label-dead-config',
       covers: ['prompts[].text', 'prompts[].id', 'label', 'interviewScript'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',
@@ -234,7 +234,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         'panels[].id',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',
@@ -326,7 +326,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',
@@ -389,7 +389,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       covers: ['panels[].dataSource=assetId', 'panels[].title'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',
@@ -478,7 +478,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const place = synth.addNodeType({ name: 'Place' });
         const placeName = place.addVariable({
           type: 'text',
@@ -542,7 +542,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       ],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({
           name: 'Styled Person',
           color: 'node-color-seq-3',
@@ -615,7 +615,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       covers: ['codebook.variables.quickAdd.encrypted'],
       slow: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nameVar = person.addVariable({
           type: 'text',

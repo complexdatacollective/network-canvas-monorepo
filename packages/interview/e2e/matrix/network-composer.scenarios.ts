@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -86,7 +86,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview(180);
+        const synth = new ProtocolBuilder(180);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -166,7 +166,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       id: 'node-drag-updates-layout-variable',
       covers: ['layoutVariable'],
       build: () => {
-        const synth = new SyntheticInterview(181);
+        const synth = new ProtocolBuilder(181);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -218,7 +218,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       covers: ['nodeForm.present', 'implicit.drawerDeselect'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview(182);
+        const synth = new ProtocolBuilder(182);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -283,7 +283,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       id: 'nodeform-absent-edges-absent-convexhull-unset',
       covers: ['nodeForm.absent', 'edges[].absent', 'convexHullVariable.unset'],
       build: () => {
-        const synth = new SyntheticInterview(183);
+        const synth = new ProtocolBuilder(183);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -353,7 +353,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         'hullVariable.categoricalOptions',
       ],
       build: () => {
-        const synth = new SyntheticInterview(184);
+        const synth = new ProtocolBuilder(184);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -408,7 +408,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       covers: ['convexHullVariable.lasso'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview(185);
+        const synth = new ProtocolBuilder(185);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -588,7 +588,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       covers: ['background.concentricCircles', 'background.skewedTowardCenter'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview(186);
+        const synth = new ProtocolBuilder(186);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -635,7 +635,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       visual: true,
       assets: [backgroundImageAsset],
       build: () => {
-        const synth = new SyntheticInterview(188);
+        const synth = new ProtocolBuilder(188);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -693,7 +693,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       id: 'background-zero-concentric-circles',
       covers: ['background.concentricCircles'],
       build: () => {
-        const synth = new SyntheticInterview(187);
+        const synth = new ProtocolBuilder(187);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -721,7 +721,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       covers: ['id', 'behaviours.automaticLayout'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview(190);
+        const synth = new ProtocolBuilder(190);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -790,7 +790,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       id: 'edges-draw-toggle-cancel',
       covers: ['edges[]'],
       build: () => {
-        const synth = new SyntheticInterview(191);
+        const synth = new ProtocolBuilder(191);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -852,7 +852,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         'codebook.nodeEdgeColorAndName',
       ],
       build: () => {
-        const synth = new SyntheticInterview(192);
+        const synth = new ProtocolBuilder(192);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -968,7 +968,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       slow: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview(193);
+        const synth = new ProtocolBuilder(193);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -1261,7 +1261,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview(194);
+        const synth = new ProtocolBuilder(194);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -1361,7 +1361,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       covers: ['implicit.undoRedo'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview(195);
+        const synth = new ProtocolBuilder(195);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({
@@ -1468,7 +1468,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       id: 'multi-delete-coalesced-undo',
       covers: ['implicit.deleteMultiSelect'],
       build: () => {
-        const synth = new SyntheticInterview(196);
+        const synth = new ProtocolBuilder(196);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
         const layoutVar = person.addVariable({

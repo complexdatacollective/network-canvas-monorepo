@@ -137,6 +137,55 @@ describe('ProtocolBuilder', () => {
       );
       expect(boolVars).toHaveLength(1);
     });
+
+    it('names a form field variable so the codebook parses, whatever the prompt reads', () => {
+      // A field named only by what the participant reads is the ordinary way
+      // to write one, and the text is prose: spaces, punctuation, a question
+      // mark. `VariableNameSchema` takes none of that, so a codebook that
+      // copied the prose verbatim could not be parsed — and everything the
+      // builder produces goes through the parse now.
+      const si = new ProtocolBuilder();
+      const nodeType = si.addNodeType({ name: 'Person' });
+      const stage = si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: nodeType.id },
+      });
+      stage.addPrompt();
+      stage.addFormField({
+        component: 'Text',
+        prompt: 'What is their name?',
+      });
+
+      expect(() => si.getProtocolParsed()).not.toThrow();
+
+      const parsed = si.getProtocolParsed();
+      const variables = parsed.codebook.node![nodeType.id]!.variables!;
+      const created = Object.values(variables).find(
+        (v) => v.name === 'WhatIsTheirName',
+      );
+      expect(created).toBeDefined();
+
+      // The prose itself is untouched: it is what the field asks.
+      const form = parsed.stages[0] as {
+        form: { fields: { prompt: string }[] };
+      };
+      expect(form.form.fields[0]!.prompt).toBe('What is their name?');
+    });
+
+    it('falls back to the type default when a prompt has no usable name in it', () => {
+      const si = new ProtocolBuilder();
+      const nodeType = si.addNodeType({ name: 'Person' });
+      const stage = si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: nodeType.id },
+      });
+      stage.addPrompt();
+      stage.addFormField({ component: 'Text', prompt: '?!' });
+
+      const parsed = si.getProtocolParsed();
+      const variables = parsed.codebook.node![nodeType.id]!.variables!;
+      expect(Object.values(variables).some((v) => v.name === 'textValue')).toBe(
+        true,
+      );
+    });
   });
 
   describe('manual codebook', () => {
@@ -894,22 +943,22 @@ describe('ProtocolBuilder', () => {
         ],
       });
       const nameVar = nt.addVariable({ type: 'text', name: 'Name' });
-      const egoVar = nt.addVariable({ type: 'boolean', name: 'Is Ego' });
+      const egoVar = nt.addVariable({ type: 'boolean', name: 'IsEgo' });
       const relToEgoVar = nt.addVariable({
         type: 'text',
-        name: 'Rel to Ego',
+        name: 'RelToEgo',
       });
       const bioSexVar = nt.addVariable({
         type: 'text',
-        name: 'Biological Sex',
+        name: 'BiologicalSex',
       });
       const isActiveVar = et.addVariable({
         type: 'boolean',
-        name: 'Is Active',
+        name: 'IsActive',
       });
       const isGestVar = et.addVariable({
         type: 'boolean',
-        name: 'Is Gest Carrier',
+        name: 'IsGestCarrier',
       });
 
       const stage = si.addStage('FamilyPedigree', {
@@ -1123,7 +1172,7 @@ describe('ProtocolBuilder', () => {
       const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
       const layoutVar = nt.addVariable({
         type: 'layout',
-        name: 'Composer Layout',
+        name: 'ComposerLayout',
       });
       const friendship = si.addEdgeType({ name: 'Friendship' });
 

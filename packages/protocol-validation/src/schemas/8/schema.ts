@@ -436,7 +436,7 @@ const validateComposerFieldBooleanProbabilities = (
  *
  * Exported because three surfaces have to agree about it and none of them can
  * see the others' reasoning: the protocol record refinement below, the
- * `SyntheticInterview` builder, and Architect's variable editor. Derived
+ * `ProtocolBuilder`, and Architect's variable editor. Derived
  * separately they drifted — the builder accepted a 1950-1960 datetime range
  * beside a Composer DatePicker pinned to 2000-2001, then silently clamped
  * every draw into the picker's window, while the record refinement rejected

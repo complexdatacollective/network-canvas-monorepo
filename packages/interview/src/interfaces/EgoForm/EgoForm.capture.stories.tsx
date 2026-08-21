@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -12,7 +12,7 @@ import CaptureStory, {
  * to change the published screenshots.
  */
 const build = () => {
-  const si = new SyntheticInterview(1);
+  const si = new ProtocolBuilder(1);
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('EgoForm', {

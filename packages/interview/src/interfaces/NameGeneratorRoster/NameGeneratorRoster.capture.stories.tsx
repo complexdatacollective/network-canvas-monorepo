@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -12,7 +12,7 @@ import CaptureStory, {
  * here to change the published screenshots.
  */
 const build = () => {
-  const si = new SyntheticInterview(1);
+  const si = new ProtocolBuilder(1);
   const nodeType = si.addNodeType({ name: 'Person' });
   const nameVar = nodeType.addVariable({ name: 'name', type: 'text' });
   const ageVar = nodeType.addVariable({ name: 'age', type: 'number' });

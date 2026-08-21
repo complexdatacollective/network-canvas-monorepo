@@ -1,14 +1,11 @@
 import { v4 as uuid } from 'uuid';
 
-import type { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   CurrentProtocolSchema,
   hashProtocol,
 } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  StageMetadataSchema,
-} from '@codaco/shared-consts';
+import { StageMetadataSchema } from '@codaco/shared-consts';
 
 import type {
   ProtocolPayload,
@@ -37,6 +34,11 @@ export type BuildSyntheticPayloadOptions = {
   protocolName: string;
   assets?: SyntheticAssetSpec[];
   currentStep?: number;
+  /**
+   * Open on the interview a simulated participant would have produced, rather
+   * than on the untouched one. Off by default, because a scenario about what
+   * an unanswered stage does cannot express itself against pre-filled state.
+   */
   seedNetwork?: boolean;
   stageMetadata?: unknown;
 };
@@ -52,14 +54,14 @@ export type SyntheticPayloadResult = {
 };
 
 /**
- * Convert a SyntheticInterview into the real ProtocolPayload/SessionPayload
+ * Convert a ProtocolBuilder into the real ProtocolPayload/SessionPayload
  * contract the e2e host's window.__test hooks expect. The assembled protocol
  * is parsed with CurrentProtocolSchema (including its cross-reference
  * superRefines) so an invalid builder config fails loudly at build time with
  * a Zod error instead of a mystery render inside the interview.
  */
 export function buildSyntheticPayload(
-  synth: SyntheticInterview,
+  synth: ProtocolBuilder,
   opts: BuildSyntheticPayloadOptions,
 ): SyntheticPayloadResult {
   const parsedStageMetadata = StageMetadataSchema.safeParse(opts.stageMetadata);
@@ -70,8 +72,15 @@ export function buildSyntheticPayload(
       `Synthetic payload "${opts.protocolName}" was given stageMetadata that fails StageMetadataSchema:\n${parsedStageMetadata.error.message}`,
     );
   }
+  // An unseeded run is the interview before anything has happened, so ask the
+  // delegate for exactly that: stopped at the first stage, nothing simulated
+  // (plan D20). Network, edges and ego answers are then empty by construction
+  // rather than by this adapter blanking fields it would have to keep in step
+  // with whatever the generator learns to fill. A scenario that wants the
+  // pre-populated interview asks for `seedNetwork`.
   const raw = synth.getInterviewPayload({
     currentStep: opts.currentStep ?? 0,
+    ...(opts.seedNetwork ? {} : { stopAt: { stageIndex: 0 } }),
   });
 
   const assetManifest = Object.fromEntries(
@@ -110,6 +119,12 @@ export function buildSyntheticPayload(
   const protocol: ProtocolPayload = {
     ...protocolBody,
     id: uuid(),
+    // Deliberately not decision 15's boundary: a host hashes the raw
+    // pre-parse document it was given, but a fixture has no such document —
+    // this protocol is assembled here. The digest is a test-local identity
+    // for a protocol that exists only in this process and is never compared
+    // against a host-stored hash, so hashing the parsed form is what there
+    // is to hash.
     hash: hashProtocol(parsed.data),
     importedAt: new Date().toISOString(),
     assets: resolvedAssets,
@@ -121,23 +136,7 @@ export function buildSyntheticPayload(
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
-    // An unseeded run starts from a network nobody has answered anything in,
-    // and that includes ego: `getNetwork()` draws its attributes the same way
-    // it draws a node's, so leaving them in place would open every EgoForm
-    // scenario on a form already filled out. A scenario about what an
-    // unanswered form does could then not express itself, and one about
-    // pre-population says so by asking for the seeded network.
-    network: opts.seedNetwork
-      ? raw.network
-      : {
-          ...raw.network,
-          nodes: [],
-          edges: [],
-          ego: {
-            ...raw.network.ego,
-            [entityAttributesProperty]: {},
-          },
-        },
+    network: raw.network,
     ...(parsedStageMetadata.success && opts.stageMetadata != null
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),

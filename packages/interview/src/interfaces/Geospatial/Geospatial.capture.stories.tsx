@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -15,7 +15,7 @@ const MAPBOX_TOKEN = import.meta.env.STORYBOOK_MAPBOX_TOKEN as string;
  * to change the published screenshots.
  */
 const build = () => {
-  const si = new SyntheticInterview(1);
+  const si = new ProtocolBuilder(1);
   const nt = si.addNodeType({ name: 'Person' });
 
   si.addAsset({
@@ -40,7 +40,10 @@ const build = () => {
       targetFeatureProperty: 'census_tra',
     },
   });
-  const locationVar = nt.addVariable({ type: 'text', name: 'Home Location' });
+  const locationVar = nt.addVariable({
+    type: 'location',
+    name: 'HomeLocation',
+  });
   stage.addPrompt({
     text: 'Where does this person live?',
     variable: locationVar.id,
