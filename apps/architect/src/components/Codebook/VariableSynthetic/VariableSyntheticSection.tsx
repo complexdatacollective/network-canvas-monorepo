@@ -16,16 +16,17 @@ import {
   type VariableType,
 } from '@codaco/protocol-validation';
 import { DistributionVisual } from '~/components/Synthetic/DistributionVisual';
+import {
+  describeFieldWindow,
+  describeNestedWindow,
+} from '~/components/Synthetic/schemaIntrospection';
 import { formatProbability } from '~/components/Synthetic/summaries';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
+import { TEXT_GENERATOR_LABELS } from '~/components/Synthetic/textGenerators';
 import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 
-import {
-  admissibleSelectionCounts,
-  summariseResolvedSynthetic,
-  TEXT_GENERATOR_LABELS,
-} from './draft';
+import { admissibleSelectionCounts, summariseResolvedSynthetic } from './draft';
 import { DistributionEditor } from './fields/DistributionEditor';
 import { InlineOptionWeights } from './fields/InlineOptionWeights';
 import { SelectionCountTable } from './fields/SelectionCountTable';
@@ -33,10 +34,6 @@ import {
   missingProbabilityDisabledReason,
   selectionCountDisabledReason,
 } from './impliedRules';
-import {
-  describeFieldWindow,
-  describeNestedWindow,
-} from './schemaIntrospection';
 import { useVariableSynthetic } from './VariableSyntheticProvider';
 
 /**
@@ -283,7 +280,7 @@ function SelectionCountControls() {
 }
 
 function DatetimeControls() {
-  const { namePrefix, synthetic, isAdmissible, propose } =
+  const { namePrefix, synthetic, isAdmissible, propose, resolveWith } =
     useVariableSynthetic();
   const relative = readRelative(synthetic);
   const family =
@@ -312,20 +309,73 @@ function DatetimeControls() {
     );
   }
 
+  /**
+   * The window an UNSTATED `relative` resolves to — asked of the resolver with
+   * the window taken out of the block, so it is the schema's default rather
+   * than whatever is in the boxes. It is what makes "cleared" different from
+   * "zero": an empty box means the schema's reach back from the interview
+   * date, and storing a zero there instead would pin every generated date to
+   * the day the interview ran.
+   */
+  const unstated = resolveWith({
+    ...synthetic,
+    distribution: family,
+    relative: undefined,
+  });
+  const defaults =
+    unstated?.type === 'datetime' ? unstated.relative : undefined;
+
   const commit = (key: 'before' | 'after', value: number | undefined) => {
     const nextRelative = { ...relative, [key]: value };
     const before = readNumber(nextRelative, 'before');
     const after = readNumber(nextRelative, 'after');
-    if (before === undefined && after === undefined) {
-      propose({ ...synthetic, distribution: family, relative: undefined });
+    const anchor =
+      typeof relative?.anchor === 'string' ? relative.anchor : undefined;
+
+    // The schema states both offsets together, so the one the author left
+    // empty stands at what an unstated window resolves to rather than at a
+    // zero nobody wrote.
+    const filled = {
+      before: before ?? defaults?.before ?? 0,
+      after: after ?? defaults?.after ?? 0,
+    };
+
+    /**
+     * Whether anything is left that the schema would not have said itself.
+     *
+     * Compared against the RESOLVED window rather than against emptiness,
+     * because the first authoring necessarily writes both offsets: clearing
+     * the one that was typed would otherwise leave the sibling standing —
+     * a window of zero width, every generated date on the interview day —
+     * with no way back to the default short of resetting the whole block. An
+     * anchor is a statement of its own, and is never removed for the sake of
+     * its offsets.
+     */
+    const statesNothing =
+      anchor === undefined &&
+      (defaults === undefined
+        ? before === undefined && after === undefined
+        : filled.before === defaults.before && filled.after === defaults.after);
+
+    if (statesNothing) {
+      // Nothing stated is nothing stored (spec rule 4): clearing has to come
+      // back to the block the variable carried before the window was ever
+      // authored, byte for byte — discriminant included, since that is only
+      // there to make a stated window parse. Whether the rest of the block
+      // still needs it is the schema's question, asked rather than answered
+      // here.
+      const withoutWindow = { ...synthetic, relative: undefined };
+      const bare = { ...withoutWindow, distribution: undefined };
+      propose(
+        isAdmissible(bare) ? bare : { ...withoutWindow, distribution: family },
+      );
       return;
     }
+
     propose({
       ...synthetic,
       distribution: family,
-      // Both offsets are stated together: the schema's window is an offset in
-      // each direction, and an unstated one is no offset at all.
-      relative: { before: before ?? 0, after: after ?? 0 },
+      relative: { ...(anchor === undefined ? {} : { anchor }), ...filled },
     });
   };
 
@@ -354,14 +404,8 @@ function DatetimeControls() {
 }
 
 function DistributionControls({ schema }: { schema: unknown }) {
-  const {
-    namePrefix,
-    synthetic,
-    valueWindow,
-    resolved,
-    isAdmissible,
-    propose,
-  } = useVariableSynthetic();
+  const { namePrefix, synthetic, valueWindow, resolved, refusalsFor, propose } =
+    useVariableSynthetic();
 
   return (
     <>
@@ -371,7 +415,7 @@ function DistributionControls({ schema }: { schema: unknown }) {
         label="How values are spread"
         synthetic={synthetic}
         valueWindow={valueWindow}
-        isAdmissible={isAdmissible}
+        refusalsFor={refusalsFor}
         onChange={propose}
       />
       {(resolved?.type === 'number' || resolved?.type === 'scalar') && (

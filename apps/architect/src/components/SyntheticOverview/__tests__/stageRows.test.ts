@@ -107,8 +107,70 @@ describe('stage rows', () => {
     const positionOnly = rowFor('Position only');
     expect(positionOnly.topology).toBeUndefined();
     expect(positionOnly.note).toBe(
-      'No prompt on this stage creates edges, so its edge topology is never used.',
+      'Nothing on this stage creates edges, so its edge topology is never used.',
     );
+  });
+
+  it('hides the topology of a composer with no drawable edge types', () => {
+    // Both forms of "no edge types" have to read alike: the editor's `prune`
+    // strips `edges: []` on save, and the composer's simulator walks
+    // `stage.edges ?? []` either way — so a pruned document that claimed a
+    // topology applied would be describing edges no run draws.
+    const composer = (edges?: unknown[]) => ({
+      id: 'compose',
+      type: 'NetworkComposer',
+      label: 'Compose',
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'personName',
+      layoutVariable: 'personLayout',
+      background: { concentricCircles: 2 },
+      ...(edges === undefined ? {} : { edges }),
+    });
+
+    for (const edges of [[], undefined]) {
+      const document = {
+        ...FIXTURE_DOCUMENT,
+        stages: [...FIXTURE_DOCUMENT.stages, composer(edges)],
+      };
+      const row = buildStageRows(parseFixture(document), document, []).find(
+        (candidate) => candidate.label === 'Compose',
+      );
+
+      expect(row?.topology).toBeUndefined();
+      expect(row?.note).toBe(
+        'Nothing on this stage creates edges, so its edge topology is never used.',
+      );
+      // The half it DOES draw is still described.
+      expect(row?.count).toBeDefined();
+    }
+  });
+
+  it('shows the topology of a composer that has one', () => {
+    const document = {
+      ...FIXTURE_DOCUMENT,
+      stages: [
+        ...FIXTURE_DOCUMENT.stages,
+        {
+          id: 'compose',
+          type: 'NetworkComposer',
+          label: 'Compose',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'personName',
+          layoutVariable: 'personLayout',
+          background: { concentricCircles: 2 },
+          edges: [{ id: 'e1', subject: { entity: 'edge', type: 'friend' } }],
+        },
+      ],
+    };
+    const row = buildStageRows(parseFixture(document), document, []).find(
+      (candidate) => candidate.label === 'Compose',
+    );
+
+    expect(row?.note).toBeUndefined();
+    expect(row?.topology).toEqual({
+      value: 'mean degree normal(mean 3, sd 1)',
+      authored: false,
+    });
   });
 
   it('puts a panel under its owning stage with resolved nomination odds', () => {

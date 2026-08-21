@@ -24,6 +24,7 @@ import {
   effectiveVariableRules,
   normaliseSynthetic,
   syntheticIsAdmissible,
+  syntheticRefusals,
   variableValueWindow,
   type SyntheticVariableDraft,
 } from './draft';
@@ -65,6 +66,15 @@ export type VariableSyntheticScope = {
   propose: (next: Record<string, unknown> | undefined) => void;
   /** Whether the schema would accept this proposal. */
   isAdmissible: (next: Record<string, unknown> | undefined) => boolean;
+  /**
+   * The schema's own refusals for a proposal it will not accept, in its own
+   * words. Empty where it would accept it.
+   */
+  refusalsFor: (next: Record<string, unknown> | undefined) => string[];
+  /** What generation would do if the variable carried this block instead. */
+  resolveWith: (
+    next: Record<string, unknown> | undefined,
+  ) => ResolvedVariableSynthetic | undefined;
   /** Where this surface draws the option-weight column. */
   optionWeightsHost: OptionWeightsHost;
   /** Prefix for the field names inside this scope. */
@@ -152,6 +162,25 @@ export function VariableSyntheticProvider({
     [variable, rules],
   );
 
+  const refusalsFor = useCallback(
+    (next: Record<string, unknown> | undefined) =>
+      syntheticRefusals(variable, normaliseSynthetic(next), rules),
+    [variable, rules],
+  );
+
+  const resolveWith = useCallback(
+    (next: Record<string, unknown> | undefined) =>
+      resolveVariableSynthetic(
+        {
+          ...variable,
+          name: variable.name ?? '',
+          synthetic: normaliseSynthetic(next),
+        },
+        rules,
+      ),
+    [variable, rules],
+  );
+
   const propose = useCallback(
     (next: Record<string, unknown> | undefined) => {
       const normalised = normaliseSynthetic(next);
@@ -202,6 +231,8 @@ export function VariableSyntheticProvider({
       setOpen,
       propose,
       isAdmissible,
+      refusalsFor,
+      resolveWith,
       optionWeightsHost,
       namePrefix,
     }),
@@ -216,6 +247,8 @@ export function VariableSyntheticProvider({
       open,
       propose,
       isAdmissible,
+      refusalsFor,
+      resolveWith,
       optionWeightsHost,
       namePrefix,
     ],

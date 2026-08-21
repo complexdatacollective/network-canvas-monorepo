@@ -170,6 +170,31 @@ describe('what the column writes', () => {
   });
 });
 
+describe('what a sighted researcher can see the column is', () => {
+  it('names the column beside every box the editable list reveals', () => {
+    // The locked list carries a header cell; these rows have none, so without
+    // this the revealed column is a row of unlabelled numeric boxes whose only
+    // name is one no sighted user ever meets (WCAG 3.3.2).
+    render(<Harness />);
+    expect(screen.queryAllByText('Weight')).toHaveLength(0);
+
+    expand();
+
+    expect(screen.getAllByText('Weight')).toHaveLength(OPTIONS.length);
+    // And the visible word opens the control's own name, so the two agree.
+    for (const field of weightFields()) {
+      expect(field.getAttribute('aria-label')).toMatch(/^Weight/);
+    }
+  });
+
+  it('adds nothing at all while the column is not revealed', () => {
+    render(<Harness />);
+
+    expect(weightFields()).toHaveLength(0);
+    expect(screen.queryByText('Weight')).not.toBeInTheDocument();
+  });
+});
+
 describe('an interface-owned option list', () => {
   it('grows the same column, because the interface owns the values, not the odds', () => {
     render(<Harness locked />);

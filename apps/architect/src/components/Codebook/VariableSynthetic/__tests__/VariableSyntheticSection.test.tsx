@@ -189,6 +189,66 @@ describe('the controls each variable type offers', () => {
     });
   });
 
+  it('returns a cleared window to exactly what was never authored', () => {
+    // Clearing has to be the inverse of authoring, byte for byte. A stored
+    // `{ before: 0, after: 0 }` is a window of zero width — every generated
+    // date on the day the interview ran — which is the opposite of the reach
+    // back the schema resolves for a window nobody stated.
+    const { expand, latest } = setup({ variable: DATETIME });
+    expand();
+
+    const before = screen.getByRole('spinbutton', {
+      name: 'Days before the interview date',
+    });
+    commit(before, '30');
+    expect(latest()).toEqual({
+      distribution: 'uniform',
+      relative: { before: 30, after: 0 },
+    });
+
+    commit(before, '');
+
+    expect(latest()).toEqual(DATETIME.synthetic);
+    expect(latest()).toBeUndefined();
+  });
+
+  it('keeps the rest of the block when the window is cleared', () => {
+    const { expand, latest } = setup({
+      variable: { ...DATETIME, synthetic: { missingProbability: 0.2 } },
+    });
+    expand();
+
+    const before = screen.getByRole('spinbutton', {
+      name: 'Days before the interview date',
+    });
+    commit(before, '30');
+    commit(before, '');
+
+    // The discriminant left with the window it was there to make parse; the
+    // missingness the author stated separately stayed.
+    expect(latest()).toEqual({ missingProbability: 0.2 });
+  });
+
+  it('states the untouched offset at what an unstated window resolves to', () => {
+    const { expand, latest } = setup({ variable: DATETIME });
+    expand();
+
+    commit(
+      screen.getByRole('spinbutton', {
+        name: 'Days after the interview date',
+      }),
+      '7',
+    );
+
+    // Not a zero nobody wrote: the reach back is the schema's own resolution
+    // of an unstated window, so authoring one side does not silently discard
+    // the other.
+    expect(latest()).toEqual({
+      distribution: 'uniform',
+      relative: { before: 3650, after: 7 },
+    });
+  });
+
   it('withholds the relative window from a control that already fixes its range', () => {
     const { expand } = setup({
       variable: { ...DATETIME, component: 'RelativeDatePicker' },
@@ -260,6 +320,73 @@ describe('the window a parameter is held inside', () => {
 
     commit(field, '4');
     expect(latest()).toBeUndefined();
+  });
+});
+
+describe('a refusal no single field can state', () => {
+  /**
+   * Cross-field rules — a beta whose spread its own mean cannot support, a
+   * minimum above its maximum — cannot be expressed as a window, so the
+   * control has to say what the SCHEMA said. Swallowed, the box simply snapped
+   * back on blur and the researcher was told nothing at all.
+   */
+  it('shows the schema’s own sentence for a beta spread its mean cannot support', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...SCALAR,
+        synthetic: { distribution: 'beta', mean: 0.5, sd: 0.1 },
+      },
+    });
+    expand();
+
+    commit(
+      screen.getByRole('spinbutton', { name: 'Standard deviation' }),
+      '0.9',
+    );
+
+    expect(
+      screen.getByText('A beta distribution requires sd² < mean × (1 − mean)'),
+    ).toBeInTheDocument();
+    // Refused, so nothing was written.
+    expect(latest()).toBeUndefined();
+  });
+
+  it('shows it for a minimum above its own maximum', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...NUMBER,
+        synthetic: { distribution: 'uniform', min: 2, max: 6 },
+      },
+    });
+    expand();
+
+    commit(screen.getByRole('spinbutton', { name: 'Lowest value' }), '9');
+
+    expect(
+      screen.getByText('"min" must not be greater than "max"'),
+    ).toBeInTheDocument();
+    expect(latest()).toBeUndefined();
+  });
+
+  it('clears the refusal once the schema accepts a change', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...SCALAR,
+        synthetic: { distribution: 'beta', mean: 0.5, sd: 0.1 },
+      },
+    });
+    expand();
+
+    const sd = screen.getByRole('spinbutton', { name: 'Standard deviation' });
+    commit(sd, '0.9');
+    commit(sd, '0.2');
+
+    expect(
+      screen.queryByText(
+        'A beta distribution requires sd² < mean × (1 − mean)',
+      ),
+    ).not.toBeInTheDocument();
+    expect(latest()).toEqual({ distribution: 'beta', mean: 0.5, sd: 0.2 });
   });
 });
 

@@ -196,7 +196,10 @@ const Option = ({
         <OptionWeightCell
           optionValue={item.value}
           position={index + 1}
-          className="w-24 shrink-0"
+          // Labelled, because these rows have no header to carry the column's
+          // name the way the locked list's table does.
+          labelled
+          className="w-24"
         />
         <div className="flex shrink-0 items-center gap-2">
           <IconButton

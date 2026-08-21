@@ -3,7 +3,6 @@ import {
   type CurrentProtocol,
   type EffectiveVariableRules,
   type ImpliedRuleSource,
-  narrowVariableRules,
   type ResolvedVariableSynthetic,
   resolveNumberWindow,
   resolveVariableSynthetic,
@@ -11,12 +10,12 @@ import {
   type Stage,
   type SyntheticOptionWeight,
   type SyntheticSelectionCount,
-  type SyntheticTextGenerator,
   syntheticSubjectKey,
   type Variable,
   type VariableType,
   type Variables,
 } from '@codaco/protocol-validation';
+import { effectiveSyntheticRules } from '~/components/Synthetic/effectiveRules';
 import { stagesImplying } from '~/components/Synthetic/impliedRuleSources';
 import {
   formatDatetimeSynthetic,
@@ -24,6 +23,7 @@ import {
   formatSyntheticDistribution,
   type SyntheticWindow,
 } from '~/components/Synthetic/summaries';
+import { TEXT_GENERATOR_LABELS } from '~/components/Synthetic/textGenerators';
 
 import {
   isRecord,
@@ -68,26 +68,6 @@ export type SyntheticVariableRow = {
   notes: string[];
   /** True when the saved document gives this variable a `synthetic` block. */
   authored: boolean;
-};
-
-/**
- * How each text generator reads to a researcher. Exhaustive over the schema's
- * own generator list, so a generator added there is a typecheck failure here
- * rather than a blank cell.
- */
-const TEXT_GENERATOR_LABELS: Record<SyntheticTextGenerator, string> = {
-  neutralWords: 'Neutral words',
-  personName: 'Person names',
-  firstName: 'First names',
-  lastName: 'Last names',
-  placeName: 'Place names',
-  organisationName: 'Organisation names',
-  occupation: 'Occupations',
-  email: 'Email addresses',
-  phoneNumber: 'Phone numbers',
-  streetAddress: 'Street addresses',
-  sentence: 'Sentences',
-  paragraph: 'Paragraphs',
 };
 
 const NEVER_MISSING = 'Never';
@@ -344,7 +324,17 @@ export const buildVariableRows = (
     )) {
       const declared = declaredRules(variable);
       const implied = subjectRules?.get(variableId);
-      const effective = narrowVariableRules(declared, implied ?? {});
+      const binOnly = binOnlyHere?.has(variableId) ?? false;
+      // Through the shared gate, not `narrowVariableRules` directly: a
+      // bin-only variable's own validation is enforced by nobody — not the
+      // interview, not generation — so a row that resolved against it would
+      // describe a value the run never writes (a `minSelected: 2` beside the
+      // very note saying the bin assigns exactly one).
+      const effective = effectiveSyntheticRules(
+        declared,
+        implied ?? {},
+        binOnly,
+      );
       const descriptor = resolveVariableSynthetic(variable, effective);
       // `layout` and `location` resolve to nothing: generation produces
       // deterministic positions for both, so there is no behaviour to show
@@ -374,7 +364,7 @@ export const buildVariableRows = (
         notes: impliedRuleNotes(
           implied,
           declared,
-          binOnlyHere?.has(variableId) ?? false,
+          binOnly,
           sourcesHere?.get(variableId) ?? [],
           protocol.stages,
         ),

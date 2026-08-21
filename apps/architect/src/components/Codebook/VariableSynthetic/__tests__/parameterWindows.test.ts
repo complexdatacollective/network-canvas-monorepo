@@ -4,13 +4,14 @@ import {
   NumberSyntheticSchema,
   ScalarSyntheticSchema,
 } from '@codaco/protocol-validation';
-
-import { syntheticIsAdmissible, type SyntheticVariableDraft } from '../draft';
-import { parameterWindow, seedParameterValue } from '../parameterWindows';
 import {
   describeDistributions,
   type SyntheticParameter,
-} from '../schemaIntrospection';
+} from '~/components/Synthetic/schemaIntrospection';
+import { seedParameterValue } from '~/components/Synthetic/useNumericDraft';
+
+import { syntheticIsAdmissible, type SyntheticVariableDraft } from '../draft';
+import { parameterWindow } from '../parameterWindows';
 
 const OPEN = { min: Number.NEGATIVE_INFINITY, max: Number.POSITIVE_INFINITY };
 

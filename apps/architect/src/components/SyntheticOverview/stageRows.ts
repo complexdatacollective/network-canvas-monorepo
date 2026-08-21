@@ -7,6 +7,7 @@ import {
   topologyDrawWindow,
 } from '@codaco/protocol-validation';
 import { conflictsForStage } from '~/components/Synthetic/conflicts';
+import { stageCreatesEdges } from '~/components/Synthetic/stageEdges';
 import {
   formatEdgeTopology,
   formatProbability,
@@ -70,7 +71,7 @@ export type SyntheticStageRow = {
 };
 
 const NO_EDGE_PROMPTS_NOTE =
-  'No prompt on this stage creates edges, so its edge topology is never used.';
+  'Nothing on this stage creates edges, so its edge topology is never used.';
 
 /**
  * A metric's own domain, asked of the schema rather than restated.
@@ -121,13 +122,15 @@ const countWindow = (stage: Stage): SyntheticWindow | undefined => {
 /**
  * Whether this stage's topology can take effect.
  *
- * Only a Sociogram can declare one and then create no edges: its prompts opt
- * into edge creation individually, while every other edge-creating interface
- * names an edge type on every prompt.
+ * Two stages can declare one and then create no edges: a Sociogram whose
+ * prompts opt out of edge creation individually, and a NetworkComposer with no
+ * drawable edge types (its simulator walks `stage.edges ?? []`, so an empty
+ * list and a pruned-away one both draw nothing). The same predicate the stage
+ * editor's own section asks, so the two screens cannot give one protocol two
+ * answers.
  */
 const topologyApplies = (stage: Stage): boolean =>
-  stage.type !== 'Sociogram' ||
-  stage.prompts.some((prompt) => prompt.edges?.create !== undefined);
+  stageCreatesEdges(stage as unknown as Record<string, unknown>);
 
 const panelRows = (
   stage: Stage,

@@ -1,10 +1,10 @@
+import type { SyntheticParameter } from '~/components/Synthetic/schemaIntrospection';
 import type { SyntheticWindow } from '~/components/Synthetic/summaries';
 import {
+  narrowedWindow,
   type NumericWindow,
   numericWindowOf,
 } from '~/components/Synthetic/useNumericDraft';
-
-import type { SyntheticParameter } from './schemaIntrospection';
 
 /**
  * Where a distribution parameter's own window meets the window the VARIABLE
@@ -29,40 +29,6 @@ import type { SyntheticParameter } from './schemaIntrospection';
  */
 const SPREAD_PARAMETERS: ReadonlySet<string> = new Set(['sd', 'sdDays']);
 
-type MinPart = Pick<NumericWindow, 'min' | 'exclusiveMin'>;
-type MaxPart = Pick<NumericWindow, 'max' | 'exclusiveMax'>;
-
-// Only the half each helper is about. Returning a whole window from either
-// would let the second spread overwrite what the first decided — which is how
-// a strict lower bound once came back inclusive, and a lognormal mean started
-// at the zero its schema excludes.
-const minPart = (window: MinPart): MinPart =>
-  window.min === undefined
-    ? { exclusiveMin: false }
-    : { min: window.min, exclusiveMin: window.exclusiveMin };
-
-const maxPart = (window: MaxPart): MaxPart =>
-  window.max === undefined
-    ? { exclusiveMax: false }
-    : { max: window.max, exclusiveMax: window.exclusiveMax };
-
-const tighterMin = (a: MinPart, b: MinPart): MinPart => {
-  if (a.min === undefined) return minPart(b);
-  if (b.min === undefined) return minPart(a);
-  if (a.min > b.min) return minPart(a);
-  if (b.min > a.min) return minPart(b);
-  // Equal bounds: the exclusive reading is the tighter one.
-  return { min: a.min, exclusiveMin: a.exclusiveMin || b.exclusiveMin };
-};
-
-const tighterMax = (a: MaxPart, b: MaxPart): MaxPart => {
-  if (a.max === undefined) return maxPart(b);
-  if (b.max === undefined) return maxPart(a);
-  if (a.max < b.max) return maxPart(a);
-  if (b.max < a.max) return maxPart(b);
-  return { max: a.max, exclusiveMax: a.exclusiveMax || b.exclusiveMax };
-};
-
 /** The window one parameter is actually held to on one variable. */
 export const parameterWindow = (
   parameter: SyntheticParameter,
@@ -72,35 +38,5 @@ export const parameterWindow = (
   // Whether the parameter is a whole number is the SCHEMA's claim about the
   // parameter, so it survives from the parameter's own window; the variable's
   // validation range only ever narrows the endpoints.
-  const variable = numericWindowOf(valueWindow);
-  return {
-    ...tighterMin(parameter.window, variable),
-    ...tighterMax(parameter.window, variable),
-    integer: parameter.window.integer,
-  };
-};
-
-/**
- * A value to put in a parameter that has just appeared, because the researcher
- * chose a distribution family that carries it.
- *
- * The middle of the window where it has one, so a bounded parameter starts
- * somewhere the whole range is reachable from; the open side's own bound
- * otherwise, stepped inside where the bound is exclusive. A parameter with no
- * window at all starts at zero, which every unbounded family accepts.
- */
-export const seedParameterValue = (window: NumericWindow): number => {
-  const { min, max, exclusiveMin, exclusiveMax, integer } = window;
-  const round = (value: number) => (integer ? Math.round(value) : value);
-
-  if (min !== undefined && max !== undefined) {
-    const middle = round((min + max) / 2);
-    if (middle > min && middle < max) return middle;
-    if (!exclusiveMin && middle <= min) return min;
-    if (!exclusiveMax && middle >= max) return max;
-    return middle;
-  }
-  if (min !== undefined) return exclusiveMin ? round(min + 1) : min;
-  if (max !== undefined) return exclusiveMax ? round(max - 1) : max;
-  return 0;
+  return narrowedWindow(parameter.window, numericWindowOf(valueWindow));
 };

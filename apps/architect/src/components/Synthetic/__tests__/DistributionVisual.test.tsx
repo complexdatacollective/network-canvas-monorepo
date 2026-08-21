@@ -80,6 +80,46 @@ describe('rendering', () => {
     expect(root.querySelectorAll('path')).toHaveLength(0);
   });
 
+  it('draws a window with no width at all', () => {
+    // A stage pinned to one population (`minNodes === maxNodes`) has a window
+    // whose ends meet. Mapping a value onto such a window divides by its
+    // width, so an unguarded sketch emits NaN in every coordinate and the SVG
+    // draws nothing — beside fields that are perfectly valid.
+    const cases: [SyntheticDistribution, SyntheticWindow][] = [
+      [
+        { distribution: 'constant', value: 5 },
+        { min: 5, max: 5 },
+      ],
+      [
+        { distribution: 'normal', mean: 5, sd: 2 },
+        { min: 5, max: 5 },
+      ],
+      [
+        { distribution: 'uniform', min: 5, max: 5 },
+        { min: 5, max: 5 },
+      ],
+      [
+        { distribution: 'poisson', mean: 5 },
+        { min: 5, max: 5 },
+      ],
+    ];
+
+    for (const [distribution, window] of cases) {
+      const root = renderVisual(distribution, window);
+      const marks = [
+        ...root.querySelectorAll('rect'),
+        ...root.querySelectorAll('path'),
+      ];
+
+      expect(marks.length).toBeGreaterThan(0);
+      for (const mark of marks) {
+        for (const attribute of ['x', 'y', 'width', 'height', 'd']) {
+          expect(mark.getAttribute(attribute) ?? '').not.toMatch(/NaN/);
+        }
+      }
+    }
+  });
+
   it('labels the window endpoints', () => {
     const root = renderVisual(
       { distribution: 'normal', mean: 8, sd: 3 },

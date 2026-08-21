@@ -8,7 +8,7 @@ import {
 import {
   ARRAY_ELEMENT,
   describeFieldWindow,
-} from '~/components/Codebook/VariableSynthetic/schemaIntrospection';
+} from '~/components/Synthetic/schemaIntrospection';
 import {
   type NumericWindow,
   useNumericDraft,
@@ -46,8 +46,6 @@ export type OptionWeightsController = {
     value: string | number | boolean,
     weight: number | undefined,
   ) => void;
-  /** Whole sentence saying why the column cannot be edited, where it cannot. */
-  disabledReason?: string;
 };
 
 export const OptionWeightsContext =
@@ -62,6 +60,13 @@ export const OptionWeightsContext =
 export const useOptionWeights = (): OptionWeightsController | null =>
   useContext(OptionWeightsContext);
 
+/**
+ * What the column is called wherever it is named — the locked list's header
+ * cell, and the editable list's per-row label. One home, so two surfaces
+ * cannot come to call the same column two things.
+ */
+export const WEIGHT_COLUMN_LABEL = 'Weight';
+
 export type OptionWeightCellProps = {
   /** The option's own value, which is what a weight is keyed by. */
   optionValue: string | number | boolean | undefined;
@@ -73,6 +78,16 @@ export type OptionWeightCellProps = {
    * it has no surrounding row to place it in.
    */
   accessibleName?: string;
+  /**
+   * Draw the column's name beside the box.
+   *
+   * For a list whose rows carry no header of their own. A revealed column of
+   * bare numeric boxes is a control with no visible label or instruction
+   * (WCAG 3.3.2) however well it is named for assistive technology — and the
+   * researcher meeting it has just come from a disclosure somewhere else on
+   * the page.
+   */
+  labelled?: boolean;
   className?: string;
 };
 
@@ -87,6 +102,7 @@ export function OptionWeightCell({
   optionValue,
   position,
   accessibleName,
+  labelled = false,
   className,
 }: OptionWeightCellProps) {
   const controller = useOptionWeights();
@@ -107,28 +123,40 @@ export function OptionWeightCell({
 
   if (!controller?.revealed) return null;
 
-  const disabled =
-    optionValue === undefined || controller.disabledReason !== undefined;
-
-  return (
+  const field = (
     <InputField
       {...inputAttributes}
       className={className}
       // Named by position rather than by label: an option label is
       // researcher-authored markdown that may be empty or run to a paragraph,
       // and every row in this column needs a name that tells it from its
-      // neighbours.
-      aria-label={accessibleName ?? `Weight for option ${position}`}
-      {...(controller.disabledReason === undefined
-        ? {}
-        : { title: controller.disabledReason })}
+      // neighbours. It opens with the visible word beside it, so the two
+      // agree (WCAG "Label in Name").
+      aria-label={
+        accessibleName ?? `${WEIGHT_COLUMN_LABEL} for option ${position}`
+      }
       // The weight an option carries when the table says nothing about it, so
       // an empty box reads as "drawn like the others" rather than as zero.
       placeholder={String(DEFAULT_OPTION_WEIGHT)}
       value={text}
       onChange={onChange}
       onBlur={onBlur}
-      disabled={disabled}
+      disabled={optionValue === undefined}
     />
+  );
+
+  if (!labelled) return field;
+
+  return (
+    <span className="flex shrink-0 items-center gap-2">
+      {/*
+        The control's own accessible name already opens with this word, so
+        announcing it twice would be noise; sighted users are who it is for.
+      */}
+      <span aria-hidden className="text-text/70 text-sm">
+        {WEIGHT_COLUMN_LABEL}
+      </span>
+      {field}
+    </span>
   );
 }

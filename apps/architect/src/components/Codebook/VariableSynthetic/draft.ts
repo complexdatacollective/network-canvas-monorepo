@@ -1,5 +1,4 @@
 import {
-  narrowVariableRules,
   SCALAR_DOMAIN,
   VARIABLE_TYPE_VALIDATIONS,
   VariableSchema,
@@ -7,16 +6,17 @@ import {
   type EffectiveVariableRules,
   type ResolvedVariableSynthetic,
   type SyntheticOptionWeight,
-  type SyntheticTextGenerator,
   type VariableSynthetic,
   type VariableType,
 } from '@codaco/protocol-validation';
+import { effectiveSyntheticRules } from '~/components/Synthetic/effectiveRules';
 import {
   formatDatetimeSynthetic,
   formatProbability,
   formatSyntheticDistribution,
   type SyntheticWindow,
 } from '~/components/Synthetic/summaries';
+import { TEXT_GENERATOR_LABELS } from '~/components/Synthetic/textGenerators';
 
 /**
  * The reading, writing and summarising of a codebook variable's `synthetic`
@@ -73,21 +73,16 @@ const readBoolean = (
  * The rules a generated value for this variable must satisfy: what the
  * variable declares, narrowed by whatever the protocol's interfaces impose.
  *
- * `narrowVariableRules` is the schema's own intersection — the same call
- * generation's `buildVariableConstraints` makes — so the editor and the
- * generator cannot disagree about the effective window.
- *
- * `binOnly` drops the DECLARED half: a variable the protocol only ever assigns
- * through a binning prompt is never rendered as a form field, so the interview
- * enforces none of its validation, and generation reads it the same way.
+ * Reads the declared half off a variable DRAFT — a mid-edit record rather than
+ * a parsed variable — and hands both halves to
+ * {@link effectiveSyntheticRules}, which owns the combination (including the
+ * bin-only gate) for every surface that asks it.
  */
 export const effectiveVariableRules = (
   variable: SyntheticVariableDraft,
   implied: EffectiveVariableRules = {},
   binOnly = false,
 ): EffectiveVariableRules => {
-  if (binOnly) return narrowVariableRules({}, implied);
-
   const validation = isRecord(variable.validation)
     ? variable.validation
     : undefined;
@@ -106,7 +101,7 @@ export const effectiveVariableRules = (
     if (bound !== undefined) declared[rule] = bound;
   }
 
-  return narrowVariableRules(declared, implied);
+  return effectiveSyntheticRules(declared, implied, binOnly);
 };
 
 /**
@@ -255,19 +250,48 @@ const withEffectiveValidation = (
  * attributed to the block — a variable being created has no options yet — so
  * the proposal is allowed through, and the commit-time validation listener
  * remains the backstop it already was.
+ *
+ * The boolean half of {@link syntheticRefusals}, which is the same question
+ * asked so that what the schema SAID can be shown beside the control.
  */
 export const syntheticIsAdmissible = (
   variable: SyntheticVariableDraft,
   next: VariableSynthetic | undefined,
   rules: EffectiveVariableRules = {},
-): boolean => {
+): boolean => syntheticRefusals(variable, next, rules).length === 0;
+
+/**
+ * WHY the schema will not accept a block, in its own words — the refusals
+ * `syntheticIsAdmissible` reduces to a boolean.
+ *
+ * Every issue reported is caused by the block: the same variable is parsed
+ * without it first, and only a draft that parses cleanly there is asked at
+ * all, so a refusal cannot be something the draft was already carrying.
+ *
+ * Cross-field rules are the reason this exists. A beta whose spread its own
+ * mean cannot support, a minimum above its maximum — no single field can state
+ * either, so a boolean leaves the control snapping back on blur with nothing
+ * said (spec rule 3: the UI never paraphrases a refusal, and never hides one).
+ */
+export const syntheticRefusals = (
+  variable: SyntheticVariableDraft,
+  next: VariableSynthetic | undefined,
+  rules: EffectiveVariableRules = {},
+): string[] => {
   const { synthetic: _current, ...base } = withEffectiveValidation(
     variable,
     rules,
   );
-  if (!VariableSchema.safeParse(base).success) return true;
-  if (next === undefined) return true;
-  return VariableSchema.safeParse({ ...base, synthetic: next }).success;
+  // A draft that does not parse WITHOUT the block cannot have its refusal
+  // attributed to the block — a variable being created has no options yet —
+  // so the proposal is allowed through, and the commit-time validation
+  // listener remains the backstop it already was.
+  if (!VariableSchema.safeParse(base).success) return [];
+  if (next === undefined) return [];
+
+  const result = VariableSchema.safeParse({ ...base, synthetic: next });
+  if (result.success) return [];
+  return result.error.issues.map((issue) => issue.message);
 };
 
 /**
@@ -307,26 +331,6 @@ export const admissibleSelectionCounts = (
 // ---------------------------------------------------------------------------
 // Summarising
 // ---------------------------------------------------------------------------
-
-/**
- * How each text generator is named to a researcher. A record over the schema's
- * own union, so a generator added there fails the typecheck here rather than
- * rendering its internal identifier.
- */
-export const TEXT_GENERATOR_LABELS: Record<SyntheticTextGenerator, string> = {
-  neutralWords: 'Neutral words',
-  personName: 'Person names',
-  firstName: 'First names',
-  lastName: 'Last names',
-  placeName: 'Place names',
-  organisationName: 'Organisation names',
-  occupation: 'Occupations',
-  email: 'Email addresses',
-  phoneNumber: 'Phone numbers',
-  streetAddress: 'Street addresses',
-  sentence: 'Sentences',
-  paragraph: 'Paragraphs',
-};
 
 const numberFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 3 });
 

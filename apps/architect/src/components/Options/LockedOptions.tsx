@@ -1,6 +1,10 @@
 import { Lock } from 'lucide-react';
 
-import { OptionWeightCell, useOptionWeights } from './optionWeights';
+import {
+  OptionWeightCell,
+  useOptionWeights,
+  WEIGHT_COLUMN_LABEL,
+} from './optionWeights';
 
 // Announced (and shown) as the table's caption, so the read-only state reaches
 // a screen-reader user rather than being conveyed by the lock glyph and a
@@ -32,7 +36,9 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
           <tr className="text-left">
             <th className="pb-2 font-bold">Label</th>
             <th className="pb-2 font-bold">Value</th>
-            {showWeights && <th className="pb-2 font-bold">Weight</th>}
+            {showWeights && (
+              <th className="pb-2 font-bold">{WEIGHT_COLUMN_LABEL}</th>
+            )}
           </tr>
         </thead>
         <tbody>

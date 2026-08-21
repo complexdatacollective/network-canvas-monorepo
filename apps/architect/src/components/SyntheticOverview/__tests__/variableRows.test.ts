@@ -119,6 +119,44 @@ describe('interface-implied rules', () => {
     // one — even though the attribute's own validation allows two.
     expect(rowFor(rows, 'personContact').selection).toBe('1 (100%)');
   });
+
+  it('drops the declared validation of an attribute only a bin writes', () => {
+    // A bin-only attribute is never rendered as a form field, so the interview
+    // enforces none of its validation and generation reads it the same way.
+    // Applying the declared `minSelected` here showed "2 (100%)" beside this
+    // row's own "assigns exactly one option" note, while every generated
+    // session carried a single value.
+    const binOnlyWithMinSelected = {
+      ...FIXTURE_DOCUMENT,
+      codebook: {
+        ...FIXTURE_DOCUMENT.codebook,
+        node: {
+          ...FIXTURE_DOCUMENT.codebook.node,
+          person: {
+            ...FIXTURE_DOCUMENT.codebook.node.person,
+            variables: {
+              ...FIXTURE_DOCUMENT.codebook.node.person.variables,
+              personContact: {
+                ...FIXTURE_DOCUMENT.codebook.node.person.variables
+                  .personContact,
+                validation: { minSelected: 2 },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const changed = buildVariableRows(
+      parseFixture(binOnlyWithMinSelected),
+      binOnlyWithMinSelected,
+    );
+
+    expect(rowFor(changed, 'personContact').selection).toBe('1 (100%)');
+    expect(rowFor(changed, 'personContact').notes).toContain(
+      'Validation is not applied: “Contact types” assigns this attribute by placement rather than through a form field.',
+    );
+  });
 });
 
 describe('without the stage that implied the rules', () => {

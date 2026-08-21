@@ -9,11 +9,13 @@ import {
   type SyntheticSelectionCount,
 } from '@codaco/protocol-validation';
 import {
+  ARRAY_ELEMENT,
+  describeFieldWindow,
+} from '~/components/Synthetic/schemaIntrospection';
+import {
   type NumericWindow,
   useNumericDraft,
 } from '~/components/Synthetic/useNumericDraft';
-
-import { ARRAY_ELEMENT, describeFieldWindow } from '../schemaIntrospection';
 
 /**
  * How many options a multi-select categorical is answered with, as a table of
@@ -113,8 +115,6 @@ export type SelectionCountTableProps = {
   resolved: SyntheticSelectionCount;
   onChange: (next: SyntheticSelectionCount | undefined) => void;
   disabled?: boolean;
-  /** The whole sentence saying why this cannot be authored, where it cannot. */
-  disabledReason?: string;
 };
 
 export function SelectionCountTable({
@@ -125,7 +125,6 @@ export function SelectionCountTable({
   resolved,
   onChange,
   disabled = false,
-  disabledReason,
 }: SelectionCountTableProps) {
   const rows = useMemo<SelectionRow[]>(
     () => [...(table?.probabilities ?? resolved.probabilities)],
@@ -151,9 +150,6 @@ export function SelectionCountTable({
         Shares are balanced against each other, so they always add up to the
         whole.
       </p>
-      {disabledReason !== undefined && (
-        <p className="text-text/70 mt-1 text-sm">{disabledReason}</p>
-      )}
       <ul className="mt-3 flex list-none flex-col gap-3 p-0">
         {rows.map((row, index) => (
           <li key={row.count} className="flex flex-wrap items-end gap-3">
