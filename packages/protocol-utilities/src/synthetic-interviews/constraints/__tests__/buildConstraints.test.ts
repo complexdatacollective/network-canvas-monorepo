@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
+import {
+  collectInterfaceImpliedRules,
+  type CurrentProtocol,
+  CurrentProtocolSchema,
+  VARIABLE_REFERENCE_VALIDATIONS,
+} from '@codaco/protocol-validation';
 
 import {
   buildEntityConstraints,
@@ -13,6 +18,7 @@ import {
   LATEST_OFFERED_DATE,
   stepsBetween,
 } from '../dateWindow';
+import { analyseFeasibility } from '../feasibility';
 import { ValueGenerator } from '../ValueGenerator';
 import { valueSpaceSize } from '../valueSpace';
 
@@ -955,9 +961,94 @@ describe('buildVariableConstraints', () => {
 // extends around that authored floor by the picker's default window span, so
 // both controls remain writable.
 describe('a date field whose floor is later than today, through feasibility', () => {
-  it.todo(
-    'reports no conflict for a full-date or year picker (needs the pre-flight analysis, deleted pending a rewrite against the schema-resolved counts)',
-  );
+  /**
+   * The gate reads a date window only where a `unique` slot has to be measured
+   * against it, so the field is marked unique here: without that, the pass
+   * would never consult the window and the assertion would hold vacuously.
+   */
+  const protocolWith = (
+    parameters: {
+      type: 'full' | 'month' | 'year';
+      min?: string;
+      max?: string;
+    },
+    people: number,
+  ): CurrentProtocol =>
+    CurrentProtocolSchema.parse({
+      name: 'Open-ceiling date protocol',
+      description: 'A date field whose floor is later than the session date.',
+      schemaVersion: 8,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              due: {
+                name: 'Due',
+                type: 'datetime',
+                component: 'DatePicker',
+                parameters,
+                validation: { unique: true },
+              },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'stage-1',
+          type: 'NameGenerator',
+          label: 'Name generator',
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: 'About this person',
+            fields: [{ variable: 'due', prompt: 'When?' }],
+          },
+          prompts: [{ id: 'p1', text: 'Name people' }],
+          behaviours: { maxNodes: 4 },
+          synthetic: {
+            generatesData: true,
+            count: { distribution: 'constant', value: people },
+          },
+        },
+      ],
+    });
+
+  const conflictsFor = (
+    parameters: { type: 'full' | 'month' | 'year'; min?: string },
+    people: number,
+  ) => {
+    const protocol = protocolWith(parameters, people);
+    return analyseFeasibility({
+      protocol,
+      assetData: {},
+      today: TODAY,
+      interfaceRules: collectInterfaceImpliedRules(protocol),
+    });
+  };
+
+  it('leaves a full-date picker writable', () => {
+    // The floor sits four years past the session date, and the ceiling closes
+    // at the floor rather than at today — so the field offers one day and the
+    // one person collected can be dated. A ceiling left at today would close
+    // BEFORE the floor and refuse a protocol nothing is wrong with.
+    expect(conflictsFor({ type: 'full', min: '2030-01-01' }, 1)).toEqual([]);
+  });
+
+  it('extends a year picker around its own floor', () => {
+    // The year control widens by the picker's default span rather than
+    // collapsing onto the authored floor, so four people are four distinct
+    // years inside a window that holds them.
+    expect(conflictsFor({ type: 'year', min: '2030' }, 4)).toEqual([]);
+  });
+
+  it('is not vacuous: four people cannot share one offered day', () => {
+    expect(conflictsFor({ type: 'full', min: '2030-01-01' }, 4)).toHaveLength(
+      1,
+    );
+  });
 });
 
 describe('buildEntityConstraints', () => {

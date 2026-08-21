@@ -7,6 +7,11 @@ import {
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from './constants';
 import { createEntityConstraintCache } from './constraints/entityConstraintCache';
+import { SyntheticDataConstraintError } from './constraints/error';
+import {
+  analyseFeasibility,
+  FEASIBILITY_SUMMARY,
+} from './constraints/feasibility';
 import {
   reservePromptFixedValues,
   reserveRosterValues,
@@ -161,16 +166,27 @@ export const generateInterviews = (
     );
   });
 
-  // Pre-seed refusal (rule 5) reconnects here in Phase 4, when the
-  // descriptor-aware feasibility analysis is ported; the C12 corpus test
-  // carries the failing `.todo` that pins the reconnection.
-
   // Walked once per batch: the answer is the same for every session.
   const interfaceRules = collectInterfaceImpliedRules(protocol);
 
   // One clock read per batch when the caller pins nothing, so a batch is
   // internally consistent; a pinned startWindow makes the run byte-stable.
   const startWindowAnchor = options.startWindow ?? new Date().toISOString();
+
+  // Pre-seed refusal (rule 5): a protocol either always generates or never
+  // generates, decided once per batch from the protocol, the options, and the
+  // pools the caller resolved — never from a seed. The anchor's own day dates
+  // the analysis, so the verdict moves with the batch rather than with a clock
+  // read of its own.
+  const conflicts = analyseFeasibility({
+    protocol,
+    assetData,
+    today: startWindowAnchor.slice(0, 10),
+    interfaceRules,
+  });
+  if (conflicts.length > 0) {
+    throw new SyntheticDataConstraintError(conflicts, FEASIBILITY_SUMMARY);
+  }
 
   const generateOne = (
     index: number,

@@ -40,3 +40,16 @@ export {
   generateInterviewsOptions,
   type GenerateInterviewsOptions,
 } from './synthetic-interviews';
+// The acceptance corpus: deterministic protocol shapes generated from an index
+// rather than written by hand. Published because two packages hold oracles over
+// the same shapes — this package's feasibility/validation corpus, and
+// @codaco/interview's replay-parity suite (criterion C1) — and a corpus each
+// would be two corpora that could drift.
+export {
+  type CorpusGenerator,
+  type CorpusProtocol,
+  type CorpusRoster,
+  type CorpusShape,
+  type CorpusVariable,
+  generateCorpusProtocol,
+} from './synthetic-interviews/corpus';
