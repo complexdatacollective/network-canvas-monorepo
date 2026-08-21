@@ -40,12 +40,20 @@ newest release tag:
 # What introduced it — `git log -S` finds the commit that added the code
 git log -S 'the-telltale-code' --oneline -- path/to/file.tsx
 
-# Newest release tag for each affected package
-git tag --list '@codaco/fresco-ui@*' | tail -1
+# Then, per affected package: did that commit ship?
+git fetch --tags --quiet
+shipped_in() { # shipped_in <commit> <package>
+  tag=$(git tag --list "$2@*" --sort=-version:refname | head -1)
+  [ -n "$tag" ] || { echo "$2: NO RELEASE TAG — never published?"; return 2; }
+  git merge-base --is-ancestor "$1" "$tag"
+  case $? in
+    0) echo "$2: SHIPPED in $tag" ;;
+    1) echo "$2: unreleased (newest is $tag)" ;;
+    *) echo "$2: CANNOT TELL — bad commit, or tags not fetched"; return 2 ;;
+  esac
+}
 
-# Shipped, or still pending?
-git merge-base --is-ancestor <commit> '@codaco/fresco-ui@6.0.0' \
-  && echo shipped || echo unreleased
+shipped_in 839aefd11 '@codaco/fresco-ui'
 ```
 
 - **Shipped in any affected package** → write the changeset, naming at least
@@ -57,8 +65,17 @@ git merge-base --is-ancestor <commit> '@codaco/fresco-ui@6.0.0' \
   that changeset rather than adding a second one. Two notes about one shipped
   behaviour read as two changes.
 
-Fetch tags first (`git fetch --tags`) or a stale local tag list will report a
-shipped defect as unreleased.
+Both guards are load-bearing, and both failures point the same way — towards
+dropping a release note that was needed:
+
+- `--sort=-version:refname`, because the default refname sort is
+  lexicographic: `…@6.10.0` sorts _before_ `…@6.9.0`. Today
+  `git tag --list '@codaco/protocol-validation@*' | tail -1` answers `9.0.0`
+  when the newest release is `12.1.1`, so a defect shipped any time in the
+  last three majors would read as unreleased.
+- `case $?` rather than `&& … || …`, because `--is-ancestor` exits 1 for "no"
+  but 128 for "could not tell" — an unfetched tag, a mistyped commit. A
+  `||` branch calls both of those "unreleased".
 
 This is about the defect, not the diff. A fix that also changes behaviour
 beyond restoring the original intent still needs a changeset for that part.
