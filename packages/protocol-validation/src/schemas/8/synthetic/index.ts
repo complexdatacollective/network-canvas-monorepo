@@ -281,17 +281,22 @@ export const EdgeTopologySchema = z.discriminatedUnion('metric', [
 export type EdgeTopology = z.infer<typeof EdgeTopologySchema>;
 
 /**
- * The edge density a stage that declares no topology is read as having.
+ * The edge topology a stage that declares no topology is read as having.
  *
- * Beta because density is a proportion: it lives on 0-1 by construction rather
- * than by clamping a distribution that wanted to leave, so no parameterisation
- * can ask for an impossible density. A mean of 0.3 links roughly a third of the
- * available pairs — a recognisably connected network rather than a sparse or a
- * complete one — and an sd of 0.15 keeps run-to-run variation visible.
+ * Mean degree rather than density, because it is the metric that survives a
+ * change of roster size: real personal networks hold ties-per-person roughly
+ * constant as the alter count grows, while density falls away quadratically —
+ * a fixed default density that read as "recognisably connected" over eight
+ * alters rendered fourteen as an unreadable web, since the pair count it is a
+ * proportion of had quadrupled (maintainer decision, 2026-08-21). A mean of 3
+ * links each person to about three others whatever the network's size, an sd
+ * of 1 keeps run-to-run variation visible, and the realisation converts to a
+ * whole edge count and clamps it to the pairs actually available, so small
+ * networks stay valid without the declaration having to know their size.
  */
 export const DEFAULT_EDGE_TOPOLOGY: EdgeTopology = {
-  metric: 'density',
-  distribution: { distribution: 'beta', mean: 0.3, sd: 0.15 },
+  metric: 'meanDegree',
+  distribution: { distribution: 'normal', mean: 3, sd: 1 },
 };
 
 /**

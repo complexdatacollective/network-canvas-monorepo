@@ -164,6 +164,23 @@ describe('synthetic defaults across every stage schema', () => {
       }
     });
 
+    it('defaults topology to mean degree 3, not a density', () => {
+      // Mean degree is the metric that survives a change of roster size: a
+      // default DENSITY that read as connected over eight alters rendered
+      // fourteen as an unreadable web, its edge count growing with the
+      // squared alter count (maintainer decision, 2026-08-21). The bundled
+      // protocols deliberately author no topologies so they exercise exactly
+      // this default.
+      expect(stagesByType.get('Sociogram')?.synthetic).toEqual(
+        expect.objectContaining({
+          topology: {
+            metric: 'meanDegree',
+            distribution: { distribution: 'normal', mean: 3, sd: 1 },
+          },
+        }),
+      );
+    });
+
     it('leaves a stage that generates nothing with nothing to draw', () => {
       for (const type of NO_DATA_STAGES) {
         // A response burden and nothing else: reading a narrative costs the

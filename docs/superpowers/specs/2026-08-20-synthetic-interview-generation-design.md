@@ -434,7 +434,11 @@ generates on every seed with every rule satisfied) remains the gate.
   `density (constant|uniform|normal|beta)` or
   `meanDegree (constant|uniform|normal)`, realised per prompt over the
   eligible pair set with the both-directions dedupe. Default:
-  `density beta(mean 0.3, sd 0.15)`. Census stages realise the drawn density
+  `meanDegree normal(mean 3, sd 1)` — mean degree rather than density because
+  it is scale-stable in the roster size: the original
+  `density beta(mean 0.3, sd 0.15)` default rendered fourteen alters as an
+  unreadable web, its edge count growing with the squared alter count
+  (maintainer decision, 2026-08-21). Census stages realise the drawn topology
   as the yes-rate over the answered pairs. A schema-exported realisation
   resolver `(topology, pairCount) → target edge count` owns the truncation
   into `[0, pairCount]` (meanDegree is schema-unbounded above), parallel to
