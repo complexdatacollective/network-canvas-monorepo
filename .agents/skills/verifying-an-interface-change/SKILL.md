@@ -79,7 +79,7 @@ needed — Playwright loads the TS scenarios directly.
 | -------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | A `toMatchAriaSnapshot` diff                       | rendered structure changed                                      | If the change is **intended**, regenerate the baseline (step 5). If not, it's a regression — fix the code.                |
 | A functional `expect(...)` in a scenario's `run()` | behaviour changed                                               | Regression, or the scenario's assumption is now stale — decide, then fix code or update the scenario.                     |
-| `buildSyntheticPayload` / schema parse throws      | the builder emitted a config the schema rejects (or vice-versa) | Your schema and the `SyntheticInterview` builder disagree — reconcile the builder (`protocol-utilities`) with the schema. |
+| `buildSyntheticPayload` / schema parse throws      | the builder emitted a config the schema rejects (or vice-versa) | Your schema and the `ProtocolBuilder` disagree — reconcile the builder (`protocol-utilities`) with the schema; `getInterviewPayload` parses the built document, so a parse-invalid recipe throws by design. |
 | coverage-manifest "option not claimed"             | schema gained a key with no scenario                            | Add the key to `option-inventory.ts` and a scenario that `covers` it (step 5).                                            |
 
 A stale preview bundle (skipped step 1) presents as "my code change had no

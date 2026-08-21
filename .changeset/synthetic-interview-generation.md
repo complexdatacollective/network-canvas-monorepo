@@ -63,6 +63,21 @@ metadata, timestamps, and resume position — rather than a bare network.
 `generateNetwork`, `GenerationConfig`, and the payload-generating half of the
 old builder are replaced by `generateInterviews` and `ProtocolBuilder`.
 
+Fresco's generate-test-interviews route runs on the same engine. The stored
+protocol is re-parsed at the boundary, roster and map assets are resolved
+server-side from the protocol's own uploaded files, progress streams as the
+batch generates and saves, and the completion event reports the seed so an API
+caller can reproduce a batch exactly. Drop-outs are stored as genuine
+unfinished interviews with the position a participant would resume from.
+
+A protocol whose declared constraints cannot all be satisfied at once is now
+refused before anything is drawn, with a structured explanation naming the
+stage, the variables, and the rules in conflict — the same refusal on every
+seed, in every host. A roster stage whose source cannot be read, a unique
+variable with fewer possible values than the people who must hold one, and a
+census asked to enumerate more pairs than a participant could answer are all
+caught this way instead of producing data no real interview could contain.
+
 Interviewer's synthetic data generator runs on that engine. Generated sessions
 now start spread across the days before the batch was made and finish after
 however long their stages would have taken a participant, and a session that is

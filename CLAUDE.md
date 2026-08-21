@@ -215,7 +215,7 @@ consistency:
   - `interview` - Embeddable participant-facing interview engine and host session contract
   - `network-exporters` - CSV and GraphML interview-data export pipeline
   - `network-query` - Network filtering and querying utilities
-  - `protocol-utilities` - Synthetic network generation and interview-payload builder
+  - `protocol-utilities` - Synthetic interview generation and protocol builder
   - `protocol-validation` - Protocol schemas, validation, hashing, and migration
   - `protocols` - Private canonical source for bundled protocols, templates, downloads, and fixtures
   - `sample-protocol` - Published compatibility package for the canonical sample protocol
@@ -257,10 +257,26 @@ The core validation system for Network Canvas protocol files (`.netcanvas`). Con
 
 #### @codaco/protocol-utilities
 
-Synthetic network generation and interview-payload builder for Network Canvas protocols. Provides:
+Synthetic interview generation and protocol builder for Network Canvas protocols. Provides:
 
-- **`generateNetwork`**: a pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given codebook and stages, with optional seeding for deterministic output. Used by `architect`'s PreviewHost and by tests that need a deterministic network shape.
-- **`SyntheticInterview`**: a fluent builder for codebooks, stages, prompts, forms, and full interview payloads. Used by `@codaco/interview`'s Storybook stories.
+- **`generateInterviews`**: walks a schema-parsed protocol stage by stage as a
+  participant would — one simulator per interface type, writing only what that
+  interface can write — and returns N complete Interviewer-shaped sessions,
+  with seeded byte-reproducibility, burden-driven dropout, pre-seed
+  feasibility refusals, and host-resolved roster/geojson pools. Fidelity is
+  proven by a replay-parity oracle: captured write traces dispatch through
+  the real interview Redux store and must reproduce the session exactly.
+  Used by Interviewer's synthetic-data panel, Fresco's generation route, and
+  Architect's stage previews (via `stopAt`).
+- **`ProtocolBuilder`**: a fluent builder for codebooks, stages, prompts,
+  forms, and full interview payloads; `getInterviewPayload` delegates to
+  `generateInterviews`, so builder-produced sessions and generated sessions
+  are the same thing. Used by `@codaco/interview`'s Storybook stories and
+  e2e fixtures.
+- Every generation parameter lives in the protocol itself: stage-level
+  `synthetic` descriptors resolved by `@codaco/protocol-validation`'s schema
+  (`pnpm --filter @codaco/protocol-utilities test` runs a source-level guard
+  that refuses any generation-side default).
 
 #### @codaco/interview
 
