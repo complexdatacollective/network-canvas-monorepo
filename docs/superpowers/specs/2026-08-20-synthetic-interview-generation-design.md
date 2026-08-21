@@ -1,7 +1,7 @@
 # Synthetic interview generation — sessions, schema-owned parameters, and the linear walk
 
 **Date:** 2026-08-20
-**Status:** Proposed
+**Status:** Implemented ([PR #1426](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1426))
 **Packages:** `@codaco/protocol-validation`, `@codaco/protocol-utilities`,
 `@codaco/shared-consts` (SessionPayload relocation), `@codaco/network-query`
 (stage-availability relocation), `@codaco/interview` (tests, contract helpers,
