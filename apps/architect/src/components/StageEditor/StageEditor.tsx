@@ -56,7 +56,11 @@ import { reportError } from '~/utils/reportError';
 import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
-import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
+import {
+  getInterface,
+  interfaceHasSkipLogicSection,
+  interfaceHasSyntheticSection,
+} from './Interfaces';
 import StageDraftConflictDialog from './StageDraftConflictDialog';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
@@ -147,6 +151,11 @@ const StageEditor = (props: StageEditorProps) => {
   // interview runtime — could never survive a trip through the form.
   const stageFormCarriesSkipLogic = interfaceHasSkipLogicSection(interfaceType);
 
+  // The same question for the stage's generation parameters: an interface that
+  // renders the Synthetic data section has a field registered for `synthetic`,
+  // so the form's own values are authoritative for it.
+  const stageFormCarriesSynthetic = interfaceHasSyntheticSection(interfaceType);
+
   /**
    * The stage's `id` and `type` belong to no field, so neither survives a trip
    * through the form. Every consumer of the form's values has to merge them
@@ -174,30 +183,23 @@ const StageEditor = (props: StageEditorProps) => {
           : {}),
         // A committed `synthetic` — the stage's generation parameters, which
         // the schema allows on every stage type — is carried the same way,
-        // and for the same reason: without the merge the overwrite save would
-        // silently delete authored generation parameters on the first
-        // Finished Editing.
-        //
-        // UNCONDITIONAL, unlike `skipLogic` above, because no interface's
-        // section list authors `synthetic` today: on EVERY interface it is a
-        // key `values` structurally cannot carry, so there is no interface on
-        // which an absent key could mean "the researcher removed it". A gate
-        // here would therefore be a branch that is never taken. When Architect
-        // does gain a synthetic editor (#1420) it must add one — at that point
-        // the absence becomes a deletion on the interfaces that render it, and
-        // restoring the committed value would resurrect exactly what was
-        // removed.
+        // and gated for the same reason. The Synthetic data section now
+        // authors the key on every interface that renders it, so there an
+        // absent key means the researcher RESET it and restoring the committed
+        // value would resurrect exactly what they removed. The carry survives
+        // for an interface that renders no such section, where the key still
+        // has no field it could travel in.
         //
         // Costs nothing for a stage that never had one: no interface template
-        // seeds the key (see `interfaces.skipLogic.test.ts`), so
+        // seeds the key (see `interfaces.synthetic.test.ts`), so
         // `committedStage.synthetic` is `undefined` on a fresh stage, and both
         // `prune` boundaries — the commit reducer and `buildProtocolWithStage`
         // — strip an `undefined` value anyway.
-        ...(committedStage.synthetic !== undefined
+        ...(!stageFormCarriesSynthetic && committedStage.synthetic !== undefined
           ? { synthetic: committedStage.synthetic }
           : {}),
       }) as unknown as Stage,
-    [committedStage, stageFormCarriesSkipLogic],
+    [committedStage, stageFormCarriesSkipLogic, stageFormCarriesSynthetic],
   );
 
   // Preview state
@@ -551,7 +553,7 @@ const StageEditor = (props: StageEditorProps) => {
           }
         />
         <span id={syntheticDataLabelId} className="text-sm">
-          Start preview with example data
+          Start preview with synthetic data
         </span>
       </div>
       <div className="flex items-center gap-3">

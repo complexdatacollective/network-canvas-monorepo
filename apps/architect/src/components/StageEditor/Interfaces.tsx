@@ -33,6 +33,7 @@ import {
   SkipLogic,
   SociogramPrompts,
   SortOptionsForExternalData,
+  SyntheticData,
   TieStrengthCensusPrompts,
   Title,
 } from '~/components/sections';
@@ -104,6 +105,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       Form,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('per-alter-edge-form'),
   },
@@ -114,6 +116,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       Form,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('per-alter-form'),
   },
@@ -123,6 +126,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       CategoricalBinPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('categorical-bin'),
   },
@@ -133,6 +137,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       DyadCensusPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('dyad-census'),
   },
@@ -143,15 +148,22 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       OneToManyDyadCensusPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('one-to-many-dyad-census'),
   },
   EgoForm: {
-    sections: [IntroductionPanel, Form, SkipLogic, InterviewScript],
+    sections: [
+      IntroductionPanel,
+      Form,
+      SkipLogic,
+      InterviewScript,
+      SyntheticData,
+    ],
     documentation: interfaceDocumentationUrl('ego-form'),
   },
   Information: {
-    sections: [Title, ContentGrid, SkipLogic, InterviewScript],
+    sections: [Title, ContentGrid, SkipLogic, InterviewScript, SyntheticData],
     documentation: interfaceDocumentationUrl('information'),
   },
   NameGenerator: {
@@ -163,6 +175,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       MinMaxAlterLimits,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('name-generator-using-forms'),
   },
@@ -177,6 +190,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       MinMaxAlterLimits,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('name-generator-roster'),
   },
@@ -189,6 +203,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SkipLogic,
       MinMaxAlterLimits,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('name-generator-using-quick-add'),
   },
@@ -200,11 +215,18 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       NarrativeBehaviours,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('narrative'),
   },
   OrdinalBin: {
-    sections: [FilteredNodeType, OrdinalBinPrompts, SkipLogic, InterviewScript],
+    sections: [
+      FilteredNodeType,
+      OrdinalBinPrompts,
+      SkipLogic,
+      InterviewScript,
+      SyntheticData,
+    ],
     documentation: interfaceDocumentationUrl('ordinal-bin'),
   },
   Sociogram: {
@@ -215,6 +237,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       SociogramPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('sociogram'),
   },
@@ -226,6 +249,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       Background,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('network-composer'),
   },
@@ -236,6 +260,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       TieStrengthCensusPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('tie-strength-census'),
   },
@@ -246,6 +271,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       GeospatialPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('geospatial'),
   },
@@ -262,6 +288,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       // future interface that omits it.
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('anonymisation'),
   },
@@ -276,6 +303,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       NominationPrompts,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('family-pedigree'),
   },
@@ -286,6 +314,7 @@ const INTERFACE_CONFIGS: InterfaceRegistry = {
       AtRiskStatuses,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ],
     documentation: interfaceDocumentationUrl('narrative-pedigree'),
   },
@@ -342,4 +371,22 @@ export function interfaceHasSkipLogicSection(
   interfaceType: StageType,
 ): boolean {
   return getInterface(interfaceType).sections.includes(SkipLogic);
+}
+
+/**
+ * Whether an interface's editor renders the Synthetic data section.
+ *
+ * The twin of {@link interfaceHasSkipLogicSection}, and load-bearing in the
+ * same way. The schema allows `synthetic` on every stage, and no field could
+ * carry it until this section existed — so `withStageIdentity` carried the
+ * committed value through on save. Now that a section AUTHORS it, an absent
+ * key on an interface that renders the section means the researcher reset it,
+ * and carrying the committed value through would resurrect exactly what they
+ * removed. The carry survives only for an interface that renders no section,
+ * where the key still has no field to travel in.
+ */
+export function interfaceHasSyntheticSection(
+  interfaceType: StageType,
+): boolean {
+  return getInterface(interfaceType).sections.includes(SyntheticData);
 }

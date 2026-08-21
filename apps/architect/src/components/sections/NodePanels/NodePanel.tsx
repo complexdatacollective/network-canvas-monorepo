@@ -19,6 +19,7 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 
+import { PanelSyntheticSection } from './PanelSyntheticSection';
 import { usePanelSlot } from './usePanelSlot';
 
 const EXISTING_DATA_SOURCE = 'existing';
@@ -227,6 +228,15 @@ const NodePanel = ({
           name={`${fieldName}.filter`}
           allowEdgeRules={dataSource === EXISTING_DATA_SOURCE}
         />
+        {/*
+          Nomination odds are decided person by person, which only an
+          existing-network panel does — `panelSchema` refuses them on a roster
+          panel, whose contribution is drawn once for the whole stage. So the
+          control follows the data source rather than rendering disabled.
+        */}
+        {dataSource === EXISTING_DATA_SOURCE && (
+          <PanelSyntheticSection fieldName={fieldName} />
+        )}
       </div>
       <IconButton
         icon={<Trash2 />}
