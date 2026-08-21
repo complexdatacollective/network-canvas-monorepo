@@ -302,7 +302,13 @@ describe('simulateFamilyPedigree', () => {
   });
 
   describe('people the participant named earlier', () => {
-    it('takes them into the pedigree and clears the ego flag from them', () => {
+    it('takes them into the pedigree without touching their attributes', () => {
+      // The live commit walks its `preexistingReduxNodeIds` and dispatches
+      // NOTHING for them (`finalizeNetwork`): the store's normalised view of
+      // an earlier node — ego flag cleared, structural slots filled — lives
+      // only in the committed metadata snapshot, while the shared network
+      // keeps exactly what earlier stages recorded. A variable the pedigree
+      // would have defaulted stays ABSENT ("never asked"), not false.
       const fixture = setUp();
       fixture.harness.engine.addNode({
         nodeType: 'family-member',
@@ -316,9 +322,11 @@ describe('simulateFamilyPedigree', () => {
         .nodes()
         .find((node) => node[entityPrimaryKeyProperty] === 'earlier-person');
 
-      expect(earlier?.[entityAttributesProperty].isEgo).toBe(false);
-      // Their name is theirs: the commit normalises only what it owns.
+      expect(earlier?.[entityAttributesProperty].isEgo).toBe(true);
       expect(earlier?.[entityAttributesProperty].name).toBe('Ada');
+      expect('condition' in (earlier?.[entityAttributesProperty] ?? {})).toBe(
+        false,
+      );
 
       const metadata = committedMetadata(fixture.harness);
       expect((metadata.nodes ?? []).map((row) => row.id)).toContain(

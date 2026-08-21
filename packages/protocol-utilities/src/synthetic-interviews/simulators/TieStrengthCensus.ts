@@ -10,7 +10,7 @@ import {
   edgeForPair,
   unorderedPairs,
 } from '../utils/edgeTopology';
-import { nodesForStage } from '../utils/eligibleNodes';
+import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { clearCensusAnswer, recordCensusAnswer } from './shared/censusMetadata';
 import {
@@ -93,7 +93,20 @@ export const simulateTieStrengthCensus: StageSimulator<
     });
 
     pairs.forEach((pair, position) => {
-      const existing = edgeForPair(engine.draft.network, pair, edgeType);
+      // Existence is asked of the STAGE-FILTERED network, exactly as the
+      // interface's own selector reads it (`getNetworkEdges` applies the
+      // stage filter to the whole network): an edge the filter hides is one
+      // the participant cannot see, so a yes creates a second edge — the
+      // runtime's addEdge does not dedupe — and a no cannot delete it.
+      // Re-derived per pair because the census's own writes change the view.
+      const existing = edgeForPair(
+        {
+          ...engine.draft.network,
+          edges: edgesForStage(engine.draft.network, edgeType, stage.filter),
+        },
+        pair,
+        edgeType,
+      );
 
       // Drawn only where the pair was chosen: an undrawn pair is one the
       // participant never graded, and spending a draw on it would move every

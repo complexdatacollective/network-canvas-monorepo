@@ -8,7 +8,6 @@ import {
 import {
   claimFixedValues,
   releaseRosterValues,
-  rosterRowIsDrawable,
 } from '../constraints/reservations';
 import { nominateFromRoster } from '../utils/panels';
 import { countUniform, sampleCount } from '../utils/sampleCount';
@@ -89,8 +88,12 @@ export const simulateNameGeneratorRoster: StageSimulator<
           ...shared,
           ...row[entityAttributesProperty],
         };
-        if (!rosterRowIsDrawable(handles, scope, fixed)) return false;
-
+        // Taken VERBATIM, `unique` collisions included: the runtime's roster
+        // add path validates no values (dedupe is by _uid alone), so a
+        // researcher-supplied duplicate is a row the participant can add and
+        // the session must be able to hold. Skipping it instead would leave
+        // the completed stage below its own min-nodes gate — a state no real
+        // interview can end in.
         engine.addNode({
           nodeType: stage.subject.type,
           uid: row[entityPrimaryKeyProperty],

@@ -366,16 +366,14 @@ describe('simulateNameGeneratorRoster', () => {
     expect(harness.engine.draft.stageMetadata).toEqual({});
   });
 
-  it('passes over a row whose unique value the network already holds', () => {
+  it('takes a duplicate-valued row verbatim rather than under-filling', () => {
     // Two of the four rows carry the same `band`, and the codebook says no two
-    // people may. A roster is the researcher's own data, so nothing there
-    // stops it — and a pool is a set of candidates a run draws a subset of, so
-    // the second is passed over rather than the protocol being refused.
-    //
-    // Three nominations from four rows, and the row passed over does not spend
-    // one of them: the participant reaches for somebody else. Choosing the
-    // three rows before any of them lands would fail this both ways — two
-    // people holding one value, or a stage that quietly nominated two.
+    // people may. The RUNTIME's roster add path validates no values — dedupe
+    // is by _uid alone — so a researcher-supplied duplicate is a row the
+    // participant can add, and the session must hold it as it arrived.
+    // Passing the row over instead would leave the completed stage below the
+    // count the walk drew for it — a state no finished real interview can end
+    // in, and one that silently breaks an authored min-nodes floor.
     const protocol = parseProtocol(
       {
         node: {
@@ -423,11 +421,21 @@ describe('simulateNameGeneratorRoster', () => {
         undefined,
       );
 
-      const bands = harness
-        .nodes()
-        .map((node) => node[entityAttributesProperty].band);
-      expect(bands).toHaveLength(3);
-      expect(new Set(bands).size).toBe(3);
+      const nodes = harness.nodes();
+      // The drawn count is always met: no row is passed over.
+      expect(nodes).toHaveLength(3);
+      // And every nominated row kept exactly the band it arrived carrying —
+      // duplicates included, when the draw picks both twins.
+      for (const node of nodes) {
+        const uid = node[entityPrimaryKeyProperty];
+        const expected = {
+          'roster-0': 1,
+          'roster-1': 1,
+          'roster-2': 2,
+          'roster-3': 3,
+        }[uid];
+        expect(node[entityAttributesProperty].band).toBe(expected);
+      }
     }
   });
 

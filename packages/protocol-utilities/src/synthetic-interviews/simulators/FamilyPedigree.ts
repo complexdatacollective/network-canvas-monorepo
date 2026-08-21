@@ -3,7 +3,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isFamilyPedigreeStageMetadata,
-  type VariableValue,
 } from '@codaco/shared-consts';
 
 import { claimFixedValues as claimOldFixedValues } from '../../generateNetwork/attributes';
@@ -106,38 +105,6 @@ const scratchDraft = (context: SimulationContext): NetworkDraft => {
   };
 };
 
-const sameValue = (
-  a: VariableValue | undefined,
-  b: VariableValue | undefined,
-) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-
-/**
- * What changed on a family member the pedigree already knew about.
- *
- * The live interface seeds every existing node of its type into the pedigree
- * and normalises the semantics it owns over them — a disease this stage
- * introduces is recorded as absent on people the participant named earlier, and
- * the ego flag is cleared from everyone who is not this pedigree's focal
- * person. Those are `updateNode` patches, so they are replayed as such rather
- * than as a second creation.
- */
-const attributePatchBetween = (
-  before: Readonly<Record<string, VariableValue>>,
-  after: Readonly<Record<string, VariableValue>>,
-): { set: Record<string, VariableValue>; unset: string[] } => {
-  const set: Record<string, VariableValue> = {};
-  const unset: string[] = [];
-
-  for (const [key, value] of Object.entries(after)) {
-    if (!sameValue(before[key], value)) set[key] = value;
-  }
-  for (const key of Object.keys(before)) {
-    if (!(key in after)) unset.push(key);
-  }
-
-  return { set, unset };
-};
-
 /**
  * Simulate a participant building their family pedigree and committing it.
  *
@@ -202,11 +169,8 @@ export const simulateFamilyPedigree: StageSimulator<FamilyPedigreeStage> = (
   reserveFamilyPedigreeFixedValues(generation, context.protocol.stages);
 
   const draft = scratchDraft(context);
-  const knownNodes = new Map<string, Record<string, VariableValue>>(
-    draft.nodes.map((node) => [
-      node[entityPrimaryKeyProperty],
-      { ...node[entityAttributesProperty] },
-    ]),
+  const knownNodes = new Set(
+    draft.nodes.map((node) => node[entityPrimaryKeyProperty]),
   );
   const knownEdges = new Set(
     draft.edges.map((edge) => edge[entityPrimaryKeyProperty]),
@@ -238,10 +202,9 @@ export const simulateFamilyPedigree: StageSimulator<FamilyPedigreeStage> = (
 
   for (const node of draft.nodes) {
     const uid = node[entityPrimaryKeyProperty];
-    const before = knownNodes.get(uid);
     const attributes = node[entityAttributesProperty];
 
-    if (before === undefined) {
+    if (!knownNodes.has(uid)) {
       engine.addNode({
         nodeType: node.type,
         uid: mapped(uid),
@@ -254,12 +217,14 @@ export const simulateFamilyPedigree: StageSimulator<FamilyPedigreeStage> = (
       continue;
     }
 
+    // A node that existed before the pedigree keeps its shared-network
+    // attributes untouched: the live commit walks `preexistingReduxNodeIds`
+    // and dispatches nothing for them (FamilyPedigree `store.ts`
+    // `finalizeNetwork`) — the store's normalised view of such a node lives
+    // on in the committed METADATA snapshot alone, while the interview
+    // network keeps what earlier stages recorded. Patching them here would
+    // stamp `false` where a real session leaves "never asked" absent.
     idFor.set(uid, uid);
-    const patch = attributePatchBetween(before, attributes);
-    if (Object.keys(patch.set).length === 0 && patch.unset.length === 0) {
-      continue;
-    }
-    engine.updateNode({ nodeId: uid, attributePatch: patch, currentStep });
   }
 
   for (const edge of draft.edges) {

@@ -96,11 +96,11 @@ type SessionHandles = {
  *
  * A row is a real person the run may still add, carrying values the researcher
  * supplied rather than ones the registry issued. Held only while the row's own
- * stage was drawing, that guards nothing against the stages before it: a
- * fabricated node takes the value first, the row is then a duplicate of what
- * the network already holds, {@link rosterRowIsDrawable} passes it over for
- * good, and the roster the protocol was written around loses a person a
- * different draw would have left room for.
+ * stage was drawing, that would guard nothing against the stages before it: a
+ * fabricated node takes the value first, the row still lands verbatim later —
+ * rows are the researcher's data and are never passed over — and the network
+ * ends up holding an involuntary duplicate a different draw would have
+ * avoided entirely.
  */
 export const reserveRosterValues = (
   handles: SessionHandles,
@@ -149,47 +149,6 @@ export const releaseRosterValues = (
     rows,
     false,
   );
-};
-
-/**
- * Whether the network can still take every `unique` value the node built from
- * a roster row would hold.
- *
- * Asked of the assignment that will actually be written — the row merged with
- * the prompt's `additionalAttributes` — rather than of the row as it arrived.
- * Where a prompt's value wins the collision the row's own value is never
- * written, so a check reading the row answers about a value no node ends up
- * holding: it passes over a row the network could still take, and lets through
- * one whose finished node repeats a value the registry has already issued.
- *
- * A row's values are the researcher's rather than the registry's, so nothing
- * stops two rows offering one value for a variable the codebook marks
- * `unique`. A roster is a pool of candidates the run draws a subset of, so a
- * row that would repeat a value already in the network is passed over rather
- * than refused — leaving a row undrawn contradicts nothing the protocol
- * declares.
- *
- * Reservations are not consulted: the whole drawable pool is reserved before a
- * draw begins, so every row would fail a check that read them.
- */
-export const rosterRowIsDrawable = (
-  { entityConstraints, uniqueRegistry }: SessionHandles,
-  scope: EntityScopeRef,
-  fixed: Readonly<Record<string, VariableValue>>,
-): boolean => {
-  const registry = scopeKey(scope);
-
-  for (const [slot, memberIds] of uniqueSlotMembers(
-    entityConstraints.forScope(scope),
-  )) {
-    for (const id of memberIds) {
-      const value = fixed[id];
-      if (value === undefined || value === null) continue;
-      if (uniqueRegistry.isTaken(registry, slot, value)) return false;
-    }
-  }
-
-  return true;
 };
 
 /**

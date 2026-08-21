@@ -6,7 +6,7 @@ import {
   edgeForPair,
   unorderedPairs,
 } from '../utils/edgeTopology';
-import { nodesForStage } from '../utils/eligibleNodes';
+import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { recordCensusAnswer } from './shared/censusMetadata';
 import { currentStepOf, promptsWorked } from './shared/stageContext';
@@ -67,7 +67,20 @@ export const simulateDyadCensus: StageSimulator<DyadCensusStage> = (
     });
 
     pairs.forEach((pair, position) => {
-      const existing = edgeForPair(engine.draft.network, pair, edgeType);
+      // Existence is asked of the STAGE-FILTERED network, exactly as the
+      // interface's own selector reads it (`getNetworkEdges` applies the
+      // stage filter to the whole network): an edge the filter hides is one
+      // the participant cannot see, so a yes creates a second edge — the
+      // runtime's addEdge does not dedupe — and a no cannot delete it.
+      // Re-derived per pair because the census's own writes change the view.
+      const existing = edgeForPair(
+        {
+          ...engine.draft.network,
+          edges: edgesForStage(engine.draft.network, edgeType, stage.filter),
+        },
+        pair,
+        edgeType,
+      );
       const present = linked.has(position);
 
       if (present && existing === null) {

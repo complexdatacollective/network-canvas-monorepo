@@ -30,10 +30,25 @@ const protocolsRoot = path.resolve(
   '../../../../protocols',
 );
 
+// Seed and count are pinned PER protocol so each batch really carries both
+// kinds of session: the showcase's per-session drop probability is only ~6%
+// (closed form over its burden profile), so a six-member batch at an
+// arbitrary seed frequently completes whole — and a test that never sees a
+// dropped session proves nothing about exporting one.
 const BUNDLED = [
-  { name: 'development', file: 'development/protocol.json' },
-  { name: 'sample', file: 'sample/protocol.json' },
-  { name: 'synthetic showcase', file: 'e2e/synthetic-showcase/protocol.json' },
+  {
+    name: 'development',
+    file: 'development/protocol.json',
+    count: 6,
+    seed: 42,
+  },
+  { name: 'sample', file: 'sample/protocol.json', count: 6, seed: 42 },
+  {
+    name: 'synthetic showcase',
+    file: 'e2e/synthetic-showcase/protocol.json',
+    count: 12,
+    seed: 21,
+  },
 ] as const;
 
 const parsedProtocolFor = (file: string) =>
@@ -51,54 +66,64 @@ const bothFormats: ExportOptions = {
   },
 };
 
-describe.each(BUNDLED)('the $name protocol round-trips (C2)', ({ file }) => {
-  const protocol = parsedProtocolFor(file);
-  const results = generateInterviews(protocol, {
-    count: 6,
-    seed: 42,
-    startWindow: '2026-08-20T12:00:00.000Z',
-    simulateDropOut: true,
-    minimumCompletedRatio: 0,
-  });
-
-  it('parses every generated network and metadata back through the schemas', () => {
-    for (const result of results) {
-      expect(() => NcNetworkSchema.parse(result.session.network)).not.toThrow();
-      if (result.session.stageMetadata !== undefined) {
-        expect(() =>
-          StageMetadataSchema.parse(result.session.stageMetadata),
-        ).not.toThrow();
-      }
-    }
-  });
-
-  it('exports every session, complete and dropped alike, with zero failures', async () => {
-    const hash = 'synthetic-batch';
-    const exportProtocol: ProtocolExportInput = {
-      hash,
-      name: protocol.name,
-      codebook: protocol.codebook,
-    };
-    const sessions: InterviewExportInput[] = results.map((result, index) => ({
-      id: result.session.id,
-      participantIdentifier: `participant-${index}`,
-      startTime: new Date(result.session.startTime),
-      finishTime: result.session.finishTime
-        ? new Date(result.session.finishTime)
-        : null,
-      network: result.session.network,
-      protocolHash: hash,
-    }));
-
-    const repo = Layer.succeed(ProtocolRepository, {
-      getProtocols: () => Effect.succeed({ [hash]: exportProtocol }),
+describe.each(BUNDLED)(
+  'the $name protocol round-trips (C2)',
+  ({ file, count, seed }) => {
+    const protocol = parsedProtocolFor(file);
+    const results = generateInterviews(protocol, {
+      count,
+      seed,
+      startWindow: '2026-08-20T12:00:00.000Z',
+      simulateDropOut: true,
+      minimumCompletedRatio: 0,
     });
 
-    const { grouped, failures } = await Effect.runPromise(
-      processSessions(sessions, bothFormats).pipe(Effect.provide(repo)),
-    );
+    it('generated both kinds of session, so the claim below is not vacuous', () => {
+      expect(results.some((result) => result.droppedOut)).toBe(true);
+      expect(results.some((result) => !result.droppedOut)).toBe(true);
+    });
 
-    expect(failures).toEqual([]);
-    expect(grouped[hash]).toHaveLength(results.length);
-  });
-});
+    it('parses every generated network and metadata back through the schemas', () => {
+      for (const result of results) {
+        expect(() =>
+          NcNetworkSchema.parse(result.session.network),
+        ).not.toThrow();
+        if (result.session.stageMetadata !== undefined) {
+          expect(() =>
+            StageMetadataSchema.parse(result.session.stageMetadata),
+          ).not.toThrow();
+        }
+      }
+    });
+
+    it('exports every session, complete and dropped alike, with zero failures', async () => {
+      const hash = 'synthetic-batch';
+      const exportProtocol: ProtocolExportInput = {
+        hash,
+        name: protocol.name,
+        codebook: protocol.codebook,
+      };
+      const sessions: InterviewExportInput[] = results.map((result, index) => ({
+        id: result.session.id,
+        participantIdentifier: `participant-${index}`,
+        startTime: new Date(result.session.startTime),
+        finishTime: result.session.finishTime
+          ? new Date(result.session.finishTime)
+          : null,
+        network: result.session.network,
+        protocolHash: hash,
+      }));
+
+      const repo = Layer.succeed(ProtocolRepository, {
+        getProtocols: () => Effect.succeed({ [hash]: exportProtocol }),
+      });
+
+      const { grouped, failures } = await Effect.runPromise(
+        processSessions(sessions, bothFormats).pipe(Effect.provide(repo)),
+      );
+
+      expect(failures).toEqual([]);
+      expect(grouped[hash]).toHaveLength(results.length);
+    });
+  },
+);

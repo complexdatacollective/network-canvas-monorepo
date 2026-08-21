@@ -17,11 +17,9 @@ import type { AssetData } from '../../simulators/types';
 import { createEntityConstraintCache } from '../entityConstraintCache';
 import { scopeKey } from '../generateEntityAttributes';
 import {
-  claimFixedValues,
   releaseRosterValues,
   reservePromptFixedValues,
   reserveRosterValues,
-  rosterRowIsDrawable,
 } from '../reservations';
 import { UniqueRegistry } from '../uniqueRegistry';
 
@@ -36,11 +34,24 @@ import { UniqueRegistry } from '../uniqueRegistry';
 
 const START_WINDOW = '2026-08-14T12:00:00.000Z';
 
+// Wider than the roster needs on purpose: the three rows reserve 1-3, and
+// every typed-in draw must still find a free value even when the roster share
+// lands on zero — five people over five free values in the worst case. A
+// space the roster covered completely would make every session infeasible and
+// the reservation property untestable.
 const BANDS = [
   { label: 'One', value: 1 },
   { label: 'Two', value: 2 },
   { label: 'Three', value: 3 },
+  { label: 'Four', value: 4 },
+  { label: 'Five', value: 5 },
+  { label: 'Six', value: 6 },
+  { label: 'Seven', value: 7 },
+  { label: 'Eight', value: 8 },
 ];
+
+/** The rows the roster fixtures carry: the first three bands only. */
+const ROW_BANDS = BANDS.slice(0, 3);
 
 const codebook = {
   node: {
@@ -194,7 +205,7 @@ describe('the unique values a session holds back', () => {
 
     const assetData: AssetData = {
       rosterNodes: {
-        roster: BANDS.map(({ value }, index) => ({
+        roster: ROW_BANDS.map(({ value }, index) => ({
           [entityPrimaryKeyProperty]: `row-${index}`,
           type: 'person',
           [entityAttributesProperty]: { name: `Row ${index}`, band: value },
@@ -203,8 +214,9 @@ describe('the unique values a session holds back', () => {
     };
 
     it('never lets two people end up holding one of them', () => {
-      // A row whose value the network already holds is passed over, and the
-      // stage's count is met by somebody the participant types in instead.
+      // Every row's values are held from the start, so no typed-in draw can
+      // take one first — the rows (all distinct here) land verbatim and the
+      // typed-in remainder draws around them.
       for (const payload of sessionsFor(protocol, 60, assetData)) {
         const values = valuesOf(payload.network?.nodes, 'band');
 
@@ -216,10 +228,9 @@ describe('the unique values a session holds back', () => {
       // One row, one earlier person, and the row carries the value that
       // earlier draw takes first — an unheld `unique` sequence starts at its
       // first distinct value on every seed. Held only while its own stage was
-      // drawing, the row would then be a duplicate of what the network already
-      // holds and would be passed over for good, so the roster the protocol
-      // was written around loses a person a different draw would have left
-      // room for.
+      // drawing, the earlier draw would take the value first and the row —
+      // never passed over — would land verbatim anyway, leaving the network
+      // holding an involuntary duplicate a different draw avoids entirely.
       const oneRow = parse([
         drawsInto('band', 1),
         {
@@ -257,13 +268,15 @@ describe('the unique values a session holds back', () => {
       }
     });
 
-    it('lets only one of two rows offering the same value through', () => {
+    it('lets both rows offering one value through, verbatim', () => {
       // A roster is the researcher's own data, and nothing there stops two
       // rows carrying one value for a variable the codebook marks `unique`.
-      // Choosing the whole set of rows before any of them lands is what would
-      // let both through — the network holds the value only once the first is
-      // added — so rows are offered one at a time and the second is passed
-      // over, its place taken by somebody typed in.
+      // The runtime's roster add path validates no values, so both rows are
+      // people the participant can add — the session holds the duplicate as
+      // it arrived rather than passing a row over and leaving the stage
+      // under-filled. What the reservation still buys is the other side:
+      // no TYPED-IN person ever takes the twins' value, so the only
+      // duplication a session can hold is the researcher's own.
       const twins: AssetData = {
         rosterNodes: {
           roster: [0, 1].map((index) => ({
@@ -274,11 +287,25 @@ describe('the unique values a session holds back', () => {
         },
       };
 
+      let bothLanded = false;
       for (const payload of sessionsFor(protocol, 60, twins)) {
-        const values = valuesOf(payload.network?.nodes, 'band');
+        const nodes = payload.network?.nodes ?? [];
+        const rows = nodes.filter((node) =>
+          node[entityPrimaryKeyProperty].startsWith('row-'),
+        );
+        for (const row of rows) {
+          expect(row[entityAttributesProperty].band).toBe(1);
+        }
+        if (rows.length === 2) bothLanded = true;
 
-        expect(new Set(values).size).toBe(values.length);
+        const typed = nodes.filter(
+          (node) => !node[entityPrimaryKeyProperty].startsWith('row-'),
+        );
+        for (const node of typed) {
+          expect(node[entityAttributesProperty].band).not.toBe(1);
+        }
       }
+      expect(bothLanded).toBe(true);
     });
 
     it('takes every row it draws with the value it arrived carrying', () => {
@@ -289,7 +316,9 @@ describe('the unique values a session holds back', () => {
 
         for (const row of rows) {
           const index = Number(row[entityPrimaryKeyProperty].split('-')[1]);
-          expect(row[entityAttributesProperty].band).toBe(BANDS[index]?.value);
+          expect(row[entityAttributesProperty].band).toBe(
+            ROW_BANDS[index]?.value,
+          );
         }
       }
     });
@@ -299,9 +328,9 @@ describe('the unique values a session holds back', () => {
     // The same hold, taken for the stage whose whole population is a roster.
     // It reaches a roster without a panel, so a bookkeeping pass that only
     // knew about panel-bearing name generators would skip it — and the
-    // consequence is not a crash but a quieter loss: the earlier draw takes
-    // the row's value, the row is then a duplicate of what the network holds
-    // and is passed over for good, and the roster stage nominates nobody.
+    // consequence is not a crash but a quieter defect: the earlier draw
+    // takes the row's value first, and the row — never passed over — lands
+    // verbatim anyway, an involuntary duplicate the hold avoids entirely.
     const oneRow = parse(
       [
         drawsInto('band', 1),
@@ -410,20 +439,11 @@ describe('the unique values a session holds back', () => {
 
       reservePromptFixedValues(session, protocol.stages);
 
-      for (const { value } of BANDS) {
+      for (const { value } of ROW_BANDS) {
         expect(
           session.uniqueRegistry.isReserved(scopeKey(scope), 'band', value),
         ).toBe(false);
       }
-    });
-
-    it('passes over a row whose value the network already holds', () => {
-      const { handles: session } = handles();
-
-      expect(rosterRowIsDrawable(session, scope, { band: 2 })).toBe(true);
-      claimFixedValues(session, scope, { band: 2 });
-      expect(rosterRowIsDrawable(session, scope, { band: 2 })).toBe(false);
-      expect(rosterRowIsDrawable(session, scope, { band: 3 })).toBe(true);
     });
   });
 });

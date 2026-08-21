@@ -9,7 +9,6 @@ import {
 import {
   claimFixedValues,
   releaseRosterValues,
-  rosterRowIsDrawable,
 } from '../../constraints/reservations';
 import {
   nominateFromRoster,
@@ -176,8 +175,10 @@ export const simulateNameGeneratorNominations = ({
           ...row[entityAttributesProperty],
           ...shared,
         };
-        if (!rosterRowIsDrawable(handles, scope, fixed)) return false;
-
+        // Taken VERBATIM, `unique` collisions included — the runtime's
+        // roster add path validates no values, so a duplicate row is one the
+        // participant can add and the session must hold (see
+        // NameGeneratorRoster.ts for the full reasoning).
         engine.addNode({
           nodeType: stage.subject.type,
           // A roster row keeps its own id, which is what lets the interface

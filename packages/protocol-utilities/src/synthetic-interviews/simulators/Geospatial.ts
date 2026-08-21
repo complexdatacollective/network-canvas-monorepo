@@ -77,12 +77,6 @@ export const simulateGeospatial: StageSimulator<GeospatialStage> = (
   const currentStep = currentStepOf(context, stage);
   const areas = selectableAreas(context, stage.id);
 
-  const eligible = nodesForStage(
-    engine.draft.network,
-    stage.subject.type,
-    stage.filter,
-  );
-
   const placement = (): string => {
     if (streams.draw('geo') < GEOSPATIAL_OUTSIDE_AREAS_PROBABILITY) {
       return OUTSIDE_SELECTABLE_AREAS;
@@ -96,6 +90,16 @@ export const simulateGeospatial: StageSimulator<GeospatialStage> = (
 
   promptsWorked(stage.prompts, promptBound).forEach((prompt, promptIndex) => {
     if (promptIndex > 0) engine.updatePrompt({ promptIndex });
+
+    // Re-derived per prompt, like every sibling multi-prompt simulator: the
+    // runtime's selector re-runs on every render, so a filter reading a
+    // variable this stage's own earlier prompt wrote sees the updated
+    // network.
+    const eligible = nodesForStage(
+      engine.draft.network,
+      stage.subject.type,
+      stage.filter,
+    );
 
     for (const node of eligible) {
       engine.updateNode({

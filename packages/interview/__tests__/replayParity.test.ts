@@ -1019,7 +1019,14 @@ const edgeHeavyAssetData: AssetData = {
     roster: [0, 1, 2, 3].map((index) => ({
       [entityPrimaryKeyProperty]: `roster-${index}`,
       type: 'person',
-      [entityAttributesProperty]: { name: `Colleague ${index}` },
+      [entityAttributesProperty]: {
+        name: `Colleague ${index}`,
+        // Deliberately undeclared in the codebook: a roster carries whatever
+        // columns the researcher's file had, and the replay must push them
+        // through the runtime's own allowUnknownAttributes channel — without
+        // the flag, the real addNode rejects this key and parity fails.
+        department: 'Engineering',
+      },
     })),
   },
 };
@@ -1072,11 +1079,13 @@ describe('replay parity (C1) — edge-heavy interfaces', () => {
 
     // Four quick-add people plus two roster colleagues, by their own uids.
     expect(nodes.length).toBe(6);
-    expect(
-      nodes.filter((node) =>
-        node[entityPrimaryKeyProperty].startsWith('roster-'),
-      ).length,
-    ).toBe(2);
+    const rosterNodes = nodes.filter((node) =>
+      node[entityPrimaryKeyProperty].startsWith('roster-'),
+    );
+    expect(rosterNodes.length).toBe(2);
+    for (const node of rosterNodes) {
+      expect(node[entityAttributesProperty]['department']).toBe('Engineering');
+    }
 
     // The sociogram laid out every person it saw.
     const positioned = nodes.filter(

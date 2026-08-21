@@ -209,10 +209,14 @@ describe('determineDropout', () => {
     // The docblock on DROPOUT_HAZARD_RATE derives the completion probability
     // as exp(-rate * S), S being the sum of the cumulative burden at each
     // stage. This measures the same quantity by simulation over the REAL
-    // parsed sample protocol — 50,000 seeded walks' worth of dropout rolls —
-    // and holds the two within one and a half percentage points. A drift in
-    // the schema's burden table, the sample protocol, or the roll itself
-    // moves the measured rate away from the closed form and fails here.
+    // parsed sample protocol — 50,000 seeded roll SEQUENCES, dice-level
+    // rather than full walks: the simulators never run, which is what makes
+    // fifty thousand of these affordable. The walk-level path (route, resume
+    // position, truncated state) is exercised by the parity suite's
+    // dropped-session legs instead. Held within one and a half percentage
+    // points: a drift in the schema's burden table, the sample protocol, or
+    // the roll itself moves the measured rate away from the closed form and
+    // fails here.
     let S = 0;
     let cumulative = 0;
     for (const stage of SAMPLE_PROTOCOL_BURDENS) {
