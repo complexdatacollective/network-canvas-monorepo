@@ -8,18 +8,26 @@ import {
   DEFAULT_RESPONSE_BURDEN,
   type Stage,
   type StructuralCodebook,
+  type Variable,
 } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  type VariableValue,
-} from '@codaco/shared-consts';
 
-import { generateNetwork } from '../../../generateNetwork';
-// The old engine is still this overlay's driving consumer, and it throws its
-// own copy of the refusal, so `instanceof` here has to name that one.
-import { SyntheticDataConstraintError } from '../../../generateNetwork/constraints/error';
+import { buildVariableConstraints } from '../buildConstraints';
+import {
+  applyComposerRenderings,
+  COMPOSER_RENDERING_CONFLICT,
+} from '../composerRenderings';
+import { toVariableEntry } from '../variableEntry';
 
 const TODAY = '2026-07-27';
+
+/**
+ * The overlay itself, unit-tested: which control domain each variable ends up
+ * generated against, and which combinations are reported as conflicts. The
+ * engine-integration half — that the NetworkComposer simulator actually draws
+ * inside these windows and refuses these conflicts — lives with its C4 suite
+ * (`simulators/__tests__/NetworkComposer.test.ts`, "the composer rendering
+ * overlay"), which drives `generateInterviews` end to end.
+ */
 
 type DatePickerParameters = {
   type?: 'full' | 'month' | 'year';
@@ -147,17 +155,25 @@ function alterFormStage(variable: string): Stage {
   };
 }
 
-function valuesOf(
-  entities: readonly {
-    [entityAttributesProperty]: Record<string, VariableValue>;
-  }[],
+function renderedNodeVariable(
+  codebook: StructuralCodebook,
+  stages: Stage[],
   variable: string,
-): VariableValue[] {
-  return entities.map((entity) => {
-    const value = entity[entityAttributesProperty][variable];
-    if (value === undefined) throw new Error(`no value for "${variable}"`);
-    return value;
-  });
+): Variable {
+  const { codebook: rendered, conflicts } = applyComposerRenderings(
+    codebook,
+    stages,
+    TODAY,
+  );
+  expect(conflicts).toEqual([]);
+  const definition = rendered.node?.person?.variables?.[variable];
+  if (definition === undefined) throw new Error(`no variable "${variable}"`);
+  return definition;
+}
+
+function windowOf(variable: Variable, id: string) {
+  return buildVariableConstraints(toVariableEntry(id, variable), TODAY)
+    .dateWindow;
 }
 
 describe('NetworkComposer field renderings', () => {
@@ -165,10 +181,10 @@ describe('NetworkComposer field renderings', () => {
   // bounds, so the window read from it runs back years, while the control the
   // stage actually renders admits one day. Every node the stage creates is
   // handed to that stage's own form.
-  it('draws a node attribute inside the window the composer field validates', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({}),
-      stages: [
+  it('narrows a node variable to the window the composer field validates', () => {
+    const born = renderedNodeVariable(
+      codebookWith({}),
+      [
         composerStage({
           nodeFields: [
             {
@@ -179,75 +195,23 @@ describe('NetworkComposer field renderings', () => {
           ],
         }),
       ],
-      seed: 7,
-      config: { today: TODAY },
-    });
-
-    expect(network.nodes.length).toBeGreaterThan(0);
-    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
-      new Set(['2020-06-15']),
+      'born',
     );
-  });
 
-  it('ignores rendering conflicts from composers proven unreachable', () => {
-    const reachable = composerStage({
-      id: 'reachable',
-      nodeFields: [
-        {
-          variable: 'born',
-          component: 'RelativeDatePicker',
-          parameters: { anchor: '2020-06-15', before: 0, after: 0 },
-        },
-      ],
+    expect(windowOf(born, 'born')).toEqual({
+      resolution: 'full',
+      min: '2020-06-15',
+      max: '2020-06-15',
     });
-    const unreachable: Stage = {
-      ...composerStage({
-        id: 'unreachable',
-        nodeFields: [
-          {
-            variable: 'born',
-            component: 'RelativeDatePicker',
-            parameters: { anchor: '2021-06-15', before: 0, after: 0 },
-          },
-        ],
-      }),
-      skipLogic: {
-        action: 'SKIP',
-        filter: {
-          rules: [
-            {
-              id: 'missing-consent',
-              type: 'ego',
-              options: {
-                attribute: asEntityAttributeReference('consent'),
-                operator: 'NOT_EXISTS',
-              },
-            },
-          ],
-        },
-      },
-    };
-
-    const { network } = generateNetwork({
-      codebook: codebookWith({}),
-      stages: [reachable, unreachable],
-      seed: 7,
-      config: { today: TODAY },
-      respectSkipLogicAndFiltering: true,
-    });
-
-    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
-      new Set(['2020-06-15']),
-    );
   });
 
   // An edge form's fields resolve against that edge entry's own subject, so the
   // overlay has to follow the same split rather than reading every field
   // against the stage subject.
-  it('draws an edge attribute inside the window its edge form validates', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({}),
-      stages: [
+  it('narrows an edge variable to the window its edge form validates', () => {
+    const { codebook: rendered, conflicts } = applyComposerRenderings(
+      codebookWith({}),
+      [
         composerStage({
           edgeFields: [
             {
@@ -258,168 +222,85 @@ describe('NetworkComposer field renderings', () => {
           ],
         }),
       ],
-      seed: 3,
-      // A composer's edges are sparse by default, so every pair is drawn here
-      // rather than hunting for a seed that produces one.
-      config: {
-        today: TODAY,
-        networkComposerEdgeProbability: { min: 1, max: 1 },
-      },
-    });
-
-    expect(network.edges.length).toBeGreaterThan(0);
-    expect(new Set(valuesOf(network.edges, 'since'))).toEqual(
-      new Set(['1990']),
+      TODAY,
     );
-  });
 
-  // The count has to read the same window the draw does, or feasibility spends
-  // values the generator cannot reach. A one-day window holds one value, and
-  // the stage can create more people than that.
-  it('counts a unique value space against the composer window', () => {
-    const generate = () =>
-      generateNetwork({
-        codebook: codebookWith({ nodeValidation: { unique: true } }),
-        stages: [
-          composerStage({
-            nodeFields: [
-              {
-                variable: 'born',
-                component: 'RelativeDatePicker',
-                parameters: { anchor: '2020-06-15', before: 0, after: 0 },
-              },
-            ],
-          }),
-        ],
-        seed: 11,
-        config: { today: TODAY },
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    try {
-      generate();
-    } catch (error) {
-      if (!(error instanceof SyntheticDataConstraintError)) throw error;
-      expect(error.conflicts).toHaveLength(1);
-      expect(error.conflicts[0]?.variableNames).toEqual(['Born']);
-      expect(error.conflicts[0]?.rules).toEqual(['unique']);
-      expect(error.conflicts[0]?.reason).toContain('only 1 distinct values');
-    }
+    expect(conflicts).toEqual([]);
+    const since = rendered.edge?.knows?.variables?.since;
+    if (since === undefined) throw new Error('no variable "since"');
+    expect(windowOf(since, 'since')).toEqual({
+      resolution: 'year',
+      min: '1990',
+      max: '1990',
+    });
+    // The node subject's own date variable is untouched by an edge form.
+    expect(rendered.node?.person?.variables?.born).toEqual(
+      codebookWith({}).node?.person?.variables?.born,
+    );
   });
 
   // The interview reads a field's parameters as `field.parameters ??
   // codebookEntry.parameters`, so a field that changes only the control renders
   // on the codebook's parameters — read through the new control, which consults
   // none of the keys a DatePicker writes. What the participant gets is the
-  // relative picker's own default window.
+  // relative picker's own default window: 180 days back from today, none
+  // forward.
   it('falls back to the codebook parameters through the composer control', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({
+    const born = renderedNodeVariable(
+      codebookWith({
         nodeParameters: { type: 'full', min: '1990-01-01', max: '1990-12-31' },
       }),
-      stages: [
+      [
         composerStage({
           nodeFields: [{ variable: 'born', component: 'RelativeDatePicker' }],
         }),
       ],
-      seed: 5,
-      config: { today: TODAY },
-    });
+      'born',
+    );
 
-    for (const value of valuesOf(network.nodes, 'born')) {
-      expect(typeof value).toBe('string');
-      // The RelativeDatePicker default span: 180 days back from today, none
-      // forward.
-      expect(String(value) >= '2026-01-28').toBe(true);
-      expect(String(value) <= TODAY).toBe(true);
-    }
+    expect(windowOf(born, 'born')).toEqual({
+      resolution: 'full',
+      min: '2026-01-28',
+      max: TODAY,
+    });
   });
 
-  // Only the two date pickers bound a value: `buildDatePickerBoundProps`
-  // returns nothing for any other control, so a composer rendering a date
-  // variable as text adds no bound and the codebook's window is still the one
+  // Only the two date pickers bound a value: a composer rendering a date
+  // variable as text adds no bound, so the codebook's window is still the one
   // the value has to satisfy.
   it('keeps the codebook window where the composer renders no date control', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({
-        nodeParameters: { type: 'year', min: '1990', max: '1990' },
-      }),
-      stages: [
+    const codebook = codebookWith({
+      nodeParameters: { type: 'year', min: '1990', max: '1990' },
+    });
+    const born = renderedNodeVariable(
+      codebook,
+      [
         composerStage({
           nodeFields: [{ variable: 'born', component: 'Text' }],
         }),
       ],
-      seed: 5,
-      config: { today: TODAY },
-    });
-
-    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(new Set(['1990']));
-  });
-
-  it('refuses disjoint ordinary-form and composer date windows', () => {
-    const generate = () =>
-      generateNetwork({
-        codebook: codebookWith({
-          nodeParameters: {
-            type: 'full',
-            min: '2000-01-01',
-            max: '2010-12-31',
-          },
-        }),
-        stages: [
-          alterFormStage('born'),
-          composerStage({
-            nodeFields: [
-              {
-                variable: 'born',
-                component: 'DatePicker',
-                parameters: {
-                  type: 'full',
-                  min: '2020-01-01',
-                  max: '2030-12-31',
-                },
-              },
-            ],
-          }),
-        ],
-        seed: 5,
-        config: { today: TODAY },
-      });
-
-    expect(generate).toThrow(
-      'this protocol renders one attribute with incompatible date controls',
+      'born',
     );
+
+    expect(born).toEqual(codebook.node?.person?.variables?.born);
+    expect(windowOf(born, 'born')).toEqual({
+      resolution: 'year',
+      min: '1990',
+      max: '1990',
+    });
   });
 
-  it('ignores an ordinary form proven unreachable when resolving composer controls', () => {
-    const unreachableOrdinaryForm: Stage = {
-      ...alterFormStage('born'),
-      skipLogic: {
-        action: 'SKIP',
-        filter: {
-          rules: [
-            {
-              id: 'missing-consent',
-              type: 'ego',
-              options: {
-                attribute: asEntityAttributeReference('consent'),
-                operator: 'NOT_EXISTS',
-              },
-            },
-          ],
-        },
-      },
-    };
-    const { network } = generateNetwork({
-      codebook: codebookWith({
+  it('reports disjoint ordinary-form and composer date windows as a conflict', () => {
+    const { conflicts } = applyComposerRenderings(
+      codebookWith({
         nodeParameters: {
           type: 'full',
           min: '2000-01-01',
           max: '2010-12-31',
         },
       }),
-      stages: [
-        unreachableOrdinaryForm,
+      [
+        alterFormStage('born'),
         composerStage({
           nodeFields: [
             {
@@ -428,91 +309,76 @@ describe('NetworkComposer field renderings', () => {
               parameters: {
                 type: 'full',
                 min: '2020-01-01',
-                max: '2020-01-01',
+                max: '2030-12-31',
               },
             },
           ],
         }),
       ],
-      seed: 5,
-      config: { today: TODAY },
-      respectSkipLogicAndFiltering: true,
-    });
-
-    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
-      new Set(['2020-01-01']),
+      TODAY,
     );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.variableNames).toEqual(['Born']);
+    expect(conflicts[0]?.reason).toBe(COMPOSER_RENDERING_CONFLICT.reason);
   });
 
-  it('intersects an ordinary Boolean field with a composer Toggle override', () => {
-    const values = new Set<VariableValue>();
-
-    for (let seed = 0; seed < 20; seed++) {
-      const { network } = generateNetwork({
-        codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
+  it('folds an ordinary Boolean field with a composer Toggle override to the choice control', () => {
+    const flag = renderedNodeVariable(
+      codebookWith({ booleanOptions: [{ label: 'Yes', value: true }] }),
+      [
+        alterFormStage('flag'),
+        composerStage({
+          nodeFields: [{ variable: 'flag', component: 'Toggle' }],
         }),
-        stages: [
-          alterFormStage('flag'),
-          composerStage({
-            nodeFields: [{ variable: 'flag', component: 'Toggle' }],
-          }),
-        ],
-        seed,
-        config: { today: TODAY },
-      });
-      for (const value of valuesOf(network.nodes, 'flag')) values.add(value);
-    }
+      ],
+      'flag',
+    );
 
-    expect(values).toEqual(new Set([true]));
+    // A Toggle always offers both values, so the Boolean choice control is the
+    // tighter domain and wins the merge; its options still offer only `true`.
+    expect('component' in flag && flag.component).toBe('Boolean');
+    expect('options' in flag && flag.options).toEqual([
+      { label: 'Yes', value: true },
+    ]);
   });
 
   // One stored value reaches every stage that renders it — a composer's canvas
   // lists every node of its subject type, whoever created it — so two stages
   // rendering one variable through disjoint windows is a contradiction, not a
   // choice to make quietly.
-  it('refuses two composer stages that render one variable differently', () => {
-    const generate = () =>
-      generateNetwork({
-        codebook: codebookWith({}),
-        stages: [
-          composerStage({
-            id: 'composer-1',
-            nodeFields: [
-              {
-                variable: 'born',
-                component: 'RelativeDatePicker',
-                parameters: { anchor: '2020-06-15', before: 0, after: 0 },
-              },
-            ],
-          }),
-          composerStage({
-            id: 'composer-2',
-            nodeFields: [
-              {
-                variable: 'born',
-                component: 'RelativeDatePicker',
-                parameters: { anchor: '2010-06-15', before: 0, after: 0 },
-              },
-            ],
-          }),
-        ],
-        seed: 11,
-        config: { today: TODAY },
-      });
-
-    expect(generate).toThrow(
-      'this protocol renders one attribute with incompatible date controls',
+  it('reports two composer stages that render one variable differently', () => {
+    const { conflicts } = applyComposerRenderings(
+      codebookWith({}),
+      [
+        composerStage({
+          id: 'composer-1',
+          nodeFields: [
+            {
+              variable: 'born',
+              component: 'RelativeDatePicker',
+              parameters: { anchor: '2020-06-15', before: 0, after: 0 },
+            },
+          ],
+        }),
+        composerStage({
+          id: 'composer-2',
+          nodeFields: [
+            {
+              variable: 'born',
+              component: 'RelativeDatePicker',
+              parameters: { anchor: '2010-06-15', before: 0, after: 0 },
+            },
+          ],
+        }),
+      ],
+      TODAY,
     );
-    try {
-      generate();
-    } catch (error) {
-      if (!(error instanceof SyntheticDataConstraintError)) throw error;
-      expect(error.conflicts).toHaveLength(1);
-      expect(error.conflicts[0]?.entity).toBe('node');
-      expect(error.conflicts[0]?.entityTypeName).toBe('Person');
-      expect(error.conflicts[0]?.variableNames).toEqual(['Born']);
-    }
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('node');
+    expect(conflicts[0]?.entityTypeName).toBe('Person');
+    expect(conflicts[0]?.variableNames).toEqual(['Born']);
   });
 
   // The other direction: two stages agreeing is the ordinary way to edit one
@@ -525,25 +391,26 @@ describe('NetworkComposer field renderings', () => {
       parameters: { anchor: '2020-06-15', before: 0, after: 0 },
     };
 
-    const { network } = generateNetwork({
-      codebook: codebookWith({}),
-      stages: [
+    const born = renderedNodeVariable(
+      codebookWith({}),
+      [
         composerStage({ id: 'composer-1', nodeFields: [field] }),
         composerStage({ id: 'composer-2', nodeFields: [field] }),
       ],
-      seed: 11,
-      config: { today: TODAY },
-    });
-
-    expect(new Set(valuesOf(network.nodes, 'born'))).toEqual(
-      new Set(['2020-06-15']),
+      'born',
     );
+
+    expect(windowOf(born, 'born')).toEqual({
+      resolution: 'full',
+      min: '2020-06-15',
+      max: '2020-06-15',
+    });
   });
 
   it('intersects overlapping composer date windows at the same resolution', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({}),
-      stages: [
+    const born = renderedNodeVariable(
+      codebookWith({}),
+      [
         composerStage({
           id: 'composer-1',
           nodeFields: [
@@ -573,72 +440,46 @@ describe('NetworkComposer field renderings', () => {
           ],
         }),
       ],
-      seed: 11,
-      config: { today: TODAY },
-    });
+      'born',
+    );
 
-    for (const value of valuesOf(network.nodes, 'born')) {
-      expect(String(value) >= '2010-01-01').toBe(true);
-      expect(String(value) <= '2020-12-31').toBe(true);
-    }
+    expect(windowOf(born, 'born')).toEqual({
+      resolution: 'full',
+      min: '2010-01-01',
+      max: '2020-12-31',
+    });
   });
 
-  it('draws only the values offered by a Boolean choice control', () => {
-    const { network } = generateNetwork({
-      codebook: codebookWith({
-        booleanOptions: [{ label: 'Yes', value: true }],
-      }),
-      stages: [
+  it('keeps a Boolean choice control and its offered options', () => {
+    const flag = renderedNodeVariable(
+      codebookWith({ booleanOptions: [{ label: 'Yes', value: true }] }),
+      [
         composerStage({
           nodeFields: [{ variable: 'flag', component: 'Boolean' }],
         }),
       ],
-      seed: 7,
-      config: { today: TODAY },
-    });
+      'flag',
+    );
 
-    expect(new Set(valuesOf(network.nodes, 'flag'))).toEqual(new Set([true]));
+    expect('component' in flag && flag.component).toBe('Boolean');
+    expect('options' in flag && flag.options).toEqual([
+      { label: 'Yes', value: true },
+    ]);
   });
 
-  it('uses the full Boolean pair when a composer overrides the choice control with Toggle', () => {
-    const values = new Set<VariableValue>();
-
-    for (let seed = 0; seed < 20; seed++) {
-      const { network } = generateNetwork({
-        codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
+  it('renders the full Boolean pair when a composer overrides the choice control with Toggle', () => {
+    const flag = renderedNodeVariable(
+      codebookWith({ booleanOptions: [{ label: 'Yes', value: true }] }),
+      [
+        composerStage({
+          nodeFields: [{ variable: 'flag', component: 'Toggle' }],
         }),
-        stages: [
-          composerStage({
-            nodeFields: [{ variable: 'flag', component: 'Toggle' }],
-          }),
-        ],
-        seed,
-        config: { today: TODAY },
-      });
-      for (const value of valuesOf(network.nodes, 'flag')) values.add(value);
-    }
+      ],
+      'flag',
+    );
 
-    expect(values).toEqual(new Set([false, true]));
-  });
-
-  it('counts Boolean choices when checking unique feasibility', () => {
-    const generate = () =>
-      generateNetwork({
-        codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
-          booleanValidation: { unique: true },
-        }),
-        stages: [
-          composerStage({
-            nodeFields: [{ variable: 'flag', component: 'Boolean' }],
-          }),
-        ],
-        seed: 7,
-        config: { today: TODAY },
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow('only 1 distinct values');
+    // The rendered control is the Toggle, whose domain is always both values
+    // whatever the choice options offered — which is what the draw reads.
+    expect('component' in flag && flag.component).toBe('Toggle');
   });
 });

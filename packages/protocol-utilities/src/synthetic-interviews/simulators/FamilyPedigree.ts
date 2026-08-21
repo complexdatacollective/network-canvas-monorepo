@@ -1,24 +1,23 @@
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isFamilyPedigreeStageMetadata,
 } from '@codaco/shared-consts';
 
-import { claimFixedValues as claimOldFixedValues } from '../../generateNetwork/attributes';
-import { resolveGenerationConfig } from '../../generateNetwork/config';
-import { buildEntityConstraints } from '../../generateNetwork/constraints/buildConstraints';
-import type { EntityConstraints } from '../../generateNetwork/constraints/types';
-import { UniqueRegistry as OldUniqueRegistry } from '../../generateNetwork/constraints/uniqueRegistry';
-import type {
-  GenerationContext as OldGenerationContext,
-  NetworkDraft,
-} from '../../generateNetwork/context';
-import { ValueGenerator as OldValueGenerator } from '../../ValueGenerator';
 import { claimFixedValues } from '../constraints/reservations';
+import { UniqueRegistry } from '../constraints/uniqueRegistry';
+import { ValueGenerator } from '../constraints/ValueGenerator';
 import { invariant } from '../utils/invariant';
+import type {
+  NetworkDraft,
+  PedigreeGenerationContext,
+} from './familyPedigree/context';
 import { materializeFamilyPedigree } from './familyPedigree/materializeFamilyPedigree';
-import { resolveFamilyPedigreeGenerationOptions } from './familyPedigree/referencePopulation';
+import {
+  DEFAULT_FAMILY_PEDIGREE_MAX_NODES,
+  resolveFamilyPedigreeGenerationOptions,
+} from './familyPedigree/referencePopulation';
 import { reserveFamilyPedigreeFixedValues } from './familyPedigree/reservations';
 import { familyPedigreeSeed } from './familyPedigree/seed';
 import { currentStepOf } from './shared/stageContext';
@@ -36,56 +35,35 @@ type FamilyPedigreeStage = Extract<Stage, { type: 'FamilyPedigree' }>;
 const SEED_WIDTH = 0x100000000;
 
 /**
- * The pedigree's own generator, in the shape it was written against.
+ * The pedigree's own generation context, in the shape it was written against.
  *
  * `materializeFamilyPedigree` is the module that already knows how families are
  * shaped — which relatives a scenario implies, which lineages a dominant
  * inheritance pattern touches, which edges carry which gamete role — and its
  * internal logic is treated as correct rather than rewritten (this is the one
- * simulator that WRAPS an existing generator instead of replacing it). It reads
- * a `GenerationContext` from the engine it was born in, so one is assembled for
- * it here.
+ * simulator that WRAPS an existing generator instead of replacing it). Its
+ * draws run through the session's own constraint machinery — the same analysis
+ * every other simulator draws against, read from the session's cache.
  *
- * What that context deliberately does NOT share with the session is the unique
- * registry and the constraint analysis: those are classes of the older engine,
- * and structurally distinct from the session's own. The two are reconciled
- * around the call instead — every `unique` value the network already holds is
- * claimed into the pedigree's registry before it draws, and every value the
- * pedigree wrote is claimed into the session's afterwards — so neither side can
- * issue a value the other already used.
+ * What the context deliberately does NOT share with the session is the unique
+ * registry: the pedigree reserves values for slots it may write itself
+ * (`reserveFamilyPedigreeFixedValues`), and those internal holds must die with
+ * the stage rather than narrow every later draw in the session. The two
+ * registries are reconciled around the call instead — every `unique` value the
+ * network already holds is claimed into the pedigree's registry before it
+ * draws, and every value the pedigree wrote is claimed into the session's
+ * afterwards — so neither side can issue a value the other already used.
  */
 const pedigreeGenerationContext = (
   context: SimulationContext,
   familySeed: number,
-): OldGenerationContext => {
-  const codebook: StructuralCodebook = context.protocol.codebook;
-  const config = resolveGenerationConfig({ today: context.today });
-
-  const constraintsByType = (
-    definitions: StructuralCodebook['node'] | StructuralCodebook['edge'],
-  ): Map<string, EntityConstraints> =>
-    new Map(
-      Object.entries(definitions ?? {}).map(([type, definition]) => [
-        type,
-        buildEntityConstraints(definition.variables, context.today),
-      ]),
-    );
-
-  return {
-    codebook,
-    valueGen: new OldValueGenerator(familySeed, context.today),
-    config,
-    usedRosterUids: new Set<string>(),
-    externalData: undefined,
-    respectSkipLogicAndFiltering: true,
-    uniqueRegistry: new OldUniqueRegistry(),
-    entityConstraints: {
-      ego: buildEntityConstraints(codebook.ego?.variables, context.today),
-      node: constraintsByType(codebook.node),
-      edge: constraintsByType(codebook.edge),
-    },
-  };
-};
+): PedigreeGenerationContext => ({
+  codebook: context.protocol.codebook,
+  valueGen: new ValueGenerator(familySeed, context.today),
+  today: context.today,
+  uniqueRegistry: new UniqueRegistry(),
+  entityConstraints: context.entityConstraints,
+});
 
 /** A scratch network the wrapped generator can write into. */
 const scratchDraft = (context: SimulationContext): NetworkDraft => {
@@ -141,7 +119,7 @@ export const simulateFamilyPedigree: StageSimulator<FamilyPedigreeStage> = (
   );
   const options = resolveFamilyPedigreeGenerationOptions(
     context.familyPedigree,
-    resolveGenerationConfig().familyPedigreeNodeCount.max,
+    DEFAULT_FAMILY_PEDIGREE_MAX_NODES,
   );
 
   const generation = pedigreeGenerationContext(context, familySeed);
@@ -150,14 +128,14 @@ export const simulateFamilyPedigree: StageSimulator<FamilyPedigreeStage> = (
   // not issue again, and it keeps its own books — so they are claimed into them
   // before it draws.
   for (const node of engine.draft.network.nodes) {
-    claimOldFixedValues(
+    claimFixedValues(
       generation,
       { entity: 'node', type: node.type },
       node[entityAttributesProperty],
     );
   }
   for (const edge of engine.draft.network.edges) {
-    claimOldFixedValues(
+    claimFixedValues(
       generation,
       { entity: 'edge', type: edge.type },
       edge[entityAttributesProperty],

@@ -1,6 +1,6 @@
 import type { BiologicalSex, InheritancePattern } from '@codaco/shared-consts';
 
-import type { ValueGenerator } from '../../../ValueGenerator';
+import type { ValueGenerator } from '../../constraints/ValueGenerator';
 import type {
   FamilyPedigreePlan,
   FamilyPedigreeWeightedCount,
@@ -186,20 +186,6 @@ function familyPedigreeBranchOutcomes(
   }
 
   return outcomes;
-}
-
-/** Whether any resolved plan can fit a partner and at least one ego child. */
-export function canAttainFamilyPedigreeEgoChildBranch(
-  options: ResolvedFamilyPedigreeGenerationOptions,
-  requiresMaleSibling: boolean,
-): boolean {
-  return familyPedigreeBranchOutcomes(
-    options,
-    sampledCountSupport(options.population.completedFamilySize, true),
-    sampledCountSupport(options.population.completedFamilySize, false),
-    requiresMaleSibling,
-    false,
-  ).some(({ hasEgoChildren }) => hasEgoChildren);
 }
 
 function sexFor(valueGen: ValueGenerator, femaleProbability: number) {

@@ -10,22 +10,21 @@ import {
   scopeKey,
   uniqueSlotMembers,
   type EntityScopeRef,
-} from '../../../generateNetwork/constraints/generateEntityAttributes';
-import type { GenerationContext } from '../../../generateNetwork/context';
+} from '../../constraints/generateEntityAttributes';
+import type { PedigreeGenerationContext } from './context';
 import { storedPedigreeOptionValue } from './semanticValues';
 import { PEDIGREE_RELATIONSHIP_TO_EGO_VALUES } from './types';
 
 function reserveWrittenValue(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   ref: Extract<EntityScopeRef, { entity: 'node' | 'edge' }>,
   variableId: string,
   value: VariableValue,
 ): void {
-  const entity = ctx.entityConstraints[ref.entity].get(ref.type);
-  if (entity === undefined) return;
-
   const registry = scopeKey(ref);
-  for (const [slot, memberIds] of uniqueSlotMembers(entity)) {
+  for (const [slot, memberIds] of uniqueSlotMembers(
+    ctx.entityConstraints.forScope(ref),
+  )) {
     if (memberIds.includes(variableId)) {
       ctx.uniqueRegistry.reserve(registry, slot, value);
     }
@@ -34,7 +33,7 @@ function reserveWrittenValue(
 
 /** Hold all values the isolated pedigree materializer may write itself. */
 export function reserveFamilyPedigreeFixedValues(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   stages: readonly Stage[],
 ): void {
   for (const stage of stages) {

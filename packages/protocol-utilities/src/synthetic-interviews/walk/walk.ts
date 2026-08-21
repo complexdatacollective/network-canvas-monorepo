@@ -9,6 +9,7 @@ import type {
 } from '../simulators/types';
 import { invariant } from '../utils/invariant';
 import { determineDropout } from './dropout';
+import type { OverridesApplier } from './overrides';
 import { nextStageIndex } from './route';
 
 /**
@@ -59,6 +60,7 @@ export const walkSession = ({
   respectSkipLogic,
   simulateDropOut,
   stopAt,
+  overrides,
 }: {
   stages: readonly Stage[];
   registry: SimulatorRegistry;
@@ -68,6 +70,12 @@ export const walkSession = ({
   respectSkipLogic: boolean;
   simulateDropOut: boolean;
   stopAt?: { stageIndex: number; promptIndex?: number };
+  /**
+   * The fixture channel (see `walk/overrides.ts`): a stage the applier claims
+   * is not simulated — its predetermined entries are its output. The clock,
+   * the route, and dropout treat it exactly like any other completed stage.
+   */
+  overrides?: OverridesApplier;
 }): WalkOutcome => {
   const { engine } = context;
   const completedStages: Stage[] = [];
@@ -94,14 +102,16 @@ export const walkSession = ({
     // never ran — coarse, but a preview's timestamps are never read.
     if (!atStopStage) clock.advanceThroughStage(burdenOf(stage));
 
-    const simulate = registry[stage.type] as StageSimulator | undefined;
-    invariant(
-      simulate,
-      `no simulator for stage type "${stage.type}" — a stage the walk cannot ` +
-        'express must fail loudly rather than fall through as a second model ' +
-        'of stage behaviour',
-    );
-    simulate(stage, context, promptBound);
+    if (!overrides?.applyStage(stage, promptBound)) {
+      const simulate = registry[stage.type] as StageSimulator | undefined;
+      invariant(
+        simulate,
+        `no simulator for stage type "${stage.type}" — a stage the walk cannot ` +
+          'express must fail loudly rather than fall through as a second model ' +
+          'of stage behaviour',
+      );
+      simulate(stage, context, promptBound);
+    }
 
     if (atStopStage) {
       // Arrived and (partially) worked, never left: no transition, no

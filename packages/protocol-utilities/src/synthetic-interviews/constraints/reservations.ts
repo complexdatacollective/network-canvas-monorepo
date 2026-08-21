@@ -180,6 +180,41 @@ export const claimFixedValues = (
 };
 
 /**
+ * Replaces fixed values on an entity that already contributed to the registry.
+ * Unlike {@link claimFixedValues}, this releases the affected slot's previous
+ * value before claiming the replacement, so normalising an inherited entity —
+ * a pedigree re-stating an earlier pedigree's member — does not leave a value
+ * it no longer holds unavailable to later draws.
+ */
+export const replaceFixedValues = (
+  { entityConstraints, uniqueRegistry }: SessionHandles,
+  scope: EntityScopeRef,
+  previous: Readonly<Record<string, VariableValue>>,
+  fixed: Readonly<Record<string, VariableValue>>,
+): void => {
+  const registry = scopeKey(scope);
+
+  for (const [slot, memberIds] of uniqueSlotMembers(
+    entityConstraints.forScope(scope),
+  )) {
+    if (!memberIds.some((id) => id in fixed)) continue;
+
+    for (const id of memberIds) {
+      const value = previous[id];
+      if (value !== undefined && value !== null) {
+        uniqueRegistry.release(registry, slot, value);
+      }
+    }
+    for (const id of memberIds) {
+      const value = fixed[id];
+      if (value !== undefined && value !== null) {
+        uniqueRegistry.claim(registry, slot, value);
+      }
+    }
+  }
+};
+
+/**
  * Holds back every `unique` value a prompt's `additionalAttributes` will fix,
  * for the whole session and before any stage draws.
  *

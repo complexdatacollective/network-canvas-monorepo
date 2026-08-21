@@ -749,7 +749,7 @@ describe('PreviewHost', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Person: Pick/)).toBeInTheDocument();
     expect(
-      screen.getByText(/no value satisfies these rules/i),
+      screen.getByText(/only 2 distinct values are possible/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /try again/i }),
@@ -792,7 +792,9 @@ describe('PreviewHost', () => {
     expect(
       screen.queryByText(/protocol can't be previewed/i),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/no value satisfies these rules/i)).toBeNull();
+    expect(
+      screen.queryByText(/only 2 distinct values are possible/i),
+    ).toBeNull();
     expect(
       screen.getByRole('button', { name: /try again/i }),
     ).toBeInTheDocument();
@@ -815,7 +817,7 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/no value satisfies these rules/i),
+      screen.getByText(/only 2 distinct values are possible/i),
     ).toBeInTheDocument();
     // The generic screen's retry can only fail the same way here, so no part of
     // it may survive alongside the conflict list.
@@ -895,7 +897,7 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/no value satisfies these rules/i),
+      screen.getByText(/only 2 distinct values are possible/i),
     ).toBeInTheDocument();
     // Architect answered, so blaming the connection hides the rules the user
     // can actually correct.

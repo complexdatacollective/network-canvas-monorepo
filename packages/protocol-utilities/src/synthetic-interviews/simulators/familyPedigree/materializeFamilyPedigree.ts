@@ -12,26 +12,26 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { SyntheticDataConstraintError } from '../../constraints/error';
+import { ruleBrokenByFixedValues } from '../../constraints/fixedValueRules';
+import type { EntityScopeRef } from '../../constraints/generateEntityAttributes';
 import {
   claimFixedValues,
-  generateAttributesForEntity,
   replaceFixedValues,
-} from '../../../generateNetwork/attributes';
-import { SyntheticDataConstraintError } from '../../../generateNetwork/constraints/error';
-import type { EntityScopeRef } from '../../../generateNetwork/constraints/generateEntityAttributes';
+} from '../../constraints/reservations';
+import { ValueGenerator } from '../../constraints/ValueGenerator';
+import {
+  generateAttributesForEntity,
+  type NetworkDraft,
+  type PedigreeGenerationContext,
+  type StageOfType,
+} from './context';
+import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
 import {
   pedigreeDrawnNodeVariables,
   pedigreeEgoNodeVariables,
   withRuleTiedVariables,
-} from '../../../generateNetwork/constraints/stageWrites';
-import type {
-  GenerationContext,
-  NetworkDraft,
-  StageOfType,
-} from '../../../generateNetwork/context';
-import { ruleBrokenByFixedValues } from '../../../generateNetwork/nodes';
-import { ValueGenerator } from '../../../ValueGenerator';
-import { generateFamilyPedigreePlan } from './generateFamilyPedigree';
+} from './pedigreeWrites';
 import {
   readPedigreeOptionValue,
   storedPedigreeOptionValue,
@@ -44,7 +44,7 @@ import type {
 } from './types';
 
 function diseasesForStage(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   stage: StageOfType<'FamilyPedigree'>,
   stages: readonly Stage[],
 ): PedigreeDisease[] {
@@ -113,7 +113,7 @@ function diseasesForStage(
 }
 
 function variableName(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   ref: EntityScopeRef,
   variableId: string,
 ): string {
@@ -127,15 +127,14 @@ function variableName(
 }
 
 function assertFixedValuesAccepted(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   ref: EntityScopeRef,
   fixed: Record<string, VariableValue>,
 ): void {
-  const constraints =
-    ref.entity === 'ego'
-      ? ctx.entityConstraints.ego
-      : (ctx.entityConstraints[ref.entity].get(ref.type) ?? new Map());
-  const broken = ruleBrokenByFixedValues(constraints, fixed);
+  const broken = ruleBrokenByFixedValues(
+    ctx.entityConstraints.forScope(ref),
+    fixed,
+  );
   if (!broken) return;
 
   throw new SyntheticDataConstraintError(
@@ -409,7 +408,7 @@ function inheritedContributorAncestry(
 }
 
 export function materializeFamilyPedigree(
-  ctx: GenerationContext,
+  ctx: PedigreeGenerationContext,
   draft: NetworkDraft,
   stage: StageOfType<'FamilyPedigree'>,
   stageIndex: number,
@@ -425,12 +424,12 @@ export function materializeFamilyPedigree(
   if (!nodeType) return;
   const diseases = diseasesForStage(ctx, stage, diseaseStages);
 
-  const familyCtx: GenerationContext = {
+  const familyCtx: PedigreeGenerationContext = {
     ...ctx,
     // Topology, family-specific attributes, and names live on a dedicated
     // seeded stream. Changing a pedigree cannot move the random stream used by
     // any other stage, and adding an earlier ordinary stage cannot reshape it.
-    valueGen: new ValueGenerator(familySeed, ctx.config.today),
+    valueGen: new ValueGenerator(familySeed, ctx.today),
   };
   const nodeScope: EntityScopeRef = { entity: 'node', type: nodeType };
   // The live interface seeds every existing node of its configured type into

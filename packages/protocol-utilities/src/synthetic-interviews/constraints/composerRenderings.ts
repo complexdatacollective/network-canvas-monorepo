@@ -68,8 +68,7 @@ export type ComposerRenderingDisagreement = {
 
 /**
  * How a disagreement reads to whoever configured the protocol, in one place so
- * that the two entry points into this machinery — `generateNetwork` and
- * `SyntheticInterview` — refuse it in the same words.
+ * that every entry point into this machinery refuses it in the same words.
  */
 export const COMPOSER_RENDERING_CONFLICT = {
   summary:
@@ -356,7 +355,7 @@ function mergedRendering(
  * `parametersOf` supplies the codebook variable's own parameters, which a field
  * declaring none reads through its chosen control.
  */
-export function resolveComposerRenderings(
+function resolveComposerRenderings(
   fields: readonly ComposerField[],
   parametersOf: (field: ComposerField) => Record<string, unknown> | undefined,
   today: string,

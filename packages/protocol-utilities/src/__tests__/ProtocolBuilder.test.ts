@@ -5,23 +5,25 @@ import {
   NcNetworkSchema,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { SyntheticDataConstraintError } from '../generateNetwork/constraints/error';
-import {
-  DEFAULT_SYNTHETIC_SEED,
-  SyntheticInterview,
-} from '../SyntheticInterview';
+import { ProtocolBuilder } from '../ProtocolBuilder';
+import { generateInterviews } from '../synthetic-interviews';
+import { DEFAULT_SYNTHETIC_SEED } from '../synthetic-interviews/constants';
+import { SyntheticDataConstraintError } from '../synthetic-interviews/constraints/error';
 
-describe('SyntheticInterview', () => {
+describe('ProtocolBuilder', () => {
   describe('determinism', () => {
     it('uses the shared synthetic seed by default', () => {
-      const implicit = new SyntheticInterview();
-      const explicit = new SyntheticInterview(DEFAULT_SYNTHETIC_SEED);
+      const implicit = new ProtocolBuilder();
+      const explicit = new ProtocolBuilder(DEFAULT_SYNTHETIC_SEED);
 
-      implicit.addStage('Sociogram', { initialNodes: { count: 5 } });
-      explicit.addStage('Sociogram', { initialNodes: { count: 5 } });
+      implicit
+        .addStage('Sociogram', { initialNodes: { count: 5 } })
+        .addPrompt();
+      explicit
+        .addStage('Sociogram', { initialNodes: { count: 5 } })
+        .addPrompt();
 
       expect(implicit.getInterviewPayload()).toEqual(
         explicit.getInterviewPayload(),
@@ -29,8 +31,8 @@ describe('SyntheticInterview', () => {
     });
 
     it('produces identical protocol output for the same seed', () => {
-      const a = new SyntheticInterview(42);
-      const b = new SyntheticInterview(42);
+      const a = new ProtocolBuilder(42);
+      const b = new ProtocolBuilder(42);
 
       a.addStage('Sociogram');
       b.addStage('Sociogram');
@@ -39,8 +41,8 @@ describe('SyntheticInterview', () => {
     });
 
     it('produces identical network output for the same seed', () => {
-      const a = new SyntheticInterview(42);
-      const b = new SyntheticInterview(42);
+      const a = new ProtocolBuilder(42);
+      const b = new ProtocolBuilder(42);
 
       const stageA = a.addStage('Sociogram', { initialNodes: { count: 5 } });
       stageA.addPrompt();
@@ -54,11 +56,11 @@ describe('SyntheticInterview', () => {
     });
 
     it('produces different output for different seeds', () => {
-      const a = new SyntheticInterview(1);
-      const b = new SyntheticInterview(2);
+      const a = new ProtocolBuilder(1);
+      const b = new ProtocolBuilder(2);
 
-      a.addStage('Sociogram', { initialNodes: { count: 3 } });
-      b.addStage('Sociogram', { initialNodes: { count: 3 } });
+      a.addStage('Sociogram', { initialNodes: { count: 3 } }).addPrompt();
+      b.addStage('Sociogram', { initialNodes: { count: 3 } }).addPrompt();
 
       expect(a.getProtocol().id).not.toBe(b.getProtocol().id);
 
@@ -72,7 +74,7 @@ describe('SyntheticInterview', () => {
 
   describe('auto-creation', () => {
     it('auto-creates node type when adding a stage without subject', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Sociogram');
 
       const protocol = si.getProtocol();
@@ -81,7 +83,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('reuses existing node type for subsequent stages', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Sociogram');
       si.addStage('Narrative');
 
@@ -91,7 +93,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('auto-creates layout variable for Sociogram prompt', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('Sociogram');
       stage.addPrompt();
 
@@ -109,7 +111,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('auto-creates edge type for Sociogram prompt with edges.create=true', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('Sociogram');
       stage.addPrompt({ edges: { create: true } });
 
@@ -119,7 +121,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('auto-creates boolean variable for highlight=true', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('Sociogram');
       stage.addPrompt({ highlight: { variable: true } });
 
@@ -139,7 +141,7 @@ describe('SyntheticInterview', () => {
 
   describe('manual codebook', () => {
     it('creates node type with custom name and color', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const handle = si.addNodeType({
         name: 'Organization',
         color: 'node-color-seq-3',
@@ -155,7 +157,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('adds variables to node type', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const varRef = nt.addVariable({ type: 'number', name: 'Age' });
 
@@ -171,7 +173,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('infers variable type from component', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const varRef = nt.addVariable({ component: 'RadioGroup' });
 
@@ -186,7 +188,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('auto-generates options for categorical variables', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const varRef = nt.addVariable({ component: 'CheckboxGroup' });
 
@@ -203,7 +205,7 @@ describe('SyntheticInterview', () => {
 
   describe('NameGenerator', () => {
     it('creates form fields that auto-create variables', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('NameGenerator', {
         form: {
           fields: [{ component: 'Text' }, { component: 'Number' }],
@@ -240,7 +242,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('supports addFormField on stage handle', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGenerator');
       stage.addFormField({ component: 'RadioGroup' });
 
@@ -261,7 +263,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('supports prompts and panels', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGenerator');
       stage.addPrompt({ text: 'Name your friends' });
       stage.addPanel({ title: 'Previous contacts' });
@@ -277,8 +279,12 @@ describe('SyntheticInterview', () => {
     });
 
     it('generates initial nodes', () => {
-      const si = new SyntheticInterview();
-      si.addStage('NameGenerator', { initialNodes: { count: 5 } });
+      const si = new ProtocolBuilder();
+      const stage = si.addStage('NameGenerator', {
+        initialNodes: { count: 5 },
+        form: { fields: [{ component: 'Text' }] },
+      });
+      stage.addPrompt();
 
       const network = si.getNetwork();
       expect(network.nodes).toHaveLength(5);
@@ -287,7 +293,7 @@ describe('SyntheticInterview', () => {
 
   describe('Sociogram', () => {
     it('creates prompts with layout, edges, and highlight', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('Sociogram');
       stage.addPrompt({
         text: 'Place people',
@@ -314,7 +320,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('creates Sociogram with background options', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Sociogram', {
         background: { concentricCircles: 4, skewedTowardCenter: true },
       });
@@ -327,7 +333,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('creates Sociogram with automatic layout', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Sociogram', {
         behaviours: { automaticLayout: true },
       });
@@ -341,7 +347,7 @@ describe('SyntheticInterview', () => {
 
   describe('Narrative', () => {
     it('creates presets with all options auto-created', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('Narrative');
       stage.addPreset({
         label: 'Full View',
@@ -367,7 +373,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('creates presets with explicit edge display', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const et = si.addEdgeType({ name: 'Friendship' });
       const stage = si.addStage('Narrative');
       stage.addPreset({
@@ -383,7 +389,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('supports behaviours (freeDraw, allowRepositioning)', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Narrative', {
         behaviours: { freeDraw: true, allowRepositioning: true },
       });
@@ -396,7 +402,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('creates Narrative with an image background', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Narrative', {
         background: { image: 'narrative-background' },
       });
@@ -410,8 +416,8 @@ describe('SyntheticInterview', () => {
   });
 
   describe('node attributes (deferred fill)', () => {
-    it('fills all codebook variables on nodes at getNetwork time', () => {
-      const si = new SyntheticInterview();
+    it('fills all codebook variables on nodes at payload time', () => {
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       nt.addVariable({ type: 'number', name: 'Age' });
       nt.addVariable({ type: 'boolean', name: 'Active' });
@@ -419,7 +425,7 @@ describe('SyntheticInterview', () => {
       si.addStage('Sociogram', {
         initialNodes: { count: 3 },
         subject: { entity: 'node', type: nt.id },
-      });
+      }).addPrompt();
 
       const network = si.getNetwork();
       for (const node of network.nodes) {
@@ -430,7 +436,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('fills variables added after addStage', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const stage = si.addStage('Sociogram', {
         initialNodes: { count: 3 },
@@ -453,7 +459,7 @@ describe('SyntheticInterview', () => {
 
   describe('manual nodes', () => {
     it('defaults unset attributes on manual nodes to neutral values instead of randomising', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const isEgo = nt.addVariable({ type: 'boolean', name: 'isEgo' });
       const affected = nt.addVariable({
@@ -483,6 +489,7 @@ describe('SyntheticInterview', () => {
       const stage = si.addStage('Narrative', {
         subject: { entity: 'node', type: nt.id },
       });
+      stage.addPreset();
       si.addManualNode(stage.id, nt.id, 'person-1', {
         [isEgo.id]: true,
         [score.id]: null,
@@ -506,7 +513,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('rejects malformed defined attributes on manual nodes', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const flag = nt.addVariable({ type: 'boolean', name: 'flag' });
       const stage = si.addStage('Narrative', {
@@ -521,44 +528,26 @@ describe('SyntheticInterview', () => {
     });
 
     it('still randomises unset attributes on procedurally-generated nodes', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const label = nt.addVariable({ type: 'text', name: 'label' });
 
-      si.addStage('Narrative', {
+      const stage = si.addStage('Narrative', {
         initialNodes: { count: 1 },
         subject: { entity: 'node', type: nt.id },
       });
+      stage.addPreset();
 
       const node = si.getNetwork().nodes[0]!;
       const value = node[entityAttributesProperty][label.id];
       expect(typeof value).toBe('string');
       expect(value).not.toBe('');
     });
-
-    it('omits an attribute whose variable has no drawable value', () => {
-      const si = new SyntheticInterview();
-      const nt = si.addNodeType();
-      const unanswered = nt.addVariable({
-        type: 'ordinal',
-        name: 'Unanswered',
-        options: [],
-      });
-
-      si.addStage('Narrative', {
-        initialNodes: { count: 1 },
-        subject: { entity: 'node', type: nt.id },
-      });
-
-      expect(
-        si.getNetwork().nodes[0]![entityAttributesProperty],
-      ).not.toHaveProperty(unanswered.id);
-    });
   });
 
   describe('edge generation', () => {
     it('creates edges between initial nodes', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addEdgeType({ name: 'Friendship' });
       si.addStage('Sociogram', {
         initialNodes: { count: 5 },
@@ -567,7 +556,7 @@ describe('SyntheticInterview', () => {
           [1, 2],
           [2, 3],
         ],
-      });
+      }).addPrompt();
 
       const network = si.getNetwork();
       expect(network.edges).toHaveLength(3);
@@ -585,24 +574,32 @@ describe('SyntheticInterview', () => {
 
   describe('getInterviewPayload', () => {
     it('returns interview payload matching expected shape', () => {
-      const si = new SyntheticInterview();
-      si.addStage('Sociogram', { initialNodes: { count: 3 } });
+      const si = new ProtocolBuilder();
+      si.addStage('Sociogram', { initialNodes: { count: 3 } }).addPrompt();
 
       const payload = si.getInterviewPayload();
 
       expect(payload.network.nodes).toHaveLength(3);
       expect(payload.protocol.codebook).toBeDefined();
       expect(payload.protocol.name).toBe('Synthetic Protocol');
-      expect(payload.startTime).toBeInstanceOf(Date);
+      // The engine's timestamps, as ISO strings end to end (plan D12).
+      expect(payload.startTime).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(payload.lastUpdated).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(typeof payload.protocol.importedAt).toBe('string');
+      expect(payload.exportTime).toBeNull();
+      expect(payload.currentStep).toBe(0);
       expect(payload.stageMetadata).toBeNull();
     });
   });
 
   describe('cross-stage nodes', () => {
     it('nodes from earlier stages are in the network for later stages', () => {
-      const si = new SyntheticInterview();
-      si.addStage('NameGenerator', { initialNodes: { count: 3 } });
-      si.addStage('Sociogram', { initialNodes: { count: 2 } });
+      const si = new ProtocolBuilder();
+      si.addStage('NameGenerator', {
+        initialNodes: { count: 3 },
+        form: { fields: [{ component: 'Text' }] },
+      }).addPrompt();
+      si.addStage('Sociogram', { initialNodes: { count: 2 } }).addPrompt();
 
       const network = si.getNetwork();
       expect(network.nodes).toHaveLength(5);
@@ -611,9 +608,10 @@ describe('SyntheticInterview', () => {
 
   describe('initialNodes promptIndex assignment', () => {
     it('assigns initial nodes to the prompt at the given index', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGenerator', {
         initialNodes: { count: 3, promptIndex: 0 },
+        form: { fields: [{ component: 'Text' }] },
       });
       stage.addPrompt({ text: 'Prompt 1' });
       stage.addPrompt({ text: 'Prompt 2' });
@@ -630,9 +628,10 @@ describe('SyntheticInterview', () => {
     });
 
     it('leaves promptIDs empty when no promptIndex is provided', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGenerator', {
         initialNodes: { count: 2 },
+        form: { fields: [{ component: 'Text' }] },
       });
       stage.addPrompt();
 
@@ -643,9 +642,10 @@ describe('SyntheticInterview', () => {
     });
 
     it('throws when promptIndex resolves to a non-existent prompt', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGenerator', {
         initialNodes: { count: 1, promptIndex: 5 },
+        form: { fields: [{ component: 'Text' }] },
       });
       stage.addPrompt({ text: 'Only prompt' });
 
@@ -655,7 +655,7 @@ describe('SyntheticInterview', () => {
 
   describe('NameGeneratorQuickAdd', () => {
     it('creates stage with quickAdd field', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGeneratorQuickAdd');
       stage.addPrompt({ text: 'Name your friends' });
 
@@ -669,7 +669,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('supports panels', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGeneratorQuickAdd');
       stage.addPrompt();
       stage.addPanel({ title: 'Existing' });
@@ -684,7 +684,7 @@ describe('SyntheticInterview', () => {
 
   describe('NameGeneratorRoster', () => {
     it('creates stage with dataSource and card/sort/search options', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NameGeneratorRoster', {
         dataSource: 'externalData',
         cardOptions: {
@@ -713,7 +713,7 @@ describe('SyntheticInterview', () => {
 
   describe('TieStrengthCensus', () => {
     it('creates stage with edge variable on prompt', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const et = si.addEdgeType({ name: 'Friendship' });
       const varRef = et.addVariable({
         type: 'ordinal',
@@ -749,7 +749,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('auto-creates edge type and variable when none provided', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('TieStrengthCensus', {
         initialNodes: { count: 3 },
       });
@@ -769,7 +769,7 @@ describe('SyntheticInterview', () => {
 
   describe('AlterForm', () => {
     it('creates stage with form fields for node attributes', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('AlterForm', {
         initialNodes: { count: 3 },
         introductionPanel: { title: 'About each person' },
@@ -791,7 +791,7 @@ describe('SyntheticInterview', () => {
 
   describe('AlterEdgeForm', () => {
     it('creates stage with edge subject and form fields', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType();
       const et = si.addEdgeType({ name: 'Friendship' });
 
@@ -836,7 +836,7 @@ describe('SyntheticInterview', () => {
 
   describe('Anonymisation', () => {
     it('creates subjectless stage with explanationText', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Anonymisation', {
         explanationText: {
           title: 'Protect Your Data',
@@ -858,7 +858,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('provides default explanationText', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       si.addStage('Anonymisation');
 
       const protocol = si.getProtocol();
@@ -874,7 +874,7 @@ describe('SyntheticInterview', () => {
 
   describe('FamilyPedigree', () => {
     it('creates stage with new config structure', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const nt = si.addNodeType({ name: 'Person' });
       const et = si.addEdgeType({ name: 'Family' });
       const relVar = et.addVariable({
@@ -963,7 +963,7 @@ describe('SyntheticInterview', () => {
 
   describe('edge variable codebook serialization', () => {
     it('serializes edge type variables in codebook', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const et = si.addEdgeType({ name: 'Friendship' });
       et.addVariable({
         type: 'ordinal',
@@ -994,7 +994,7 @@ describe('SyntheticInterview', () => {
 
   describe('setEdgeAttribute', () => {
     it('sets explicit attribute values on edges', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const et = si.addEdgeType({ name: 'Friendship' });
       const varRef = et.addVariable({
         type: 'ordinal',
@@ -1005,7 +1005,10 @@ describe('SyntheticInterview', () => {
         ],
       });
 
-      si.addStage('NameGenerator', { initialNodes: { count: 3 } });
+      si.addStage('NameGenerator', {
+        initialNodes: { count: 3 },
+        form: { fields: [{ component: 'Text' }] },
+      }).addPrompt();
       si.addEdges(
         [
           [0, 1],
@@ -1023,12 +1026,12 @@ describe('SyntheticInterview', () => {
     });
 
     it('throws for out-of-range edge index', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       expect(() => si.setEdgeAttribute(0, 'var', 1)).toThrow(/out of range/);
     });
 
     it('keeps explicitly unset node and edge variables absent', () => {
-      const si = new SyntheticInterview(21);
+      const si = new ProtocolBuilder(21);
       const nt = si.addNodeType({ name: 'Person' });
       const nodeVariable = nt.addVariable({ type: 'boolean', name: 'Flag' });
       const et = si.addEdgeType({ name: 'Friendship' });
@@ -1037,7 +1040,8 @@ describe('SyntheticInterview', () => {
       si.addStage('NameGenerator', {
         subject: { entity: 'node', type: nt.id },
         initialNodes: { count: 2 },
-      });
+        form: { fields: [{ component: 'Text' }] },
+      }).addPrompt();
       si.addEdges([[0, 1]], et.id);
       si.unsetNodeAttribute(0, nodeVariable.id);
       si.unsetEdgeAttribute(0, edgeVariable.id);
@@ -1052,7 +1056,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('rejects malformed defined attributes on manual edges', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const et = si.addEdgeType({ name: 'Friendship' });
       const flag = et.addVariable({ type: 'boolean', name: 'Flag' });
 
@@ -1066,8 +1070,8 @@ describe('SyntheticInterview', () => {
 
   describe('stageMetadata passthrough', () => {
     it('passes stageMetadata through to interview payload', () => {
-      const si = new SyntheticInterview();
-      si.addStage('FamilyPedigree', { initialNodes: { count: 2 } });
+      const si = new ProtocolBuilder();
+      si.addInformationStage({ title: 'Welcome', text: 'Hello.' });
 
       const metadata = {
         1: { hasSeenScaffoldPrompt: true, nodes: [] },
@@ -1079,12 +1083,13 @@ describe('SyntheticInterview', () => {
       });
 
       expect(payload.stageMetadata).toEqual(metadata);
+      expect(payload.currentStep).toBe(1);
     });
   });
 
   describe('NetworkComposer', () => {
     it('auto-creates quickAdd, layout, and a default edge type', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NetworkComposer', {
         initialNodes: { count: 3 },
       });
@@ -1113,7 +1118,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('produces a stage that passes the NetworkComposer schema', () => {
-      const si = new SyntheticInterview(1);
+      const si = new ProtocolBuilder(1);
       const nt = si.addNodeType({ name: 'Person' });
       const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
       const layoutVar = nt.addVariable({
@@ -1143,7 +1148,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('rejects duplicate edge subject types via the schema refinement', () => {
-      const si = new SyntheticInterview(2);
+      const si = new ProtocolBuilder(2);
       const friendship = si.addEdgeType({ name: 'Friendship' });
       const stage = si.addStage('NetworkComposer');
       stage.addEdgeType({ type: friendship.id });
@@ -1155,7 +1160,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('omits nodeForm when no node form fields are added', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const stage = si.addStage('NetworkComposer');
       stage.addEdgeType();
 
@@ -1164,7 +1169,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('emits the component on a NetworkComposer node attribute field', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const node = si.addNodeType({ name: 'person' });
       const stage = si.addStage('NetworkComposer', {
         subject: { entity: 'node', type: node.id },
@@ -1185,7 +1190,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('draws builder nodes inside a NetworkComposer field date window', () => {
-      const si = new SyntheticInterview(7);
+      const si = new ProtocolBuilder(7);
       const node = si.addNodeType({ name: 'Person' });
       const born = node.addVariable({
         name: 'Born',
@@ -1210,7 +1215,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('refuses disjoint ordinary-form and composer date windows', () => {
-      const si = new SyntheticInterview(7);
+      const si = new ProtocolBuilder(7);
       const node = si.addNodeType({ name: 'Person' });
       const born = node.addVariable({
         name: 'Born',
@@ -1254,7 +1259,7 @@ describe('SyntheticInterview', () => {
     });
 
     it('rejects a non-node (edge) subject', () => {
-      const si = new SyntheticInterview();
+      const si = new ProtocolBuilder();
       const friendship = si.addEdgeType({ name: 'Friendship' });
       expect(() =>
         si.addStage('NetworkComposer', {
@@ -1278,7 +1283,7 @@ describe('e2e-matrix builder extensions', () => {
   };
 
   it('emits skipLogic and stage-level filter on stage configs', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('NameGenerator', {
       subject: { entity: 'node', type: person.id },
@@ -1291,7 +1296,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('emits skipLogic destinations (stage and finish) on stage configs', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const source = synth.addInformationStage({ title: 'Source' });
     synth.addInformationStage({
       title: 'Finish source',
@@ -1319,7 +1324,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('emits panel filter', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const ng = synth.addStage('NameGenerator', {
       subject: { entity: 'node', type: person.id },
@@ -1332,7 +1337,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('passes hint/showValidationHints/parameters through form fields', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const af = synth.addStage('AlterForm', {
       subject: { entity: 'node', type: person.id },
@@ -1351,7 +1356,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('never emits form.title on AlterForm/AlterEdgeForm', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('AlterForm', {
       subject: { entity: 'node', type: person.id },
@@ -1364,7 +1369,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('passes sortOrder through Sociogram prompts', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const soc = synth.addStage('Sociogram', {
       subject: { entity: 'node', type: person.id },
@@ -1381,7 +1386,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('emits Anonymisation validation and protocol experiments', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     synth.addStage('Anonymisation', {
       validation: { minLength: 4, maxLength: 12 },
     });
@@ -1393,7 +1398,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('passes additionalAttributes through NameGenerator-family prompts', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const closeTie = person.addVariable({ type: 'boolean', name: 'closeTie' });
     const ng = synth.addStage('NameGenerator', {
@@ -1412,7 +1417,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('emits encrypted on node text variables and rejects it on edge/ego', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const nameVar = person.addVariable({
       type: 'text',
@@ -1455,7 +1460,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('emits interviewScript verbatim on stage configs', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('NameGenerator', {
       subject: { entity: 'node', type: person.id },
@@ -1466,7 +1471,7 @@ describe('e2e-matrix builder extensions', () => {
   });
 
   it('passes hint/showValidationHints through NetworkComposer form fields', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const nc = synth.addStage('NetworkComposer', {
       subject: { entity: 'node', type: person.id },
@@ -1487,7 +1492,7 @@ describe('e2e-matrix builder extensions', () => {
 
 describe('quickAdd variable reference', () => {
   it('defaults NameGeneratorQuickAdd.quickAdd to the seeded name variable id', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorQuickAdd', {
       subject: { entity: 'node', type: person.id },
@@ -1503,7 +1508,7 @@ describe('quickAdd variable reference', () => {
 
 describe('addInformationStage items', () => {
   it('emits explicit items and interviewScript verbatim', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     synth.addInformationStage({
       title: 'Media stage',
       interviewScript: 'Internal note.',
@@ -1521,1203 +1526,160 @@ describe('addInformationStage items', () => {
   });
 });
 
-describe('validation rules on generated nodes', () => {
-  // Enough seeds that a rule satisfied by luck on one of them cannot pass:
-  // two booleans agree half the time by chance, so a single seed proves
-  // nothing about `sameAs`.
-  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
-
-  const attributesOf = (network: NcNetwork) =>
-    network.nodes.map((node) => node[entityAttributesProperty]);
-
-  it('gives every member of a sameAs pair one value', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const nt = si.addNodeType();
-      const flagA = nt.addVariable({ type: 'boolean', name: 'flagA' });
-      const flagB = nt.addVariable({
-        type: 'boolean',
-        name: 'flagB',
-        validation: { sameAs: flagA.id },
-      });
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 8 },
-      });
-
-      for (const attrs of attributesOf(si.getNetwork())) {
-        expect(attrs[flagB.id]).toBe(attrs[flagA.id]);
-      }
-    }
-  });
-
-  it('orders a comparison rule against the value its counterpart was given', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const nt = si.addNodeType();
-      const low = nt.addVariable({
-        type: 'number',
-        name: 'low',
-        validation: { minValue: 0, maxValue: 100 },
-      });
-      const high = nt.addVariable({
-        type: 'number',
-        name: 'high',
-        validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
-      });
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 8 },
-      });
-
-      for (const attrs of attributesOf(si.getNetwork())) {
-        expect(Number(attrs[high.id])).toBeGreaterThan(Number(attrs[low.id]));
-      }
-    }
-  });
-
-  it('keeps a differentFrom pair apart', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const nt = si.addNodeType();
-      // A two-option ordinal, so a colliding draw is likely rather than
-      // merely possible.
-      const first = nt.addVariable({
-        type: 'ordinal',
-        name: 'first',
-        options: [
-          { label: 'A', value: 1 },
-          { label: 'B', value: 2 },
-        ],
-      });
-      const second = nt.addVariable({
-        type: 'ordinal',
-        name: 'second',
-        options: [
-          { label: 'A', value: 1 },
-          { label: 'B', value: 2 },
-        ],
-        validation: { differentFrom: first.id },
-      });
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 8 },
-      });
-
-      for (const attrs of attributesOf(si.getNetwork())) {
-        expect(attrs[second.id]).not.toBe(attrs[first.id]);
-      }
-    }
-  });
-
-  it('issues a unique variable no value twice across the whole network', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const nt = si.addNodeType();
-      const codeName = nt.addVariable({
-        type: 'text',
-        name: 'codeName',
-        validation: { unique: true },
-      });
-      // Two stages, so the registry has to be shared across them rather than
-      // reset per stage.
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 12 },
-      });
-      si.addStage('Narrative', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 12 },
-      });
-
-      const issued = attributesOf(si.getNetwork()).map(
-        (attrs) => attrs[codeName.id],
-      );
-      expect(new Set(issued).size).toBe(issued.length);
-    }
-  });
-
-  it('draws around a value the caller set outright', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const anchor = nt.addVariable({
-      type: 'number',
-      name: 'anchor',
-      validation: { minValue: 0, maxValue: 100 },
+/**
+ * The delegate itself: `getInterviewPayload` hands the recipe to
+ * `generateInterviews` (count 1, dropout off) with the seeded entities riding
+ * the engine's overrides channel. What the old builder DREW is the engine's
+ * business now; what these cases pin is the delegation contract — D12's ISO
+ * envelope, D20's blank branch, D21's authored count, byte determinism, and
+ * the up-front refusals the overrides channel keeps.
+ */
+describe('the engine delegate', () => {
+  const egoFormRecipe = () => {
+    const si = new ProtocolBuilder();
+    const name = si.addEgoVariable({
+      type: 'text',
+      component: 'Text',
+      name: 'fullName',
     });
-    const echo = nt.addVariable({
-      type: 'number',
-      name: 'echo',
-      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
+    const ego = si.addStage('EgoForm', {
+      introductionPanel: { title: 'About you', text: 'Please answer.' },
     });
-    const above = nt.addVariable({
-      type: 'number',
-      name: 'above',
-      validation: {
-        minValue: 0,
-        maxValue: 100,
-        greaterThanVariable: anchor.id,
-      },
+    ego.addFormField({
+      variable: name.id,
+      component: 'Text',
+      prompt: 'What is your name?',
     });
+    si.addStage('Sociogram', { initialNodes: { count: 3 } }).addPrompt();
+    return { si, name };
+  };
+
+  it('yields a blank session — empty network and empty ego — at a stop of stage 0', () => {
+    const { si } = egoFormRecipe();
+
+    const payload = si.getInterviewPayload({ stopAt: { stageIndex: 0 } });
+
+    expect(payload.network.nodes).toEqual([]);
+    expect(payload.network.edges).toEqual([]);
+    expect(payload.network.ego[entityAttributesProperty]).toEqual({});
+    expect(payload.currentStep).toBe(0);
+    expect(payload.finishTime).toBeNull();
+  });
+
+  it('draws ego through the EgoForm stage on a full walk', () => {
+    const { si, name } = egoFormRecipe();
+
+    const ego = si.getInterviewPayload().network.ego[entityAttributesProperty];
+
+    expect(typeof ego[name.id]).toBe('string');
+    expect(ego[name.id]).not.toBe('');
+  });
+
+  it('carries only the stages before the stop into the session', () => {
+    const si = new ProtocolBuilder();
+    si.addStage('Sociogram', { initialNodes: { count: 3 } }).addPrompt();
+    si.addStage('Sociogram', { initialNodes: { count: 2 } }).addPrompt();
+
+    const payload = si.getInterviewPayload({ stopAt: { stageIndex: 1 } });
+
+    expect(payload.network.nodes).toHaveLength(3);
+    // The resume position is the delegate's default mount point under stopAt.
+    expect(payload.currentStep).toBe(1);
+  });
+
+  it('authors the constant count initialNodes translates to (D21)', () => {
+    const si = new ProtocolBuilder();
+    si.addStage('NameGenerator', {
+      initialNodes: { count: 4 },
+      form: { fields: [{ component: 'Text' }] },
+    }).addPrompt();
+
+    // Run the PARSED document through the engine WITHOUT the builder's
+    // overrides: the authored constant count alone must produce the four
+    // people the recipe seeds, so a builder-produced protocol means the same
+    // thing to any engine caller.
+    const sessions = generateInterviews(si.getProtocolParsed(), {
+      count: 1,
+      seed: 1,
+      simulateDropOut: false,
+      startWindow: '2025-01-01T00:00:00.000Z',
+    });
+    expect(sessions[0]!.session.network.nodes).toHaveLength(4);
+  });
+
+  it('produces a byte-identical payload for the same recipe and seed', () => {
+    const build = () => {
+      const si = new ProtocolBuilder(7);
+      const nt = si.addNodeType({ name: 'Person' });
+      nt.addVariable({ type: 'number', name: 'Age' });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', type: nt.id },
+        initialNodes: { count: 3 },
+        initialEdges: [[0, 1]],
+      }).addPrompt();
+      si.addStage('OrdinalBin', {
+        subject: { entity: 'node', type: nt.id },
+      }).addPrompt();
+      return si.getInterviewPayload();
+    };
+
+    expect(JSON.stringify(build())).toBe(JSON.stringify(build()));
+  });
+
+  it('keeps the caller-set value and draws the rest of the node around it', () => {
+    const si = new ProtocolBuilder();
+    const nt = si.addNodeType({ name: 'Person' });
+    const label = nt.addVariable({ type: 'text', name: 'label' });
+    const age = nt.addVariable({ type: 'number', name: 'Age' });
     si.addStage('Sociogram', {
       subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 4 },
-    });
-    si.setNodeAttribute(0, anchor.id, 12);
+      initialNodes: { count: 2 },
+    }).addPrompt();
+    si.setNodeAttribute(0, label.id, 'Chosen');
 
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[anchor.id]).toBe(12);
-    expect(attrs[echo.id]).toBe(12);
-    expect(Number(attrs[above.id])).toBeGreaterThan(12);
-  });
-
-  it('never issues a unique value another node was given outright', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const nt = si.addNodeType();
-      const flag = nt.addVariable({
-        type: 'boolean',
-        name: 'flag',
-        validation: { unique: true },
-      });
-      // A boolean holds two values, so a node fixed to one leaves exactly one
-      // for the draw — and the fixed node is the *last*, which a registry
-      // populated as nodes are reached would not have seen in time.
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 2 },
-      });
-      si.setNodeAttribute(1, flag.id, true);
-
-      const issued = attributesOf(si.getNetwork()).map(
-        (attrs) => attrs[flag.id],
-      );
-      expect(issued).toEqual([false, true]);
-    }
+    const nodes = si.getNetwork().nodes;
+    expect(nodes[0]![entityAttributesProperty][label.id]).toBe('Chosen');
+    expect(typeof nodes[1]![entityAttributesProperty][label.id]).toBe('string');
+    expect(nodes[1]![entityAttributesProperty][label.id]).not.toBe('Chosen');
+    expect(typeof nodes[0]![entityAttributesProperty][age.id]).toBe('number');
   });
 
   it('refuses a unique value the caller sets on two nodes', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const codeName = nt.addVariable({
+    const si = new ProtocolBuilder();
+    const nt = si.addNodeType({ name: 'Person' });
+    const label = nt.addVariable({
       type: 'text',
-      name: 'codeName',
+      name: 'label',
       validation: { unique: true },
     });
     si.addStage('Sociogram', {
       subject: { entity: 'node', type: nt.id },
       initialNodes: { count: 2 },
-    });
-    si.setNodeAttribute(0, codeName.id, 'Raven');
-    si.setNodeAttribute(1, codeName.id, 'Raven');
-
-    // The values are the caller's rather than drawn, so both would be copied
-    // into the network: the draw never sees them, and claiming one value twice
-    // keys the same set entry.
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(
-      /the caller sets this to "Raven" on two nodes, but unique allows one node to hold a value/,
-    );
-  });
-
-  it('refuses a unique value two manual nodes were built with', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const codeName = nt.addVariable({
-      type: 'text',
-      name: 'codeName',
-      validation: { unique: true },
-    });
-    const stage = si.addStage('Narrative', {
-      subject: { entity: 'node', type: nt.id },
-    });
-    si.addManualNode(stage.id, nt.id, 'person-1', { [codeName.id]: 'Raven' });
-    si.addManualNode(stage.id, nt.id, 'person-2', { [codeName.id]: 'Raven' });
-
-    // A manual node keeps its unset attributes neutral, but the ones it was
-    // built with are in the network verbatim — the same duplicate.
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-  });
-
-  it('reports every variable of a group the caller duplicated one value across', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const codeName = nt.addVariable({
-      type: 'text',
-      name: 'codeName',
-      validation: { unique: true },
-    });
-    nt.addVariable({
-      type: 'text',
-      name: 'alias',
-      validation: { sameAs: codeName.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 2 },
-    });
-    si.setNodeAttribute(0, codeName.id, 'Raven');
-    si.setNodeAttribute(1, codeName.id, 'Raven');
-
-    expect(() => si.getNetwork()).toThrow(
-      /"codeName" and "alias" \(unique\): the caller sets these variables, which are held equal, to "Raven" on two nodes/,
-    );
-  });
-
-  it('lets one node hold a unique value across every variable of its group', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const codeName = nt.addVariable({
-      type: 'text',
-      name: 'codeName',
-      validation: { unique: true },
-    });
-    const alias = nt.addVariable({
-      type: 'text',
-      name: 'alias',
-      validation: { sameAs: codeName.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 2 },
-    });
-    // Held equal, so they are issued from one slot: setting both spends a
-    // single claim rather than colliding with itself.
-    si.setNodeAttribute(0, codeName.id, 'Raven');
-    si.setNodeAttribute(0, alias.id, 'Raven');
-
-    const attrs = attributesOf(si.getNetwork());
-    expect(attrs[0]![codeName.id]).toBe('Raven');
-    expect(attrs[0]![alias.id]).toBe('Raven');
-    expect(attrs[1]![codeName.id]).not.toBe('Raven');
-  });
-
-  it('lets the caller repeat a value a variable does not declare unique', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const label = nt.addVariable({ type: 'text', name: 'label' });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 2 },
-    });
-    si.setNodeAttribute(0, label.id, 'Raven');
-    si.setNodeAttribute(1, label.id, 'Raven');
-
-    const issued = attributesOf(si.getNetwork()).map(
-      (attrs) => attrs[label.id],
-    );
-    expect(issued).toEqual(['Raven', 'Raven']);
-  });
-
-  it('refuses a codebook whose rules leave a node no value, rather than emitting one that breaks them', () => {
-    // No feasibility pass runs here — its verdict is measured against how many
-    // entities a `generateNetwork` run would fabricate, and this builder's
-    // nodes are the ones the caller asked for. What refuses instead is the
-    // draw, which runs out against the count that is actually being generated:
-    // a boolean holds two values and this asks for three distinct ones.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    nt.addVariable({
-      type: 'boolean',
-      name: 'flag',
-      validation: { unique: true },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 3 },
-    });
+    }).addPrompt();
+    si.setNodeAttribute(0, label.id, 'Twice');
+    si.setNodeAttribute(1, label.id, 'Twice');
 
     expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(/cannot all be satisfied together/);
+    expect(() => si.getNetwork()).toThrow(/unique/);
   });
 
   it('refuses a pair of values the caller sets that sameAs cannot hold', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const anchor = nt.addVariable({
-      type: 'number',
-      name: 'anchor',
-      validation: { minValue: 0, maxValue: 100 },
-    });
-    const echo = nt.addVariable({
-      type: 'number',
-      name: 'echo',
-      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
-    // Held to one value and given two: the node can carry either, and both are
-    // the caller's, so there is no assignment that honours what was asked.
-    si.setNodeAttribute(0, anchor.id, 10);
-    si.setNodeAttribute(0, echo.id, 20);
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(
-      /"anchor" and "echo" \(sameAs\): the caller sets these variables on one node to 10 and 20, which sameAs cannot hold/,
-    );
-  });
-
-  it('refuses a comparator the caller sets the wrong way round', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const low = nt.addVariable({
-      type: 'number',
-      name: 'low',
-      validation: { minValue: 0, maxValue: 100 },
-    });
-    const high = nt.addVariable({
-      type: 'number',
-      name: 'high',
-      validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
-    si.setNodeAttribute(0, low.id, 80);
-    si.setNodeAttribute(0, high.id, 20);
-
-    expect(() => si.getNetwork()).toThrow(/greaterThanVariable cannot hold/);
-  });
-
-  it('keeps a value the caller sets outside its own bounds', () => {
-    // The deliberate counterpart to the two tests above. One value, named by
-    // the caller, with nothing to weigh it against: setting an attribute is how
-    // a story puts chosen data in front of an interface, and stories set values
-    // no participant could have entered — an off-list option among them.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const age = nt.addVariable({
-      type: 'number',
-      name: 'age',
-      validation: { minValue: 18, maxValue: 90 },
-    });
-    const community = nt.addVariable({
-      type: 'categorical',
-      name: 'community',
-      options: [
-        { label: 'Family', value: 'family' },
-        { label: 'Work', value: 'work' },
-      ],
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
-    si.setNodeAttribute(0, age.id, 5);
-    si.setNodeAttribute(0, community.id, ['biological']);
-
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[age.id]).toBe(5);
-    expect(attrs[community.id]).toEqual(['biological']);
-  });
-
-  it('refuses length rules that leave the draw no string to reach', () => {
-    // The drawer has no way to report that it could not comply: it fits its
-    // answer to whichever bound it can reach and emits it, so this used to
-    // arrive as a ten-character value under a five-character ceiling.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    nt.addVariable({
+    const si = new ProtocolBuilder();
+    const nt = si.addNodeType({ name: 'Person' });
+    const first = nt.addVariable({ type: 'text', name: 'first' });
+    const second = nt.addVariable({
       type: 'text',
-      name: 'bio',
-      validation: { minLength: 10, maxLength: 5 },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 2 },
-    });
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(
-      /"bio" \(maxLength\): the closest value these rules leave drawable is "\w{10}", which maxLength rejects/,
-    );
-  });
-
-  it('refuses value bounds that cross over', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    nt.addVariable({
-      type: 'number',
-      name: 'age',
-      validation: { minValue: 50, maxValue: 10 },
+      name: 'second',
+      validation: { sameAs: first.id },
     });
     si.addStage('Sociogram', {
       subject: { entity: 'node', type: nt.id },
       initialNodes: { count: 1 },
-    });
-
-    expect(() => si.getNetwork()).toThrow(/which maxValue rejects/);
-  });
-
-  it('refuses a selection ceiling the variable requires an answer above', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    nt.addVariable({
-      type: 'categorical',
-      name: 'interests',
-      validation: { required: true, maxSelected: 0 },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
-
-    expect(() => si.getNetwork()).toThrow(/which required rejects/);
-  });
-
-  it('refuses a sameAs group whose members leave no value between them', () => {
-    // Each variable's own bounds are satisfiable; held to one value they are
-    // not, and the value that arrived was outside one of the two ranges.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const early = nt.addVariable({
-      type: 'number',
-      name: 'early',
-      validation: { minValue: 0, maxValue: 10 },
-    });
-    nt.addVariable({
-      type: 'number',
-      name: 'late',
-      validation: { minValue: 20, maxValue: 30, sameAs: early.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
+    }).addPrompt();
+    si.setNodeAttribute(0, first.id, 'one');
+    si.setNodeAttribute(0, second.id, 'two');
 
     expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(/which maxValue rejects/);
-  });
-
-  it('leaves a value the caller set to reach a drawn variable unjudged', () => {
-    // `sameAs` hands the caller's value straight on, so refusing what the draw
-    // did with it would refuse the value itself by another route — which the
-    // test above this one says the builder does not do.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const anchor = nt.addVariable({
-      type: 'number',
-      name: 'anchor',
-      validation: { minValue: 18, maxValue: 90 },
-    });
-    const echo = nt.addVariable({
-      type: 'number',
-      name: 'echo',
-      validation: { minValue: 18, maxValue: 90, sameAs: anchor.id },
-    });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 1 },
-    });
-    si.setNodeAttribute(0, anchor.id, 5);
-
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[anchor.id]).toBe(5);
-    expect(attrs[echo.id]).toBe(5);
-  });
-
-  it('leaves a manual node its neutral values rather than solving them', () => {
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    const flagA = nt.addVariable({ type: 'boolean', name: 'flagA' });
-    const flagB = nt.addVariable({
-      type: 'boolean',
-      name: 'flagB',
-      validation: { sameAs: flagA.id },
-    });
-    const stage = si.addStage('Narrative', {
-      subject: { entity: 'node', type: nt.id },
-    });
-    si.addManualNode(stage.id, nt.id, 'person-1', { [flagA.id]: true });
-
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[flagA.id]).toBe(true);
-    // `sameAs` would make this true; the manual contract says unanswered.
-    expect(attrs[flagB.id]).toBe(false);
-  });
-
-  it('draws a codebook carrying no cross-variable rule to the values it always has', () => {
-    // Every Storybook story's fixture is a codebook of this shape, so a drift
-    // in what it draws rewrites every visual baseline at once. These values are
-    // the ones the builder produces with personal names drawn from their own
-    // deterministic stream, pinned so that moving them has to be a deliberate
-    // act rather than a side effect of a change to the constraint machinery.
-    // Date variables are left out: an open date window ends at today, which no
-    // fixed expectation survives.
-    const si = new SyntheticInterview(42);
-    const nt = si.addNodeType();
-    nt.addVariable({ type: 'text', name: 'label' });
-    nt.addVariable({
-      type: 'number',
-      name: 'age',
-      validation: { minValue: 18, maxValue: 90 },
-    });
-    nt.addVariable({
-      type: 'number',
-      name: 'small',
-      validation: { maxValue: 9 },
-    });
-    nt.addVariable({ type: 'boolean', name: 'active' });
-    nt.addVariable({ type: 'ordinal', name: 'rating' });
-    nt.addVariable({ type: 'categorical', name: 'interests' });
-    nt.addVariable({
-      type: 'scalar',
-      name: 'closeness',
-      component: 'VisualAnalogScale',
-    });
-    nt.addVariable({ type: 'layout', name: 'position' });
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count: 4 },
-    });
-
-    const ids = si.getVariableIds(nt.id);
-    const byName = attributesOf(si.getNetwork()).map((attrs) =>
-      Object.fromEntries(
-        [
-          'name',
-          'label',
-          'age',
-          'small',
-          'active',
-          'rating',
-          'interests',
-          'closeness',
-          'position',
-          // The node type seeds its own "name" variable ahead of these.
-        ].map((name, at) => [name, attrs[ids[at]!]]),
-      ),
-    );
-
-    expect(byName).toEqual([
-      {
-        name: 'Mohammad Crist',
-        label: 'Mohammad',
-        age: 61,
-        small: -44,
-        active: true,
-        rating: 1,
-        interests: ['family'],
-        closeness: 0.06,
-        position: { x: 0.1, y: 0.1 },
-      },
-      {
-        name: 'Laury Wisozk',
-        label: 'Maybelle',
-        age: 19,
-        small: 8,
-        active: false,
-        rating: 2,
-        interests: ['work', 'school'],
-        closeness: 0.21,
-        position: { x: 0.27, y: 0.33 },
-      },
-      {
-        name: 'Clinton Leffler',
-        label: 'Esther',
-        age: 56,
-        small: -26,
-        active: true,
-        rating: 3,
-        interests: ['school'],
-        closeness: 0.61,
-        position: { x: 0.44000000000000006, y: 0.56 },
-      },
-      {
-        name: 'Lynette Hilll',
-        label: 'Hannah',
-        age: 51,
-        small: -4,
-        active: true,
-        rating: 4,
-        interests: ['neighborhood', 'family'],
-        closeness: 0.51,
-        position: { x: 0.61, y: 0.79 },
-      },
-    ]);
-  });
-});
-
-describe('validation rules on generated edges', () => {
-  // As for nodes: enough seeds that a rule satisfied by luck on one of them
-  // cannot pass.
-  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
-
-  const attributesOf = (network: NcNetwork) =>
-    network.edges.map((edge) => edge[entityAttributesProperty]);
-
-  /** Two nodes and one edge type, the smallest thing that can carry an edge. */
-  const twoNodes = (si: SyntheticInterview, count = 2) => {
-    const nt = si.addNodeType();
-    si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
-      initialNodes: { count },
-    });
-  };
-
-  it('gives a procedural edge the variables its type declares', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const strength = et.addVariable({
-      type: 'number',
-      name: 'strength',
-      validation: { required: true, minValue: 1, maxValue: 10 },
-    });
-    twoNodes(si);
-    si.addEdges([[0, 1]], et.id);
-
-    // The edge's attribute store starts empty and `getNetwork` once copied it
-    // verbatim, so a required variable was absent rather than answered.
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[strength.id]).toBeGreaterThanOrEqual(1);
-    expect(attrs[strength.id]).toBeLessThanOrEqual(10);
-  });
-
-  it('gives every member of a sameAs pair one value', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const et = si.addEdgeType();
-      const flagA = et.addVariable({ type: 'boolean', name: 'flagA' });
-      const flagB = et.addVariable({
-        type: 'boolean',
-        name: 'flagB',
-        validation: { sameAs: flagA.id },
-      });
-      twoNodes(si, 8);
-      si.addEdges(
-        [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-          [3, 4],
-          [4, 5],
-          [5, 6],
-          [6, 7],
-        ],
-        et.id,
-      );
-
-      for (const attrs of attributesOf(si.getNetwork())) {
-        expect(attrs[flagB.id]).toBe(attrs[flagA.id]);
-      }
-    }
-  });
-
-  it('orders a comparison rule against the value its counterpart was given', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const et = si.addEdgeType();
-      const low = et.addVariable({
-        type: 'number',
-        name: 'low',
-        validation: { minValue: 0, maxValue: 100 },
-      });
-      const high = et.addVariable({
-        type: 'number',
-        name: 'high',
-        validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
-      });
-      twoNodes(si, 4);
-      si.addEdges(
-        [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-        ],
-        et.id,
-      );
-
-      for (const attrs of attributesOf(si.getNetwork())) {
-        expect(Number(attrs[high.id])).toBeGreaterThan(Number(attrs[low.id]));
-      }
-    }
-  });
-
-  it('issues a unique edge variable no value twice across the whole network', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const et = si.addEdgeType();
-      const codeName = et.addVariable({
-        type: 'text',
-        name: 'codeName',
-        validation: { unique: true },
-      });
-      twoNodes(si, 6);
-      si.addEdges(
-        [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-          [3, 4],
-          [4, 5],
-        ],
-        et.id,
-      );
-
-      const issued = attributesOf(si.getNetwork()).map(
-        (attrs) => attrs[codeName.id],
-      );
-      expect(new Set(issued).size).toBe(issued.length);
-    }
-  });
-
-  it('draws around a value the caller set outright', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const anchor = et.addVariable({
-      type: 'number',
-      name: 'anchor',
-      validation: { minValue: 0, maxValue: 100 },
-    });
-    const echo = et.addVariable({
-      type: 'number',
-      name: 'echo',
-      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
-    });
-    const above = et.addVariable({
-      type: 'number',
-      name: 'above',
-      validation: {
-        minValue: 0,
-        maxValue: 100,
-        greaterThanVariable: anchor.id,
-      },
-    });
-    twoNodes(si);
-    si.addEdges([[0, 1]], et.id);
-    si.setEdgeAttribute(0, anchor.id, 12);
-
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[anchor.id]).toBe(12);
-    expect(attrs[echo.id]).toBe(12);
-    expect(Number(attrs[above.id])).toBeGreaterThan(12);
-  });
-
-  it('refuses a pair of values the caller sets on one edge that sameAs cannot hold', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const anchor = et.addVariable({
-      type: 'number',
-      name: 'anchor',
-      validation: { minValue: 0, maxValue: 100 },
-    });
-    const echo = et.addVariable({
-      type: 'number',
-      name: 'echo',
-      validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
-    });
-    twoNodes(si);
-    si.addEdges([[0, 1]], et.id);
-    si.setEdgeAttribute(0, anchor.id, 10);
-    si.setEdgeAttribute(0, echo.id, 20);
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(
-      /the caller sets these variables on one edge to 10 and 20, which sameAs cannot hold/,
-    );
-  });
-
-  it('refuses length rules that leave an edge draw no string to reach', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    et.addVariable({
-      type: 'text',
-      name: 'note',
-      validation: { minLength: 10, maxLength: 5 },
-    });
-    twoNodes(si);
-    si.addEdges([[0, 1]], et.id);
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(/which maxLength rejects/);
-  });
-
-  it('never issues a unique value another edge was given outright', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const et = si.addEdgeType();
-      const flag = et.addVariable({
-        type: 'boolean',
-        name: 'flag',
-        validation: { unique: true },
-      });
-      twoNodes(si, 3);
-      si.addEdges(
-        [
-          [0, 1],
-          [1, 2],
-        ],
-        et.id,
-      );
-      // A boolean holds two values, so an edge fixed to one leaves exactly one
-      // for the draw — and the fixed edge is the *last*, which a registry
-      // populated as edges are reached would not have seen in time.
-      si.setEdgeAttribute(1, flag.id, true);
-
-      const issued = attributesOf(si.getNetwork()).map(
-        (attrs) => attrs[flag.id],
-      );
-      expect(issued).toEqual([false, true]);
-    }
-  });
-
-  it('refuses a unique value the caller sets on two edges', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const codeName = et.addVariable({
-      type: 'text',
-      name: 'codeName',
-      validation: { unique: true },
-    });
-    twoNodes(si, 3);
-    si.addEdges(
-      [
-        [0, 1],
-        [1, 2],
-      ],
-      et.id,
-    );
-    si.setEdgeAttribute(0, codeName.id, 'Raven');
-    si.setEdgeAttribute(1, codeName.id, 'Raven');
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(
-      /the caller sets this to "Raven" on two edges, but unique allows one edge to hold a value/,
-    );
-  });
-
-  it('refuses a unique value two manual edges were built with', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const codeName = et.addVariable({
-      type: 'text',
-      name: 'codeName',
-      validation: { unique: true },
-    });
-    twoNodes(si);
-
-    const [from, to] = si.getNodeEntries();
-    si.addManualEdge(et.id, 'edge-1', from!.uid, to!.uid, {
-      [codeName.id]: 'Raven',
-    });
-    si.addManualEdge(et.id, 'edge-2', to!.uid, from!.uid, {
-      [codeName.id]: 'Raven',
-    });
-
-    // A manual edge keeps its unset attributes neutral, but the ones it was
-    // built with are in the network verbatim — the same duplicate.
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-  });
-
-  it('leaves a manual edge its neutral values rather than solving them', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const flagA = et.addVariable({ type: 'boolean', name: 'flagA' });
-    const flagB = et.addVariable({
-      type: 'boolean',
-      name: 'flagB',
-      validation: { sameAs: flagA.id },
-    });
-    twoNodes(si);
-
-    const [from, to] = si.getNodeEntries();
-    si.addManualEdge(et.id, 'edge-1', from!.uid, to!.uid, {
-      [flagA.id]: true,
-    });
-
-    const attrs = attributesOf(si.getNetwork())[0]!;
-    expect(attrs[flagA.id]).toBe(true);
-    // `sameAs` would make this true; the manual contract says unanswered.
-    expect(attrs[flagB.id]).toBe(false);
-  });
-
-  it('lets the caller repeat a value an edge variable does not declare unique', () => {
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    const label = et.addVariable({ type: 'text', name: 'label' });
-    twoNodes(si, 3);
-    si.addEdges(
-      [
-        [0, 1],
-        [1, 2],
-      ],
-      et.id,
-    );
-    si.setEdgeAttribute(0, label.id, 'Raven');
-    si.setEdgeAttribute(1, label.id, 'Raven');
-
-    const issued = attributesOf(si.getNetwork()).map(
-      (attrs) => attrs[label.id],
-    );
-    expect(issued).toEqual(['Raven', 'Raven']);
-  });
-
-  it('refuses an edge codebook whose rules leave an edge no value', () => {
-    // No feasibility pass runs for edges either: `worstCaseEntityCounts` models
-    // what a `generateNetwork` run fabricates from stage behaviours, while
-    // these edges are the ones the caller asked for by name. What refuses
-    // instead is the draw, running out against the count actually generated —
-    // a boolean holds two values and this asks for three distinct ones.
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    et.addVariable({
-      type: 'boolean',
-      name: 'flag',
-      validation: { unique: true },
-    });
-    twoNodes(si, 4);
-    si.addEdges(
-      [
-        [0, 1],
-        [1, 2],
-        [2, 3],
-      ],
-      et.id,
-    );
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    expect(() => si.getNetwork()).toThrow(/cannot all be satisfied together/);
-  });
-
-  it('leaves an edge type carrying no variables its empty attributes', () => {
-    // Most story fixtures declare edge types with no variables at all, and
-    // this is why generating edge attributes leaves them untouched.
-    const si = new SyntheticInterview(42);
-    const et = si.addEdgeType();
-    twoNodes(si, 3);
-    si.addEdges(
-      [
-        [0, 1],
-        [1, 2],
-      ],
-      et.id,
-    );
-
-    expect(attributesOf(si.getNetwork())).toEqual([{}, {}]);
-  });
-});
-
-describe('validation rules on the generated ego', () => {
-  // As for nodes and edges: enough seeds that a rule satisfied by luck on one
-  // of them cannot pass. There is only ever one ego, so a seed is the only
-  // repetition available.
-  const SEEDS = [1, 2, 7, 42, 99, 1234, 20260727];
-
-  const egoAttributesOf = (network: NcNetwork) =>
-    network.ego[entityAttributesProperty];
-
-  it('answers a required ego variable rather than leaving it absent', () => {
-    const si = new SyntheticInterview(42);
-    const age = si.addEgoVariable({
-      type: 'number',
-      name: 'age',
-      validation: { required: true, minValue: 18, maxValue: 90 },
-    });
-    si.addStage('EgoForm');
-
-    // `getNetwork` once hard-coded the ego's attributes to `{}`, so a required
-    // ego variable arrived absent and every ego form rendered empty.
-    const attrs = egoAttributesOf(si.getNetwork());
-    expect(attrs).toHaveProperty(age.id);
-    expect(attrs[age.id]).toBeGreaterThanOrEqual(18);
-    expect(attrs[age.id]).toBeLessThanOrEqual(90);
-  });
-
-  it('gives every member of a sameAs pair one value', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const code = si.addEgoVariable({ type: 'text', name: 'code' });
-      const codeConfirm = si.addEgoVariable({
-        type: 'text',
-        name: 'codeConfirm',
-        validation: { sameAs: code.id },
-      });
-
-      const attrs = egoAttributesOf(si.getNetwork());
-      expect(attrs[codeConfirm.id]).toBe(attrs[code.id]);
-      expect(attrs[code.id]).not.toBeUndefined();
-    }
-  });
-
-  it('orders a comparison rule against the value its counterpart was given', () => {
-    for (const seed of SEEDS) {
-      const si = new SyntheticInterview(seed);
-      const age = si.addEgoVariable({
-        type: 'number',
-        name: 'age',
-        validation: { minValue: 18, maxValue: 65 },
-      });
-      const retirementAge = si.addEgoVariable({
-        type: 'number',
-        name: 'retirementAge',
-        validation: {
-          minValue: 18,
-          maxValue: 90,
-          greaterThanVariable: age.id,
-        },
-      });
-
-      const attrs = egoAttributesOf(si.getNetwork());
-      expect(Number(attrs[retirementAge.id])).toBeGreaterThan(
-        Number(attrs[age.id]),
-      );
-    }
-  });
-
-  it('keeps a differentFrom pair apart', () => {
-    for (const seed of SEEDS) {
-      // A two-option ordinal, so a colliding draw is likely rather than
-      // merely possible.
-      const options = [
-        { label: 'A', value: 1 },
-        { label: 'B', value: 2 },
-      ];
-      const si = new SyntheticInterview(seed);
-      const first = si.addEgoVariable({
-        type: 'ordinal',
-        name: 'first',
-        options,
-      });
-      const second = si.addEgoVariable({
-        type: 'ordinal',
-        name: 'second',
-        options,
-        validation: { differentFrom: first.id },
-      });
-
-      const attrs = egoAttributesOf(si.getNetwork());
-      expect(attrs[second.id]).not.toBe(attrs[first.id]);
-    }
-  });
-
-  it('refuses an ego codebook whose rules leave ego no value', () => {
-    const si = new SyntheticInterview(42);
-    si.addEgoVariable({
-      type: 'text',
-      name: 'bio',
-      validation: { minLength: 10, maxLength: 5 },
-    });
-
-    // Reported without an entity type, because the codebook holds one ego
-    // section rather than a map of named types.
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    try {
-      si.getNetwork();
-    } catch (error) {
-      expect(error).toBeInstanceOf(SyntheticDataConstraintError);
-      const [conflict] = (error as SyntheticDataConstraintError).conflicts;
-      expect(conflict).toMatchObject({
-        entity: 'ego',
-        variableNames: ['bio'],
-        rules: ['maxLength'],
-      });
-      expect(conflict).not.toHaveProperty('entityType');
-      expect(conflict).not.toHaveProperty('entityTypeName');
-    }
-  });
-
-  it('leaves an interview declaring no ego variables its empty attributes', () => {
-    const si = new SyntheticInterview(42);
-    si.addStage('Sociogram', { initialNodes: { count: 2 } });
-
-    expect(egoAttributesOf(si.getNetwork())).toEqual({});
-  });
-
-  it('draws without disturbing the values its nodes and edges were given', () => {
-    // Ego is drawn after the entities precisely so that adding an ego variable
-    // to a fixture cannot move the node and edge values a story or a snapshot
-    // was built around.
-    const build = (withEgo: boolean) => {
-      const si = new SyntheticInterview(42);
-      if (withEgo) {
-        si.addEgoVariable({ type: 'text', name: 'nickname' });
-        si.addEgoVariable({ type: 'number', name: 'age' });
-      }
-      const nt = si.addNodeType();
-      nt.addVariable({ type: 'number', name: 'closeness' });
-      const et = si.addEdgeType();
-      et.addVariable({ type: 'text', name: 'note' });
-      si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 4 },
-      });
-      si.addEdges(
-        [
-          [0, 1],
-          [1, 2],
-          [2, 3],
-        ],
-        et.id,
-      );
-      return si.getNetwork();
-    };
-
-    // Compared as values rather than whole entities: declaring an ego variable
-    // advances the builder's own id counter, so the variable ids the two
-    // networks key their attributes by differ while the drawn values do not.
-    const drawnValues = (network: NcNetwork) => [
-      ...network.nodes.map((node) =>
-        Object.values(node[entityAttributesProperty]),
-      ),
-      ...network.edges.map((edge) =>
-        Object.values(edge[entityAttributesProperty]),
-      ),
-    ];
-
-    const withEgo = build(true);
-    const withoutEgo = build(false);
-    expect(drawnValues(withEgo)).toEqual(drawnValues(withoutEgo));
-    expect(Object.keys(egoAttributesOf(withEgo))).toHaveLength(2);
-  });
-
-  it('refuses unique on an ego variable', () => {
-    // Unlike a node or edge type, ego has exactly one instance, so `unique`
-    // is trivially satisfiable and the draw below would happily emit it —
-    // but the runtime `unique` validator invariants on `stageSubject.entity
-    // !== 'ego'` and throws the moment an EgoForm submits one (see `unique`
-    // in packages/fresco-ui/src/form/validation/functions.ts), and
-    // generateNetwork's own feasibility pass refuses the same declaration
-    // before drawing anything (see `analyseEntity` in
-    // generateNetwork/constraints/feasibility.ts). This builder must refuse
-    // it the same way, at construction, rather than handing a schema-valid
-    // payload to an EgoForm that crashes on submit.
-    const si = new SyntheticInterview(42);
-    si.addEgoVariable({
-      type: 'text',
-      name: 'ssn',
-      validation: { unique: true },
-    });
-    si.addStage('EgoForm');
-
-    expect(() => si.getNetwork()).toThrow(SyntheticDataConstraintError);
-    try {
-      si.getNetwork();
-    } catch (error) {
-      expect(error).toBeInstanceOf(SyntheticDataConstraintError);
-      const [conflict] = (error as SyntheticDataConstraintError).conflicts;
-      expect(conflict).toMatchObject({
-        entity: 'ego',
-        variableNames: ['ssn'],
-        rules: ['unique'],
-        reason: 'unique is not supported on ego variables',
-      });
-      expect(conflict).not.toHaveProperty('entityType');
-      expect(conflict).not.toHaveProperty('entityTypeName');
-    }
-  });
-
-  it('still generates an ego variable that does not declare unique', () => {
-    // Guards the refusal above against being too broad: a plain ego
-    // variable, with no `unique`, must keep drawing normally.
-    const si = new SyntheticInterview(42);
-    const nickname = si.addEgoVariable({ type: 'text', name: 'nickname' });
-    si.addStage('EgoForm');
-
-    const attrs = egoAttributesOf(si.getNetwork());
-    expect(attrs).toHaveProperty(nickname.id);
-    expect(typeof attrs[nickname.id]).toBe('string');
+    expect(() => si.getNetwork()).toThrow(/sameAs/);
   });
 });

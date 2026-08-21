@@ -44,6 +44,13 @@ import { simulateSociogram } from './simulators/Sociogram';
 import { simulateTieStrengthCensus } from './simulators/TieStrengthCensus';
 import type { AssetData, SimulatorRegistry } from './simulators/types';
 import { invariant } from './utils/invariant';
+import {
+  createOverridesApplier,
+  type OverridesApplier,
+  refuseOverrideConflicts,
+  reserveOverrideFixedValues,
+  sessionOverridesSchema,
+} from './walk/overrides';
 import { walkSession } from './walk/walk';
 
 export type { SyntheticSessionAction } from './session-engine/actions';
@@ -53,6 +60,11 @@ export type {
   SimulationContext,
   StageSimulator,
 } from './simulators/types';
+export type {
+  EdgeOverrideEntry,
+  NodeOverrideEntry,
+  SessionOverrides,
+} from './walk/overrides';
 
 /**
  * The one simulator per interface type (spec rule 1). A type absent here
@@ -121,6 +133,13 @@ export const generateInterviewsOptions = z
     familyPedigree: familyPedigreeOptionsSchema.optional(),
     /** Capture the engine's write trace for parity testing. */
     captureTrace: z.boolean().default(false),
+    /**
+     * The fixture channel (spec: builder succession): per-stage predetermined
+     * creation output, plus relationships applied once the walk ends. A stage
+     * listed here is not simulated — the caller has already said what the
+     * participant did there. See `walk/overrides.ts`.
+     */
+    overrides: sessionOverridesSchema.optional(),
   })
   .superRefine((options, ctx) => {
     if (options.stopAt && options.simulateDropOut) {
@@ -222,29 +241,45 @@ export const generateInterviews = (
     reservePromptFixedValues(handles, protocol.stages);
     reserveRosterValues(handles, protocol.stages, assetData);
 
+    const context = {
+      engine,
+      streams,
+      protocol,
+      assetData,
+      today,
+      interfaceRules,
+      valueGen,
+      uniqueRegistry,
+      entityConstraints,
+      ...(options.familyPedigree
+        ? { familyPedigree: options.familyPedigree }
+        : {}),
+    };
+
+    // The fixture channel refuses contradictions before anything draws, and
+    // its fixed values take the same pre-walk hold a prompt's do.
+    let applier: OverridesApplier | undefined;
+    if (options.overrides) {
+      refuseOverrideConflicts(options.overrides, protocol.stages, context);
+      reserveOverrideFixedValues(options.overrides, context);
+      applier = createOverridesApplier(options.overrides, context);
+    }
+
     const outcome = walkSession({
       stages: protocol.stages,
       registry: REGISTRY,
-      context: {
-        engine,
-        streams,
-        protocol,
-        assetData,
-        today,
-        interfaceRules,
-        valueGen,
-        uniqueRegistry,
-        entityConstraints,
-        ...(options.familyPedigree
-          ? { familyPedigree: options.familyPedigree }
-          : {}),
-      },
+      context,
       clock,
       streams,
       respectSkipLogic: options.respectSkipLogic,
       simulateDropOut,
       stopAt: options.stopAt,
+      overrides: applier,
     });
+
+    // Predetermined relationships land once every stage that could have
+    // materialised their endpoints has had its chance.
+    applier?.applyEdges(outcome.visitedStages.at(-1) ?? 0);
 
     return finaliseSession({
       id: streams.uuid(),

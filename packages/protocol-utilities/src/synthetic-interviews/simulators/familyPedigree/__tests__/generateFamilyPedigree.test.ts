@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { InheritancePattern } from '@codaco/shared-consts';
 
-import { ValueGenerator } from '../../../../ValueGenerator';
+import { ValueGenerator } from '../../../constraints/ValueGenerator';
 import {
   attainableFamilyPedigreeNodeCeiling,
   generateFamilyPedigreePlan,

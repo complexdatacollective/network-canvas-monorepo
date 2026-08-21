@@ -1,4 +1,5 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 // Shared fixture for the NarrativePedigree examples: one integrated five-
 // generation family whose six conditions all reach ego's own household, so the
@@ -99,20 +100,13 @@ export function addComprehensivePedigree(
   showAtRisk = true,
   includeMrtBranch = false,
 ): void {
+  // No dynamic shape mapping: BIO_SEX_VAR is a text variable (the genetics
+  // engine reads its raw string values), and the codebook schema — which the
+  // builder's payload delegate now parses against — only maps shapes over
+  // categorical, ordinal, or boolean attributes.
   const nodeType = si.addNodeType({
     name: 'Person',
-    shape: {
-      default: 'circle',
-      dynamic: {
-        type: 'discrete',
-        variable: BIO_SEX_VAR,
-        map: [
-          { value: 'male', shape: 'square' },
-          { value: 'female', shape: 'circle' },
-          { value: 'other', shape: 'diamond' },
-        ],
-      },
-    },
+    shape: { default: 'circle' },
   });
   // addNodeType auto-seeds a "name" text variable keyed by a generated UID.
   // Re-declaring it dedupes to that variable, so capture the returned id and use
@@ -135,14 +129,11 @@ export function addComprehensivePedigree(
     id: REL_TYPE_VAR,
     name: REL_TYPE_VAR,
     type: 'categorical',
-    // 'social' and 'donor' are needed by the mitochondrial-donation branch: the
-    // donor egg carries mtDNA, the intended mother's egg carries the nucleus.
-    options: [
-      { label: 'biological', value: 'biological' },
-      { label: 'partner', value: 'partner' },
-      { label: 'social', value: 'social' },
-      { label: 'donor', value: 'donor' },
-    ],
+    // The interface-owned canonical set, exactly: the schema locks the
+    // relationship-type variable to it, and this fixture's stored values
+    // ('biological', 'partner', 'social', 'donor' — the last two carrying the
+    // mitochondrial-donation branch) are all members of it.
+    options: [...RELATIONSHIP_TYPE_OPTIONS],
   });
   edgeType.addVariable({
     id: IS_ACTIVE_VAR,

@@ -30,8 +30,8 @@ import {
  * is an arrangement the interface offers rather than a duplicate to prevent.
  * What the write must still do is square the `unique` registry with the value
  * it displaced, and record that the value the node now holds is not one the
- * registry issued. Ported from the G2 engine's `assignBinValue`, whose own
- * regression sweep lives in `generateNetwork/__tests__/binOverwriteRegistry`.
+ * registry issued. Ported from the deleted G2 engine's `assignBinValue`,
+ * together with its regression sweep.
  */
 
 const BANDS = [

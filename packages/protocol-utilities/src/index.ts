@@ -1,4 +1,3 @@
-export type { GenerationConfig } from './generateNetwork/config';
 export { US_FAMILY_PEDIGREE_POPULATION } from './synthetic-interviews/simulators/familyPedigree/referencePopulation';
 export type {
   FamilyPedigreeDiseaseMode,
@@ -7,29 +6,28 @@ export type {
   FamilyPedigreeScenario,
   FamilyPedigreeWeightedCount,
 } from './synthetic-interviews/simulators/familyPedigree/types';
-export type {
-  GenerateNetworkParams,
-  GenerateNetworkResult,
-} from './generateNetwork';
-export { generateNetwork } from './generateNetwork';
-// The clock read behind `GenerationConfig.today`'s default, published so a
-// host can reason about generated dates in the terms the generator produced
-// them, and so @codaco/interview can hold it to fresco-ui's own clock read
-// (src/forms/__tests__/ymdParity.test.ts).
-export { todayYmd } from './generateNetwork/constraints/dateWindow';
-export type { ConstraintConflict } from './generateNetwork/constraints/error';
-export { SyntheticDataConstraintError } from './generateNetwork/constraints/error';
+export type { ConstraintConflict } from './synthetic-interviews/constraints/error';
+export { SyntheticDataConstraintError } from './synthetic-interviews/constraints/error';
+export {
+  ProtocolBuilder,
+  // The old name, kept only so the ~80 consumer files keep compiling until
+  // the Phase 6 mechanical sweep renames them; the sweep deletes this alias.
+  ProtocolBuilder as SyntheticInterview,
+} from './ProtocolBuilder';
+// The seed a run falls back to and the ceiling a caller may ask a single
+// batch for. Published because they are properties of asking for synthetic
+// data rather than of any one host, so the hosts' request schemas and count
+// inputs read them from here rather than each keeping a number of their own
+// (plan D1).
 export {
   DEFAULT_SYNTHETIC_SEED,
-  SyntheticInterview,
-} from './SyntheticInterview';
-// The ceiling a caller may ask a single batch for. Published because it is a
-// property of asking for synthetic data rather than of any one host, so the
-// hosts' request schemas and count inputs read it from here rather than each
-// keeping a number of their own (plan D1).
-export { MAX_SYNTHETIC_INTERVIEWS } from './synthetic-interviews/constants';
+  MAX_SYNTHETIC_INTERVIEWS,
+} from './synthetic-interviews/constants';
 export type {
   AssetData,
+  EdgeOverrideEntry,
+  NodeOverrideEntry,
+  SessionOverrides,
   SimulationContext,
   StageSimulator,
   SyntheticInterviewResult,

@@ -48,6 +48,16 @@ export const US_FAMILY_PEDIGREE_POPULATION: FamilyPedigreePopulationProfile = {
   },
 };
 
+/**
+ * The optional-branch cap a run falls back to when the caller's options name
+ * none. A run option rather than a generation parameter: it bounds how large
+ * a preview family is allowed to grow (the sampled topology decides the
+ * actual size), the way `MAX_SYNTHETIC_INTERVIEWS` bounds a batch. Carried
+ * over from the deleted engine's `familyPedigreeNodeCount.max` display
+ * budget.
+ */
+export const DEFAULT_FAMILY_PEDIGREE_MAX_NODES = 32;
+
 export function resolveFamilyPedigreeGenerationOptions(
   options: FamilyPedigreeGenerationOptions | undefined,
   defaultMaxNodes: number,

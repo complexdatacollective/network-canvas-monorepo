@@ -173,12 +173,20 @@ describe('the schema owns every generation parameter', () => {
       },
     ];
 
-    // Sizes the distinct-value sequence a `unique` text variable walks rather
-    // than the shape of a drawn value — `textDrawLength` is read only by
-    // `distinctText` and by the count that sizes it — so it is a run limit
-    // rather than a parameter, and stays. Listed here so that a genuine
-    // default named `DEFAULT_*` cannot hide behind it.
-    const runLimits = new Set(['DEFAULT_TEXT_LENGTH']);
+    // Run limits rather than parameters, so they stay. Listed here so that a
+    // genuine default named `DEFAULT_*` cannot hide behind them:
+    // - DEFAULT_TEXT_LENGTH sizes the distinct-value sequence a `unique` text
+    //   variable walks rather than the shape of a drawn value — it is read
+    //   only by `distinctText` and by the count that sizes it;
+    // - DEFAULT_FAMILY_PEDIGREE_MAX_NODES caps how far a preview family's
+    //   OPTIONAL branches may grow when the run-level `familyPedigree` options
+    //   name no cap of their own — the sampled population topology decides the
+    //   actual size, the way `MAX_SYNTHETIC_INTERVIEWS` bounds a batch without
+    //   deciding one.
+    const runLimits = new Set([
+      'DEFAULT_TEXT_LENGTH',
+      'DEFAULT_FAMILY_PEDIGREE_MAX_NODES',
+    ]);
 
     // A scan over nothing has no offences to find, so it would pass vacuously.
     expect(sourceFiles.length).toBeGreaterThan(0);
