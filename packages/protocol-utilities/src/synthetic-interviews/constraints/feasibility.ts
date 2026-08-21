@@ -139,7 +139,7 @@ const pairConflicts = (
         reason:
           `stage "${demand.stageLabel}" asks about every pair of the ${demand.guaranteedNodes} people ` +
           `reaching it, which is ${demand.guaranteedPairs.toLocaleString('en')} pairs; a stage may enumerate ` +
-          `${MAX_SYNTHETIC_PAIRS.toLocaleString('en')}`,
+          MAX_SYNTHETIC_PAIRS.toLocaleString('en'),
       };
     });
 

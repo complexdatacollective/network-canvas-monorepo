@@ -854,7 +854,9 @@ export function collectInterfaceImpliedRules(
       // encodes it. Missingness on a bin-written variable therefore
       // describes a state the interface does not afford, and the implied
       // rule resolves it to zero exactly as quick-add's does (maintainer
-      // ruling, 2026-08-21).
+      // ruling, 2026-08-21). The runtime does not yet BLOCK advancing with
+      // unplaced nodes; when issue #1428's optional stage-level placement
+      // gate lands, this rule becomes conditional on that gate.
       implied.required = true;
     }
     if (writers.some((hit) => isQuickAddField(hit.path, stages))) {
