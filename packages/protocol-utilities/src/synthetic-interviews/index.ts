@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   collectInterfaceImpliedRules,
   type CurrentProtocol,
+  type InterfaceImpliedRules,
 } from '@codaco/protocol-validation';
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from './constants';
@@ -201,21 +202,43 @@ export type AnalyseSyntheticFeasibilityOptions = {
  * pools, under the same three-way key contract (rows present = draw from
  * them, empty array = source known empty, key absent = source unresolved).
  */
+/**
+ * The gate itself, over rules the caller has already collected.
+ *
+ * `collectInterfaceImpliedRules` walks every stage of the protocol, and the
+ * WALK needs the same rules the gate does — so a generation run that asked
+ * through the public entry point below walked the protocol twice for one
+ * answer. Threading them through is what makes the two the same walk; the
+ * public signature is unchanged, and callers who have no rules in hand still
+ * get them collected for them.
+ */
+const analyseFeasibilityWithRules = (
+  protocol: CurrentProtocol,
+  assetData: AssetData,
+  anchor: string,
+  interfaceRules: InterfaceImpliedRules,
+): ConstraintConflict[] =>
+  analyseFeasibility({
+    protocol,
+    assetData,
+    // The anchor's own day dates the analysis (date windows measure against
+    // it), so the verdict is a function of the arguments and nothing else.
+    today: anchor.slice(0, 10),
+    interfaceRules,
+  });
+
 export const analyseSyntheticFeasibility = (
   protocol: CurrentProtocol,
   assetData: AssetData = {},
   options: AnalyseSyntheticFeasibilityOptions = {},
 ): ConstraintConflict[] => {
   assertStagesCarrySyntheticDescriptors(protocol);
-  const anchor = options.startWindow ?? new Date().toISOString();
-  return analyseFeasibility({
+  return analyseFeasibilityWithRules(
     protocol,
     assetData,
-    // The anchor's own day dates the analysis (date windows measure against
-    // it), so the verdict is a function of the arguments and nothing else.
-    today: anchor.slice(0, 10),
-    interfaceRules: collectInterfaceImpliedRules(protocol),
-  });
+    options.startWindow ?? new Date().toISOString(),
+    collectInterfaceImpliedRules(protocol),
+  );
 };
 
 /**
@@ -244,20 +267,30 @@ export const generateInterviews = (
   // internally consistent; a pinned startWindow makes the run byte-stable.
   const startWindowAnchor = options.startWindow ?? new Date().toISOString();
 
+  // The same refusal the public analysis opens with, and for the same reason:
+  // a protocol that skipped the schema carries no descriptors to read.
+  assertStagesCarrySyntheticDescriptors(protocol);
+
+  // Walked once per batch, and once per batch ONLY: the answer is the same for
+  // every session, and the same for the gate below as for the walk that
+  // follows it.
+  const interfaceRules = collectInterfaceImpliedRules(protocol);
+
   // Pre-seed refusal (rule 5): a protocol either always generates or never
   // generates, decided once per batch from the protocol, the options, and the
-  // pools the caller resolved — never from a seed. Asked through the public
-  // analysis (which also refuses an unparsed protocol), so this gate and the
-  // one a host runs standalone are the same function by construction.
-  const conflicts = analyseSyntheticFeasibility(protocol, assetData, {
-    startWindow: startWindowAnchor,
-  });
+  // pools the caller resolved — never from a seed. The very analysis the
+  // public entry point runs, over the very rules this walk will read, so this
+  // gate and the one a host runs standalone are the same gate by
+  // construction.
+  const conflicts = analyseFeasibilityWithRules(
+    protocol,
+    assetData,
+    startWindowAnchor,
+    interfaceRules,
+  );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts, FEASIBILITY_SUMMARY);
   }
-
-  // Walked once per batch: the answer is the same for every session.
-  const interfaceRules = collectInterfaceImpliedRules(protocol);
 
   const generateOne = (
     index: number,
