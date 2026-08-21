@@ -64,7 +64,9 @@ export const appVersion = pkg.version;
 // else stays 'self'.
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self'",
+  // posthog-js loads its remote project config and enabled SDK extensions
+  // (including exception autocapture) as scripts from our controlled relay.
+  `script-src 'self' ${POSTHOG_RELAY_ORIGIN}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   // Protocol audio/video assets are decrypted to Blobs and played via object
