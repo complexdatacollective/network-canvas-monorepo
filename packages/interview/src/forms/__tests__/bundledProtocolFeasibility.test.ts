@@ -4,14 +4,10 @@ import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { generateNetwork } from '@codaco/protocol-utilities';
+import { generateInterviews } from '@codaco/protocol-utilities';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 
-type GenerateParams = Parameters<typeof generateNetwork>[0];
-
-type BundledProtocol = {
-  codebook: GenerateParams['codebook'];
-  stages: GenerateParams['stages'];
-};
+type BundledProtocol = Record<string, unknown>;
 
 type ProtocolManifest = {
   protocols: {
@@ -22,8 +18,8 @@ type ProtocolManifest = {
 
 const require = createRequire(import.meta.url);
 
-// A JSON fixture is an untyped boundary; the package's own generateNetwork
-// tests already cross it the same way.
+// A JSON fixture is an untyped boundary; the schema parse below is what
+// gives it a shape.
 const loadProtocol = (specifier: string) =>
   require(specifier) as BundledProtocol;
 
@@ -46,12 +42,18 @@ describe('bundled protocols are feasible for synthetic generation', () => {
     ['development', developmentProtocol],
     ['sample', sampleProtocol],
     ...templateCases,
-  ])('generates a network for the %s protocol', (_name, protocol) => {
+  ])('generates a session for the %s protocol', (_name, protocol) => {
+    // Parsed exactly as a host would parse it at the generation boundary —
+    // parsing is what resolves every stage's synthetic descriptors (D14) —
+    // and pinned to a fixed start instant so the walk is seed-stable (D13:
+    // the session date is the seeded startTime's date, never the clock's).
+    const parsed = CurrentProtocolSchema.parse(protocol);
     expect(() =>
-      generateNetwork({
+      generateInterviews(parsed, {
+        count: 1,
         seed: 1,
-        codebook: protocol.codebook,
-        stages: protocol.stages,
+        simulateDropOut: false,
+        startWindow: '2026-08-20T12:00:00.000Z',
       }),
     ).not.toThrow();
   });

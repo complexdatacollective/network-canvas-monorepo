@@ -2,12 +2,11 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import RelativeDatePickerField from '@codaco/fresco-ui/form/fields/RelativeDatePicker';
-import { generateNetwork } from '@codaco/protocol-utilities';
+import { generateInterviews } from '@codaco/protocol-utilities';
 import {
   asEntityAttributeReference,
-  type Codebook,
-  DEFAULT_RESPONSE_BURDEN,
-  type Stage,
+  CurrentProtocolSchema,
+  type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -124,48 +123,48 @@ function renderedWindow(parameters: {
 
 const variableId = 'lastSeen';
 
-function egoCodebook(parameters: {
+function egoProtocol(parameters: {
   anchor: string;
   before: number;
   after: number;
-}): Codebook {
-  return {
-    ego: {
-      variables: {
-        [variableId]: {
-          name: 'Last seen',
-          type: 'datetime',
-          component: 'RelativeDatePicker',
-          parameters,
-          validation: { required: true },
+}): CurrentProtocol {
+  // Parsed exactly as a generating host parses its protocol (D14): parsing is
+  // what resolves the stage's synthetic descriptors, so no generation
+  // metadata is hand-authored here.
+  return CurrentProtocolSchema.parse({
+    name: 'Relative-date window parity',
+    schemaVersion: 8,
+    codebook: {
+      ego: {
+        variables: {
+          [variableId]: {
+            name: 'lastSeen',
+            type: 'datetime',
+            component: 'RelativeDatePicker',
+            parameters,
+            validation: { required: true },
+          },
         },
       },
     },
-  };
-}
-
-const egoStages: Stage[] = [
-  {
-    id: 'stage-ego',
-    type: 'EgoForm',
-    // Schema-injected generation metadata: a parsed stage always carries
-    // it, and nothing in this test reads it.
-    synthetic: {
-      generatesData: true,
-      responseBurden: DEFAULT_RESPONSE_BURDEN.EgoForm,
-    },
-    label: 'About you',
-    introductionPanel: { title: 'About you', text: 'A few questions.' },
-    form: {
-      fields: [
-        {
-          variable: asEntityAttributeReference(variableId),
-          prompt: 'When did you last see them?',
+    stages: [
+      {
+        id: 'stage-ego',
+        type: 'EgoForm',
+        label: 'About you',
+        introductionPanel: { title: 'About you', text: 'A few questions.' },
+        form: {
+          fields: [
+            {
+              variable: asEntityAttributeReference(variableId),
+              prompt: 'When did you last see them?',
+            },
+          ],
         },
-      ],
-    },
-  },
-];
+      },
+    ],
+  }) as CurrentProtocol;
+}
 
 /** Every date the generator draws for the variable, across a spread of seeds. */
 function generatedValues(parameters: {
@@ -173,14 +172,20 @@ function generatedValues(parameters: {
   before: number;
   after: number;
 }): string[] {
+  const protocol = egoProtocol(parameters);
   const drawn: string[] = [];
   for (let seed = 1; seed <= 16; seed++) {
-    const { network } = generateNetwork({
+    const [result] = generateInterviews(protocol, {
+      count: 1,
       seed,
-      codebook: egoCodebook(parameters),
-      stages: egoStages,
+      simulateDropOut: false,
+      // The window under test hangs off an explicit anchor, so the session's
+      // own date is irrelevant — pinned regardless (D13): drawn values must
+      // never depend on the machine clock.
+      startWindow: '2026-08-20T12:00:00.000Z',
     });
-    const value = network.ego?.[entityAttributesProperty][variableId];
+    const value =
+      result?.session.network.ego?.[entityAttributesProperty][variableId];
     if (typeof value !== 'string') {
       throw new Error(`seed ${seed} generated no date for ${variableId}`);
     }
