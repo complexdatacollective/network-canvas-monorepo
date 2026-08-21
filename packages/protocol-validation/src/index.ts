@@ -81,6 +81,8 @@ export {
   collectInterfaceImpliedRules,
   declaresTextGenerator,
   type EffectiveVariableRules,
+  type ImpliedRuleSource,
+  type ImpliedRuleSources,
   type InterfaceImpliedRules,
   inferTextGenerator,
   narrowVariableRules,
