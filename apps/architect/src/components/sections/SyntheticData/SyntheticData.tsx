@@ -1,12 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { v1 as uuid } from 'uuid';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import type { EdgeTopology, Stage } from '@codaco/protocol-validation';
+import {
+  type EdgeTopology,
+  type Stage,
+  stageValuesSynthetic,
+  SyntheticCountSchema,
+} from '@codaco/protocol-validation';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
@@ -16,38 +22,41 @@ import {
 } from '~/components/StageEditor/stageFormHooks';
 import { useStageFormValues } from '~/components/StageEditor/useStageFormValues';
 import { conflictsForStage } from '~/components/Synthetic/conflicts';
+import { describeFieldWindow } from '~/components/Synthetic/schemaIntrospection';
+import { stageCreatesEdges } from '~/components/Synthetic/stageEdges';
 import {
   formatEdgeTopology,
   formatResponseBurden,
   formatSyntheticCount,
-  type SyntheticDistribution,
 } from '~/components/Synthetic/summaries';
 import { SyntheticFeasibilityAnnouncer } from '~/components/Synthetic/SyntheticFeasibilityAnnouncer';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
-import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
+import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 import { useSyntheticFeasibility } from '~/hooks/useSyntheticFeasibility';
 import { getProtocol } from '~/selectors/protocol';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
 import { cx } from '~/utils/cva';
 
 import { buildProtocolWithStage } from '../../StageEditor/buildProtocolWithStage';
+import {
+  STAGE_SECTION_SYNTHETIC,
+  stageSectionMarker,
+} from '../../StageEditor/deepLink';
+import { withStageIdentity } from '../../StageEditor/withStageIdentity';
 import { DistributionEditor } from './DistributionEditor';
 import {
-  type DistributionFamily,
-  DISTRIBUTION_FAMILIES,
-  distributionCandidates,
-} from './distributions';
-import {
+  defaultTopologyForMetric,
   isSyntheticAuthored,
   resolveStageSynthetic,
   type StageDraft,
   stageCountWindow,
-  stageCreatesEdges,
+  stageSyntheticEditorValues,
   stageSyntheticSupport,
   type SyntheticChange,
   syntheticBlockForChange,
   type SyntheticIssue,
+  topologyDistributionSchema,
   topologyMetricWindow,
 } from './stageSynthetic';
 
@@ -91,9 +100,10 @@ const RESPONSE_BURDEN_LABEL = 'Response burden';
 const RESPONSE_BURDEN_HINT =
   'How much of the participant’s attention this stage costs, relative to the other stages. Higher values make a synthetic participant more likely to drop out later in the interview.';
 const NO_EDGE_PROMPT_SUMMARY = 'Edges: none created by this stage';
+const NO_NODE_COUNT_SUMMARY = 'Nodes: none created by this stage';
 const NO_EDGE_PROMPT_TITLE = 'This stage creates no edges';
 const NO_EDGE_PROMPT_DESCRIPTION =
-  'Edge topology decides how densely a stage links people together, so it is only editable once a prompt on this stage creates an edge.';
+  'Edge topology decides how densely a stage links people together, so it is only editable once this stage has something that creates an edge.';
 const NO_DATA_SUMMARY = 'Creates no data';
 const CONFLICT_TITLE = 'Synthetic data cannot be generated for this stage';
 const REFUSAL_TITLE = 'That change was not saved';
@@ -115,15 +125,22 @@ const TOPOLOGY_METRICS = [
   'meanDegree',
 ] as const satisfies readonly EdgeTopology['metric'][];
 
+const OPEN_WINDOW: NumericWindow = {
+  exclusiveMin: false,
+  exclusiveMax: false,
+  integer: false,
+};
+
 /**
- * A response burden has no direction — it is a rate summed across the stages a
- * participant has completed — so its floor is zero and it has no ceiling. The
- * shape of the quantity, not a bound copied from the schema.
+ * The window a response burden may take, read off the descriptor every stage
+ * type carries it on. A rate rather than a probability — it is summed across
+ * the stages a participant has completed — so the schema leaves it open above,
+ * and this reads that rather than restating it.
  */
-const BURDEN_WINDOW = numericWindowOf({
-  min: 0,
-  max: Number.POSITIVE_INFINITY,
-});
+const BURDEN_WINDOW: NumericWindow =
+  describeFieldWindow(stageValuesSynthetic('Information'), [
+    'responseBurden',
+  ]) ?? OPEN_WINDOW;
 
 /** A placeholder id for the resolution parse; no protocol is built from it. */
 const DRAFT_STAGE_ID = 'synthetic-draft-stage';
@@ -146,14 +163,6 @@ const issuesUnder = (
 const unscopedIssues = (issues: readonly SyntheticIssue[]): SyntheticIssue[] =>
   issues.filter((issue) => issue.path.length === 0);
 
-/** The offered families, current one first, for a metric or family switch. */
-const familiesFrom = (
-  current: DistributionFamily,
-): readonly DistributionFamily[] => [
-  current,
-  ...DISTRIBUTION_FAMILIES.filter((family) => family !== current),
-];
-
 type TopologyEditorProps = {
   topology: EdgeTopology;
   issues: readonly SyntheticIssue[];
@@ -164,11 +173,12 @@ type TopologyEditorProps = {
  * The metric a topology is expressed in, and the distribution over it.
  *
  * Changing the metric changes what the numbers MEAN — a proportion of the
- * available pairs, or ties per person — and each metric admits its own set of
- * families. So the switch offers the current family first and then every
- * other, and the schema takes the first that fits: a beta density carried onto
- * a mean degree, which has no beta, lands on the next family rather than on a
- * refusal the author cannot act on.
+ * available pairs, or ties per person — so the parameters do not travel with
+ * it. A density of 0.5 reused as a mean degree of 0.5 is half the pairs in the
+ * network turned into three ties per person, silently, on a control that gave
+ * no sign of having changed anything but its units. The new metric starts at
+ * its own schema default instead (see `defaultTopologyForMetric`), which is
+ * where an unstated topology of that metric already sits.
  */
 const TopologyEditor = ({
   topology,
@@ -176,7 +186,6 @@ const TopologyEditor = ({
   onCandidates,
 }: TopologyEditorProps) => {
   const window = topologyMetricWindow(topology.metric);
-  const current: SyntheticDistribution = topology.distribution;
 
   return (
     <fieldset className="min-w-0">
@@ -194,22 +203,15 @@ const TopologyEditor = ({
         onChange={(next: string | number | undefined) => {
           const metric = TOPOLOGY_METRICS.find((option) => option === next);
           if (metric === undefined || metric === topology.metric) return;
-          const nextWindow = topologyMetricWindow(metric);
-          onCandidates(
-            familiesFrom(current.distribution)
-              .flatMap((family) =>
-                distributionCandidates(family, current, nextWindow),
-              )
-              .map((distribution) => ({ metric, distribution })),
-          );
+          onCandidates([defaultTopologyForMetric(metric)]);
         }}
       />
       <DistributionEditor
         name="synthetic.topology.distribution"
         legend={TOPOLOGY_LEGEND}
-        distribution={current}
+        distribution={topology.distribution}
         window={window}
-        families={familiesFrom(current.distribution)}
+        schema={topologyDistributionSchema(topology.metric)}
         // A refusal about the topology AS A WHOLE (rather than about one of
         // its parameters) has no field of its own, so it travels down to the
         // distribution editor's declaration-level notice — titled with this
@@ -244,22 +246,31 @@ const SyntheticData = ({
 
   /**
    * The stage as it stands: the committed stage with the form's own values
-   * over it.
+   * over it — built by `withStageIdentity`, the same shape a save commits and
+   * a preview launches.
    *
-   * The form's values alone are not the stage. `getFormValues()` reports
-   * REGISTERED fields, and a section whose fields are unmounted — a collapsed
-   * Min/max alters, a Sociogram prompt list the researcher has not opened —
-   * registers nothing. Reading values alone would therefore lose the very
-   * siblings the schema resolves against: the behaviours window a count is
-   * bounded by, and the prompts that say whether this stage creates edges at
-   * all. Merging in the committed stage is the same resolution order
-   * `useStageFormValue` documents, and the registered `synthetic` still wins
-   * over the committed one — including when it has been reset to `undefined`.
+   * Deliberately NOT the committed stage with values merged over it. A key
+   * absent from `getFormValues()` is a key the researcher REMOVED (a section
+   * toggled off), and a merge cannot tell that from a key the form never held:
+   * this section would go on resolving a count inside limits the save is about
+   * to drop, and — since the same draft is what the live analysis runs against
+   * — reporting a verdict about a protocol nobody can save. The two keys no
+   * field could ever carry are the identity, which is put back below.
    */
   const draft = useMemo<StageDraft>(
     () => ({
-      ...(committedStage as unknown as Record<string, unknown> | null),
-      ...values,
+      ...(withStageIdentity(values as unknown as Stage, committedStage, {
+        // Both keys are read as form-owned here. The block is: this section
+        // registers it, so its own value is authoritative — including when a
+        // reset has removed it. Skip logic is, because nothing this section
+        // computes can see it — no stage parameter resolves against it and the
+        // engine's analysis reads none — so carrying it in would add a key to
+        // the analysed stage for no question it could answer. (Asking the
+        // interface registry which sections it renders would close an import
+        // cycle: the registry is built FROM the section list this file is in.)
+        skipLogic: true,
+        synthetic: true,
+      }) as unknown as Record<string, unknown>),
       id: committedStage?.id ?? DRAFT_STAGE_ID,
       type: interfaceType,
     }),
@@ -268,13 +279,20 @@ const SyntheticData = ({
 
   const support = useMemo(() => stageSyntheticSupport(draft), [draft]);
   const resolved = useMemo(() => resolveStageSynthetic(draft), [draft]);
+  /**
+   * What the CONTROLS show. A composer's block may state one half and leave
+   * the other out, which means "none of those" to a run — and `resolved` says
+   * so — but the editor still has to offer the missing half, or the only way
+   * back to it would be resetting the whole block.
+   */
+  const editing = useMemo(() => stageSyntheticEditorValues(draft), [draft]);
   const countWindow = useMemo(() => stageCountWindow(draft), [draft]);
   const createsEdges = useMemo(() => stageCreatesEdges(draft), [draft]);
   const authored = isSyntheticAuthored(draft);
 
-  const showCount = support.supportsCount && resolved.count !== undefined;
+  const showCount = support.supportsCount && editing.count !== undefined;
   const showTopology =
-    support.supportsTopology && resolved.topology !== undefined && createsEdges;
+    support.supportsTopology && editing.topology !== undefined && createsEdges;
   const topologyWindow = useMemo(
     () =>
       resolved.topology === undefined
@@ -282,6 +300,18 @@ const SyntheticData = ({
         : topologyMetricWindow(resolved.topology.metric),
     [resolved.topology],
   );
+
+  /**
+   * The id a stage that has not been saved yet is analysed under.
+   *
+   * `buildProtocolWithStage` mints a fresh one on every call, so an unsaved
+   * stage was a different stage to the engine on every recompute: the verdict
+   * in hand named an id the newest document no longer had, and this section's
+   * own conflicts blinked out between debounce cycles. Minted once for the
+   * editing session instead — `useState`'s initialiser, so React cannot
+   * discard it the way it may discard a memo — and written over the builder's.
+   */
+  const [draftStageId] = useState(() => uuid());
 
   /**
    * The whole protocol as it stands, with this stage's working copy in place:
@@ -292,16 +322,23 @@ const SyntheticData = ({
     if (!protocol) return null;
     // Form values are a stage's shape without its type, which the schema
     // decides on rather than this component: the parse inside the feasibility
-    // hook is what says whether the draft is a stage at all. The builder mints
-    // an id for an inserted stage, so the placeholder never reaches the
-    // document a new stage is analysed in.
-    return buildProtocolWithStage(
+    // hook is what says whether the draft is a stage at all.
+    const document = buildProtocolWithStage(
       protocol,
       draft as unknown as Stage,
       stageId,
       stagePosition,
     );
-  }, [protocol, draft, stageId, stagePosition]);
+    if (stageId !== null) return document;
+
+    const inserted = stagePosition ?? protocol.stages.length;
+    return {
+      ...document,
+      stages: document.stages.map((stage, index) =>
+        index === inserted ? { ...stage, id: draftStageId } : stage,
+      ),
+    };
+  }, [protocol, draft, stageId, stagePosition, draftStageId]);
 
   const feasibility = useSyntheticFeasibility({
     document: feasibilityDocument,
@@ -309,19 +346,10 @@ const SyntheticData = ({
   });
 
   /**
-   * The id the analysis knows this stage by.
-   *
-   * A saved stage is analysed under its own. A stage not yet saved is INSERTED
-   * into the analysed document by `buildProtocolWithStage`, which mints an id
-   * for it — so the id the engine will put on this stage's conflicts is read
-   * back off the document that was analysed rather than guessed at.
+   * The id the analysis knows this stage by: its own where it has been saved,
+   * and the session's stable draft id where it has not.
    */
-  const analysedStageId = useMemo(() => {
-    if (stageId !== null) return stageId;
-    if (feasibilityDocument === null) return undefined;
-    const inserted = stagePosition ?? feasibilityDocument.stages.length - 1;
-    return feasibilityDocument.stages[inserted]?.id;
-  }, [feasibilityDocument, stageId, stagePosition]);
+  const analysedStageId = stageId ?? draftStageId;
 
   const stageConflicts = useMemo(
     () => conflictsForStage(feasibility.conflicts, analysedStageId),
@@ -355,34 +383,36 @@ const SyntheticData = ({
     setStageValue('synthetic', undefined);
   }, [setStageValue]);
 
+  /**
+   * The collapsed row: what a run of this stage would actually do.
+   *
+   * Built from the RESOLVED parameters rather than from the ones the controls
+   * are showing, so the two can differ in exactly one place — a composer whose
+   * block states one half — and there the summary says the truth ("creates no
+   * nodes") while the control offers the way out of it.
+   */
   const summary = useMemo(() => {
     const parts: string[] = [];
     if (!support.generatesData) parts.push(NO_DATA_SUMMARY);
-    if (showCount && resolved.count) {
+    if (support.supportsCount) {
       parts.push(
-        `Nodes: ${formatSyntheticCount(resolved.count, { window: countWindow })}`,
+        resolved.count === undefined
+          ? NO_NODE_COUNT_SUMMARY
+          : `Nodes: ${formatSyntheticCount(resolved.count, { window: countWindow })}`,
       );
     }
-    if (support.supportsTopology && !createsEdges) {
-      parts.push(NO_EDGE_PROMPT_SUMMARY);
-    } else if (showTopology && resolved.topology) {
+    if (support.supportsTopology) {
       parts.push(
-        `Edges: ${formatEdgeTopology(resolved.topology, topologyWindow ? { window: topologyWindow } : {})}`,
+        !createsEdges || resolved.topology === undefined
+          ? NO_EDGE_PROMPT_SUMMARY
+          : `Edges: ${formatEdgeTopology(resolved.topology, topologyWindow ? { window: topologyWindow } : {})}`,
       );
     }
     if (resolved.responseBurden !== undefined) {
       parts.push(`Burden: ${formatResponseBurden(resolved.responseBurden)}`);
     }
     return parts.join(SUMMARY_SEPARATOR);
-  }, [
-    support,
-    showCount,
-    showTopology,
-    createsEdges,
-    resolved,
-    countWindow,
-    topologyWindow,
-  ]);
+  }, [support, createsEdges, resolved, countWindow, topologyWindow]);
 
   return (
     <Surface
@@ -391,6 +421,10 @@ const SyntheticData = ({
       spacing="none"
       shadow="sm"
       data-name={SECTION_TITLE}
+      // Where a `?section=synthetic` link lands (see `StageEditor/deepLink`),
+      // so the overview's stage rows can open the editor at the very
+      // parameters they are describing.
+      {...stageSectionMarker(STAGE_SECTION_SYNTHETIC)}
       className={cx(
         'relative mb-4 flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-visible! p-6',
       )}
@@ -443,15 +477,14 @@ const SyntheticData = ({
             </Alert>
           )}
 
-          {showCount && resolved.count && (
+          {showCount && editing.count && (
             <DistributionEditor
               name="synthetic.count"
               legend={NODE_COUNT_LEGEND}
-              distribution={resolved.count}
+              distribution={editing.count}
               window={countWindow}
-              families={familiesFrom(resolved.count.distribution)}
+              schema={SyntheticCountSchema}
               hint={NODE_COUNT_HINT}
-              integral
               issues={issuesUnder(refusals, 'count')}
               onCandidates={(candidates) =>
                 commit(candidates.map((count) => ({ count })))
@@ -466,9 +499,9 @@ const SyntheticData = ({
             </Alert>
           )}
 
-          {showTopology && resolved.topology && (
+          {showTopology && editing.topology && (
             <TopologyEditor
-              topology={resolved.topology}
+              topology={editing.topology}
               issues={issuesUnder(refusals, 'topology')}
               onCandidates={(candidates) =>
                 commit(candidates.map((topology) => ({ topology })))

@@ -1,21 +1,21 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { DistributionVisual } from '~/components/Synthetic/DistributionVisual';
+import { describeDistributions } from '~/components/Synthetic/schemaIntrospection';
 import type {
   SyntheticDistribution,
   SyntheticWindow,
 } from '~/components/Synthetic/summaries';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
-import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
 
 import {
-  type DistributionFamily,
   DISTRIBUTION_LABELS,
   DISTRIBUTION_PARAMETERS,
   distributionCandidates,
+  offeredFamilies,
   PARAMETER_LABELS,
   parameterValue,
   parameterWindow,
@@ -35,6 +35,13 @@ import type { SyntheticIssue } from './stageSynthetic';
  * schema answers, and it answers it the same way for a whole-number count and
  * a continuous density.
  *
+ * WHICH families it offers, and what each parameter of them may be, are read
+ * out of the `schema` it is handed (spec governing rule 1). A field is
+ * therefore never offered a family its own union refuses, and a parameter is
+ * never held to a bound its own schema does not state — a count's `value` is a
+ * whole number inside the population ceiling while its `mean` is neither, and
+ * one blanket claim about "the count field" got both wrong.
+ *
  * The visual is `aria-hidden` by its own contract; the numeric fields beside
  * it are the accessible representation of the same values.
  */
@@ -48,12 +55,15 @@ export type DistributionEditorProps = {
   distribution: SyntheticDistribution;
   /** The field's own valid window, from the schema. */
   window: SyntheticWindow;
-  /** The families the schema admits here, in the order they are offered. */
-  families: readonly DistributionFamily[];
+  /**
+   * The schema of the distribution union this field admits — the source of the
+   * families offered and of every parameter's own window. Handed in rather
+   * than chosen here, because which union applies is the owning field's
+   * question (a count's, a density's, a mean degree's).
+   */
+  schema: unknown;
   /** Explains what this distribution decides, beside the family select. */
   hint?: ReactNode;
-  /** Whole numbers only — the schema refuses a fraction for this field. */
-  integral?: boolean;
   /** The schema's refusals, pathed relative to this distribution. */
   issues?: readonly SyntheticIssue[];
   disabled?: boolean;
@@ -84,16 +94,23 @@ export function DistributionEditor({
   legend,
   distribution,
   window,
-  families,
+  schema,
   hint,
-  integral = false,
   issues = [],
   disabled,
   onCandidates,
 }: DistributionEditorProps) {
   const family = distribution.distribution;
   const parameters = DISTRIBUTION_PARAMETERS[family];
+  const specs = useMemo(() => describeDistributions(schema), [schema]);
+  const families = useMemo(() => offeredFamilies(specs), [specs]);
+  const spec = specs.find((candidate) => candidate.family === family);
   const declarationRefusals = declarationIssues(issues);
+  // A refusal about WHICH family this is — the union's own discriminator
+  // message, raised when a candidate lands on a family this field has no
+  // branch for. It belongs beside the select that chose it; dropped, the
+  // select would appear to snap back for no reason.
+  const familyRefusals = issuesFor(issues, 'distribution');
 
   return (
     <fieldset className="min-w-0">
@@ -123,6 +140,9 @@ export function DistributionEditor({
               label: DISTRIBUTION_LABELS[option],
             }))}
             disabled={disabled}
+            {...(familyRefusals.length > 0
+              ? { errors: familyRefusals, showErrors: true }
+              : {})}
             onChange={(next: string | number | undefined) => {
               // Narrowed through the offered list rather than asserted: the
               // select can only ever return one of these, and looking it up is
@@ -140,10 +160,7 @@ export function DistributionEditor({
               name={`${name}.${parameter}`}
               label={PARAMETER_LABELS[parameter]}
               value={parameterValue(distribution, parameter)}
-              window={numericWindowOf(
-                parameterWindow(distribution, parameter, window),
-                integral,
-              )}
+              window={parameterWindow(distribution, parameter, window, spec)}
               disabled={disabled}
               errors={issuesFor(issues, parameter)}
               onCommit={(value) => {

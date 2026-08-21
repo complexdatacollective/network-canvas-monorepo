@@ -7,10 +7,11 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  defaultTopologyForMetric,
   isSyntheticAuthored,
   resolveStageSynthetic,
   stageCountWindow,
-  stageCreatesEdges,
+  stageSyntheticEditorValues,
   stageSyntheticSupport,
   syntheticBlockForChange,
   syntheticIssues,
@@ -214,64 +215,6 @@ describe('windows', () => {
   });
 });
 
-describe('edge-creating prompts', () => {
-  it('is false for a sociogram whose prompts only display edges', () => {
-    expect(
-      stageCreatesEdges(
-        sociogram({
-          prompts: [
-            {
-              id: 'p1',
-              text: 'Look',
-              layout: { layoutVariable: 'layout' },
-              edges: { display: ['friend'] },
-            },
-          ],
-        }),
-      ),
-    ).toBe(false);
-  });
-
-  it('is true once a prompt creates one', () => {
-    expect(
-      stageCreatesEdges(
-        sociogram({
-          prompts: [
-            {
-              id: 'p1',
-              text: 'Link them',
-              layout: { layoutVariable: 'layout' },
-              edges: { create: 'friend' },
-            },
-          ],
-        }),
-      ),
-    ).toBe(true);
-  });
-
-  it('reads a census prompt’s own edge declaration', () => {
-    expect(
-      stageCreatesEdges({
-        type: 'DyadCensus',
-        prompts: [
-          { id: 'p1', text: 'Do they know each other?', createEdge: 'friend' },
-        ],
-      }),
-    ).toBe(true);
-  });
-
-  it('reads the composer’s drawable edge types instead of prompts', () => {
-    expect(stageCreatesEdges(networkComposer({ edges: [] }))).toBe(false);
-    expect(
-      stageCreatesEdges(
-        networkComposer({
-          edges: [{ subject: { entity: 'edge', type: 'friend' } }],
-        }),
-      ),
-    ).toBe(true);
-  });
-});
-
 describe('authored state', () => {
   it('is false with no block and with an empty one', () => {
     expect(isSyntheticAuthored(sociogram())).toBe(false);
@@ -326,9 +269,12 @@ describe('the block written for a change', () => {
   });
 
   it('gives the composer the count and topology its descriptor demands', () => {
-    const { block, issues } = syntheticBlockForChange(networkComposer(), {
-      responseBurden: 0.25,
-    });
+    const { block, issues } = syntheticBlockForChange(
+      networkComposer({
+        edges: [{ id: 'e1', subject: { entity: 'edge', type: 'friend' } }],
+      }),
+      { responseBurden: 0.25 },
+    );
 
     expect(issues).toEqual([]);
     expect(block).toMatchObject({ responseBurden: 0.25 });
@@ -368,5 +314,117 @@ describe('the block written for a change', () => {
     expect(
       issues.some((issue) => issue.unrecognisedKeys.includes('topology')),
     ).toBe(true);
+  });
+});
+
+describe('a composer’s two optional halves', () => {
+  /**
+   * The composer is the one descriptor where a PRESENT block and an ABSENT one
+   * mean different things: absence prefaults both halves, while a block naming
+   * only a topology means "create no nodes" — the simulator returns before
+   * building any (`NetworkComposer.ts`: `if (count === undefined) return`).
+   *
+   * The oracle is the PARSE of the stage the editor would save, so a block that
+   * looked complete but resolved to nothing still fails here.
+   */
+  const resolvedFor = (
+    block: Record<string, unknown> | undefined,
+    overrides: Record<string, unknown> = {},
+  ) =>
+    resolveStageSynthetic(
+      networkComposer({
+        ...overrides,
+        ...(block === undefined ? {} : { synthetic: block }),
+      }),
+    );
+
+  const withEdgeTypes = {
+    edges: [{ id: 'e1', subject: { entity: 'edge', type: 'friend' } }],
+  };
+
+  it('states the count when only the topology was edited', () => {
+    const composer = networkComposer(withEdgeTypes);
+    const { block, issues } = syntheticBlockForChange(composer, {
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 0.25 },
+      },
+    });
+
+    expect(issues).toEqual([]);
+    // The half the author never touched, at the value the schema resolves for
+    // it — so the stage goes on creating the people it created before.
+    expect(resolvedFor(block, withEdgeTypes).count).toEqual(
+      resolvedFor(undefined, withEdgeTypes).count,
+    );
+    expect(resolvedFor(block, withEdgeTypes).count).toBeDefined();
+  });
+
+  it('states the topology when only the count was edited', () => {
+    const composer = networkComposer(withEdgeTypes);
+    const { block, issues } = syntheticBlockForChange(composer, {
+      count: { distribution: 'constant', value: 4 },
+    });
+
+    expect(issues).toEqual([]);
+    expect(resolvedFor(block, withEdgeTypes).topology).toEqual(
+      DEFAULT_EDGE_TOPOLOGY,
+    );
+    expect(resolvedFor(block, withEdgeTypes).count).toEqual({
+      distribution: 'constant',
+      value: 4,
+    });
+  });
+
+  it('writes no topology where the stage has no drawable edge types', () => {
+    // Nothing on screen shows a topology there, so nothing is authored for it.
+    const { block, issues } = syntheticBlockForChange(networkComposer(), {
+      count: { distribution: 'constant', value: 4 },
+    });
+
+    expect(issues).toEqual([]);
+    expect(block).not.toHaveProperty('topology');
+    expect(block).toHaveProperty('count');
+  });
+
+  it('reports a half a present block leaves out as creating nothing', () => {
+    const stated = { topology: DEFAULT_EDGE_TOPOLOGY };
+
+    // What a RUN would do: no nodes at all.
+    expect(resolvedFor(stated, withEdgeTypes).count).toBeUndefined();
+    // What the editor offers, so the stage is not a dead end.
+    expect(
+      stageSyntheticEditorValues(
+        networkComposer({ ...withEdgeTypes, synthetic: stated }),
+      ).count,
+    ).toEqual(resolvedFor(undefined, withEdgeTypes).count);
+  });
+
+  it('reads an absent block as both halves, exactly as the prefault does', () => {
+    const resolved = resolvedFor(undefined, withEdgeTypes);
+
+    expect(resolved.count).toBeDefined();
+    expect(resolved.topology).toEqual(DEFAULT_EDGE_TOPOLOGY);
+  });
+});
+
+describe('the topology a metric starts from', () => {
+  it('is the schema’s own default when it is that metric', () => {
+    expect(defaultTopologyForMetric('meanDegree')).toEqual(
+      DEFAULT_EDGE_TOPOLOGY,
+    );
+  });
+
+  it('is derived from the metric’s own schema otherwise', () => {
+    const density = defaultTopologyForMetric('density');
+
+    expect(density.metric).toBe('density');
+    // Inside the metric's own domain — which is the point: a mean degree of 3
+    // carried across as a density of 3 is not even a legal density.
+    const window = topologyMetricWindow('density');
+    const value =
+      'value' in density.distribution ? density.distribution.value : undefined;
+    expect(value).toBeGreaterThanOrEqual(window.min);
+    expect(value).toBeLessThanOrEqual(window.max);
   });
 });

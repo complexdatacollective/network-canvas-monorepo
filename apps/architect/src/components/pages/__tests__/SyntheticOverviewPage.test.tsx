@@ -146,16 +146,21 @@ describe('the protocol verdict', () => {
 });
 
 describe('the stage table', () => {
-  it('links each stage to its own editor', async () => {
+  it('links each stage to its own editor, at the section this screen is about', async () => {
     renderPage(FIXTURE_DOCUMENT);
     await settle(DEBOUNCE);
 
+    // The row describes generation parameters, so the link opens the editor
+    // where they are changed rather than at the top of a long form.
     expect(
       screen.getByRole('link', { name: /^Close friends/ }),
-    ).toHaveAttribute('href', '/protocol/stage/close-friends');
+    ).toHaveAttribute(
+      'href',
+      '/protocol/stage/close-friends?section=synthetic',
+    );
     expect(screen.getByRole('link', { name: /^Welcome/ })).toHaveAttribute(
       'href',
-      '/protocol/stage/welcome',
+      '/protocol/stage/welcome?section=synthetic',
     );
   });
 
@@ -186,7 +191,7 @@ describe('the stage table', () => {
     const row = screen.getByRole('row', { name: /Position only/ });
     expect(
       within(row).getByText(
-        'No prompt on this stage creates edges, so its edge topology is never used.',
+        'Nothing on this stage creates edges, so its edge topology is never used.',
       ),
     ).toBeVisible();
   });

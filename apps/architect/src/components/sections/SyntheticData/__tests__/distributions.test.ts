@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  DensityDistributionSchema,
+  MeanDegreeDistributionSchema,
+  SyntheticCountSchema,
+} from '@codaco/protocol-validation';
+import {
+  describeDistributions,
+  type SyntheticDistributionSpec,
+} from '~/components/Synthetic/schemaIntrospection';
 import type { SyntheticDistribution } from '~/components/Synthetic/summaries';
 
 import {
@@ -9,6 +18,7 @@ import {
   distributionCandidates,
   distributionCentre,
   distributionSpread,
+  offeredFamilies,
   PARAMETER_LABELS,
   parameterValue,
   parameterWindow,
@@ -80,17 +90,45 @@ describe('parameter windows', () => {
     max: 10,
   };
 
+  const specFor = (
+    schema: unknown,
+    family: string,
+  ): SyntheticDistributionSpec | undefined =>
+    describeDistributions(schema).find(
+      (candidate) => candidate.family === family,
+    );
+
   it('stops a minimum crossing its own maximum', () => {
-    expect(parameterWindow(uniform, 'min', COUNT_WINDOW)).toEqual({
+    expect(
+      parameterWindow(
+        uniform,
+        'min',
+        COUNT_WINDOW,
+        specFor(SyntheticCountSchema, 'uniform'),
+      ),
+    ).toEqual({
       min: 0,
       max: 10,
+      exclusiveMin: false,
+      exclusiveMax: false,
+      integer: true,
     });
   });
 
   it('stops a maximum crossing its own minimum', () => {
-    expect(parameterWindow(uniform, 'max', COUNT_WINDOW)).toEqual({
+    expect(
+      parameterWindow(
+        uniform,
+        'max',
+        COUNT_WINDOW,
+        specFor(SyntheticCountSchema, 'uniform'),
+      ),
+    ).toEqual({
       min: 2,
       max: 100,
+      exclusiveMin: false,
+      exclusiveMax: false,
+      integer: true,
     });
   });
 
@@ -100,8 +138,112 @@ describe('parameter windows', () => {
         { distribution: 'normal', mean: 8, sd: 3 },
         'sd',
         COUNT_WINDOW,
+        specFor(SyntheticCountSchema, 'normal'),
       ),
-    ).toEqual({ min: 0, max: Number.POSITIVE_INFINITY });
+    ).toEqual({
+      min: 0,
+      exclusiveMin: false,
+      exclusiveMax: false,
+      integer: false,
+    });
+  });
+
+  it('holds a count’s own value to whole numbers inside the stage window', () => {
+    // `populationInt`: the value a constant count returns IS a population, so
+    // it is integral and bounded — and the stage's own window narrows it.
+    expect(
+      parameterWindow(
+        { distribution: 'constant', value: 4 },
+        'value',
+        { min: 2, max: 6 },
+        specFor(SyntheticCountSchema, 'constant'),
+      ),
+    ).toEqual({
+      min: 2,
+      max: 6,
+      exclusiveMin: false,
+      exclusiveMax: false,
+      integer: true,
+    });
+  });
+
+  it('leaves a count’s mean fractional, and without a floor', () => {
+    // The count schema bounds a normal's mean ABOVE only: `normal(mean 5.5,
+    // sd 2.5)` is a legal count, and a negative mean with spread is the
+    // sanctioned "usually none, occasionally a few". A blanket integral claim
+    // about "the count field" made both untypeable.
+    expect(
+      parameterWindow(
+        { distribution: 'normal', mean: 5.5, sd: 2.5 },
+        'mean',
+        COUNT_WINDOW,
+        specFor(SyntheticCountSchema, 'normal'),
+      ),
+    ).toEqual({
+      max: 100,
+      exclusiveMin: false,
+      exclusiveMax: false,
+      integer: false,
+    });
+  });
+
+  it('leaves a poisson count’s mean fractional', () => {
+    expect(
+      parameterWindow(
+        { distribution: 'poisson', mean: 2.5 },
+        'mean',
+        COUNT_WINDOW,
+        specFor(SyntheticCountSchema, 'poisson'),
+      ),
+    ).toMatchObject({ integer: false, min: 0, max: 100 });
+  });
+
+  it('keeps a beta density’s mean strictly inside its endpoints', () => {
+    expect(
+      parameterWindow(
+        { distribution: 'beta', mean: 0.3, sd: 0.1 },
+        'mean',
+        DENSITY_WINDOW,
+        specFor(DensityDistributionSchema, 'beta'),
+      ),
+    ).toEqual({
+      min: 0,
+      max: 1,
+      exclusiveMin: true,
+      exclusiveMax: true,
+      integer: false,
+    });
+  });
+
+  it('leaves a mean degree’s mean unbounded, as its schema does', () => {
+    expect(
+      parameterWindow(
+        { distribution: 'normal', mean: 3, sd: 1 },
+        'mean',
+        MEAN_DEGREE_WINDOW,
+        specFor(MeanDegreeDistributionSchema, 'normal'),
+      ),
+    ).toEqual({ exclusiveMin: false, exclusiveMax: false, integer: false });
+  });
+});
+
+describe('the families one field offers', () => {
+  it('offers a count only the families a count admits', () => {
+    expect(
+      offeredFamilies(describeDistributions(SyntheticCountSchema)),
+    ).toEqual(['constant', 'uniform', 'poisson', 'normal']);
+  });
+
+  it('offers a density its own set, beta included and log-normal not', () => {
+    expect(
+      offeredFamilies(describeDistributions(DensityDistributionSchema)),
+    ).toEqual(['constant', 'uniform', 'normal', 'beta']);
+  });
+
+  it('offers a mean degree no beta, having no ceiling to put one under', () => {
+    expect(
+      offeredFamilies(describeDistributions(MeanDegreeDistributionSchema)),
+    ).toEqual(['constant', 'uniform', 'normal']);
   });
 });
 

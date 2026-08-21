@@ -2,8 +2,10 @@ import {
   DEFAULT_EDGE_TOPOLOGY,
   DEFAULT_RESPONSE_BURDEN,
   defaultNodeCount,
+  DensityDistributionSchema,
   type EdgeTopology,
   EdgeTopologySchema,
+  MeanDegreeDistributionSchema,
   type Stage,
   stageNodeSynthetic,
   stageSchema,
@@ -11,7 +13,10 @@ import {
   topologyDrawWindow,
   withResolvedSyntheticCount,
 } from '@codaco/protocol-validation';
+import { describeDistributions } from '~/components/Synthetic/schemaIntrospection';
+import { stageCreatesEdges } from '~/components/Synthetic/stageEdges';
 import type { SyntheticWindow } from '~/components/Synthetic/summaries';
+import { seedParameterValue } from '~/components/Synthetic/useNumericDraft';
 
 /**
  * Everything the stage editor's "Synthetic data" section needs to know about a
@@ -162,32 +167,6 @@ export const stageSyntheticSupport = (
   }).some((issue) => issue.path[0] === 'generatesData'),
 });
 
-/**
- * Whether this stage's edges come from a prompt that creates them.
- *
- * A topology says how densely a stage links people, which decides nothing on a
- * stage that creates no edges — a Sociogram whose prompts only DISPLAY them,
- * or a NetworkComposer with no drawable edge types (spec, "Sociogram
- * nuance"). The two shapes are the schema's own: prompt-driven stages name the
- * edge type on the prompt (`createEdge`, or `edges.create` on a Sociogram),
- * and the composer lists its drawable types on the stage.
- *
- * A stage with neither shape is not prompt-gated at all, and says so.
- */
-export const stageCreatesEdges = (draft: StageDraft): boolean => {
-  if (Array.isArray(draft.prompts)) {
-    return draft.prompts.some((prompt) => {
-      if (!isRecord(prompt)) return false;
-      if (typeof prompt.createEdge === 'string') return true;
-      return isRecord(prompt.edges) && typeof prompt.edges.create === 'string';
-    });
-  }
-
-  if (Array.isArray(draft.edges)) return draft.edges.length > 0;
-
-  return true;
-};
-
 const burdenFor = (draft: StageDraft): number | undefined => {
   const type = draft.type;
   if (typeof type !== 'string') return undefined;
@@ -250,6 +229,46 @@ export const topologyMetricWindow = (
         },
   );
 
+/** The distributions one metric admits, as its own schema declares them. */
+export const topologyDistributionSchema = (
+  metric: EdgeTopology['metric'],
+): unknown =>
+  metric === 'density'
+    ? DensityDistributionSchema
+    : MeanDegreeDistributionSchema;
+
+/**
+ * The topology a metric starts from when an author switches to it.
+ *
+ * Never carried across from the other metric. The two name different
+ * quantities — a proportion of the pairs available, and ties per person — so a
+ * density of 0.5 reused as a mean degree of 0.5 is a silent change of meaning,
+ * and one the author has no way to notice.
+ *
+ * Mean degree is the schema's own default topology, so switching to it lands
+ * exactly where an unstated topology already sits. Density has no default of
+ * its own — an unstated topology resolves to a mean degree — so its seed is
+ * derived from the density schema instead: the first family that union
+ * declares, with each of its parameters seeded from the window that family
+ * states for it. Derived rather than chosen, so nothing here is a number this
+ * file invented.
+ */
+export const defaultTopologyForMetric = (
+  metric: EdgeTopology['metric'],
+): EdgeTopology => {
+  if (metric === DEFAULT_EDGE_TOPOLOGY.metric) return DEFAULT_EDGE_TOPOLOGY;
+
+  const [spec] = describeDistributions(topologyDistributionSchema(metric));
+  const seeded: Record<string, unknown> = { distribution: spec?.family };
+  for (const parameter of spec?.parameters ?? []) {
+    seeded[parameter.key] = seedParameterValue(parameter.window);
+  }
+
+  // Offered to the schema like any other candidate: a seed it refuses is not a
+  // topology, and the caller falls back to the default rather than writing one.
+  return asTopology({ metric, distribution: seeded }) ?? DEFAULT_EDGE_TOPOLOGY;
+};
+
 /** A value the schema admits as an edge topology, or `undefined`. */
 export const asTopology = (value: unknown): EdgeTopology | undefined => {
   const parsed = EdgeTopologySchema.safeParse(value);
@@ -273,6 +292,27 @@ export const asCount = (value: unknown): SyntheticCount | undefined => {
 };
 
 /**
+ * Whether this stage's descriptor admits a count AND a topology — the
+ * composer's shape, where each half is optional and a block must declare at
+ * least one.
+ *
+ * It is the one case where a PRESENT block and an ABSENT one differ in more
+ * than emphasis: an absent block prefaults both halves, while a block naming
+ * only a topology means "create no nodes". Every caller that writes or reads a
+ * half has to know which of those it is looking at, and asks here rather than
+ * naming the stage type.
+ */
+const admitsBothHalves = (support: StageSyntheticSupport): boolean =>
+  support.supportsCount && support.supportsTopology;
+
+/**
+ * The value a half takes when nothing states it: what the schema resolves for
+ * an unstated count or topology on this stage.
+ */
+const unstatedCount = (draft: StageDraft): SyntheticCount =>
+  defaultNodeCount(behavioursOf(draft));
+
+/**
  * The effective parameters for this draft: what generation would read.
  *
  * The parse is the authority — its prefaults, field defaults and transforms
@@ -283,6 +323,10 @@ export const asCount = (value: unknown): SyntheticCount | undefined => {
  * schema's own exported resolvers (`withResolvedSyntheticCount`,
  * `DEFAULT_EDGE_TOPOLOGY`, `DEFAULT_RESPONSE_BURDEN`) rather than through
  * numbers of its own.
+ *
+ * A half a present block leaves out on a both-halves descriptor comes back
+ * `undefined`, because that is what it MEANS there — no nodes, or no edges.
+ * {@link stageSyntheticEditorValues} is what a control asks instead.
  */
 export const resolveStageSynthetic = (
   draft: StageDraft,
@@ -308,26 +352,62 @@ export const resolveStageSynthetic = (
 
   const authoredCount = asCount(authored.count);
   const behaviours = behavioursOf(draft);
-  const count = support.supportsCount
-    ? authoredCount === undefined
-      ? defaultNodeCount(behaviours)
-      : withResolvedSyntheticCount({
-          // Any burdened stage type does: the resolver reads it only for the
-          // burden it carries through, and that half is discarded here. What
-          // is read is the count half, which depends on the behaviours window
-          // and the declaration alone.
-          type: COUNT_RESOLUTION_TYPE,
-          ...(behaviours === undefined ? {} : { behaviours }),
-          synthetic: { count: authoredCount, responseBurden: 0 },
-        }).synthetic.count
-    : undefined;
+  // On a both-halves descriptor a stated block is read literally, exactly as
+  // the parse above reads it; anywhere else an unstated half is defaulted by
+  // the descriptor itself and resolves the same way whether or not a block
+  // exists.
+  const literal = admitsBothHalves(support) && isSyntheticAuthored(draft);
+  const count =
+    support.supportsCount && !(literal && authored.count === undefined)
+      ? authoredCount === undefined
+        ? unstatedCount(draft)
+        : withResolvedSyntheticCount({
+            // Any burdened stage type does: the resolver reads it only for the
+            // burden it carries through, and that half is discarded here. What
+            // is read is the count half, which depends on the behaviours window
+            // and the declaration alone.
+            type: COUNT_RESOLUTION_TYPE,
+            ...(behaviours === undefined ? {} : { behaviours }),
+            synthetic: { count: authoredCount, responseBurden: 0 },
+          }).synthetic.count
+      : undefined;
 
   return {
     generatesData: support.generatesData,
     responseBurden,
     count,
+    topology:
+      support.supportsTopology && !(literal && authored.topology === undefined)
+        ? (asTopology(authored.topology) ?? DEFAULT_EDGE_TOPOLOGY)
+        : undefined,
+  };
+};
+
+/**
+ * What each control shows: the resolved parameter, or — for a half a present
+ * block leaves out — the value the schema resolves for an unstated one.
+ *
+ * Separate from {@link resolveStageSynthetic} because the two answer different
+ * questions. The summary describes what a run WOULD do, and on a composer
+ * declaring only a topology that is "no nodes at all". The editor has to offer
+ * a count anyway, or that stage would have no way back to one short of
+ * resetting the whole block — and the value it offers is the schema's own, so
+ * committing it says what the control showed.
+ */
+export const stageSyntheticEditorValues = (
+  draft: StageDraft,
+): {
+  count: SyntheticCount | undefined;
+  topology: EdgeTopology | undefined;
+} => {
+  const support = stageSyntheticSupport(draft);
+  const resolved = resolveStageSynthetic(draft);
+  return {
+    count: support.supportsCount
+      ? (resolved.count ?? unstatedCount(draft))
+      : undefined,
     topology: support.supportsTopology
-      ? (asTopology(authored.topology) ?? DEFAULT_EDGE_TOPOLOGY)
+      ? (resolved.topology ?? DEFAULT_EDGE_TOPOLOGY)
       : undefined,
   };
 };
@@ -369,27 +449,54 @@ export type SyntheticWriteResult = {
  * schema first; only if the schema refuses it does the complete block — the
  * RESOLVED parameters, with the change applied over them — get built. So a
  * descriptor that gains a required companion later needs no change here.
+ *
+ * The one thing minimality cannot decide by parsing is the composer's pair of
+ * optional halves: a block naming one of them PARSES, and means something the
+ * author never said. That case is stated in full below, before the schema is
+ * asked anything.
  */
 export const syntheticBlockForChange = (
   draft: StageDraft,
   change: SyntheticChange,
 ): SyntheticWriteResult => {
-  const minimal = withoutUndefined({
-    ...authoredSyntheticBlock(draft),
-    ...change,
-  });
+  const authored = authoredSyntheticBlock(draft);
+  const support = stageSyntheticSupport(draft);
+  const editor = stageSyntheticEditorValues(draft);
+
+  /**
+   * On a descriptor that admits both halves, every write states both.
+   *
+   * A block naming only a topology is not a stage with an unstated count: it
+   * is a stage that creates no nodes, while the ABSENT block it grew out of
+   * created eight. So the half the author did not touch is written at the
+   * value the section is showing for it, and the block goes on meaning what
+   * the editor displays. (Reset still removes the whole key, which is the one
+   * way back to the descriptor's own prefault.)
+   */
+  const halves = admitsBothHalves(support)
+    ? withoutUndefined({
+        count: editor.count,
+        // A stage with no drawable edge types draws no edges whatever a
+        // topology says, and the section hides the control — so writing one
+        // would author a parameter nothing on screen shows.
+        topology: stageCreatesEdges(draft)
+          ? editor.topology
+          : authored.topology,
+      })
+    : {};
+
+  const minimal = withoutUndefined({ ...authored, ...halves, ...change });
   const minimalIssues = issuesForBlock(draft, minimal);
   if (minimalIssues.length === 0) return { block: minimal, issues: [] };
 
   const resolved = resolveStageSynthetic(draft);
-  const support = stageSyntheticSupport(draft);
   const complete = withoutUndefined({
     // Written only where the schema pins it to `false`; everywhere else the
     // descriptor defaults it, and stating it would be noise in the protocol.
     generatesData: resolved.generatesData ? undefined : false,
     responseBurden: resolved.responseBurden,
-    count: support.supportsCount ? resolved.count : undefined,
-    topology: support.supportsTopology ? resolved.topology : undefined,
+    count: support.supportsCount ? editor.count : undefined,
+    topology: support.supportsTopology ? editor.topology : undefined,
     ...change,
   });
 

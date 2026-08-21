@@ -1,11 +1,13 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import {
   DEFAULT_RESPONSE_BURDEN,
   MAX_SYNTHETIC_POPULATION,
   type StageType,
 } from '@codaco/protocol-validation';
+import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import {
   asStage,
   renderStageForm,
@@ -133,6 +135,31 @@ const ROSTER_MANIFEST = {
   },
 };
 
+/**
+ * Stands in for the sections beside this one, each of which registers the keys
+ * it edits.
+ *
+ * The section reads its stage from the form's own values — which is what makes
+ * a key the researcher removed actually disappear — so a harness that
+ * registered nothing would be handing it a stage with no subject, no prompts
+ * and no behaviours, and testing a shape no editor ever holds.
+ */
+const StageFields = ({ stage }: { stage: Record<string, unknown> }) => (
+  <>
+    {Object.entries(stage)
+      // The identity belongs to no field, and the block below is this
+      // section's own to register.
+      .filter(([key]) => !['id', 'type', 'synthetic'].includes(key))
+      .map(([key, value]) => (
+        <HiddenFieldValue
+          key={key}
+          name={key}
+          initialValue={value as FieldValue}
+        />
+      ))}
+  </>
+);
+
 const setup = (
   stage: Record<string, unknown>,
   protocolCodebook: unknown = codebook,
@@ -154,11 +181,14 @@ const setup = (
       }),
     },
     children: (
-      <SyntheticData
-        stagePath="stages[0]"
-        stagePosition={0}
-        interfaceType={stage.type as StageType}
-      />
+      <>
+        <StageFields stage={stage} />
+        <SyntheticData
+          stagePath="stages[0]"
+          stagePosition={0}
+          interfaceType={stage.type as StageType}
+        />
+      </>
     ),
   });
 };
@@ -463,46 +493,127 @@ describe('live feasibility', () => {
 });
 
 describe('windows the schema owns', () => {
-  it('holds a count parameter inside the stage’s own behaviours window', () => {
+  /**
+   * Each field is held to the window ITS OWN schema states, which is not one
+   * window per editor: a count's `value` and truncation bounds are whole
+   * numbers inside the population ceiling (`populationInt`), while its `mean`
+   * is a plain number bounded only above. One blanket claim about "the count
+   * field" made `normal(mean 5.5, sd 2.5)` — a count the schema accepts —
+   * untypeable, and floored a mean the schema leaves open below.
+   */
+  it('holds a count’s own value to the stage’s window, in whole people', () => {
+    const { getFormValues } = setup({
+      ...NAME_GENERATOR,
+      behaviours: { minNodes: 1, maxNodes: 6 },
+      synthetic: { count: { distribution: 'constant', value: 2 } },
+    });
+    expand();
+
+    const value = screen.getByLabelText('Value');
+    expect(value).toHaveAttribute('max', '6');
+    expect(value).toHaveAttribute('min', '1');
+    expect(value).toHaveAttribute('step', '1');
+
+    fireEvent.change(value, { target: { value: '40' } });
+
+    // Refused rather than clamped. Clamping would write 6 — a number the
+    // researcher did not type — and leave the box agreeing with it, so the
+    // substitution would be invisible. The entry stays on screen instead, and
+    // nothing is written until it is one the window admits.
+    expect(value).toHaveValue(40);
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { value: 2 },
+    });
+
+    fireEvent.change(value, { target: { value: '2.5' } });
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { value: 2 },
+    });
+
+    fireEvent.change(value, { target: { value: '5' } });
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { value: 5 },
+    });
+  });
+
+  it('accepts the fractional mean and spread a normal count admits', () => {
+    const { getFormValues } = setup(NAME_GENERATOR);
+    expand();
+
+    const mean = screen.getByLabelText('Mean');
+    expect(mean).toHaveAttribute('step', 'any');
+
+    fireEvent.change(mean, { target: { value: '5.5' } });
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { mean: 5.5 },
+    });
+
+    fireEvent.change(screen.getByLabelText('Standard deviation'), {
+      target: { value: '2.5' },
+    });
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { mean: 5.5, sd: 2.5 },
+    });
+  });
+
+  it('lets a mean go below zero, where the count schema does', () => {
+    // "Usually none, occasionally a few" is a sanctioned declaration: the
+    // schema bounds a normal count's mean above and not below, and the floor
+    // belongs to the truncation bounds instead.
+    const { getFormValues } = setup(NAME_GENERATOR);
+    expand();
+
+    const mean = screen.getByLabelText('Mean');
+    expect(mean).not.toHaveAttribute('min');
+
+    fireEvent.change(mean, { target: { value: '-2' } });
+
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { mean: -2 },
+    });
+  });
+
+  it('surfaces the schema’s own refusal for a mean the stage cannot hold', () => {
+    // Field-local windows come from the field's schema; a rule relating the
+    // mean to the stage's window is a CROSS-field rule, and is caught by
+    // asking the schema and rendering what it said (spec rule 3).
     const { getFormValues } = setup({
       ...NAME_GENERATOR,
       behaviours: { minNodes: 1, maxNodes: 6 },
     });
     expand();
 
-    const mean = screen.getByLabelText('Mean');
-    expect(mean).toHaveAttribute('max', '6');
-    expect(mean).toHaveAttribute('min', '1');
+    fireEvent.change(screen.getByLabelText('Mean'), {
+      target: { value: '40' },
+    });
 
-    fireEvent.change(mean, { target: { value: '40' } });
-
-    // Refused rather than clamped. Clamping would write 6 — a number the
-    // researcher did not type — and leave the box agreeing with it, so the
-    // substitution would be invisible. The entry stays on screen instead, and
-    // nothing is written until it is one the window admits.
-    expect(mean).toHaveValue(40);
+    expect(
+      screen.getByText(/A mean of 40 lies above the 6 nodes/),
+    ).toBeInTheDocument();
     expect(syntheticValue(getFormValues)).toBeUndefined();
-
-    fireEvent.change(mean, { target: { value: '5' } });
-    expect(syntheticValue(getFormValues)).toMatchObject({ count: { mean: 5 } });
   });
 
-  it('refuses a fraction where the count is a whole-number field', () => {
-    const { getFormValues } = setup(NAME_GENERATOR);
+  it('refuses a fraction on the bounds a uniform count counts people with', () => {
+    const { getFormValues } = setup({
+      ...NAME_GENERATOR,
+      synthetic: { count: { distribution: 'uniform', min: 2, max: 6 } },
+    });
     expand();
 
-    const mean = screen.getByLabelText('Mean');
-    expect(mean).toHaveAttribute('step', '1');
+    const minimum = screen.getByLabelText('Minimum');
+    expect(minimum).toHaveAttribute('step', '1');
 
-    fireEvent.change(mean, { target: { value: '5.5' } });
+    fireEvent.change(minimum, { target: { value: '2.5' } });
 
-    // Refused rather than rounded, for the same reason: 6 is not what was
-    // typed. The entry stays visible, and blur restores the value that was.
-    expect(mean).toHaveValue(5.5);
-    expect(syntheticValue(getFormValues)).toBeUndefined();
+    // Refused rather than rounded: 3 is not what was typed. The entry stays
+    // visible, and blur restores the value that was.
+    expect(minimum).toHaveValue(2.5);
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { min: 2, max: 6 },
+    });
 
-    fireEvent.blur(mean);
-    expect(syntheticValue(getFormValues)).toBeUndefined();
+    fireEvent.blur(minimum);
+    expect(minimum).toHaveValue(2);
   });
 
   it('accepts a fractional burden, which is a rate rather than a count', () => {
@@ -517,5 +628,140 @@ describe('windows the schema owns', () => {
       generatesData: false,
       responseBurden: 0.35,
     });
+  });
+});
+
+describe('the families a field offers', () => {
+  const familyOptions = (group: HTMLElement) => {
+    fireEvent.click(
+      within(group).getByRole('combobox', { name: 'Distribution' }),
+    );
+    const options = screen
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+    });
+    return options;
+  };
+
+  it('offers a count only the families a count admits', () => {
+    setup(NAME_GENERATOR);
+    expand();
+
+    const offered = familyOptions(
+      screen.getByRole('group', { name: 'Number of nodes created' }),
+    );
+
+    expect(offered).toEqual(['Constant', 'Uniform', 'Poisson', 'Normal']);
+    // Neither is in the count union, and choosing one produced a refusal that
+    // rendered nowhere.
+    expect(offered).not.toContain('Beta');
+    expect(offered).not.toContain('Log-normal');
+  });
+
+  it('offers a mean-degree topology no beta', () => {
+    setup({
+      ...SOCIOGRAM,
+      prompts: [
+        {
+          id: 'prompt-1',
+          text: 'Link them',
+          layout: { layoutVariable: 'layout' },
+          edges: { create: 'friend' },
+        },
+      ],
+    });
+    expand();
+
+    const offered = familyOptions(
+      screen.getAllByRole('group', { name: 'Edge topology' })[0]!,
+    );
+
+    expect(offered).toEqual(['Constant', 'Uniform', 'Normal']);
+  });
+});
+
+describe('a composer’s two halves', () => {
+  const countGroup = () =>
+    screen.getByRole('group', { name: 'Number of nodes created' });
+  const topologyGroup = () =>
+    screen.getAllByRole('group', { name: 'Edge topology' })[0]!;
+
+  it('writes both halves when only the topology was edited, and keeps offering both', () => {
+    // A block naming only a topology parses — and creates no nodes at all.
+    const { getFormValues } = setup(NETWORK_COMPOSER);
+    expand();
+
+    fireEvent.change(within(topologyGroup()).getByLabelText('Mean'), {
+      target: { value: '2' },
+    });
+
+    const written = syntheticValue(getFormValues);
+    expect(written).toHaveProperty('topology');
+    expect(written).toHaveProperty('count');
+    // And the editor still offers the half that was not touched, rather than
+    // the row disappearing with no way back to it short of a full reset.
+    expect(countGroup()).toBeInTheDocument();
+    expect(disclosure()).toHaveTextContent('Nodes:');
+  });
+
+  it('writes both halves when only the count was edited', () => {
+    const { getFormValues } = setup(NETWORK_COMPOSER);
+    expand();
+
+    fireEvent.change(within(countGroup()).getByLabelText('Mean'), {
+      target: { value: '4' },
+    });
+
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: { mean: 4 },
+      topology: { metric: 'meanDegree' },
+    });
+    expect(topologyGroup()).toBeInTheDocument();
+  });
+
+  it('still removes the whole key on reset', () => {
+    const { getFormValues } = setup(NETWORK_COMPOSER);
+    expand();
+    fireEvent.change(within(countGroup()).getByLabelText('Mean'), {
+      target: { value: '4' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset to default/i }));
+
+    expect(syntheticValue(getFormValues)).toBeUndefined();
+  });
+
+  it('says a stated half that names no count creates none', () => {
+    // The one shape this editor can no longer produce, and an imported
+    // protocol still can: the summary describes the run, not the controls.
+    setup({
+      ...NETWORK_COMPOSER,
+      synthetic: {
+        topology: {
+          metric: 'meanDegree',
+          distribution: { distribution: 'normal', mean: 3, sd: 1 },
+        },
+      },
+    });
+
+    expect(disclosure()).toHaveTextContent('Nodes: none created by this stage');
+  });
+
+  it('hides the topology on a composer with no drawable edge types', () => {
+    const { edges: _edges, ...withoutEdgeTypes } = NETWORK_COMPOSER;
+    const { getFormValues } = setup(withoutEdgeTypes);
+
+    expect(disclosure()).toHaveTextContent('Edges: none created by this stage');
+    expand();
+    expect(screen.queryByText('Topology measure')).not.toBeInTheDocument();
+
+    fireEvent.change(within(countGroup()).getByLabelText('Mean'), {
+      target: { value: '4' },
+    });
+
+    // Nothing on screen shows a topology, so nothing authors one.
+    expect(syntheticValue(getFormValues)).not.toHaveProperty('topology');
   });
 });

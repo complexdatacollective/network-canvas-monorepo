@@ -27,6 +27,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('wouter', () => ({
   useLocation: () => ['/protocol/stage/stage-1', mocks.setLocation],
+  // The editor opens at a section when the query names one (see `deepLink`);
+  // this stub stands for a plain stage URL, which names none.
+  useSearch: () => '',
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({

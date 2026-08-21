@@ -8,10 +8,11 @@ import {
   useSetStageValue,
   useStageFormValue,
 } from '~/components/StageEditor/stageFormHooks';
+import { describeFieldWindow } from '~/components/Synthetic/schemaIntrospection';
 import { formatProbability } from '~/components/Synthetic/summaries';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
-import { numericWindowOf } from '~/components/Synthetic/useNumericDraft';
+import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 
 /**
  * A panel's generation parameter: how readily the participant takes back the
@@ -40,12 +41,15 @@ const summaryFor = (probability: number): string =>
   `Nomination probability: ${formatProbability(probability)}`;
 
 /**
- * A probability is a proportion, so it lives on 0–1 by construction. Every
- * value inside it is still offered to `PanelSyntheticSchema` before it is
- * written, which is what holds the control to the schema rather than to this
- * statement of what a probability is.
+ * The window the odds may take, read off the very field they are written to —
+ * so the control and the schema cannot come to disagree about what a
+ * probability is. Every value inside it is still offered to
+ * `PanelSyntheticSchema` before it is written.
  */
-const PROBABILITY_WINDOW = numericWindowOf({ min: 0, max: 1 });
+const PROBABILITY_WINDOW: NumericWindow = describeFieldWindow(
+  PanelSyntheticSchema,
+  ['nominationProbability'],
+) ?? { exclusiveMin: false, exclusiveMax: false, integer: false };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

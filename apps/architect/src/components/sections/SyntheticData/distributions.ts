@@ -1,17 +1,28 @@
+import {
+  type SyntheticDistributionSpec,
+  type SyntheticParameter,
+} from '~/components/Synthetic/schemaIntrospection';
 import type {
   SyntheticDistribution,
   SyntheticWindow,
 } from '~/components/Synthetic/summaries';
+import {
+  narrowedWindow,
+  type NumericWindow,
+  numericWindowOf,
+} from '~/components/Synthetic/useNumericDraft';
 
 /**
- * The shape of a distribution editor: which families exist, which parameters
- * each one carries, and what to seed a family with when the author switches to
- * it.
+ * The shape of a distribution editor: which parameters each family carries,
+ * what each of them may be, and what to seed a family with when the author
+ * switches to it.
  *
  * Nothing here decides what is VALID — every candidate this module builds is
  * offered to the schema, which accepts or refuses it (see
- * `syntheticBlockForChange`). What it does own is presentation: the labels a
- * researcher reads, and the order in which candidate seeds are tried.
+ * `syntheticBlockForChange`), and every window it reports was read out of the
+ * schema handed in rather than restated. What it does own is presentation: the
+ * labels a researcher reads, which parameters of a family they edit, and the
+ * order in which candidate seeds are tried.
  *
  * The two `Record`s below are exhaustive over the schema's own family and
  * parameter unions, so a family added to `schemas/8/synthetic` fails the
@@ -46,10 +57,14 @@ export const DISTRIBUTION_LABELS: Record<DistributionFamily, string> = {
 };
 
 /**
- * Every family, in the order an editor offers them. Held to
+ * Every family this codebase knows how to render an editor for. Held to
  * {@link DISTRIBUTION_PARAMETERS} — which is exhaustive over the schema's own
  * union — by a unit test, so a family added to the schema cannot reach a
  * select box with no parameters or be quietly left out of one.
+ *
+ * Which of them a given FIELD offers is a different question, and one only
+ * that field's schema can answer (a count has no beta; a mean degree has no
+ * ceiling to put one under): see {@link offeredFamilies}.
  */
 export const DISTRIBUTION_FAMILIES = [
   'constant',
@@ -59,6 +74,25 @@ export const DISTRIBUTION_FAMILIES = [
   'lognormal',
   'beta',
 ] as const satisfies readonly DistributionFamily[];
+
+/** A family name the editors know how to render, or `undefined`. */
+const asDistributionFamily = (name: string): DistributionFamily | undefined =>
+  DISTRIBUTION_FAMILIES.find((family) => family === name);
+
+/**
+ * The families ONE field admits, in the order its schema declares them.
+ *
+ * Read off the schema rather than offered from the list above, so a select can
+ * never present a family the field's own union refuses — a beta count, or a
+ * log-normal density — and so a family added to that union appears here with
+ * nothing edited.
+ */
+export const offeredFamilies = (
+  specs: readonly SyntheticDistributionSpec[],
+): DistributionFamily[] =>
+  specs
+    .map((spec) => asDistributionFamily(spec.family))
+    .filter((family): family is DistributionFamily => family !== undefined);
 
 export const PARAMETER_LABELS: Record<DistributionParameter, string> = {
   value: 'Value',
@@ -241,34 +275,71 @@ export const distributionCandidates = (
 };
 
 /**
- * The window one parameter may be edited within: the field's own window,
- * narrowed by the sibling bound it must not cross, so an ordering the schema
- * refuses cannot be typed in the first place.
+ * The parameters that name a value the FIELD's own window bounds: the single
+ * value a constant returns, and the bounds a draw is truncated into. A `mean`
+ * or an `sd` does not — a truncated normal's mean may sit outside the window
+ * its draws land in, and the schema says so by bounding those parameters
+ * differently (a count's `value` is a whole number inside the population
+ * ceiling, while its `mean` is neither).
  *
- * A standard deviation's floor is zero because a spread has no direction —
- * that is the shape of the quantity, not a bound copied from the schema.
+ * The one piece of parameter semantics this module holds. Everything else
+ * about a parameter — its bounds, its exclusivity, whether it is a whole
+ * number — is read out of the schema.
+ */
+const SUPPORT_PARAMETERS: ReadonlySet<string> = new Set([
+  'value',
+  'min',
+  'max',
+]);
+
+/** What the schema says about one parameter of one family, if it has one. */
+const specParameter = (
+  spec: SyntheticDistributionSpec | undefined,
+  parameter: DistributionParameter,
+): SyntheticParameter | undefined =>
+  spec?.parameters.find((candidate) => candidate.key === parameter);
+
+/**
+ * The window one parameter may be edited within: the window its OWN schema
+ * states, narrowed — for a parameter that names a value of the field — by the
+ * field's window and by the sibling bound it must not cross, so an ordering
+ * the schema refuses cannot be typed in the first place.
+ *
+ * Read from the schema rather than assumed, because the assumption was wrong
+ * in both directions at once: a count's parameters are not all whole numbers
+ * (`normal(mean 5.5, sd 2.5)` is a legal count) and a count's mean has no
+ * floor of its own (a negative mean with spread is the sanctioned "usually
+ * none, occasionally a few").
  */
 export const parameterWindow = (
   distribution: SyntheticDistribution,
   parameter: DistributionParameter,
   window: SyntheticWindow,
-): SyntheticWindow => {
-  switch (parameter) {
-    case 'min':
-      return {
-        min: window.min,
-        max: declared(distribution, 'max') ?? window.max,
-      };
-    case 'max':
-      return {
-        min: declared(distribution, 'min') ?? window.min,
-        max: window.max,
-      };
-    case 'sd':
-      return { min: 0, max: Number.POSITIVE_INFINITY };
-    default:
-      return window;
-  }
+  spec: SyntheticDistributionSpec | undefined,
+): NumericWindow => {
+  // A parameter the field's schema does not describe is one this editor should
+  // not be offering; holding it to the field's window is the conservative
+  // reading, and the schema still refuses whatever it refuses.
+  const own = specParameter(spec, parameter)?.window ?? numericWindowOf(window);
+  if (!SUPPORT_PARAMETERS.has(parameter)) return own;
+
+  // The bound this one must not cross, where the declaration states it. An
+  // unstated sibling closes nothing.
+  const sibling: SyntheticWindow = {
+    min:
+      parameter === 'max'
+        ? (declared(distribution, 'min') ?? Number.NEGATIVE_INFINITY)
+        : Number.NEGATIVE_INFINITY,
+    max:
+      parameter === 'min'
+        ? (declared(distribution, 'max') ?? Number.POSITIVE_INFINITY)
+        : Number.POSITIVE_INFINITY,
+  };
+
+  return narrowedWindow(
+    narrowedWindow(own, numericWindowOf(window)),
+    numericWindowOf(sibling),
+  );
 };
 
 /**

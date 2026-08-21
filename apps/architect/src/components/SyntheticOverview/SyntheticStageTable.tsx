@@ -11,6 +11,10 @@ import {
   TableRow,
 } from '@codaco/fresco-ui/Table';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import {
+  STAGE_SECTION_SYNTHETIC,
+  stageSectionHref,
+} from '~/components/StageEditor/deepLink';
 
 import { ParameterValue } from './ParameterValue';
 import type { SyntheticStageRow } from './stageRows';
@@ -82,8 +86,12 @@ export function SyntheticStageTable({
                     // "Label in Name"), with the destination after it so a
                     // reader listing every link on the page can tell these
                     // apart from the Codebook links below.
-                    aria-label={`${row.label} — open this stage's editor`}
-                    render={<Link href={`/protocol/stage/${row.id}`} />}
+                    aria-label={`${row.label} — open this stage's synthetic data section`}
+                    render={
+                      <Link
+                        href={stageSectionHref(row.id, STAGE_SECTION_SYNTHETIC)}
+                      />
+                    }
                   >
                     {row.label}
                   </NativeLink>

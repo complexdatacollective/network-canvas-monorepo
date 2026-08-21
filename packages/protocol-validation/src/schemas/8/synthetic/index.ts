@@ -194,8 +194,17 @@ export type StageValuesSynthetic = z.infer<
 // Stage level: node population counts
 // ---------------------------------------------------------------------------
 
-// Defined here rather than helpers so that future schema versions can add new distributions.
-const SyntheticCountSchema = z.discriminatedUnion('distribution', [
+/**
+ * Every distribution a stage may count its people with.
+ *
+ * Defined here rather than in helpers so that future schema versions can add
+ * new distributions. Exported because an authoring surface has to ASK which
+ * families a count admits, and which window each of their parameters lives in,
+ * rather than restating either (a count's `mean` is not bounded below, while
+ * its `value` and truncation bounds are whole numbers inside the population
+ * ceiling — a distinction no table outside this file could keep).
+ */
+export const SyntheticCountSchema = z.discriminatedUnion('distribution', [
   constantCountSchema,
   uniformCountSchema,
   poissonCountSchema,
@@ -255,27 +264,33 @@ export const stageNodeSynthetic = (
 // Stage level: edge topology
 // ---------------------------------------------------------------------------
 
-const densityDistributionSchema = z.discriminatedUnion('distribution', [
+/**
+ * The distributions each metric admits, exported for the same reason
+ * {@link SyntheticCountSchema} is: the two metrics do not offer the same
+ * families (there is no beta over an unbounded mean degree) and do not bound
+ * their parameters alike, so an authoring surface asks these rather than
+ * keeping a second, drifting list.
+ */
+export const DensityDistributionSchema = z.discriminatedUnion('distribution', [
   densityConstantSchema,
   densityUniformSchema,
   densityNormalSchema,
   densityBetaSchema,
 ]);
 
-const meanDegreeDistributionSchema = z.discriminatedUnion('distribution', [
-  meanDegreeConstantSchema,
-  meanDegreeUniformSchema,
-  meanDegreeNormalSchema,
-]);
+export const MeanDegreeDistributionSchema = z.discriminatedUnion(
+  'distribution',
+  [meanDegreeConstantSchema, meanDegreeUniformSchema, meanDegreeNormalSchema],
+);
 
 export const EdgeTopologySchema = z.discriminatedUnion('metric', [
   z.strictObject({
     metric: z.literal('density'),
-    distribution: densityDistributionSchema,
+    distribution: DensityDistributionSchema,
   }),
   z.strictObject({
     metric: z.literal('meanDegree'),
-    distribution: meanDegreeDistributionSchema,
+    distribution: MeanDegreeDistributionSchema,
   }),
 ]);
 export type EdgeTopology = z.infer<typeof EdgeTopologySchema>;
