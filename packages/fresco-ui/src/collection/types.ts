@@ -177,6 +177,13 @@ export type CollectionProps<T> = SortProps &
     'textValueExtractor': TextValueExtractor<T>;
     /** Component to render when collection is empty */
     'emptyState'?: React.ReactNode;
+    /**
+     * Content rendered after the items, inside the scrolling viewport, so it
+     * scrolls with them. It is not a collection item: it takes no roving-focus
+     * props and is skipped by type-ahead and arrow-key navigation, so give it
+     * a non-`option` role and its own independently focusable controls.
+     */
+    'footer'?: React.ReactNode;
     /** Additional CSS class names */
     'className'?: string;
     /** ID for the collection element */

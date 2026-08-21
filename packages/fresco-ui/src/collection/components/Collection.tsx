@@ -36,6 +36,7 @@ function CollectionContent<T extends Record<string, unknown>>({
   layout,
   renderItem,
   emptyState,
+  footer,
   className,
   id,
   'aria-label': ariaLabel,
@@ -219,6 +220,7 @@ function CollectionContent<T extends Record<string, unknown>>({
         {collection.size === 0 && emptyState && (
           <div className="text-center text-current/70">{emptyState}</div>
         )}
+        {footer}
       </ScrollArea>
     </div>
   );
@@ -275,6 +277,7 @@ export function Collection<T extends Record<string, unknown>>({
   layout,
   renderItem,
   emptyState = <>No items to display.</>,
+  footer,
   className,
   id,
   'aria-label': ariaLabel,
@@ -326,6 +329,7 @@ export function Collection<T extends Record<string, unknown>>({
         layout={layout}
         renderItem={renderItem as ItemRenderer<Record<string, unknown>>}
         emptyState={emptyState}
+        footer={footer}
         className={className}
         id={id}
         aria-label={ariaLabel}

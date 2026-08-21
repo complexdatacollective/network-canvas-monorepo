@@ -276,14 +276,13 @@ const PanelRow = ({
 type GalleryCardProps = {
   onDismiss: () => void;
 };
-// Rendered as a sibling of the templates Collection rather than as one of
-// its items. A `role="listbox"` is only permitted to own `role="option"`
-// elements — this card's real affordances are the Dismiss button and the
-// gallery link below, not an activatable option, so mixing it into the
-// listbox (however its own role were labelled) breaks the listbox/option
-// structure assistive tech expects and can confuse listbox navigation.
-// Living outside the collection, it needs none of the collection's roving-
-// focus item props: its own controls are already independently focusable.
+// Passed as the templates Collection's `footer`, so it scrolls with the list
+// the way it reads as belonging to. It is deliberately NOT a collection item:
+// its real affordances are the Dismiss button and the gallery link, not an
+// activatable option, so making it one would put a `role="option"` wired to
+// nothing into the listbox and give it a roving-focus stop in arrow-key
+// navigation. As a footer it keeps `role="group"` and needs none of the
+// collection's item props — its own controls are independently focusable.
 const GalleryCard = ({ onDismiss }: GalleryCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   // Dismissing unmounts the card, taking the Dismiss button — and, with it,
@@ -778,10 +777,14 @@ const LibraryPanel = ({
             aria-label="Protocol templates"
             className={COLLECTION_CLASSES}
             viewportClassName={COLLECTION_VIEWPORT_CLASSES}
+            footer={
+              !galleryDismissed && (
+                <GalleryCard onDismiss={dismissGalleryCard} />
+              )
+            }
           >
             {(CollectionElements) => CollectionElements}
           </Collection>
-          {!galleryDismissed && <GalleryCard onDismiss={dismissGalleryCard} />}
         </TabsPanel>
       </Tabs>
 
