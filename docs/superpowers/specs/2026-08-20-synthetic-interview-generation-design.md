@@ -452,11 +452,19 @@ generates on every seed with every rule satisfied) remains the gate.
   Phase 5 item; today it passes nothing.
 - **Cumulative pair cap**: `MAX_SYNTHETIC_PAIRS` has exactly one job — a
   feasibility-time refusal. Feasibility computes each census/edge stage's
-  worst-case pair count from the cumulative per-type count ceilings of the
-  creator stages feeding it (`Σ min(maxNodes, MAX_SYNTHETIC_POPULATION,
-pool)`), and refuses pre-seed when it exceeds the cap — deterministic,
-  structured, seed-independent (rule 5). Generation never truncates a pair
-  set: the census hard gate ("every pair answered") is absolute.
+  pair count from the cumulative per-type counts of the creator stages
+  feeding it, measured on the **guaranteed (floor) demand the author
+  declared** — not the ceilings. The ceilings cannot be the measure: the
+  schema resolves an unbounded name generator's count `max` to
+  `MAX_SYNTHETIC_POPULATION` (100 per stage), so a ceiling-based cumulative
+  cap refuses every bundled protocol (two defaulted generators feeding one
+  census read as 19,900 worst-case pairs against a 4,950 cap) for a demand
+  no author stated. Floor demand fires exactly on authored excess (two
+  `constant: 60` generators → 7,140 guaranteed pairs, refused) and never on
+  a schema default — which is also the always-or-never shape rule 5 asks
+  for. Deterministic, structured, seed-independent. Generation never
+  truncates a pair set: the census hard gate ("every pair answered") is
+  absolute.
 - **Existing-network panels**: one weighted coin per candidate at the panel's
   `nominationProbability` (default 0.3); when two panels show the same person,
   the first panel in stage order decides (the panel they meet first) — the

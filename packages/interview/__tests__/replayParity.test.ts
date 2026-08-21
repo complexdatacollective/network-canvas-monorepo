@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildStageAvailabilityMap } from '@codaco/network-query';
 import {
+  generateCorpusProtocol,
   generateInterviews,
   type AssetData,
   type GenerateInterviewsOptions,
@@ -1515,4 +1516,67 @@ describe('replay parity (C1) — the bundled protocols, whole', () => {
     // correctness.
     60_000,
   );
+});
+
+// ---------------------------------------------------------------------------
+// The corpus leg (C1, Phase 4): generated protocol shapes — spanning counts,
+// rosters, unique variables, topologies — replay through the real store like
+// the hand-built fixtures do. The corpus proper (20k shapes) lives in
+// protocol-utilities; this leg keeps a CI-cheap slice under full replay so
+// shape-space regressions surface as parity failures, not only as corpus
+// conformance ones.
+// ---------------------------------------------------------------------------
+
+describe('replay parity (C1) — corpus slice', () => {
+  const INDICES = Array.from({ length: 12 }, (_, index) => index);
+
+  it.each(INDICES)(
+    'corpus shape %d replays (or refuses pre-seed)',
+    async (index) => {
+      const { protocol, assetData } = generateCorpusProtocol(index);
+      try {
+        await assertReplayParity(
+          protocol,
+          {
+            seed: 42,
+            startWindow: '2026-08-20T12:00:00.000Z',
+            count: 1,
+            respectSkipLogic: true,
+            simulateDropOut: false,
+          },
+          assetData,
+        );
+      } catch (error) {
+        // A pre-seed refusal is a legitimate corpus outcome — but it must be
+        // the GATE refusing, not a walk crash or a replay divergence.
+        expect((error as Error).message).toMatch(
+          /cannot be generated|Cannot generate/,
+        );
+      }
+    },
+    60_000,
+  );
+
+  it('the slice is not all refusals', () => {
+    let accepted = 0;
+    for (const index of INDICES) {
+      const { protocol, assetData } = generateCorpusProtocol(index);
+      try {
+        generateInterviews(
+          protocol,
+          {
+            seed: 42,
+            startWindow: '2026-08-20T12:00:00.000Z',
+            count: 1,
+            simulateDropOut: false,
+          },
+          assetData,
+        );
+        accepted += 1;
+      } catch {
+        // refused: counted by omission
+      }
+    }
+    expect(accepted).toBeGreaterThanOrEqual(INDICES.length / 2);
+  });
 });
