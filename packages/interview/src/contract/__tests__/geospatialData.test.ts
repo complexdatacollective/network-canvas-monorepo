@@ -122,13 +122,14 @@ describe('collectGeospatialPropertyValues', () => {
       .mockResolvedValue(resolved('regions'));
 
     const result = await collectGeospatialPropertyValues({
-      // `code` is a number on every feature, so it describes no answer this
-      // pool can carry.
+      // `code` is a number on every feature — an answer the live click
+      // handler stores verbatim (its `as string` is compile-time only), so
+      // the pool carries the numbers exactly as a tap would.
       stages: [geospatialStage('geo-1', 'regions', 'code')],
       resolveAsset,
     });
 
-    expect(result).toEqual({ 'geo-1': [] });
+    expect(result).toEqual({ 'geo-1': [12, 13, 14] });
   });
 
   it('emits an empty pool for a map with no selectable areas', async () => {

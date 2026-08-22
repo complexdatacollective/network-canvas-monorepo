@@ -5,7 +5,15 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { generateInterviews } from '@codaco/protocol-utilities';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 type BundledProtocol = Record<string, unknown>;
 
@@ -37,6 +45,32 @@ const templateCases = templateIds.map((id): [string, BundledProtocol] => [
   loadProtocol(`@codaco/protocols/templates/${id}`),
 ]);
 
+/**
+ * A minimal resolved pool for every roster stage a bundled protocol gates
+ * with `behaviours.minNodes`. Generation refuses a gated roster stage whose
+ * pool the host never resolved — exactly what every real host does through
+ * the contract collectors — so this test supplies what a host would.
+ */
+const gatedRosterPools = (
+  protocol: CurrentProtocol,
+): { rosterNodes: Record<string, NcNode[]> } | undefined => {
+  const rosterNodes: Record<string, NcNode[]> = {};
+  for (const stage of protocol.stages) {
+    if (stage.type !== 'NameGeneratorRoster') continue;
+    const minNodes = stage.behaviours?.minNodes;
+    if (minNodes === undefined || minNodes < 1) continue;
+    rosterNodes[stage.id] = Array.from(
+      { length: minNodes + 2 },
+      (_unused, index) => ({
+        [entityPrimaryKeyProperty]: `${stage.id}-row-${index}`,
+        type: stage.subject.type,
+        [entityAttributesProperty]: {},
+      }),
+    );
+  }
+  return Object.keys(rosterNodes).length > 0 ? { rosterNodes } : undefined;
+};
+
 describe('bundled protocols are feasible for synthetic generation', () => {
   it.each([
     ['development', developmentProtocol],
@@ -49,12 +83,16 @@ describe('bundled protocols are feasible for synthetic generation', () => {
     // the session date is the seeded startTime's date, never the clock's).
     const parsed = CurrentProtocolSchema.parse(protocol);
     expect(() =>
-      generateInterviews(parsed, {
-        count: 1,
-        seed: 1,
-        simulateDropOut: false,
-        startWindow: '2026-08-20T12:00:00.000Z',
-      }),
+      generateInterviews(
+        parsed,
+        {
+          count: 1,
+          seed: 1,
+          simulateDropOut: false,
+          startWindow: '2026-08-20T12:00:00.000Z',
+        },
+        gatedRosterPools(parsed),
+      ),
     ).not.toThrow();
   });
 

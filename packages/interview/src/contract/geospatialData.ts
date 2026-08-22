@@ -62,16 +62,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Every distinct value the named property takes across a GeoJSON document's
  * features, in the order the document lists them.
  *
- * Only string values are collected. The interface reads the property and stores
- * it as the alter's answer, and an answer is a label a participant chose off a
- * map — a feature whose property is a number or an object is one this pool
- * cannot describe, and inventing a string for it would put a value in the
- * session that no tap produced.
+ * Strings AND finite numbers are collected, because both are answers the live
+ * interface records: `useMapbox`'s click handler forwards the tapped feature's
+ * property value unchanged (its `as string` is a compile-time assertion only),
+ * so a map keyed by numeric identifiers stores those numbers verbatim. What
+ * is still excluded is anything a tap cannot store as an answer — objects,
+ * arrays, booleans, NaN — since inventing a value for those would put
+ * something in the session no tap produced.
  *
  * Order is the document's and duplicates are dropped, so the same asset always
  * yields the same pool and a seeded draw over it is reproducible.
  */
-function featurePropertyValues(document: unknown, property: string): string[] {
+function featurePropertyValues(
+  document: unknown,
+  property: string,
+): (string | number)[] {
   if (!isRecord(document)) {
     throw new TypeError('GeoJSON data must be an object.');
   }
@@ -82,23 +87,27 @@ function featurePropertyValues(document: unknown, property: string): string[] {
     throw new TypeError('GeoJSON features must be an array.');
   }
 
-  const values = new Set<string>();
+  const values = new Map<string, string | number>();
   for (const feature of features) {
     if (!isRecord(feature)) continue;
     const properties = feature.properties;
     if (!isRecord(properties)) continue;
     const value = properties[property];
-    if (typeof value === 'string' && value.length > 0) values.add(value);
+    if (typeof value === 'string' && value.length > 0) {
+      values.set(`s:${value}`, value);
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      values.set(`n:${String(value)}`, value);
+    }
   }
 
-  return [...values];
+  return [...values.values()];
 }
 
 async function readGeospatialSource(
   assetId: string,
   property: string,
   resolveAsset: ResolveRosterAsset,
-): Promise<string[] | null> {
+): Promise<(string | number)[] | null> {
   const resolved = await resolveAsset(assetId);
   if (!resolved) {
     return null;
@@ -129,7 +138,7 @@ export async function collectGeospatialPropertyValues({
 }: {
   stages: Stage[];
   resolveAsset: ResolveRosterAsset;
-}): Promise<Record<string, string[]>> {
+}): Promise<Record<string, (string | number)[]>> {
   const sources = stages
     .map(getGeospatialSource)
     .filter((source): source is GeospatialSource => source !== null);
@@ -140,8 +149,8 @@ export async function collectGeospatialPropertyValues({
 
   // Cache parses per invocation so one map shared by several stages is fetched
   // once, keyed by the property each stage reads off it.
-  const parseCache = new Map<string, Promise<string[] | null>>();
-  const result: Record<string, string[]> = {};
+  const parseCache = new Map<string, Promise<(string | number)[] | null>>();
+  const result: Record<string, (string | number)[]> = {};
 
   for (const { stageId, assetId, property } of sources) {
     const cacheKey = `${assetId}::${property}`;

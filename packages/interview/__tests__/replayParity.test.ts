@@ -23,6 +23,7 @@ import {
   entityPrimaryKeyProperty,
   GAMETE_ROLE_OPTIONS,
   isFamilyPedigreeStageMetadata,
+  type NcNode,
   RELATIONSHIP_TYPE_OPTIONS,
   type SessionPayload,
 } from '@codaco/shared-consts';
@@ -1493,6 +1494,29 @@ const bundledProtocol = (file: string): CurrentProtocol =>
     ),
   ) as CurrentProtocol;
 
+/**
+ * A minimal resolved pool for every roster stage a bundled protocol gates
+ * with `behaviours.minNodes` — what a real host resolves through the contract
+ * collectors, without which generation refuses the gated stage outright.
+ */
+const gatedRosterPools = (protocol: CurrentProtocol): AssetData | undefined => {
+  const rosterNodes: Record<string, NcNode[]> = {};
+  for (const stage of protocol.stages) {
+    if (stage.type !== 'NameGeneratorRoster') continue;
+    const minNodes = stage.behaviours?.minNodes;
+    if (minNodes === undefined || minNodes < 1) continue;
+    rosterNodes[stage.id] = Array.from(
+      { length: minNodes + 2 },
+      (_unused, index) => ({
+        [entityPrimaryKeyProperty]: `${stage.id}-row-${index}`,
+        type: stage.subject.type,
+        [entityAttributesProperty]: {},
+      }),
+    );
+  }
+  return Object.keys(rosterNodes).length > 0 ? { rosterNodes } : undefined;
+};
+
 describe('replay parity (C1) — the bundled protocols, whole', () => {
   it.each([
     ['development', 'development/protocol.json'],
@@ -1501,13 +1525,18 @@ describe('replay parity (C1) — the bundled protocols, whole', () => {
   ])(
     'the %s protocol replays end to end',
     async (_name, file) => {
-      const result = await assertReplayParity(bundledProtocol(file), {
-        seed: 42,
-        startWindow: '2026-08-20T12:00:00.000Z',
-        count: 1,
-        respectSkipLogic: true,
-        simulateDropOut: false,
-      });
+      const protocol = bundledProtocol(file);
+      const result = await assertReplayParity(
+        protocol,
+        {
+          seed: 42,
+          startWindow: '2026-08-20T12:00:00.000Z',
+          count: 1,
+          respectSkipLogic: true,
+          simulateDropOut: false,
+        },
+        gatedRosterPools(protocol),
+      );
       // Not vacuous: a real protocol's walk produces people.
       expect(result?.session.network?.nodes.length ?? 0).toBeGreaterThan(0);
     },
