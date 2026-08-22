@@ -1,5 +1,25 @@
 # @codaco/protocol-utilities
 
+## 4.0.0
+
+### Major Changes
+
+- e9a6522: Synthetic interview attribute setters now accept only defined `VariableValue` values, and generated networks no longer fill unanswered attributes with null placeholders.
+
+  This is a breaking API change. Use `unsetNodeAttribute` or `unsetEdgeAttribute` when a generated entity should keep an attribute absent.
+
+### Minor Changes
+
+- 23d0fab: Generated networks now draw realistic full names ("First Last") for name variables, falling back to a first name only when a declared maximum length has no room for one, and adding a middle name only when a minimum demands it. The set of variables treated as names now mirrors the interview runtime's label resolution — anything whose name contains "name" — so every value a node would actually display exercises label fitting. Seeded output changes as a result: the same seed draws different values than previous releases.
+
+### Patch Changes
+
+- e9a6522: Synthetic protocol and interview utilities now respect interface-owned variables, duplicate form-variable rules, and the stricter Family and Narrative Pedigree reference constraints enforced by protocol validation.
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@12.2.0
+  - @codaco/shared-consts@6.0.0
+  - @codaco/network-query@1.2.4
+
 ## 3.2.1
 
 ### Patch Changes

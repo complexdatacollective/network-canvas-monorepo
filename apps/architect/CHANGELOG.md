@@ -1,5 +1,60 @@
 # @codaco/architect
 
+## 8.2.0
+
+### Minor Changes
+
+- Architect's editors now use the shared Fresco UI form system instead of redux-form.
+
+  - Fields have consistent labels, descriptions, required states, and errors that are announced with the control and focused when saving is blocked.
+  - Disabling a feature or changing a roster, entity type, or source stage clears settings that no longer apply. These multi-field changes are recorded as one Undo step rather than a sequence of invalid intermediate states.
+  - Repeated sections and editor dialogs retain the correct options, identifiers, and values when items are added, removed, reordered, or reopened. Newly created variables and entity types start clean instead of inheriting the previous editor's state.
+  - Unsaved edits are detected when navigating, refreshing, closing the browser, or applying an app update. Undo and Redo also cover collapsed sections, backgrounds, side panels, and automatic stage naming.
+  - Half-finished sort, display, assignment, and option settings can no longer be saved as a misconfigured protocol.
+
+  Existing protocols containing option values with spaces or blank display labels must be corrected before those variables can be saved. Changing an option value also changes its column name in exported data, so projects already collecting data should choose the replacement carefully.
+
+- 4dcd18f: Architect's form field editor now uses a two-pane workspace. Field settings remain on the left while a live participant-facing preview on the right shows the current input control, interview theme, and validation behaviour. The panes begin at an even split and can be resized, while narrower windows switch cleanly to a stacked layout.
+
+### Patch Changes
+
+- e9a6522: Undo and Redo now remain keyboard-focused when the control becomes unavailable at the end of the protocol history, so the next key press no longer starts again at the top of the page.
+- 17aeca4: Architect and Interviewer now load analytics and automatic error-reporting modules through the Network Canvas relay without Content Security Policy errors.
+- c599dac: This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
+
+  - Stage edits are now transactional: cancelling restores Codebook changes, incomplete settings remain open with actionable errors, and Information blocks retain their drafts while switching media types.
+  - Forms, rule builders, the Codebook, timeline, dialogs, and resource library now provide accurate labels, keyboard operation, focus restoration, and layouts that work on smaller screens. Undo and Redo operate one change at a time without recording no-op edits.
+  - A second tab now shows a read-only protocol instead of accepting changes it cannot save. Closing the editing tab restores editing from the saved copy, and deleting a protocol clears its history and releases associated resources.
+  - Protocol names, resource cards, variable identifiers, and stage editors are bounded on narrow screens. Duplicate resource filenames are distinguishable without changing the names stored in the protocol.
+  - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
+  - Existing protocols with invalid references or conflicting interface-owned variables are explained before opening. Automatic repairs are described and are not applied without confirmation.
+
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- 43c7746: Fresco UI now owns two answers its consumers were each working out for themselves.
+
+  **`stripManagedProperties`.** `ArrayField` adds its own bookkeeping properties to every item it hands out, and a consumer that saves an item has to take them off first. Three consumers were doing that with their own inline copy of the list, each frozen on the properties that existed when it was written — so a property added to `ArrayField` would have started arriving in saved data. The strip is now exported from `@codaco/fresco-ui/form/fields/ArrayField/ArrayField` and derived from the property definitions themselves, and adding a managed property without listing it is a compile error.
+
+  **`selectIsFormDirty`.** Exported from `@codaco/fresco-ui/form/store/formStoreProvider`, this answers whether a form currently holds values that differ from the ones its fields registered with. It is a live comparison, unlike the `isDirty` flag beside it in the same store, which is set by the first keystroke and cleared only by a reset — so anything guarding unsaved work on that flag keeps asking about a form the person has already put back by hand, and treats a form that normalised its own values at mount as edited before it was touched.
+
+  No visible change for anyone using Architect: it consumed both from its own copies and now consumes them from here.
+
+- 59f131c: Fixes interactions that were advertised to assistive technology but did nothing when activated.
+
+  `ArrayField` now omits `onDelete`/`onEdit`/`onChange`/`onUpdate` (and the editor's `onSave`) entirely while disabled or read-only, instead of substituting no-op stand-ins. An `itemComponent`/`editorComponent` that renders its edit/delete/save affordance from handler presence — the normal pattern — now correctly hides that affordance rather than drawing a live-looking control wired to nothing.
+
+  `SegmentedToolbar`'s toggle and group segments now forward `onPressedChange`/`onValueChange` straight through to Base UI, the same way button segments already forward `onClick`. This also fixes those callbacks silently losing Base UI's `eventDetails` argument, which a consumer needs to veto a change via `eventDetails.cancel()`. A controlled toggle or group segment supplied without its change callback — which can never change state once controlled — is now disabled outright instead of staying tappable for nothing.
+
+  Architect's library panel gallery promo card no longer announces itself as a selectable option — clicking or activating it never did anything, since the collection it sits in doesn't support selection. It's now rendered as its own labelled group alongside the templates list rather than as one of the list's items, so its Dismiss button and gallery link stay independently operable without the collection's listbox/option structure being misapplied to a card that isn't a selectable option.
+
+- 54650ab: Prevent null form field values from crashing Architect when changing the node type of configured ordinal or categorical bin stages.
+- Updated dependencies ([e3e7b2c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e3e7b2c9cfbc1758754afc0c3959c50ae6518363), [b51ef59](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b51ef598343c67c95edd4e165c0bac91a7a82571), [43c7746](https://github.com/complexdatacollective/network-canvas-monorepo/commit/43c774665b781cb5cc71acf8ed8c8ca48838ca64), [88d7db0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/88d7db04ea3ba323be2fb18f55f6b11d6274740f), [ae3c616](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ae3c616ed4edc55c294be9097e4ae724b249601e), [e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [23d0fab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/23d0fab63d4de8da1ba3574cb151ac1c76580d9a), [59f131c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/59f131c2af206c8b1f668b90edf21fbcb3b0b7b7), [7ca985f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7ca985fe57ca03dda02a96a6013c5dac55dc0123), [c78135c](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c78135cd461d1e482ce248b1eb6337359bafc189), [dcbc7aa](https://github.com/complexdatacollective/network-canvas-monorepo/commit/dcbc7aad21ec995bf3a598eb5b208a681789eb4f), [0f20ff5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0f20ff594e3fd9b38f393d3d71e9f7bdcc078955), [4a4a9f4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4a4a9f49d4c449e09e07558a0032d6a3b8015743), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15), [54650ab](https://github.com/complexdatacollective/network-canvas-monorepo/commit/54650ab4bb357d39db88a46f5c3ab8b82375f647), [469d404](https://github.com/complexdatacollective/network-canvas-monorepo/commit/469d4041bd1c86fbfc92eaf2a368f1689858bbd2), [a9825f4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a9825f4067cc6cddd08b64a76e8d88a4b96ae998), [f03b1e4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f03b1e45f425cf3c97ba2137765073a462ee9c9f))
+  - @codaco/fresco-ui@6.1.0
+  - @codaco/interview@9.0.0
+  - @codaco/protocol-utilities@4.0.0
+  - @codaco/protocol-validation@12.2.0
+  - @codaco/shared-consts@6.0.0
+  - @codaco/tailwind-config@1.3.0
+
 ## 8.1.0
 
 ### Minor Changes
