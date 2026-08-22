@@ -108,8 +108,13 @@ const inputVariants = compose(
 
 const stepperButtonVariants = cx(
   // Steppers keep their square footprint; they must never compress when the
-  // field is constrained narrow (the middle input shrinks instead).
-  'aspect-square h-full! shrink-0 rounded-none',
+  // field is constrained narrow (the middle input shrinks instead). The width
+  // is stated outright rather than left to `aspect-square` × height, both
+  // because shipped Safari computes a ratio-derived flex-item width as zero
+  // and because IconButton now carries its own explicit size width, which
+  // would otherwise win here. `w-10!` pairs with the wrapper's
+  // `[&_button]:h-10` pin above — change them together.
+  'aspect-square h-full! w-10! shrink-0 rounded-none',
   'elevation-none! translate-y-0!',
   'bg-input-contrast/5 text-input-contrast',
   'hover:bg-input-contrast/10',
