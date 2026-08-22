@@ -14,7 +14,6 @@ import {
 import { useCollectionSetup } from '../hooks/useCollectionSetup';
 import { useFilterState } from '../hooks/useFilterState';
 import { useSortState } from '../hooks/useSortState';
-import { COLLECTION_FOOTER_ATTRIBUTE } from '../isEventFromFooter';
 import type { SortState } from '../sorting/types';
 import type { CollectionProps, ItemRenderer, KeyExtractor } from '../types';
 import { StaticRenderer } from './StaticRenderer';
@@ -37,7 +36,6 @@ function CollectionContent<T extends Record<string, unknown>>({
   layout,
   renderItem,
   emptyState,
-  footer,
   className,
   id,
   'aria-label': ariaLabel,
@@ -167,21 +165,6 @@ function CollectionContent<T extends Record<string, unknown>>({
   void tabIndex;
   const mergedRef = useMergeRefs({ containerRef, dndRef });
 
-  // The footer is a block sibling of the items renderer, which only puts it
-  // after the items on a vertical axis. A horizontal collection lays its items
-  // along a row, so the footer would start a second row at the viewport's left
-  // edge — and the horizontal viewport is `overflow-y-hidden`, which clips it.
-  // Supporting it properly means putting the footer in the items' own track;
-  // until something needs that, say so rather than rendering it somewhere the
-  // researcher may never see it.
-  useEffect(() => {
-    if (footer && orientation === 'horizontal') {
-      console.warn(
-        'Collection: `footer` is only supported on vertical collections. It is laid out below the items, which a horizontal viewport clips.',
-      );
-    }
-  }, [footer, orientation]);
-
   const collectionElements = (
     <div
       className={cx('min-h-0 w-full flex-1', className)}
@@ -235,9 +218,6 @@ function CollectionContent<T extends Record<string, unknown>>({
         )}
         {collection.size === 0 && emptyState && (
           <div className="text-center text-current/70">{emptyState}</div>
-        )}
-        {footer !== undefined && footer !== null && footer !== false && (
-          <div {...{ [COLLECTION_FOOTER_ATTRIBUTE]: '' }}>{footer}</div>
         )}
       </ScrollArea>
     </div>
@@ -295,7 +275,6 @@ export function Collection<T extends Record<string, unknown>>({
   layout,
   renderItem,
   emptyState = <>No items to display.</>,
-  footer,
   className,
   id,
   'aria-label': ariaLabel,
@@ -347,7 +326,6 @@ export function Collection<T extends Record<string, unknown>>({
         layout={layout}
         renderItem={renderItem as ItemRenderer<Record<string, unknown>>}
         emptyState={emptyState}
-        footer={footer}
         className={className}
         id={id}
         aria-label={ariaLabel}
