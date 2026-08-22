@@ -337,10 +337,63 @@
     container-name: catbin-item;
   }
 
+  /* The bin clips to a circle, so only the inscribed square is reliably
+     visible — a full-width line would run under the curve and out of the
+     shape. 70cqi is that square (1/sqrt(2) of the diameter, ~70.7%), and
+     70cqb caps the stack so it can never be taller than the shape shows.
+     Both resolve against .catbin-item, the nearest size container. */
+  .catbin-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    inline-size: 70cqi;
+    max-block-size: 70cqb;
+    overflow: hidden;
+  }
+
   /* Scale the bin title with the bin diameter. clamp() keeps it readable at
      both extremes (~12px floor at very small bins, ~24px ceiling at large). */
   .catbin-item :is(h1, h2, h3, h4, h5, h6) {
     font-size: clamp(0.75rem, 6cqi, 1.5rem);
+  }
+
+  /* The title and the summary each get a fixed share of the inscribed box, so
+     neither can grow into the other's space. Without this the two are laid out
+     by `justify-content: center` inside a clipped box, and content taller than
+     the bin overflows *both* ends — silently carrying the title, which names
+     the bin, off the top edge. The line clamps in the markup normally bite
+     first and end the text in an ellipsis; these caps are the guarantee that
+     holds whatever the clamps measure out to. */
+  .catbin-content :is(h1, h2, h3, h4, h5, h6) {
+    flex: 0 0 auto;
+    max-block-size: 40cqb;
+    overflow: hidden;
+  }
+
+  .catbin-summary {
+    flex: 0 1 auto;
+    min-block-size: 0;
+    max-block-size: 30cqb;
+    overflow: hidden;
+  }
+
+  /* Scale the summary with the bin too, a rung below the title: it is
+     secondary to the bin's own name, and the full membership is one tap away
+     in the expanded panel.
+
+     Wrapping flex rather than plain text flow so the name and the count share
+     a line whenever both fit ("Amy and 2 others") but the count drops to its
+     own line rather than being pulled inside the name's clamp when the name
+     is long. The name is clamped on its own element, which makes it a block
+     container and therefore a full-width flex item once it needs the room. */
+  .catbin-summary-text {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    column-gap: 0.25em;
+    font-size: clamp(0.6875rem, 4cqi, 1rem);
+    line-height: 1.3;
   }
 
   /* Drop the node-count summary once the bin is small enough that both lines

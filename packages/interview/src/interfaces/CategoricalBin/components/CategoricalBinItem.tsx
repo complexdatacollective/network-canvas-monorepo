@@ -219,21 +219,23 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       transition={springTransition}
       variants={binItemVariants}
     >
-      <Heading level="h4">
-        <RenderMarkdown>{label}</RenderMarkdown>
-      </Heading>
-      <AnimatePresence>
-        {nodes.length > 0 && (
-          <motion.div
-            className="catbin-summary"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <BinSummary nodes={nodes} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="catbin-content">
+        <Heading level="h4" className="line-clamp-3">
+          <RenderMarkdown>{label}</RenderMarkdown>
+        </Heading>
+        <AnimatePresence>
+          {nodes.length > 0 && (
+            <motion.div
+              className="catbin-summary"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <BinSummary nodes={nodes} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };
