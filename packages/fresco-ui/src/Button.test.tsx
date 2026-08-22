@@ -248,3 +248,32 @@ describe('Button', () => {
     ).not.toHaveClass('aria-pressed:bg-selected!');
   });
 });
+
+describe('IconButton sizing', () => {
+  // Shipped Safari computes width 0 for a flex item whose width would come
+  // only from `aspect-ratio` × a definite height inside nested flex rows —
+  // the control vanishes (empty interview nav rails, collapsed undo pills,
+  // iconless rich-text toolbars). The width must therefore be stated
+  // explicitly, in lockstep with heightVariants' scale.
+  it.each([
+    ['sm', 'h-10', 'w-10'],
+    ['md', 'h-12', 'w-12'],
+    ['lg', 'h-16', 'w-16'],
+    ['xl', 'h-20', 'w-20'],
+  ] as const)(
+    'states the %s square explicitly (%s pairs with %s)',
+    (size, heightClass, widthClass) => {
+      render(
+        <IconButton
+          aria-label={`Probe ${size}`}
+          icon={<Check />}
+          size={size}
+        />,
+      );
+
+      const button = screen.getByRole('button', { name: `Probe ${size}` });
+      expect(button).toHaveClass(heightClass);
+      expect(button).toHaveClass(widthClass);
+    },
+  );
+});
