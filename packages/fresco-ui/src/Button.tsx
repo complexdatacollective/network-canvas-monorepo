@@ -10,6 +10,7 @@ import {
   heightVariants,
   inlineSpacingVariants,
   proportionalLucideIconVariants,
+  squareSizeVariants,
   textSizeVariants,
   wrapperPaddingVariants,
 } from './styles/controlVariants';
@@ -343,10 +344,16 @@ type IconButtonProps = Omit<
 
 const iconButtonVariants = compose(
   buttonVariants,
+  // The width is stated explicitly per size (squareSizeVariants) rather than
+  // left to `aspect-square` × height: shipped Safari computes 0 for a flex
+  // item's ratio-derived width inside nested flex rows, collapsing the
+  // control to nothing. The ratio stays as intent (and covers non-flex
+  // hosts); the explicit width is what every engine honours.
+  squareSizeVariants,
   cva({
     // `shrink-0` restores the floor Button gives up: an icon button's width
-    // comes from its fixed height via `aspect-square`, so letting a crowded
-    // flex row squash it would squash the target itself, not a label.
+    // is fixed, so letting a crowded flex row squash it would squash the
+    // target itself, not a label.
     base: 'aspect-square shrink-0 justify-center rounded-full p-0!',
   }),
 );
