@@ -9,6 +9,7 @@ import {
   normaliseSynthetic,
   summariseResolvedSynthetic,
   syntheticIsAdmissible,
+  syntheticRefusals,
   variableValueWindow,
   type SyntheticVariableDraft,
 } from '../draft';
@@ -131,6 +132,32 @@ describe('what the schema will accept', () => {
   it('always accepts removing the block', () => {
     expect(syntheticIsAdmissible(categorical(), undefined)).toBe(true);
   });
+
+  it('still judges the block while the rest of the variable is unfinished', () => {
+    // An attribute mid-creation, whose name is not written yet, is exactly
+    // when a synthetic parameter gets typed — and nothing rechecks the block
+    // once the name arrives. So a refusal has to be attributable to the BLOCK
+    // rather than conditional on the rest of the draft already parsing, or a
+    // proposal waved through here is a proposal saved.
+    const beingCreated: SyntheticVariableDraft = { name: '', type: 'scalar' };
+    const beta = { distribution: 'beta', mean: 0.5, sd: 0.9 } as const;
+
+    expect(syntheticRefusals(beingCreated, beta)).toEqual([
+      'A beta distribution requires sd² < mean × (1 − mean)',
+    ]);
+    expect(syntheticIsAdmissible(beingCreated, beta)).toBe(false);
+  });
+
+  it('does not blame the block for what the draft was already carrying', () => {
+    // The same unwritten name, and a block the schema has nothing against:
+    // the name's own refusal belongs to the name.
+    expect(
+      syntheticRefusals(
+        { name: '', type: 'scalar' },
+        { missingProbability: 0.2 },
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('how many options may be chosen', () => {
@@ -172,10 +199,19 @@ describe('how many options may be chosen', () => {
     expect(admissibleSelectionCounts(weighted, {})).toEqual([0, 1]);
   });
 
-  it('offers nothing for a variable the schema cannot parse at all', () => {
+  it('offers nothing for a variable with no options to choose between', () => {
     expect(
       admissibleSelectionCounts({ name: 'hobbies', type: 'categorical' }, {}),
     ).toEqual([]);
+  });
+
+  it('reports the sizes an attribute still being created can reach', () => {
+    // The options are authored before the attribute is saved, so the sizes
+    // they reach are knowable — and the researcher authoring a selection
+    // distribution in the creation dialog needs them offered.
+    expect(
+      admissibleSelectionCounts({ ...categorical(), name: '' }, {}),
+    ).toEqual([0, 1, 2, 3]);
   });
 });
 

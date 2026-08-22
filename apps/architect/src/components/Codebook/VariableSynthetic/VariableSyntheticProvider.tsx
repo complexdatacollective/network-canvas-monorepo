@@ -62,8 +62,16 @@ export type VariableSyntheticScope = {
   authored: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
-  /** Normalise, check against the schema, and commit — or do nothing. */
-  propose: (next: Record<string, unknown> | undefined) => void;
+  /**
+   * Normalise, check against the schema, and commit.
+   *
+   * Returns the schema's refusals for a proposal it will not accept — empty
+   * where the proposal was committed — so the control that made it can say
+   * what the schema said rather than snapping back on blur with nothing
+   * (spec rule 3). {@link useSyntheticProposal} is the two-line way to hold
+   * them.
+   */
+  propose: (next: Record<string, unknown> | undefined) => string[];
   /** Whether the schema would accept this proposal. */
   isAdmissible: (next: Record<string, unknown> | undefined) => boolean;
   /**
@@ -93,6 +101,33 @@ export const useVariableSynthetic = (): VariableSyntheticScope => {
     );
   }
   return scope;
+};
+
+/**
+ * One control's proposal, with whatever the schema said about the last one it
+ * would not accept.
+ *
+ * Every control inside this scope writes through `propose`, and a proposal the
+ * schema refuses used to leave nothing behind: the box snapped back on blur
+ * and the reason — zeroing the last drawable option, a one-sided probability —
+ * was discarded with it. Held here rather than by each control so the two
+ * lines are written once, and so a refusal is cleared by the next accepted
+ * edit rather than left standing beside a value that is now fine.
+ */
+export const useSyntheticProposal = (): {
+  /** The schema's own words for the last refused proposal; empty otherwise. */
+  refusals: string[];
+  propose: (next: Record<string, unknown> | undefined) => void;
+} => {
+  const { propose } = useVariableSynthetic();
+  const [refusals, setRefusals] = useState<string[]>([]);
+  const submit = useCallback(
+    (next: Record<string, unknown> | undefined) => {
+      setRefusals(propose(next));
+    },
+    [propose],
+  );
+  return { refusals, propose: submit };
 };
 
 /** The variable types whose values are drawn from an option list. */
@@ -184,8 +219,10 @@ export function VariableSyntheticProvider({
   const propose = useCallback(
     (next: Record<string, unknown> | undefined) => {
       const normalised = normaliseSynthetic(next);
-      if (!syntheticIsAdmissible(variable, normalised, rules)) return;
+      const refused = syntheticRefusals(variable, normalised, rules);
+      if (refused.length > 0) return refused;
       onChange(normalised);
+      return [];
     },
     [variable, rules, onChange],
   );
@@ -207,13 +244,13 @@ export function VariableSyntheticProvider({
       onWeightChange: (value, weight) => {
         // Option weights are keyed by the option's own value, which the schema
         // types as a string or an integer.
-        if (typeof value === 'boolean') return;
+        if (typeof value === 'boolean') return [];
         const without = declared.filter(
           (entry) => key(entry.value) !== key(value),
         );
         const nextWeights =
           weight === undefined ? without : [...without, { value, weight }];
-        propose({ ...synthetic, optionWeights: nextWeights });
+        return propose({ ...synthetic, optionWeights: nextWeights });
       },
     };
   }, [variable.type, synthetic, open, authored, propose]);

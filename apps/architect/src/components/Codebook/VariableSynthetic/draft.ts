@@ -246,11 +246,6 @@ const withEffectiveValidation = (
  * variable carrying its EFFECTIVE rules, so a block an interface-implied rule
  * forbids is refused exactly as a declared one would refuse it.
  *
- * A draft that does not parse WITHOUT the block cannot have its refusal
- * attributed to the block — a variable being created has no options yet — so
- * the proposal is allowed through, and the commit-time validation listener
- * remains the backstop it already was.
- *
  * The boolean half of {@link syntheticRefusals}, which is the same question
  * asked so that what the schema SAID can be shown beside the control.
  */
@@ -260,16 +255,57 @@ export const syntheticIsAdmissible = (
   rules: EffectiveVariableRules = {},
 ): boolean => syntheticRefusals(variable, next, rules).length === 0;
 
+/** What identifies one issue, so the same one can be recognised twice. */
+type SchemaIssue = {
+  code: string;
+  path: readonly PropertyKey[];
+  message: string;
+};
+
+const issueKey = (issue: SchemaIssue): string =>
+  `${issue.code}|${issue.path.map(String).join('.')}|${issue.message}`;
+
+/**
+ * The issues in `proposed` that the draft was not ALREADY carrying — a
+ * multiset difference, so a fault reported twice over (one option list, two
+ * duplicate values) stays reported as often as it is new.
+ */
+const issuesAttributableTo = (
+  proposed: readonly SchemaIssue[],
+  standing: readonly SchemaIssue[],
+): SchemaIssue[] => {
+  const remaining = new Map<string, number>();
+  for (const issue of standing) {
+    const key = issueKey(issue);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  }
+  return proposed.filter((issue) => {
+    const key = issueKey(issue);
+    const count = remaining.get(key) ?? 0;
+    if (count === 0) return true;
+    remaining.set(key, count - 1);
+    return false;
+  });
+};
+
 /**
  * WHY the schema will not accept a block, in its own words — the refusals
  * `syntheticIsAdmissible` reduces to a boolean.
  *
- * Every issue reported is caused by the block: the same variable is parsed
- * without it first, and only a draft that parses cleanly there is asked at
- * all, so a refusal cannot be something the draft was already carrying.
+ * Every issue reported is caused by the block, and the way that is decided is
+ * a DIFFERENCE rather than a precondition: the variable is parsed with the
+ * proposal and, if that fails, without it, and only the issues the second
+ * parse did not already raise are the block's to answer for. A variable being
+ * created is invalid for reasons of its own until the moment it is finished —
+ * an unwritten name, an option list still empty — and the earlier reading
+ * (refuse to judge a draft that does not parse) let a proposal made in that
+ * window through unchecked. Nothing rechecked it once the name arrived, so a
+ * beta whose spread its own mean cannot support could be typed before the name
+ * and saved after it, leaving the post-commit validation dialog to report what
+ * the control should have refused.
  *
- * Cross-field rules are the reason this exists. A beta whose spread its own
- * mean cannot support, a minimum above its maximum — no single field can state
+ * Cross-field rules are why the refusals are carried rather than reduced. A
+ * beta's variance, a minimum above its maximum — no single field can state
  * either, so a boolean leaves the control snapping back on blur with nothing
  * said (spec rule 3: the UI never paraphrases a refusal, and never hides one).
  */
@@ -278,52 +314,52 @@ export const syntheticRefusals = (
   next: VariableSynthetic | undefined,
   rules: EffectiveVariableRules = {},
 ): string[] => {
+  if (next === undefined) return [];
   const { synthetic: _current, ...base } = withEffectiveValidation(
     variable,
     rules,
   );
-  // A draft that does not parse WITHOUT the block cannot have its refusal
-  // attributed to the block — a variable being created has no options yet —
-  // so the proposal is allowed through, and the commit-time validation
-  // listener remains the backstop it already was.
-  if (!VariableSchema.safeParse(base).success) return [];
-  if (next === undefined) return [];
 
-  const result = VariableSchema.safeParse({ ...base, synthetic: next });
-  if (result.success) return [];
-  return result.error.issues.map((issue) => issue.message);
+  const proposed = VariableSchema.safeParse({ ...base, synthetic: next });
+  if (proposed.success) return [];
+
+  // Only parsed when there is something to attribute: a complete draft raises
+  // nothing here, and this is asked once per keystroke on every control.
+  const standing = VariableSchema.safeParse(base);
+  return issuesAttributableTo(
+    proposed.error.issues,
+    standing.success ? [] : standing.error.issues,
+  ).map((issue) => issue.message);
 };
 
 /**
  * How many options this variable may be answered with, as the SCHEMA answers
  * it: each candidate size is proposed as a one-row selection table and kept
- * only where the schema accepts it.
+ * only where the schema raises nothing about it.
  *
  * Asked this way so no rule about reachable sizes — a floor, a ceiling, a
  * required variable's refusal of zero, an option zeroed by its weight — is
- * ever restated here. A draft the schema cannot parse for reasons of its own
- * (a variable being created, with no options yet) reports nothing reachable,
- * and its selection editor has nothing to offer.
+ * ever restated here. Asked through {@link syntheticRefusals} so a variable
+ * that is mid-creation, and therefore invalid for reasons of its own, is
+ * still told which sizes its own options and rules reach.
  */
 export const admissibleSelectionCounts = (
   variable: SyntheticVariableDraft,
   rules: EffectiveVariableRules,
 ): number[] => {
-  const probeBase = withEffectiveValidation(variable, rules);
-  const { synthetic, ...base } = probeBase;
-  if (!VariableSchema.safeParse(base).success) return [];
-
   const counts: number[] = [];
   const ceiling = distinctOptionValues(variable).length;
+  // A variable with no options yet has no sizes to reach, and offering the
+  // single "0 selections" the loop below would find says less than saying so.
+  if (ceiling === 0) return [];
   for (let count = 0; count <= ceiling; count += 1) {
-    const proposal = {
-      ...base,
-      synthetic: {
-        ...synthetic,
-        selectionCount: { probabilities: [{ count, probability: 1 }] },
-      },
-    };
-    if (VariableSchema.safeParse(proposal).success) counts.push(count);
+    const proposal = normaliseSynthetic({
+      ...variable.synthetic,
+      selectionCount: { probabilities: [{ count, probability: 1 }] },
+    });
+    if (syntheticRefusals(variable, proposal, rules).length === 0) {
+      counts.push(count);
+    }
   }
   return counts;
 };

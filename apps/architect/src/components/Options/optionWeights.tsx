@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useId, useState } from 'react';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
@@ -42,11 +42,19 @@ export type OptionWeightsController = {
   revealed: boolean;
   /** The authored weight for one option value; `undefined` while unauthored. */
   weightFor: (value: string | number | boolean) => number | undefined;
-  /** Author, or clear with `undefined`, one option's weight. */
+  /**
+   * Author, or clear with `undefined`, one option's weight.
+   *
+   * Returns the schema's refusals where it will not accept the table the
+   * change would make — zeroing the last option with any weight left, say —
+   * and an empty list where the weight was written. The cell renders them: a
+   * refusal a control discards is a box that snaps back with no reason given
+   * (spec rule 3).
+   */
   onWeightChange: (
     value: string | number | boolean,
     weight: number | undefined,
-  ) => void;
+  ) => string[];
 };
 
 export const OptionWeightsContext =
@@ -125,6 +133,17 @@ export function OptionWeightCell({
   className,
 }: OptionWeightCellProps) {
   const controller = useOptionWeights();
+  const refusalId = useId();
+  /**
+   * What the schema said about the last weight it would not accept.
+   *
+   * The column writes one option at a time but the schema judges the TABLE:
+   * zeroing the last option that still had a weight is refused because
+   * generation would then have nothing to draw. Without this the box simply
+   * snapped back on blur, so the one control able to explain the refusal
+   * discarded it.
+   */
+  const [refusals, setRefusals] = useState<string[]>([]);
   const weight =
     controller && optionValue !== undefined
       ? controller.weightFor(optionValue)
@@ -136,11 +155,13 @@ export function OptionWeightCell({
     clearable: true,
     onCommit: (next) => {
       if (optionValue === undefined) return;
-      controller?.onWeightChange(optionValue, next);
+      setRefusals(controller?.onWeightChange(optionValue, next) ?? []);
     },
   });
 
   if (!controller?.revealed) return null;
+
+  const refused = refusals.length > 0;
 
   const field = (
     <InputField
@@ -162,21 +183,46 @@ export function OptionWeightCell({
       onChange={onChange}
       onBlur={onBlur}
       disabled={optionValue === undefined}
+      aria-invalid={refused || undefined}
+      aria-describedby={refused ? refusalId : undefined}
     />
   );
 
-  if (!labelled) return field;
+  // The refusal is described BY the box it is about, so a screen reader meets
+  // it while the box is focused, and announced when it arrives — the gesture
+  // that caused it (a blur onto the next row, a stepper press) has already
+  // moved on by then.
+  const refusal = refused ? (
+    <p id={refusalId} role="alert" className="text-destructive mt-1 text-sm">
+      {refusals.join(' ')}
+    </p>
+  ) : null;
+
+  // The wrapper is rendered whether or not there is a refusal to put in it: a
+  // tree that changes SHAPE on refusal would remount the box, and the press
+  // that caused the refusal — a stepper inside it — would lose its focus.
+  if (!labelled) {
+    return (
+      <span className="inline-flex shrink-0 flex-col">
+        {field}
+        {refusal}
+      </span>
+    );
+  }
 
   return (
-    <span className="flex shrink-0 items-center gap-2">
-      {/*
-        The control's own accessible name already opens with this word, so
-        announcing it twice would be noise; sighted users are who it is for.
-      */}
-      <span aria-hidden className="text-text/70 text-sm">
-        {WEIGHT_COLUMN_LABEL}
+    <span className="flex shrink-0 flex-col">
+      <span className="flex items-center gap-2">
+        {/*
+          The control's own accessible name already opens with this word, so
+          announcing it twice would be noise; sighted users are who it is for.
+        */}
+        <span aria-hidden className="text-text/70 text-sm">
+          {WEIGHT_COLUMN_LABEL}
+        </span>
+        {field}
       </span>
-      {field}
+      {refusal}
     </span>
   );
 }

@@ -16,10 +16,7 @@ import {
   type VariableType,
 } from '@codaco/protocol-validation';
 import { DistributionVisual } from '~/components/Synthetic/DistributionVisual';
-import {
-  describeFieldWindow,
-  describeNestedWindow,
-} from '~/components/Synthetic/schemaIntrospection';
+import { describeFieldWindow } from '~/components/Synthetic/schemaIntrospection';
 import { formatProbability } from '~/components/Synthetic/summaries';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
@@ -27,6 +24,7 @@ import { TEXT_GENERATOR_LABELS } from '~/components/Synthetic/textGenerators';
 import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 
 import { admissibleSelectionCounts, summariseResolvedSynthetic } from './draft';
+import { DatetimeControls } from './fields/DatetimeControls';
 import { DistributionEditor } from './fields/DistributionEditor';
 import { InlineOptionWeights } from './fields/InlineOptionWeights';
 import { SelectionCountTable } from './fields/SelectionCountTable';
@@ -34,7 +32,10 @@ import {
   missingProbabilityDisabledReason,
   selectionCountDisabledReason,
 } from './impliedRules';
-import { useVariableSynthetic } from './VariableSyntheticProvider';
+import {
+  useSyntheticProposal,
+  useVariableSynthetic,
+} from './VariableSyntheticProvider';
 
 /**
  * The one sub-editor every surface uses to author a codebook variable's
@@ -96,18 +97,6 @@ const PROBABILITY_WINDOW: NumericWindow =
   describeFieldWindow(BooleanSyntheticSchema, ['missingProbability']) ??
   FALLBACK_WINDOW;
 
-const RELATIVE_BEFORE_WINDOW: NumericWindow =
-  describeNestedWindow(DatetimeSyntheticSchema, 'uniform', [
-    'relative',
-    'before',
-  ]) ?? FALLBACK_WINDOW;
-
-const RELATIVE_AFTER_WINDOW: NumericWindow =
-  describeNestedWindow(DatetimeSyntheticSchema, 'uniform', [
-    'relative',
-    'after',
-  ]) ?? FALLBACK_WINDOW;
-
 const TEXT_GENERATOR_DEFAULT_VALUE = '';
 
 const readNumber = (
@@ -118,22 +107,14 @@ const readNumber = (
   return typeof value === 'number' ? value : undefined;
 };
 
-const readRelative = (
-  synthetic: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined => {
-  const relative = synthetic?.relative;
-  return typeof relative === 'object' && relative !== null
-    ? (relative as Record<string, unknown>)
-    : undefined;
-};
-
 // ---------------------------------------------------------------------------
 // Controls
 // ---------------------------------------------------------------------------
 
 function MissingProbabilityField() {
-  const { namePrefix, synthetic, resolved, rules, implied, propose } =
+  const { namePrefix, synthetic, resolved, rules, implied } =
     useVariableSynthetic();
+  const { refusals, propose } = useSyntheticProposal();
   const reason = missingProbabilityDisabledReason(
     rules.required === true,
     implied.alwaysAnsweredBy,
@@ -152,13 +133,15 @@ function MissingProbabilityField() {
       window={PROBABILITY_WINDOW}
       clearable
       disabled={reason !== undefined}
+      errors={refusals}
       onCommit={(value) => propose({ ...synthetic, missingProbability: value })}
     />
   );
 }
 
 function BooleanControls() {
-  const { namePrefix, synthetic, resolved, propose } = useVariableSynthetic();
+  const { namePrefix, synthetic, resolved } = useVariableSynthetic();
+  const { refusals, propose } = useSyntheticProposal();
   const resolvedTrue =
     resolved?.type === 'boolean' ? resolved.probabilityTrue : undefined;
 
@@ -174,6 +157,7 @@ function BooleanControls() {
       value={readNumber(synthetic, 'probabilityTrue')}
       window={PROBABILITY_WINDOW}
       clearable
+      errors={refusals}
       onCommit={(value) => propose({ ...synthetic, probabilityTrue: value })}
     />
   );
@@ -245,8 +229,9 @@ function OptionWeightControls() {
 }
 
 function SelectionCountControls() {
-  const { namePrefix, variable, rules, implied, resolved, synthetic, propose } =
+  const { namePrefix, variable, rules, implied, resolved, synthetic } =
     useVariableSynthetic();
+  const { refusals, propose } = useSyntheticProposal();
 
   const allowedCounts = useMemo(
     () => admissibleSelectionCounts(variable, rules),
@@ -287,132 +272,9 @@ function SelectionCountControls() {
       allowedCounts={allowedCounts}
       table={declared}
       resolved={resolved.selectionCount}
+      errors={refusals}
       onChange={(next) => propose({ ...synthetic, selectionCount: next })}
     />
-  );
-}
-
-function DatetimeControls() {
-  const { namePrefix, synthetic, isAdmissible, propose, resolveWith } =
-    useVariableSynthetic();
-  const relative = readRelative(synthetic);
-  const family =
-    typeof synthetic?.distribution === 'string'
-      ? synthetic.distribution
-      : 'uniform';
-
-  // Asked of the schema rather than derived from the input control: a variable
-  // whose own field already collects within a session-relative window has no
-  // place for a second one, and the schema is what says so.
-  const relativeIsAdmissible = isAdmissible({
-    ...synthetic,
-    distribution: family,
-    relative: { before: 1, after: 0 },
-  });
-
-  if (!relativeIsAdmissible) {
-    return (
-      <div className="mb-7">
-        <p className="mb-1 font-semibold">How far back dates reach</p>
-        <p className="text-text/70 text-sm">
-          Not available — this attribute’s own input control already fixes the
-          range its dates fall in.
-        </p>
-      </div>
-    );
-  }
-
-  /**
-   * The window an UNSTATED `relative` resolves to — asked of the resolver with
-   * the window taken out of the block, so it is the schema's default rather
-   * than whatever is in the boxes. It is what makes "cleared" different from
-   * "zero": an empty box means the schema's reach back from the interview
-   * date, and storing a zero there instead would pin every generated date to
-   * the day the interview ran.
-   */
-  const unstated = resolveWith({
-    ...synthetic,
-    distribution: family,
-    relative: undefined,
-  });
-  const defaults =
-    unstated?.type === 'datetime' ? unstated.relative : undefined;
-
-  const commit = (key: 'before' | 'after', value: number | undefined) => {
-    const nextRelative = { ...relative, [key]: value };
-    const before = readNumber(nextRelative, 'before');
-    const after = readNumber(nextRelative, 'after');
-    const anchor =
-      typeof relative?.anchor === 'string' ? relative.anchor : undefined;
-
-    // The schema states both offsets together, so the one the author left
-    // empty stands at what an unstated window resolves to rather than at a
-    // zero nobody wrote.
-    const filled = {
-      before: before ?? defaults?.before ?? 0,
-      after: after ?? defaults?.after ?? 0,
-    };
-
-    /**
-     * Whether anything is left that the schema would not have said itself.
-     *
-     * Compared against the RESOLVED window rather than against emptiness,
-     * because the first authoring necessarily writes both offsets: clearing
-     * the one that was typed would otherwise leave the sibling standing —
-     * a window of zero width, every generated date on the interview day —
-     * with no way back to the default short of resetting the whole block. An
-     * anchor is a statement of its own, and is never removed for the sake of
-     * its offsets.
-     */
-    const statesNothing =
-      anchor === undefined &&
-      (defaults === undefined
-        ? before === undefined && after === undefined
-        : filled.before === defaults.before && filled.after === defaults.after);
-
-    if (statesNothing) {
-      // Nothing stated is nothing stored (spec rule 4): clearing has to come
-      // back to the block the variable carried before the window was ever
-      // authored, byte for byte — discriminant included, since that is only
-      // there to make a stated window parse. Whether the rest of the block
-      // still needs it is the schema's question, asked rather than answered
-      // here.
-      const withoutWindow = { ...synthetic, relative: undefined };
-      const bare = { ...withoutWindow, distribution: undefined };
-      propose(
-        isAdmissible(bare) ? bare : { ...withoutWindow, distribution: family },
-      );
-      return;
-    }
-
-    propose({
-      ...synthetic,
-      distribution: family,
-      relative: { ...(anchor === undefined ? {} : { anchor }), ...filled },
-    });
-  };
-
-  return (
-    <>
-      <SyntheticNumberField
-        name={`${namePrefix}.relative.before`}
-        label="Days before the interview date"
-        hint="How far back generated dates may reach from the day the interview runs."
-        value={readNumber(relative, 'before')}
-        window={RELATIVE_BEFORE_WINDOW}
-        clearable
-        onCommit={(value) => commit('before', value)}
-      />
-      <SyntheticNumberField
-        name={`${namePrefix}.relative.after`}
-        label="Days after the interview date"
-        hint="How far forward generated dates may reach from the day the interview runs."
-        value={readNumber(relative, 'after')}
-        window={RELATIVE_AFTER_WINDOW}
-        clearable
-        onCommit={(value) => commit('after', value)}
-      />
-    </>
   );
 }
 

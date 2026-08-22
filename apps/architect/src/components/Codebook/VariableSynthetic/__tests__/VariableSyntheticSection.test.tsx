@@ -641,3 +641,183 @@ describe('variable types with nothing to generate', () => {
     expect(screen.queryByText(/Synthetic data/)).not.toBeInTheDocument();
   });
 });
+
+describe('every datetime parameter the schema admits', () => {
+  it('offers the family, the cluster, the relative window and the fixed one', () => {
+    const { expand } = setup({ variable: DATETIME });
+    expand();
+
+    // Everything `DatetimeSyntheticSchema` accepts has a control: without the
+    // fixed window and the clustered family, an imported descriptor using
+    // either could only be kept exactly as it was or reset away wholesale.
+    expect(
+      screen.getByRole('combobox', { name: 'How dates are chosen' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Earliest date')).toBeInTheDocument();
+    expect(screen.getByLabelText('Latest date')).toBeInTheDocument();
+    expect(screen.getByLabelText('Count those days from')).toBeInTheDocument();
+  });
+
+  it('writes a fixed window at the variable’s own resolution', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...DATETIME,
+        parameters: { type: 'month', min: '2020-01', max: '2030-12' },
+      },
+    });
+    expand();
+
+    // The control is the app's own DatePicker, given this variable's own
+    // resolution, so a date at the wrong one is not enterable rather than
+    // refused afterwards (spec rule 2).
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Earliest date Year' }),
+      { target: { value: '2024' } },
+    );
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Earliest date Month' }),
+      { target: { value: '06' } },
+    );
+
+    expect(latest()).toEqual({ distribution: 'uniform', min: '2024-06' });
+  });
+
+  it('states a cluster once its date is chosen, and its spread after', () => {
+    const { expand, latest } = setup({ variable: DATETIME });
+    expand();
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'How dates are chosen' }),
+      { target: { value: 'normal' } },
+    );
+    // Choosing the family alone states nothing: a cluster the schema would
+    // refuse for want of its date is not written and then complained about.
+    expect(latest()).toBeUndefined();
+
+    fireEvent.change(screen.getByLabelText('Date the answers gather around'), {
+      target: { value: '2024-06-01' },
+    });
+    expect(latest()).toEqual({
+      distribution: 'normal',
+      mean: '2024-06-01',
+      sdDays: 0,
+    });
+
+    commit(
+      screen.getByRole('spinbutton', {
+        name: 'How far from that date answers usually fall, in days',
+      }),
+      '14',
+    );
+    expect(latest()).toEqual({
+      distribution: 'normal',
+      mean: '2024-06-01',
+      sdDays: 14,
+    });
+  });
+
+  it('still offers the fixed window to a control that fixes its own range', () => {
+    // A RelativeDatePicker refuses a synthetic `relative` window — it already
+    // collects within one — but it accepts every other datetime parameter.
+    // Offering such a variable nothing but its missingness was the gap.
+    const { expand } = setup({
+      variable: { ...DATETIME, component: 'RelativeDatePicker' },
+    });
+    expand();
+
+    expect(screen.getByText(/already fixes the range/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Earliest date')).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'How dates are chosen' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps offering the relative window beside an authored fixed one', () => {
+    // The schema refuses the PAIR, not the relative window — so hiding the
+    // control because a `min` is authored would report the wrong reason and
+    // leave no way back to a session-relative window short of a full reset.
+    const { expand } = setup({
+      variable: {
+        ...DATETIME,
+        synthetic: { distribution: 'uniform', min: '2024-01-01' },
+      },
+    });
+    expand();
+
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Days before the interview date',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/already fixes the range/)).toBeNull();
+  });
+
+  it('says what the schema said when a window states its floor twice', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...DATETIME,
+        synthetic: {
+          distribution: 'uniform',
+          relative: { before: 30, after: 0 },
+        },
+      },
+    });
+    expand();
+
+    fireEvent.change(screen.getByLabelText('Earliest date'), {
+      target: { value: '2024-06-01' },
+    });
+
+    // Refused by the schema, in the schema's own words, with the block left
+    // as it was rather than half-written.
+    expect(latest()).toBeUndefined();
+    expect(
+      screen.getByText(
+        'A synthetic date window declares its floor either as "min" or as a relative "before", not both',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('what the schema said about an edit it refused', () => {
+  it('explains a weights table that would leave nothing to draw', () => {
+    const { expand, latest } = setup({ variable: ORDINAL });
+    expand();
+
+    commit(screen.getByRole('spinbutton', { name: 'Weight for low' }), '0');
+    expect(latest()).toEqual({ optionWeights: [{ value: 'low', weight: 0 }] });
+
+    commit(screen.getByRole('spinbutton', { name: 'Weight for high' }), '0');
+
+    // Refused, and SAID: the box used to snap back on blur with the schema's
+    // explanation thrown away (spec rule 3 — a refusal is never hidden).
+    expect(latest()).toEqual({ optionWeights: [{ value: 'low', weight: 0 }] });
+    expect(
+      screen.getByText('At least one option value must have a positive weight'),
+    ).toBeInTheDocument();
+  });
+
+  it('explains a chance of yes a one-sided list can never draw', () => {
+    const { expand, latest } = setup({
+      variable: {
+        name: 'is_close',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      },
+    });
+    expand();
+
+    commit(
+      screen.getByRole('spinbutton', { name: 'Chance of answering yes' }),
+      '0.4',
+    );
+
+    expect(latest()).toBeUndefined();
+    expect(
+      screen.getByText(
+        'probabilityTrue 0.4 cannot be drawn when the only option offered is true',
+      ),
+    ).toBeInTheDocument();
+  });
+});

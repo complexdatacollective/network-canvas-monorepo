@@ -113,6 +113,13 @@ export type SelectionCountTableProps = {
   table: SyntheticSelectionCount | undefined;
   /** What generation resolves without a table — the rows shown until one is. */
   resolved: SyntheticSelectionCount;
+  /**
+   * The schema's own refusals for the last table it would not accept, shown
+   * unparaphrased. A table is judged whole — a count no option list can reach,
+   * a size a bin has pinned — so the refusal belongs to the table rather than
+   * to whichever cell was last typed in.
+   */
+  errors?: readonly string[];
   onChange: (next: SyntheticSelectionCount | undefined) => void;
   disabled?: boolean;
 };
@@ -123,6 +130,7 @@ export function SelectionCountTable({
   allowedCounts,
   table,
   resolved,
+  errors,
   onChange,
   disabled = false,
 }: SelectionCountTableProps) {
@@ -200,6 +208,11 @@ export function SelectionCountTable({
           </li>
         ))}
       </ul>
+      {errors && errors.length > 0 && (
+        <p role="alert" className="text-destructive mt-2 text-sm">
+          {errors.join(' ')}
+        </p>
+      )}
       {unusedCounts.length > 0 && (
         <Button
           size="sm"

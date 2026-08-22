@@ -102,6 +102,7 @@ const savedVariable = (
 const disclosureFor = (title: string, summary: RegExp): RegExp =>
   new RegExp(`^${title}\\s*${summary.source}`);
 
+const EGO_AGE = ['ego', 'variables', 'egoAge'] as const;
 const PERSON_TRUST = ['node', 'person', 'variables', 'personTrust'] as const;
 const FRIEND_STRENGTH = [
   'edge',
@@ -251,6 +252,34 @@ describe('editing in the table', () => {
         name: disclosureFor('strength', /options drawn by weight/),
       }),
     ).toBeVisible();
+  });
+
+  it('authors an EGO attribute, which has no entity-type editor of its own', async () => {
+    // A node or edge attribute is also reachable through the type editor its
+    // entity type opens; ego has no entity type and no such editor, so this
+    // table is the whole of ego's synthetic authoring — and it has to write
+    // through to the same place (spec revision 2, item 6).
+    const store = renderCodebook(FIXTURE_DOCUMENT);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: disclosureFor('egoAge', /constant/),
+      }),
+    );
+
+    const missing = screen.getByRole('spinbutton', {
+      name: 'Chance of no answer',
+    });
+    fireEvent.change(missing, { target: { value: '0.25' } });
+    fireEvent.blur(missing);
+
+    await waitFor(() => {
+      expect(savedVariable(store, EGO_AGE).synthetic).toEqual({
+        distribution: 'constant',
+        value: 40,
+        missingProbability: 0.25,
+      });
+    });
   });
 
   it('resets an authored attribute back to the schema default', async () => {
