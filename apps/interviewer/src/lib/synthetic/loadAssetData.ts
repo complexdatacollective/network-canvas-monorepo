@@ -49,16 +49,20 @@ export async function loadSyntheticAssetData(
     return assetsByIdPromise;
   };
 
-  // One resolver per expected asset type: the manifest's own `type` decides how
-  // a file is parsed, so a stage pointed at the wrong kind of asset resolves to
-  // nothing rather than being handed to a parser that cannot read it.
+  // One resolver per collector, allowing exactly the asset types the schema's
+  // cross-reference checks let the corresponding stage field name: a roster
+  // `dataSource` must be a `network` asset, and a Geospatial map's
+  // `dataSourceAssetId` may be `geojson` or `network`. An asset's `type`
+  // decides how a file is parsed, so a stage pointed at any other kind of
+  // asset resolves to nothing rather than being handed to a parser that
+  // cannot read it.
   const resolverFor =
-    (expectedType: StoredAssetType): ResolveRosterAsset =>
+    (allowedTypes: readonly StoredAssetType[]): ResolveRosterAsset =>
     async (assetId) => {
       const asset = (await getAssetsById()).get(assetId);
       if (
         !asset ||
-        asset.type !== expectedType ||
+        !allowedTypes.includes(asset.type) ||
         typeof asset.data === 'string'
       ) {
         return null;
@@ -78,11 +82,11 @@ export async function loadSyntheticAssetData(
     collectRosterExternalData({
       stages: protocol.protocol.stages,
       codebook: protocol.codebook,
-      resolveAsset: resolverFor('network'),
+      resolveAsset: resolverFor(['network']),
     }),
     collectGeospatialPropertyValues({
       stages: protocol.protocol.stages,
-      resolveAsset: resolverFor('geojson'),
+      resolveAsset: resolverFor(['geojson', 'network']),
     }),
   ]);
 

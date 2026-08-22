@@ -250,13 +250,18 @@ describe('generateSyntheticSessions', () => {
       simulateDropOut: true,
       respectSkipLogic: false,
       seed: 4321,
+      startWindow: '2026-08-01T00:00:00.000Z',
     });
 
     expect(mockGenerateInterviews.mock.calls[0]?.[1]).toEqual({
       count: 3,
       seed: 4321,
+      startWindow: '2026-08-01T00:00:00.000Z',
       simulateDropOut: true,
+      // The one host toggle threads to BOTH engine flags — its label has
+      // always promised "skip logic and filtering".
       respectSkipLogic: false,
+      respectFiltering: false,
     });
   });
 

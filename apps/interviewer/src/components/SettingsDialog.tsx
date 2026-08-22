@@ -24,6 +24,10 @@ import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import {
+  formatSyntheticBatchToken,
+  parseSyntheticBatchToken,
+} from '@codaco/protocol-utilities';
 import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
 import {
@@ -239,20 +243,37 @@ export function SettingsDialog({
     setIsGenerating(true);
     setProgress({ phase: 'generating', current: 0, total: count });
     try {
-      const pinnedSeed = Number.parseInt(seedInput.trim(), 10);
-      const { created, seed } = await generateSyntheticSessions({
+      // A batch's identity is its seed AND the day its sessions are dated
+      // against; the reported token carries both, and a bare seed pins only
+      // the draws. Anything else typed here is a mistake worth naming rather
+      // than silently generating a fresh batch over.
+      const pinned =
+        seedInput.trim() === ''
+          ? undefined
+          : parseSyntheticBatchToken(seedInput);
+      if (seedInput.trim() !== '' && pinned === null) {
+        toast.add({
+          title: 'Generation not started',
+          description:
+            'That batch token could not be read. Enter the value a batch reported — a number, or number-YYYY-MM-DD — or leave the field blank.',
+          variant: 'destructive',
+          timeout: 0,
+        });
+        return;
+      }
+      const { created, seed, startWindow } = await generateSyntheticSessions({
         protocolHash: selectedProtocolHash,
         count,
         simulateDropOut,
         respectSkipLogic,
-        ...(Number.isFinite(pinnedSeed) ? { seed: pinnedSeed } : {}),
+        ...(pinned ? pinned : {}),
         onProgress: setProgress,
       });
       toast.add({
         title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
-        // The seed is the whole batch: entering it above regenerates exactly
+        // The token is the whole batch: entering it above regenerates exactly
         // these interviews, so it is worth reading off the toast.
-        description: `Seed ${seed}`,
+        description: `Batch ${formatSyntheticBatchToken(seed, startWindow)}`,
         variant: 'success',
       });
     } catch (error) {
@@ -693,12 +714,11 @@ export function SettingsDialog({
               />
               <UnconnectedField
                 name="syntheticSeed"
-                label="Random seed"
-                hint="Leave blank for a new batch each time. Every batch reports the seed it used — enter that seed to regenerate exactly the same interviews."
+                label="Batch token"
+                hint="Leave blank for a new batch each time. Every batch reports the token it ran on — enter that token to regenerate exactly the same interviews, dates included. A bare seed number pins the draws but dates the sessions around today."
                 data-testid="synthetic-seed"
                 component={InputField}
-                type="number"
-                min={0}
+                type="text"
                 value={seedInput}
                 disabled={isGenerating}
                 onChange={(next: string | undefined) =>

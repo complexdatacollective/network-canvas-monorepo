@@ -255,11 +255,37 @@ describe('loadSyntheticAssetData', () => {
     expect(revokeObjectURL).toHaveBeenCalled();
   });
 
-  it('omits a map stage whose asset is not a geojson asset', async () => {
-    // Handing a roster CSV to the map parser would invent areas nobody drew,
-    // so the manifest's own type gates it.
+  it("collects a map stage's selectable areas from a network-typed asset", async () => {
+    // The schema lets `mapOptions.dataSourceAssetId` name a `geojson` OR a
+    // `network` asset, so a map backed by a network-typed GeoJSON file must
+    // resolve rather than being silently omitted.
     getProtocolAssets.mockResolvedValue([
-      storedAsset({ assetId: 'regions', name: 'Regions', type: 'network' }),
+      storedAsset({
+        assetId: 'regions',
+        name: 'Regions',
+        type: 'network',
+        data: new Blob([REGIONS_GEOJSON], { type: 'application/json' }),
+      }),
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(REGIONS_GEOJSON))),
+    );
+
+    const { geojsonPropertyValues } = await loadSyntheticAssetData(
+      storedProtocol([geospatialStage()], {
+        regions: { type: 'network', name: 'Regions', source: 'regions.json' },
+      }),
+    );
+
+    expect(geojsonPropertyValues!['stage-geo']).toEqual(['Govan', 'Partick']);
+  });
+
+  it('omits a map stage whose asset is neither geojson nor network', async () => {
+    // Handing an arbitrary file to the map parser would invent areas nobody
+    // drew, so the stored asset's own type gates it.
+    getProtocolAssets.mockResolvedValue([
+      storedAsset({ assetId: 'regions', name: 'Regions', type: 'image' }),
     ]);
 
     const { geojsonPropertyValues } = await loadSyntheticAssetData(
