@@ -16,6 +16,10 @@ import type {
 } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import type { SyntheticVariableDraft } from '~/components/Codebook/VariableSynthetic/draft';
+import {
+  NO_IMPLIED_RULES,
+  type VariableImpliedRules,
+} from '~/components/Codebook/VariableSynthetic/impliedRules';
 import { VariableSyntheticProvider } from '~/components/Codebook/VariableSynthetic/VariableSyntheticProvider';
 import {
   SYNTHETIC_SECTION_TITLE,
@@ -39,6 +43,11 @@ import { createVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { getVariablesForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
 import safeName from '~/utils/safeName';
+
+import {
+  prospectiveImpliedRules,
+  type OwningStageDraft,
+} from './prospectiveImpliedRules';
 
 const FORM_ID = 'create-new-variable';
 
@@ -92,6 +101,8 @@ type NewVariableFieldsProps = {
   /** The synthetic block being authored alongside the definition. */
   synthetic: VariableSynthetic | undefined;
   onSyntheticChange: (next: VariableSynthetic | undefined) => void;
+  /** What the stage this attribute is being created for will impose on it. */
+  implied: VariableImpliedRules;
 };
 
 const NewVariableFields = ({
@@ -102,6 +113,7 @@ const NewVariableFields = ({
   lockedOptions,
   synthetic,
   onSyntheticChange,
+  implied,
 }: NewVariableFieldsProps) => {
   const variableType = useFormStore((state) => {
     const value = state.getFieldState('type')?.value;
@@ -158,6 +170,7 @@ const NewVariableFields = ({
     // and remount every field inside it.
     <VariableSyntheticProvider
       variable={draftVariable}
+      implied={implied}
       namePrefix="synthetic"
       onChange={onSyntheticChange}
     >
@@ -247,6 +260,16 @@ type NewVariableWindowProps = {
   initialValues?: Record<string, unknown> | null;
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
   lockedOptions?: LockedVariableOptions | null;
+  /**
+   * The stage this attribute is being created for, as its editor holds it, and
+   * the stage-relative path of the slot the attribute will fill. Together they
+   * are what lets the synthetic sub-editor apply the rules that stage will
+   * impose the moment the attribute exists — see `prospectiveImpliedRules`.
+   * Both are absent where no stage owns the attribute (the Codebook's own "add
+   * attribute" buttons), and then nothing is implied.
+   */
+  owningStage?: OwningStageDraft | null;
+  slotPath?: string | null;
 };
 
 export default function NewVariableWindow({
@@ -258,6 +281,8 @@ export default function NewVariableWindow({
   onCancel,
   initialValues = null,
   lockedOptions = null,
+  owningStage = null,
+  slotPath = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
   // Memoize subject to avoid creating new object on every render, which breaks selector memoization
@@ -297,6 +322,21 @@ export default function NewVariableWindow({
    */
   const [synthetic, setSynthetic] = useState<VariableSynthetic | undefined>(
     undefined,
+  );
+
+  /**
+   * Collected only while the window is open. The owning stage's draft changes
+   * on every keystroke in its editor, and the reference walk behind this would
+   * otherwise run on all of them to answer a question nobody is asking — the
+   * window is mounted for the lifetime of the picker that owns it and merely
+   * toggles `show`.
+   */
+  const implied = useMemo(
+    () =>
+      show
+        ? prospectiveImpliedRules(owningStage, slotPath, subject)
+        : NO_IMPLIED_RULES,
+    [show, owningStage, slotPath, subject],
   );
 
   const handleSubmit = useCallback(
@@ -397,6 +437,7 @@ export default function NewVariableWindow({
         lockedOptions={lockedOptions}
         synthetic={synthetic}
         onSyntheticChange={setSynthetic}
+        implied={implied}
       />
     </DialogForm>
   );

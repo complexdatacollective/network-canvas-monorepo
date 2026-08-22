@@ -30,6 +30,7 @@ import type {
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import {
   composerValidationViews,
@@ -116,6 +117,9 @@ type VariableWindowInitialProps = {
     type: string;
   };
   lockedOptions: LockedVariableOptions | null;
+  /** See `prospectiveImpliedRules`. */
+  owningStage: Record<string, unknown> | undefined;
+  slotPath: string | null;
 };
 
 type VariableRowProps = {
@@ -513,33 +517,46 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     ];
     setStageValue(params.field, id);
   };
+  const owningStage = useOwningStageDraft();
   const initialWindowProps: VariableWindowInitialProps = {
     entity: nodeEntity,
     type: nodeType ?? '',
     initialValues: { name: '', type: '' },
     lockedOptions: null,
+    owningStage,
+    slotPath: null,
   };
   const [variableWindowProps, openVariableWindow] = useNewVariableWindowState(
     initialWindowProps,
     handleCreatedVariable,
   );
+  /**
+   * Opening the window is also declaring which slot the new attribute will
+   * fill: the stage field the created id is written into IS that slot's
+   * stage-relative path, so the window can ask the schema what this stage
+   * implies about an attribute there rather than being told the path twice.
+   */
+  const openVariableWindowForSlot = (
+    props: Omit<Partial<VariableWindowInitialProps>, 'slotPath'>,
+    field: string,
+  ) => openVariableWindow({ ...props, slotPath: field }, { field });
   const handleNewNodeLabelVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
-      { field: 'nodeConfig.nodeLabelVariable' },
+      'nodeConfig.nodeLabelVariable',
     );
   const handleNewEgoVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
-      { field: 'nodeConfig.egoVariable' },
+      'nodeConfig.egoVariable',
     );
   const handleNewRelationshipVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       { initialValues: { name, type: 'text' }, lockedOptions: null },
-      { field: 'nodeConfig.relationshipVariable' },
+      'nodeConfig.relationshipVariable',
     );
   const handleNewBiologicalSexVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       {
         initialValues: { name, type: 'categorical' },
         // Seed and lock the canonical value set — the interview and genetics
@@ -547,7 +564,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
         // them (mirrors the relationship-type variable).
         lockedOptions: INTERFACE_OWNED_OPTION_SETS.biologicalSex.options,
       },
-      { field: 'nodeConfig.biologicalSexVariable' },
+      'nodeConfig.biologicalSexVariable',
     );
 
   // `handleChangeFields`'s replacement for the `withHandlers`/`connect`

@@ -98,11 +98,17 @@ vi.mock('~/ducks/hooks', () => ({
 
 import NewVariableWindow from '../NewVariableWindow';
 
+type OwningSlot = {
+  owningStage?: Record<string, unknown>;
+  slotPath?: string;
+};
+
 const renderWindow = (
   initialValues: Record<string, unknown> | null = {
     name: 'age',
     type: 'number',
   },
+  owningSlot: OwningSlot = {},
 ) =>
   render(
     <NewVariableWindow
@@ -112,8 +118,21 @@ const renderWindow = (
       initialValues={initialValues}
       onComplete={vi.fn()}
       onCancel={vi.fn()}
+      {...owningSlot}
     />,
   );
+
+const CATEGORICAL_ATTRIBUTE = {
+  name: 'closeness',
+  type: 'categorical',
+  options: [
+    { label: 'Family', value: 'family' },
+    { label: 'Friend', value: 'friend' },
+  ],
+};
+
+const expandSynthetic = () =>
+  fireEvent.click(screen.getByRole('button', { name: /^Synthetic data/ }));
 
 const submit = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Save and Close' }));
@@ -184,5 +203,73 @@ describe('authoring synthetic parameters while creating an attribute', () => {
     const created = configuration();
     expect(created).toMatchObject({ type: 'text' });
     expect(created && 'synthetic' in created).toBe(false);
+  });
+});
+
+/**
+ * The attribute created here is attached to the stage that opened the dialog
+ * the moment it exists, so the dialog has to answer for the rules that stage
+ * will impose on it — otherwise it happily authors parameters that the very
+ * next screen renders disabled and generation ignores.
+ *
+ * Every expectation below is the schema's own sentence: the stage names come
+ * from the drafts these tests hand in, and the rules from
+ * `collectInterfaceImpliedRules` walking them.
+ */
+describe('the rules the owning stage would impose on the new attribute', () => {
+  it('cannot author a number of selections for an attribute a categorical bin assigns', () => {
+    renderWindow(CATEGORICAL_ATTRIBUTE, {
+      owningStage: {
+        type: 'CategoricalBin',
+        label: 'Contact Types',
+        subject: { entity: 'node', type: 'person' },
+      },
+      slotPath: 'prompts.0.variable',
+    });
+    expandSynthetic();
+
+    expect(
+      screen.getByText(
+        'Single choice — ‘Contact Types’ assigns exactly one option, so the number of selections cannot vary.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('cannot author a chance of no answer for an attribute a quick add always collects', () => {
+    renderWindow(
+      { name: 'nickname', type: 'text' },
+      {
+        owningStage: {
+          type: 'NameGeneratorQuickAdd',
+          label: 'People You Know',
+          subject: { entity: 'node', type: 'person' },
+        },
+        slotPath: 'quickAdd',
+      },
+    );
+    expandSynthetic();
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Chance of no answer' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        'Always answered — ‘People You Know’ cannot leave this attribute blank, so it is never missing.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // The Codebook's own "add attribute" buttons open this dialog with no stage
+  // behind it, and nothing is implied about an attribute no interface has
+  // claimed yet — so both controls stay authorable there.
+  it('offers both controls when no stage owns the new attribute', () => {
+    renderWindow(CATEGORICAL_ATTRIBUTE);
+    expandSynthetic();
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Chance of no answer' }),
+    ).toBeEnabled();
+    expect(screen.getByText('How many options are chosen')).toBeInTheDocument();
+    expect(screen.queryByText(/^Single choice —/)).not.toBeInTheDocument();
   });
 });
