@@ -1,11 +1,13 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import {
   DEFAULT_PANEL_NOMINATION_PROBABILITY,
   DEFAULT_RESPONSE_BURDEN,
+  defaultNodeCount,
   MAX_SYNTHETIC_POPULATION,
+  stageSchema,
   type StageType,
 } from '@codaco/protocol-validation';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
@@ -557,6 +559,87 @@ describe('a change the schema refuses', () => {
   });
 });
 
+describe('an alter limit narrowed under an authored count', () => {
+  const AUTHORED_COUNT = {
+    ...NAME_GENERATOR,
+    behaviours: { maxNodes: 10 },
+    synthetic: { count: { distribution: 'uniform', min: 0, max: 10 } },
+  };
+
+  /**
+   * What the SCHEMA says about this stage — computed here rather than written
+   * down, so the assertion cannot pass against a paraphrase of it.
+   */
+  const schemaRefusalFor = (stage: Record<string, unknown>): string => {
+    const result = stageSchema.safeParse(stage);
+    if (result.success) {
+      throw new Error('expected the schema to refuse this stage');
+    }
+    const issue = result.error.issues.find(
+      (candidate) => candidate.path[0] === 'synthetic',
+    );
+    if (!issue) {
+      throw new Error('expected a refusal about the synthetic block');
+    }
+    return issue.message;
+  };
+
+  const narrowMaxNodes = (view: ReturnType<typeof setup>, maxNodes: number) => {
+    act(() => {
+      view.getStoreApi().getState().setFieldValue('behaviours', { maxNodes });
+    });
+  };
+
+  it('shows the schema’s own refusal against the count, unprompted', () => {
+    const view = setup(AUTHORED_COUNT);
+    expand();
+    // Nothing wrong yet: the authored count fits the limit it was written
+    // under, so the section is quiet.
+    const expected = schemaRefusalFor({
+      ...AUTHORED_COUNT,
+      behaviours: { maxNodes: 5 },
+    });
+    expect(screen.queryByText(expected)).not.toBeInTheDocument();
+
+    narrowMaxNodes(view, 5);
+
+    // Inside the count's own fieldset — the refusal is about the count as a
+    // whole, which no single parameter field can carry.
+    expect(
+      within(
+        screen.getByRole('group', { name: 'Number of nodes created' }),
+      ).getByText(expected),
+    ).toBeInTheDocument();
+  });
+
+  it('blocks the save while the stage stands refused', async () => {
+    const view = setup(AUTHORED_COUNT);
+    // Before: the same stage validates, so the assertion below is about the
+    // narrowing rather than about a form that never validated.
+    expect(await view.getStoreApi().getState().validateForm()).toBe(true);
+
+    narrowMaxNodes(view, 5);
+
+    expect(await view.getStoreApi().getState().validateForm()).toBe(false);
+    expect(view.getStoreApi().getState().getFieldErrors('synthetic')).toContain(
+      schemaRefusalFor({ ...AUTHORED_COUNT, behaviours: { maxNodes: 5 } }),
+    );
+  });
+
+  it('lets the save through once the count is brought back inside', async () => {
+    const view = setup(AUTHORED_COUNT);
+    expand();
+    narrowMaxNodes(view, 5);
+    expect(await view.getStoreApi().getState().validateForm()).toBe(false);
+
+    fireEvent.change(screen.getByLabelText('Maximum'), {
+      target: { value: '5' },
+    });
+
+    expect(await view.getStoreApi().getState().validateForm()).toBe(true);
+  });
+});
+
 describe('live feasibility', () => {
   // The pools a roster stage draws from are namespaced by protocol, and the
   // hook resolves none at all without a scope — which the engine reads as a
@@ -868,6 +951,115 @@ describe('a composer’s two halves', () => {
     });
 
     expect(disclosure()).toHaveTextContent('Nodes: none created by this stage');
+  });
+
+  /**
+   * A composer whose block names a topology and no count: the one descriptor
+   * where "creates none of those" is a state a block can be IN, and the state
+   * an unrelated edit used to silently write its way out of.
+   */
+  const NODES_TURNED_OFF = {
+    ...NETWORK_COMPOSER,
+    synthetic: {
+      topology: {
+        metric: 'meanDegree',
+        distribution: { distribution: 'normal', mean: 3, sd: 1 },
+      },
+    },
+  };
+
+  const halfSwitch = (name: string) => screen.getByRole('switch', { name });
+
+  it('shows the node half as off, with no count editor behind it', () => {
+    setup(NODES_TURNED_OFF);
+    expand();
+
+    expect(halfSwitch('This stage creates nodes')).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    // The control and the summary now say the same thing. A count editor here
+    // showed a number that was not in effect, which is what made the write
+    // below invisible.
+    expect(
+      screen.queryByRole('group', { name: 'Number of nodes created' }),
+    ).not.toBeInTheDocument();
+    expect(halfSwitch('This stage creates edges')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+
+  it('does not re-enable node generation when another parameter is edited', () => {
+    const { getFormValues } = setup(NODES_TURNED_OFF);
+    expand();
+
+    fireEvent.change(screen.getByLabelText('Response burden'), {
+      target: { value: '1.5' },
+    });
+
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      responseBurden: 1.5,
+    });
+    expect(syntheticValue(getFormValues)).not.toHaveProperty('count');
+    expect(disclosure()).toHaveTextContent('Nodes: none created by this stage');
+  });
+
+  it('turns the half back on at the schema’s own default', () => {
+    const { getFormValues } = setup(NODES_TURNED_OFF);
+    expand();
+
+    fireEvent.click(halfSwitch('This stage creates nodes'));
+
+    // The value the schema resolves for an unstated count on this stage —
+    // computed here rather than written down, so the control cannot drift from
+    // what an absent block would have meant.
+    expect(syntheticValue(getFormValues)).toMatchObject({
+      count: defaultNodeCount(undefined),
+    });
+    expect(
+      screen.getByRole('group', { name: 'Number of nodes created' }),
+    ).toBeInTheDocument();
+  });
+
+  it('turns a half off, and says so', () => {
+    const { getFormValues } = setup(NETWORK_COMPOSER);
+    expand();
+    // Materialise the block first: an absent one prefaults both halves.
+    fireEvent.change(screen.getByLabelText('Response burden'), {
+      target: { value: '1.5' },
+    });
+    expect(syntheticValue(getFormValues)).toHaveProperty('count');
+
+    fireEvent.click(halfSwitch('This stage creates nodes'));
+
+    expect(syntheticValue(getFormValues)).not.toHaveProperty('count');
+    expect(syntheticValue(getFormValues)).toHaveProperty('topology');
+    expect(disclosure()).toHaveTextContent('Nodes: none created by this stage');
+  });
+
+  it('lets the schema refuse turning the last half off', () => {
+    const { getFormValues } = setup(NODES_TURNED_OFF);
+    expand();
+
+    fireEvent.click(halfSwitch('This stage creates edges'));
+
+    // The schema's own sentence, rendered where no single parameter owns it.
+    expect(
+      screen.getByText(
+        'A synthetic block must declare a count, a topology, or both',
+      ),
+    ).toBeInTheDocument();
+    expect(syntheticValue(getFormValues)).toEqual(NODES_TURNED_OFF.synthetic);
+  });
+
+  it('offers no enable switch where the descriptor makes no half optional', () => {
+    // A name generator's descriptor REQUIRES a count, so a switch to turn it
+    // off would be a control the researcher could only be refused for using.
+    setup(NAME_GENERATOR);
+    expand();
+
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
   it('hides the topology on a composer with no drawable edge types', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { v1 as uuid } from 'uuid';
 
@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -15,6 +16,7 @@ import {
   SyntheticCountSchema,
 } from '@codaco/protocol-validation';
 import { Section } from '~/components/EditorLayout';
+import IssueAnchor from '~/components/IssueAnchor';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 import { panelAcceptsNominationOdds } from '~/components/sections/NodePanels/panelNominationOdds';
 import { PanelNominationOddsRow } from '~/components/sections/NodePanels/PanelNominationOddsRow';
@@ -62,6 +64,7 @@ import {
   SECTION_PURPOSE,
 } from './sectionCopy';
 import {
+  admitsBothHalves,
   defaultTopologyForMetric,
   isSyntheticAuthored,
   resolveStageSynthetic,
@@ -72,6 +75,7 @@ import {
   type SyntheticChange,
   syntheticBlockForChange,
   type SyntheticIssue,
+  syntheticIssues,
   topologyDistributionSchema,
   topologyMetricWindow,
 } from './stageSynthetic';
@@ -122,11 +126,29 @@ const RESPONSE_BURDEN_HINT =
   'How much of the participant’s attention this stage costs, relative to the other stages. Higher values make a synthetic participant more likely to drop out later in the interview.';
 const NO_EDGE_PROMPT_SUMMARY = 'Edges: none created by this stage';
 const NO_NODE_COUNT_SUMMARY = 'Nodes: none created by this stage';
+/**
+ * The two enable controls a composer gets — the one descriptor whose halves
+ * are each optional, so "creates none of those" is a state it can be IN.
+ */
+const CREATES_NODES_LABEL = 'This stage creates nodes';
+const CREATES_NODES_HINT =
+  'Turn this off for a stage that adds nobody of its own to the network, working only with the people the stages before it created.';
+const CREATES_EDGES_LABEL = 'This stage creates edges';
+const CREATES_EDGES_HINT =
+  'Turn this off for a stage that draws no edges of its own between the people in the network.';
 const NO_EDGE_PROMPT_TITLE = 'This stage creates no edges';
 const NO_EDGE_PROMPT_DESCRIPTION =
   'Edge topology decides how densely a stage links people together, so it is only editable once this stage has something that creates an edge.';
 const NO_DATA_SUMMARY = 'Creates no data';
 const REFUSAL_TITLE = 'That change was not saved';
+/**
+ * Titles the same alert when the block the stage ALREADY carries is one the
+ * schema refuses — an imported protocol's, or one the alter limits have since
+ * been narrowed under. Nothing was rejected there; what is true is that the
+ * stage cannot be saved as it stands, and saying "that change was not saved"
+ * about a stage nobody just changed would be a claim about nothing.
+ */
+const STANDING_REFUSAL_TITLE = 'These parameters cannot be saved';
 const SUMMARY_SEPARATOR = ' · ';
 
 const METRIC_LABELS: Record<EdgeTopology['metric'], string> = {
@@ -185,6 +207,15 @@ const issuesUnder = (
  */
 const unscopedIssues = (issues: readonly SyntheticIssue[]): SyntheticIssue[] =>
   issues.filter((issue) => issue.path.length === 0);
+
+/**
+ * One refusal's identity, so the same sentence about the same parameter is
+ * never rendered twice — a refused change and the block's own standing
+ * refusal are routinely the very same issue arriving by two routes, and two
+ * copies of it read as two problems.
+ */
+const issueKey = (issue: SyntheticIssue): string =>
+  `${issue.path.join('.')} ${issue.message}`;
 
 type TopologyEditorProps = {
   topology: EdgeTopology;
@@ -313,9 +344,33 @@ const SyntheticData = ({
   const createsEdges = useMemo(() => stageCreatesEdges(draft), [draft]);
   const authored = isSyntheticAuthored(draft);
 
-  const showCount = support.supportsCount && editing.count !== undefined;
+  /**
+   * Whether each half is IN EFFECT, and — where it can be switched — the
+   * control that says so.
+   *
+   * The composer is the one descriptor whose halves are each optional, so a
+   * present block that leaves one out is a stage that creates none of those.
+   * That state used to have nothing on screen: the collapsed summary read
+   * "Nodes: none created by this stage" while the row underneath showed a
+   * count, and committing anything at all wrote that count back in. The
+   * on/off state is now the control, the parameter editor renders only while
+   * it is on, and the way back to a half is one click rather than a reset of
+   * the whole block.
+   *
+   * Every other descriptor decides for itself, and a half the stage has is
+   * always in effect — asked of the same helper the write path asks.
+   */
+  const bothHalves = admitsBothHalves(support);
+  const countEnabled = !bothHalves || resolved.count !== undefined;
+  const topologyEnabled = !bothHalves || resolved.topology !== undefined;
+
+  const showCount =
+    support.supportsCount && editing.count !== undefined && countEnabled;
   const showTopology =
-    support.supportsTopology && editing.topology !== undefined && createsEdges;
+    support.supportsTopology &&
+    editing.topology !== undefined &&
+    createsEdges &&
+    topologyEnabled;
 
   /**
    * Which of the five things this stage's parameters govern, chosen by the
@@ -459,6 +514,57 @@ const SyntheticData = ({
   }, [setStageValue]);
 
   /**
+   * The refusals the schema raises for the block the draft ALREADY carries.
+   *
+   * Not every refusal answers a change made HERE. Narrowing this stage's
+   * `behaviours.maxNodes` under an authored count is refused by the stage
+   * schema (`requireCountWithinBehaviours`), and neither alter-limit field can
+   * carry that refusal — so the count went on looking fine, "Finished Editing"
+   * committed the stage, and the researcher first met the refusal in the
+   * post-commit "Misconfigured Protocol" modal. Computed off the same `draft`
+   * every other answer on this screen comes from, so it is live.
+   */
+  const standingIssues = useMemo(() => syntheticIssues(draft), [draft]);
+
+  /**
+   * What the controls render: the refusals for the last rejected change, and
+   * every standing refusal that is not already among them.
+   */
+  const shownIssues = useMemo(() => {
+    const alreadyShown = new Set(refusals.map(issueKey));
+    return [
+      ...refusals,
+      ...standingIssues.filter((issue) => !alreadyShown.has(issueKey(issue))),
+    ];
+  }, [refusals, standingIssues]);
+
+  /**
+   * The gate.
+   *
+   * The whole descriptor is ONE registered field, and `validateForm()` skips a
+   * field that carries no validation at all — so until this existed, no block
+   * the schema refuses could stop a save, whatever the section had on screen.
+   *
+   * It judges the whole STAGE because that is where the rules live: the count
+   * is related to the stage's own alter limits, and the reassembled form
+   * values a validator is handed carry no stage type to parse against. The
+   * draft is read through a ref so this function keeps ONE identity —
+   * `useField` re-registers a field whose validation function is new, and a
+   * re-registration per keystroke would drop the block it is holding.
+   *
+   * The message is the schema's own, verbatim (spec governing rule 3).
+   */
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const syntheticValidation = useMemo(
+    () => ({
+      schemaRefusal: (value: unknown) =>
+        syntheticIssues({ ...draftRef.current, synthetic: value })[0]?.message,
+    }),
+    [],
+  );
+
+  /**
    * The collapsed row: what a run of this stage would actually do.
    *
    * Built from the RESOLVED parameters rather than from the ones the controls
@@ -515,12 +621,23 @@ const SyntheticData = ({
       >
         <div className="flex min-w-0 flex-col gap-5">
           {/*
+            Where the Issues panel lands a refusal about this block:
+            `candidateIdsFor` trims `synthetic.count` back to `field_synthetic`
+            (utils/issues.ts), so one anchor covers every parameter inside it.
+          */}
+          <IssueAnchor fieldName="synthetic" description={SECTION_TITLE} />
+          {/*
             The one registration for the stage's whole descriptor. Outside the
             disclosure so a collapsed section still carries the authored block
             into `getFormValues()` — and so the block survives a family or
-            metric change that would otherwise unregister a leaf.
+            metric change that would otherwise unregister a leaf. It carries
+            the save gate too: see `syntheticValidation`.
           */}
-          <HiddenFieldValue name="synthetic" initialValue={initialSynthetic} />
+          <HiddenFieldValue
+            name="synthetic"
+            initialValue={initialSynthetic}
+            validation={syntheticValidation}
+          />
           <SyntheticFeasibilityAnnouncer feasibility={feasibility} />
           {/*
             Above the disclosure, not inside it: the disclosure is collapsed by
@@ -538,17 +655,54 @@ const SyntheticData = ({
             onReset={handleReset}
           >
             <div className="flex min-w-0 flex-col gap-6">
-              {unscopedIssues(refusals).length > 0 && (
+              {unscopedIssues(shownIssues).length > 0 && (
                 <Alert variant="destructive">
-                  <AlertTitle>{REFUSAL_TITLE}</AlertTitle>
+                  <AlertTitle>
+                    {unscopedIssues(standingIssues).length > 0
+                      ? STANDING_REFUSAL_TITLE
+                      : REFUSAL_TITLE}
+                  </AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc ps-5">
-                      {unscopedIssues(refusals).map((issue) => (
+                      {unscopedIssues(shownIssues).map((issue) => (
                         <li key={issue.message}>{issue.message}</li>
                       ))}
                     </ul>
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {/*
+                Only where the descriptor makes the half optional. Everywhere
+                else the stage's own schema decides, and a switch offering to
+                turn off something the schema requires would be a control the
+                researcher could only be refused for using.
+
+                The name is the control's, not a protocol key's: the block is
+                one registered field (see the note above `HiddenFieldValue`),
+                and what this switches is whether the block states the half at
+                all.
+              */}
+              {bothHalves && (
+                <UnconnectedField
+                  name="synthetic.count.enabled"
+                  label={CREATES_NODES_LABEL}
+                  hint={CREATES_NODES_HINT}
+                  component={ToggleField}
+                  inline
+                  value={countEnabled}
+                  // `undefined` is the switch's own "no value", which reads
+                  // as off — the same thing an unchecked box says.
+                  onChange={(enabled: boolean | undefined) =>
+                    // On: the value the schema resolves for an unstated half,
+                    // which is what the editor was already offering. Off: the
+                    // key goes, and a block left declaring neither half is
+                    // refused by the schema rather than by a rule of ours.
+                    commit([
+                      enabled ? { count: editing.count } : { omit: ['count'] },
+                    ])
+                  }
+                />
               )}
 
               {showCount && editing.count && (
@@ -559,9 +713,27 @@ const SyntheticData = ({
                   window={countWindow}
                   schema={SyntheticCountSchema}
                   hint={NODE_COUNT_HINT}
-                  issues={issuesUnder(refusals, 'count')}
+                  issues={issuesUnder(shownIssues, 'count')}
                   onCandidates={(candidates) =>
                     commit(candidates.map((count) => ({ count })))
+                  }
+                />
+              )}
+
+              {bothHalves && createsEdges && (
+                <UnconnectedField
+                  name="synthetic.topology.enabled"
+                  label={CREATES_EDGES_LABEL}
+                  hint={CREATES_EDGES_HINT}
+                  component={ToggleField}
+                  inline
+                  value={topologyEnabled}
+                  onChange={(enabled: boolean | undefined) =>
+                    commit([
+                      enabled
+                        ? { topology: editing.topology }
+                        : { omit: ['topology'] },
+                    ])
                   }
                 />
               )}
@@ -578,7 +750,7 @@ const SyntheticData = ({
               {showTopology && editing.topology && (
                 <TopologyEditor
                   topology={editing.topology}
-                  issues={issuesUnder(refusals, 'topology')}
+                  issues={issuesUnder(shownIssues, 'topology')}
                   onCandidates={(candidates) =>
                     commit(candidates.map((topology) => ({ topology })))
                   }
@@ -591,7 +763,7 @@ const SyntheticData = ({
                 hint={RESPONSE_BURDEN_HINT}
                 value={resolved.responseBurden}
                 window={BURDEN_WINDOW}
-                errors={issuesUnder(refusals, 'responseBurden').map(
+                errors={issuesUnder(shownIssues, 'responseBurden').map(
                   (issue) => issue.message,
                 )}
                 onCommit={(responseBurden) => {

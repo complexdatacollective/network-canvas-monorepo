@@ -406,6 +406,78 @@ describe('a composer’s two optional halves', () => {
     expect(resolved.count).toBeDefined();
     expect(resolved.topology).toEqual(DEFAULT_EDGE_TOPOLOGY);
   });
+
+  /**
+   * A block that STATES only one half has said something — "this stage creates
+   * no nodes" — and it is the author's statement, not an oversight for the
+   * editor to fill in. An edit to any other parameter has to carry it through.
+   */
+  const topologyOnly = networkComposer({
+    ...withEdgeTypes,
+    synthetic: { topology: DEFAULT_EDGE_TOPOLOGY },
+  });
+
+  it('leaves an omitted half absent when another parameter is edited', () => {
+    const { block, issues } = syntheticBlockForChange(topologyOnly, {
+      responseBurden: 1.5,
+    });
+
+    expect(issues).toEqual([]);
+    expect(block).not.toHaveProperty('count');
+    expect(block).toMatchObject({
+      responseBurden: 1.5,
+      topology: DEFAULT_EDGE_TOPOLOGY,
+    });
+    // And the stage goes on creating nobody, which is what the block said.
+    expect(resolvedFor(block, withEdgeTypes).count).toBeUndefined();
+  });
+
+  it('writes the schema’s own default when a half is turned back on', () => {
+    // What the section's enable control commits: the value the editor offers
+    // for an absent half, which is the schema's resolution of an unstated one.
+    const restored = stageSyntheticEditorValues(topologyOnly).count;
+    const { block, issues } = syntheticBlockForChange(topologyOnly, {
+      count: restored,
+    });
+
+    expect(issues).toEqual([]);
+    expect(resolvedFor(block, withEdgeTypes).count).toEqual(
+      resolvedFor(undefined, withEdgeTypes).count,
+    );
+    expect(resolvedFor(block, withEdgeTypes).topology).toEqual(
+      DEFAULT_EDGE_TOPOLOGY,
+    );
+  });
+
+  it('turns a half off without disturbing the other', () => {
+    // A first write materialises both, exactly as the prefault reads them.
+    const { block: both } = syntheticBlockForChange(
+      networkComposer(withEdgeTypes),
+      { responseBurden: 1 },
+    );
+    const authored = networkComposer({ ...withEdgeTypes, synthetic: both });
+
+    const { block, issues } = syntheticBlockForChange(authored, {
+      omit: ['count'],
+    });
+
+    expect(issues).toEqual([]);
+    expect(block).not.toHaveProperty('count');
+    expect(block).toHaveProperty('topology');
+    expect(resolvedFor(block, withEdgeTypes).count).toBeUndefined();
+  });
+
+  it('lets the schema refuse a block declaring neither half', () => {
+    const { issues } = syntheticBlockForChange(topologyOnly, {
+      omit: ['topology'],
+    });
+
+    // The schema's own sentence (`stageNodeAndEdgeSynthetic`), not a rule this
+    // app spells out a second time.
+    expect(issues.map((issue) => issue.message)).toContain(
+      'A synthetic block must declare a count, a topology, or both',
+    );
+  });
 });
 
 describe('the topology a metric starts from', () => {

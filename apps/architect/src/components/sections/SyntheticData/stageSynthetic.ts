@@ -302,7 +302,7 @@ export const asCount = (value: unknown): SyntheticCount | undefined => {
  * half has to know which of those it is looking at, and asks here rather than
  * naming the stage type.
  */
-const admitsBothHalves = (support: StageSyntheticSupport): boolean =>
+export const admitsBothHalves = (support: StageSyntheticSupport): boolean =>
   support.supportsCount && support.supportsTopology;
 
 /**
@@ -413,6 +413,11 @@ export const stageSyntheticEditorValues = (
 };
 
 /**
+ * A half of a both-halves descriptor — the two keys a change can REMOVE.
+ */
+export type SyntheticHalf = 'count' | 'topology';
+
+/**
  * One parameter change the section makes to a stage's descriptor.
  *
  * `count` and `topology` are `unknown` on purpose: the editors build candidate
@@ -424,7 +429,40 @@ export type SyntheticChange = {
   responseBurden?: number;
   count?: unknown;
   topology?: unknown;
+  /**
+   * Halves this change REMOVES from the block.
+   *
+   * Stated as its own key because `undefined` cannot say it: every parameter
+   * above is optional, so a `count` left out means "unchanged" — and once
+   * `withoutUndefined` has run, an explicit `count: undefined` means exactly
+   * the same thing. Removal is a third instruction, and on a composer it is
+   * the one that says "this stage creates no nodes".
+   *
+   * The resulting block is offered to the schema like any other candidate: a
+   * block that ends up declaring neither half is refused THERE, in the
+   * schema's own words, rather than pre-empted by a rule of this file's own.
+   */
+  omit?: readonly SyntheticHalf[];
 };
+
+/** Stable empty omission list, so the common case allocates nothing. */
+const NO_OMISSIONS: readonly SyntheticHalf[] = [];
+
+/** The block without the halves a change asked to remove. */
+const withoutOmitted = (
+  block: Record<string, unknown>,
+  omit: readonly SyntheticHalf[],
+): Record<string, unknown> =>
+  omit.length === 0
+    ? block
+    : Object.fromEntries(
+        // Compared rather than narrowed: `key` is any of the block's keys, and
+        // asserting it into the half union to use `includes` would be claiming
+        // something about it that this filter is the thing deciding.
+        Object.entries(block).filter(
+          ([key]) => !omit.some((half) => half === key),
+        ),
+      );
 
 export type SyntheticWriteResult = {
   /** The block to write, or `undefined` to remove the key entirely. */
@@ -462,43 +500,77 @@ export const syntheticBlockForChange = (
   const authored = authoredSyntheticBlock(draft);
   const support = stageSyntheticSupport(draft);
   const editor = stageSyntheticEditorValues(draft);
+  const { omit = NO_OMISSIONS, ...parameters } = change;
 
   /**
-   * On a descriptor that admits both halves, every write states both.
+   * Which halves a write to a both-halves descriptor states.
    *
-   * A block naming only a topology is not a stage with an unstated count: it
-   * is a stage that creates no nodes, while the ABSENT block it grew out of
-   * created eight. So the half the author did not touch is written at the
-   * value the section is showing for it, and the block goes on meaning what
-   * the editor displays. (Reset still removes the whole key, which is the one
-   * way back to the descriptor's own prefault.)
+   * A PRESENT block has already said. An absent half there means "this stage
+   * creates none of those", so an edit to some OTHER parameter carries the
+   * block's own halves through untouched — including the ones it leaves out.
+   *
+   * This used to write the value the editor was SHOWING for an absent half
+   * instead, on the reasoning that a block naming only a topology grew out of
+   * an absent block that created eight people, so leaving the count out would
+   * quietly change what the stage does. The reasoning was backwards: the block
+   * ALREADY says the stage creates nobody, and it is that statement — a
+   * researcher's own, or an imported protocol's — that any unrelated edit was
+   * overwriting. Raising the response burden re-enabled node generation, and
+   * nothing on screen said so; the collapsed summary read "Nodes: none created
+   * by this stage" while the row underneath showed a count, and committing
+   * that count is what the summary and the control disagreeing meant. The way
+   * back to a half is now an explicit enable control (see `SyntheticData`),
+   * which states its intent through `omit` and `count`/`topology` rather than
+   * through an edit to something else.
+   *
+   * An ABSENT block is the other case, and unchanged: the descriptor prefaults
+   * BOTH halves, so a first write stating one of them alone would turn the
+   * other off without being asked to. It states both.
    */
-  const halves = admitsBothHalves(support)
-    ? withoutUndefined({
-        count: editor.count,
-        // A stage with no drawable edge types draws no edges whatever a
-        // topology says, and the section hides the control — so writing one
-        // would author a parameter nothing on screen shows.
-        topology: stageCreatesEdges(draft)
-          ? editor.topology
-          : authored.topology,
-      })
+  const statedHalves = admitsBothHalves(support)
+    ? isSyntheticAuthored(draft)
+      ? withoutUndefined({
+          count: authored.count,
+          topology: authored.topology,
+        })
+      : withoutUndefined({
+          count: editor.count,
+          // A stage with no drawable edge types draws no edges whatever a
+          // topology says, and the section hides the control — so writing one
+          // would author a parameter nothing on screen shows.
+          topology: stageCreatesEdges(draft) ? editor.topology : undefined,
+        })
     : {};
 
-  const minimal = withoutUndefined({ ...authored, ...halves, ...change });
+  const minimal = withoutOmitted(
+    withoutUndefined({ ...authored, ...statedHalves, ...parameters }),
+    omit,
+  );
   const minimalIssues = issuesForBlock(draft, minimal);
   if (minimalIssues.length === 0) return { block: minimal, issues: [] };
 
   const resolved = resolveStageSynthetic(draft);
-  const complete = withoutUndefined({
-    // Written only where the schema pins it to `false`; everywhere else the
-    // descriptor defaults it, and stating it would be noise in the protocol.
-    generatesData: resolved.generatesData ? undefined : false,
-    responseBurden: resolved.responseBurden,
-    count: support.supportsCount ? editor.count : undefined,
-    topology: support.supportsTopology ? editor.topology : undefined,
-    ...change,
-  });
+  const complete = withoutOmitted(
+    withoutUndefined({
+      // Written only where the schema pins it to `false`; everywhere else the
+      // descriptor defaults it, and stating it would be noise in the protocol.
+      generatesData: resolved.generatesData ? undefined : false,
+      responseBurden: resolved.responseBurden,
+      // Completing a block must not smuggle a half back in. Where the
+      // descriptor admits both, which halves the block states is the author's
+      // statement and is carried through exactly as above; everywhere else the
+      // descriptor REQUIRES whichever half it has, and the resolved value is
+      // what completes it.
+      ...(admitsBothHalves(support)
+        ? statedHalves
+        : {
+            count: support.supportsCount ? editor.count : undefined,
+            topology: support.supportsTopology ? editor.topology : undefined,
+          }),
+      ...parameters,
+    }),
+    omit,
+  );
 
   return { block: complete, issues: issuesForBlock(draft, complete) };
 };
