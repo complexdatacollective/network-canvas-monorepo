@@ -14,7 +14,7 @@ import {
 } from '../generateSyntheticExport';
 
 /**
- * What the generator hands the exporter, and what it hands the researcher.
+ * What the generator hands the exporter, and what it hands back to its caller.
  *
  * The exporter itself is mocked at its module boundary — its behaviour is
  * tested in `@codaco/network-exporters` and re-testing it here would only prove
@@ -147,7 +147,7 @@ describe('generateSyntheticExport', () => {
     expect(options.exportCSV).toBe(true);
   });
 
-  it('saves the archive under a name that says it is synthetic', async () => {
+  it('hands back the archive under a name that says it is synthetic, and saves nothing itself', async () => {
     const summary = await generateSyntheticExport({
       protocol,
       protocolId: 'protocol-1',
@@ -157,11 +157,16 @@ describe('generateSyntheticExport', () => {
       respectSkipLogic: true,
     });
 
-    expect(downloadBlob).toHaveBeenCalledTimes(1);
-    expect(downloadBlob).toHaveBeenCalledWith(blob, summary.fileName);
+    // The archive the exporter produced, unchanged, so the click that saves it
+    // saves what was generated here.
+    expect(summary.archive).toBe(blob);
     expect(summary.fileName).toMatch(
       /^Export_Wiring-synthetic-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}\.zip$/,
     );
+    // Saving from here would run `downloadBlob` long after the click that
+    // started the run, which Safari drops as a pop-up — silently, so the
+    // researcher would be told about a file that was never written.
+    expect(downloadBlob).not.toHaveBeenCalled();
   });
 
   it('reports the seed it ran on, and that seed reproduces the batch', async () => {
@@ -246,7 +251,7 @@ describe('generateSyntheticExport', () => {
     expect(summary.failedCount).toBe(1);
   });
 
-  it('does not save anything when the pipeline produces no file', async () => {
+  it('reports no archive at all when the pipeline produces no file', async () => {
     runExportPipeline.mockResolvedValue({
       result: {
         status: 'success',

@@ -94,9 +94,25 @@ test('generates a seeded batch and saves it as a synthetic export archive', asyn
     .getByRole('spinbutton', { name: 'Random seed' })
     .fill(String(SEED));
 
+  // Generation saves nothing on its own. `downloadBlob` is dropped by Safari
+  // when it runs outside a user gesture, and the gesture that started the run
+  // is spent by the time the archive exists — so the run has to end with the
+  // archive waiting, and the researcher's own click is what saves it.
+  let savedBeforeAsking = false;
+  architectPage.on('download', () => {
+    savedBeforeAsking = true;
+  });
+
+  await dialog.getByRole('button', { name: 'Generate' }).click();
+
+  await expect(dialog.getByText('Generated 1 interview')).toBeVisible({
+    timeout: 45_000,
+  });
+  expect(savedBeforeAsking).toBe(false);
+
   const [download] = await Promise.all([
-    architectPage.waitForEvent('download', { timeout: 45_000 }),
-    dialog.getByRole('button', { name: 'Generate' }).click(),
+    architectPage.waitForEvent('download', { timeout: 30_000 }),
+    dialog.getByRole('button', { name: 'Download archive' }).click(),
   ]);
 
   // Named for the protocol it came from and marked synthetic, so it cannot be
@@ -118,11 +134,15 @@ test('generates a seeded batch and saves it as a synthetic export archive', asyn
 
   // And the researcher is told which seed produced it, because that number is
   // the only way to ask for this batch again.
-  await expect(dialog.getByText('Generated 1 interview')).toBeVisible();
   await expect(dialog.getByText(new RegExp(String(SEED)))).toBeVisible();
   await expect(
     dialog.getByText(new RegExp(download.suggestedFilename())),
   ).toBeVisible();
+  // The batch is still there afterwards: saving into the wrong folder should
+  // not cost the researcher the archive.
+  await expect(
+    dialog.getByRole('button', { name: 'Download archive' }),
+  ).toBeEnabled();
 });
 
 /**

@@ -7,6 +7,7 @@ import type {
   SyntheticExportProgress,
   SyntheticExportSummary,
 } from '~/lib/syntheticExport/generateSyntheticExport';
+import { downloadBlob } from '~/utils/downloadBlob';
 import { reportError } from '~/utils/reportError';
 import { isSyntheticConstraintRefusal } from '~/utils/syntheticConstraintRefusal';
 
@@ -14,6 +15,10 @@ import { isSyntheticConstraintRefusal } from '~/utils/syntheticConstraintRefusal
  * The generation run behind the "Generate synthetic data…" dialog: one attempt
  * at a time, four outcomes, and no way for a finished run to write over a newer
  * one.
+ *
+ * A finished run holds its archive here rather than saving it, so it survives
+ * until the researcher asks for it — until the dialog is closed, or until
+ * another batch replaces it.
  */
 
 const GENERIC_FAILURE_MESSAGE =
@@ -25,7 +30,15 @@ export type SyntheticGenerationState =
   /** The engine proved the protocol can never generate. Its own conflicts. */
   | { status: 'refused'; conflicts: readonly ConstraintConflict[] }
   | { status: 'failed'; message: string }
-  | { status: 'done'; summary: SyntheticExportSummary };
+  | {
+      status: 'done';
+      summary: SyntheticExportSummary;
+      /**
+       * Whether the researcher has taken a copy. Written by `saveArchive` and
+       * nowhere else, so nothing can report a save that never happened.
+       */
+      saved: boolean;
+    };
 
 export type SyntheticGenerationRequest = {
   count: number;
@@ -97,7 +110,7 @@ export function useSyntheticGeneration({
             if (mounted.current) setState({ status: 'running', progress });
           },
         });
-        publish({ status: 'done', summary });
+        publish({ status: 'done', summary, saved: false });
       } catch (error) {
         // A refusal is the engine telling the researcher which of their own
         // rules cannot all hold. It is not a fault, it is the answer — and it
@@ -123,5 +136,20 @@ export function useSyntheticGeneration({
     [protocol, protocolId, publish],
   );
 
-  return { state, generate, reset };
+  /**
+   * Save the archive the last run left waiting.
+   *
+   * Called straight from the researcher's click and from nothing else: the
+   * browser only honours `downloadBlob` while the gesture that triggered it is
+   * still live, so every hop between the click and this call has to be
+   * synchronous. That click is also the only thing that records a save, so the
+   * dialog cannot say "saved" before one has been asked for.
+   */
+  const saveArchive = useCallback(() => {
+    if (state.status !== 'done') return;
+    downloadBlob(state.summary.archive, state.summary.fileName);
+    publish({ status: 'done', summary: state.summary, saved: true });
+  }, [publish, state]);
+
+  return { state, generate, reset, saveArchive };
 }

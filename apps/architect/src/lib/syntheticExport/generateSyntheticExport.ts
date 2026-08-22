@@ -8,7 +8,7 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import { appVersion } from '~/utils/appVersion';
-import { downloadBlob, downloadTimestamp } from '~/utils/downloadBlob';
+import { downloadTimestamp } from '~/utils/downloadBlob';
 import { collectSyntheticAssetData } from '~/utils/syntheticAssetData';
 
 import { SyntheticGenerationError } from './errors';
@@ -16,15 +16,18 @@ import { runExportPipeline } from './runExportPipeline';
 
 /**
  * "Generate synthetic data…" end to end: draw a batch of interviews from the
- * saved protocol, run them through the real export pipeline, and hand the
- * researcher the archive.
+ * saved protocol, run them through the real export pipeline, and hand back the
+ * finished archive.
  *
  * Every step is the same one the products it stands in for take — the engine
  * Interviewer generates with, the exporter Interviewer and Fresco export with,
- * the download Architect saves a `.netcanvas` with — so an archive produced
- * here is an archive a real study would produce. That is the point of the
- * feature: a researcher can check their analysis scripts against the columns
- * their protocol will actually emit before recruiting anyone.
+ * the download rung Architect saves a `.netcanvas` with — so an archive
+ * produced here is an archive a real study would produce. That is the point of
+ * the feature: a researcher can check their analysis scripts against the
+ * columns their protocol will actually emit before recruiting anyone.
+ *
+ * The one step this does NOT take is the save itself. Saving belongs to the
+ * researcher's click on Download, for the reason set out on `archive` below.
  */
 
 /**
@@ -47,9 +50,22 @@ export type SyntheticExportSummary = {
   sessionCount: number;
   /** The seed the batch actually ran on, so it can be reproduced exactly. */
   seed: number;
+  /** What the archive will be called once it is saved. */
   fileName: string;
   /** Interviews the exporter could not write a file for. */
   failedCount: number;
+  /**
+   * The archive itself, handed back rather than saved.
+   *
+   * `downloadBlob` has to run inside a user gesture or Safari treats the click
+   * as a pop-up and drops it, and by the time a batch has been validated,
+   * generated and exported the gesture that started the run is long spent. The
+   * drop is silent — the page is never told a file was refused — so a save
+   * from here would leave the researcher reading a confirmation for a file
+   * that does not exist. The archive waits here instead, and the researcher's
+   * own click on Download is the gesture that saves it.
+   */
+  archive: Blob;
 };
 
 export type GenerateSyntheticExportOptions = {
@@ -229,9 +245,6 @@ export async function generateSyntheticExport({
     );
   }
 
-  const fileName = syntheticArchiveName(parsed.name);
-  downloadBlob(blob, fileName);
-
   // `successfulExports`/`failedExports` carry one entry per generated file
   // (format × partition), not per interview — collapse to interview level
   // before anything the researcher reads consumes it.
@@ -241,7 +254,8 @@ export async function generateSyntheticExport({
   return {
     sessionCount: results.length,
     seed,
-    fileName,
+    fileName: syntheticArchiveName(parsed.name),
     failedCount,
+    archive: blob,
   };
 }

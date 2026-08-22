@@ -23,8 +23,8 @@ import { useSyntheticGeneration } from './useSyntheticGeneration';
  * questions, the same wording — so a researcher who has generated data in one
  * product recognises the other. What differs is the destination: Interviewer
  * keeps its batch as sessions on the device, while Architect has nowhere to put
- * an interview, so the batch goes straight through the exporter and lands in
- * the researcher's downloads as CSV and GraphML.
+ * an interview, so the batch goes straight through the exporter and waits here
+ * as CSV and GraphML for the researcher to download.
  */
 
 const DEFAULT_COUNT = 10;
@@ -85,7 +85,7 @@ export function SyntheticGenerationDialog({
   protocol,
   protocolId,
 }: SyntheticGenerationDialogProps) {
-  const { state, generate, reset } = useSyntheticGeneration({
+  const { state, generate, reset, saveArchive } = useSyntheticGeneration({
     protocol,
     protocolId,
   });
@@ -99,6 +99,7 @@ export function SyntheticGenerationDialog({
   const [respectSkipLogic, setRespectSkipLogic] = useState(true);
 
   const isRunning = state.status === 'running';
+  const archiveReady = state.status === 'done';
 
   // Reopening starts a clean slate: the previous run's outcome belongs to the
   // batch that produced it, and leaving a stale "Generated 10 interviews" above
@@ -143,6 +144,14 @@ export function SyntheticGenerationDialog({
           >
             {isRunning ? 'Generating…' : 'Generate'}
           </Button>
+          {/* In the footer rather than inside the confirmation: the footer is
+              fixed while the dialog body scrolls, so the one control that
+              actually delivers the archive cannot end up below the fold on a
+              short viewport — losing sight of it is losing the batch. It is
+              also, once a batch exists, the dialog's next step: take the file. */}
+          {archiveReady ? (
+            <Button onClick={saveArchive}>Download archive</Button>
+          ) : null}
         </>
       }
     >
@@ -240,10 +249,18 @@ export function SyntheticGenerationDialog({
               : `Generated ${state.summary.sessionCount} interviews`}
           </AlertTitle>
           <AlertDescription>
+            {/* Never "saved" until it has been: the archive exists in the page
+                until the researcher clicks Download, and a confirmation that
+                got ahead of that click would send them looking through their
+                downloads folder for a file nobody wrote. */}
             <p>
-              Saved as {state.summary.fileName}. This batch used seed{' '}
-              {state.summary.seed} — enter that seed above to generate exactly
-              these interviews again.
+              {state.saved
+                ? `Saved as ${state.summary.fileName}. Download it again if you need another copy.`
+                : `Your archive is ready to download as ${state.summary.fileName}.`}
+            </p>
+            <p>
+              This batch used seed {state.summary.seed} — enter that seed above
+              to generate exactly these interviews again.
             </p>
             {state.summary.failedCount > 0 ? (
               <p>
