@@ -180,6 +180,25 @@ export const heightVariants = cva({
   },
 });
 
+// Explicit square widths for icon-only controls, one per heightVariants step.
+// Shipped Safari does not derive a flex item's width from `aspect-ratio` and
+// a definite height inside nested flex rows — it computes 0 and the control
+// vanishes — so the width the ratio implies is stated outright. Keep this
+// scale in lockstep with heightVariants above.
+export const squareSizeVariants = cva({
+  variants: {
+    size: {
+      sm: 'w-10',
+      md: 'w-12',
+      lg: 'w-16',
+      xl: 'w-20',
+    },
+  },
+  defaultVariants: {
+    size: 'md',
+  },
+});
+
 // Keep Lucide icons at text height while preserving their intrinsic ratio.
 export const proportionalLucideIconVariants = cva({
   base: '[&>.lucide]:h-[1em] [&>.lucide]:max-h-full [&>.lucide]:w-auto [&>.lucide]:shrink-0',
