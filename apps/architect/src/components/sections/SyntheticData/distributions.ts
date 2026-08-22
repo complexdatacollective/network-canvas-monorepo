@@ -102,6 +102,44 @@ export const PARAMETER_LABELS: Record<DistributionParameter, string> = {
   sd: 'Standard deviation',
 };
 
+/**
+ * A whole sentence under each parameter, for the ones whose name alone does not
+ * say what a researcher is deciding (spec revision 2, item 1).
+ *
+ * Written for the quantity rather than for any one field, because the same
+ * parameter is edited over three different quantities — a count of nodes, a
+ * network density, ties per person — and a sentence naming one of them would be
+ * wrong on the other two. "Draw" is the word the whole feature uses for what a
+ * generated interview does with a distribution.
+ */
+export const PARAMETER_HINTS: Record<DistributionParameter, string> = {
+  value: 'Every generated interview uses exactly this number.',
+  min: 'The lowest number a generated interview can draw.',
+  max: 'The highest number a generated interview can draw.',
+  mean: 'The average across many generated interviews. Individual interviews vary around it.',
+  sd: 'How widely generated interviews spread around the average. A larger number means more variety.',
+};
+
+/**
+ * A whole sentence describing the shape each family makes, shown beneath the
+ * family select.
+ *
+ * The family NAMES are the statistical ones a researcher may already know, and
+ * are asserted verbatim by the e2e suite; these say what each one does for
+ * someone who does not.
+ */
+export const DISTRIBUTION_DESCRIPTIONS: Record<DistributionFamily, string> = {
+  constant: 'Every generated interview gets the same number.',
+  uniform: 'Any number between the two bounds is equally likely.',
+  poisson:
+    'Numbers cluster just below the average, with an occasional higher one — the usual shape for a count of things a participant names.',
+  normal:
+    'Numbers cluster symmetrically around the average, with fewer far from it.',
+  lognormal:
+    'Most numbers are small, with a long tail of much larger ones — a few participants far above the rest.',
+  beta: 'Numbers fall between 0 and 1, clustered around the average.',
+};
+
 const finiteOr = (value: number, fallback: number): number =>
   Number.isFinite(value) ? value : fallback;
 

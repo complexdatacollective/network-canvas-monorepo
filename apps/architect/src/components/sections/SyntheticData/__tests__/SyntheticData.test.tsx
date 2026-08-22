@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import {
+  DEFAULT_PANEL_NOMINATION_PROBABILITY,
   DEFAULT_RESPONSE_BURDEN,
   MAX_SYNTHETIC_POPULATION,
   type StageType,
@@ -14,6 +15,17 @@ import {
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import { setActiveProtocolScope } from '~/utils/activeProtocolScope';
 
+import { DISTRIBUTION_DESCRIPTIONS, PARAMETER_HINTS } from '../distributions';
+import {
+  ATTRIBUTES_HEADING,
+  PANELS_HEADING,
+  PARAMETERS_COUNT_AND_TOPOLOGY,
+  PARAMETERS_COUNT_ONLY,
+  PARAMETERS_NO_DATA,
+  PARAMETERS_TOPOLOGY_ONLY,
+  PARAMETERS_VALUES_ONLY,
+  SECTION_PURPOSE,
+} from '../sectionCopy';
 import SyntheticData from '../SyntheticData';
 
 /**
@@ -21,9 +33,11 @@ import SyntheticData from '../SyntheticData';
  * real schema.
  *
  * What is asserted here is the contract the spec names: one collapsed line
- * carrying the RESOLVED parameters, an authored/default badge that follows the
- * presence of the key, a reset that removes it, controls that exist only where
- * the stage's own descriptor admits them, and a window no entry can leave.
+ * carrying the RESOLVED parameters, a reset that removes the key and renders
+ * exactly while it is there, controls that exist only where the stage's own
+ * descriptor admits them, a window no entry can leave — and, from revision 2,
+ * the intro prose, the per-panel nomination odds, and the in-situ sub-editor
+ * for the attributes the stage writes.
  */
 
 const codebook = {
@@ -125,6 +139,69 @@ const ROSTER = {
   prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
 };
 
+/**
+ * A name generator with one existing-network panel, which is the only stage
+ * shape that reaches the per-panel nomination odds (spec revision 2, item 5).
+ */
+const NAME_GENERATOR_WITH_PANEL = {
+  ...NAME_GENERATOR,
+  panels: [
+    {
+      id: 'panel-1',
+      title: 'People you named',
+      dataSource: 'existing',
+    } as Record<string, unknown>,
+  ],
+};
+
+/**
+ * A codebook whose person type carries an ordinal attribute with options — the
+ * shape the bin stage below binds, and the one whose sub-editor draws an option
+ * weight column.
+ */
+const binCodebook = {
+  ...codebook,
+  node: {
+    person: {
+      ...codebook.node.person,
+      variables: {
+        ...codebook.node.person.variables,
+        closeness: {
+          name: 'Closeness',
+          type: 'ordinal',
+          component: 'RadioGroup',
+          options: [
+            { label: 'Close', value: 'close' },
+            { label: 'Distant', value: 'distant' },
+          ],
+        },
+      },
+    },
+  },
+};
+
+/**
+ * A bin stage, whose prompt BINDS the attribute above. Its parameters are
+ * values-only at the stage level; the attribute it assigns is what a
+ * researcher came here to shape.
+ */
+const ORDINAL_BIN = {
+  id: 'stage-5',
+  type: 'OrdinalBin',
+  label: 'How close?',
+  subject: { entity: 'node', type: 'person' },
+  prompts: [
+    {
+      id: 'prompt-1',
+      text: 'How close are they?',
+      variable: 'closeness',
+      color: 'ord-color-seq-1',
+      bucketSortOrder: [],
+      binSortOrder: [],
+    },
+  ],
+};
+
 /** Declared so the draft PARSES; still nothing resolves it. */
 const ROSTER_MANIFEST = {
   'roster-asset': {
@@ -144,19 +221,45 @@ const ROSTER_MANIFEST = {
  * registered nothing would be handing it a stage with no subject, no prompts
  * and no behaviours, and testing a shape no editor ever holds.
  */
+/** The leaves `NodePanels`/`NodePanel` register for every panel slot. */
+const PANEL_LEAVES = ['id', 'title', 'dataSource', 'filter', 'synthetic'];
+
 const StageFields = ({ stage }: { stage: Record<string, unknown> }) => (
   <>
     {Object.entries(stage)
       // The identity belongs to no field, and the block below is this
       // section's own to register.
       .filter(([key]) => !['id', 'type', 'synthetic'].includes(key))
-      .map(([key, value]) => (
-        <HiddenFieldValue
-          key={key}
-          name={key}
-          initialValue={value as FieldValue}
-        />
-      ))}
+      .flatMap(([key, value]) => {
+        // Panels are registered LEAF BY LEAF in the real editor — `NodePanels`
+        // owns `panels[N].id`/`.synthetic`, `NodePanel` the rest — because a
+        // container registration would race them. A single `panels` field here
+        // would let a write to `panels[0].synthetic` land somewhere no editor
+        // ever puts it.
+        if (key === 'panels' && Array.isArray(value)) {
+          return value.flatMap((panel: Record<string, unknown>, index) =>
+            // The fixed leaf set `writePanelAt` reads and writes, registered
+            // whether or not the fixture states it — `synthetic` above all,
+            // since `getFormValues()` reports registered fields only and a
+            // write to an unregistered name parks somewhere the save cannot
+            // see. That is exactly why `NodePanels` registers it eagerly.
+            PANEL_LEAVES.map((leaf) => (
+              <HiddenFieldValue
+                key={`panels[${index}].${leaf}`}
+                name={`panels[${index}].${leaf}`}
+                initialValue={panel[leaf] as FieldValue}
+              />
+            )),
+          );
+        }
+        return [
+          <HiddenFieldValue
+            key={key}
+            name={key}
+            initialValue={value as FieldValue}
+          />,
+        ];
+      })}
   </>
 );
 
@@ -193,14 +296,20 @@ const setup = (
   });
 };
 
-/** The disclosure row: the one button carrying `aria-expanded`. */
-const disclosure = () => {
-  const triggers = screen
-    .getAllByRole('button')
-    .filter((button) => button.hasAttribute('aria-expanded'));
-  expect(triggers).toHaveLength(1);
-  return triggers[0]!;
-};
+/**
+ * The STAGE's disclosure row.
+ *
+ * Named rather than "the one button with aria-expanded": the section also
+ * hosts a disclosure per attribute the stage writes (spec revision 2, item 4),
+ * each titled by its attribute, so the stage's own row is the one that carries
+ * the section title.
+ */
+const disclosure = () =>
+  screen.getByRole('button', { name: /^Synthetic data/ });
+
+/** The disclosure of the sub-editor for one attribute this stage writes. */
+const variableDisclosure = (name: string) =>
+  screen.getByRole('button', { name: new RegExp(`^${name}`) });
 
 const expand = () => fireEvent.click(disclosure());
 
@@ -217,7 +326,11 @@ describe('the collapsed row', () => {
     expect(row).toHaveTextContent(
       `Burden: ${DEFAULT_RESPONSE_BURDEN.NameGenerator}`,
     );
-    expect(within(row).getByText('Default')).toBeInTheDocument();
+    // No authored/default badge anywhere (spec revision 2, item 3).
+    expect(within(row).queryByText('Default')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Reset to default/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('summarises the resolved topology of an unauthored edge stage', () => {
@@ -333,7 +446,11 @@ describe('authoring and reset', () => {
     });
 
     expect(syntheticValue(getFormValues)).toEqual({ responseBurden: 1.5 });
-    expect(within(disclosure()).getByText('Authored')).toBeInTheDocument();
+    // Authoring earns the reset affordance, which is the only thing left that
+    // says the block is authored (spec revision 2, item 3).
+    expect(
+      screen.getByRole('button', { name: /Reset to default/i }),
+    ).toBeInTheDocument();
     expect(disclosure()).toHaveTextContent('Burden: 1.5');
   });
 
@@ -368,19 +485,23 @@ describe('authoring and reset', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reset to default/i }));
 
     expect(syntheticValue(getFormValues)).toBeUndefined();
-    expect(within(disclosure()).getByText('Default')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Reset to default/i }),
+    ).not.toBeInTheDocument();
     expect(disclosure()).toHaveTextContent(
       `Burden: ${DEFAULT_RESPONSE_BURDEN.Sociogram}`,
     );
   });
 
-  it('shows a committed block as authored without touching it', () => {
+  it('offers to reset a committed block without touching it', () => {
     const { getFormValues } = setup({
       ...SOCIOGRAM,
       synthetic: { responseBurden: 2 },
     });
 
-    expect(within(disclosure()).getByText('Authored')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Reset to default/i }),
+    ).toBeInTheDocument();
     expect(syntheticValue(getFormValues)).toEqual({ responseBurden: 2 });
   });
 });
@@ -763,5 +884,237 @@ describe('a composer’s two halves', () => {
 
     // Nothing on screen shows a topology, so nothing authors one.
     expect(syntheticValue(getFormValues)).not.toHaveProperty('topology');
+  });
+});
+
+describe('the section intro (spec revision 2, item 1)', () => {
+  it('says what synthetic data is for on every stage', () => {
+    setup(NAME_GENERATOR);
+    expect(screen.getByText(SECTION_PURPOSE)).toBeInTheDocument();
+  });
+
+  it('describes a node-creating stage’s parameters', () => {
+    setup(NAME_GENERATOR);
+    expect(screen.getByText(PARAMETERS_COUNT_ONLY)).toBeInTheDocument();
+  });
+
+  it('describes an edge stage’s parameters', () => {
+    setup(SOCIOGRAM);
+    expect(screen.getByText(PARAMETERS_TOPOLOGY_ONLY)).toBeInTheDocument();
+  });
+
+  it('describes a stage that creates both', () => {
+    setup(NETWORK_COMPOSER);
+    expect(screen.getByText(PARAMETERS_COUNT_AND_TOPOLOGY)).toBeInTheDocument();
+  });
+
+  it('describes a values-only stage', () => {
+    setup(ORDINAL_BIN);
+    expect(screen.getByText(PARAMETERS_VALUES_ONLY)).toBeInTheDocument();
+  });
+
+  it('describes a stage that records nothing', () => {
+    setup(INFORMATION);
+    expect(screen.getByText(PARAMETERS_NO_DATA)).toBeInTheDocument();
+  });
+
+  it('describes the parameters the stage actually has, not its neighbours’', () => {
+    // The negative half: the five alternatives are exclusive, so a stage that
+    // creates no nodes must not claim to.
+    setup(INFORMATION);
+    expect(screen.queryByText(PARAMETERS_COUNT_ONLY)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(PARAMETERS_COUNT_AND_TOPOLOGY),
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains a distribution family beneath the select that chose it', () => {
+    // "Poisson" says nothing to a researcher who does not already know.
+    setup(NAME_GENERATOR);
+    expand();
+
+    expect(
+      screen.getByText(DISTRIBUTION_DESCRIPTIONS.normal),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(DISTRIBUTION_DESCRIPTIONS.poisson),
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains the parameters whose label alone is not enough', () => {
+    setup(NAME_GENERATOR);
+    expand();
+
+    expect(screen.getByText(PARAMETER_HINTS.mean)).toBeInTheDocument();
+    expect(screen.getByText(PARAMETER_HINTS.sd)).toBeInTheDocument();
+  });
+});
+
+describe('panel nomination odds (spec revision 2, item 5)', () => {
+  const panelOdds = (getFormValues: () => Record<string, unknown>) => {
+    const panels = getFormValues().panels as
+      | { synthetic?: unknown }[]
+      | undefined;
+    return panels?.[0]?.synthetic;
+  };
+
+  it('shows a row per panel, named for the panel, without expanding anything', () => {
+    setup(NAME_GENERATOR_WITH_PANEL);
+
+    expect(screen.getByText(PANELS_HEADING)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Nomination probability for ‘People you named’'),
+    ).toBeInTheDocument();
+    // The whole point of item 5: it is reachable without opening the stage's
+    // own disclosure, and without opening the Side Panels section at all.
+    expect(disclosure()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('writes the panel’s block, and resets it', () => {
+    const { getFormValues } = setup(NAME_GENERATOR_WITH_PANEL);
+
+    const field = screen.getByLabelText(
+      'Nomination probability for ‘People you named’',
+    );
+    // The schema's own default is what the box starts at.
+    expect(field).toHaveValue(DEFAULT_PANEL_NOMINATION_PROBABILITY);
+
+    fireEvent.change(field, { target: { value: '0.8' } });
+    expect(panelOdds(getFormValues)).toEqual({ nominationProbability: 0.8 });
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Reset to default Nomination probability for ‘People you named’',
+      }),
+    );
+    expect(panelOdds(getFormValues)).toBeUndefined();
+  });
+
+  it('names an untitled panel by its position', () => {
+    const { title: _dropped, ...untitled } =
+      NAME_GENERATOR_WITH_PANEL.panels[0]!;
+    setup({ ...NAME_GENERATOR_WITH_PANEL, panels: [untitled] });
+
+    expect(
+      screen.getByLabelText('Nomination probability for panel 1'),
+    ).toBeInTheDocument();
+  });
+
+  it('offers no odds for a panel the schema refuses them on', () => {
+    // A roster panel's contribution is drawn once for the whole stage, so
+    // `panelSchema` refuses per-person odds on it — asked of the schema rather
+    // than restated here.
+    setup(
+      {
+        ...NAME_GENERATOR_WITH_PANEL,
+        panels: [
+          {
+            ...NAME_GENERATOR_WITH_PANEL.panels[0]!,
+            dataSource: 'roster-asset',
+          },
+        ],
+      },
+      codebook,
+      ROSTER_MANIFEST,
+    );
+
+    expect(screen.queryByText(PANELS_HEADING)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing about panels on a stage that has none', () => {
+    setup(NAME_GENERATOR);
+    expect(screen.queryByText(PANELS_HEADING)).not.toBeInTheDocument();
+  });
+});
+
+describe('the attributes this stage assigns (spec revision 2, item 4)', () => {
+  const codebookVariable = (
+    getPresentCodebook: () => unknown,
+    id: string,
+  ): Record<string, unknown> | undefined => {
+    const codebookState = getPresentCodebook() as
+      | {
+          node?: Record<string, { variables?: Record<string, unknown> }>;
+        }
+      | null
+      | undefined;
+    const variable = codebookState?.node?.person?.variables?.[id];
+    return typeof variable === 'object' && variable !== null
+      ? (variable as Record<string, unknown>)
+      : undefined;
+  };
+
+  it('embeds the sub-editor for a bin stage’s bound attribute', () => {
+    setup(ORDINAL_BIN, binCodebook);
+
+    expect(screen.getByText(ATTRIBUTES_HEADING)).toBeInTheDocument();
+    expect(variableDisclosure('Closeness')).toBeInTheDocument();
+  });
+
+  it('embeds the sub-editor for a quick-add stage’s attribute', () => {
+    setup(NETWORK_COMPOSER);
+    expect(variableDisclosure('Name')).toBeInTheDocument();
+  });
+
+  it('leaves a stage whose attributes are all form fields alone', () => {
+    // NAME_GENERATOR writes `name` through a FORM FIELD, which belongs to the
+    // codebook screen rather than to this stage (see stageWrittenVariables).
+    setup(NAME_GENERATOR);
+    expect(screen.queryByText(ATTRIBUTES_HEADING)).not.toBeInTheDocument();
+  });
+
+  it('writes an authored weight into the CODEBOOK, not into the stage', () => {
+    const { getFormValues, getPresentCodebook } = setup(
+      ORDINAL_BIN,
+      binCodebook,
+    );
+
+    fireEvent.click(variableDisclosure('Closeness'));
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: 'Weight for close' }),
+      { target: { value: '4' } },
+    );
+
+    // The stage editor's own codebook transaction is what carries it: the
+    // dispatch lands on the draft copy the stage's save promotes.
+    expect(
+      codebookVariable(getPresentCodebook, 'closeness')?.synthetic,
+    ).toEqual({ optionWeights: [{ value: 'close', weight: 4 }] });
+    // And nothing about it reached the stage's own descriptor.
+    expect(syntheticValue(getFormValues)).toBeUndefined();
+  });
+
+  it('removes the codebook key entirely on reset', () => {
+    const { getPresentCodebook } = setup(ORDINAL_BIN, binCodebook);
+
+    fireEvent.click(variableDisclosure('Closeness'));
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: 'Weight for close' }),
+      { target: { value: '4' } },
+    );
+    expect(
+      codebookVariable(getPresentCodebook, 'closeness')?.synthetic,
+    ).toBeDefined();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reset to default Closeness' }),
+    );
+
+    const variable = codebookVariable(getPresentCodebook, 'closeness');
+    // Absent, not an empty block: `replaceProperties` drops the key.
+    expect(variable).toBeDefined();
+    expect(variable && 'synthetic' in variable).toBe(false);
+  });
+
+  it('disables missingness on a bin-written attribute, naming the stage', () => {
+    // The implied rules are collected from the DRAFT protocol — this stage
+    // with its current binding in place — so the note names this stage.
+    setup(ORDINAL_BIN, binCodebook);
+
+    fireEvent.click(variableDisclosure('Closeness'));
+
+    expect(
+      screen.getByText(/Always answered — ‘How close\?’/),
+    ).toBeInTheDocument();
   });
 });

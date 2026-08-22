@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 
 import {
+  asEntityAttributeReference,
+  DEFAULT_RESPONSE_BURDEN,
   MAX_SYNTHETIC_POPULATION,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -87,10 +89,16 @@ async function buildAuthoredNameGenerator(page: Page): Promise<void> {
   await addExistingNetworkPanel(editor, PANEL_TITLE);
 
   const synthetic = editor.section('Synthetic data');
-  // Collapsed and unauthored on arrival — the badge is part of the trigger's
-  // accessible name, so this is the "zero weight until customised" claim
-  // (spec rule 4) made against what a screen reader would announce.
-  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(/Default$/);
+  // Collapsed and unauthored on arrival. There is no authored/default badge
+  // any more (spec revision 2, item 3), so the absent reset affordance is the
+  // whole of the "zero weight until customised" claim (spec rule 4) — and the
+  // disclosure still names itself and its resolved summary.
+  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(
+    /^Synthetic data\b/,
+  );
+  await expect(syntheticDisclosure(synthetic)).not.toHaveAccessibleName(
+    /Authored|Default/,
+  );
   await expect(syntheticReset(synthetic)).toHaveCount(0);
 
   await expandSynthetic(synthetic);
@@ -112,17 +120,19 @@ async function buildAuthoredNameGenerator(page: Page): Promise<void> {
     .getByRole('spinbutton')
     .fill(String(AUTHORED_BURDEN));
 
-  // Authoring is what earns the badge and the reset affordance.
-  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(
-    /Authored$/,
-  );
+  // Authoring is what earns the reset affordance.
   await expect(syntheticReset(synthetic)).toBeVisible();
 
-  const panels = editor.section('Side Panels');
-  await expandSynthetic(panels);
-  await editor
-    .field('panels[0].synthetic.nominationProbability')
-    .getByRole('spinbutton')
+  // The panel's odds are authored from the STAGE's Synthetic data section,
+  // where revision 2 (item 5) surfaces them: one plain row per panel, named
+  // for the panel, with no disclosure to open. The same field is also rendered
+  // inside the Side Panels editor, so every locator for it must be scoped to
+  // one surface or the other.
+  await synthetic
+    .getByRole('spinbutton', {
+      name: `Nomination probability for \u2018${PANEL_TITLE}\u2019`,
+      exact: true,
+    })
     .fill(String(AUTHORED_NOMINATION_PROBABILITY));
 
   await editor.expectNoIssues();
@@ -209,18 +219,19 @@ test('resetting a synthetic section removes the authored keys from the saved pro
   const synthetic = editor.section('Synthetic data');
   // The authored state actually reloaded — without this the reset below could
   // be resetting a section that was already at its default.
-  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(
-    /Authored$/,
-  );
+  await expect(syntheticReset(synthetic)).toBeVisible();
 
   await syntheticReset(synthetic).click();
-  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(/Default$/);
   await expect(syntheticReset(synthetic)).toHaveCount(0);
 
+  // The panel's own editor is the other home of the same field, and it reads
+  // as authored there too — which is the claim that the two surfaces write one
+  // field rather than two.
   const panels = editor.section('Side Panels');
-  await expect(syntheticDisclosure(panels)).toHaveAccessibleName(/Authored$/);
+  await expandSynthetic(panels);
+  await expect(syntheticReset(panels)).toBeVisible();
   await syntheticReset(panels).click();
-  await expect(syntheticDisclosure(panels)).toHaveAccessibleName(/Default$/);
+  await expect(syntheticReset(panels)).toHaveCount(0);
 
   await editor.expectNoIssues();
   await editor.save();
@@ -295,9 +306,7 @@ test('authors an edge topology, including a change of metric', async ({
     .getByRole('spinbutton')
     .fill('0.25');
 
-  await expect(syntheticDisclosure(synthetic)).toHaveAccessibleName(
-    /Authored$/,
-  );
+  await expect(syntheticReset(synthetic)).toBeVisible();
 
   await editor.expectNoIssues();
   await editor.save();
@@ -474,6 +483,124 @@ function codebookProtocol(): CurrentProtocol {
         },
       },
     },
+  };
+}
+
+test('authors a bound attribute’s option weight from the STAGE editor, into the codebook', async ({
+  architectPage,
+  seed,
+}) => {
+  test.slow();
+
+  // Seeded rather than built through the editor, because the claim here is
+  // about a key a HUMAN wrote onto a codebook variable: seeded codebook
+  // variables carry no `synthetic`, exactly as `codebookProtocol()` relies on,
+  // and the bin stage only has to exist for its editor to be opened.
+  await seed(binProtocol());
+  await gotoProtocol(architectPage);
+  await architectPage.goto(`/protocol/stage/${BIN_STAGE_ID}`);
+  await architectPage
+    .locator('#boot-loader')
+    .waitFor({ state: 'hidden', timeout: 15_000 })
+    .catch(() => {});
+
+  const editor = new StageEditor(architectPage);
+  const synthetic = editor.section('Synthetic data');
+
+  // The stage's Synthetic data section embeds the shared variable sub-editor
+  // for the attribute this stage BINDS (spec revision 2, item 4), titled by
+  // the attribute rather than by the feature.
+  await expandSynthetic(synthetic, 'closeness');
+  await synthetic
+    .getByRole('spinbutton', { name: 'Weight for close', exact: true })
+    .fill('3');
+
+  await editor.expectNoIssues();
+  await editor.save();
+
+  // The edit reached the CODEBOOK — through the stage editor's own codebook
+  // transaction, which the stage's save promotes — rather than the stage.
+  const protocol = await readProtocolJson(architectPage, (candidate) =>
+    JSON.stringify(
+      candidate.codebook.node?.[NODE_TYPE]?.variables ?? {},
+    ).includes('optionWeights'),
+  );
+  const variables = protocol.codebook.node?.[NODE_TYPE]?.variables ?? {};
+  expect(ordinalVariable(variables, 'closeness-variable').synthetic).toEqual({
+    optionWeights: [{ value: 'close', weight: 3 }],
+  });
+
+  const stage = protocol.stages[0];
+  if (stage?.type !== 'OrdinalBin') {
+    throw new Error(
+      `expected an OrdinalBin stage, found ${String(stage?.type)}`,
+    );
+  }
+  // Nothing was written onto the STAGE: the two are different keys in
+  // different places, and a stage descriptor that gained an option weight —
+  // or any other parameter this flow never touched — would fail here.
+  expect(stage.synthetic).toEqual(SEEDED_BIN_SYNTHETIC);
+});
+
+const BIN_STAGE_ID = 'closeness-bin';
+
+/** The bin stage's own descriptor, exactly as seeded and expected back. */
+const SEEDED_BIN_SYNTHETIC = {
+  generatesData: true,
+  responseBurden: DEFAULT_RESPONSE_BURDEN.OrdinalBin,
+} as const;
+
+/**
+ * A protocol with one ordinal bin bound to one ordinal attribute — the
+ * smallest shape that reaches the in-situ variable sub-editor.
+ */
+function binProtocol(): CurrentProtocol {
+  return {
+    ...emptyProtocol(),
+    codebook: {
+      node: {
+        [NODE_TYPE]: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'closeness-variable': {
+              name: 'closeness',
+              type: 'ordinal',
+              component: 'RadioGroup',
+              options: [
+                { label: 'Close', value: 'close' },
+                { label: 'Distant', value: 'distant' },
+              ],
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: BIN_STAGE_ID,
+        type: 'OrdinalBin',
+        label: 'How close?',
+        subject: { entity: 'node', type: NODE_TYPE },
+        prompts: [
+          {
+            id: 'bin-prompt',
+            text: 'How close are they?',
+            // Branded by the schema so a reference site cannot be handed a
+            // plain string by accident; `asEntityAttributeReference` is the
+            // sanctioned way to say "this string IS one".
+            variable: asEntityAttributeReference('closeness-variable'),
+            color: 'ord-color-seq-1',
+          },
+        ],
+        // `CurrentProtocol` is the PARSED shape, where every stage carries a
+        // resolved descriptor — so a seeded stage has to state one. Stated at
+        // its own schema defaults, which is what makes the assertion above
+        // ("the stage descriptor did not gain an option weight") meaningful.
+        synthetic: SEEDED_BIN_SYNTHETIC,
+      },
+    ],
   };
 }
 

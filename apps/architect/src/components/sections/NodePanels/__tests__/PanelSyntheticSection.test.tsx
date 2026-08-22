@@ -66,18 +66,26 @@ describe('PanelSyntheticSection', () => {
     const row = disclosure();
     expect(row).toHaveAttribute('aria-expanded', 'false');
     expect(row).toHaveTextContent('Nomination probability: 30%');
-    expect(within(row).getByText('Default')).toBeInTheDocument();
+    // No authored/default badge on any synthetic surface (spec revision 2,
+    // item 3); the absent reset affordance is what says it is unauthored.
+    expect(within(row).queryByText('Default')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Reset to default/i }),
+    ).not.toBeInTheDocument();
     expect(panelSynthetic(getFormValues)).toBeUndefined();
     // The summary is the schema's number, not a literal restated in the test.
     expect(DEFAULT_PANEL_NOMINATION_PROBABILITY).toBe(0.3);
   });
 
-  it('shows an authored probability and marks the block authored', () => {
+  it('shows an authored probability and offers to reset it', () => {
     const { getFormValues } = setup({ nominationProbability: 0.75 });
 
     const row = disclosure();
     expect(row).toHaveTextContent('Nomination probability: 75%');
-    expect(within(row).getByText('Authored')).toBeInTheDocument();
+    expect(within(row).queryByText('Authored')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Reset to default/i }),
+    ).toBeInTheDocument();
     expect(panelSynthetic(getFormValues)).toEqual({
       nominationProbability: 0.75,
     });
@@ -125,7 +133,9 @@ describe('PanelSyntheticSection', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reset to default/i }));
 
     expect(panelSynthetic(getFormValues)).toBeUndefined();
-    expect(within(disclosure()).getByText('Default')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Reset to default/i }),
+    ).not.toBeInTheDocument();
     expect(disclosure()).toHaveTextContent('Nomination probability: 30%');
   });
 });

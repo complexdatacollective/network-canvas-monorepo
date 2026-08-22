@@ -7,19 +7,18 @@ import { expect, type Locator } from '@playwright/test';
  *
  * Facts verified against source, not guessed:
  * - The disclosure is a Base UI `Collapsible.Trigger`, i.e. a real `<button>`
- *   carrying `aria-expanded`. Its accessible name is the concatenation of the
- *   section TITLE, the resolved-parameter summary and the authored/default
- *   badge — so `^title` anchors it while the badge stays readable through
- *   `toHaveAccessibleName`, which is what makes "authored" observable without
- *   reaching for a class name.
- * - The reset affordance renders only while the surface is authored, and is
- *   named `Reset to default <title>` (its `aria-labelledby` names its own
- *   label span AND the title span, so two sections' reset buttons can be told
- *   apart). The leading `^` above is what keeps the disclosure locator from
- *   also matching it.
+ *   carrying `aria-expanded`. Its accessible name is the section TITLE
+ *   followed by the resolved-parameter summary, so `^title` anchors it.
+ * - There is NO authored/default badge (spec revision 2, item 3). The reset
+ *   affordance is the whole of what says a surface is authored: it renders
+ *   only while it is, and is named `Reset to default <title>` (its
+ *   `aria-labelledby` names its own label span AND the title span, so two
+ *   sections' reset buttons can be told apart). The leading `^` above is what
+ *   keeps the disclosure locator from also matching it.
  * - The codebook renders one disclosure per attribute, titled by the
- *   attribute's own name (`CodebookVariablesSynthetic`), which is why `title`
- *   is a parameter rather than a constant.
+ *   attribute's own name (`CodebookVariablesSynthetic`), and each stage editor
+ *   renders one per attribute its stage writes — which is why `title` is a
+ *   parameter rather than a constant.
  */
 
 /**
@@ -28,9 +27,6 @@ import { expect, type Locator } from '@playwright/test';
  * instead, which is why every helper below takes `title` as a parameter.
  */
 const SYNTHETIC_TITLE = 'Synthetic data';
-
-export const AUTHORED_BADGE = 'Authored';
-export const DEFAULT_BADGE = 'Default';
 
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

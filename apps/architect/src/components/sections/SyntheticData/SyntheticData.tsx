@@ -6,14 +6,18 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
-import Surface from '@codaco/fresco-ui/layout/Surface';
+import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   type EdgeTopology,
   type Stage,
   stageValuesSynthetic,
   SyntheticCountSchema,
 } from '@codaco/protocol-validation';
+import { Section } from '~/components/EditorLayout';
 import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
+import { panelAcceptsNominationOdds } from '~/components/sections/NodePanels/panelNominationOdds';
+import { PanelNominationOddsRow } from '~/components/sections/NodePanels/PanelNominationOddsRow';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
 import {
@@ -29,6 +33,7 @@ import {
   formatResponseBurden,
   formatSyntheticCount,
 } from '~/components/Synthetic/summaries';
+import { SyntheticConflictList } from '~/components/Synthetic/SyntheticConflictAlert';
 import { SyntheticFeasibilityAnnouncer } from '~/components/Synthetic/SyntheticFeasibilityAnnouncer';
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 import { SyntheticSection } from '~/components/Synthetic/SyntheticSection';
@@ -36,7 +41,6 @@ import type { NumericWindow } from '~/components/Synthetic/useNumericDraft';
 import { useSyntheticFeasibility } from '~/hooks/useSyntheticFeasibility';
 import { getProtocol } from '~/selectors/protocol';
 import { getActiveProtocolScope } from '~/utils/activeProtocolScope';
-import { cx } from '~/utils/cva';
 
 import { buildProtocolWithStage } from '../../StageEditor/buildProtocolWithStage';
 import {
@@ -45,6 +49,18 @@ import {
 } from '../../StageEditor/deepLink';
 import { withStageIdentity } from '../../StageEditor/withStageIdentity';
 import { DistributionEditor } from './DistributionEditor';
+import {
+  ATTRIBUTES_DESCRIPTION,
+  ATTRIBUTES_HEADING,
+  PANELS_DESCRIPTION,
+  PANELS_HEADING,
+  PARAMETERS_COUNT_AND_TOPOLOGY,
+  PARAMETERS_COUNT_ONLY,
+  PARAMETERS_NO_DATA,
+  PARAMETERS_TOPOLOGY_ONLY,
+  PARAMETERS_VALUES_ONLY,
+  SECTION_PURPOSE,
+} from './sectionCopy';
 import {
   defaultTopologyForMetric,
   isSyntheticAuthored,
@@ -59,6 +75,11 @@ import {
   topologyDistributionSchema,
   topologyMetricWindow,
 } from './stageSynthetic';
+import {
+  StageVariableSynthetic,
+  useStageEditableVariables,
+} from './StageVariableSynthetic';
+import { stagePrimaryWrittenVariables } from './stageWrittenVariables';
 
 /**
  * The stage editor's "Synthetic data" section: every generation parameter the
@@ -105,7 +126,6 @@ const NO_EDGE_PROMPT_TITLE = 'This stage creates no edges';
 const NO_EDGE_PROMPT_DESCRIPTION =
   'Edge topology decides how densely a stage links people together, so it is only editable once this stage has something that creates an edge.';
 const NO_DATA_SUMMARY = 'Creates no data';
-const CONFLICT_TITLE = 'Synthetic data cannot be generated for this stage';
 const REFUSAL_TITLE = 'That change was not saved';
 const SUMMARY_SEPARATOR = ' · ';
 
@@ -144,6 +164,9 @@ const BURDEN_WINDOW: NumericWindow =
 
 /** A placeholder id for the resolution parse; no protocol is built from it. */
 const DRAFT_STAGE_ID = 'synthetic-draft-stage';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Refusals pathed under one parameter, re-pathed relative to it. */
 const issuesUnder = (
@@ -293,6 +316,58 @@ const SyntheticData = ({
   const showCount = support.supportsCount && editing.count !== undefined;
   const showTopology =
     support.supportsTopology && editing.topology !== undefined && createsEdges;
+
+  /**
+   * Which of the five things this stage's parameters govern, chosen by the
+   * SUPPORT the stage's own descriptor reports rather than by its type — so a
+   * stage type moved from one synthetic factory to another describes itself
+   * correctly with nothing here to change.
+   */
+  const parametersCopy = useMemo(() => {
+    if (!support.generatesData) return PARAMETERS_NO_DATA;
+    if (support.supportsCount && support.supportsTopology) {
+      return PARAMETERS_COUNT_AND_TOPOLOGY;
+    }
+    if (support.supportsCount) return PARAMETERS_COUNT_ONLY;
+    if (support.supportsTopology) return PARAMETERS_TOPOLOGY_ONLY;
+    return PARAMETERS_VALUES_ONLY;
+  }, [support]);
+
+  /**
+   * The stage's own side panels, and where each of them lives in the form.
+   *
+   * Addressed by POSITION, because that is how `NodePanels` addresses them:
+   * every add, delete and reorder rewrites the whole bounded slot set, so the
+   * index is the panel's identity to the form and a row keyed any other way
+   * would edit the wrong panel after a reorder.
+   */
+  const panelRows = useMemo(() => {
+    const panels = Array.isArray(draft.panels) ? draft.panels : [];
+    return panels.flatMap((panel, index) => {
+      if (!isRecord(panel)) return [];
+      // Asked of the schema, which refuses odds on a roster panel — the same
+      // question the panel's own editor asks before rendering its control.
+      if (!panelAcceptsNominationOdds(panel)) return [];
+      return [
+        {
+          fieldName: `panels[${index}]`,
+          position: index + 1,
+          title: typeof panel.title === 'string' ? panel.title : undefined,
+        },
+      ];
+    });
+  }, [draft.panels]);
+
+  /**
+   * The attributes this stage writes through a slot of its own — a bin's bin
+   * variable, a quick-add's attribute — each of which gets the shared variable
+   * sub-editor below (spec revision 2, item 4).
+   */
+  const writtenVariables = useMemo(
+    () => stagePrimaryWrittenVariables(draft),
+    [draft],
+  );
+  const editableVariables = useStageEditableVariables(writtenVariables);
   const topologyWindow = useMemo(
     () =>
       resolved.topology === undefined
@@ -415,119 +490,177 @@ const SyntheticData = ({
   }, [support, createsEdges, resolved, countWindow, topologyWindow]);
 
   return (
-    <Surface
-      as="section"
-      noContainer
-      spacing="none"
-      shadow="sm"
-      data-name={SECTION_TITLE}
-      // Where a `?section=synthetic` link lands (see `StageEditor/deepLink`),
-      // so the overview's stage rows can open the editor at the very
-      // parameters they are describing.
+    // The `?section=synthetic` landing point (see `StageEditor/deepLink`),
+    // wrapped around the section rather than stamped on it: `Section` owns its
+    // own element, and the deep link only needs an ancestor to scroll to and a
+    // first focusable to land on — which is the disclosure inside.
+    <div
+      className="w-full min-w-0"
       {...stageSectionMarker(STAGE_SECTION_SYNTHETIC)}
-      className={cx(
-        'relative mb-4 flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-visible! p-6',
-      )}
     >
-      {/*
-        The one registration for the stage's whole descriptor. Outside the
-        disclosure so a collapsed section still carries the authored block into
-        `getFormValues()` — and so the block survives a family or metric change
-        that would otherwise unregister a leaf.
-      */}
-      <HiddenFieldValue name="synthetic" initialValue={initialSynthetic} />
-      <SyntheticFeasibilityAnnouncer feasibility={feasibility} />
-      {/*
-        Above the disclosure, not inside it: the section is collapsed by
-        default (spec rule 4), and a refusal a researcher has to expand a row
-        to discover is a refusal they will meet at save time instead. The
-        wording is the engine's own, verbatim (spec rule 3).
-      */}
-      {stageConflicts.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTitle>{CONFLICT_TITLE}</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc ps-5">
-              {stageConflicts.map((conflict) => (
-                <li key={`${conflict.rules.join()}-${conflict.reason}`}>
-                  {conflict.reason}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-      <SyntheticSection
+      <Section
         title={SECTION_TITLE}
-        summary={summary}
-        authored={authored}
-        onReset={handleReset}
+        // The left-column intro every other section carries: what synthetic
+        // data is FOR, and what this stage's own parameters govern (spec
+        // revision 2, item 1).
+        summary={
+          <>
+            <Paragraph>{SECTION_PURPOSE}</Paragraph>
+            <Paragraph>{parametersCopy}</Paragraph>
+          </>
+        }
+        // Nothing here has to be filled in: every parameter resolves to a
+        // schema default, so the required marker would be a false claim.
+        required={false}
       >
-        <div className="flex min-w-0 flex-col gap-6">
-          {unscopedIssues(refusals).length > 0 && (
-            <Alert variant="destructive">
-              <AlertTitle>{REFUSAL_TITLE}</AlertTitle>
-              <AlertDescription>
-                <ul className="list-disc ps-5">
-                  {unscopedIssues(refusals).map((issue) => (
-                    <li key={issue.message}>{issue.message}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
+        <div className="flex min-w-0 flex-col gap-5">
+          {/*
+            The one registration for the stage's whole descriptor. Outside the
+            disclosure so a collapsed section still carries the authored block
+            into `getFormValues()` — and so the block survives a family or
+            metric change that would otherwise unregister a leaf.
+          */}
+          <HiddenFieldValue name="synthetic" initialValue={initialSynthetic} />
+          <SyntheticFeasibilityAnnouncer feasibility={feasibility} />
+          {/*
+            Above the disclosure, not inside it: the disclosure is collapsed by
+            default (spec rule 4), and a refusal a researcher has to expand a
+            row to discover is a refusal they will meet at save time instead.
+            The wording is the engine's own, verbatim (spec rule 3).
+          */}
+          {stageConflicts.length > 0 && (
+            <SyntheticConflictList conflicts={stageConflicts} />
+          )}
+          <SyntheticSection
+            title={SECTION_TITLE}
+            summary={summary}
+            authored={authored}
+            onReset={handleReset}
+          >
+            <div className="flex min-w-0 flex-col gap-6">
+              {unscopedIssues(refusals).length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTitle>{REFUSAL_TITLE}</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc ps-5">
+                      {unscopedIssues(refusals).map((issue) => (
+                        <li key={issue.message}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {showCount && editing.count && (
+                <DistributionEditor
+                  name="synthetic.count"
+                  legend={NODE_COUNT_LEGEND}
+                  distribution={editing.count}
+                  window={countWindow}
+                  schema={SyntheticCountSchema}
+                  hint={NODE_COUNT_HINT}
+                  issues={issuesUnder(refusals, 'count')}
+                  onCandidates={(candidates) =>
+                    commit(candidates.map((count) => ({ count })))
+                  }
+                />
+              )}
+
+              {support.supportsTopology && !createsEdges && (
+                <Alert variant="info">
+                  <AlertTitle>{NO_EDGE_PROMPT_TITLE}</AlertTitle>
+                  <AlertDescription>
+                    {NO_EDGE_PROMPT_DESCRIPTION}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {showTopology && editing.topology && (
+                <TopologyEditor
+                  topology={editing.topology}
+                  issues={issuesUnder(refusals, 'topology')}
+                  onCandidates={(candidates) =>
+                    commit(candidates.map((topology) => ({ topology })))
+                  }
+                />
+              )}
+
+              <SyntheticNumberField
+                name="synthetic.responseBurden"
+                label={RESPONSE_BURDEN_LABEL}
+                hint={RESPONSE_BURDEN_HINT}
+                value={resolved.responseBurden}
+                window={BURDEN_WINDOW}
+                errors={issuesUnder(refusals, 'responseBurden').map(
+                  (issue) => issue.message,
+                )}
+                onCommit={(responseBurden) => {
+                  // Not `clearable`: every stage resolves a burden, so there
+                  // is no unstated one for an empty box to mean.
+                  if (responseBurden === undefined) return;
+                  commit([{ responseBurden }]);
+                }}
+              />
+            </div>
+          </SyntheticSection>
+
+          {/*
+            The panels' own parameter, brought here rather than left in the
+            side-panel editor alone (spec revision 2, item 5). OUTSIDE the
+            disclosure and unfolded: the whole complaint was that a researcher
+            looking for generation parameters never found it, and a control one
+            more click away is barely found either. Both surfaces write the
+            same field.
+          */}
+          {panelRows.length > 0 && (
+            <div className="min-w-0">
+              {/*
+                A heading and its prose, not a named `<section>`: the stage
+                editor's own sections are unnamed `<section>` elements, so a
+                landmark nested inside one would be the only region on the
+                page and would read as more important than the section that
+                contains it. The heading is what gives this block structure.
+              */}
+              <Heading level="label" margin="none">
+                {PANELS_HEADING}
+              </Heading>
+              <Paragraph intent="smallText" emphasis="muted">
+                {PANELS_DESCRIPTION}
+              </Paragraph>
+              {panelRows.map((panel) => (
+                <PanelNominationOddsRow
+                  key={panel.fieldName}
+                  fieldName={panel.fieldName}
+                  title={panel.title}
+                  position={panel.position}
+                />
+              ))}
+            </div>
           )}
 
-          {showCount && editing.count && (
-            <DistributionEditor
-              name="synthetic.count"
-              legend={NODE_COUNT_LEGEND}
-              distribution={editing.count}
-              window={countWindow}
-              schema={SyntheticCountSchema}
-              hint={NODE_COUNT_HINT}
-              issues={issuesUnder(refusals, 'count')}
-              onCandidates={(candidates) =>
-                commit(candidates.map((count) => ({ count })))
-              }
-            />
+          {/*
+            The attributes this stage assigns, each with the very sub-editor
+            the Codebook renders for it (spec revision 2, item 4). Edits go to
+            the codebook through the stage editor's own codebook transaction —
+            see `StageVariableSynthetic`.
+          */}
+          {editableVariables.length > 0 && (
+            <div className="min-w-0">
+              <Heading level="label" margin="none">
+                {ATTRIBUTES_HEADING}
+              </Heading>
+              <Paragraph intent="smallText" emphasis="muted">
+                {ATTRIBUTES_DESCRIPTION}
+              </Paragraph>
+              <StageVariableSynthetic
+                variables={editableVariables}
+                protocol={feasibilityDocument}
+              />
+            </div>
           )}
-
-          {support.supportsTopology && !createsEdges && (
-            <Alert variant="info">
-              <AlertTitle>{NO_EDGE_PROMPT_TITLE}</AlertTitle>
-              <AlertDescription>{NO_EDGE_PROMPT_DESCRIPTION}</AlertDescription>
-            </Alert>
-          )}
-
-          {showTopology && editing.topology && (
-            <TopologyEditor
-              topology={editing.topology}
-              issues={issuesUnder(refusals, 'topology')}
-              onCandidates={(candidates) =>
-                commit(candidates.map((topology) => ({ topology })))
-              }
-            />
-          )}
-
-          <SyntheticNumberField
-            name="synthetic.responseBurden"
-            label={RESPONSE_BURDEN_LABEL}
-            hint={RESPONSE_BURDEN_HINT}
-            value={resolved.responseBurden}
-            window={BURDEN_WINDOW}
-            errors={issuesUnder(refusals, 'responseBurden').map(
-              (issue) => issue.message,
-            )}
-            onCommit={(responseBurden) => {
-              // Not `clearable`: every stage resolves a burden, so there is
-              // no unstated one for an empty box to mean.
-              if (responseBurden === undefined) return;
-              commit([{ responseBurden }]);
-            }}
-          />
         </div>
-      </SyntheticSection>
-    </Surface>
+      </Section>
+    </div>
   );
 };
 

@@ -3,39 +3,33 @@ import { ChevronDown } from 'lucide-react';
 import type React from 'react';
 import { useId } from 'react';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
 import Button from '@codaco/fresco-ui/Button';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '~/utils/cva';
 
 /**
  * The shared disclosure every synthetic-parameter surface renders: a collapsed
- * row carrying a resolved-value summary and an authored/default badge, which
- * expands to reveal the parameter editors (spec, governing rules 4 and 5).
- * Used by the stage-editor sections, the codebook TypeEditor sub-editor, and
- * the NodePanel probability editor, so the three surfaces cannot drift on the
- * collapsed treatment.
+ * row carrying a resolved-value summary, which expands to reveal the parameter
+ * editors (spec, governing rule 4). Used by the stage-editor sections, the
+ * codebook variable sub-editor, and the NodePanel probability editor, so the
+ * three surfaces cannot drift on the collapsed treatment.
+ *
+ * The row carries NO authored/default indicator (spec revision 2, item 3): a
+ * researcher is told what a run would do, not which half of the protocol file
+ * the number came from. What survives of that distinction is the affordance
+ * that acts on it — "Reset to default", rendered exactly while the block is
+ * authored, so its presence is the only thing that ever needed to say so.
  *
  * Founded on Base UI's Collapsible, which supplies the disclosure semantics —
  * a real button trigger with `aria-expanded`/`aria-controls` wiring — so the
  * row is keyboard operable and announces its state for free. Expansion is
  * DISCLOSURE, not authoring: collapsing changes nothing, and the only way
- * back to the schema default is the explicit reset affordance, which renders
- * only while the block is authored.
+ * back to the schema default is the explicit reset affordance.
  *
  * `onOpenChange` is surfaced because expansion is load-bearing for one
  * consumer: the TypeEditor's option-weights column reveals while the
  * variable's section is expanded (spec, option weights reveal).
  */
-
-/**
- * What the badge says about where a value came from (spec rule 4: authored =
- * key present, default = key absent). Exported because the read-only overview
- * makes the same claim about the same values in its own tables, and two
- * spellings of one distinction would read as two distinctions.
- */
-export const AUTHORED_BADGE_LABEL = 'Authored';
-export const DEFAULT_BADGE_LABEL = 'Default';
 
 const RESET_LABEL = 'Reset to default';
 
@@ -50,8 +44,9 @@ export type SyntheticSectionProps = {
   summary: React.ReactNode;
   /**
    * Whether the surface carries authored keys in the draft (spec rule 4:
-   * authored = key present; default = key absent). Controls the badge and
-   * whether the reset affordance renders.
+   * authored = key present; default = key absent). The one thing it decides is
+   * whether the reset affordance renders — there is nothing to reset to when
+   * the surface is already at the schema default.
    */
   authored: boolean;
   /**
@@ -124,9 +119,6 @@ export function SyntheticSection({
           <span className="text-text/70 min-w-0 flex-1 truncate text-sm">
             {summary}
           </span>
-          <Badge variant="outline" className="shrink-0">
-            {authored ? AUTHORED_BADGE_LABEL : DEFAULT_BADGE_LABEL}
-          </Badge>
         </Collapsible.Trigger>
         {authored && onReset ? (
           <Button

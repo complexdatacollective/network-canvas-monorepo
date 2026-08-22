@@ -568,10 +568,9 @@ describe('rules the protocol’s interfaces impose', () => {
 });
 
 describe('authored and default', () => {
-  it('reads as default, with no reset, until something is authored', () => {
+  it('offers no reset until something is authored', () => {
     setup({ variable: NUMBER });
 
-    expect(screen.getByText('Default')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Reset to default/ }),
     ).not.toBeInTheDocument();
@@ -582,12 +581,17 @@ describe('authored and default', () => {
     expect(screen.getByText('Person names')).toBeInTheDocument();
   });
 
-  it('marks the block authored and offers to reset it', () => {
+  it('offers to reset an authored block, and summarises it', () => {
     setup({
       variable: { ...NUMBER, synthetic: { missingProbability: 0.2 } },
     });
 
-    expect(screen.getByText('Authored')).toBeInTheDocument();
+    // The reset affordance is the ONLY thing that says the block is authored
+    // (spec revision 2, item 3 removed the badge); the summary goes on saying
+    // what a run would do either way.
+    expect(
+      screen.getByRole('button', { name: /Reset to default/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('uniform(min 18, max 80), missing 20%'),
     ).toBeInTheDocument();
@@ -600,7 +604,21 @@ describe('authored and default', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Reset to default/ }));
     expect(latest()).toBeUndefined();
-    expect(screen.getByText('Default')).toBeInTheDocument();
+    // And the affordance goes with it: there is nothing left to reset.
+    expect(
+      screen.queryByRole('button', { name: /Reset to default/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no authored/default wording anywhere on the row', () => {
+    // The badge is gone from every synthetic surface (spec revision 2, item
+    // 3). Asserted here rather than only on the shared component because this
+    // is a surface a researcher meets, and a badge reintroduced by a wrapper
+    // would pass a component-level test.
+    setup({ variable: { ...NUMBER, synthetic: { missingProbability: 0.2 } } });
+
+    expect(screen.queryByText('Authored')).not.toBeInTheDocument();
+    expect(screen.queryByText('Default')).not.toBeInTheDocument();
   });
 
   it('reads an emptied control as unauthored rather than as an empty block', () => {

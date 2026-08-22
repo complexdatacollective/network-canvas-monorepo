@@ -12,10 +12,12 @@ import type {
 import { SyntheticNumberField } from '~/components/Synthetic/SyntheticNumberField';
 
 import {
+  DISTRIBUTION_DESCRIPTIONS,
   DISTRIBUTION_LABELS,
   DISTRIBUTION_PARAMETERS,
   distributionCandidates,
   offeredFamilies,
+  PARAMETER_HINTS,
   PARAMETER_LABELS,
   parameterValue,
   parameterWindow,
@@ -132,7 +134,17 @@ export function DistributionEditor({
           <UnconnectedField
             name={`${name}.distribution`}
             label={FAMILY_LABEL}
-            {...(hint === undefined ? {} : { hint })}
+            // Two whole sentences, not one assembled from parts: what this
+            // distribution decides (the owning field's, where it gave one) and
+            // what the CHOSEN family does (spec revision 2, item 1 — a select
+            // reading "Poisson" says nothing to a researcher who does not
+            // already know).
+            hint={
+              <>
+                {hint === undefined ? null : <span>{hint} </span>}
+                <span>{DISTRIBUTION_DESCRIPTIONS[family]}</span>
+              </>
+            }
             component={StyledSelectField}
             value={family}
             options={families.map((option) => ({
@@ -159,6 +171,7 @@ export function DistributionEditor({
               key={parameter}
               name={`${name}.${parameter}`}
               label={PARAMETER_LABELS[parameter]}
+              hint={PARAMETER_HINTS[parameter]}
               value={parameterValue(distribution, parameter)}
               window={parameterWindow(distribution, parameter, window, spec)}
               disabled={disabled}

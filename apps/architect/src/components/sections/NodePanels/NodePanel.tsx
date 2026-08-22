@@ -19,6 +19,7 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 
+import { panelAcceptsNominationOdds } from './panelNominationOdds';
 import { PanelSyntheticSection } from './PanelSyntheticSection';
 import { usePanelSlot } from './usePanelSlot';
 
@@ -232,11 +233,17 @@ const NodePanel = ({
           Nomination odds are decided person by person, which only an
           existing-network panel does — `panelSchema` refuses them on a roster
           panel, whose contribution is drawn once for the whole stage. So the
-          control follows the data source rather than rendering disabled.
+          control follows the data source rather than rendering disabled, and
+          it is the SCHEMA that is asked which data sources those are (the
+          stage's Synthetic data section asks the same question of the same
+          helper, so the two surfaces cannot come to disagree).
         */}
-        {dataSource === EXISTING_DATA_SOURCE && (
-          <PanelSyntheticSection fieldName={fieldName} />
-        )}
+        {panelAcceptsNominationOdds({
+          ...item,
+          // The live value wins while it is registered; `item` carries the
+          // list's own normalisation for the window before it is.
+          dataSource: dataSource ?? item.dataSource,
+        }) && <PanelSyntheticSection fieldName={fieldName} />}
       </div>
       <IconButton
         icon={<Trash2 />}

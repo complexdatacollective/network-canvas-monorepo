@@ -68,6 +68,19 @@ const SYNTHETIC_SCHEMA_BY_TYPE = {
   text: TextSyntheticSchema,
 } satisfies Record<VariableType, unknown>;
 
+/**
+ * Whether a variable of this type has any synthetic parameters to author.
+ *
+ * Exported so a surface deciding whether to render this section at all — the
+ * stage editor's Synthetic data section, which lists the attributes its stage
+ * writes — asks the same question the section itself answers, rather than
+ * keeping a second list of the types that carry no block. Layout and location
+ * are those types: generation produces deterministic positions for both, and
+ * their variable schemas accept no `synthetic` key.
+ */
+export const variableTypeSupportsSynthetic = (type: VariableType): boolean =>
+  SYNTHETIC_SCHEMA_BY_TYPE[type] !== undefined;
+
 const FALLBACK_WINDOW: NumericWindow = {
   exclusiveMin: false,
   exclusiveMax: false,
@@ -493,7 +506,7 @@ export function VariableSyntheticSection({
 
   // Layout and location variables have no synthetic block to author, so they
   // get no section rather than an empty one.
-  if (SYNTHETIC_SCHEMA_BY_TYPE[variable.type] === undefined) return null;
+  if (!variableTypeSupportsSynthetic(variable.type)) return null;
 
   return (
     <SyntheticSection

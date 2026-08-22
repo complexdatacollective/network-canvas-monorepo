@@ -6,9 +6,13 @@ import { SyntheticSection } from '../SyntheticSection';
 /**
  * The shared synthetic disclosure. What matters here is the contract every
  * surface leans on: real disclosure semantics (a native button trigger with
- * aria-expanded), collapsed-by-default with the summary always visible, the
- * authored/default badge, and a reset affordance that exists exactly while
- * the block is authored and never toggles the disclosure as a side effect.
+ * aria-expanded), collapsed-by-default with the summary always visible, and a
+ * reset affordance that exists exactly while the block is authored and never
+ * toggles the disclosure as a side effect.
+ *
+ * There is deliberately NO authored/default badge (spec revision 2, item 3):
+ * the row says what a run would do, and the reset affordance is the whole of
+ * what remains of "this was authored".
  */
 
 const renderSection = (
@@ -118,21 +122,43 @@ describe('disclosure semantics', () => {
 });
 
 describe('authored state', () => {
-  it('shows the default badge and no reset affordance while unauthored', () => {
+  it('offers no reset affordance while unauthored', () => {
     renderSection({ authored: false, onReset: vi.fn() });
 
-    expect(screen.getByText('Default')).toBeInTheDocument();
-    expect(screen.queryByText('Authored')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Reset to default/i }),
     ).not.toBeInTheDocument();
   });
 
-  it('shows the authored badge and a reset affordance while authored', () => {
+  it('carries no authored/default indicator in either state', () => {
+    // The badge is gone (spec revision 2, item 3). Asserted over the trigger's
+    // ACCESSIBLE NAME as well as the text, because the badge lived inside the
+    // trigger and so was part of what a screen reader announced — e2e specs
+    // matched on it, and a reintroduction would be silent otherwise.
+    const { rerender } = renderSection({ authored: false });
+    expect(trigger()).not.toHaveAccessibleName(/Authored|Default/);
+    expect(screen.queryByText('Default')).not.toBeInTheDocument();
+
+    rerender(
+      <SyntheticSection
+        title="Synthetic data"
+        summary="count: normal(mean 8, sd 3)"
+        authored
+        onReset={vi.fn()}
+      >
+        <div data-testid="controls">controls</div>
+      </SyntheticSection>,
+    );
+    expect(trigger()).not.toHaveAccessibleName(/Authored|Default/);
+    expect(screen.queryByText('Authored')).not.toBeInTheDocument();
+    // Still the summary, which is what the row is for.
+    expect(trigger()).toHaveAccessibleName(/normal\(mean 8, sd 3\)/);
+  });
+
+  it('shows a reset affordance while authored', () => {
     const onReset = vi.fn();
     renderSection({ authored: true, onReset });
 
-    expect(screen.getByText('Authored')).toBeInTheDocument();
     const reset = screen.getByRole('button', { name: /Reset to default/i });
     // Named by its own label plus the section title, so several sections'
     // reset buttons stay distinguishable to a screen reader.
