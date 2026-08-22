@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import {
+  optionValueKey,
   resolveVariableSynthetic,
   type EffectiveVariableRules,
   type ResolvedVariableSynthetic,
@@ -232,21 +233,21 @@ export function VariableSyntheticProvider({
     const declared = Array.isArray(synthetic?.optionWeights)
       ? (synthetic.optionWeights as SyntheticOptionWeight[])
       : [];
-    const key = (value: string | number | boolean) =>
-      `${typeof value}:${String(value)}`;
     return {
       // Expanded OR authored: a variable that already carries weights keeps
       // showing them however the disclosure stands, so the column can never
       // hide content the protocol holds.
       revealed: open || authored,
       weightFor: (value) =>
-        declared.find((entry) => key(entry.value) === key(value))?.weight,
+        declared.find(
+          (entry) => optionValueKey(entry.value) === optionValueKey(value),
+        )?.weight,
       onWeightChange: (value, weight) => {
         // Option weights are keyed by the option's own value, which the schema
         // types as a string or an integer.
         if (typeof value === 'boolean') return [];
         const without = declared.filter(
-          (entry) => key(entry.value) !== key(value),
+          (entry) => optionValueKey(entry.value) !== optionValueKey(value),
         );
         const nextWeights =
           weight === undefined ? without : [...without, { value, weight }];

@@ -792,6 +792,57 @@ describe('every datetime parameter the schema admits', () => {
     expect(screen.queryByText(/already fixes the range/)).toBeNull();
   });
 
+  it('leaves an anchor and a cluster date free of the field’s own bounds', () => {
+    // Neither names a date the FIELD collects: an anchor is the point a
+    // session-relative window is measured from, and a mean with a spread that
+    // can still reach the window is a declaration the schema accepts. A field
+    // capped at 2020 must not stop a window being anchored in 2021.
+    const { expand } = setup({
+      variable: {
+        ...DATETIME,
+        parameters: { type: 'full', min: '2000-01-01', max: '2020-12-31' },
+      },
+    });
+    expand();
+
+    const anchor = screen.getByLabelText('Count those days from');
+    expect(anchor).not.toHaveAttribute('max');
+    expect(anchor).not.toHaveAttribute('min');
+    // The window's own ends are a different matter: those ARE dates the field
+    // collects, and the schema holds them to its resolution and range.
+    expect(screen.getByLabelText('Earliest date')).toHaveAttribute(
+      'max',
+      '2020-12-31',
+    );
+  });
+
+  it('returns the family to the default when the block is reset', () => {
+    const { expand, latest } = setup({ variable: DATETIME });
+    expand();
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'How dates are chosen' }),
+      { target: { value: 'normal' } },
+    );
+    fireEvent.change(screen.getByLabelText('Date the answers gather around'), {
+      target: { value: '2024-06-01' },
+    });
+    expect(latest()).toMatchObject({ distribution: 'normal' });
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset to default/ }));
+
+    // The controls follow the block out: a select still reading "clustered"
+    // beside a summary that has gone back to the default describes a
+    // descriptor that no longer exists.
+    expect(latest()).toBeUndefined();
+    expect(
+      screen.getByRole('combobox', { name: 'How dates are chosen' }),
+    ).toHaveValue('uniform');
+    expect(
+      screen.queryByLabelText('Date the answers gather around'),
+    ).not.toBeInTheDocument();
+  });
+
   it('says what the schema said when a window states its floor twice', () => {
     const { expand, latest } = setup({
       variable: {
@@ -816,6 +867,30 @@ describe('every datetime parameter the schema admits', () => {
         'A synthetic date window declares its floor either as "min" or as a relative "before", not both',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('putting one parameter back to its default', () => {
+  it('removes a selection table with its last row, keeping the rest', () => {
+    // The section's own reset would take the missingness with it, so the last
+    // row has to be removable: it is the only way back to the schema's
+    // resolved table for this one parameter.
+    const { expand, latest } = setup({
+      variable: {
+        ...CATEGORICAL,
+        synthetic: {
+          selectionCount: { probabilities: [{ count: 2, probability: 1 }] },
+          missingProbability: 0.2,
+        },
+      },
+    });
+    expand();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove the row for 2 selections' }),
+    );
+
+    expect(latest()).toEqual({ missingProbability: 0.2 });
   });
 });
 

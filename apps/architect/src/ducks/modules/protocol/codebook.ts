@@ -555,6 +555,8 @@ export const updateVariableByUUID = (
   });
 
 export const test = {
+  createVariable: (payload: CreateVariablePayload) =>
+    codebookSlice.actions.createVariable(payload),
   updateVariable: (payload: UpdateVariablePayload) =>
     codebookSlice.actions.updateVariable(payload),
 };

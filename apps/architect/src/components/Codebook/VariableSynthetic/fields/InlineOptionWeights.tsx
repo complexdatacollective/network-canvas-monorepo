@@ -1,3 +1,4 @@
+import { optionValueKey } from '@codaco/protocol-validation';
 import { OptionWeightCell } from '~/components/Options/optionWeights';
 
 /**
@@ -33,7 +34,11 @@ export function InlineOptionWeights({ options }: InlineOptionWeightsProps) {
       <ul className="flex list-none flex-col gap-2 p-0">
         {options.map((option, index) => (
           <li
-            key={String(option.value)}
+            // Keyed by the schema's own typed identity: a codebook may offer
+            // the integer 1 and the string "1" as two options, and two rows
+            // sharing a React key would let a re-render hand one option's
+            // weight box to the other.
+            key={optionValueKey(option.value)}
             className="flex items-center justify-between gap-3"
           >
             <span className="min-w-0 flex-1 truncate">

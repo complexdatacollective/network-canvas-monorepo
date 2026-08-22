@@ -1,4 +1,4 @@
-import { VariableSchema } from '@codaco/protocol-validation';
+import { optionValueKey, VariableSchema } from '@codaco/protocol-validation';
 
 /**
  * Keeps a variable's synthetic block honest about the option list beside it.
@@ -36,8 +36,17 @@ const refusesSynthetic = (variable: unknown): boolean => {
   return result.error.issues.some((issue) => issue.path[0] === 'synthetic');
 };
 
-/** How an option value is compared, matching the schema's own keying. */
-const valueKey = (value: unknown): string => `${typeof value}:${String(value)}`;
+/**
+ * How an option value is compared — the schema's own keying, imported rather
+ * than restated, since a weight naming `'1'` where the variable offers the
+ * integer `1` is exactly what it refuses.
+ */
+const valueKey = (value: unknown): string =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean'
+    ? optionValueKey(value)
+    : `${typeof value}:${String(value)}`;
 
 const optionValueKeys = (variable: Record<string, unknown>): Set<string> => {
   const options = Array.isArray(variable.options) ? variable.options : [];

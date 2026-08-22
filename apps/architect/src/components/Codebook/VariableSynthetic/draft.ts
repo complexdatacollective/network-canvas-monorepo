@@ -1,4 +1,5 @@
 import {
+  optionValueKey,
   SCALAR_DOMAIN,
   VARIABLE_TYPE_VALIDATIONS,
   VariableSchema,
@@ -204,7 +205,7 @@ const distinctOptionValues = (
   const seen = new Set<string>();
   const values: (string | number | boolean)[] = [];
   for (const option of variable.options ?? []) {
-    const key = `${typeof option.value}:${String(option.value)}`;
+    const key = optionValueKey(option.value);
     if (seen.has(key)) continue;
     seen.add(key);
     values.push(option.value);

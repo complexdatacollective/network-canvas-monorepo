@@ -197,12 +197,20 @@ export function SelectionCountTable({
                 )
               }
             />
+            {/*
+              The LAST row may go too, and taking it removes the table rather
+              than emptying it: that is the only way to put this one parameter
+              back to the schema's default without the section-level reset,
+              which would take the attribute's missingness and option weights
+              with it. `commit` maps an empty table to no table at all, and the
+              rows below fall back to showing what the schema then resolves.
+            */}
             <IconButton
               icon={<Trash2 />}
               color="destructive"
               variant="text"
               aria-label={`Remove the row for ${row.count} selections`}
-              disabled={disabled || rows.length === 1}
+              disabled={disabled}
               onClick={() => commit(rows.filter((_, at) => at !== index))}
             />
           </li>

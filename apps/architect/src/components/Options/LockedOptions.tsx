@@ -1,5 +1,7 @@
 import { Lock } from 'lucide-react';
 
+import { optionValueKey } from '@codaco/protocol-validation';
+
 import {
   OptionWeightCell,
   useOptionWeights,
@@ -43,7 +45,10 @@ const LockedOptions = ({ options }: LockedOptionsProps) => {
         </thead>
         <tbody>
           {options.map((option, index) => (
-            <tr key={String(option.value)}>
+            // Keyed by the schema's own typed identity, which tells the
+            // integer 1 from the string "1" — two options a codebook may offer
+            // at once, and two rows a shared key would let React confuse.
+            <tr key={optionValueKey(option.value)}>
               <td className="py-1">{option.label}</td>
               <td className="font-monospace py-1">{String(option.value)}</td>
               {showWeights && (

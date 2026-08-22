@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -24,9 +24,11 @@ import { useVariableSynthetic } from '../VariableSyntheticProvider';
  * anchor is the day the interview runs), and the FIXED window (`min`/`max`).
  *
  * Two things keep it honest without restating a rule. Every date control is the
- * app's own `DatePicker`, given the variable's own resolution and its own
- * accepted window, so a date at the wrong resolution or outside the field
- * cannot be entered (spec rule 2). And every combination the schema refuses —
+ * app's own `DatePicker`: a bound of the generated window is given the
+ * variable's own resolution and accepted range, so a date the field could
+ * never collect is not enterable (spec rule 2), while a cluster's centre and a
+ * window's anchor — neither of which names a date the field collects — are
+ * given the resolution alone. And every combination the schema refuses —
  * a floor stated twice over, a relative window on a control that already has
  * one, a zero-spread cluster outside the window — is refused BY the schema
  * through `propose`, with its own words rendered beside the control that
@@ -167,6 +169,7 @@ export function DatetimeControls() {
     namePrefix,
     variable,
     synthetic,
+    authored,
     isAdmissible,
     resolveWith,
     propose,
@@ -193,15 +196,38 @@ export function DatetimeControls() {
    * rather than writing a declaration the researcher has not finished.
    */
   const [family, setFamily] = useState<Family>(declaredFamily ?? 'uniform');
+  const hadBlock = useRef(authored);
   useEffect(() => {
-    if (declaredFamily !== undefined) setFamily(declaredFamily);
-  }, [declaredFamily]);
+    if (declaredFamily !== undefined) {
+      setFamily(declaredFamily);
+      hadBlock.current = authored;
+      return;
+    }
+    // The block was REMOVED from under the controls — a reset, or an undo — so
+    // the family goes back to what an unstated descriptor resolves to. A
+    // family chosen but not yet stated (no date typed for a cluster) is not a
+    // block, and nothing here disturbs that choice: only a block that existed
+    // and then went away resets it.
+    if (hadBlock.current && !authored) setFamily('uniform');
+    hadBlock.current = authored;
+  }, [declaredFamily, authored]);
 
   const relative = readRecord(synthetic, 'relative');
   const parameters = datePickerParameters(variable.parameters);
-  // A cluster's centre is held to a full ISO date whatever resolution the
-  // variable's own field collects at, which is what the schema says about it.
-  const meanParameters = { ...parameters, type: 'full' };
+  /**
+   * A cluster's centre and a window's anchor are held to a full ISO date and
+   * to nothing else.
+   *
+   * Deliberately WITHOUT the field's own min/max. Neither names a date the
+   * variable will collect: an anchor is the point a session-relative window is
+   * measured from, and a mean with a spread that can still reach the window is
+   * a declaration the schema accepts. Carrying the field's bounds into these
+   * two pickers made both unwritable — a field capped at 2020 could not anchor
+   * a window in 2021 however far back the window reached — while the pair the
+   * schema really does refuse (a zero spread outside the window) is refused by
+   * the schema, beside the control.
+   */
+  const fullDateParameters = { type: 'full' };
 
   /**
    * Writes a block, and drops the family discriminant where the schema does
@@ -324,7 +350,7 @@ export function DatetimeControls() {
             label="Date the answers gather around"
             hint="Generated dates fall near this date, most of them within the spread below."
             value={readString(synthetic, 'mean')}
-            parameters={meanParameters}
+            parameters={fullDateParameters}
             errors={errorsFor('mean')}
             onChange={(mean) =>
               commit('mean', {
@@ -389,7 +415,7 @@ export function DatetimeControls() {
             label="Count those days from"
             hint="Leave this empty to count from the day the interview runs."
             value={readString(relative, 'anchor')}
-            parameters={meanParameters}
+            parameters={fullDateParameters}
             errors={errorsFor('relative.anchor')}
             onChange={(anchor) => commitRelative('anchor', anchor)}
           />
