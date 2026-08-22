@@ -165,16 +165,156 @@ export const withinWindow = (value: number, window: NumericWindow): boolean => {
 const format = (value: number | undefined): string =>
   value === undefined ? '' : String(value);
 
+/** 1, 2 or 5 times a power of ten: the sizes a person counts in. */
+const niceStep = (size: number): number => {
+  if (!Number.isFinite(size) || size <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(size));
+  const leading = size / magnitude;
+  const rounded = leading >= 5 ? 5 : leading >= 2 ? 2 : 1;
+  return rounded * magnitude;
+};
+
+/** How many decimal places a number is written to, exponent form included. */
+const decimalPlaces = (value: number): number => {
+  const [mantissa = '', exponent] = String(value).toLowerCase().split('e');
+  const written = mantissa.split('.')[1]?.length ?? 0;
+  const shift = exponent === undefined ? 0 : Number(exponent);
+  return Math.min(15, Math.max(0, written - shift));
+};
+
+/**
+ * How far one press of a stepper moves a parameter.
+ *
+ * A window that closes on both sides has a SPAN to divide, so the step is a
+ * twentieth of it — a probability moves in hundredths, not in whole units. An
+ * open window has no span, so the step follows the value's own scale instead:
+ * the place its leading digit is written in, so a standard deviation of 0.2
+ * moves in tenths while a mean of 40 moves in ones.
+ *
+ * Never coarser than one whole unit, because every one of these parameters is
+ * a quantity whose whole numbers a researcher means; and exactly one unit for
+ * a parameter the schema types as an integer, where nothing finer is legal.
+ */
+export const stepSize = (
+  window: NumericWindow,
+  value: number | undefined,
+): number => {
+  if (window.integer) return 1;
+  const { min, max } = window;
+  if (min !== undefined && max !== undefined && max > min) {
+    return Math.min(1, niceStep((max - min) / 20));
+  }
+  if (value === undefined || value === 0 || !Number.isFinite(value)) return 1;
+  return Math.min(1, 10 ** Math.floor(Math.log10(Math.abs(value))));
+};
+
+/**
+ * The endpoint a candidate outside the window can be brought back to, or
+ * `undefined` where none can hold it: an exclusive bound names a value the
+ * schema refuses, so there is nothing on that side to clamp to.
+ */
+const admissibleBound = (
+  candidate: number,
+  window: NumericWindow,
+): number | undefined => {
+  const { min, max, exclusiveMin, exclusiveMax, integer } = window;
+  if (min !== undefined && candidate < min) {
+    if (exclusiveMin) return undefined;
+    return integer ? Math.ceil(min) : min;
+  }
+  if (max !== undefined && candidate > max) {
+    if (exclusiveMax) return undefined;
+    return integer ? Math.floor(max) : max;
+  }
+  return undefined;
+};
+
+/**
+ * The value one press of a stepper settles on, or `undefined` where the press
+ * moves nothing.
+ *
+ * Stepping is the same offer typing is: a value the window admits, or nothing
+ * at all. A step that would leave the window is brought back to the endpoint
+ * where the window closes inclusively, and is refused outright where it does
+ * not — a beta's mean lives strictly inside 0 and 1, so a step down from the
+ * smallest value it holds has nowhere to land and stays put (spec governing
+ * rule 2: a value the schema would refuse must not be enterable).
+ *
+ * Its own arithmetic rather than the input's native `stepUp`, which cannot
+ * express any of this: it throws outright on the `step="any"` a continuous
+ * parameter declares, reads an exclusive bound as an inclusive one, and snaps
+ * to a grid the schema never stated.
+ */
+export const steppedValue = (
+  value: number | undefined,
+  direction: 'up' | 'down',
+  window: NumericWindow,
+): number | undefined => {
+  // A press on an empty box has to count from somewhere. The natural zero
+  // where the window holds one, so the first press moves one step away from
+  // nothing — an option weight whose ceiling is a million must not open at
+  // half of it — and the value the window starts at where it does not, because
+  // a beta's mean has no zero to count from. Where the step from there has
+  // nowhere to go, the starting point itself is what the press writes: putting
+  // a number into an empty box is a change even when it does not move.
+  if (value === undefined || !Number.isFinite(value)) {
+    const start = withinWindow(0, window) ? 0 : seedParameterValue(window);
+    if (!withinWindow(start, window)) return undefined;
+    return steppedValue(start, direction, window) ?? start;
+  }
+
+  const up = direction === 'up';
+  const step = stepSize(window, value);
+  // An integral window steps between whole numbers even when what is in the
+  // box is not one, so the step lands inside the window rather than carrying
+  // the fraction that put it outside.
+  const from = window.integer
+    ? up
+      ? Math.floor(value)
+      : Math.ceil(value)
+    : value;
+  const raw = up ? from + step : from - step;
+  // Binary floating point turns 0.2 + 0.1 into 0.30000000000000004; the box
+  // must show what the researcher would have typed.
+  const places = Math.max(decimalPlaces(step), decimalPlaces(from));
+  const candidate = Number(raw.toFixed(places));
+
+  if (withinWindow(candidate, window)) return candidate;
+  const bound = admissibleBound(candidate, window);
+  if (bound === undefined || bound === value || !withinWindow(bound, window)) {
+    return undefined;
+  }
+  return bound;
+};
+
 /**
  * The bounds and step a numeric `<input>` should carry, so its spinner and its
  * browser-native validity describe the same window the commit guard enforces.
- * An open side contributes no attribute rather than an unusable one.
+ * An open side contributes no attribute rather than an unusable one, and a
+ * continuous parameter declares `step="any"` because any value inside its
+ * window is one the schema takes.
+ *
+ * `resolveStep` is what keeps the steppers working under that declaration:
+ * `InputField` disables them for a native step of `any` (whose `stepUp()`
+ * throws), so the arithmetic above is handed over instead — stepping is then
+ * offered wherever typing is.
  */
-const numericInputAttributes = (window: NumericWindow) => ({
+const numericInputAttributes = (
+  window: NumericWindow,
+  value: number | undefined,
+) => ({
   type: 'number' as const,
   ...(window.min === undefined ? {} : { min: window.min }),
   ...(window.max === undefined ? {} : { max: window.max }),
   step: window.integer ? 1 : ('any' as const),
+  resolveStep: (current: string, direction: 'up' | 'down') => {
+    // Whatever is in the box, where that is a number: a stepper pressed after
+    // typing carries on from what was typed, refused entry included.
+    const typed = current.trim() === '' ? Number.NaN : Number(current);
+    const from = Number.isFinite(typed) ? typed : value;
+    const next = steppedValue(from, direction, window);
+    return next === undefined ? undefined : String(next);
+  },
 });
 
 export const useNumericDraft = ({
@@ -208,6 +348,6 @@ export const useNumericDraft = ({
     text,
     onChange,
     onBlur: () => setText(format(value)),
-    inputAttributes: numericInputAttributes(window),
+    inputAttributes: numericInputAttributes(window, value),
   };
 };

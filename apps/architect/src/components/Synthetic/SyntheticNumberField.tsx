@@ -22,6 +22,12 @@ import { type NumericWindow, useNumericDraft } from './useNumericDraft';
  * that was typed, and clamping 40 to 6 silently substitutes a value the
  * researcher did not write. Refusing leaves the entry visible until blur,
  * which is what makes the refusal legible.
+ *
+ * STEPPING is offered wherever typing is (`useNumericDraft`'s `resolveStep`),
+ * and it may land on a bound where typing may not: a press asks for "a bit
+ * more" rather than for a particular number, so the endpoint a window closes
+ * on is what was asked for rather than a substitute for it. A press with
+ * nowhere admissible to land moves nothing.
  */
 
 export type SyntheticNumberFieldProps = {
@@ -71,6 +77,13 @@ export function SyntheticNumberField({
       {...(hint === undefined ? {} : { hint })}
       component={InputField}
       {...inputAttributes}
+      // A distribution editor puts several numeric fields on one screen, so
+      // the default "Increase value" names every one of their steppers the
+      // same thing. Each says which parameter it moves.
+      stepperLabels={{
+        increase: `Increase ${label}`,
+        decrease: `Decrease ${label}`,
+      }}
       value={text}
       onChange={onChange}
       onBlur={onBlur}
