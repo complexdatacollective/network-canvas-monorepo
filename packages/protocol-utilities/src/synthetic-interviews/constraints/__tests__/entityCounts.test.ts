@@ -58,6 +58,17 @@ const parse = (stages: Record<string, unknown>[]): CurrentProtocol =>
               options: CLOSENESS,
             },
             spot: { name: 'spot', type: 'layout' },
+            group: {
+              name: 'group',
+              type: 'categorical',
+              component: 'CheckboxGroup',
+              options: CLOSENESS,
+            },
+            groupOther: {
+              name: 'groupOther',
+              type: 'text',
+              component: 'Text',
+            },
           },
         },
         venue: {
@@ -109,22 +120,24 @@ const nameGenerator = ({
 });
 
 const roster = ({
+  id = 'roster',
   count,
   minNodes,
 }: {
+  id?: string;
   count: number;
   minNodes?: number;
 }): Record<string, unknown> => ({
-  id: 'roster',
+  id,
   type: 'NameGeneratorRoster',
-  label: 'Colleagues',
+  label: `Colleagues ${id}`,
   subject: { entity: 'node', type: 'person' },
   dataSource: 'colleagues',
   synthetic: {
     generatesData: true,
     count: { distribution: 'constant', value: count },
   },
-  prompts: [{ id: 'roster-p1', text: 'Who do you work with?' }],
+  prompts: [{ id: `${id}-p1`, text: 'Who do you work with?' }],
   ...(minNodes === undefined ? {} : { behaviours: { minNodes } }),
 });
 
@@ -259,10 +272,12 @@ describe('how many entities a walk can build', () => {
     expect(counts.rosterDemands).toEqual([
       {
         stageId: 'roster',
-        stageLabel: 'Colleagues',
+        stageLabel: 'Colleagues roster',
         nodeType: 'person',
         minNodes: 3,
         poolSize: 1,
+        guaranteedAvailable: 1,
+        unresolved: false,
       },
     ]);
   });
@@ -425,5 +440,366 @@ describe('which entities can be forced to hold a value', () => {
     ]);
 
     expect(holders(protocol, ['name', 'band'])).toBe(3);
+  });
+});
+
+const composer = ({
+  id = 'composer',
+  count,
+  topology,
+  nodeForm,
+  edges,
+}: {
+  id?: string;
+  count?: number;
+  topology?: Record<string, unknown>;
+  nodeForm?: Record<string, unknown>;
+  edges?: Record<string, unknown>[];
+}): Record<string, unknown> => ({
+  id,
+  type: 'NetworkComposer',
+  label: 'Compose the network',
+  subject: { entity: 'node', type: 'person' },
+  quickAdd: 'name',
+  layoutVariable: 'spot',
+  background: { concentricCircles: 4, skewedTowardCenter: true },
+  synthetic: {
+    generatesData: true,
+    ...(count === undefined
+      ? {}
+      : { count: { distribution: 'constant', value: count } }),
+    ...(topology === undefined ? {} : { topology }),
+  },
+  ...(nodeForm ? { nodeForm } : {}),
+  ...(edges ? { edges } : {}),
+});
+
+const holdersFor = (
+  counts: ReturnType<typeof worstCaseEntityCounts>,
+  scope: { entity: 'node' | 'edge'; type: string },
+  group: string[],
+): number => holdersOf(counts.scopes.get(scopeKey(scope)), group);
+
+describe('what a NetworkComposer guarantees', () => {
+  it('carries the count floor through: a required quick-add cannot go missing', () => {
+    // The palette will not create a node from a blank name, so the quick-add
+    // variable is interface-implied `required` and resolution zeroes any
+    // authored missingness — a declared count of four always builds four.
+    const counts = countsFor(parse([composer({ count: 4 })]));
+    expect(personWindow(counts)).toEqual({ floor: 4, ceiling: 4 });
+  });
+
+  it('counts its inspector form over the nodes it just composed', () => {
+    // `simulateNetworkComposer` adds people BEFORE `fillInspectorForms`, so
+    // the form's draw reaches this stage's own additions, not only whoever
+    // stood on the canvas beforehand.
+    const counts = countsFor(
+      parse([
+        composer({
+          count: 8,
+          nodeForm: {
+            fields: [{ variable: 'band', component: 'LikertScale' }],
+          },
+        }),
+      ]),
+    );
+    expect(
+      holdersFor(counts, { entity: 'node', type: 'person' }, ['band']),
+    ).toBe(8);
+  });
+});
+
+describe('topology-bounded edge counts', () => {
+  it('holds a sparse census to what its topology can select', () => {
+    // Ten people make 45 pairs, but a constant density of 0.1 selects five of
+    // them on its very luckiest realisation — counting all 45 would refuse a
+    // `unique` edge variable for values the walk never draws.
+    const counts = countsFor(
+      parse([
+        nameGenerator({ count: { distribution: 'constant', value: 10 } }),
+        {
+          ...dyadCensus,
+          synthetic: {
+            generatesData: true,
+            topology: {
+              metric: 'density',
+              distribution: { distribution: 'constant', value: 0.1 },
+            },
+          },
+        },
+      ]),
+    );
+    expect(
+      counts.scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 5 });
+  });
+
+  it('bounds a composer edge form’s draws the same way', () => {
+    const counts = countsFor(
+      parse([
+        composer({
+          count: 10,
+          topology: {
+            metric: 'density',
+            distribution: { distribution: 'constant', value: 0.1 },
+          },
+          edges: [
+            {
+              id: 'edge-entry',
+              subject: { entity: 'edge', type: 'friend' },
+              form: {
+                fields: [{ variable: 'strength', component: 'LikertScale' }],
+              },
+            },
+          ],
+        }),
+      ]),
+    );
+    expect(
+      holdersFor(counts, { entity: 'edge', type: 'friend' }, ['strength']),
+    ).toBe(5);
+  });
+
+  it('creates nothing for a composer that declares edges but no topology', () => {
+    const counts = countsFor(
+      parse([
+        composer({
+          count: 10,
+          edges: [
+            { id: 'edge-entry', subject: { entity: 'edge', type: 'friend' } },
+          ],
+        }),
+      ]),
+    );
+    expect(
+      counts.scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: 0 });
+  });
+});
+
+describe('filtered re-censuses are additive', () => {
+  const denseCensus = (
+    id: string,
+    filter?: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    ...dyadCensus,
+    id,
+    prompts: [{ id: `${id}-p1`, text: 'Linked?', createEdge: 'friend' }],
+    synthetic: {
+      generatesData: true,
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 1 },
+      },
+    },
+    ...(filter ? { filter } : {}),
+  });
+
+  const bandFilter = {
+    join: 'AND',
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'edge',
+        options: { type: 'friend', operator: 'NOT_EXISTS' },
+      },
+    ],
+  };
+
+  it('reuses the pair set only where the later stage can see the edges', () => {
+    const people = nameGenerator({
+      count: { distribution: 'constant', value: 4 },
+    });
+    const pairs = 6;
+
+    // Unfiltered second census: the same six edges, re-asked.
+    expect(
+      countsFor(
+        parse([people, denseCensus('c1'), denseCensus('c2')]),
+      ).scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: pairs });
+
+    // Filtered second census: an edge its filter hides is one the participant
+    // cannot see, so a yes there creates a SECOND edge for the pair.
+    expect(
+      countsFor(
+        parse([people, denseCensus('c1'), denseCensus('c2', bandFilter)]),
+      ).scopes.get(scopeKey({ entity: 'edge', type: 'friend' }))?.entities,
+    ).toEqual({ floor: 0, ceiling: pairs * 2 });
+  });
+});
+
+describe('a disabled other bin never draws', () => {
+  const binStage = (otherBinProbability: number): Record<string, unknown> => ({
+    id: 'bin',
+    type: 'CategoricalBin',
+    label: 'Sort them',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      {
+        id: 'bin-p1',
+        text: 'Which group?',
+        variable: 'group',
+        otherVariable: 'groupOther',
+        otherVariablePrompt: 'Which other group?',
+        otherOptionLabel: 'Other',
+        synthetic: { otherBinProbability },
+      },
+    ],
+  });
+
+  it('drops the other-variable demand when the authored odds are zero', () => {
+    const people = nameGenerator({
+      count: { distribution: 'constant', value: 5 },
+    });
+    const scope = { entity: 'node', type: 'person' } as const;
+
+    expect(
+      holdersFor(countsFor(parse([people, binStage(0)])), scope, [
+        'groupOther',
+      ]),
+    ).toBe(0);
+    expect(
+      holdersFor(countsFor(parse([people, binStage(0.5)])), scope, [
+        'groupOther',
+      ]),
+    ).toBe(5);
+  });
+});
+
+describe('roster rows consumed by earlier stages', () => {
+  it('reports a later gated roster the earlier stages are guaranteed to starve', () => {
+    // Two roster stages over one five-row pool: the first always takes five,
+    // so the second — gated at three — meets an empty list on every seed.
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 5 }),
+        roster({ id: 'second', count: 3, minNodes: 3 }),
+      ]),
+      { rosterNodes: { first: rows(5), second: rows(5) } },
+    );
+
+    expect(counts.rosterDemands).toEqual([
+      expect.objectContaining({
+        stageId: 'second',
+        guaranteedAvailable: 0,
+        poolSize: 5,
+        unresolved: false,
+      }),
+    ]);
+  });
+
+  it('leaves the later stage alone where enough rows are guaranteed to remain', () => {
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 2 }),
+        roster({ id: 'second', count: 3, minNodes: 3 }),
+      ]),
+      { rosterNodes: { first: rows(5), second: rows(5) } },
+    );
+    expect(counts.rosterDemands).toEqual([]);
+  });
+
+  it('ignores disjoint pools entirely', () => {
+    const otherRows = (howMany: number): NcNode[] =>
+      Array.from({ length: howMany }, (_unused, index) => ({
+        [entityPrimaryKeyProperty]: `other-${index}`,
+        type: 'person',
+        [entityAttributesProperty]: { name: `Other ${index}` },
+      }));
+
+    const counts = countsFor(
+      parse([
+        roster({ id: 'first', count: 5 }),
+        roster({ id: 'second', count: 3, minNodes: 3 }),
+      ]),
+      { rosterNodes: { first: rows(5), second: otherRows(3) } },
+    );
+    expect(counts.rosterDemands).toEqual([]);
+  });
+});
+
+describe('bounding the count to what a stopped walk performs', () => {
+  it('excludes the stop stage and everything past it', () => {
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+      alterForm(['band']),
+    ]);
+    const scope = { entity: 'node', type: 'person' } as const;
+
+    // The preview default: arrive at the form, apply nothing there.
+    expect(
+      holdersFor(
+        worstCaseEntityCounts(
+          protocol.stages,
+          {},
+          {
+            stopAt: { stageIndex: 1 },
+          },
+        ),
+        scope,
+        ['band'],
+      ),
+    ).toBe(0);
+
+    // A positive prompt bound works the stage, so its demands stand.
+    expect(
+      holdersFor(
+        worstCaseEntityCounts(
+          protocol.stages,
+          {},
+          {
+            stopAt: { stageIndex: 1, promptIndex: 1 },
+          },
+        ),
+        scope,
+        ['band'],
+      ),
+    ).toBe(5);
+  });
+});
+
+describe('fixture overrides replace a stage’s output', () => {
+  it('counts the entries the walk will materialise, not the authored count', () => {
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+    ]);
+    const entry = { type: 'person' } as const;
+
+    const counts = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      {
+        codebook: protocol.codebook,
+        overrides: { nodes: { ng: [entry, entry, entry] } },
+      },
+    );
+
+    expect(personWindow(counts)).toEqual({ floor: 3, ceiling: 3 });
+    // Three drawn entries, each drawing the declared variables the caller
+    // left unfixed — not the five form draws the authored count promised.
+    expect(
+      holdersFor(counts, { entity: 'node', type: 'person' }, ['name']),
+    ).toBe(3);
+  });
+
+  it('counts a manual entry as an entity that draws nothing', () => {
+    const protocol = parse([
+      nameGenerator({ count: { distribution: 'constant', value: 5 } }),
+    ]);
+
+    const counts = worstCaseEntityCounts(
+      protocol.stages,
+      {},
+      {
+        codebook: protocol.codebook,
+        overrides: { nodes: { ng: [{ type: 'person', manual: true }] } },
+      },
+    );
+
+    expect(personWindow(counts)).toEqual({ floor: 1, ceiling: 1 });
+    expect(
+      holdersFor(counts, { entity: 'node', type: 'person' }, ['name']),
+    ).toBe(0);
   });
 });

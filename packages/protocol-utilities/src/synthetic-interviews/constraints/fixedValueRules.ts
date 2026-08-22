@@ -90,8 +90,14 @@ function optionsOffer(entry: VariableEntry, value: VariableValue): boolean {
  * holds and nothing else, so a value outside the list is one no participant
  * could have entered. That is the same reasoning by which a date picker's
  * window already closes at the last date the field offers.
+ *
+ * Exported for the slides-form simulators, which ask the same question of a
+ * PREFILLED value: a form initialises its fields from the entity's current
+ * attributes and refuses to advance while one of them fails validation, so a
+ * roster-supplied value these rules reject is one the participant was made to
+ * correct.
  */
-function ownRuleBroken(
+export function ownRuleBroken(
   { entry, constraints }: ConstrainedVariable,
   value: FixedVariableValue,
 ): string | undefined {

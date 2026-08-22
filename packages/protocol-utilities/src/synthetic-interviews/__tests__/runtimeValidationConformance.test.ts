@@ -18,6 +18,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNetwork,
+  type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
 
@@ -265,6 +266,32 @@ const bundled = (file: string): CurrentProtocol =>
     ) as unknown,
   );
 
+/**
+ * A minimal resolved pool for every roster stage a bundled protocol gates
+ * with `behaviours.minNodes`. Generation refuses a gated roster stage whose
+ * pool the host never resolved — exactly what every real host now does
+ * through the contract collectors — so this test supplies what a host would:
+ * enough rows for the gate, carrying nothing, since roster columns are
+ * researcher data and nothing here validates them.
+ */
+const gatedRosterPools = (protocol: CurrentProtocol): AssetData => {
+  const rosterNodes: Record<string, NcNode[]> = {};
+  for (const stage of protocol.stages) {
+    if (stage.type !== 'NameGeneratorRoster') continue;
+    const minNodes = stage.behaviours?.minNodes;
+    if (minNodes === undefined || minNodes < 1) continue;
+    rosterNodes[stage.id] = Array.from(
+      { length: minNodes + 2 },
+      (_unused, index) => ({
+        [entityPrimaryKeyProperty]: `${stage.id}-row-${index}`,
+        type: stage.subject.type,
+        [entityAttributesProperty]: {},
+      }),
+    );
+  }
+  return Object.keys(rosterNodes).length > 0 ? { rosterNodes } : {};
+};
+
 describe('generated values pass the runtime’s own field validation (C3)', () => {
   it.each([
     ['development', 'development/protocol.json'],
@@ -277,7 +304,11 @@ describe('generated values pass the runtime’s own field validation (C3)', () =
       const failures: Failure[] = [];
       let entities = 0;
 
-      for (const [seed, network] of sessionsFor(protocol, 3).entries()) {
+      for (const [seed, network] of sessionsFor(
+        protocol,
+        3,
+        gatedRosterPools(protocol),
+      ).entries()) {
         entities += network.nodes.length + network.edges.length;
         failures.push(
           ...(await validateSession(protocol, network, `${name} seed ${seed}`)),

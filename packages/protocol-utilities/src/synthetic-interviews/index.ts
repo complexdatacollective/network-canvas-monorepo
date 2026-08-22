@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   collectInterfaceImpliedRules,
   type CurrentProtocol,
+  SYNTHETIC_START_WINDOW_DAYS,
 } from '@codaco/protocol-validation';
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from './constants';
@@ -100,6 +101,14 @@ export const generateInterviewsOptions = z
     simulateDropOut: z.boolean().default(true),
     respectSkipLogic: z.boolean().default(true),
     /**
+     * Whether stage-level network filters narrow what each stage shows. Off,
+     * every stage reads the unfiltered network — the second half of the
+     * hosts' combined "respect skip logic and filtering" toggle, which trades
+     * runtime-faithfulness for fuller test data. Panel filters always apply:
+     * they select a panel's candidates, not what a stage displays.
+     */
+    respectFiltering: z.boolean().default(true),
+    /**
      * Regenerate dropped sessions (deterministically — the deficit session's
      * own substreams re-run with dropout disabled, the same participant
      * finishing) until this share of the batch is complete. 0 disables.
@@ -185,6 +194,30 @@ export const generateInterviews = (
     );
   });
 
+  // A stop target the protocol does not have is a caller holding a stale
+  // index: walking anyway would return a fully answered session where a
+  // stopped preview was asked for, so it is refused where the mistake is.
+  if (options.stopAt !== undefined) {
+    const { stageIndex, promptIndex } = options.stopAt;
+    const stage = protocol.stages[stageIndex];
+    invariant(
+      stage,
+      `stopAt.stageIndex ${stageIndex} is out of range: this protocol has ${protocol.stages.length} stages`,
+    );
+    if (promptIndex !== undefined) {
+      // A stage without prompts still accepts a bound of 1 — "worked the
+      // stage" — because that is the reading every form simulator gives it.
+      const promptCeiling = Math.max(
+        1,
+        'prompts' in stage ? stage.prompts.length : 1,
+      );
+      invariant(
+        promptIndex <= promptCeiling,
+        `stopAt.promptIndex ${promptIndex} is out of range: stage "${stage.id}" has ${promptCeiling === 1 && !('prompts' in stage) ? 'no prompts' : `${promptCeiling} prompts`}`,
+      );
+    }
+  }
+
   // Walked once per batch: the answer is the same for every session.
   const interfaceRules = collectInterfaceImpliedRules(protocol);
 
@@ -195,13 +228,19 @@ export const generateInterviews = (
   // Pre-seed refusal (rule 5): a protocol either always generates or never
   // generates, decided once per batch from the protocol, the options, and the
   // pools the caller resolved — never from a seed. The anchor's own day dates
-  // the analysis, so the verdict moves with the batch rather than with a clock
-  // read of its own.
+  // the analysis — and every day of the start window behind it, because each
+  // session's date-relative windows resolve against its OWN start day — so
+  // the verdict moves with the batch rather than with a clock read of its
+  // own. The walk's own bounds bound the analysis too: stages a stopAt run
+  // never reaches, and stages the fixture channel replaces, demand nothing.
   const conflicts = analyseFeasibility({
     protocol,
     assetData,
     today: startWindowAnchor.slice(0, 10),
     interfaceRules,
+    windowDays: SYNTHETIC_START_WINDOW_DAYS,
+    ...(options.stopAt ? { stopAt: options.stopAt } : {}),
+    ...(options.overrides ? { overrides: options.overrides } : {}),
   });
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts, FEASIBILITY_SUMMARY);
@@ -248,6 +287,7 @@ export const generateInterviews = (
       assetData,
       today,
       interfaceRules,
+      respectFiltering: options.respectFiltering,
       valueGen,
       uniqueRegistry,
       entityConstraints,
@@ -276,10 +316,6 @@ export const generateInterviews = (
       stopAt: options.stopAt,
       overrides: applier,
     });
-
-    // Predetermined relationships land once every stage that could have
-    // materialised their endpoints has had its chance.
-    applier?.applyEdges(outcome.visitedStages.at(-1) ?? 0);
 
     return finaliseSession({
       id: streams.uuid(),
