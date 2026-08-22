@@ -276,4 +276,57 @@ describe('RichTextEditorField', () => {
     expect(document.activeElement).toBe(editor);
     expect(editor).toHaveAccessibleDescription(/Biography is required\./);
   });
+
+  it('mounts no toggle group on a links-only toolbar', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        value={documentWithText}
+        onChange={() => undefined}
+        toolbarOptions={{
+          bold: false,
+          italic: false,
+          links: true,
+          headings: false,
+          lists: false,
+          thematicBreak: false,
+          history: false,
+        }}
+      />,
+    );
+
+    await screen.findByRole('textbox', { name: 'Biography' });
+    // The link control renders at toolbar level; with both formatting
+    // toggles disabled there is no toggle set left to group, so an empty
+    // `group` element must not be mounted around nothing.
+    expect(
+      screen.getByRole('button', { name: 'Add link' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+
+  it('exposes exactly one group role per toolbar section', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        value={documentWithText}
+        onChange={() => undefined}
+        toolbarOptions={{ links: true }}
+      />,
+    );
+
+    await screen.findByRole('textbox', { name: 'Biography' });
+    const groups = screen.getAllByRole('group');
+    // A ToggleGroup nested inside a Toolbar.Group wrapper renders two nested
+    // group roles announcing nothing new; the merged element must be flat.
+    for (const group of groups) {
+      expect(group.querySelector('[role="group"]')).toBeNull();
+    }
+  });
 });
