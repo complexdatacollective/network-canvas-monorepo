@@ -48,13 +48,15 @@ unwritten: the first import after this release records it under a new identity.
 Architect can now author every one of those parameters, and shows what
 generation would do wherever they are set.
 
-- **Every stage editor** gains a collapsed "Synthetic data" section summarising
-  what the stage contributes to a generated interview — how many people it
-  creates, how densely it links them, and how much of a participant's attention
-  it asks for — with a badge saying whether each value was written by hand or
-  resolved from the protocol, and a reset that returns it to the default.
-  Expanded, every parameter gets its own editor, alongside a picture of the
-  distribution over the range it is allowed.
+- **Every stage editor** gains a collapsed "Synthetic data" section that
+  explains what synthetic data is for and summarises what the stage
+  contributes to a generated interview — how many people it creates, how
+  densely it links them, and how much of a participant's attention it asks
+  for — with a reset that returns any hand-written value to the default.
+  Expanded, every parameter gets its own editor, alongside a self-scaling
+  picture of the distribution over the range it is allowed, and the
+  attributes the stage itself assigns (a bin's variable, a quick-add's name
+  field) can be shaped right there — the same setting the Codebook shows.
 - **Side panels** gain the same treatment for how likely a participant is to
   re-nominate the people a panel puts in front of them.
 - **The Codebook** gains per-attribute settings: how values are spread, how
@@ -62,10 +64,15 @@ generation would do wherever they are set.
   and forward dates reach, how many options a multiple-choice question picks,
   and — revealed in the options list while the attribute's section is open — a
   relative weight for each option.
-- **A new "Synthetic data" screen** lists every stage and attribute of the
-  protocol in one read-only table, each with the value generation would use,
-  whether it was authored or defaulted, and a link straight to the editor that
-  owns it.
+- **The Codebook** also carries the protocol-wide picture: a banner says
+  whether the protocol as a whole can generate, and every attribute row shows
+  the value generation would use and opens for editing in place.
+- **Architect generates synthetic interview data itself**: a "Generate
+  synthetic data…" action asks how many sessions to fabricate (with an
+  optional seed for reproducible batches, and drop-out and skip-logic
+  toggles), runs the same generation Interviewer uses, and downloads a
+  ready-made CSV and GraphML export archive — named so a fabricated archive
+  can never be mistaken for a real study's data.
 
 No control can produce a value the protocol format would reject: every field is
 held to the range its own rules allow, and problems no single field can express
