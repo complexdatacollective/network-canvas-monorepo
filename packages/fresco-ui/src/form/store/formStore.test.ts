@@ -2356,3 +2356,261 @@ describe('a host write and the errors it supersedes', () => {
     expect(store.getState().isValid).toBe(true);
   });
 });
+
+/**
+ * The field maps are exact-string-keyed and carry no hierarchy, so a form that
+ * registers `parameters.type` and `parameters.min` never registers
+ * `parameters` — the container exists only in the assembled output. Reading
+ * and clearing one are store operations rather than something every host
+ * reimplements against the raw maps.
+ */
+describe('container paths', () => {
+  let store: ReturnType<typeof createFormStore>;
+
+  beforeEach(() => {
+    store = createFormStore();
+    vi.clearAllMocks();
+  });
+
+  const registerParameterLeaves = () => {
+    store
+      .getState()
+      .registerField({ name: 'parameters.type', initialValue: 'relative' });
+    store.getState().registerField({ name: 'parameters.min', initialValue: 1 });
+  };
+
+  describe('reading', () => {
+    it('reads a registered leaf by its exact name, unchanged', () => {
+      store.getState().registerField({ name: 'label', initialValue: 'Age' });
+
+      expect(store.getState().getValue('label')).toBe('Age');
+      expect(store.getState().hasValue('label')).toBe(true);
+    });
+
+    it('reads a dormant leaf by its exact name, unchanged', () => {
+      store.getState().registerField({ name: 'label', initialValue: 'Age' });
+      store.getState().unregisterField('label');
+
+      expect(store.getState().getValue('label')).toBe('Age');
+      expect(store.getState().hasValue('label')).toBe(true);
+    });
+
+    it('reports nothing for a name the form has never held', () => {
+      registerParameterLeaves();
+
+      expect(store.getState().getValue('label')).toBeUndefined();
+      expect(store.getState().hasValue('label')).toBe(false);
+    });
+
+    it('tells a field holding undefined apart from one that is absent', () => {
+      store.getState().registerField({ name: 'label' });
+
+      expect(store.getState().getValue('label')).toBeUndefined();
+      expect(store.getState().hasValue('label')).toBe(true);
+    });
+
+    it('assembles a container out of the leaves registered beneath it', () => {
+      registerParameterLeaves();
+
+      expect(store.getState().getValue('parameters')).toEqual({
+        type: 'relative',
+        min: 1,
+      });
+      expect(store.getState().hasValue('parameters')).toBe(true);
+    });
+
+    it('assembles array-index leaves as an array', () => {
+      store.getState().registerField({ name: 'options[0]', initialValue: 'a' });
+      store.getState().registerField({ name: 'options[1]', initialValue: 'b' });
+
+      expect(store.getState().getValue('options')).toEqual(['a', 'b']);
+    });
+
+    it('reads a field registered AT the container name as itself', () => {
+      // Architect's `CodebookVariableValidationSection` mirrors a committed
+      // variable into hidden whole-value fields; a read of `parameters` there
+      // is a plain leaf read and stays one.
+      store
+        .getState()
+        .registerField({ name: 'parameters', initialValue: { type: 'exact' } });
+      registerParameterLeaves();
+
+      expect(store.getState().getValue('parameters')).toEqual({
+        type: 'exact',
+      });
+    });
+
+    it('contributes only REGISTERED leaves, exactly as getFormValues does', () => {
+      registerParameterLeaves();
+      store.getState().unregisterField('parameters.min');
+
+      // The form's own output drops the unmounted leaf, so the container read
+      // has to drop it too rather than invent a value a submit would not send.
+      expect(store.getState().getFormValues()).toEqual({
+        parameters: { type: 'relative' },
+      });
+      expect(store.getState().getValue('parameters')).toEqual({
+        type: 'relative',
+      });
+    });
+
+    it('assembles nothing for a container held only by dormant leaves', () => {
+      registerParameterLeaves();
+      store.getState().unregisterField('parameters.type');
+      store.getState().unregisterField('parameters.min');
+
+      expect(store.getState().getFormValues()).toEqual({});
+      expect(store.getState().getValue('parameters')).toBeUndefined();
+      // A collapsed section's leaves are still values this form holds — a
+      // caller layering live values over committed ones must not read the
+      // collapse as "never registered" and revive the committed parameters.
+      expect(store.getState().hasValue('parameters')).toBe(true);
+    });
+
+    it('does not treat a look-alike opaque name as a descendant', () => {
+      // What `Field nameMode="opaque"` registers: ONE segment that happens to
+      // contain a dot, published under that same name. Matching on the
+      // published name would read it as a leaf of a `parameters` container it
+      // has nothing to do with.
+      getPathOperations(store).registerField({
+        name: ['parameters.type'],
+        submissionErrorKey: 'parameters.type',
+        initialValue: 'relative',
+      });
+
+      expect(store.getState().fields.has('parameters.type')).toBe(true);
+      expect(store.getState().hasValue('parameters')).toBe(false);
+      expect(store.getState().getValue('parameters')).toBeUndefined();
+    });
+
+    it('returns the same container object while nothing beneath it changes', () => {
+      registerParameterLeaves();
+      store.getState().registerField({ name: 'label', initialValue: 'Age' });
+
+      const first = store.getState().getValue('parameters');
+      store.getState().setFieldValue('label', 'Age at diagnosis');
+
+      expect(store.getState().getValue('parameters')).toBe(first);
+    });
+
+    it('returns a new container object when a leaf beneath it changes', () => {
+      registerParameterLeaves();
+
+      const first = store.getState().getValue('parameters');
+      store.getState().setFieldValue('parameters.min', 2);
+      const second = store.getState().getValue('parameters');
+
+      expect(second).not.toBe(first);
+      expect(second).toEqual({ type: 'relative', min: 2 });
+    });
+
+    it('starts a container over after a reset', () => {
+      registerParameterLeaves();
+      const first = store.getState().getValue('parameters');
+
+      store.getState().reset();
+      expect(store.getState().getValue('parameters')).toBeUndefined();
+
+      registerParameterLeaves();
+      expect(store.getState().getValue('parameters')).toEqual(first);
+      expect(store.getState().getValue('parameters')).not.toBe(first);
+    });
+  });
+
+  describe('clearing', () => {
+    it('clears every registered leaf beneath the container', () => {
+      registerParameterLeaves();
+
+      store.getState().clearValue('parameters');
+
+      expect(
+        store.getState().getFieldState('parameters.type')?.value,
+      ).toBeUndefined();
+      expect(
+        store.getState().getFieldState('parameters.min')?.value,
+      ).toBeUndefined();
+      expect(store.getState().getValue('parameters')).toStrictEqual({
+        type: undefined,
+        min: undefined,
+      });
+    });
+
+    it('clears dormant leaves too, so an unmounted one cannot come back', () => {
+      registerParameterLeaves();
+      // A collapsed section parks its value dormant, and a dormant value
+      // outranks `initialValue` when the field next registers.
+      store.getState().unregisterField('parameters.min');
+
+      store.getState().clearValue('parameters');
+
+      expect(
+        store.getState().dormantValues.get('parameters.min')?.value,
+      ).toBeUndefined();
+      store
+        .getState()
+        .registerField({ name: 'parameters.min', initialValue: 1 });
+      expect(
+        store.getState().getFieldState('parameters.min')?.value,
+      ).toBeUndefined();
+    });
+
+    it('clears array-index leaves beneath the container', () => {
+      store.getState().registerField({ name: 'options[0]', initialValue: 'a' });
+      store.getState().registerField({ name: 'options[1]', initialValue: 'b' });
+      store.getState().unregisterField('options[1]');
+
+      store.getState().clearValue('options');
+
+      expect(
+        store.getState().getFieldState('options[0]')?.value,
+      ).toBeUndefined();
+      expect(
+        store.getState().dormantValues.get('options[1]')?.value,
+      ).toBeUndefined();
+    });
+
+    it('clears the container name itself, for a value really held as one field', () => {
+      store
+        .getState()
+        .registerField({ name: 'parameters', initialValue: { type: 'exact' } });
+
+      store.getState().clearValue('parameters');
+
+      expect(
+        store.getState().getFieldState('parameters')?.value,
+      ).toBeUndefined();
+    });
+
+    it('leaves the container readable through its leaves afterwards', () => {
+      // Clearing parks a dormant `undefined` at the container's own name.
+      // Architect swaps input controls this way — clear, then mount the new
+      // control's leaves — so a shadow left at that name would make every
+      // later read of the container answer `undefined`.
+      registerParameterLeaves();
+      store.getState().clearValue('parameters');
+
+      store.getState().setFieldValue('parameters.type', 'absolute');
+
+      expect(store.getState().dormantValues.has('parameters')).toBe(true);
+      expect(store.getState().getValue('parameters')).toStrictEqual({
+        type: 'absolute',
+        min: undefined,
+      });
+    });
+
+    it('leaves fields outside the container alone', () => {
+      registerParameterLeaves();
+      store.getState().registerField({ name: 'label', initialValue: 'Age' });
+      store
+        .getState()
+        .registerField({ name: 'parametersExtra', initialValue: 'kept' });
+
+      store.getState().clearValue('parameters');
+
+      expect(store.getState().getFieldState('label')?.value).toBe('Age');
+      expect(store.getState().getFieldState('parametersExtra')?.value).toBe(
+        'kept',
+      );
+    });
+  });
+});
