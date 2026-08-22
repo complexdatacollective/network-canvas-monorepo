@@ -413,9 +413,19 @@ export const stageSyntheticEditorValues = (
 };
 
 /**
- * A half of a both-halves descriptor — the two keys a change can REMOVE.
+ * A half of a both-halves descriptor — the two keys a change can turn off.
  */
 export type SyntheticHalf = 'count' | 'topology';
+
+/**
+ * Everything a change can REMOVE from a block: a composer's halves, and the
+ * burden every stage carries a default for.
+ *
+ * The burden is here for the same reason the halves are — removing it is how
+ * a researcher puts that one parameter back to the schema's default without
+ * resetting a count or a topology they authored beside it.
+ */
+export type SyntheticOmittable = SyntheticHalf | 'responseBurden';
 
 /**
  * One parameter change the section makes to a stage's descriptor.
@@ -435,30 +445,32 @@ export type SyntheticChange = {
    * Stated as its own key because `undefined` cannot say it: every parameter
    * above is optional, so a `count` left out means "unchanged" — and once
    * `withoutUndefined` has run, an explicit `count: undefined` means exactly
-   * the same thing. Removal is a third instruction, and on a composer it is
-   * the one that says "this stage creates no nodes".
+   * the same thing. Removal is a third instruction: on a composer it is the
+   * one that says "this stage creates no nodes", and on any stage it is how a
+   * single parameter goes back to the schema's own default while the rest of
+   * the block stays as it was authored.
    *
    * The resulting block is offered to the schema like any other candidate: a
    * block that ends up declaring neither half is refused THERE, in the
    * schema's own words, rather than pre-empted by a rule of this file's own.
    */
-  omit?: readonly SyntheticHalf[];
+  omit?: readonly SyntheticOmittable[];
 };
 
 /** Stable empty omission list, so the common case allocates nothing. */
-const NO_OMISSIONS: readonly SyntheticHalf[] = [];
+const NO_OMISSIONS: readonly SyntheticOmittable[] = [];
 
 /** The block without the halves a change asked to remove. */
 const withoutOmitted = (
   block: Record<string, unknown>,
-  omit: readonly SyntheticHalf[],
+  omit: readonly SyntheticOmittable[],
 ): Record<string, unknown> =>
   omit.length === 0
     ? block
     : Object.fromEntries(
         // Compared rather than narrowed: `key` is any of the block's keys, and
-        // asserting it into the half union to use `includes` would be claiming
-        // something about it that this filter is the thing deciding.
+        // asserting it into the omittable union to use `includes` would be
+        // claiming something about it that this filter is the thing deciding.
         Object.entries(block).filter(
           ([key]) => !omit.some((half) => half === key),
         ),

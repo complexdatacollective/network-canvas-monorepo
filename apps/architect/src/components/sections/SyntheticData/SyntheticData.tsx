@@ -123,7 +123,7 @@ const TOPOLOGY_HINT =
   'How densely this stage links the people in the network when a synthetic interview is generated.';
 const RESPONSE_BURDEN_LABEL = 'Response burden';
 const RESPONSE_BURDEN_HINT =
-  'How much of the participant’s attention this stage costs, relative to the other stages. Higher values make a synthetic participant more likely to drop out later in the interview.';
+  'How much of the participant’s attention this stage costs, relative to the other stages. Higher values make a synthetic participant more likely to drop out later in the interview. Clear the box to go back to the default for this kind of stage.';
 const NO_EDGE_PROMPT_SUMMARY = 'Edges: none created by this stage';
 const NO_NODE_COUNT_SUMMARY = 'Nodes: none created by this stage';
 /**
@@ -763,14 +763,22 @@ const SyntheticData = ({
                 hint={RESPONSE_BURDEN_HINT}
                 value={resolved.responseBurden}
                 window={BURDEN_WINDOW}
+                // Clearable, though the box is never empty: every stage
+                // resolves a burden, so clearing it removes the authored key
+                // and the box goes on showing what a run would use — the
+                // schema's own default. It is the only way back to that
+                // default for this one parameter; the section's reset would
+                // take an authored count or topology with it.
+                clearable
                 errors={issuesUnder(shownIssues, 'responseBurden').map(
                   (issue) => issue.message,
                 )}
                 onCommit={(responseBurden) => {
-                  // Not `clearable`: every stage resolves a burden, so there
-                  // is no unstated one for an empty box to mean.
-                  if (responseBurden === undefined) return;
-                  commit([{ responseBurden }]);
+                  commit([
+                    responseBurden === undefined
+                      ? { omit: ['responseBurden'] }
+                      : { responseBurden },
+                  ]);
                 }}
               />
             </div>

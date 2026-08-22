@@ -439,6 +439,32 @@ describe('authoring and reset', () => {
     expect(syntheticValue(getFormValues)).toBeUndefined();
   });
 
+  it('returns the burden alone to its default, keeping what else was authored', () => {
+    // The section's reset removes the whole block, so a researcher who wanted
+    // the default burden back would have lost the count they authored beside
+    // it. Clearing the box removes that one key; the box then shows what a run
+    // would use, which is the schema's own default.
+    const { getFormValues } = setup({
+      ...NAME_GENERATOR,
+      synthetic: {
+        count: { distribution: 'constant', value: 4 },
+        responseBurden: 3,
+      },
+    });
+    expand();
+
+    const burden = screen.getByLabelText('Response burden');
+    fireEvent.change(burden, { target: { value: '' } });
+    fireEvent.blur(burden);
+
+    expect(syntheticValue(getFormValues)).toEqual({
+      count: { distribution: 'constant', value: 4 },
+    });
+    expect(burden).toHaveValue(
+      DEFAULT_RESPONSE_BURDEN.NameGenerator as unknown as number,
+    );
+  });
+
   it('writes only the burden where the descriptor accepts a burden alone', () => {
     const { getFormValues } = setup(SOCIOGRAM);
     expand();
