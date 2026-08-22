@@ -11,13 +11,13 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import ArchitectField from '../../ArchitectField';
-import { useClearValue } from '../../clearFieldValue';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField';
@@ -78,7 +78,7 @@ const EditorLivePreview = () => {
  * "the researcher removed this".
  */
 const ToggleableEditorFields = (props: Record<string, unknown>) => {
-  const clearValue = useClearValue();
+  const clearValue = useFormStore((state) => state.clearValue);
   const [open, setOpen] = useState(typeof props.note === 'string');
 
   return (

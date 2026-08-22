@@ -6,7 +6,6 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import { useClearValue } from '~/components/Form/clearFieldValue';
 import {
   formattedInputOptions,
   getComponentsForType,
@@ -104,7 +103,7 @@ export const useFieldHandlers = ({
   currentStageIndex,
 }: UseFieldHandlerProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const clearValue = useClearValue();
+  const clearValue = useFormStore((state) => state.clearValue);
   // The observers below must tell "the field has not registered yet" apart
   // from "the researcher cleared it", so registration is watched explicitly.
   const variableRegistered = useFormStore((state) =>
@@ -260,8 +259,8 @@ export const useFieldHandlers = ({
       setFieldValue('component', undefined);
       setFieldValue('options', undefined);
       setFieldValue('validation', undefined);
-      // Parameters are a TREE of leaves rather than one field — see
-      // useClearValue.
+      // Parameters are a TREE of leaves rather than one field — see the
+      // store's `clearValue`.
       clearValue('parameters');
       return;
     }
@@ -334,7 +333,7 @@ export const useFieldHandlers = ({
     }
 
     // Parameters always belong to the specific control, and are held as a
-    // TREE of leaves rather than one field — see useClearValue.
+    // TREE of leaves rather than one field — see the store's `clearValue`.
     clearValue('parameters');
   }, [clearValue, codebookType, component, componentRegistered, setFieldValue]);
 

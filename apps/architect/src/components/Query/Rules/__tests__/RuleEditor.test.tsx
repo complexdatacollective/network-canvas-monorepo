@@ -333,6 +333,26 @@ describe('choices that depend on earlier choices', () => {
     ).toBeNull();
   });
 
+  it('starts the comparison again when the attribute changes to another type', async () => {
+    renderRules();
+    openEditor();
+    await chooseTarget(/^Ego -/);
+    chooseOption(/Ego attribute/, 'consent');
+    chooseOption(/^Operator/, 'EXACTLY');
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Yes' }));
+
+    chooseOption(/Ego attribute/, 'groups');
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /^Operator/ })).toHaveValue(
+        '',
+      ),
+    );
+    expect(screen.queryByRole('radio', { name: 'Yes' })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Family' })).toBeNull();
+  });
+
   /**
    * `groups` exists on BOTH the person type and ego, so a carried-over
    * attribute id would be a perfectly valid choice in the ego list — the

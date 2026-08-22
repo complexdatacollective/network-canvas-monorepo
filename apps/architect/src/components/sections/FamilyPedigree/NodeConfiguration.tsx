@@ -20,7 +20,6 @@ import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
-import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
 import IssueAnchor from '~/components/IssueAnchor';
 import type {
@@ -235,7 +234,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
   // ArchitectField would replace the store write instead of running alongside
   // it, so the reset is an observer effect. Every non-preserved top-level key
   // is cleared as a whole TREE (registered + dormant descendants — see
-  // `clearFieldValue`), unioning currently-assembled keys with the committed
+  // store's `clearValue`), unioning currently-assembled keys with the committed
   // stage's own keys so a collapsed section's stale value is cleared too.
   // `nodeConfig` clears as a tree like every other reset key — including its
   // own `type` descendant, the field that just changed — so it is restored
@@ -271,7 +270,7 @@ const NodeConfiguration = (_props: StageEditorSectionProps) => {
     // never created, reading as "undo destroyed my stage".
     draft.runGesture(() => {
       for (const field of fieldsToReset) {
-        clearFieldValue(storeApi, field);
+        storeApi.getState().clearValue(field);
       }
       setStageValue('nodeConfig.type', nodeType);
     });

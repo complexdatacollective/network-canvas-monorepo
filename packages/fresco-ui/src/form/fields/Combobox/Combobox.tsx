@@ -48,6 +48,10 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
   > &
   VariantProps<typeof comboboxTriggerVariants>;
 
+// Stable empty selection, so a value of the wrong shape doesn't re-run the
+// memos below on every render.
+const EMPTY_SELECTION: (string | number)[] = [];
+
 function isComboboxOption(value: unknown): value is ComboboxOption {
   if (typeof value !== 'object' || value === null) return false;
 
@@ -75,7 +79,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     size,
     className,
     onChange,
-    value = [],
+    value = EMPTY_SELECTION,
     name,
     disabled,
     readOnly,
@@ -136,22 +140,30 @@ function ComboboxField(props: ComboboxFieldProps) {
     onChange?.([]);
   };
 
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a list of chosen values renders as nothing selected.
+  const selectedValues = useMemo(
+    () => (Array.isArray(value) ? value : EMPTY_SELECTION),
+    [value],
+  );
+
   // Convert value array to selected options
   const selectedOptions = useMemo(() => {
-    return options.filter((opt) => value.includes(opt.value));
-  }, [options, value]);
+    return options.filter((opt) => selectedValues.includes(opt.value));
+  }, [options, selectedValues]);
 
   // Generate trigger label text
   const triggerLabel = useMemo(() => {
-    if (value.length === 0) return null;
-    if (value.length === options.length) {
+    if (selectedValues.length === 0) return null;
+    if (selectedValues.length === options.length) {
       return `All ${plural} selected (${options.length})`;
     }
-    if (value.length === 1) {
+    if (selectedValues.length === 1) {
       return `1 ${singular} selected`;
     }
-    return `${value.length} ${plural} selected`;
-  }, [value, options.length, singular, plural]);
+    return `${selectedValues.length} ${plural} selected`;
+  }, [selectedValues, options.length, singular, plural]);
 
   const state = getInputState(props);
 

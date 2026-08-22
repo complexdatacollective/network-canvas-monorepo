@@ -65,6 +65,14 @@ function SelectField(props: SelectProps) {
 
   const portalContainer = usePortalContainer();
 
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`). Only a
+  // primitive can name an option or be rendered as its own label — an object
+  // reaching `Select.Value` below is thrown out as an invalid React child —
+  // so anything else shows the placeholder.
+  const selectedValue =
+    typeof value === 'string' || typeof value === 'number' ? value : null;
+
   return (
     <Select.Root
       {...rest}
@@ -74,7 +82,7 @@ function SelectField(props: SelectProps) {
       // the state React and Base UI both warn about. `null` is Base UI's own
       // "controlled, nothing selected", and `Select.Value`'s render prop below
       // already branches on it.
-      value={value ?? null}
+      value={selectedValue}
       onValueChange={handleValueChange}
       disabled={disabled}
       readOnly={readOnly}
