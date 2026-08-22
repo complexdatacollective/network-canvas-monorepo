@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useStore } from 'react-redux';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { getTypeForComponent } from '~/config/variables';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -104,7 +105,7 @@ const useCodebookCommit = () => {
       type: string,
       variable: string,
       configuration: Record<string, unknown>,
-      replaceProperties: readonly (typeof CODEBOOK_PROPERTIES)[number][],
+      replaceProperties: readonly VariablePropertyKey[],
     ) =>
       dispatch(
         updateVariableAsync({
@@ -151,14 +152,32 @@ export const useFormFieldCommit = ({
       };
 
       if (!_createNewVariable) {
-        if (!getVariable(variable ?? '')) return VARIABLE_NOT_FOUND;
+        const existing = getVariable(variable ?? '');
+        if (!existing) return VARIABLE_NOT_FOUND;
+
+        // `CODEBOOK_PROPERTIES` deliberately leaves `synthetic` off the
+        // replace set so an ordinary edit preserves the variable's authored
+        // generation parameters (see helpers.tsx). That preservation is only
+        // safe while the variable keeps its TYPE: the descriptor's shape is
+        // type-specific (`CurrentProtocolSchema` pairs each variable type
+        // with its own synthetic schema), so a component switch that changes
+        // the type would carry a descriptor the schema refuses — and this
+        // editor renders no synthetic control that could repair it. Naming
+        // `synthetic` here makes the reducer's `getStateWithUpdatedVariable`
+        // omit it from the preserved properties, and the new configuration
+        // carries none.
+        const changesType =
+          typeof variableType === 'string' && existing.type !== variableType;
+        const replaceProperties: readonly VariablePropertyKey[] = changesType
+          ? [...CODEBOOK_PROPERTIES, 'synthetic']
+          : CODEBOOK_PROPERTIES;
 
         await updateVariable(
           entity as Entity,
           type,
           variable ?? '',
           configuration,
-          CODEBOOK_PROPERTIES,
+          replaceProperties,
         );
 
         return { variable, ...rest };
@@ -181,7 +200,10 @@ export const useFormFieldCommit = ({
  * The NetworkComposer attribute editor's save. Here the field owns its own
  * `component`/`parameters` — each form may render the same variable its own
  * way — so only `options` and `validation` reach the codebook, and only those
- * are replaced there.
+ * are replaced there. That is also why this save needs no type-change
+ * handling for `synthetic`: it never writes `type` (or `component`) to an
+ * existing codebook variable, so a preserved descriptor always still matches
+ * its variable's type.
  */
 export const useComposerFieldCommit = ({
   entity,

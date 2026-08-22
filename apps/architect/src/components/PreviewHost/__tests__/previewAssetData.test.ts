@@ -133,7 +133,7 @@ describe('makeAssetResolver', () => {
       data: csvBlob(),
     });
 
-    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, ['network']);
     const resolved = await resolve('roster');
 
     expect(resolved).not.toBeNull();
@@ -157,13 +157,13 @@ describe('makeAssetResolver', () => {
       },
     } as unknown as Partial<CurrentProtocol>);
 
-    const resolve = makeAssetResolver(protocol, PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(protocol, PROTOCOL_ID, ['network']);
 
     expect(await resolve('roster')).toBeNull();
     expect(getAssetById).not.toHaveBeenCalled();
   });
 
-  it('resolves a geojson asset only for a geojson resolver', async () => {
+  it('resolves a geojson asset only for a resolver that allows geojson', async () => {
     const protocol = makeProtocol({
       assetManifest: { regions: GEOJSON_MANIFEST_ENTRY },
     } as unknown as Partial<CurrentProtocol>);
@@ -176,17 +176,34 @@ describe('makeAssetResolver', () => {
     // The collectors see nothing but a URL, so a resolver that handed a map to
     // the roster parser would be indistinguishable from a corrupt CSV.
     expect(
-      await makeAssetResolver(protocol, PROTOCOL_ID, 'network')('regions'),
+      await makeAssetResolver(protocol, PROTOCOL_ID, ['network'])('regions'),
     ).toBeNull();
     expect(getAssetById).not.toHaveBeenCalled();
 
-    const resolved = await makeAssetResolver(
-      protocol,
-      PROTOCOL_ID,
+    const resolved = await makeAssetResolver(protocol, PROTOCOL_ID, [
       'geojson',
-    )('regions');
+      'network',
+    ])('regions');
     expect(resolved?.url).toBe('blob:geojson');
     expect(resolved?.sourceFileName).toBe('regions.geojson');
+  });
+
+  it('resolves a network manifest entry for the geospatial allow-list', async () => {
+    // The schema lets `mapOptions.dataSourceAssetId` name a `geojson` OR a
+    // `network` asset, so the geospatial resolver must accept both kinds.
+    getAssetById.mockResolvedValue({
+      id: 'roster',
+      name: 'People',
+      data: geojsonBlob(),
+    });
+
+    const resolved = await makeAssetResolver(makeProtocol(), PROTOCOL_ID, [
+      'geojson',
+      'network',
+    ])('roster');
+
+    expect(resolved?.url).toBe('blob:geojson');
+    expect(resolved?.sourceFileName).toBe('people.csv');
   });
 
   it('returns null when the manifest has no entry for the asset', async () => {
@@ -194,7 +211,7 @@ describe('makeAssetResolver', () => {
       assetManifest: {},
     } as unknown as Partial<CurrentProtocol>);
 
-    const resolve = makeAssetResolver(protocol, PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(protocol, PROTOCOL_ID, ['network']);
 
     expect(await resolve('roster')).toBeNull();
     expect(getAssetById).not.toHaveBeenCalled();
@@ -203,7 +220,7 @@ describe('makeAssetResolver', () => {
   it('returns null when the asset is missing from the store', async () => {
     getAssetById.mockResolvedValue(undefined);
 
-    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, ['network']);
 
     expect(await resolve('roster')).toBeNull();
     expect(createObjectURL).not.toHaveBeenCalled();
@@ -216,7 +233,7 @@ describe('makeAssetResolver', () => {
       data: 'inline-data',
     });
 
-    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, ['network']);
 
     expect(await resolve('roster')).toBeNull();
     expect(createObjectURL).not.toHaveBeenCalled();
@@ -226,7 +243,7 @@ describe('makeAssetResolver', () => {
     getAssetById.mockRejectedValue(new Error('storage unavailable'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, 'network');
+    const resolve = makeAssetResolver(makeProtocol(), PROTOCOL_ID, ['network']);
 
     expect(await resolve('roster')).toBeNull();
     expect(console.error).toHaveBeenCalled();
@@ -319,6 +336,31 @@ describe('collectPreviewGeospatialData', () => {
     // An absent key is what generation reads as "no pool was supplied" and
     // fabricates for; an empty array would claim the map has no areas at all.
     expect(result).toEqual({});
+  });
+
+  it('builds the answer pool from a map asset manifest-typed network', async () => {
+    // `mapOptions.dataSourceAssetId` may reference a `network` asset as well
+    // as a `geojson` one (schema allowedTypes), so a preview must resolve it.
+    getAssetById.mockResolvedValue({
+      id: 'regions',
+      name: 'Regions',
+      data: geojsonBlob(),
+    });
+
+    const protocol = makeProtocol({
+      stages: [geospatialStage],
+      assetManifest: {
+        regions: {
+          id: 'regions',
+          type: 'network',
+          name: 'Regions',
+          source: 'regions.json',
+        },
+      },
+    } as unknown as Partial<CurrentProtocol>);
+    const result = await collectPreviewGeospatialData(protocol, PROTOCOL_ID);
+
+    expect(result['stage-geo']).toEqual(['North', 'South']);
   });
 });
 

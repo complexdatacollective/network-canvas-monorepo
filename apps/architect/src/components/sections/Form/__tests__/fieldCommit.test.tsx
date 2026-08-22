@@ -90,6 +90,43 @@ describe('useFormFieldCommit', () => {
     expect(arg.replaceProperties).not.toContain('readOnly');
   });
 
+  // A variable's `synthetic` descriptor is type-specific (a number's normal
+  // distribution says nothing about a text variable), and the schema refuses
+  // a descriptor that does not match its variable's type — with no synthetic
+  // editor in Architect to repair it afterwards.
+  it('also claims synthetic when the chosen component changes the variable type', async () => {
+    existingVariable = {
+      component: 'Number',
+      type: 'number',
+      name: 'age',
+      synthetic: { distribution: 'normal', mean: 40, sd: 10 },
+    };
+    const commit = renderCommit(useFormFieldCommit);
+
+    await commit({ variable: 'v1', component: 'Text' });
+
+    const arg = updateVariableAsync.mock.calls[0]![0];
+    expect(arg.replaceProperties).toContain('synthetic');
+    expect(arg.configuration).not.toHaveProperty('synthetic');
+  });
+
+  it('leaves synthetic unclaimed when the edit keeps the variable type', async () => {
+    existingVariable = {
+      component: 'Text',
+      type: 'text',
+      name: 'nickname',
+      synthetic: { kind: 'firstName' },
+    };
+    const commit = renderCommit(useFormFieldCommit);
+
+    // TextArea is still a text-type component, so the preserved descriptor
+    // stays valid and the reducer must keep carrying it through the edit.
+    await commit({ variable: 'v1', component: 'TextArea' });
+
+    const arg = updateVariableAsync.mock.calls[0]![0];
+    expect(arg.replaceProperties).not.toContain('synthetic');
+  });
+
   // The dialog merges its values over the row, which arrives already merged
   // with the codebook variable — so a property the chosen control cannot carry
   // has to be cleared explicitly or the codebook keeps its stale value.

@@ -222,8 +222,18 @@ export const NodePanels = (_props: StageEditorSectionProps) => {
       // The read in `usePanelAt` and this write are a closed pair: every
       // gesture rewrites the whole bounded slot set from the assembled list,
       // so a key read but not written is mis-slotted by a reorder, and a key
-      // written but not read is erased by the next one.
-      setStageValue(`panels[${index}].synthetic`, panel?.synthetic);
+      // written but not read is erased by the next one. The slot is therefore
+      // always written — but only an existing-network panel keeps its value:
+      // `panelSchema` refuses a `synthetic` block on any panel whose
+      // `dataSource` is not 'existing' (the odds are per-candidate nomination
+      // odds, which only the in-progress network offers), and this editor
+      // renders no control that could remove a block the schema rejects. The
+      // data source is resolved exactly as its own write above resolves it.
+      const resolvedDataSource = panel?.dataSource ?? 'existing';
+      setStageValue(
+        `panels[${index}].synthetic`,
+        resolvedDataSource === 'existing' ? panel?.synthetic : undefined,
+      );
     },
     [setStageValue],
   );
