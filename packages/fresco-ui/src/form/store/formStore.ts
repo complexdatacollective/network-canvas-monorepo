@@ -10,6 +10,7 @@ import {
   getValue as readObjectPath,
   isSafeObjectPath,
   type ObjectPath,
+  omitValue,
   parseLegacyObjectPath,
   parseObjectPath,
 } from '../utils/objectPath';
@@ -132,22 +133,35 @@ const collectDescendantPaths = (
 };
 
 /**
- * Whether any strict prefix of `path` is registered as a field of its own.
+ * The NEAREST strict prefix of `path` registered as a field of its own, or
+ * `undefined` when no field sits above it.
  *
  * Looked up by key rather than scanned, which is sound only because
  * `registerField` keys every record by `formatObjectPath` of its own path —
  * the same formatting applied to a prefix here.
+ *
+ * Longest prefix first, because `getFormValues` replays nested fields
+ * shallowest-first: where a form registers both `parameters` and
+ * `parameters.bounds`, the deeper of the two is the one whose value the
+ * assembled output actually shows at a name beneath it.
  */
+const findRegisteredAncestorPath = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath | undefined => {
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) return ancestorPath;
+  }
+
+  return undefined;
+};
+
+/** Whether any strict prefix of `path` is registered as a field of its own. */
 const hasRegisteredAncestor = (
   fields: Map<string, FieldState>,
   path: ObjectPath,
-): boolean => {
-  for (let length = 1; length < path.length; length += 1) {
-    if (fields.has(formatObjectPath(path.slice(0, length)))) return true;
-  }
-
-  return false;
-};
+): boolean => findRegisteredAncestorPath(fields, path) !== undefined;
 
 /**
  * Helper to calculate form validity based on both field states and form-level errors.
@@ -1008,17 +1022,54 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       /**
-       * Clear `fieldName` and everything the form holds beneath it.
+       * Clear `fieldName` everywhere the form holds it — the same three places
+       * `getValue` reads it from, resolved in the same order: a field of its
+       * own, the leaves registered BENEATH it, and the compound field
+       * registered at an ANCESTOR of it.
+       *
+       * The name resolves to a FIELD before it is read structurally, exactly
+       * as every other operation on this store resolves one. An opaque name is
+       * a single segment that happens to contain a dot (`favorite.color`, what
+       * `Field nameMode="opaque"` registers and publishes), so interpreting it
+       * structurally parks an `undefined` at a nested name nothing is
+       * registered under and leaves the field it actually names holding its
+       * value — readable through the alias, and still submitted.
        *
        * `setFieldValue(name, undefined)` clears nothing when the value is held
        * as a tree of leaves rather than as one field, and DORMANT descendants
        * have to go too: an unmounted field's parked value outranks
        * `initialValue` when it next registers, so a leaf left behind here comes
        * straight back the moment anything re-registers it.
+       *
+       * A name a registered ANCESTOR supplies is cleared INSIDE that
+       * ancestor's value — a fresh copy of it with the sub-path dropped,
+       * written through `setFieldValue` like any other value, so subscribers
+       * and dirty tracking see it as the change it is. Parking an `undefined`
+       * at the name alone would clear nothing at all, because the read takes
+       * the registered ancestor over a dormant field sitting at the name. An
+       * ancestor holding nothing at the sub-path — a string where the name
+       * expects an object, a key it never carried — is left exactly as it is
+       * rather than rebuilt around a value it never had.
+       *
+       * A REGISTERED field at the name needs no such write: `getFormValues`
+       * replays the more specific field OVER its ancestor, so clearing that
+       * field is already what every read of the name answers with.
        */
       clearValue: (fieldReference) => {
-        const containerPath = parseFieldReference(fieldReference);
         const pathOperations = get().pathOperations;
+        const fieldName = resolveRegisteredFieldName(
+          fieldRecords,
+          dormantRecords,
+          fieldReference,
+        );
+        const existingField =
+          fieldRecords.get(fieldName) ?? dormantRecords.get(fieldName);
+        // A field of its own answers for its own name, whatever that name
+        // reads like structurally.
+        const containerPath = existingField
+          ? resolveStoredFieldPath(fieldName, existingField)
+          : parseFieldReference(fieldReference);
+
         if (!containerPath || !pathOperations) {
           get().setFieldValue(fieldReference, undefined);
           return;
@@ -1030,11 +1081,34 @@ export const createFormStore = (): FormStoreApi => {
           ...collectDescendantPaths(fieldRecords, containerPath),
           ...collectDescendantPaths(dormantRecords, containerPath),
         ];
+        const ancestorPath = fieldRecords.has(fieldName)
+          ? undefined
+          : findRegisteredAncestorPath(fieldRecords, containerPath);
 
-        pathOperations.setFieldValue(containerPath, undefined);
+        get().setFieldValue(fieldReference, undefined);
         descendants.forEach((path) => {
           pathOperations.setFieldValue(path, undefined);
         });
+
+        if (!ancestorPath) return;
+
+        const ancestor = fieldRecords.get(formatObjectPath(ancestorPath));
+        if (!ancestor) return;
+
+        // A copy of a `FieldValue` with one sub-path dropped out of it is
+        // itself a `FieldValue`: `omitValue` only ever removes a key from a
+        // container it has already copied.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+        const clearedAncestorValue = omitValue(
+          ancestor.value,
+          containerPath.slice(ancestorPath.length),
+        ) as FieldValue;
+        // Identity is `omitValue`'s report that the value held nothing at the
+        // sub-path. Writing anyway would mark a field dirty over a value the
+        // person never had.
+        if (clearedAncestorValue === ancestor.value) return;
+
+        pathOperations.setFieldValue(ancestorPath, clearedAncestorValue);
       },
 
       getFormValues: () => {

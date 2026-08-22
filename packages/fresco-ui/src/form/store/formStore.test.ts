@@ -2379,6 +2379,20 @@ describe('container paths', () => {
     store.getState().registerField({ name: 'parameters.min', initialValue: 1 });
   };
 
+  /**
+   * The mirror image of a container: one field registered at an ANCESTOR
+   * path holds values readable at names no field is registered under. The
+   * form's own output shows them, so a read of one that answered `undefined`
+   * would tell a caller layering live values over committed ones that the
+   * form holds nothing there — and it would revive the committed value.
+   */
+  const registerCompoundParameters = () => {
+    store.getState().registerField({
+      name: 'parameters',
+      initialValue: { type: 'relative', bounds: { min: 1 } },
+    });
+  };
+
   describe('reading', () => {
     it('reads a registered leaf by its exact name, unchanged', () => {
       store.getState().registerField({ name: 'label', initialValue: 'Age' });
@@ -2515,20 +2529,6 @@ describe('container paths', () => {
       expect(store.getState().getValue('parameters')).toEqual(first);
       expect(store.getState().getValue('parameters')).not.toBe(first);
     });
-
-    /**
-     * The mirror image of a container: one field registered at an ANCESTOR
-     * path holds values readable at names no field is registered under. The
-     * form's own output shows them, so a read of one that answered `undefined`
-     * would tell a caller layering live values over committed ones that the
-     * form holds nothing there — and it would revive the committed value.
-     */
-    const registerCompoundParameters = () => {
-      store.getState().registerField({
-        name: 'parameters',
-        initialValue: { type: 'relative', bounds: { min: 1 } },
-      });
-    };
 
     it('reads a sub-path out of a field registered above it', () => {
       registerCompoundParameters();
@@ -2713,6 +2713,268 @@ describe('container paths', () => {
       expect(store.getState().getFieldState('parametersExtra')?.value).toBe(
         'kept',
       );
+    });
+
+    it('clears a sub-path out of the field registered above it', () => {
+      registerCompoundParameters();
+
+      store.getState().clearValue('parameters.type');
+
+      // Parking an `undefined` at the name alone clears nothing: the read
+      // takes the registered ancestor over a dormant field at the name, so
+      // the value would still read back — and still submit.
+      expect(store.getState().getValue('parameters.type')).toBeUndefined();
+      expect(store.getState().getFormValues()).toStrictEqual({
+        parameters: { bounds: { min: 1 } },
+      });
+      expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
+        { bounds: { min: 1 } },
+      );
+    });
+
+    it('drops the cleared key rather than parking an `undefined` under it', () => {
+      registerCompoundParameters();
+
+      store.getState().clearValue('parameters.type');
+
+      // A key still present holding `undefined` is a key the submitted output
+      // carries, and a protocol written from that output carries it too.
+      const values = store.getState().getFormValues();
+      expect(Object.keys(values.parameters ?? {})).toStrictEqual(['bounds']);
+    });
+
+    it('clears a nested sub-path without editing the value the ancestor held', () => {
+      const registeredValue = { type: 'relative', bounds: { min: 1 } };
+      store
+        .getState()
+        .registerField({ name: 'parameters', initialValue: registeredValue });
+
+      store.getState().clearValue('parameters.bounds.min');
+
+      // Every container along the way is rebuilt, so the object the field
+      // registered with — the one a host may still be holding — is intact.
+      expect(registeredValue).toStrictEqual({
+        type: 'relative',
+        bounds: { min: 1 },
+      });
+      expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
+        { type: 'relative', bounds: {} },
+      );
+      expect(
+        store.getState().getValue('parameters.bounds.min'),
+      ).toBeUndefined();
+    });
+
+    it('clears a sub-path beneath an array the ancestor holds, as an array', () => {
+      store.getState().registerField({
+        name: 'items',
+        initialValue: [{ x: 1, y: 2 }, { x: 3 }],
+      });
+
+      store.getState().clearValue('items[0].x');
+
+      expect(store.getState().getFormValues()).toStrictEqual({
+        items: [{ y: 2 }, { x: 3 }],
+      });
+    });
+
+    it('holds the position of a cleared array element open', () => {
+      store
+        .getState()
+        .registerField({ name: 'items', initialValue: ['a', 'b'] });
+
+      store.getState().clearValue('items[1]');
+
+      // The indices around it are positions other names address, so closing
+      // the gap would silently renumber them.
+      expect(store.getState().getFormValues()).toStrictEqual({
+        items: ['a', undefined],
+      });
+      expect(store.getState().getValue('items[0]')).toBe('a');
+    });
+
+    it('clears out of the NEAREST registered ancestor, not the outermost', () => {
+      store.getState().registerField({
+        name: 'parameters',
+        initialValue: { bounds: { min: 1, max: 5 } },
+      });
+      store.getState().registerField({
+        name: 'parameters.bounds',
+        initialValue: { min: 2, max: 6 },
+      });
+
+      store.getState().clearValue('parameters.bounds.min');
+
+      // `getFormValues` replays the deeper field OVER the compound one, so
+      // the deeper field is the one the name reads its value out of — and
+      // clearing the outer one would leave the read answering as it did.
+      expect(
+        store.getState().getValue('parameters.bounds.min'),
+      ).toBeUndefined();
+      expect(
+        store.getState().getFieldState('parameters.bounds')?.value,
+      ).toStrictEqual({ max: 6 });
+      expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
+        { bounds: { min: 1, max: 5 } },
+      );
+    });
+
+    it('leaves an ancestor holding no object at the sub-path exactly as it was', () => {
+      store
+        .getState()
+        .registerField({ name: 'parameters', initialValue: 'exact' });
+
+      store.getState().clearValue('parameters.type');
+
+      expect(store.getState().getFieldState('parameters')?.value).toBe('exact');
+      expect(store.getState().getFieldState('parameters')?.meta.isDirty).toBe(
+        false,
+      );
+    });
+
+    it('leaves an ancestor carrying nothing at the sub-path exactly as it was', () => {
+      registerCompoundParameters();
+      const before = store.getState().getFieldState('parameters')?.value;
+
+      store.getState().clearValue('parameters.max');
+
+      expect(store.getState().getFieldState('parameters')?.value).toBe(before);
+      expect(store.getState().getFieldState('parameters')?.meta.isDirty).toBe(
+        false,
+      );
+    });
+
+    it('leaves the ancestor alone when a field is registered at the name itself', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+
+      store.getState().clearValue('parameters.type');
+
+      // `getFormValues` replays the more specific field OVER the compound
+      // one, so clearing that field is the whole answer; rewriting the
+      // ancestor as well would only rebuild a value the replay covers.
+      expect(store.getState().getValue('parameters.type')).toBeUndefined();
+      expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
+        { type: 'relative', bounds: { min: 1 } },
+      );
+    });
+
+    it('clears through the ancestor for a field that has unmounted at the name', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+      store.getState().unregisterField('parameters.type');
+
+      store.getState().clearValue('parameters.type');
+
+      // An unmounted field contributes nothing to `getFormValues`, so the
+      // ancestor is the only place the name is still held.
+      expect(store.getState().getValue('parameters.type')).toBeUndefined();
+      expect(store.getState().getFormValues()).toStrictEqual({
+        parameters: { bounds: { min: 1 } },
+      });
+    });
+
+    it('clears an opaque field named by the dotted name it publishes', () => {
+      // What `Field nameMode="opaque"` registers: ONE segment that happens to
+      // contain a dot. Reading that name structurally writes an `undefined`
+      // at a nested name nothing is registered under, and leaves the field it
+      // actually names holding its value — readable, and still submitted.
+      getPathOperations(store).registerField({
+        name: ['favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+
+      store.getState().clearValue('favorite.color');
+
+      expect(
+        getPathOperations(store).getFieldState(['favorite.color'])?.value,
+      ).toBeUndefined();
+      expect(store.getState().getFormValues()).toStrictEqual({
+        'favorite.color': undefined,
+      });
+      expect(store.getState().dormantValues.size).toBe(0);
+    });
+
+    it('does not write past an opaque name into the container it reads like', () => {
+      getPathOperations(store).registerField({
+        name: ['favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+      store
+        .getState()
+        .registerField({ name: 'favorite.shape', initialValue: 'round' });
+
+      store.getState().clearValue('favorite.color');
+
+      expect(store.getState().getFormValues()).toStrictEqual({
+        'favorite.color': undefined,
+        'favorite': { shape: 'round' },
+      });
+    });
+
+    it('clears an opaque alias that only looks like an unsafe path', () => {
+      getPathOperations(store).registerField({
+        name: ['safe.__proto__.polluted'],
+        submissionErrorKey: 'safe.__proto__.polluted',
+        initialValue: 'preserved',
+      });
+
+      store.getState().clearValue('safe.__proto__.polluted');
+
+      expect(
+        store.getState().getFieldState('safe.__proto__.polluted')?.value,
+      ).toBeUndefined();
+      expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false);
+    });
+
+    it('sweeps no structural subtree beneath an opaque name', () => {
+      getPathOperations(store).registerField({
+        name: ['favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+      store
+        .getState()
+        .registerField({ name: 'favorite.color.shade', initialValue: 'dark' });
+
+      store.getState().clearValue('favorite.color');
+
+      // The opaque name is ONE segment, so the leaf beneath the structural
+      // `favorite.color` sits in a container the opaque field has nothing to
+      // do with — the same reading `hasValue` gives such a name.
+      expect(
+        store.getState().getFieldState('favorite.color.shade')?.value,
+      ).toBe('dark');
+      expect(store.getState().getFormValues()).toStrictEqual({
+        'favorite.color': undefined,
+        'favorite': { color: { shade: 'dark' } },
+      });
+    });
+
+    it('takes a structural field at the name over an opaque alias, as every read does', () => {
+      getPathOperations(store).registerField({
+        name: ['favorite.color'],
+        submissionErrorKey: 'favorite.color',
+        initialValue: 'blue',
+      });
+      store
+        .getState()
+        .registerField({ name: 'favorite.color', initialValue: 'green' });
+
+      store.getState().clearValue('favorite.color');
+
+      expect(
+        store.getState().getFieldState('favorite.color')?.value,
+      ).toBeUndefined();
+      expect(
+        getPathOperations(store).getFieldState(['favorite.color'])?.value,
+      ).toBe('blue');
     });
   });
 });
