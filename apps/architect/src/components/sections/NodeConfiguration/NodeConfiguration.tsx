@@ -11,7 +11,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
@@ -262,12 +262,12 @@ export const NodeConfigurationComponent = ({
   // moment the dialog closes, so the window is told which stage and which slot
   // it is creating for, and offers only what the rules that slot implies leave
   // open.
-  const owningStage = useOwningStageDraft();
+  const readOwningStage = useOwningStageReader();
   const newVariableWindowInitialProps = {
     entity: (entity === 'ego' ? 'node' : entity) as Entity,
     type: type ?? '',
     initialValues: { name: '', type: 'categorical' },
-    owningStage,
+    readOwningStage,
     slotPath: 'convexHullVariable',
   };
   const handleCreatedGroupVariable = (...args: unknown[]) => {

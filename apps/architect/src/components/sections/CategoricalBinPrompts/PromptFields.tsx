@@ -17,7 +17,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import LockedOptions from '~/components/Options/LockedOptions';
 import PromptText from '~/components/sections/PromptText';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
@@ -192,12 +192,12 @@ const PromptFields = ({
   // the attribute blank, and the window must not offer settings those rules
   // have already decided. The index is arbitrary: what a bin's prompt slot
   // implies is decided by the shape of the path, not by which prompt it is.
-  const owningStage = useOwningStageDraft();
+  const readOwningStage = useOwningStageReader();
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
     type: type ?? '',
     initialValues: { name: '', type: '' },
-    owningStage,
+    readOwningStage,
     slotPath: 'prompts.0.variable',
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {

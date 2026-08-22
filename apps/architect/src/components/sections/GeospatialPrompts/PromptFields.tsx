@@ -8,7 +8,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import PromptText from '~/components/sections/PromptText';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
@@ -64,13 +64,13 @@ const PromptFields = ({
   // slot it is creating for, and offers only what the rules that slot implies
   // leave open. The index is arbitrary: what a slot implies is decided by the
   // shape of the path, not by which prompt it is.
-  const owningStage = useOwningStageDraft();
+  const readOwningStage = useOwningStageReader();
 
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
     type,
     initialValues: { name: '', type: VARIABLE_TYPE },
-    owningStage,
+    readOwningStage,
     slotPath: 'prompts.0.variable',
   };
 

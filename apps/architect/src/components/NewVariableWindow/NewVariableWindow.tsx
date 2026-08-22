@@ -261,14 +261,14 @@ type NewVariableWindowProps = {
   /** Pre-defined options that cannot be edited. When provided, the options section is read-only. */
   lockedOptions?: LockedVariableOptions | null;
   /**
-   * The stage this attribute is being created for, as its editor holds it, and
-   * the stage-relative path of the slot the attribute will fill. Together they
+   * Reads the stage this attribute is being created for, as its editor holds
+   * it, beside the stage-relative path of the slot the attribute will fill. Together they
    * are what lets the synthetic sub-editor apply the rules that stage will
    * impose the moment the attribute exists — see `prospectiveImpliedRules`.
    * Both are absent where no stage owns the attribute (the Codebook's own "add
    * attribute" buttons), and then nothing is implied.
    */
-  owningStage?: OwningStageDraft | null;
+  readOwningStage?: (() => OwningStageDraft | undefined) | null;
   slotPath?: string | null;
 };
 
@@ -281,7 +281,7 @@ export default function NewVariableWindow({
   onCancel,
   initialValues = null,
   lockedOptions = null,
-  owningStage = null,
+  readOwningStage = null,
   slotPath = null,
 }: NewVariableWindowProps) {
   const dispatch = useAppDispatch();
@@ -334,9 +334,9 @@ export default function NewVariableWindow({
   const implied = useMemo(
     () =>
       show
-        ? prospectiveImpliedRules(owningStage, slotPath, subject)
+        ? prospectiveImpliedRules(readOwningStage?.(), slotPath, subject)
         : NO_IMPLIED_RULES,
-    [show, owningStage, slotPath, subject],
+    [show, readOwningStage, slotPath, subject],
   );
 
   const handleSubmit = useCallback(

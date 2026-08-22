@@ -99,6 +99,7 @@ vi.mock('~/ducks/hooks', () => ({
 import NewVariableWindow from '../NewVariableWindow';
 
 type OwningSlot = {
+  /** The stage draft the window will read when it opens. */
   owningStage?: Record<string, unknown>;
   slotPath?: string;
 };
@@ -109,8 +110,9 @@ const renderWindow = (
     type: 'number',
   },
   owningSlot: OwningSlot = {},
-) =>
-  render(
+) => {
+  const { owningStage, ...rest } = owningSlot;
+  return render(
     <NewVariableWindow
       show
       entity="node"
@@ -118,9 +120,15 @@ const renderWindow = (
       initialValues={initialValues}
       onComplete={vi.fn()}
       onCancel={vi.fn()}
-      {...owningSlot}
+      // A reader rather than a value: the window asks for the owning stage
+      // when it opens, so nothing subscribes to a form store while it is shut.
+      {...(owningStage === undefined
+        ? {}
+        : { readOwningStage: () => owningStage })}
+      {...rest}
     />,
   );
+};
 
 const CATEGORICAL_ATTRIBUTE = {
   name: 'closeness',

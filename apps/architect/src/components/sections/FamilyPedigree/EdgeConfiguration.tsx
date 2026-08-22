@@ -20,7 +20,7 @@ import type {
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -67,7 +67,7 @@ type VariableWindowInitialProps = {
   };
   lockedOptions: LockedVariableOptions | null;
   /** See `prospectiveImpliedRules`. */
-  owningStage: Record<string, unknown> | undefined;
+  readOwningStage: () => Record<string, unknown> | undefined;
   slotPath: string | null;
 };
 
@@ -295,13 +295,13 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     ];
     setStageValue(params.field, id);
   };
-  const owningStage = useOwningStageDraft();
+  const readOwningStage = useOwningStageReader();
   const initialWindowProps: VariableWindowInitialProps = {
     entity: edgeEntity,
     type: edgeType ?? '',
     initialValues: { name: '', type: '' },
     lockedOptions: null,
-    owningStage,
+    readOwningStage,
     slotPath: null,
   };
   const [variableWindowProps, openVariableWindow] = useNewVariableWindowState(

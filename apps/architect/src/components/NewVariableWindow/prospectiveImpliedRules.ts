@@ -1,5 +1,5 @@
 import { cloneDeep, set } from 'es-toolkit/compat';
-import { useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useContext } from 'react';
 
 import {
   NO_IMPLIED_RULES,
@@ -40,13 +40,19 @@ const PROSPECTIVE_VARIABLE_ID = '__architect-prospective-attribute__';
 /** The stage as its editor holds it, mid-edit. */
 export type OwningStageDraft = Record<string, unknown>;
 
-/** Nothing to unsubscribe from, for a surface with no stage form above it. */
-const NOT_SUBSCRIBED = () => undefined;
-
 /**
- * The stage the editor is holding, for asking what one of its slots implies —
- * or `undefined` where the surface asking is not inside a stage form, in which
- * case no stage owns the attribute and nothing is implied about it.
+ * Reads the stage the editor is holding, for asking what one of its slots
+ * implies — or `undefined` where the surface asking is not inside a stage form,
+ * in which case no stage owns the attribute and nothing is implied about it.
+ *
+ * A READER rather than a value, called when the create-attribute window opens
+ * rather than on every render. The alternative — subscribing to the form store
+ * so the draft stayed current — put a whole-form subscription inside editors
+ * that register and unregister fields as they render: FamilyPedigree's node
+ * configuration then re-rendered on its own field registrations, re-registered
+ * on the re-render, and hit React's update-depth limit before the section had
+ * finished mounting. Nothing needs the draft until the window opens, and at
+ * that moment reading it directly is both cheaper and fresher.
  *
  * The committed stage under the form's own values: `getFormValues()` reports
  * REGISTERED fields, so it carries the subject and the slots but never the
@@ -63,30 +69,19 @@ const NOT_SUBSCRIBED = () => undefined;
  * buttons open the same dialog with no stage behind it — rather than the
  * mistake `useStageFormContext`'s throw reports.
  */
-export const useOwningStageDraft = (): OwningStageDraft | undefined => {
+export const useOwningStageReader = (): (() =>
+  | OwningStageDraft
+  | undefined) => {
   const stageForm = useContext(StageFormContext);
   const storeApi = stageForm?.storeApi;
   const committedStage = stageForm?.committedStage;
 
-  const subscribe = useCallback(
-    (onStoreChange: () => void) =>
-      storeApi?.subscribe(onStoreChange) ?? NOT_SUBSCRIBED,
-    [storeApi],
-  );
-  // The store's own change signal. `getFormValues()` assembles a fresh object
-  // on every call, so it cannot be the snapshot; the map it is derived from
-  // changes identity exactly when the assembled values would.
-  const registeredFields = useSyncExternalStore(
-    subscribe,
-    () => storeApi?.getState().fields,
-  );
-
-  return useMemo(
+  return useCallback(
     () =>
       storeApi
         ? { ...committedStage, ...storeApi.getState().getFormValues() }
         : undefined,
-    [storeApi, committedStage, registeredFields],
+    [storeApi, committedStage],
   );
 };
 

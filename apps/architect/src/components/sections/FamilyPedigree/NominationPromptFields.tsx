@@ -7,7 +7,7 @@ import type { Entity } from '~/components/NewVariableWindow';
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
-import { useOwningStageDraft } from '~/components/NewVariableWindow/prospectiveImpliedRules';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import PromptText from '~/components/sections/PromptText';
 import { useAppSelector } from '~/ducks/hooks';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
@@ -67,7 +67,7 @@ const NominationPromptFields = ({
   // stage and which slot it is creating for, and offers only what the rules
   // that slot implies leave open. The index is arbitrary: what a slot implies
   // is decided by the shape of the path, not by which prompt it is.
-  const owningStage = useOwningStageDraft();
+  const readOwningStage = useOwningStageReader();
 
   const [newVariableWindowProps, openNewVariableWindow] =
     useNewVariableWindowState(
@@ -76,7 +76,7 @@ const NominationPromptFields = ({
         type: nodeType ?? '',
         initialValues: { name: '', type: 'boolean' },
         allowVariableTypes: ['boolean'],
-        owningStage,
+        readOwningStage,
         slotPath: 'nominationPrompts.0.variable',
       },
       handleCreatedNewVariable,
