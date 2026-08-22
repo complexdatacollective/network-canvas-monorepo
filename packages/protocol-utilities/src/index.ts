@@ -18,6 +18,16 @@ export {
   DEFAULT_SYNTHETIC_SEED,
   MAX_SYNTHETIC_INTERVIEWS,
 } from './synthetic-interviews/constants';
+// The two-part batch identity a host reports and replays: seed plus
+// start-window day, as one copyable token. Published for the same reason the
+// constants above are — what makes a batch reproducible is a property of
+// asking for synthetic data, and every host must tell the same story about it.
+export {
+  formatSyntheticBatchToken,
+  freshBatchStartWindow,
+  parseSyntheticBatchToken,
+  type SyntheticBatchIdentity,
+} from './synthetic-interviews/batchToken';
 export type {
   AssetData,
   EdgeOverrideEntry,
