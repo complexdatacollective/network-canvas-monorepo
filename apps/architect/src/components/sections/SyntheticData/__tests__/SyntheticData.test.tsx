@@ -663,17 +663,35 @@ describe('live feasibility', () => {
     expect(disclosure()).toHaveAttribute('aria-expanded', 'false');
   });
 
+  /**
+   * A settled verdict, WITNESSED rather than waited for.
+   *
+   * The two tests below assert that something is absent, and an absence proves
+   * nothing while the analysis might still be running — or might never have
+   * run at all. A delay followed by negative queries passes just as happily
+   * against a hook that never fires. The announcer publishes every verdict
+   * into the page's live region, so waiting for the sentence THIS verdict
+   * produces is what makes the absence beneath it mean something: the analysis
+   * reached a verdict, it is the verdict expected, and the stage still showed
+   * nothing.
+   */
+  const settledVerdict = (announcement: string) =>
+    screen.findByText(announcement, undefined, { timeout: 5000 });
+
   it('leaves a refusal no stage owns to the protocol-level verdict', async () => {
     // A `unique` slot too small for the people the protocol can create is the
     // sum of every stage that draws it, so no stage editor is the place to
-    // fix it — the overview's verdict lists it instead. Showing it here would
+    // fix it — the Codebook's verdict lists it instead. Showing it here would
     // put the same refusal on every stage that writes the type.
     setup(NAME_GENERATOR, infeasibleCodebook);
 
-    // Long enough for the verdict to have arrived and rendered had this stage
-    // claimed it; the engine's own analysis of this fixture is pinned by
-    // `Synthetic/__tests__/conflicts.test.ts`.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // The analysis ran and found the conflict; the engine's own reading of
+    // this fixture is pinned by `Synthetic/__tests__/conflicts.test.ts`.
+    expect(
+      await settledVerdict(
+        'Synthetic data cannot be generated. 1 conflict was found.',
+      ),
+    ).toBeInTheDocument();
 
     expect(
       screen.queryByText(/only 2 distinct values are possible/),
@@ -686,9 +704,11 @@ describe('live feasibility', () => {
   it('shows nothing while the protocol is feasible', async () => {
     setup(NAME_GENERATOR);
 
-    // Long enough for a verdict to have arrived and rendered had there been
-    // one to render.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(
+      await settledVerdict(
+        'Synthetic data can be generated for this protocol.',
+      ),
+    ).toBeInTheDocument();
 
     expect(
       screen.queryByText('Synthetic data cannot be generated for this stage'),
