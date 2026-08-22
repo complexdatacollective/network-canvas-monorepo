@@ -628,7 +628,11 @@ export default function RichTextEditorField({
     prepareLinkPopoverState();
   };
 
-  const showTextFormatting = options.bold || options.italic || options.links;
+  // The formatting CLUSTER (drives separators and toolbar presence) versus
+  // the toggle GROUP inside it: links render as a toolbar-level sibling of
+  // the toggles, so a links-only toolbar must not mount an empty group.
+  const showFormattingToggles = options.bold || options.italic;
+  const showTextFormatting = showFormattingToggles || options.links;
   const showHeadings = headingLevels.length > 0;
   const showLists = options.lists.bullet || options.lists.ordered;
   const showThematicBreak = options.thematicBreak;
@@ -665,7 +669,7 @@ export default function RichTextEditorField({
       <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (
         <Toolbar.Root className={toolbarStyles}>
-          {showTextFormatting && (
+          {showFormattingToggles && (
             // One element carrying both the toolbar-group and toggle-group
             // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
             // renders two nested `group` roles announcing nothing new.
