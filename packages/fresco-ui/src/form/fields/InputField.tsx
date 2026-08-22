@@ -106,15 +106,24 @@ const inputVariants = compose(
   }),
 );
 
+// The width each field size's stepper needs to stay square: the wrapper's
+// heightVariants step minus its 2px border on each edge (sm h-10 → 36px,
+// md h-12 → 44px, lg h-16 → 60px, xl h-20 → 76px). Stated outright rather
+// than left to `aspect-square` × `h-full`, both because shipped Safari
+// computes a ratio-derived flex-item width as zero and because IconButton
+// now carries its own explicit size width, which would otherwise win here.
+// Change these together with heightVariants.
+const stepperWidthBySize = {
+  sm: 'w-9!',
+  md: 'w-11!',
+  lg: 'w-15!',
+  xl: 'w-19!',
+} as const;
+
 const stepperButtonVariants = cx(
   // Steppers keep their square footprint; they must never compress when the
-  // field is constrained narrow (the middle input shrinks instead). The width
-  // is stated outright rather than left to `aspect-square` × height, both
-  // because shipped Safari computes a ratio-derived flex-item width as zero
-  // and because IconButton now carries its own explicit size width, which
-  // would otherwise win here. `w-10!` pairs with the wrapper's
-  // `[&_button]:h-10` pin above — change them together.
-  'aspect-square h-full! w-10! shrink-0 rounded-none',
+  // field is constrained narrow (the middle input shrinks instead).
+  'aspect-square h-full! shrink-0 rounded-none',
   'elevation-none! translate-y-0!',
   'bg-input-contrast/5 text-input-contrast',
   'hover:bg-input-contrast/10',
@@ -277,7 +286,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           aria-label={stepperLabels?.decrease ?? 'Decrease value'}
           tabIndex={-1}
           icon={<Minus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
         <div
           className={cx(
@@ -300,7 +309,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           aria-label={stepperLabels?.increase ?? 'Increase value'}
           tabIndex={-1}
           icon={<Plus />}
-          className={stepperButtonVariants}
+          className={cx(stepperButtonVariants, stepperWidthBySize[size])}
         />
       </>
     ) : (
