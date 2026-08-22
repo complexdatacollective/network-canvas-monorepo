@@ -1,12 +1,13 @@
-import { get, isEqual } from 'es-toolkit/compat';
-import { useId, useMemo, useRef } from 'react';
+import { useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import {
+  useFormHasValue,
+  useFormValue,
+} from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -43,6 +44,7 @@ const PREVIEW_DRAFT_FIELDS = [
   'showValidationHints',
   'component',
   'options',
+  'parameters',
   'validation',
 ] as const;
 
@@ -89,35 +91,21 @@ const FieldEditorPreview = ({
 }: FieldEditorPreviewProps) => {
   const headingId = useId();
   const liveValues = useFormValue(PREVIEW_DRAFT_FIELDS);
-  const registeredFields = useFormStore((state) => state.fields);
-  const dormantFields = useFormStore((state) => state.dormantValues);
-
-  const draftParametersCache = useRef<unknown>(undefined);
-  const draftParameters = useFormStore((store) => {
-    const next = get(store.getFormValues(), 'parameters') as unknown;
-    if (!isEqual(draftParametersCache.current, next)) {
-      draftParametersCache.current = next;
-    }
-    return draftParametersCache.current;
-  });
+  // A field the form has not registered yet has no live value to show — the
+  // dialog opens before its sections mount — so the committed `item` stands
+  // until it does. This is what separates that from a field the researcher has
+  // deliberately emptied, for the leaves and for `parameters` alike: the latter
+  // is a container the form only ever holds as a tree of leaves
+  // (`parameters.type`, `parameters.min`, …).
+  const hasLiveValue = useFormHasValue(PREVIEW_DRAFT_FIELDS);
 
   const draft = useMemo(() => {
     const values: Record<string, unknown> = { ...item };
     for (const name of PREVIEW_DRAFT_FIELDS) {
-      if (registeredFields.has(name) || dormantFields.has(name)) {
-        values[name] = liveValues[name];
-      }
-    }
-    const isParameterLeaf = (name: string) =>
-      name.startsWith('parameters.') || name.startsWith('parameters[');
-    const hasParameterLeaf =
-      [...registeredFields.keys()].some(isParameterLeaf) ||
-      [...dormantFields.keys()].some(isParameterLeaf);
-    if (hasParameterLeaf) {
-      values.parameters = draftParameters;
+      if (hasLiveValue[name]) values[name] = liveValues[name];
     }
     return values;
-  }, [dormantFields, draftParameters, item, liveValues, registeredFields]);
+  }, [hasLiveValue, item, liveValues]);
 
   const subject = useMemo(
     () => ({ entity, type: type ?? undefined }),
