@@ -6,7 +6,11 @@ import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import { nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
-import { currentStepOf, promptsWorked } from './shared/stageContext';
+import {
+  currentStepOf,
+  promptsWorked,
+  stageFilterOf,
+} from './shared/stageContext';
 import type { SimulationContext, StageSimulator } from './types';
 
 type GeospatialStage = Extract<Stage, { type: 'Geospatial' }>;
@@ -42,7 +46,7 @@ const OUTSIDE_SELECTABLE_AREAS = 'outside-selectable-areas';
 const selectableAreas = (
   context: SimulationContext,
   stageId: string,
-): readonly string[] =>
+): readonly (string | number)[] =>
   context.assetData.geojsonPropertyValues?.[stageId] ?? [];
 
 /**
@@ -76,8 +80,13 @@ export const simulateGeospatial: StageSimulator<GeospatialStage> = (
   const { engine, streams } = context;
   const currentStep = currentStepOf(context, stage);
   const areas = selectableAreas(context, stage.id);
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
-  const placement = (): string => {
+  // A number where the map's `targetFeatureProperty` carries one: the live
+  // click handler forwards the tapped feature's property value unchanged, so
+  // a numeric identifier is exactly what such a tap stores.
+  const placement = (): string | number => {
     if (streams.draw('geo') < GEOSPATIAL_OUTSIDE_AREAS_PROBABILITY) {
       return OUTSIDE_SELECTABLE_AREAS;
     }
@@ -98,7 +107,7 @@ export const simulateGeospatial: StageSimulator<GeospatialStage> = (
     const eligible = nodesForStage(
       engine.draft.network,
       stage.subject.type,
-      stage.filter,
+      stageFilter,
     );
 
     for (const node of eligible) {

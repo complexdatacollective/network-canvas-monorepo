@@ -117,7 +117,7 @@ const setUp = ({
   stage?: Record<string, unknown>;
   alters?: number;
   /** `'unresolved'` is the host resolving nothing for this stage (D18). */
-  areas?: string[] | 'unresolved';
+  areas?: (string | number)[] | 'unresolved';
   attributes?: (index: number) => Record<string, VariableValue>;
   seed?: number;
   corrupt?: Record<string, unknown>;
@@ -383,5 +383,28 @@ describe('simulateGeospatial', () => {
 
       expect(() => runStage(harness)).toThrow(/nowhere/);
     });
+  });
+});
+
+describe('numeric selectable areas', () => {
+  it('stores a numeric feature value exactly as the tap forwards it', () => {
+    // The live click handler forwards the tapped feature's
+    // `targetFeatureProperty` value unchanged — its `as string` is
+    // compile-time only — so a map keyed by numeric identifiers stores those
+    // numbers, and the pool carries them verbatim.
+    const harness = setUp({
+      alters: 12,
+      areas: [101, 205],
+    });
+    runStage(harness);
+
+    const values = harness
+      .nodes()
+      .map((node) => node[entityAttributesProperty].location)
+      .filter((value) => value !== 'outside-selectable-areas');
+    expect(values.length).toBeGreaterThan(0);
+    for (const value of values) {
+      expect([101, 205]).toContain(value);
+    }
   });
 });

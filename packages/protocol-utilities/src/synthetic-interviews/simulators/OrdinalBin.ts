@@ -8,6 +8,7 @@ import {
   currentStepOf,
   generationFor,
   promptsWorked,
+  stageFilterOf,
 } from './shared/stageContext';
 import type { StageSimulator } from './types';
 
@@ -45,12 +46,8 @@ export const simulateOrdinalBin: StageSimulator<OrdinalBinStage> = (
   const { engine } = context;
   const currentStep = currentStepOf(context, stage);
   const scope = { entity: 'node' as const, type: stage.subject.type };
-
-  const eligible = nodesForStage(
-    engine.draft.network,
-    stage.subject.type,
-    stage.filter,
-  );
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   const constraints = binConstraints({
     variables: nodeType.variables,
@@ -75,13 +72,23 @@ export const simulateOrdinalBin: StageSimulator<OrdinalBinStage> = (
       `stage "${stage.id}" bins by "${prompt.variable}", which is not an ordinal variable on node type "${stage.subject.type}"`,
     );
 
+    // Re-derived per prompt, like every sibling multi-prompt simulator: the
+    // runtime's selector re-runs on every render, so a filter reading a
+    // variable an earlier prompt wrote no longer shows the alters it removed.
+    const eligible = nodesForStage(
+      engine.draft.network,
+      stage.subject.type,
+      stageFilter,
+    );
+
     eligible.forEach((node, index) => {
-      const value = binValueFor({
+      const { value, issued } = binValueFor({
         constraints,
         generation,
         scope,
         variableId: prompt.variable,
         index,
+        node,
       });
       // Undefined is the alter the participant left in the bucket; writing
       // nothing is what an unplaced alter looks like in the network.
@@ -96,6 +103,7 @@ export const simulateOrdinalBin: StageSimulator<OrdinalBinStage> = (
         constraints: declared,
         set: { [prompt.variable]: value },
         unset: [],
+        ...(issued ? { issued: new Set([prompt.variable]) } : {}),
       });
     });
   });

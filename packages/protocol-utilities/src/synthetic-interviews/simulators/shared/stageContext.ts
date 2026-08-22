@@ -52,3 +52,14 @@ export const promptsWorked = <T>(
   promptBound: number | undefined,
 ): readonly T[] =>
   promptBound === undefined ? prompts : prompts.slice(0, promptBound);
+
+/**
+ * The stage filter a simulator applies: the stage's own, unless the run asked
+ * for filtering to be ignored (`respectFiltering: false`), in which case every
+ * stage reads the unfiltered network — the same bypass the option's host
+ * toggle has always promised alongside skip logic.
+ */
+export const stageFilterOf = <F>(
+  context: SimulationContext,
+  filter: F | undefined,
+): F | undefined => (context.respectFiltering ? filter : undefined);

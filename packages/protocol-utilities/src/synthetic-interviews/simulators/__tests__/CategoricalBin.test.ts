@@ -238,21 +238,25 @@ describe('simulateCategoricalBin', () => {
       }
     });
 
-    it('sorts the alter normally when the other text draws unanswered', () => {
-      // Reaching the other bin and typing nothing is what `missingProbability`
-      // on the other variable describes. The alter is not lost to it: they end
-      // up in one of the prompt's own bins, which is the only other state the
-      // interface leaves them in.
+    it('keeps the other bin with a blank text when the draw is unanswered', () => {
+      // Reaching the other bin and typing nothing is a state the live dialog
+      // permits: its field is genuinely optional unless the codebook says
+      // otherwise, and a blank submission stores '' with the categorical
+      // unset (CategoricalBin.tsx `handleOtherSubmit`, pinned by its
+      // otherValidation tests). Every simulated choice here selects the other
+      // bin, so every alter must land there — abandoning the choice for a
+      // regular bin would make `otherBinProbability: 1` produce no other-bin
+      // answers at all.
       const harness = setUp({
-        stage: withOther(),
-        alters: 300,
+        stage: withOther(1),
+        alters: 40,
         codebook: codebookWith(undefined, { missingProbability: 1 }),
       });
       runStage(harness);
 
       for (const node of harness.nodes()) {
-        expect(node[entityAttributesProperty].groupOther).toBeUndefined();
-        expect(node[entityAttributesProperty].group).toBeDefined();
+        expect(node[entityAttributesProperty].groupOther).toBe('');
+        expect(node[entityAttributesProperty].group).toBeUndefined();
       }
     });
 

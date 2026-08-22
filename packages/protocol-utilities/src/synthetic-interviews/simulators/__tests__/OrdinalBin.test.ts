@@ -338,3 +338,55 @@ describe('simulateOrdinalBin', () => {
     });
   });
 });
+
+describe('a filter that reacts to the stage’s own writes', () => {
+  it('re-derives the alters before each prompt', () => {
+    // The stage shows only people not yet sorted, and the first prompt sorts
+    // everyone it shows — so by the second prompt the runtime's selector,
+    // which re-runs the filter after every write, shows nobody at all. A
+    // snapshot taken before the first prompt would hand the second prompt
+    // alters the participant could no longer see.
+    const harness = setUp({
+      alters: 6,
+      codebook: codebookWith(undefined, {
+        mood: {
+          name: 'mood',
+          type: 'ordinal',
+          component: 'LikertScale',
+          options: CLOSENESS,
+        },
+      }),
+      stage: stageWith({
+        prompts: [
+          ...DEFAULT_PROMPTS,
+          {
+            id: 'p2',
+            text: 'And their mood?',
+            variable: 'mood',
+            color: 'ord-color-seq-2',
+          },
+        ],
+        filter: {
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-1',
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'closeness',
+                operator: 'NOT_EXISTS',
+              },
+            },
+          ],
+        },
+      }),
+    });
+    runStage(harness);
+
+    for (const node of harness.nodes()) {
+      expect(node[entityAttributesProperty].closeness).toBeDefined();
+      expect(node[entityAttributesProperty].mood).toBeUndefined();
+    }
+  });
+});

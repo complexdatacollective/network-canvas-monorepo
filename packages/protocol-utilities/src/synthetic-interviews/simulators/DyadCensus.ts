@@ -9,7 +9,12 @@ import {
 import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { recordCensusAnswer } from './shared/censusMetadata';
-import { currentStepOf, promptsWorked } from './shared/stageContext';
+import { pairKeyOf, walkCensusPairs } from './shared/censusTraversal';
+import {
+  currentStepOf,
+  promptsWorked,
+  stageFilterOf,
+} from './shared/stageContext';
 import type { StageSimulator } from './types';
 
 type DyadCensusStage = Extract<Stage, { type: 'DyadCensus' }>;
@@ -48,6 +53,8 @@ export const simulateDyadCensus: StageSimulator<DyadCensusStage> = (
 
   const { engine, streams } = context;
   const currentStep = currentStepOf(context, stage);
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   promptsWorked(stage.prompts, promptBound).forEach((prompt, promptIndex) => {
     if (promptIndex > 0) engine.updatePrompt({ promptIndex });
@@ -56,8 +63,12 @@ export const simulateDyadCensus: StageSimulator<DyadCensusStage> = (
     const eligible = nodesForStage(
       engine.draft.network,
       stage.subject.type,
-      stage.filter,
+      stageFilter,
     );
+    const derivePairs = () =>
+      unorderedPairs(
+        nodesForStage(engine.draft.network, stage.subject.type, stageFilter),
+      );
     const pairs = unorderedPairs(eligible);
     const linked = chooseLinkedPairs({
       topology: stage.synthetic.topology,
@@ -65,45 +76,61 @@ export const simulateDyadCensus: StageSimulator<DyadCensusStage> = (
       nodeCount: eligible.length,
       streams,
     });
+    // Which pairs carry a tie, keyed by the pair itself: the traversal below
+    // re-derives the list after each answer (the interface's selector does),
+    // so a position is not a stable identity. A pair the filter only surfaces
+    // MID-stage was not in the set the topology was realised over, and gets
+    // the answer that draws nothing: no.
+    const linkedKeys = new Set(
+      [...linked].map((position) => {
+        const pair = pairs[position];
+        invariant(pair, 'a chosen pair position must exist');
+        return pairKeyOf(pair);
+      }),
+    );
 
-    pairs.forEach((pair, position) => {
-      // Existence is asked of the STAGE-FILTERED network, exactly as the
-      // interface's own selector reads it (`getNetworkEdges` applies the
-      // stage filter to the whole network): an edge the filter hides is one
-      // the participant cannot see, so a yes creates a second edge — the
-      // runtime's addEdge does not dedupe — and a no cannot delete it.
-      // Re-derived per pair because the census's own writes change the view.
-      const existing = edgeForPair(
-        {
-          ...engine.draft.network,
-          edges: edgesForStage(engine.draft.network, edgeType, stage.filter),
-        },
-        pair,
-        edgeType,
-      );
-      const present = linked.has(position);
-
-      if (present && existing === null) {
-        engine.addEdge({
+    walkCensusPairs({
+      derive: derivePairs,
+      live: stageFilter !== undefined,
+      answer: (pair) => {
+        // Existence is asked of the STAGE-FILTERED network, exactly as the
+        // interface's own selector reads it (`getNetworkEdges` applies the
+        // stage filter to the whole network): an edge the filter hides is one
+        // the participant cannot see, so a yes creates a second edge — the
+        // runtime's addEdge does not dedupe — and a no cannot delete it.
+        // Re-derived per pair because the census's own writes change the view.
+        const existing = edgeForPair(
+          {
+            ...engine.draft.network,
+            edges: edgesForStage(engine.draft.network, edgeType, stageFilter),
+          },
+          pair,
           edgeType,
-          uid: streams.uuid(),
-          from: pair[0],
-          to: pair[1],
+        );
+        const present = linkedKeys.has(pairKeyOf(pair));
+
+        if (present && existing === null) {
+          engine.addEdge({
+            edgeType,
+            uid: streams.uuid(),
+            from: pair[0],
+            to: pair[1],
+            currentStep,
+          });
+        }
+
+        if (!present && existing !== null) {
+          engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
+        }
+
+        recordCensusAnswer({
+          engine,
           currentStep,
+          promptIndex,
+          pair,
+          present,
         });
-      }
-
-      if (!present && existing !== null) {
-        engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
-      }
-
-      recordCensusAnswer({
-        engine,
-        currentStep,
-        promptIndex,
-        pair,
-        present,
-      });
+      },
     });
   });
 };

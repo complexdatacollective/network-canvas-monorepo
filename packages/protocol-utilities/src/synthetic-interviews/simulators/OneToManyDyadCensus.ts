@@ -7,7 +7,12 @@ import {
 } from '../utils/edgeTopology';
 import { nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
-import { currentStepOf, promptsWorked } from './shared/stageContext';
+import { pairKeyOf, walkCensusPairs } from './shared/censusTraversal';
+import {
+  currentStepOf,
+  promptsWorked,
+  stageFilterOf,
+} from './shared/stageContext';
 import type { StageSimulator } from './types';
 
 type OneToManyDyadCensusStage = Extract<Stage, { type: 'OneToManyDyadCensus' }>;
@@ -45,6 +50,8 @@ export const simulateOneToManyDyadCensus: StageSimulator<
 
   const { engine, streams } = context;
   const currentStep = currentStepOf(context, stage);
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   promptsWorked(stage.prompts, promptBound).forEach((prompt, promptIndex) => {
     if (promptIndex > 0) engine.updatePrompt({ promptIndex });
@@ -53,8 +60,12 @@ export const simulateOneToManyDyadCensus: StageSimulator<
     const eligible = nodesForStage(
       engine.draft.network,
       stage.subject.type,
-      stage.filter,
+      stageFilter,
     );
+    const derivePairs = () =>
+      unorderedPairs(
+        nodesForStage(engine.draft.network, stage.subject.type, stageFilter),
+      );
     const pairs = unorderedPairs(eligible);
     const linked = chooseLinkedPairs({
       topology: stage.synthetic.topology,
@@ -62,21 +73,37 @@ export const simulateOneToManyDyadCensus: StageSimulator<
       nodeCount: eligible.length,
       streams,
     });
+    // Keyed by the pair rather than its position: the traversal re-derives
+    // the list after each toggle (the interface's focal and target lists are
+    // live selectors), so a position is not a stable identity, and a pair the
+    // filter only surfaces mid-stage was outside the realised set — it is
+    // left untapped.
+    const linkedKeys = new Set(
+      [...linked].map((position) => {
+        const pair = pairs[position];
+        invariant(pair, 'a chosen pair position must exist');
+        return pairKeyOf(pair);
+      }),
+    );
 
-    pairs.forEach((pair, position) => {
-      if (!linked.has(position)) return;
-      // Already linked — by a sibling prompt sharing this edge type, or by an
-      // earlier stage — is already what the participant means, and the tap
-      // that would say so again would take the link away instead.
-      if (edgeForPair(engine.draft.network, pair, edgeType) !== null) return;
+    walkCensusPairs({
+      derive: derivePairs,
+      live: stageFilter !== undefined,
+      answer: (pair) => {
+        if (!linkedKeys.has(pairKeyOf(pair))) return;
+        // Already linked — by a sibling prompt sharing this edge type, or by
+        // an earlier stage — is already what the participant means, and the
+        // tap that would say so again would take the link away instead.
+        if (edgeForPair(engine.draft.network, pair, edgeType) !== null) return;
 
-      engine.toggleEdge({
-        edgeType,
-        uid: streams.uuid(),
-        from: pair[0],
-        to: pair[1],
-        currentStep,
-      });
+        engine.toggleEdge({
+          edgeType,
+          uid: streams.uuid(),
+          from: pair[0],
+          to: pair[1],
+          currentStep,
+        });
+      },
     });
   });
 };

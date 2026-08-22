@@ -3,7 +3,11 @@ import type { Stage } from '@codaco/protocol-validation';
 import { nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { simulateSlidesForm } from './shared/slidesForm';
-import { currentStepOf, generationFor } from './shared/stageContext';
+import {
+  currentStepOf,
+  generationFor,
+  stageFilterOf,
+} from './shared/stageContext';
 import type { StageSimulator } from './types';
 
 type AlterFormStage = Extract<Stage, { type: 'AlterForm' }>;
@@ -41,13 +45,13 @@ export const simulateAlterForm: StageSimulator<AlterFormStage> = (
   const { engine } = context;
   const currentStep = currentStepOf(context, stage);
   const scope = { entity: 'node' as const, type: stage.subject.type };
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   simulateSlidesForm({
-    items: nodesForStage(
-      engine.draft.network,
-      stage.subject.type,
-      stage.filter,
-    ),
+    deriveItems: () =>
+      nodesForStage(engine.draft.network, stage.subject.type, stageFilter),
+    live: stageFilter !== undefined,
     fields: stage.form.fields.map((field) => String(field.variable)),
     variables: nodeType.variables,
     constraints: context.entityConstraints.forScope(scope),

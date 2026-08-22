@@ -8,6 +8,7 @@ import {
   currentStepOf,
   generationFor,
   promptsWorked,
+  stageFilterOf,
 } from './shared/stageContext';
 import type { StageSimulator } from './types';
 
@@ -50,12 +51,8 @@ export const simulateCategoricalBin: StageSimulator<CategoricalBinStage> = (
   const { engine, streams } = context;
   const currentStep = currentStepOf(context, stage);
   const scope = { entity: 'node' as const, type: stage.subject.type };
-
-  const eligible = nodesForStage(
-    engine.draft.network,
-    stage.subject.type,
-    stage.filter,
-  );
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   const constraints = binConstraints({
     variables: nodeType.variables,
@@ -83,6 +80,15 @@ export const simulateCategoricalBin: StageSimulator<CategoricalBinStage> = (
     const offersOtherBin =
       prompt.otherVariable !== undefined && otherVariable?.type === 'text';
 
+    // Re-derived per prompt, like every sibling multi-prompt simulator: the
+    // runtime's selector re-runs on every render, so a filter reading a
+    // variable an earlier prompt wrote no longer shows the alters it removed.
+    const eligible = nodesForStage(
+      engine.draft.network,
+      stage.subject.type,
+      stageFilter,
+    );
+
     eligible.forEach((node, index) => {
       // The other bin, where the prompt offers one: free text in its own
       // variable, and the categorical left unset.
@@ -105,28 +111,36 @@ export const simulateCategoricalBin: StageSimulator<CategoricalBinStage> = (
           scope,
           variableId: prompt.otherVariable,
           index,
+          node,
         });
-        if (other !== undefined) {
-          assignBinValue({
-            engine,
-            node,
-            scope,
-            currentStep,
-            uniqueRegistry: context.uniqueRegistry,
-            constraints: declared,
-            set: { [prompt.otherVariable]: other },
-            unset: [prompt.variable],
-          });
-          return;
-        }
+        // A descriptor that leaves the free text unanswered is still an alter
+        // IN the other bin: the dialog's field is genuinely optional unless
+        // the codebook says otherwise, and a blank submission stores '' with
+        // the categorical unset (CategoricalBin.tsx `handleOtherSubmit`, and
+        // its otherValidation tests). Abandoning the drop instead would make
+        // an authored `otherBinProbability` of 1 produce no other-bin answers
+        // at all.
+        assignBinValue({
+          engine,
+          node,
+          scope,
+          currentStep,
+          uniqueRegistry: context.uniqueRegistry,
+          constraints: declared,
+          set: { [prompt.otherVariable]: other.value ?? '' },
+          unset: [prompt.variable],
+          ...(other.issued ? { issued: new Set([prompt.otherVariable]) } : {}),
+        });
+        return;
       }
 
-      const value = binValueFor({
+      const { value, issued } = binValueFor({
         constraints,
         generation,
         scope,
         variableId: prompt.variable,
         index,
+        node,
       });
       // Undefined is the alter left in the bucket, which holds no value at all.
       if (value === undefined) return;
@@ -168,6 +182,7 @@ export const simulateCategoricalBin: StageSimulator<CategoricalBinStage> = (
         // way.
         unset:
           offersOtherBin && prompt.otherVariable ? [prompt.otherVariable] : [],
+        ...(issued ? { issued: new Set([prompt.variable]) } : {}),
       });
     });
   });

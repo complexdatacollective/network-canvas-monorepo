@@ -3,7 +3,7 @@ import type { Stage } from '@codaco/protocol-validation';
 import { edgesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { simulateSlidesForm } from './shared/slidesForm';
-import { generationFor } from './shared/stageContext';
+import { generationFor, stageFilterOf } from './shared/stageContext';
 import type { StageSimulator } from './types';
 
 type AlterEdgeFormStage = Extract<Stage, { type: 'AlterEdgeForm' }>;
@@ -36,13 +36,13 @@ export const simulateAlterEdgeForm: StageSimulator<AlterEdgeFormStage> = (
 
   const { engine } = context;
   const scope = { entity: 'edge' as const, type: stage.subject.type };
+  // The stage's own filter, or nothing when the run ignores filtering.
+  const stageFilter = stageFilterOf(context, stage.filter);
 
   simulateSlidesForm({
-    items: edgesForStage(
-      engine.draft.network,
-      stage.subject.type,
-      stage.filter,
-    ),
+    deriveItems: () =>
+      edgesForStage(engine.draft.network, stage.subject.type, stageFilter),
+    live: stageFilter !== undefined,
     fields: stage.form.fields.map((field) => String(field.variable)),
     variables: edgeType.variables,
     constraints: context.entityConstraints.forScope(scope),
