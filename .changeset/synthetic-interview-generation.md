@@ -60,10 +60,16 @@ generation would do wherever they are set.
 - **Side panels** gain the same treatment for how likely a participant is to
   re-nominate the people a panel puts in front of them.
 - **The Codebook** gains per-attribute settings: how values are spread, how
-  often an answer is left blank, what generated text looks like, how far back
-  and forward dates reach, how many options a multiple-choice question picks,
-  and — revealed in the options list while the attribute's section is open — a
-  relative weight for each option.
+  often an answer is left blank, what generated text looks like, how many
+  options a multiple-choice question picks, and — revealed in the options list
+  while the attribute's section is open — a relative weight for each option.
+  Dates get the whole of what the format allows: spread evenly or gathered
+  around a date you choose, within a window measured in days either side of
+  the interview (from the interview day, or from a fixed date), or between an
+  earliest and a latest date entered at the attribute's own resolution.
+- **Categorical Bin prompts** gain the odds a generated participant reaches
+  past the categories on offer and uses the prompt's "other" bin, alongside
+  the other-bin settings themselves.
 - **The Codebook** also carries the protocol-wide picture: a banner says
   whether the protocol as a whole can generate, and every attribute row shows
   the value generation would use and opens for editing in place.
@@ -88,7 +94,12 @@ and resetting a section removes what it wrote rather than writing the default
 down. Parameters also survive ordinary editing untouched — opening and saving a
 stage, adding or reordering or removing a panel, and editing an attribute all
 leave a `synthetic` block exactly as its author wrote it, and a stage that
-carries none is saved exactly as before.
+carries none is saved exactly as before. Where an edit somewhere else makes a
+setting impossible, the setting gives way rather than the protocol: renaming or
+removing an option drops only the weight that named it, changing a panel's data
+source to a roster file takes its nomination odds with it, and narrowing a
+stage's alter limits under a hand-written number of people is refused before
+the stage can be saved.
 
 Architect's stage preview draws its synthetic data from the same walk, and the
 preview setting that switches it on is now called "Start preview with synthetic
