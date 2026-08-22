@@ -358,8 +358,19 @@ type LibraryPanelProps = {
   // Open one of the bundled research templates.
   onOpenTemplate: (template: BundledTemplate) => void;
 };
-const COLLECTION_CLASSES = 'h-[min(28rem,65dvh)] min-h-0';
+// `flex-1` (which Collection applies) makes the height a share of the panel,
+// so the floor — not the `h-*` preference — is what decides how small the list
+// may get. It must clear the viewport's own 48px of padding (`py-2` plus the
+// `pb-10` below): the viewport is `border-box`, so a height under its padding
+// is clamped back up to 48px and the list paints outside its wrapper, over the
+// gallery card beneath it. `min-h-0` here allowed exactly that.
+const COLLECTION_CLASSES = 'h-[min(28rem,65dvh)] min-h-34';
 const COLLECTION_VIEWPORT_CLASSES = 'overflow-x-hidden px-2.5 pb-10';
+// Once the list is at its floor and the card is at its natural height, a panel
+// too short for both has to give somewhere. It scrolls: `Surface` is
+// `overflow-clip`, so anything the panel cannot hold would otherwise be cut off
+// with no way to reach it — which is how the card disappears on a short window.
+const PANEL_CLASSES = 'flex min-h-0 flex-col overflow-x-hidden overflow-y-auto';
 // Persist the protocol-gallery card's dismissal so it stays hidden across
 // reloads once the user closes it.
 const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
@@ -721,9 +732,16 @@ const LibraryPanel = ({
       </div>
     ) : null;
   return (
+    // 22rem is the height this panel already settles at on a 1280x720 window:
+    // its own padding, the tab header, a list a little above its floor, and the
+    // whole gallery card. Holding that as a floor is what makes a shorter
+    // window scroll the page — `Home`'s `<main>` is already `overflow-y-auto` —
+    // instead of taking the difference out of the list, which is all the
+    // `min-h-0` chain down to the list could do. Deliberately outranks
+    // `max-h-[85dvh]`, which CSS resolves in the floor's favour.
     <Surface
       spacing="sm"
-      className="publish-colors max-h-[85dvh] w-full"
+      className="publish-colors max-h-[85dvh] min-h-88 w-full"
       noContainer
     >
       <Tabs
@@ -742,7 +760,7 @@ const LibraryPanel = ({
         headerEnd={headerEnd}
         className="h-full"
       >
-        <TabsPanel value="recent" className="flex min-h-0 flex-col">
+        <TabsPanel value="recent" className={PANEL_CLASSES}>
           <Collection
             id="recent-protocols"
             items={recentItems}
@@ -765,7 +783,7 @@ const LibraryPanel = ({
           </Collection>
         </TabsPanel>
 
-        <TabsPanel value="templates" className="flex min-h-0 flex-col">
+        <TabsPanel value="templates" className={PANEL_CLASSES}>
           <Collection
             id="protocol-templates"
             items={templateItems}
