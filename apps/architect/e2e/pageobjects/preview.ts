@@ -40,14 +40,14 @@ export class StagePreview {
   }
 
   /**
-   * Set 'Start preview with example data'. Off starts the stage from its empty
-   * state (for FamilyPedigree, the quick-start wizard) instead of a generated
-   * synthetic network.
+   * Set 'Start preview with synthetic data'. Off starts the stage from its
+   * empty state (for FamilyPedigree, the quick-start wizard) instead of a
+   * generated synthetic network.
    */
-  async setUseExampleData(enabled: boolean): Promise<void> {
+  async setUseSyntheticData(enabled: boolean): Promise<void> {
     await this.settingsButton.click();
     const toggle = this.page.getByRole('switch', {
-      name: 'Start preview with example data',
+      name: 'Start preview with synthetic data',
       exact: true,
     });
     await expect(toggle).toBeVisible();

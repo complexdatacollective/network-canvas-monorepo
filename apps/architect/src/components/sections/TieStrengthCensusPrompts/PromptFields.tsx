@@ -18,6 +18,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import LockedOptions from '~/components/Options/LockedOptions';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
@@ -136,10 +137,19 @@ const PromptFields = ({
     return type;
   };
 
+  // An attribute created from here is bound to this prompt the moment the
+  // dialog closes, so the create-attribute window is told which stage and which
+  // slot it is creating for, and offers only what the rules that slot implies
+  // leave open. Written into the stage's own prompt list, so a slot whose
+  // subject is read off a sibling — this one's edge type — reads it from the
+  // prompt that is already there.
+  const readOwningStage = useOwningStageReader();
   const newVariableWindowInitialProps = {
     entity: 'edge' as Entity,
     type: currentCreateEdge ?? '',
     initialValues: { name: '', type: '' },
+    readOwningStage,
+    slotPath: 'prompts.0.edgeVariable',
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];

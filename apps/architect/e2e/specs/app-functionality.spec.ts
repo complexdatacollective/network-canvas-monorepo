@@ -33,7 +33,10 @@ test('separates history controls and returns project subpages to the timeline', 
   await expect(
     pageActions.getByRole('button', { name: 'Return to Start Screen' }),
   ).toBeVisible();
-  await expect(pageActions.getByRole('separator')).toHaveCount(1);
+  // Three groups, so two separators: navigation, then "Generate synthetic
+  // data…", then Download. (No `additionalActions` on this route — Print only
+  // renders on /protocol/summary — so its group and separator are absent.)
+  await expect(pageActions.getByRole('separator')).toHaveCount(2);
   await expect(
     historyActions.getByRole('button', { name: 'Undo' }),
   ).toBeVisible();

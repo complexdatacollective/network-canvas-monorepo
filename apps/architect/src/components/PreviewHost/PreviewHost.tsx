@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -19,12 +18,14 @@ import {
 } from '@codaco/protocol-utilities';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
+import { SyntheticConflictList } from '~/components/Synthetic/SyntheticConflictAlert';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
+import { collectSyntheticAssetData } from '~/utils/syntheticAssetData';
+import { isSyntheticConstraintRefusal } from '~/utils/syntheticConstraintRefusal';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
-import { collectPreviewAssetData } from './previewAssetData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
@@ -63,7 +64,7 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   // Draw roster people and Geospatial answers from the protocol's real assets.
   // Failures are isolated per-asset and never throw, so an asset problem
   // degrades to fabricated values rather than blocking the preview.
-  const assetData = await collectPreviewAssetData(
+  const assetData = await collectSyntheticAssetData(
     payload.protocol,
     payload.protocolId,
   );
@@ -114,36 +115,13 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   return { ...result.session, stageMetadata };
 }
 
-type ConstraintRefusal = Error & { conflicts: ConstraintConflict[] };
-
-/**
- * Whether generation refused because the protocol declares validation rules
- * that no value can satisfy — the one refusal with something the researcher can
- * act on, which is why it gets a screen of its own.
- *
- * Recognised by the error's NAME rather than by `instanceof
- * SyntheticDataConstraintError`. The class identity is not one thing: the
- * package's root still exports the old engine's copy while the interview engine
- * throws its own, structurally identical copy from
- * `synthetic-interviews/constraints/error`, so an `instanceof` against the
- * export would silently miss every conflict this preview can actually hit. The
- * name is what the two copies share now and what survives them merging into
- * one, so this reads the same either side of that.
- */
-function isConstraintRefusal(error: unknown): error is ConstraintRefusal {
-  if (!(error instanceof Error)) return false;
-  if (error.name !== 'SyntheticDataConstraintError') return false;
-  const { conflicts } = error as Partial<ConstraintRefusal>;
-  return Array.isArray(conflicts);
-}
-
 // A preview fails for exactly one reason — the payload never arrived, or the
 // build it started failed — so the reasons share one slot: a later failure can
 // never leave an earlier one's screen behind. A payload that arrives is no
 // longer a timeout, so recording its outcome is what retires the timeout.
 type PreviewFailure =
   | { kind: 'timeout' }
-  | { kind: 'constraints'; conflicts: ConstraintConflict[] }
+  | { kind: 'constraints'; conflicts: readonly ConstraintConflict[] }
   | { kind: 'processing' };
 export function PreviewHost() {
   const [interviewPayload, setInterviewPayload] =
@@ -188,7 +166,7 @@ export function PreviewHost() {
         // Clear any previously successful preview so a failed rebuild never
         // leaves a stale network on screen with no sign that this build failed.
         setInterviewPayload(null);
-        if (isConstraintRefusal(error)) {
+        if (isSyntheticConstraintRefusal(error)) {
           setFailure({ kind: 'constraints', conflicts: error.conflicts });
         } else {
           console.error('Failed to build preview payload', error);
@@ -365,22 +343,8 @@ export function PreviewHost() {
           can't all be satisfied. Return to Architect, update the protocol, and
           preview it again.
         </Paragraph>
-        <div className="flex w-full max-w-xl flex-col gap-3 text-left">
-          {failure.conflicts.map((conflict, index) => (
-            <Alert
-              key={`${conflict.entity}-${conflict.variableIds.join(',')}-${index}`}
-              variant="destructive"
-              density="compact"
-            >
-              <AlertTitle>
-                {conflict.entity === 'ego'
-                  ? 'Ego'
-                  : (conflict.entityTypeName ?? 'This type')}
-                : {conflict.variableNames.join(', ')}
-              </AlertTitle>
-              <AlertDescription>{conflict.reason}</AlertDescription>
-            </Alert>
-          ))}
+        <div className="w-full max-w-xl text-left">
+          <SyntheticConflictList conflicts={failure.conflicts} />
         </div>
         <Button color="primary" onClick={() => window.close()}>
           Close tab

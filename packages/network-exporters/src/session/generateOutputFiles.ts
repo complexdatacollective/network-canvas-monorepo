@@ -25,7 +25,12 @@ const getDefaultConcurrency = async (): Promise<number> => {
   if (typeof navigator !== 'undefined' && 'hardwareConcurrency' in navigator) {
     return navigator.hardwareConcurrency;
   }
-  if (typeof globalThis.process !== 'undefined') {
+  // Read off a locally-narrowed `globalThis` rather than the global `process`:
+  // this package's own program has Node's globals, but a browser app that
+  // compiles this source inside ITS program (Architect, whose `types` are
+  // browser-only) does not, and `globalThis.process` would be a type error
+  // there. The runtime check is unchanged.
+  if (typeof (globalThis as { process?: unknown }).process !== 'undefined') {
     const os = await loadNodeOs();
     return os.cpus().length;
   }

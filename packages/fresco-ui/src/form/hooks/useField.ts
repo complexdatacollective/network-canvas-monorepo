@@ -78,7 +78,10 @@ type UseFieldResult = {
     'data-field-path': string; // Canonical internal key used to focus errors
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
-    // (a slot button, a sibling radio…) does not validate prematurely.
+    // (a slot button, a sibling radio…) does not validate prematurely. Nor
+    // does opening an overlay from inside the field, or moving around within
+    // one — a portal's events bubble through the tree that RENDERED it, so
+    // some of what arrives here is not this field's blur at all.
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
@@ -109,6 +112,29 @@ type UseFieldResult = {
 
 /** Default debounce delay for validateOnChange in milliseconds */
 const DEFAULT_VALIDATE_ON_CHANGE_DELAY = 1000;
+
+/**
+ * The roles an overlay layer announces itself with. A picker dialog, a menu
+ * and a listbox are all surfaces that appear ON TOP of the form rather than
+ * inside it, whoever rendered them.
+ */
+const OVERLAY_ROLES =
+  '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+
+/**
+ * Whether focus landed inside an overlay stacked above `field` — one the field
+ * is not part of, and which is not part of the field either (a combobox popup
+ * rendered inline belongs to its own field and is not "above" it).
+ */
+const isInOverlayAbove = (
+  field: HTMLElement,
+  landed: Element | null,
+): boolean => {
+  const overlay = landed?.closest(OVERLAY_ROLES) ?? null;
+  return (
+    overlay !== null && !overlay.contains(field) && !field.contains(overlay)
+  );
+};
 
 type UseFieldConfig = {
   name: string;
@@ -368,6 +394,18 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const handleContainerBlur = useCallback(
     (e: React.FocusEvent<HTMLElement>) => {
+      // The focusout did not come from inside this field at all. React
+      // delivers a portal's events to the tree that RENDERED it rather than
+      // the one that contains it, so a control in this field that opens an
+      // overlay — an attribute picker, a menu — hands the field every focus
+      // move made INSIDE that overlay. None of them is this field's blur.
+      if (
+        !(e.target instanceof Element) ||
+        !e.currentTarget.contains(e.target)
+      ) {
+        return;
+      }
+
       // Focus moved to another control inside this field (a slot button, a
       // stepper, a sibling radio…) → the field is still active; don't validate
       // yet. The escape hatch validates on in-field focus moves anyway.
@@ -375,6 +413,18 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         !config.validateOnControlBlur &&
         e.currentTarget.contains(e.relatedTarget)
       ) {
+        return;
+      }
+
+      // Focus moved into an overlay stacked ABOVE this field — the picker one
+      // of its own controls just opened, or a dialog that took the screen. The
+      // researcher has not finished with the field; they are inside something
+      // it put in front of them, and validating now shows a half-finished
+      // field its own "required" errors while they are on their way to
+      // answering them. The re-render that follows can also swallow the very
+      // click that would have answered it. The field validates when focus
+      // really leaves it, and the save validates regardless.
+      if (isInOverlayAbove(e.currentTarget, e.relatedTarget)) {
         return;
       }
 

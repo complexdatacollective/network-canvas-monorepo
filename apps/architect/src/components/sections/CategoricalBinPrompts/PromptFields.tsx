@@ -17,6 +17,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import LockedOptions from '~/components/Options/LockedOptions';
 import PromptText from '~/components/sections/PromptText';
 import { useCreateVariable } from '~/components/StageEditor/stageFormHooks';
@@ -38,6 +39,7 @@ import BucketSortOrderSection from '../BucketSortOrderSection';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { useLockedOptions } from '../useLockedOptions';
 import { getSortOrderOptionGetter } from './optionGetters';
+import { OTHER_BIN_SYNTHETIC_FIELD, OtherBinOdds } from './OtherBinOdds';
 
 type VariableOption = {
   label: string;
@@ -56,6 +58,8 @@ type PromptFieldsProps = {
   variableOptions?: VariableOption[];
   binSortOrder?: Record<string, unknown>[];
   bucketSortOrder?: Record<string, unknown>[];
+  /** The prompt's committed generation parameters — see `OtherBinOdds`. */
+  synthetic?: unknown;
 };
 
 const PromptFields = ({
@@ -69,6 +73,7 @@ const PromptFields = ({
   variableOptions = [],
   binSortOrder,
   bucketSortOrder,
+  synthetic,
 }: PromptFieldsProps) => {
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const clearValue = useClearValue();
@@ -181,10 +186,19 @@ const PromptFields = ({
     currentVariableOptions.length + (currentOtherVariable ? 1 : 0);
   const showVariableOptionsTip = totalOptionsLength > 8;
 
+  // An attribute created from here is bound to this prompt the moment the
+  // dialog closes, so the create-attribute window is told which stage and which
+  // slot it is creating for — a bin assigns exactly one option and never leaves
+  // the attribute blank, and the window must not offer settings those rules
+  // have already decided. The index is arbitrary: what a bin's prompt slot
+  // implies is decided by the shape of the path, not by which prompt it is.
+  const readOwningStage = useOwningStageReader();
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
     type: type ?? '',
     initialValues: { name: '', type: '' },
+    readOwningStage,
+    slotPath: 'prompts.0.variable',
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];
@@ -199,6 +213,11 @@ const PromptFields = ({
       clearValue('otherVariable');
       clearValue('otherVariablePrompt');
       clearValue('otherOptionLabel');
+      // The odds of reaching the "other" bin go with the bin itself: the schema
+      // refuses them on a prompt that sets no `otherVariable` ('synthetic
+      // other-bin odds require otherVariable to be set.'), so odds left behind
+      // by a toggle-off would save a prompt nothing can parse.
+      clearValue(OTHER_BIN_SYNTHETIC_FIELD);
     }
     return true;
   };
@@ -334,6 +353,12 @@ const PromptFields = ({
             placeholder="Enter a question prompt to show when the other option is triggered..."
           />
         </>
+        {/*
+          Inside this section rather than beside it, because the schema attaches
+          the odds to the branch of the prompt that HAS an other bin: turning
+          the section off takes the bin and its odds together.
+        */}
+        <OtherBinOdds committed={synthetic} />
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

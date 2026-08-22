@@ -23,6 +23,7 @@ import {
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '~/components/Options/optionCompleteness';
+import { OptionWeightCell } from '~/components/Options/optionWeights';
 import { cx } from '~/utils/cva';
 import {
   markdownToRichTextContent,
@@ -186,6 +187,19 @@ const Option = ({
             {hasValue ? String(item.value) : 'No value'}
           </span>
         </div>
+        {/*
+          The synthetic-data weight column. Renders nothing at all unless a
+          variable's Synthetic section is disclosing it (see
+          `~/components/Options/optionWeights`), which is what keeps this row
+          identical to what it was for every other options editor.
+        */}
+        <OptionWeightCell
+          optionValue={item.value}
+          position={index + 1}
+          // Labelled, because these rows have no header to carry the column's
+          // name the way the locked list's table does.
+          labelled
+        />
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}

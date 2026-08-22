@@ -32,8 +32,14 @@ export const MAX_SYNTHETIC_PAIRS = Math.floor(
  * (`synthetic.test.ts`, "the string \"1\" is not the integer option value 1").
  * Keying on `String(value)` alone would silently accept it and then weight
  * nothing.
+ *
+ * Accepts a boolean as well as the two types an OPTION value may take, because
+ * an editor keys the same table with the same rule and reads its options off a
+ * codebook entry mid-edit, where a boolean variable's own option list is one of
+ * the things it may be looking at. Widening the parameter keeps that editor on
+ * this one implementation rather than on a second spelling of the prefix.
  */
-export const optionValueKey = (value: number | string): string =>
+export const optionValueKey = (value: number | string | boolean): string =>
   `${typeof value}:${String(value)}`;
 
 /**

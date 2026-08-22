@@ -19,6 +19,8 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 
+import { panelAcceptsNominationOdds } from './panelNominationOdds';
+import { PanelSyntheticSection } from './PanelSyntheticSection';
 import { usePanelSlot } from './usePanelSlot';
 
 const EXISTING_DATA_SOURCE = 'existing';
@@ -96,9 +98,9 @@ const NodePanel = ({
 
   // Cross-field reactivity (an observer effect, not a `DataSource` `onChange`
   // side effect — `ArchitectField` strips a caller `onChange` defensively, see
-  // stageFormHooks.ts): switching away from the in-progress interview network
-  // while the panel's filter has edge rules asks for confirmation, since an
-  // external data file has no edges to filter.
+  // stageFormHooks.ts). Two things follow a change of data source: edge rules
+  // an external data file has no edges to apply them to, and nomination odds
+  // the schema admits on nothing but the interview network.
   const previousDataSourceRef = useRef(dataSource);
   const restoreVersion = useStageRestoreVersion();
   const previousRestoreVersionRef = useRef(restoreVersion);
@@ -110,22 +112,56 @@ const NodePanel = ({
     if (
       previousValue === undefined ||
       dataSource === previousValue ||
-      dataSource === EXISTING_DATA_SOURCE ||
-      !hasEdgeRules(filter) ||
       // A superseded row reads the slot values of the panel that replaced it,
       // so its `dataSource` appears to change when the list is re-indexed.
-      // Prompting there would ask about a panel that no longer exists.
+      // Acting there would speak for a panel that no longer exists.
       !ownsSlot
     ) {
       return;
     }
 
-    // The confirmation is awaited, so the timeline can hold an entry pairing
-    // an external data source with the edge rules that had not been stripped
-    // yet. Stepping onto it must not re-open the dialog: confirming would
-    // delete the rules the restore just brought back, and cancelling would
-    // write the data source back and undo the step itself.
+    // A restore writes the snapshot's own values for every field it names, so
+    // stepping the timeline is not a researcher changing the data source and
+    // neither reaction belongs to it. The confirmation being awaited is what
+    // makes this reachable: the timeline can hold an entry pairing an external
+    // data source with the edge rules and odds that had not been dropped yet,
+    // and stepping onto that entry would otherwise delete exactly what the
+    // step just brought back — or, on the cancel path, write the data source
+    // back and undo the step itself.
     if (previousRestoreVersion !== restoreVersion) return;
+
+    /**
+     * Drop the panel's authored generation parameters where this data source
+     * is one the schema refuses them on.
+     *
+     * `panelSchema` admits nomination odds on an existing-network panel alone,
+     * so a roster panel that keeps them is a stage that cannot be saved — and
+     * the control that would remove them is the very one this transition stops
+     * rendering. Which data sources those are is ASKED of the schema through
+     * the same helper the control is gated on (see the render below), rather
+     * than spelled out a second time here.
+     */
+    const dropInadmissibleOdds = () => {
+      if (
+        panelAcceptsNominationOdds({
+          ...item,
+          // The live value is the one that just changed; `item` still carries
+          // the list's last normalisation of this row.
+          dataSource,
+        })
+      ) {
+        return;
+      }
+      setStageValue(`${fieldName}.synthetic`, undefined);
+    };
+
+    // Nothing to confirm — an external file the panel's filter never asked to
+    // follow an edge through. The odds still have to go, and waiting for a
+    // dialog that will never open is what left them behind.
+    if (dataSource === EXISTING_DATA_SOURCE || !hasEdgeRules(filter)) {
+      dropInadmissibleOdds();
+      return;
+    }
 
     void (async () => {
       const confirmed = await confirm({
@@ -140,12 +176,18 @@ const NodePanel = ({
 
       if (confirmed) {
         setStageValue(`${fieldName}.filter`, stripEdgeRules(filter));
+        dropInadmissibleOdds();
       } else {
+        // Cancelling puts the panel back where it was found, so the odds are
+        // admissible again and were never removed — the drop happens on the
+        // confirmed branch alone, and the write below only retriggers this
+        // effect for a data source that accepts them.
         setStageValue(`${fieldName}.dataSource`, previousValue);
       }
     })();
-    // Only the dataSource transition itself should retrigger this — `filter`
-    // and `confirm` are read at fire time, not watched for their own changes.
+    // Only the dataSource transition itself should retrigger this — `filter`,
+    // `item` and `confirm` are read at fire time, not watched for their own
+    // changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource, fieldName, ownsSlot, restoreVersion, setStageValue]);
 
@@ -227,6 +269,21 @@ const NodePanel = ({
           name={`${fieldName}.filter`}
           allowEdgeRules={dataSource === EXISTING_DATA_SOURCE}
         />
+        {/*
+          Nomination odds are decided person by person, which only an
+          existing-network panel does — `panelSchema` refuses them on a roster
+          panel, whose contribution is drawn once for the whole stage. So the
+          control follows the data source rather than rendering disabled, and
+          it is the SCHEMA that is asked which data sources those are (the
+          stage's Synthetic data section asks the same question of the same
+          helper, so the two surfaces cannot come to disagree).
+        */}
+        {panelAcceptsNominationOdds({
+          ...item,
+          // The live value wins while it is registered; `item` carries the
+          // list's own normalisation for the window before it is.
+          dataSource: dataSource ?? item.dataSource,
+        }) && <PanelSyntheticSection fieldName={fieldName} />}
       </div>
       <IconButton
         icon={<Trash2 />}

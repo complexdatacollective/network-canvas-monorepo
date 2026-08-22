@@ -267,3 +267,52 @@ representation, respects reduced motion (no animation required).
   the PR, `creating-a-changeset` and `shipping-a-pull-request`.
 - When a decision in this spec seems to conflict with the schema, the schema
   wins — and say so in the PR description rather than silently diverging.
+
+## Revision 2 (2026-08-22, maintainer review of the built UI)
+
+These decisions amend the sections above where they conflict.
+
+1. **Explanatory copy.** Every stage-editor Synthetic data section opens with
+   researcher-facing prose explaining what synthetic data is for (previewing
+   stages with realistic example data, validating export pipelines) and what
+   this stage's parameters govern, in the section-intro style the other
+   sections use. Parameter labels get one-line descriptions where the name
+   alone is not self-explanatory.
+2. **Distribution preview uses TanStack Charts.** `DistributionVisual` renders
+   through `@tanstack/charts` (alpha; app-local dependency of Architect) —
+   area/line marks over the valid window, auto-scaling to its container.
+   Token-driven colors, `aria-hidden` unchanged.
+3. **No authored/default badges.** Remove the Authored/Default indicators from
+   editor surfaces (rule 5's badge clause is rescinded; the "Reset to default"
+   affordance stays, shown whenever the block is authored, and collapsed
+   summaries keep showing the resolved effective values).
+4. **In-situ variable editing (amends the "Codebook TypeEditor only"
+   decision).** The shared variable sub-editor is ALSO embedded in each stage
+   editor's Synthetic section for the variables that stage writes — a bin
+   stage edits its variable's option weights there; quick-add its name
+   generator; panels' nominationProbability is surfaced prominently in the
+   section rather than only inside the NodePanel editor. One shared component,
+   two homes; codebook editing remains.
+5. **Roster stages gain no odds parameter** — "nomination odds" meant the
+   panel control; the fix is discoverability, not schema.
+6. **The Synthetic data screen is removed.** Delete `/protocol/synthetic` and
+   its nav entry. The Codebook screen absorbs it: the protocol feasibility
+   verdict renders at the top of the Codebook, and each entity's variable
+   table gains synthetic summary columns with in-table editing (the shared
+   sub-editor, expandable per row). Stage-level parameters live only in their
+   stage editors. The codebook deep link (`?entity=…&variable=…`) and the
+   stage `?section=synthetic` deep link remain.
+7. **Architect generates synthetic interview data.** A "Generate synthetic
+   data…" action in the protocol workspace opens a dialog mirroring
+   Interviewer's panel (session count, optional seed, drop-out and
+   skip-logic toggles), runs `generateInterviews` in Architect with
+   host-resolved assets, and saves a real export archive (CSV/GraphML through
+   `@codaco/network-exporters`, following Interviewer's browser-side
+   `exportSessions` pattern and the shared save ladder). Refusals render the
+   engine's conflicts verbatim in the dialog.
+8. **Bug fixes.** (a) The +/- steppers on synthetic numeric fields are
+   disabled for open-window parameters (mean, sd) — stepping must work
+   wherever typing works. (b) The stage editors' assign-additional-attributes
+   picker requires two clicks, the first triggering background validation
+   errors — single click must work; diagnose the provenance and fix at the
+   cause.

@@ -119,10 +119,10 @@ test('edits a person in the Family Pedigree preview without losing the pedigree'
   await new Timeline(architectPage).openStage(PEDIGREE_STAGE_LABEL);
 
   const stagePreview = new StagePreview(architectPage);
-  // Example data off, so the stage opens on its empty build phase and the
+  // Synthetic data off, so the stage opens on its empty build phase and the
   // pedigree under test is one this spec created — the state the crash
   // destroyed.
-  await stagePreview.setUseExampleData(false);
+  await stagePreview.setUseSyntheticData(false);
   const preview = await stagePreview.open();
 
   await buildPedigree(preview);

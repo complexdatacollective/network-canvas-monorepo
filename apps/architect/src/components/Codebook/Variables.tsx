@@ -1,6 +1,7 @@
 import {
   getCoreRowModel,
   getSortedRowModel,
+  type CellContext,
   type ColumnDef,
   type SortingFn,
   type SortingState,
@@ -11,13 +12,26 @@ import { useCallback, useMemo, useState } from 'react';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import { syntheticSubjectKey } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { ConnectedVariablePill } from '~/components/VariablePill';
-import { useAppDispatch } from '~/ducks/hooks';
+import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { getVariablesForSubjectSelector } from '~/selectors/codebook';
+import { getProtocol } from '~/selectors/protocol';
 
 import ControlsColumn from './ControlsColumn';
+import { codebookVariableMarker, useCodebookVariableTarget } from './deepLink';
+import {
+  SyntheticEditorCell,
+  SyntheticNotesCell,
+  type SyntheticEditorCellProps,
+} from './SyntheticColumn';
 import UsageColumn from './UsageColumn';
+import {
+  buildVariableSyntheticRows,
+  type CodebookVariableSynthetic,
+} from './variableSyntheticRows';
 
 type UsageItem = {
   label: string;
@@ -35,11 +49,46 @@ type Variable = {
 
 type Entity = 'node' | 'edge' | 'ego';
 
+/**
+ * A row, with everything its synthetic cells need carried IN THE ROW rather
+ * than closed over by the column definitions.
+ *
+ * Load-bearing, not tidiness. `flexRender` renders a `cell` definition as a
+ * component, so a cell function rebuilt when the protocol changes is a new
+ * component TYPE and React unmounts the subtree under it — which for this table
+ * means the expanded sub-editor closes, and focus is lost, on every keystroke
+ * that commits. Keeping the cell components module-level and feeding them
+ * through row data is what makes editing in the table possible at all.
+ */
+type SyntheticVariableRow = Variable & {
+  synthetic: SyntheticEditorCellProps;
+  notes: readonly string[];
+};
+
 type VariablesProps = {
   entity: Entity;
   type?: string;
   variables?: Variable[];
 };
+
+/** What a row shows for an attribute the interface-rules walk never reached. */
+const NO_SYNTHETIC: CodebookVariableSynthetic = {
+  implied: {
+    rules: {},
+    binOnly: false,
+    alwaysAnsweredBy: [],
+    selectionPinnedBy: [],
+  },
+  notes: [],
+};
+
+const SyntheticCell = ({ row }: CellContext<SyntheticVariableRow, unknown>) => (
+  <SyntheticEditorCell {...row.original.synthetic} />
+);
+
+const NotesCell = ({ row }: CellContext<SyntheticVariableRow, unknown>) => (
+  <SyntheticNotesCell notes={row.original.notes} />
+);
 
 const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const dispatch = useAppDispatch();
@@ -47,6 +96,50 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
+
+  const subject = useMemo(
+    () => ({ entity, ...(type === undefined ? {} : { type }) }),
+    [entity, type],
+  );
+  // The stored definitions, not the usage-index rows the parent passes: a
+  // summary and a sub-editor need the attribute's own type, options, validation
+  // and `synthetic` block, and the document is where an authored block is
+  // legible at all.
+  const definitions = useAppSelector((state) =>
+    getVariablesForSubjectSelector(state, subject),
+  );
+  const protocol = useAppSelector(getProtocol);
+  const impliedRules = useMemo(
+    () => buildVariableSyntheticRows(protocol, subject, definitions),
+    [protocol, subject, definitions],
+  );
+
+  // A link naming an attribute of THIS subject opens that row's sub-editor.
+  const target = useCodebookVariableTarget();
+  const targetVariableId =
+    target?.subjectKey === syntheticSubjectKey(subject)
+      ? target.variableId
+      : undefined;
+
+  const rows = useMemo<SyntheticVariableRow[]>(
+    () =>
+      variables.map((variable) => {
+        const row = impliedRules.get(variable.id) ?? NO_SYNTHETIC;
+        return {
+          ...variable,
+          synthetic: {
+            entity,
+            type,
+            variableId: variable.id,
+            definition: definitions[variable.id],
+            implied: row.implied,
+            targeted: targetVariableId === variable.id,
+          },
+          notes: row.notes,
+        };
+      }),
+    [variables, impliedRules, definitions, entity, type, targetVariableId],
+  );
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -91,7 +184,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     [confirm, dispatch, entity, type, variables],
   );
 
-  const columns = useMemo<ColumnDef<Variable>[]>(
+  const columns = useMemo<ColumnDef<SyntheticVariableRow>[]>(
     () => [
       {
         accessorKey: 'name',
@@ -99,14 +192,33 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
           <DataTableColumnHeader column={column} table={table} title="Name" />
         ),
         sortingFn: caseInsensitiveSort,
+        // Wrapped rather than bare so the row carries the deep-link marker: a
+        // link from another screen lands on this attribute's own control.
         cell: ({ row }) => (
-          <ConnectedVariablePill
-            animated
-            editable
-            uuid={row.original.id}
-            width="25rem"
-          />
+          <span
+            className="inline-flex"
+            {...codebookVariableMarker({ entity, type }, row.original.id)}
+          >
+            <ConnectedVariablePill
+              animated
+              editable
+              uuid={row.original.id}
+              width="25rem"
+            />
+          </span>
         ),
+      },
+      {
+        id: 'synthetic',
+        header: () => 'Synthetic data',
+        enableSorting: false,
+        cell: SyntheticCell,
+      },
+      {
+        id: 'impliedRules',
+        header: () => 'Set by the interview',
+        enableSorting: false,
+        cell: NotesCell,
       },
       {
         accessorKey: 'usageString',
@@ -137,15 +249,19 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         ),
       },
     ],
-    [handleDelete],
+    [handleDelete, entity, type],
   );
 
   const table = useReactTable({
-    data: variables,
+    data: rows,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
     enableSortingRemoval: false,
+    // Keyed by the attribute's own id rather than by position, so a row keeps
+    // its identity — and its open sub-editor — when the table is re-sorted or
+    // a sibling attribute is removed.
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -164,7 +280,11 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
 const normalizeSortValue = (value: unknown) =>
   typeof value === 'string' ? value.toUpperCase() : String(value ?? '');
 
-const caseInsensitiveSort: SortingFn<Variable> = (rowA, rowB, columnId) =>
+const caseInsensitiveSort: SortingFn<SyntheticVariableRow> = (
+  rowA,
+  rowB,
+  columnId,
+) =>
   normalizeSortValue(rowA.getValue(columnId)).localeCompare(
     normalizeSortValue(rowB.getValue(columnId)),
   );

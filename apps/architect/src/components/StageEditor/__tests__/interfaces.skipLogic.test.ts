@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import { INTERFACE_TYPES } from '~/components/Screens/NewStageScreen/interfaceOptions';
 
-import { getInterface, interfaceHasSkipLogicSection } from '../Interfaces';
+import {
+  getInterface,
+  interfaceHasSkipLogicSection,
+  interfaceHasSyntheticSection,
+} from '../Interfaces';
 
 describe('SkipLogic section coverage', () => {
   it('gives Anonymisation the SkipLogic section', () => {
@@ -32,37 +36,52 @@ describe('SkipLogic section coverage', () => {
 });
 
 /**
- * `withStageIdentity`'s `synthetic` carry has no gate, unlike the `skipLogic`
- * one above. That is sound only while nothing in the editor can author a
- * stage-level `synthetic` — the moment a section does, an absent key stops
- * meaning "no field could carry it" and starts meaning "the researcher cleared
- * it", and an ungated carry resurrects exactly what they removed.
+ * `withStageIdentity`'s `synthetic` carry is gated exactly as the `skipLogic`
+ * one above, and for the same reason: the Synthetic data section AUTHORS the
+ * key, so on an interface that renders it an absent key means the researcher
+ * reset it, and an ungated carry would resurrect exactly what they removed.
  *
- * These two checks are the tripwire for the two ways that can happen.
+ * These three checks hold that arrangement together.
  */
 describe('stage-level synthetic authoring coverage', () => {
   it('no interface template seeds a synthetic block, so a fresh stage carries none', () => {
-    // The other half of "unconditional costs nothing": the carry reads the
-    // COMMITTED stage, which for a new stage is the interface template. A
-    // template carrying the key would put generation parameters into every
-    // stage created from scratch — and into the committed e2e stage snapshots,
-    // which is how this would first be noticed if it were not caught here.
+    // The carry reads the COMMITTED stage, which for a new stage is the
+    // interface template. A template carrying the key would put generation
+    // parameters into every stage created from scratch — and into the
+    // committed e2e stage snapshots, which is how this would first be noticed
+    // if it were not caught here.
     const seeded = INTERFACE_TYPES.map(({ type }) => type).filter(
       (type) => getInterface(type).template.synthetic !== undefined,
     );
     expect(seeded).toEqual([]);
   });
 
-  it('no stage-editor section registers a top-level synthetic field', () => {
+  it('every creatable interface renders the Synthetic data section', () => {
+    // Every stage type admits a `synthetic` descriptor, so every stage editor
+    // offers one. Not a law of nature — a future interface may omit it, and
+    // the carry-through keeps its saved key intact — but that omission must be
+    // a CONSCIOUS choice made here, having read the above.
+    const missing = INTERFACE_TYPES.map(({ type }) => type).filter(
+      (type) => !interfaceHasSyntheticSection(type),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('exactly one stage-editor source registers the top-level synthetic field', () => {
     // Every field name in Architect's stage editor is a literal at its
     // registration site (`name="…"`, `name={'…'}`, `useField({ name: '…' })`),
     // so the source is the only complete inventory — the alternative, mounting
     // all twenty interfaces' section trees, needs a codebook, dialogs and a
     // protocol store per interface.
     //
-    // Scoped to the EXACT name `synthetic`: `panels[N].synthetic` is a real
-    // registration (NodePanels carries the panel-level block through a
-    // hidden field) and must not trip this.
+    // ONE registration is the invariant: the descriptor is written whole
+    // through a single field, because a per-parameter leaf that unregisters
+    // when the author changes distribution family would be a key silently
+    // dropped by the next save. A second registration would race it.
+    //
+    // Scoped to the EXACT name `synthetic`: `panels[N].synthetic` is its own
+    // registration (NodePanels carries the panel-level block through a hidden
+    // field) and must not trip this.
     const roots = [
       path.resolve(import.meta.dirname, '../../sections'),
       path.resolve(import.meta.dirname, '..'),
@@ -83,13 +102,12 @@ describe('stage-level synthetic authoring coverage', () => {
 
     const registersSynthetic = /name(=\{?|:\s*)(['"`])synthetic\2/;
     const architectRoot = path.resolve(import.meta.dirname, '../../../..');
-    const offenders = sourceFiles
+    const registrars = sourceFiles
       .filter((file) => registersSynthetic.test(readFileSync(file, 'utf8')))
       .map((file) => path.relative(architectRoot, file));
 
-    // Not a law of nature: #1420 gives Architect a synthetic editor. Whoever
-    // adds it must come here, and add the `interfaceHasSyntheticSection` gate
-    // to `withStageIdentity` that this file's `skipLogic` twin already has.
-    expect(offenders).toEqual([]);
+    expect(registrars).toEqual([
+      'src/components/sections/SyntheticData/SyntheticData.tsx',
+    ]);
   });
 });

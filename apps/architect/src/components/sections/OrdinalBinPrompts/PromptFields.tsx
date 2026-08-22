@@ -16,6 +16,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import LockedOptions from '~/components/Options/LockedOptions';
 import { getSortOrderOptionGetter } from '~/components/sections/CategoricalBinPrompts/optionGetters';
 import PromptText from '~/components/sections/PromptText';
@@ -145,10 +146,19 @@ const PromptFields = ({
   const sortMaxItems = getOptions('property', undefined, []).length;
   const showVariableOptionsTip = currentVariableOptions.length > 5;
 
+  // An attribute created from here is bound to this prompt the moment the
+  // dialog closes, so the create-attribute window is told which stage and which
+  // slot it is creating for — a bin never leaves the attribute blank, and the
+  // window must not offer settings that rule has already decided. The index is
+  // arbitrary: what a bin's prompt slot implies is decided by the shape of the
+  // path, not by which prompt it is.
+  const readOwningStage = useOwningStageReader();
   const newVariableWindowInitialProps = {
     entity: (entity ?? 'node') as Entity,
     type: type ?? '',
     initialValues: { name: '', type: '' },
+    readOwningStage,
+    slotPath: 'prompts.0.variable',
   };
   const handleCreatedNewVariable = (...args: unknown[]) => {
     const [id, params] = args as [string, { field: string }];

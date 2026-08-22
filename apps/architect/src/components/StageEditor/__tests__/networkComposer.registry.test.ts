@@ -5,6 +5,7 @@ import {
   InterviewScript,
   NodeType,
   SkipLogic,
+  SyntheticData,
 } from '~/components/sections';
 import EdgeConfiguration from '~/components/sections/EdgeConfiguration/EdgeConfiguration';
 import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
@@ -22,6 +23,7 @@ describe('NetworkComposer registry', () => {
       Background,
       SkipLogic,
       InterviewScript,
+      SyntheticData,
     ]);
     expect(config.documentation).toContain('http');
   });
