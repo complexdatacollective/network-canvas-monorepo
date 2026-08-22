@@ -1,3 +1,10 @@
+import { areaY, barY, defineChart, lineY, ruleY } from '@tanstack/charts';
+import { Chart } from '@tanstack/charts/react';
+import { scaleLinear } from '@tanstack/charts/scales/linear';
+import { Component, type ReactNode, useMemo } from 'react';
+
+import { ensureError } from '@codaco/shared-consts';
+import { posthog } from '~/analytics';
 import { cx } from '~/utils/cva';
 
 import {
@@ -10,12 +17,15 @@ import {
  * A static sketch of a distribution's shape over its valid window: a curve
  * for the continuous families (normal, lognormal, beta, uniform), bars for
  * the discrete ones (poisson, constant), with the window endpoints labelled
- * (spec, "Distribution visual").
+ * (spec, "Distribution visual"; revision 2 item 2 moves the rendering onto
+ * TanStack Charts).
  *
  * Decorative by contract: the numeric fields beside it are the accessible
- * representation, so the whole component is `aria-hidden`. Pure SVG, design
- * tokens only, and no animation — a distribution's shape is not a state
- * change, and the preview popup is the try-it path for realised draws.
+ * representation, so the whole component is `aria-hidden` and the chart's own
+ * keyboard, pointer, focus, and tooltip behaviours are switched off — a
+ * focusable element inside an `aria-hidden` subtree is a trap, not a feature.
+ * No animation either: a distribution's shape is not a state change, and the
+ * preview popup is the try-it path for realised draws.
  *
  * The WINDOW is the schema's own valid window for the field (a count's
  * resolved bounds, `topologyDrawWindow`'s result, a validation range, 0-1
@@ -24,9 +34,12 @@ import {
  * (spec governing rule 1). Densities are drawn unnormalised and scaled to the
  * tallest sampled point, so the vertical axis carries no numbers to restate.
  *
- * Every numeric literal below is presentation — sample resolution, canvas
- * geometry, and how far past the mean an OPEN window is sketched — and shapes
- * pixels only; generation reads nothing from this module.
+ * This module computes only DATA: sampled densities and masses in the units
+ * the author typed. Every pixel — the plot rectangle, the scales, the paths —
+ * belongs to the chart, which re-lays-out whenever its container's width
+ * changes. The numeric literals below are presentation (sample resolution,
+ * aspect, mark thickness, and how far past the mean an OPEN window is
+ * sketched) and shape pixels only; generation reads nothing from this module.
  */
 
 export type DistributionVisualProps = {
@@ -40,16 +53,68 @@ export type DistributionVisualProps = {
 // --- presentation geometry ---------------------------------------------------
 
 const SAMPLES = 96;
-const VIEW_WIDTH = 240;
-const VIEW_HEIGHT = 72;
-/** Headroom above the tallest point so the curve's peak is never clipped. */
-const PLOT_TOP = 4;
-/** The baseline the axis sits on, inside the viewBox. */
-const BASELINE = VIEW_HEIGHT - 1;
+/** Width-to-height of the plot; the chart scales to its container at this ratio. */
+const CHART_ASPECT = 240 / 72;
+/**
+ * The width the chart lays out at before it has measured its container — on
+ * the server, on the first client paint, and in any environment without a
+ * usable `ResizeObserver`. The measured width supersedes it immediately.
+ */
+const INITIAL_WIDTH = 240;
 /** How many standard deviations past the mean an open window is sketched to. */
 const OPEN_WINDOW_SPREADS = 4;
-/** A spike (zero-spread family) rendered as a bar this wide, in view units. */
-const SPIKE_WIDTH = 3;
+/**
+ * The density axis is unlabelled and normalised to a peak of 1. The ceiling
+ * clears the tallest point so a peak is never clipped; the floor opens a hair
+ * of space under the shape for the baseline rule to sit in.
+ */
+const DENSITY_CEILING = 1.06;
+const DENSITY_FLOOR = -0.04;
+/** A poisson comb's bars, capped so a sparse window does not draw slabs. */
+const BAR_THICKNESS = 10;
+/** A single-valued family (constant, zero-spread) drawn as a spike this wide. */
+const SPIKE_THICKNESS = 4;
+const BAR_RADIUS = 1;
+const LINE_WIDTH = 1.5;
+
+// --- design tokens -----------------------------------------------------------
+
+/**
+ * Marks are painted with the theme's own custom properties rather than the
+ * chart library's palette tokens, so a theme change moves this sketch with
+ * every other surface and no hex ever appears here.
+ */
+const ACCENT = 'var(--color-primary)';
+const MUTED = 'var(--color-text)';
+const AREA_OPACITY = 0.15;
+const BAR_OPACITY = 0.6;
+const BASELINE_OPACITY = 0.3;
+
+/**
+ * Everything the chart would otherwise do on its own. `guides: false` drops
+ * both axes and their implicit margins (the endpoint labels below the plot
+ * are the only annotation this sketch carries); `clip` keeps an edge bar
+ * inside the plot rather than painting past it; the interaction options make
+ * the surface inert and unfocusable; `svgAnimation: false` states the
+ * no-motion contract rather than relying on it being the library's default.
+ */
+const INERT_CHART = {
+  guides: false,
+  margin: 0,
+  clip: true,
+  focus: false,
+  pointer: false,
+  keyboard: false,
+  tooltip: false,
+  svgAnimation: false,
+} as const;
+
+/**
+ * Named for the same reason the wrapper is `aria-hidden`: the chart requires
+ * an accessible name, and a whole sentence is the only kind of string that
+ * can be localised later. Nothing reads it — the subtree is hidden.
+ */
+const CHART_LABEL = 'The shape of this distribution across its valid range.';
 
 // --- distribution mathematics ------------------------------------------------
 
@@ -192,37 +257,50 @@ const renderSpan = (
   return { lo, hi };
 };
 
+/**
+ * The span the SCALE is given: the drawn span, widened when it has no width
+ * at all. A stage pinned to one population (`minNodes === maxNodes`) hands
+ * this component a window whose ends meet, and a linear scale over a
+ * zero-width domain has no defined mapping — so a hair of axis is invented
+ * either side, exactly as the old hand-rolled projection did. The endpoint
+ * labels still report the real window.
+ */
+const scaleSpan = (
+  distribution: SyntheticDistribution,
+  window: SyntheticWindow,
+): { lo: number; hi: number; degenerate: boolean } => {
+  const { lo, hi } = renderSpan(distribution, window);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
+    return { lo: 0, hi: 1, degenerate: true };
+  }
+  if (!(hi > lo)) return { lo: lo - 1, hi: lo + 1, degenerate: true };
+  return { lo, hi, degenerate: false };
+};
+
 // --- shape construction ------------------------------------------------------
 
+/**
+ * What to draw, in the author's own units. Heights are normalised to a peak
+ * of 1 so the density axis stays unlabelled; the chart's scales turn these
+ * into pixels.
+ */
 type Shape =
-  | { kind: 'curve'; points: { x: number; y: number }[] }
+  | { kind: 'curve'; points: { value: number; density: number }[] }
   | {
       kind: 'bars';
-      bars: { key: string; x: number; width: number; height: number }[];
+      bars: { value: number; mass: number }[];
+      thickness: number;
     };
 
-const toX = (value: number, lo: number, hi: number): number =>
-  ((value - lo) / (hi - lo)) * VIEW_WIDTH;
-
-const toY = (density: number, tallest: number): number =>
-  tallest <= 0
-    ? BASELINE
-    : BASELINE - (density / tallest) * (BASELINE - PLOT_TOP);
-
-const spikeBar = (value: number, lo: number, hi: number): Shape => ({
+/** All the mass at one value: a constant, or a zero-spread family. */
+const spike = (value: number): Shape => ({
   kind: 'bars',
-  bars: [
-    {
-      key: 'spike',
-      x: Math.min(
-        Math.max(toX(value, lo, hi) - SPIKE_WIDTH / 2, 0),
-        VIEW_WIDTH - SPIKE_WIDTH,
-      ),
-      width: SPIKE_WIDTH,
-      height: BASELINE - PLOT_TOP,
-    },
-  ],
+  bars: [{ value, mass: 1 }],
+  thickness: SPIKE_THICKNESS,
 });
+
+const normalised = (value: number, tallest: number): number =>
+  tallest > 0 ? value / tallest : 0;
 
 const buildShape = (
   distribution: SyntheticDistribution,
@@ -236,7 +314,7 @@ const buildShape = (
 
   switch (distribution.distribution) {
     case 'constant':
-      return spikeBar(distribution.value, lo, hi);
+      return spike(distribution.value);
     case 'poisson': {
       const { mean } = distribution;
       const firstK = Math.max(0, Math.ceil(supportLo));
@@ -246,35 +324,32 @@ const buildShape = (
         masses.push({ k, mass: poissonPmf(k, mean) });
       }
       const tallest = Math.max(...masses.map(({ mass }) => mass), 0);
-      // Bars sit centred on their integer, sized to the integer pitch.
-      const pitch = VIEW_WIDTH / (hi - lo || 1);
-      const width = Math.max(Math.min(pitch * 0.7, 12), 1);
       return {
         kind: 'bars',
         bars: masses.map(({ k, mass }) => ({
-          key: String(k),
-          x: Math.min(
-            Math.max(toX(k, lo, hi) - width / 2, 0),
-            VIEW_WIDTH - width,
-          ),
-          width,
-          height: tallest <= 0 ? 0 : (mass / tallest) * (BASELINE - PLOT_TOP),
+          value: k,
+          mass: normalised(mass, tallest),
         })),
+        thickness: BAR_THICKNESS,
       };
     }
     case 'uniform': {
       // Flat over the effective bounds, zero outside: a step function drawn
-      // as a curve so the family reads as continuous.
+      // as a curve so the family reads as continuous. The repeated x values
+      // at each riser are why both curve marks below take explicit interval
+      // endpoints — see `curveMarks`.
       const height = supportHi > supportLo ? 1 : 0;
-      const points = [
-        { x: toX(lo, lo, hi), y: toY(0, 1) },
-        { x: toX(supportLo, lo, hi), y: toY(0, 1) },
-        { x: toX(supportLo, lo, hi), y: toY(height, 1) },
-        { x: toX(supportHi, lo, hi), y: toY(height, 1) },
-        { x: toX(supportHi, lo, hi), y: toY(0, 1) },
-        { x: toX(hi, lo, hi), y: toY(0, 1) },
-      ];
-      return { kind: 'curve', points };
+      return {
+        kind: 'curve',
+        points: [
+          { value: lo, density: 0 },
+          { value: supportLo, density: 0 },
+          { value: supportLo, density: height },
+          { value: supportHi, density: height },
+          { value: supportHi, density: 0 },
+          { value: hi, density: 0 },
+        ],
+      };
     }
     case 'normal':
     case 'lognormal':
@@ -282,7 +357,7 @@ const buildShape = (
       if (distribution.sd === 0) {
         // Zero spread has single-point support at the mean — the same reading
         // every zero-deviation rule in the schema takes.
-        return spikeBar(distribution.mean, lo, hi);
+        return spike(distribution.mean);
       }
       const pdf =
         distribution.distribution === 'normal'
@@ -300,92 +375,219 @@ const buildShape = (
       return {
         kind: 'curve',
         points: densities.map(({ x, density }) => ({
-          x: toX(x, lo, hi),
-          y: toY(density, tallest),
+          value: x,
+          density: normalised(density, tallest),
         })),
       };
     }
   }
 };
 
-const curvePaths = (
-  points: { x: number; y: number }[],
-): { line: string; area: string } => {
-  const segments = points
-    .map(({ x, y }) => `${x.toFixed(2)},${y.toFixed(2)}`)
-    .join(' L ');
-  const first = points[0];
-  const last = points[points.length - 1];
-  return {
-    line: `M ${segments}`,
-    area: `M ${first?.x.toFixed(2) ?? 0},${BASELINE} L ${segments} L ${last?.x.toFixed(2) ?? 0},${BASELINE} Z`,
-  };
+// --- chart -------------------------------------------------------------------
+
+/**
+ * The sketch's own baseline, drawn as a rule at zero density rather than as
+ * an axis, because `guides: false` removes the axes this sketch has no use
+ * for and would otherwise take the baseline with them.
+ */
+const baselineMark = () =>
+  ruleY([0], { stroke: MUTED, strokeOpacity: BASELINE_OPACITY });
+
+/**
+ * A configured scale INSTANCE fixes the domain to the schema's window; a
+ * scale factory would let the library infer the domain from the data
+ * instead, which would silently redraw a constant in the middle of whatever
+ * window it was given rather than at the value the author typed.
+ */
+const axesOver = (lo: number, hi: number) => ({
+  x: { scale: scaleLinear().domain([lo, hi]) },
+  y: { scale: scaleLinear().domain([DENSITY_FLOOR, DENSITY_CEILING]) },
+});
+
+/**
+ * How the chart meets the DOM, shared by both mark families. With neither a
+ * `width` nor a `height`, the host takes its container's full width, holds
+ * the plot to {@link CHART_ASPECT}, and re-lays-out — new scales, new
+ * geometry, not a stretched bitmap — whenever a `ResizeObserver` reports that
+ * width changed. {@link INITIAL_WIDTH} is only what it draws before the first
+ * measurement lands.
+ */
+const SURFACE = {
+  aspectRatio: CHART_ASPECT,
+  initialWidth: INITIAL_WIDTH,
+  tabIndex: -1,
+  ariaLabel: CHART_LABEL,
+} as const;
+
+type Span = { lo: number; hi: number };
+
+/**
+ * A filled shape under a stroked outline. The area mark takes EXPLICIT
+ * interval endpoints (`y1`/`y2`) rather than the implicit `y`: an area reads
+ * a repeated x position as a stack to accumulate, and the uniform step visits
+ * each riser's x twice, which the library refuses with "a stack requires at
+ * most one value for each position and series". Explicit endpoints opt out of
+ * stacking altogether, which is what a single-series density wants anyway.
+ */
+function CurveChart({
+  points,
+  lo,
+  hi,
+}: Span & { points: { value: number; density: number }[] }) {
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          areaY(points, {
+            x: 'value',
+            y1: 0,
+            y2: 'density',
+            fill: ACCENT,
+            fillOpacity: AREA_OPACITY,
+          }),
+          lineY(points, {
+            x: 'value',
+            y: 'density',
+            stroke: ACCENT,
+            strokeWidth: LINE_WIDTH,
+          }),
+          baselineMark(),
+        ],
+        ...axesOver(lo, hi),
+        ...INERT_CHART,
+      }),
+    [points, lo, hi],
+  );
+
+  return <Chart definition={definition} {...SURFACE} />;
+}
+
+function BarsChart({
+  bars,
+  thickness,
+  lo,
+  hi,
+}: Span & { bars: { value: number; mass: number }[]; thickness: number }) {
+  const definition = useMemo(
+    () =>
+      defineChart({
+        marks: [
+          barY(bars, {
+            x: 'value',
+            y: 'mass',
+            fill: ACCENT,
+            fillOpacity: BAR_OPACITY,
+            maxThickness: thickness,
+            radius: BAR_RADIUS,
+          }),
+          baselineMark(),
+        ],
+        ...axesOver(lo, hi),
+        ...INERT_CHART,
+      }),
+    [bars, thickness, lo, hi],
+  );
+
+  return <Chart definition={definition} {...SURFACE} />;
+}
+
+function DistributionChart({
+  distribution,
+  window,
+}: Omit<DistributionVisualProps, 'className'>) {
+  const { lo, hi, shape } = useMemo(() => {
+    const span = scaleSpan(distribution, window);
+    return {
+      lo: span.lo,
+      hi: span.hi,
+      shape: span.degenerate
+        ? spike((span.lo + span.hi) / 2)
+        : buildShape(distribution, span.lo, span.hi),
+    };
+  }, [distribution, window]);
+
+  if (shape.kind === 'curve') {
+    return <CurveChart points={shape.points} lo={lo} hi={hi} />;
+  }
+  return (
+    <BarsChart bars={shape.bars} thickness={shape.thickness} lo={lo} hi={hi} />
+  );
+}
+
+/**
+ * The chart library is an alpha, and this sketch sits inside a stage editor
+ * holding a researcher's uncommitted draft — a throw from a mark it cannot
+ * lay out must cost the decoration, never the work. The boundary keeps the
+ * plot's box and its baseline so the endpoint labels stay where they were,
+ * and reports the failure the way every other caught error in this app is
+ * reported (`AppErrorBoundary`) rather than swallowing it: a family the
+ * library cannot draw is a bug to fix, not a blank to live with, and the
+ * parameter combinations researchers actually author are not ones a
+ * developer will happen to type.
+ */
+type ChartBoundaryProps = {
+  /** The inputs being drawn; a change to them is a fresh attempt. */
+  attempt: string;
+  children: ReactNode;
 };
+
+class ChartBoundary extends Component<
+  ChartBoundaryProps,
+  { failed: boolean; attempt: string }
+> {
+  state = { failed: false, attempt: this.props.attempt };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  /**
+   * One combination the library cannot draw must not blank the sketch for the
+   * rest of the session: the next keystroke is different input, so it gets its
+   * own attempt. Without this the researcher would have to leave the editor
+   * and come back to see any shape again.
+   */
+  static getDerivedStateFromProps(
+    props: ChartBoundaryProps,
+    state: { failed: boolean; attempt: string },
+  ) {
+    if (props.attempt === state.attempt) return null;
+    return { failed: false, attempt: props.attempt };
+  }
+
+  componentDidCatch(error: unknown) {
+    posthog.captureException(ensureError(error));
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div
+          className="border-text/30 w-full border-b"
+          style={{ aspectRatio: CHART_ASPECT }}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function DistributionVisual({
   distribution,
   window,
   className,
 }: DistributionVisualProps) {
-  const { lo, hi } = renderSpan(distribution, window);
-  const degenerate = !(hi > lo);
-  const shape = degenerate
-    ? spikeBar(lo, lo - 1, lo + 1)
-    : buildShape(distribution, lo, hi);
-
   return (
     <div
       // The numeric fields are the accessible representation of these values;
       // this sketch is redundant decoration for assistive technology.
       aria-hidden="true"
+      role="presentation"
       className={cx('w-full max-w-64 min-w-0 select-none', className)}
     >
-      <svg
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        className="block h-auto w-full"
-        role="presentation"
-        focusable="false"
-      >
-        {shape.kind === 'curve' ? (
-          (() => {
-            const { line, area } = curvePaths(shape.points);
-            return (
-              <>
-                <path d={area} className="fill-primary/15" />
-                <path
-                  d={line}
-                  className="stroke-primary fill-none"
-                  strokeWidth={1.5}
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </>
-            );
-          })()
-        ) : (
-          <g className="fill-primary/60">
-            {shape.bars.map((bar) => (
-              <rect
-                key={bar.key}
-                x={bar.x}
-                y={BASELINE - bar.height}
-                width={bar.width}
-                height={bar.height}
-                rx={1}
-              />
-            ))}
-          </g>
-        )}
-        <line
-          x1={0}
-          y1={BASELINE}
-          x2={VIEW_WIDTH}
-          y2={BASELINE}
-          className="stroke-text/30"
-          strokeWidth={1}
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
+      <ChartBoundary attempt={JSON.stringify([distribution, window])}>
+        <DistributionChart distribution={distribution} window={window} />
+      </ChartBoundary>
       <div className="text-text/70 flex justify-between text-xs">
         <span>{formatWindowEndpoint(window.min)}</span>
         <span>{formatWindowEndpoint(window.max)}</span>
