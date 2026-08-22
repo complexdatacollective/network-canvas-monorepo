@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -21,7 +21,7 @@ export const informationScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           label: 'Menu-only label',
           title: 'Welcome to the study',
@@ -74,7 +74,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['items[].type=asset(image)', 'items[].size'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addAsset({
           id: 'img-1',
           name: 'quadrant',
@@ -155,7 +155,7 @@ export const informationScenarios: InterfaceScenarios = {
       id: 'audio-asset-description-aria',
       covers: ['items[].type=asset(audio)', 'items[].description'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addAsset({
           id: 'audio-1',
           name: 'clip',
@@ -202,7 +202,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['items[].type=asset(video)'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addAsset({
           id: 'video-1',
           name: 'intro',
@@ -245,7 +245,7 @@ export const informationScenarios: InterfaceScenarios = {
       id: 'missing-and-unsupported-asset-fallback',
       covers: ['missing-asset-fallback', 'unsupported-asset-fallback'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addAsset({
           id: 'roster-1',
           name: 'roster',
@@ -286,7 +286,7 @@ export const informationScenarios: InterfaceScenarios = {
       id: 'items-ordering-mixed-types',
       covers: ['items-ordering'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addAsset({
           id: 'img-1',
           name: 'quadrant',
@@ -344,7 +344,7 @@ export const informationScenarios: InterfaceScenarios = {
       id: 'external-link-new-tab',
       covers: ['external-links'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Link stage',
           items: [
@@ -380,7 +380,7 @@ export const informationScenarios: InterfaceScenarios = {
       id: 'empty-items',
       covers: ['items=[]'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           label: 'Empty stage',
           title: 'Empty stage',

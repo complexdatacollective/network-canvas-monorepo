@@ -350,8 +350,15 @@ const walk = (
       const discriminator = node.def.discriminator;
       const discValue = value[discriminator];
       const match = options.find((option) => {
-        if (!(option instanceof z.ZodObject)) return false;
-        const discField: unknown = option.shape[discriminator];
+        // Unwrapped before the shape check: a branch that carries a transform
+        // (a name generator, which fills in a default synthetic count) is a
+        // pipe rather than an object, and reading `.shape` off the pipe finds
+        // no discriminator — which silently dropped every reference inside
+        // those stages. `walk` unwraps its schema on entry, so the ORIGINAL
+        // option is still what gets walked.
+        const candidate = unwrap(option);
+        if (!(candidate instanceof z.ZodObject)) return false;
+        const discField: unknown = candidate.shape[discriminator];
         if (!(discField instanceof z.ZodLiteral)) return false;
         const accepted: ReadonlySet<unknown> = discField.values;
         return accepted.has(discValue);

@@ -1,13 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import { makeValidationFunction } from '@codaco/fresco-ui/form/validation/helpers';
-import { generateNetwork } from '@codaco/protocol-utilities';
+import { generateInterviews } from '@codaco/protocol-utilities';
 import {
   asEntityAttributeReference,
   type Codebook,
+  CurrentProtocolSchema,
+  type CurrentProtocol,
   type Stage,
   type StageSubject,
   type Variable,
@@ -26,11 +27,52 @@ import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
 
 /**
- * Pinned so generation and validation resolve RelativeDatePicker windows
- * against the same day: the generator reads `config.today` and useProtocolForm
- * reads `todayYmd()`, which are two clock reads that could straddle midnight.
+ * The instant every session in this file starts, and the day the wall clock is
+ * pinned to (D13): the runtime's validators anchor "today" at `todayYmd()` — a
+ * real clock read — while the engine anchors the session at its seeded
+ * `startTime`. Faking only `Date` holds both derivations to one day without
+ * touching timers, so the async validator stack runs on real scheduling.
  */
-const today = todayYmd();
+const START_WINDOW = '2026-08-20T12:00:00.000Z';
+vi.useFakeTimers({ now: new Date(START_WINDOW), toFake: ['Date'] });
+
+/**
+ * One generated network for a bare fixture, through the SAME boundary a host
+ * crosses (D14): the fixture is wrapped into a document and parsed — which is
+ * what resolves every stage's synthetic descriptors — and the walk is pinned
+ * to the faked instant above. Roster rows travel the assetData channel the
+ * hosts use.
+ */
+const generate = (
+  fixtureCodebook: Codebook,
+  fixtureStages: Stage[],
+  seed: number,
+  rosterNodes?: Record<string, NcNode[]>,
+): NcNetwork => {
+  const protocol = CurrentProtocolSchema.parse({
+    name: 'Synthetic data conformance',
+    schemaVersion: 8,
+    codebook: fixtureCodebook,
+    stages: fixtureStages,
+  }) as CurrentProtocol;
+  const [result] = generateInterviews(
+    protocol,
+    {
+      count: 1,
+      seed,
+      simulateDropOut: false,
+      startWindow: START_WINDOW,
+    },
+    rosterNodes ? { rosterNodes } : {},
+  );
+  if (!result) throw new Error('generation produced no session');
+  // Sessions start up to SYNTHETIC_START_WINDOW_DAYS before the anchor, and
+  // the engine derives every session-relative window from ITS OWN day — so
+  // the wall clock follows each generated session (D13), and the validators
+  // read the same "today" the draw did.
+  vi.setSystemTime(new Date(result.session.startTime));
+  return result.session.network;
+};
 
 /**
  * The schema's own constructor for the branded string a variable-reference rule
@@ -285,13 +327,15 @@ async function collectFailures(
  * Form fields for every variable a form can render. Layout and location
  * variables have no participant-facing control, so no form lists them.
  */
-function formFields(variables: Variables): { variable: string }[] {
+function formFields(
+  variables: Variables,
+): { variable: string; prompt: string }[] {
   return Object.entries(variables)
     .filter(
       ([, variable]) =>
         variable.type !== 'layout' && variable.type !== 'location',
     )
-    .map(([variableId]) => ({ variable: variableId }));
+    .map(([variableId]) => ({ variable: variableId, prompt: 'Tell us' }));
 }
 
 const FOUR_OPTIONS: VariableOptions = [
@@ -317,8 +361,8 @@ const FIVE_OPTIONS: VariableOptions = [
 
 const MONTH_PARAMETERS = {
   type: 'month',
-  min: '1950-01-01',
-  max: '2005-12-31',
+  min: '1950-01',
+  max: '2005-12',
 } as const;
 
 /**
@@ -356,7 +400,7 @@ const egoVariables: Variables = {
     validation: { required: true, minLength: 8, maxLength: 8 },
   },
   egoCodeConfirm: {
-    name: 'Confirm code',
+    name: 'Confirm-code',
     type: 'text',
     component: 'TextArea',
     validation: {
@@ -374,18 +418,21 @@ const egoVariables: Variables = {
     validation: { required: true, minValue: 18, maxValue: 65 },
   },
   egoAgeCopy: {
-    name: 'Age again',
+    name: 'Age-again',
     type: 'number',
+    component: 'Number',
     validation: { minValue: 18, maxValue: 65, sameAs: ref('egoAge') },
   },
   egoYearsAtAddress: {
-    name: 'Years at address',
+    name: 'Years-at-address',
     type: 'number',
+    component: 'Number',
     validation: { minValue: 0, maxValue: 40, lessThanVariable: ref('egoAge') },
   },
   egoRetirementAge: {
-    name: 'Retirement age',
+    name: 'Retirement-age',
     type: 'number',
+    component: 'Number',
     validation: {
       minValue: 40,
       maxValue: 90,
@@ -393,8 +440,9 @@ const egoVariables: Variables = {
     },
   },
   egoAgeAtLeast: {
-    name: 'Age at least',
+    name: 'Age-at-least',
     type: 'number',
+    component: 'Number',
     validation: {
       minValue: 0,
       maxValue: 65,
@@ -402,8 +450,9 @@ const egoVariables: Variables = {
     },
   },
   egoAgeAtMost: {
-    name: 'Age at most',
+    name: 'Age-at-most',
     type: 'number',
+    component: 'Number',
     validation: {
       minValue: 18,
       maxValue: 90,
@@ -411,13 +460,15 @@ const egoVariables: Variables = {
     },
   },
   egoOtherNumber: {
-    name: 'Other number',
+    name: 'Other-number',
     type: 'number',
+    component: 'Number',
     validation: { minValue: 1, maxValue: 3 },
   },
   egoLuckyNumber: {
-    name: 'Lucky number',
+    name: 'Lucky-number',
     type: 'number',
+    component: 'Number',
     validation: {
       minValue: 1,
       maxValue: 3,
@@ -447,119 +498,119 @@ const egoVariables: Variables = {
     validation: { lessThanVariable: ref('egoCloseness') },
   },
   egoHopeAtLeast: {
-    name: 'Hope at least',
+    name: 'Hope-at-least',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanOrEqualToVariable: ref('egoCloseness') },
   },
   egoHopeAtMost: {
-    name: 'Hope at most',
+    name: 'Hope-at-most',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('egoCloseness') },
   },
 
   egoBirthMonth: {
-    name: 'Birth month',
+    name: 'Birth-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { required: true },
   },
   egoBirthMonthCopy: {
-    name: 'Birth month again',
+    name: 'Birth-month-again',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { sameAs: ref('egoBirthMonth') },
   },
   egoOtherMonth: {
-    name: 'Other month',
+    name: 'Other-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { differentFrom: ref('egoBirthMonth') },
   },
   egoLaterMonth: {
-    name: 'Later month',
+    name: 'Later-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { greaterThanVariable: ref('egoBirthMonth') },
   },
   egoEarlierMonth: {
-    name: 'Earlier month',
+    name: 'Earlier-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { lessThanVariable: ref('egoBirthMonth') },
   },
   egoMonthAtLeast: {
-    name: 'Month at least',
+    name: 'Month-at-least',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { greaterThanOrEqualToVariable: ref('egoBirthMonth') },
   },
   egoMonthAtMost: {
-    name: 'Month at most',
+    name: 'Month-at-most',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
     validation: { lessThanOrEqualToVariable: ref('egoBirthMonth') },
   },
   egoStartYear: {
-    name: 'Start year',
+    name: 'Start-year',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'year', min: '1990-01-01', max: '2005-12-31' },
+    parameters: { type: 'year', min: '1990', max: '2005' },
     validation: { required: true },
   },
 
   egoLastVisit: {
-    name: 'Last visit',
+    name: 'Last-visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
     validation: { required: true },
   },
   egoLastVisitCopy: {
-    name: 'Last visit again',
+    name: 'Last-visit-again',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
     validation: { sameAs: ref('egoLastVisit') },
   },
   egoOtherVisit: {
-    name: 'Other visit',
+    name: 'Other-visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
     validation: { differentFrom: ref('egoLastVisit') },
   },
   egoFirstVisit: {
-    name: 'First visit',
+    name: 'First-visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 365, after: 0 },
     validation: { lessThanVariable: ref('egoLastVisit') },
   },
   egoNextVisit: {
-    name: 'Next visit',
+    name: 'Next-visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
     validation: { greaterThanVariable: ref('egoLastVisit') },
   },
   egoVisitAtLeast: {
-    name: 'Visit at least',
+    name: 'Visit-at-least',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
     validation: { greaterThanOrEqualToVariable: ref('egoLastVisit') },
   },
   egoVisitAtMost: {
-    name: 'Visit at most',
+    name: 'Visit-at-most',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 120, after: 0 },
@@ -573,7 +624,7 @@ const egoVariables: Variables = {
     validation: { required: true },
   },
   egoConsentCopy: {
-    name: 'Consent again',
+    name: 'Consent-again',
     type: 'boolean',
     component: 'Boolean',
     validation: { sameAs: ref('egoConsent') },
@@ -591,13 +642,13 @@ const egoVariables: Variables = {
     validation: { required: true },
   },
   egoNotifyCopy: {
-    name: 'Notify again',
+    name: 'Notify-again',
     type: 'boolean',
     component: 'Toggle',
     validation: { sameAs: ref('egoNotify') },
   },
   egoOptOut: {
-    name: 'Opt out',
+    name: 'Opt-out',
     type: 'boolean',
     component: 'Toggle',
     validation: { differentFrom: ref('egoNotify') },
@@ -611,14 +662,14 @@ const egoVariables: Variables = {
     validation: { required: true },
   },
   egoBandCopy: {
-    name: 'Band again',
+    name: 'Band-again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
     validation: { sameAs: ref('egoBand') },
   },
   egoOtherBand: {
-    name: 'Other band',
+    name: 'Other-band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -640,14 +691,14 @@ const egoVariables: Variables = {
     validation: { required: true, minSelected: 2, maxSelected: 3 },
   },
   egoContextsCopy: {
-    name: 'Contexts again',
+    name: 'Contexts-again',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
     validation: { sameAs: ref('egoContexts') },
   },
   egoOtherContexts: {
-    name: 'Other contexts',
+    name: 'Other-contexts',
     type: 'categorical',
     component: 'ToggleButtonGroup',
     options: FOUR_OPTIONS,
@@ -661,44 +712,45 @@ const egoVariables: Variables = {
  */
 const personVariables: Variables = {
   personName: {
-    name: 'Person name',
+    name: 'Person-name',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 20 },
   },
   personTag: {
-    name: 'Person tag',
+    name: 'Person-tag',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 4 },
   },
   personCode: {
-    name: 'Person code',
+    name: 'Person-code',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 6, maxLength: 6 },
   },
   personCodeCopy: {
-    name: 'Person code again',
+    name: 'Person-code-again',
     type: 'text',
     component: 'Text',
     validation: { minLength: 6, maxLength: 6, sameAs: ref('personCode') },
   },
   personNickname: {
-    name: 'Person nickname',
+    name: 'Person-nickname',
     type: 'text',
     component: 'Text',
     validation: { required: true, differentFrom: ref('personName') },
   },
   personAge: {
-    name: 'Person age',
+    name: 'Person-age',
     type: 'number',
     component: 'Number',
     validation: { required: true, unique: true, minValue: 18, maxValue: 80 },
   },
   personYearsKnown: {
-    name: 'Years known',
+    name: 'Years-known',
     type: 'number',
+    component: 'Number',
     validation: {
       minValue: 0,
       maxValue: 60,
@@ -706,26 +758,26 @@ const personVariables: Variables = {
     },
   },
   personCloseness: {
-    name: 'Person closeness',
+    name: 'Person-closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   personRegard: {
-    name: 'Person regard',
+    name: 'Person-regard',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanVariable: ref('personCloseness') },
   },
   personMet: {
-    name: 'Met on',
+    name: 'Met-on',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '2000-01-01', max: '2024-12-31' },
+    parameters: { type: 'month', min: '2000-01', max: '2024-12' },
     validation: { required: true, unique: true },
   },
   personLastSeen: {
-    name: 'Last seen',
+    name: 'Last-seen',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -739,14 +791,14 @@ const personVariables: Variables = {
   // apps/architect/src/components/Parameters/RelativeDatePicker.tsx) — so
   // this fixture is what most real protocols exercise.
   personDefaultVisit: {
-    name: 'Person default visit',
+    name: 'Person-default-visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: {},
     validation: { required: true },
   },
   personContexts: {
-    name: 'Person contexts',
+    name: 'Person-contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -758,14 +810,14 @@ const personVariables: Variables = {
     },
   },
   personBand: {
-    name: 'Person band',
+    name: 'Person-band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
     validation: { required: true },
   },
-  personLayout: { name: 'Person layout', type: 'layout' },
-  personPlace: { name: 'Person place', type: 'location' },
+  personLayout: { name: 'Person-layout', type: 'layout' },
+  personPlace: { name: 'Person-place', type: 'location' },
 };
 
 /**
@@ -775,33 +827,33 @@ const personVariables: Variables = {
  */
 const tokenVariables: Variables = {
   tokenFlag: {
-    name: 'Token flag',
+    name: 'Token-flag',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true, unique: true },
   },
   tokenSwitch: {
-    name: 'Token switch',
+    name: 'Token-switch',
     type: 'boolean',
     component: 'Toggle',
     validation: { required: true, unique: true },
   },
   tokenRank: {
-    name: 'Token rank',
+    name: 'Token-rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
     validation: { required: true, unique: true },
   },
   tokenRankCopy: {
-    name: 'Token rank again',
+    name: 'Token-rank-again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
     validation: { sameAs: ref('tokenRank') },
   },
   tokenOtherRank: {
-    name: 'Token other rank',
+    name: 'Token-other-rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -811,57 +863,57 @@ const tokenVariables: Variables = {
 
 const friendVariables: Variables = {
   edgeLabel: {
-    name: 'Edge label',
+    name: 'Edge-label',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 4, maxLength: 8 },
   },
   edgeNote: {
-    name: 'Edge note',
+    name: 'Edge-note',
     type: 'text',
     component: 'TextArea',
     validation: { required: true, differentFrom: ref('edgeLabel') },
   },
   edgeStrength: {
-    name: 'Edge strength',
+    name: 'Edge-strength',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 1, maxValue: 5 },
   },
   edgeWeight: {
-    name: 'Edge weight',
+    name: 'Edge-weight',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   edgeWeightFloor: {
-    name: 'Edge weight floor',
+    name: 'Edge-weight-floor',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('edgeWeight') },
   },
   edgeSince: {
-    name: 'Edge since',
+    name: 'Edge-since',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
+    parameters: { type: 'year', min: '2000', max: '2024' },
     validation: { required: true },
   },
   edgeSinceCopy: {
-    name: 'Edge since again',
+    name: 'Edge-since-again',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
+    parameters: { type: 'year', min: '2000', max: '2024' },
     validation: { sameAs: ref('edgeSince') },
   },
   edgeIsClose: {
-    name: 'Edge is close',
+    name: 'Edge-is-close',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true },
   },
   edgeKind: {
-    name: 'Edge kind',
+    name: 'Edge-kind',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: THREE_OPTIONS,
@@ -907,6 +959,7 @@ const stages = [
     id: 'stage-ego',
     type: 'EgoForm',
     label: 'About you',
+    introductionPanel: { title: 'About you', text: 'A few questions.' },
     form: { fields: formFields(egoVariables) },
   },
   {
@@ -932,6 +985,7 @@ const stages = [
     type: 'Sociogram',
     label: 'Connections',
     subject: { entity: 'node', type: 'person' },
+    background: { concentricCircles: 3 },
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
     // second pass is a second, independent chance for a pair the first pass
@@ -958,6 +1012,10 @@ const stages = [
     type: 'AlterEdgeForm',
     label: 'About connections',
     subject: { entity: 'edge', type: 'friend' },
+    introductionPanel: {
+      title: 'About connections',
+      text: 'A few questions about each tie.',
+    },
     form: { fields: formFields(friendVariables) },
   },
 ] as unknown as Stage[];
@@ -998,23 +1056,13 @@ describe('synthetic data conformance', () => {
 
     // Seed chosen so the draw produces multiple edges (see the >= 2 guard
     // below); re-scan candidate seeds if generator draw order changes again.
-    const { network } = generateNetwork({
-      seed: 13,
-      codebook,
-      stages,
-      config: { today },
-    });
+    const network = generate(codebook, stages, 13);
 
     expect(emptyFixtureEntityTypes(scope, network)).toEqual([]);
   });
 
   it('generates values that pass the real form validators for every legal rule', async () => {
-    const { network } = generateNetwork({
-      seed: 13,
-      codebook,
-      stages,
-      config: { today },
-    });
+    const network = generate(codebook, stages, 13);
 
     expect(network.nodes.filter((node) => node.type === 'person')).toHaveLength(
       6,
@@ -1035,12 +1083,7 @@ describe('synthetic data conformance', () => {
     const failures: string[] = [];
 
     for (let seed = 1; seed <= 10; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook,
-        stages,
-        config: { today },
-      });
+      const network = generate(codebook, stages, seed);
       failures.push(
         ...(await collectFailures(codebook, network, stages)).map(
           (failure) => `seed ${seed}: ${failure}`,
@@ -1064,31 +1107,31 @@ describe('synthetic data conformance', () => {
  * when a node is dropped. So a value the form validated is later replaced by
  * one nothing validates, and the participant is never told.
  *
- * Generation cannot repair this, and should not try. A bin exists so that a
- * participant may put any node in any bin: `differentFrom` on a binned variable
- * forbids two nodes sharing a bin, and `minSelected: 2` forbids a node sitting
- * in exactly one. Constraining the generator to satisfy those rules would make
- * it emit arrangements the interface cannot produce. Keeping a validated
- * variable out of a bin prompt is a protocol-authoring decision. The test below
- * therefore measures the hazard rather than asserting it away.
+ * Generation cannot repair this, and does not try. A bin exists so that a
+ * participant may put any node in any bin: `minSelected: 2` on a bin-written
+ * variable forbids every arrangement the interface can produce, so the engine
+ * REFUSES the protocol rather than emitting data no interview could hold —
+ * and the refusal is a property of the protocol alone, identical on every
+ * seed. Keeping a validated variable out of a bin prompt remains a
+ * protocol-authoring decision; the tests below pin both sides of it.
  */
 const hazardVariables: Variables = {
   binBand: {
-    name: 'Bin band',
+    name: 'Bin-band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
     validation: { required: true },
   },
   binRank: {
-    name: 'Bin rank',
+    name: 'Bin-rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
     validation: { required: true, differentFrom: ref('binBand') },
   },
   binContexts: {
-    name: 'Bin contexts',
+    name: 'Bin-contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -1126,7 +1169,9 @@ const hazardFormAndBinStages = [
     type: 'OrdinalBin',
     label: 'Ordinal bin',
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p2', text: 'Sort', variable: 'binRank' }],
+    prompts: [
+      { id: 'p2', text: 'Sort', variable: 'binRank', color: 'ord-color-seq-1' },
+    ],
   },
   {
     id: 'stage-categorical-bin',
@@ -1148,12 +1193,7 @@ async function measureHazard(stageList: Stage[]): Promise<HazardMeasurement> {
   const measurement: HazardMeasurement = { nodes: 0, violatingNodes: 0 };
 
   for (let seed = 1; seed <= 10; seed++) {
-    const { network } = generateNetwork({
-      seed,
-      codebook: hazardCodebook,
-      stages: stageList,
-      config: { today },
-    });
+    const network = generate(hazardCodebook, stageList, seed);
 
     for (const node of network.nodes) {
       measurement.nodes += 1;
@@ -1191,23 +1231,46 @@ describe('a variable used by both a form and a binning stage', () => {
   // participant's drags would write, and those are the values the form's rules
   // reject. The count is left unpinned because it is a property of the fixture's
   // option counts, not a contract.
-  it('stops conforming once the bin stages write it', async () => {
-    const measurement = await measureHazard(hazardFormAndBinStages);
-
-    expect(measurement.nodes).toBe(80);
-    expect(measurement.violatingNodes).toBeGreaterThan(0);
+  it('refuses to generate once the bin stages write it', () => {
+    // The old engine emitted the hazard and this test measured the drift;
+    // the new engine treats the contradiction — `minSelected: 2` on a
+    // variable a bin drop can only ever give one value — as a protocol the
+    // interview cannot produce, and refuses. The refusal is a property of
+    // the protocol alone, so it holds on every seed identically.
+    for (const seed of [1, 2, 3]) {
+      expect(() =>
+        generate(hazardCodebook, hazardFormAndBinStages, seed),
+      ).toThrow(/exactly one bin/);
+    }
   });
 
-  // Conformance alone would be satisfied by a handler that wrote nothing, and a
-  // bin stage that sorts no node into a bin is not the interaction it stands
-  // for. Every subject node still holds a value of each prompt's variable.
+  // Conformance alone would be satisfied by a handler that wrote nothing, and
+  // a bin stage that sorts no node into a bin is not the interaction it
+  // stands for. With a compatible codebook — the bin variables declaring no
+  // selection floor of their own — every subject node holds a value of each
+  // prompt's variable.
   it('sorts every subject node into a bin', () => {
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook: hazardCodebook,
-      stages: hazardFormAndBinStages,
-      config: { today },
-    });
+    const compatibleVariables: Variables = {
+      ...hazardVariables,
+      binContexts: {
+        name: 'Bin-contexts',
+        type: 'categorical',
+        component: 'CheckboxGroup',
+        options: FOUR_OPTIONS,
+        validation: { required: true },
+      },
+    };
+    const compatibleCodebook: Codebook = {
+      node: {
+        binned: {
+          name: 'Binned',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: compatibleVariables,
+        },
+      },
+    };
+    const network = generate(compatibleCodebook, hazardFormAndBinStages, 1);
 
     expect(network.nodes).toHaveLength(8);
 
@@ -1244,16 +1307,16 @@ describe('a variable used by both a form and a binning stage', () => {
  */
 const crossResolutionVariables: Variables = {
   xrMonth: {
-    name: 'Start month',
+    name: 'Start-month',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    parameters: { type: 'month', min: '2000-01', max: '2010-12' },
     validation: { required: true },
   },
   // `> instant(xrMonth)`, which for `2010-12` is `2010-12-01`: the window has
   // to reach past the first of the month, not merely into it.
   xrDayAfterMonth: {
-    name: 'Day after month',
+    name: 'Day-after-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1262,21 +1325,21 @@ const crossResolutionVariables: Variables = {
   // `< instant(xrMonth)`, which for `2000-01` is `2000-01-01`, so this one
   // needs a window opening before the counterpart's.
   xrDayBeforeMonth: {
-    name: 'Day before month',
+    name: 'Day-before-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
     validation: { lessThanVariable: ref('xrMonth') },
   },
   xrDayAtLeastMonth: {
-    name: 'Day at least month',
+    name: 'Day-at-least-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
     validation: { greaterThanOrEqualToVariable: ref('xrMonth') },
   },
   xrDayAtMostMonth: {
-    name: 'Day at most month',
+    name: 'Day-at-most-month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
@@ -1287,56 +1350,56 @@ const crossResolutionVariables: Variables = {
   // strictly after `2009-06-17` is `2009-07`, because `2009-06` would land on
   // the first of June — before the day it must follow.
   xrDay: {
-    name: 'Anchor day',
+    name: 'Anchor-day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2009-12-31' },
     validation: { required: true },
   },
   xrMonthAfterDay: {
-    name: 'Month after day',
+    name: 'Month-after-day',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    parameters: { type: 'month', min: '2000-01', max: '2010-12' },
     validation: { greaterThanVariable: ref('xrDay') },
   },
   // Non-strict, and still not satisfied by the month containing the day:
   // `2009-06 >= 2009-06-17` is false, the month having started first.
   xrMonthAtLeastDay: {
-    name: 'Month at least day',
+    name: 'Month-at-least-day',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
+    parameters: { type: 'month', min: '2000-01', max: '2010-12' },
     validation: { greaterThanOrEqualToVariable: ref('xrDay') },
   },
   xrMonthBeforeDay: {
-    name: 'Month before day',
+    name: 'Month-before-day',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '1995-01-01', max: '2009-12-31' },
+    parameters: { type: 'month', min: '1995-01', max: '2009-12' },
     validation: { lessThanVariable: ref('xrDay') },
   },
 
   // Two steps apart: a year reads as its own first of January.
   xrYear: {
-    name: 'Anchor year',
+    name: 'Anchor-year',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'year', min: '2000-01-01', max: '2009-12-31' },
+    parameters: { type: 'year', min: '2000', max: '2009' },
     validation: { required: true },
   },
   xrDayAfterYear: {
-    name: 'Day after year',
+    name: 'Day-after-year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
     validation: { greaterThanVariable: ref('xrYear') },
   },
   xrYearBeforeDay: {
-    name: 'Year before day',
+    name: 'Year-before-day',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'year', min: '1995-01-01', max: '2009-12-31' },
+    parameters: { type: 'year', min: '1995', max: '2009' },
     validation: { lessThanVariable: ref('xrDay') },
   },
 
@@ -1347,14 +1410,14 @@ const crossResolutionVariables: Variables = {
   // pick the violating `2010-12-01`. The month has to be kept off `2010-12` in
   // the first place — which is propagation's job, not the fold's.
   xrTightMonth: {
-    name: 'Tight month',
+    name: 'Tight-month',
     type: 'datetime',
     component: 'DatePicker',
-    parameters: { type: 'month', min: '2010-01-01', max: '2010-12-31' },
+    parameters: { type: 'month', min: '2010-01', max: '2010-12' },
     validation: { required: true },
   },
   xrTightDay: {
-    name: 'Tight day',
+    name: 'Tight-day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2010-01-01', max: '2010-12-01' },
@@ -1371,6 +1434,7 @@ const crossResolutionStages = [
     id: 'stage-cross-resolution',
     type: 'EgoForm',
     label: 'Dates',
+    introductionPanel: { title: 'Dates', text: 'A few questions.' },
     form: { fields: formFields(crossResolutionVariables) },
   },
 ] as unknown as Stage[];
@@ -1385,12 +1449,11 @@ function shown(value: VariableValue | undefined): string {
  * names the assignment rather than only the rule it broke.
  */
 async function crossResolutionFailures(seed: number): Promise<string[]> {
-  const { network } = generateNetwork({
+  const network = generate(
+    crossResolutionCodebook,
+    crossResolutionStages,
     seed,
-    codebook: crossResolutionCodebook,
-    stages: crossResolutionStages,
-    config: { today },
-  });
+  );
 
   const attributes = network.ego[entityAttributesProperty];
   const formValues = toFormValues(attributes);
@@ -1457,12 +1520,11 @@ describe('date comparators across picker resolutions', () => {
 
     const wrong: string[] = [];
     for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
+      const network = generate(
+        crossResolutionCodebook,
+        crossResolutionStages,
         seed,
-        codebook: crossResolutionCodebook,
-        stages: crossResolutionStages,
-        config: { today },
-      });
+      );
       const attributes = network.ego[entityAttributesProperty];
 
       for (const [variableId, shape] of Object.entries(shapes)) {
@@ -1490,7 +1552,8 @@ describe('date comparators across picker resolutions', () => {
  * 2022-06-30. That argument lives only as a doc comment on
  * `completeToResolution` in `buildConstraints.ts` until a run actually draws
  * values under it and checks them against the real validator — which is what
- * the fixtures below are for.
+ * the fixtures below were for; the schema now refuses the shape outright and
+ * the describe below pins that refusal.
  *
  * The month resolution completes differently from full, and not merely by
  * degree: `DatePickerField` renders it as a `<select>` built by running each
@@ -1502,14 +1565,14 @@ describe('date comparators across picker resolutions', () => {
  */
 const coarseBoundVariables: Variables = {
   coarseFullDate: {
-    name: 'Coarse full date',
+    name: 'Coarse-full-date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2020', max: '2022-06' },
     validation: { required: true },
   },
   coarseMonthDate: {
-    name: 'Coarse month date',
+    name: 'Coarse-month-date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2020', max: '2021' },
@@ -1526,313 +1589,64 @@ const coarseBoundStages = [
     id: 'stage-coarse-bound',
     type: 'EgoForm',
     label: 'Coarse dates',
+    introductionPanel: { title: 'Coarse dates', text: 'A few questions.' },
     form: { fields: formFields(coarseBoundVariables) },
   },
 ] as unknown as Stage[];
 
 describe('a DatePicker bound coarser than its own picker resolution', () => {
-  it('generates values that pass the real form validators, over 25 seeds', async () => {
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
+  it('is refused at the schema boundary every host parses through', () => {
+    // The completion this describe used to exercise no longer has a
+    // reachable subject: every host parses its protocol before generating,
+    // and the parse refuses a bound that does not match its picker's own
+    // resolution. The refusal is the behaviour that protects the interview.
+    expect(() =>
+      CurrentProtocolSchema.parse({
+        name: 'Coarse bounds',
+        schemaVersion: 8,
         codebook: coarseBoundCodebook,
         stages: coarseBoundStages,
-        config: { today },
-      });
-
-      failures.push(
-        ...(
-          await collectFailures(coarseBoundCodebook, network, coarseBoundStages)
-        ).map((failure) => `seed ${seed}: ${failure}`),
-      );
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  // Passing the real validator is necessary but not sufficient: it truncates
-  // both sides to the shorter length, so it cannot by itself distinguish a
-  // ceiling completed to January from one completed to December. Pinning the
-  // literal window each bound completes to is what proves the completion
-  // itself, not only its downstream effect.
-  it('completes each bound to the window its own picker resolution reads', () => {
-    const wrong: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: coarseBoundCodebook,
-        stages: coarseBoundStages,
-        config: { today },
-      });
-      const attributes = network.ego[entityAttributesProperty];
-
-      const fullDate = attributes.coarseFullDate;
-      if (
-        typeof fullDate !== 'string' ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(fullDate) ||
-        fullDate < '2020-01-01' ||
-        fullDate > '2022-06-30'
-      ) {
-        wrong.push(`seed ${seed}: coarseFullDate=${shown(fullDate)}`);
-      }
-
-      const monthDate = attributes.coarseMonthDate;
-      if (
-        typeof monthDate !== 'string' ||
-        !/^\d{4}-\d{2}$/.test(monthDate) ||
-        monthDate < '2020-01' ||
-        monthDate > '2021-01'
-      ) {
-        wrong.push(`seed ${seed}: coarseMonthDate=${shown(monthDate)}`);
-      }
-    }
-
-    expect(wrong).toEqual([]);
+      }),
+    ).toThrow(/matching the picker's resolution/);
   });
 });
 
 /**
- * A roster whose rows fix both ends of a cross-resolution comparator.
+ * Number windows exactly as wide as the stage needs.
  *
- * A value a row carries is never drawn — the draw is asked only for what the
- * fixed values leave over — so the comparator between two of them is settled by
- * accepting or passing over the row. Ordering those two as strings disagrees
- * with the runtime in both directions: `2020-01-01` sorts after `2020` while
- * naming the same instant, so a strict `greaterThanVariable` looks satisfied
- * and the row is copied into a network the interview's own validators reject.
- *
- * Three of the six rows below land exactly on the first instant of their
- * counterpart's period and three clear it, so a run can fill the stage only by
- * passing the first three over.
- */
-const rosterDateVariables: Variables = {
-  rosterYear: {
-    name: 'Started',
-    type: 'datetime',
-    component: 'DatePicker',
-    parameters: { type: 'year', min: '2000-01-01', max: '2030-12-31' },
-  },
-  rosterDay: {
-    name: 'Finished',
-    type: 'datetime',
-    component: 'DatePicker',
-    parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
-    validation: { greaterThanVariable: ref('rosterYear') },
-  },
-};
-
-const rosterDateCodebook: Codebook = {
-  node: {
-    rosterPerson: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-      variables: rosterDateVariables,
-    },
-  },
-};
-
-const rosterDateStages = [
-  {
-    id: 'stage-roster-dates',
-    type: 'NameGeneratorRoster',
-    label: 'People',
-    subject: { entity: 'node', type: 'rosterPerson' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
-    form: {
-      title: 'About this person',
-      fields: formFields(rosterDateVariables),
-    },
-    behaviours: { minNodes: 3, maxNodes: 3 },
-  },
-] as unknown as Stage[];
-
-/** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
-function rosterDateRows(): NcNode[] {
-  return [
-    { rosterYear: '2020', rosterDay: '2020-01-01' },
-    { rosterYear: '2020', rosterDay: '2020-01-02' },
-    { rosterYear: '2021', rosterDay: '2021-01-01' },
-    { rosterYear: '2021', rosterDay: '2021-06-30' },
-    { rosterYear: '2022', rosterDay: '2022-01-01' },
-    { rosterYear: '2022', rosterDay: '2022-12-31' },
-  ].map((attributes, index) => ({
-    [entityPrimaryKeyProperty]: `roster-${index}`,
-    type: 'rosterPerson',
-    [entityAttributesProperty]: { ...attributes },
-  }));
-}
-
-/**
- * A roster whose rows fix one end of a comparator and leave the other to the
- * draw.
- *
- * The fixtures above pin both ends, which settles the comparison at the row:
- * two values, one rule, decided before anything is drawn. Pinning one end
- * settles nothing on its own — the row's value is inside its own bounds, and
- * the rule names a variable the row leaves out — while still deciding what the
- * draw can produce. `pinnedAge` at the top of the range asks `drawnRetired` for
- * a value above 1 out of a range that stops at 1, and the draw is bound to its
- * own range first, so the row can only build a node the interview rejects.
- *
- * Two of the four rows below leave the draw somewhere to go and two do not, so
- * a run can fill the stage only by passing the second pair over.
- */
-const rosterPinVariables: Variables = {
-  pinnedAge: {
-    name: 'Pinned age',
-    type: 'number',
-    component: 'Number',
-    validation: { required: true, minValue: 0, maxValue: 1 },
-  },
-  drawnRetired: {
-    name: 'Drawn retired',
-    type: 'number',
-    component: 'Number',
-    validation: {
-      required: true,
-      minValue: 0,
-      maxValue: 1,
-      greaterThanVariable: ref('pinnedAge'),
-    },
-  },
-};
-
-const rosterPinCodebook: Codebook = {
-  node: {
-    rosterPinned: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-      variables: rosterPinVariables,
-    },
-  },
-};
-
-const rosterPinStages = [
-  {
-    id: 'stage-roster-pins',
-    type: 'NameGeneratorRoster',
-    label: 'People',
-    subject: { entity: 'node', type: 'rosterPinned' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
-    form: {
-      title: 'About this person',
-      fields: formFields(rosterPinVariables),
-    },
-    behaviours: { minNodes: 2, maxNodes: 2 },
-  },
-] as unknown as Stage[];
-
-/** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
-function rosterPinRows(): NcNode[] {
-  return [
-    { pinnedAge: 1 },
-    { pinnedAge: 0 },
-    { pinnedAge: 1 },
-    { pinnedAge: 0 },
-  ].map((attributes, index) => ({
-    [entityPrimaryKeyProperty]: `roster-pin-${index}`,
-    type: 'rosterPinned',
-    [entityAttributesProperty]: { ...attributes },
-  }));
-}
-
-describe('a roster pinning one end of a comparator', () => {
-  it('draws rows whose values pass the real form validators', async () => {
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: rosterPinCodebook,
-        stages: rosterPinStages,
-        externalData: { 'stage-roster-pins': rosterPinRows() },
-        config: { today },
-      });
-
-      if (network.nodes.length !== 2) {
-        failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 2`);
-      }
-
-      failures.push(
-        ...(
-          await collectFailures(rosterPinCodebook, network, rosterPinStages)
-        ).map((failure) => `seed ${seed}: ${failure}`),
-      );
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  // Conformance alone would also be satisfied by a run that drew nothing. The
-  // two rows the draw can complete are the two the stage draws.
-  it('draws exactly the rows the draw can complete', () => {
-    const wrong: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: rosterPinCodebook,
-        stages: rosterPinStages,
-        externalData: { 'stage-roster-pins': rosterPinRows() },
-        config: { today },
-      });
-
-      const drawn = network.nodes
-        .map((node) => shown(node[entityAttributesProperty].pinnedAge))
-        .toSorted()
-        .join(', ');
-
-      if (drawn !== '0, 0') wrong.push(`seed ${seed}: ${drawn}`);
-    }
-
-    expect(wrong).toEqual([]);
-  });
-});
-
-/**
- * Number bounds too close together to hold a whole value.
- *
- * The generator draws these on its two-decimal rounding grid and clamps back to
- * whichever bound rounding stepped past, so the set it can produce is that grid
- * plus the two ends. Feasibility spends that same count on a `unique` variable,
- * which makes each fixture below an exactly-fitting stage: `narrowPair` has two
- * values for two people, `narrowGrid` eleven for eleven.
- *
- * A count larger than the draw can fill refuses to generate at all, and one
- * that admitted a value outside the bounds would put invalid data in front of a
- * participant — which is what this file's validator stack is here to catch.
+ * The schema admits only INTEGER number bounds, and the generator's `unique`
+ * sequence walks whole values between them — so `narrowPair`'s two-value
+ * window filled by two people is an exactly-fitting stage: every draw must
+ * land inside the window, and no two people may share a value. A draw outside
+ * it would put invalid data in front of a participant — which is what this
+ * file's validator stack is here to catch.
  */
 const narrowVariables: Variables = {
   narrowPair: {
-    name: 'Narrow pair',
+    name: 'Narrow-pair',
     type: 'number',
     component: 'Number',
     validation: {
       required: true,
       unique: true,
-      minValue: 0.001,
-      maxValue: 0.009,
+      minValue: 1,
+      maxValue: 2,
     },
   },
   narrowGrid: {
-    name: 'Narrow grid',
+    name: 'Narrow-grid',
     type: 'number',
     component: 'Number',
-    validation: { required: true, minValue: 0.001, maxValue: 0.099 },
+    validation: { required: true, minValue: 1, maxValue: 11 },
   },
   narrowOther: {
-    name: 'Narrow other',
+    name: 'Narrow-other',
     type: 'number',
     component: 'Number',
     validation: {
       required: true,
-      minValue: 0.001,
-      maxValue: 0.099,
+      minValue: 1,
+      maxValue: 11,
       differentFrom: ref('narrowGrid'),
     },
   },
@@ -1861,17 +1675,12 @@ const narrowStages = [
   },
 ] as unknown as Stage[];
 
-describe('a number range too narrow to hold a whole value', () => {
+describe('a number window exactly as wide as the stage needs', () => {
   it('generates values that pass the real form validators, over 50 seeds', async () => {
     const failures: string[] = [];
 
     for (let seed = 1; seed <= 50; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: narrowCodebook,
-        stages: narrowStages,
-        config: { today },
-      });
+      const network = generate(narrowCodebook, narrowStages, seed);
 
       if (network.nodes.length !== 2) {
         failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 2`);
@@ -1892,62 +1701,5 @@ describe('a number range too narrow to hold a whole value', () => {
     }
 
     expect(failures).toEqual([]);
-  });
-});
-
-describe('a roster fixing both ends of a cross-resolution comparator', () => {
-  it('draws rows whose values pass the real form validators', async () => {
-    const failures: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: rosterDateCodebook,
-        stages: rosterDateStages,
-        externalData: { 'stage-roster-dates': rosterDateRows() },
-        config: { today },
-      });
-
-      if (network.nodes.length !== 3) {
-        failures.push(`seed ${seed}: ${network.nodes.length} nodes, not 3`);
-      }
-
-      failures.push(
-        ...(
-          await collectFailures(rosterDateCodebook, network, rosterDateStages)
-        ).map((failure) => `seed ${seed}: ${failure}`),
-      );
-    }
-
-    expect(failures).toEqual([]);
-  });
-
-  // Conformance alone would also be satisfied by a run that drew nothing, and a
-  // roster holding three usable rows is not that. The three rows a strict
-  // comparator accepts are the three the stage draws.
-  it('draws exactly the rows the comparator accepts', () => {
-    const wrong: string[] = [];
-
-    for (let seed = 1; seed <= 25; seed++) {
-      const { network } = generateNetwork({
-        seed,
-        codebook: rosterDateCodebook,
-        stages: rosterDateStages,
-        externalData: { 'stage-roster-dates': rosterDateRows() },
-        config: { today },
-      });
-
-      const drawn = network.nodes
-        .map((node) => shown(node[entityAttributesProperty].rosterDay))
-        .toSorted()
-        .join(', ');
-      const expected = ['"2020-01-02"', '"2021-06-30"', '"2022-12-31"'].join(
-        ', ',
-      );
-
-      if (drawn !== expected) wrong.push(`seed ${seed}: ${drawn}`);
-    }
-
-    expect(wrong).toEqual([]);
   });
 });

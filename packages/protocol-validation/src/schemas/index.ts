@@ -24,7 +24,16 @@ export const VersionedProtocolSchema = z.discriminatedUnion('schemaVersion', [
 export const CurrentProtocolSchema = ProtocolSchemaV8;
 
 export type VersionedProtocol = z.infer<typeof VersionedProtocolSchema>;
+/** Any-version protocol DOCUMENT — the pre-parse shape validation consumes. */
+export type VersionedProtocolDocument = z.input<typeof VersionedProtocolSchema>;
 export type CurrentProtocol = z.infer<typeof CurrentProtocolSchema>;
+/**
+ * A current-schema protocol DOCUMENT — the pre-parse shape a host stores,
+ * hashes, and compares for identity. Parsing resolves `synthetic` descriptors
+ * into it; anything that persists or fingerprints a protocol works with this
+ * type, and parses at its own generation boundary.
+ */
+export type CurrentProtocolDocument = z.input<typeof CurrentProtocolSchema>;
 
 /**
  * Extract a specific protocol version type from VersionedProtocol using discriminated union

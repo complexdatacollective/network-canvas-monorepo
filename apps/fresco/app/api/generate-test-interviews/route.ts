@@ -1,13 +1,44 @@
 import { createId } from '@paralleldrive/cuid2';
 
 import {
-  generateNetwork,
-  type GenerateNetworkParams,
+  generateInterviews,
+  type SyntheticInterviewResult,
 } from '@codaco/protocol-utilities';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
+import { collectSyntheticAssetData } from '~/lib/synthetic/assetData';
+import { parseStoredProtocol } from '~/lib/synthetic/storedProtocol';
 import { generateSyntheticInterviewsSchema } from '~/schemas/synthetic-interviews';
+
+/**
+ * A refusal the generator raised because the protocol's own declarations make
+ * the data it asks for impossible — an unsatisfiable validation rule, or a
+ * roster pool too small for the stage that draws from it.
+ *
+ * Recognised by name and shape rather than with `instanceof`: the class lives
+ * in another package, and a duplicated module instance (two resolutions of
+ * `@codaco/protocol-utilities`, or a bundler splitting server chunks) would
+ * make the prototype check quietly false while the error is exactly the one we
+ * mean to report.
+ */
+type ConstraintRefusal = {
+  message: string;
+  conflicts: unknown[];
+};
+
+function asConstraintRefusal(error: unknown): ConstraintRefusal | null {
+  if (
+    !(error instanceof Error) ||
+    error.name !== 'SyntheticDataConstraintError'
+  )
+    return null;
+
+  const { conflicts } = error as Error & { conflicts?: unknown };
+  if (!Array.isArray(conflicts)) return null;
+
+  return { message: error.message, conflicts };
+}
 
 export async function POST(request: Request) {
   let username: string;
@@ -40,15 +71,39 @@ export async function POST(request: Request) {
   const { protocolId, count, simulateDropOut, respectSkipLogicAndFiltering } =
     parsed.data;
 
-  const protocol = await prisma.protocol.findUnique({
+  const protocolRecord = await prisma.protocol.findUnique({
     where: { id: protocolId },
+    include: { assets: true },
   });
 
-  if (!protocol) {
+  if (!protocolRecord) {
     return new Response(JSON.stringify({ error: 'Protocol not found' }), {
       status: 404,
     });
   }
+
+  // The generation boundary: the engine takes schema-parse output, and the
+  // stored columns are not that until they are put back together and parsed.
+  // Done before the stream opens so an inadmissible protocol answers as a plain
+  // HTTP error rather than as a stream that only ever carries a failure.
+  const protocolResult = await parseStoredProtocol(protocolRecord);
+
+  if (!protocolResult.success) {
+    return new Response(
+      JSON.stringify({
+        error: `Protocol "${protocolRecord.name}" could not be read for generation:\n${protocolResult.message}`,
+      }),
+      { status: 422 },
+    );
+  }
+
+  const { protocol } = protocolResult;
+
+  // A fresh seed per batch unless the caller pinned one, so two runs of the
+  // same protocol are different interviews rather than the same ones twice. It
+  // travels back with the completion event, which is what makes a batch
+  // reproducible after the fact.
+  const seed = parsed.data.seed ?? Math.floor(Math.random() * 2 ** 31);
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -58,45 +113,69 @@ export async function POST(request: Request) {
       };
 
       try {
-        const genParams = {
-          codebook: protocol.codebook as GenerateNetworkParams['codebook'],
-          stages: protocol.stages as GenerateNetworkParams['stages'],
-          simulateDropOut,
-          respectSkipLogicAndFiltering,
-        } satisfies GenerateNetworkParams;
+        const assetData = await collectSyntheticAssetData(
+          protocol,
+          protocolRecord.assets,
+        );
 
-        let completedCount = 0;
-        const incompleteInterviewIds: string[] = [];
-
-        for (let i = 0; i < count; i++) {
-          const { network, stageMetadata, currentStep, droppedOut } =
-            generateNetwork(genParams);
-
-          const isCompleted = !droppedOut;
-          if (isCompleted) {
-            completedCount++;
-          }
-
-          const participantIdentifier = `test-${createId()}`;
-          const startTime = new Date(
-            Date.now() - Math.floor(Math.random() * 3600000),
+        let results: SyntheticInterviewResult[];
+        try {
+          results = generateInterviews(
+            protocol,
+            {
+              count,
+              seed,
+              simulateDropOut,
+              respectSkipLogic: respectSkipLogicAndFiltering,
+            },
+            assetData,
+            // Generation runs to completion synchronously, so these land as one
+            // burst rather than as a ticking bar; they are still what says how
+            // far the batch got if it fails partway, and the writes below are
+            // the phase with something to watch.
+            (done, total) => {
+              send({
+                type: 'progress',
+                phase: 'generating',
+                current: done,
+                total,
+              });
+            },
           );
-          const finishTime = isCompleted
-            ? new Date(
-                startTime.getTime() +
-                  Math.floor(Math.random() * 1800000) +
-                  300000,
-              )
-            : null;
+        } catch (error) {
+          const refusal = asConstraintRefusal(error);
+          if (!refusal) throw error;
 
-          const created = await prisma.interview.create({
+          send({
+            type: 'error',
+            code: 'constraint-conflict',
+            message: refusal.message,
+            conflicts: refusal.conflicts,
+          });
+          return;
+        }
+
+        let created = 0;
+
+        for (const result of results) {
+          const { session } = result;
+          const participantIdentifier = `test-${createId()}`;
+
+          await prisma.interview.create({
             data: {
-              network: network as object,
-              currentStep,
-              startTime,
-              finishTime,
+              // The engine's own session id is deliberately not reused as the
+              // row id: it is drawn from the batch's seed, so re-running a
+              // pinned seed would collide with the rows the first run wrote.
+              network: session.network as object,
+              // A drop-out is a genuine unfinished interview — no finish time,
+              // and the step the participant stopped at, so it resumes there.
+              currentStep: result.currentStep,
+              startTime: new Date(session.startTime),
+              finishTime: session.finishTime
+                ? new Date(session.finishTime)
+                : null,
               isSynthetic: true,
-              stageMetadata: stageMetadata as object | undefined,
+              stageMetadata: session.stageMetadata as object | undefined,
               participant: {
                 create: {
                   identifier: participantIdentifier,
@@ -108,59 +187,27 @@ export async function POST(request: Request) {
                 connect: { id: protocolId },
               },
             },
+            // `lastUpdated` is not written from `session.lastUpdated`: the
+            // column is Prisma's `@updatedAt`, so the write time wins whatever
+            // we pass. Accepted rather than worked around.
+            select: { id: true },
           });
 
-          if (!isCompleted) {
-            incompleteInterviewIds.push(created.id);
-          }
-
-          send({ type: 'progress', current: i + 1, total: count });
-        }
-
-        // Enforce 10% minimum completion when drop-out is enabled.
-        // Regenerate incomplete interviews from this batch with drop-out
-        // disabled and update them in-place.
-        if (simulateDropOut) {
-          const minCompleted = Math.max(1, Math.ceil(count * 0.1));
-
-          if (completedCount < minCompleted) {
-            const deficit = minCompleted - completedCount;
-            const toFix = incompleteInterviewIds.slice(0, deficit);
-
-            const incompleteInterviews = await prisma.interview.findMany({
-              where: { id: { in: toFix } },
-              select: { id: true, startTime: true },
-            });
-
-            for (const interview of incompleteInterviews) {
-              const { network, stageMetadata, currentStep } = generateNetwork({
-                ...genParams,
-                simulateDropOut: false,
-              });
-
-              await prisma.interview.update({
-                where: { id: interview.id },
-                data: {
-                  network: network as object,
-                  currentStep,
-                  stageMetadata: stageMetadata as object | undefined,
-                  finishTime: new Date(
-                    interview.startTime.getTime() +
-                      Math.floor(Math.random() * 1800000) +
-                      300000,
-                  ),
-                },
-              });
-            }
-          }
+          created += 1;
+          send({
+            type: 'progress',
+            phase: 'saving',
+            current: created,
+            total: results.length,
+          });
         }
 
         void addEvent(
           'Synthetic Data Generated',
-          `User ${username} generated ${String(count)} synthetic interviews for protocol "${protocol.name}"`,
+          `User ${username} generated ${String(created)} synthetic interviews for protocol "${protocolRecord.name}"`,
         );
 
-        send({ type: 'complete', created: count });
+        send({ type: 'complete', created, seed });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Unknown error';

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { FilterSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -45,7 +45,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({
           name: 'Person',
           icon: 'add-a-person',
@@ -131,7 +131,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'node-edit-and-unique-validation',
       covers: ['form.fields[].variable', 'codebook: variable.validation'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
           id: 'person-name',
@@ -188,7 +188,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'number-validation-coercion-and-delete',
       covers: ['codebook: variable.validation'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         // A named node type so the created node has a stable fallback label
         // (getNodeLabel returns the codebook name when no "name" var is set).
         const contact = synth.addNodeType({ name: 'Contact' });
@@ -248,7 +248,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       covers: ['codebook: variable.component', 'codebook: variable.parameters'],
       slow: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
 
         person.addVariable({
@@ -428,7 +428,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'multi-prompt-navigation-and-scoping',
       covers: ['prompts', 'prompts[].id', 'prompts[].text'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
           id: 'person-name',
@@ -491,7 +491,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'prompt-additional-attributes',
       covers: ['prompts[].additionalAttributes'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
           id: 'person-name',
@@ -552,7 +552,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'min-nodes-behaviour',
       covers: ['behaviours', 'behaviours.minNodes'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
           id: 'person-name',
@@ -607,7 +607,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       covers: ['behaviours.maxNodes'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
           id: 'person-name',
@@ -666,8 +666,12 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       visual: true,
       currentStep: 1,
       seedNetwork: true,
+      // Arrive at the name generator fresh: the setup people and their edge
+      // exist, the canvas is empty, and the capture drives the round-trip
+      // itself (plan D20).
+      stopAt: { stageIndex: 1 },
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const colleague = synth.addEdgeType({ name: 'Colleague' });
 
@@ -755,7 +759,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'external-panel-filtered-round-trip',
       covers: ['panels[].dataSource=asset(external)', 'panels[].filter'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         // addNodeType auto-seeds a "name" text var used for external-data
         // label mapping; the boolean drives the panel filter.
         const person = synth.addNodeType({ name: 'Person' });
@@ -865,7 +869,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       id: 'external-panel-error-state',
       covers: ['panels[].dataSource=asset(external)'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         // The required form field references a component-bearing variable (the
         // adapter drops the field-level component, so the codebook variable

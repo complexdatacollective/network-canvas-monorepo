@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type CurrentProtocol,
   ProtocolValidationError,
+  DEFAULT_RESPONSE_BURDEN,
 } from '@codaco/protocol-validation';
 import { takeProtocolValidationDialogEvents } from '~/utils/protocolValidationDialogQueue';
 
@@ -275,6 +276,12 @@ describe('validated protocol commit persistence', () => {
         type: 'Anonymisation',
         label: 'Anonymisation',
         explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        // Schema-injected generation metadata: a parsed stage always carries
+        // it, and nothing in this test reads it.
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Anonymisation,
+        },
       },
     ];
     protocol.codebook = {

@@ -132,6 +132,12 @@ async function migrateOneProtocol(
       { cause: err },
     );
   }
+  // Unchanged by the hash-boundary move (spec decision 15). The import flow
+  // now hashes the post-migration, pre-validation document — and for anything
+  // arriving below v8 that document is `migrateProtocol`'s return value, which
+  // is itself a parse against the v8 schema. So this call was already on the
+  // new side of the boundary: hashing the migration output is hashing exactly
+  // what the import flow hashes for a protocol of this vintage.
   const newHash = hashProtocol(migrated);
 
   await writeMigratedProtocol(
@@ -181,6 +187,11 @@ async function normalizeMislabelledV8(
 
   // The hash is derived from stages + codebook only, so re-normalizing to v8
   // gives the same hash the import flow would now compute for this protocol.
+  // Unchanged by the hash-boundary move (spec decision 15) for the same reason
+  // as the sibling call in `migrateOneProtocol`: the import flow hashes the
+  // post-migration, pre-validation document, and for a row rebuilt as v7 that
+  // document is this `migrateProtocol` output — already a parse against the v8
+  // schema on both sides of the boundary.
   const newHash = hashProtocol(migrated);
 
   await writeMigratedProtocol(

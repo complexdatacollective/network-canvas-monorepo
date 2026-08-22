@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -29,7 +29,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
@@ -85,7 +85,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       ],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
@@ -143,7 +143,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       id: 'confirm-path-pending-resolve',
       covers: ['onFinish.confirm-calls-handler', 'onFinish.pending-state'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
@@ -180,7 +180,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       id: 'error-path-retry',
       covers: ['onFinish.error-retry'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
@@ -219,7 +219,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       id: 'abort-path-dismiss-while-pending',
       covers: ['onFinish.abort-on-dismiss'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Study overview' });
         return synth;
       },
@@ -264,7 +264,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       id: 'back-navigation-preserves-network',
       covers: ['back-navigation-network-intact'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType();
         const nameVar = nodeType.addVariable({ name: 'name', type: 'text' });
         seededNameVarId = nameVar.id;
@@ -306,7 +306,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       id: 'stages-menu-excludes-finish',
       covers: ['stagesMenu-exclusion'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({ title: 'Stage One' });
         synth.addInformationStage({ title: 'Stage Two' });
         return synth;

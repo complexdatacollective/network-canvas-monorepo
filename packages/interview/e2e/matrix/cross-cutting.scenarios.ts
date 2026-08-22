@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { FilterOperator } from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -154,8 +154,8 @@ function kebab(s: string): string {
  * matches) → Stage 2 (terminal). A matching node is seeded so the operator is
  * TRUE, so `next()` from stage 0 skips stage 1 and lands on stage 2.
  */
-function buildOperatorInterview(tc: OperatorCase): SyntheticInterview {
-  const synth = new SyntheticInterview();
+function buildOperatorInterview(tc: OperatorCase): ProtocolBuilder {
+  const synth = new ProtocolBuilder();
   const nodeType = synth.addNodeType({ name: 'Person' });
   let attributeId: string | undefined;
   if (tc.varType) {
@@ -244,7 +244,7 @@ const behaviourScenarios: ScenarioDefinition[] = [
     build: () => {
       // action:'SHOW' renders the stage only when the filter matches. A node is
       // seeded, so the middle stage IS shown and next() lands on it (step 1).
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const nodeType = synth.addNodeType({ name: 'Person' });
       const intro = synth.addInformationStage({
         title: 'Start',
@@ -320,7 +320,7 @@ const destinationScenarios: ScenarioDefinition[] = [
     covers: [],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const nodeType = synth.addNodeType({ name: 'Person' });
       const intro = synth.addInformationStage({
         title: 'Start',
@@ -369,7 +369,7 @@ const destinationScenarios: ScenarioDefinition[] = [
     covers: [],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const nodeType = synth.addNodeType({ name: 'Person' });
       const intro = synth.addInformationStage({
         title: 'Start',
@@ -405,7 +405,7 @@ const destinationScenarios: ScenarioDefinition[] = [
     covers: [],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const nodeType = synth.addNodeType({ name: 'Person' });
       const intro = synth.addInformationStage({
         title: 'Start',
@@ -467,7 +467,7 @@ const filterScenarios: ScenarioDefinition[] = [
     covers: [],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const groupVar = personType.addVariable({

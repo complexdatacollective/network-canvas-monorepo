@@ -84,6 +84,17 @@ export default defineConfig({
           exclude: ['**/*.test.{ts,tsx}'],
         },
       },
+      // The replay-parity suite drives the real Redux store headlessly, so it
+      // wants neither jsdom nor setup files (the units setup is jsdom-only).
+      {
+        extends: true,
+        test: {
+          name: 'parity',
+          environment: 'node',
+          include: ['__tests__/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['**/node_modules/**', '**/dist/**'],
+        },
+      },
     ],
   },
 });

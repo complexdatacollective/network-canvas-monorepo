@@ -10,4 +10,5 @@ export * from './posthog.ts';
 export * from './session.ts';
 export * from './site-locales.ts';
 export * from './stage-metadata.ts';
+export * from './ts-utils.ts';
 export * from './variables.ts';

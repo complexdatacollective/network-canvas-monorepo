@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   asEntityAttributeReference,
   type Codebook,
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
   type Validation,
 } from '@codaco/protocol-validation';
 import {
@@ -77,6 +79,13 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   return {
     id: STAGE_ID,
     type: 'NameGeneratorQuickAdd',
+    // Schema-injected generation metadata: a parsed stage always carries
+    // it, and nothing in this test reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.NameGeneratorQuickAdd,
+      count: DEFAULT_NODE_COUNT,
+    },
     label: 'Add people',
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference(TARGET_VARIABLE),

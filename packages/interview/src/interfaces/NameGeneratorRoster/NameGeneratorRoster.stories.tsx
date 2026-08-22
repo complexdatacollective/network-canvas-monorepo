@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -19,7 +19,7 @@ type StoryArgs = {
 };
 
 function buildInterview(args: StoryArgs) {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
 
   const nodeType = si.addNodeType({ name: 'Person' });
   const nameVar = nodeType.addVariable({ name: 'name', type: 'text' });
@@ -40,7 +40,13 @@ function buildInterview(args: StoryArgs) {
 
   const stage = si.addStage('NameGeneratorRoster', {
     label: 'Select People',
-    initialNodes: { count: args.initialSelectedCount },
+    // Asking for zero is not the same as not asking: a seeded count of 0 is
+    // authored into the protocol, where it contradicts a `minNodes` the same
+    // stage declares. A story that opens on an empty roster simply seeds
+    // nothing.
+    ...(args.initialSelectedCount > 0
+      ? { initialNodes: { count: args.initialSelectedCount } }
+      : {}),
     subject: { entity: 'node', type: nodeType.id },
     dataSource: 'externalData',
     behaviours: Object.keys(behaviours).length > 0 ? behaviours : undefined,
@@ -199,7 +205,7 @@ export const MultiplePrompts: Story = {
  * The "name" heuristic therefore finds nothing, exercising the fallback path.
  */
 function buildUuidMismatchInterview() {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
 
   // addNodeType seeds a "name" text variable, so the codebook HAS a name
   // attribute — but the roster nodes below are keyed under unrelated UUIDs, so

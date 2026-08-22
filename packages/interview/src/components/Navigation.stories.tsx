@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 
@@ -27,7 +27,7 @@ const MIDDLE_STAGES = [
 ] as const;
 
 function buildRawPayload(stageCount: number): string {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
 
   si.addInformationStage({
     title: 'Welcome',
@@ -40,6 +40,15 @@ function buildRawPayload(stageCount: number): string {
     if (!base) continue;
     const label =
       i < MIDDLE_STAGES.length ? base.label : `${base.label} ${i + 1}`;
+    if (base.type === 'NameGenerator') {
+      // A name generator is only a valid protocol with the form the
+      // participant fills in for each person they name. The rail is what this
+      // story is about, so one field is enough to make the stage real.
+      const stage = si.addStage('NameGenerator', { label });
+      stage.addFormField({ component: 'Text', prompt: 'What is their name?' });
+      stage.addPrompt({ text: base.prompt });
+      continue;
+    }
     si.addStage(base.type, { label }).addPrompt({ text: base.prompt });
   }
 

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -95,7 +95,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         visual: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const placeType = synth.addNodeType({ name: 'Place' });
           const personName = personType.addVariable({
@@ -203,7 +203,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         ],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -294,7 +294,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         covers: ['re-bin-replaces-value'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -366,7 +366,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         ],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -503,7 +503,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         covers: ['other-dialog-submit-empty-accepted-when-rule-less'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -588,7 +588,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         covers: ['codebook.variables.otherVariable.validation=required'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -675,7 +675,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       covers: ['prompts[].bucketSortOrder', 'prompts[].bucketSortOrder=*'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         const personName = personType.addVariable({
           name: 'name',
@@ -746,7 +746,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         const personName = personType.addVariable({
           name: 'name',
@@ -804,7 +804,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         covers: ['multi-value-membership', 'empty-array-treated-as-unset'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -886,7 +886,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         covers: ['bin-expand-collapse'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',
@@ -990,7 +990,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         visual: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const personType = synth.addNodeType({ name: 'Person' });
           const personName = personType.addVariable({
             name: 'name',

@@ -2542,6 +2542,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/protocol-utilities':
+        specifier: workspace:^
+        version: link:../protocol-utilities
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -2609,6 +2612,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 14.0.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
     devDependencies:
       '@codaco/fresco-ui':
         specifier: workspace:^
@@ -2641,6 +2647,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/protocols':
+        specifier: workspace:^
+        version: link:../protocols
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript

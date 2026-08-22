@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import { addComprehensivePedigree } from './comprehensivePedigreeFixture';
@@ -21,7 +21,7 @@ import { addComprehensivePedigree } from './comprehensivePedigreeFixture';
  * → NarrativePedigree (step 2), sharing one seeded family network.
  */
 export function buildPedigreeFlowInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   si.addInformationStage({
     label: 'Welcome',
     title: 'Your family health history',

@@ -2,6 +2,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  DEFAULT_NODE_COUNT,
+  DEFAULT_RESPONSE_BURDEN,
+} from '@codaco/protocol-validation';
 
 import activeProtocolReducer, { actionCreators } from '../activeProtocol';
 import { test as stagesTest } from '../protocol/stages';
@@ -28,6 +32,13 @@ const mockProtocol2: CurrentProtocol = {
       id: 'stage-1',
       type: 'NameGenerator',
       label: 'Test Stage',
+      // Schema-injected generation metadata: a parsed stage always carries
+      // it, and nothing in this test reads it.
+      synthetic: {
+        generatesData: true,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.NameGenerator,
+        count: DEFAULT_NODE_COUNT,
+      },
       form: {
         title: 'Test Form',
         fields: [],

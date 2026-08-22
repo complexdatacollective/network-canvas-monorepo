@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -57,7 +57,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         visual: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -141,7 +141,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         covers: ['prompts[].variable'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -233,7 +233,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         covers: ['prompts[].variable'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -298,7 +298,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         visual: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -388,7 +388,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         covers: ['prompts'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -476,7 +476,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         visual: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -566,7 +566,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         covers: ['prompts[].bucketSortOrder', 'prompts[].binSortOrder'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({
@@ -661,7 +661,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         covers: ['subject', 'filter'],
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const place = synth.addNodeType({ name: 'Place' });
           const personName = person.addVariable({ name: 'name', type: 'text' });
@@ -764,7 +764,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         chromiumOnly: true,
         seedNetwork: true,
         build: () => {
-          const synth = new SyntheticInterview();
+          const synth = new ProtocolBuilder();
           const person = synth.addNodeType({ name: 'Person' });
           const nameVar = person.addVariable({ name: 'name', type: 'text' });
           const closeness = person.addVariable({

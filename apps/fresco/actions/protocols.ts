@@ -3,7 +3,6 @@
 import { Effect } from 'effect';
 import { type z } from 'zod';
 
-import { hashProtocol } from '@codaco/protocol-validation';
 import { addEvent, addEvents } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { safeUpdateTag } from '~/lib/cache';
@@ -211,12 +210,22 @@ export async function insertProtocol(
 ) {
   const session = await requireApiAuth();
 
-  const { protocol, protocolName, newAssets, existingAssetIds, originalFile } =
-    input;
+  const {
+    protocol,
+    // The hash the importer already computed and checked for duplicates
+    // against, not a fresh one taken from `protocol`. `protocol` here is the
+    // schema's parse of the uploaded document, so hashing it would store an
+    // identity the duplicate check never looked for — and the two would part
+    // company again every time the schema grew a default (spec decision 15).
+    // The `hash` column's unique constraint remains the backstop.
+    protocolHash,
+    protocolName,
+    newAssets,
+    existingAssetIds,
+    originalFile,
+  } = input;
 
   try {
-    const protocolHash = hashProtocol(protocol);
-
     await prisma.protocol.create({
       data: {
         hash: protocolHash,

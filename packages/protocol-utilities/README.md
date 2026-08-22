@@ -1,34 +1,95 @@
 # @codaco/protocol-utilities
 
-Synthetic network generation and interview-payload builder for Network Canvas protocols.
+Synthetic interview generation and protocol builder for Network Canvas
+protocols.
 
 ## Exports
 
-- `generateNetwork(params)` — pure function that produces an `NcNetwork` (plus stage metadata and step state) for a given protocol. Takes a single `GenerateNetworkParams` object: `codebook` and `stages` are required; `externalData`, `seed`, `simulateDropOut`, `respectSkipLogicAndFiltering`, `inProgressStageIndex`, `config`, and `familyPedigree` are optional. Returns a `GenerateNetworkResult`.
-- `GenerateNetworkParams`, `GenerateNetworkResult` — the parameter and result types.
-- `GenerationConfig` — tuning constants (node counts, edge probabilities, drop-out factor, and the date relative date bounds resolve against). `params.config` takes a `Partial` of it.
-- `SyntheticDataConstraintError`, `ConstraintConflict` — the refusal `generateNetwork` throws, and the shape it carries. See below.
-- `SyntheticInterview` — fluent builder that constructs codebooks, stages, prompts, forms, and full interview payloads.
+- `generateInterviews(protocol, options, assetData?, onProgress?)` — walks a
+  **schema-parsed** protocol stage by stage as a participant would and returns
+  `SyntheticInterviewResult[]`: complete Interviewer-shaped sessions
+  (`session` with network, stage metadata, and real timestamps), each with its
+  resume position (`currentStep`), whether it was abandoned (`droppedOut`),
+  and the stages it visited. Options: `count` (up to
+  `MAX_SYNTHETIC_INTERVIEWS`), `seed` (default `DEFAULT_SYNTHETIC_SEED`),
+  `simulateDropOut`, `respectSkipLogic`, `minimumCompletedRatio`, `stopAt`
+  (preview a prefix; mutually exclusive with dropout), `startWindow` (pin for
+  byte-reproducible batches), `familyPedigree` (run-level population options),
+  `captureTrace`, and `overrides` (fixture entities applied at their stage's
+  creation draw).
+- `ProtocolBuilder` — fluent builder for codebooks, stages, prompts, forms,
+  and full interview payloads. `getProtocolParsed()` returns the schema-parse
+  of the built document; `getInterviewPayload(opts)` delegates to
+  `generateInterviews`, so builder-produced sessions and generated sessions
+  are the same artifact; `getNetwork()` is a thin accessor over it.
+- `generateCorpusProtocol(index)` — seeded generated protocol shapes for
+  acceptance-corpus testing, with their roster pools.
+- `SyntheticDataConstraintError`, `ConstraintConflict` — the structured
+  refusal generation throws, and the shape it carries. See below.
+- `MAX_SYNTHETIC_INTERVIEWS`, `DEFAULT_SYNTHETIC_SEED` — the run options.
+  Every other number that shapes generated data lives in the protocol itself,
+  as stage- and variable-level `synthetic` descriptors resolved by
+  `@codaco/protocol-validation`'s schema; a source-level guard in this
+  package's tests refuses any generation-side default.
 
-Both share a `ValueGenerator` (`@faker-js/faker` wrapper) for deterministic value synthesis: pass a `seed` for reproducible output.
+## How generation works
 
-## Family pedigree generation
+One linear walk is the only model of stage behaviour: each interface type has
+exactly one simulator, which may write only what a participant operating that
+interface could write, through the same action vocabulary the interview's own
+Redux store folds. Fidelity is not a review claim — a replay-parity oracle in
+`@codaco/interview` dispatches captured write traces through the real store
+and requires the identical session, over hand-built fixtures for every
+interface type, the bundled protocols whole, and a corpus slice.
 
-FamilyPedigree stages use an isolated demographic generator rather than the generic node-and-edge stage handlers. The bundled `US_FAMILY_PEDIGREE_POPULATION` profile derives completed family sizes from the 2017–2019 National Survey of Family Growth, then uses size-biased draws for a focal person's siblings and parents' sibling groups. It includes source URLs so callers can audit the assumptions or replace the profile for another study population.
+Sessions are byte-reproducible: ids, timestamps, values, and dropout rolls all
+come from seeded substreams, so a `(seed, startWindow)` pair reproduces a
+batch exactly, and extending a batch never disturbs its earlier members.
+Dropout is a per-stage hazard on cumulative response burden (each stage's
+`synthetic.responseBurden`), so demanding stages late in long protocols end
+sessions the way real fatigue does; dropped sessions are genuine abandoned
+interviews with a resume position, and `minimumCompletedRatio` tops a batch up
+deterministically.
 
-Pass `familyPedigree` to customize the population, cap optional branches, disable planted disease lineages, or force an adoption, donor-conception, or surrogacy scenario for testing. Population mode samples these scenarios at the profile's configured rates. Family topology and attributes use a stage-specific deterministic random stream, so changing a pedigree does not move the random stream used by other interview stages.
+Roster and geojson content comes from the HOST: pass
+`assetData.rosterNodes[stageId]` / `assetData.geojsonPropertyValues[stageId]`
+(the interview contract's `collectRosterExternalData` /
+`collectGeospatialPropertyValues` produce them). An absent `assetData` map
+opts out of the contract; a present map missing a stage's key is an unresolved
+source.
 
 ## Refused protocols
 
-Generated values satisfy the validation rules a protocol declares on its variables, so a synthetic network holds only data a participant could have entered. Where a protocol's rules cannot all be satisfied at once, `generateNetwork` throws `SyntheticDataConstraintError` rather than emitting data the interview would reject.
+Generated values satisfy the validation rules a protocol declares plus the
+rules its interfaces imply, so a synthetic session holds only data a
+participant could have entered. Where the declared constraints cannot all be
+satisfied, generation refuses **before any seed is drawn** with
+`SyntheticDataConstraintError` — the same refusal on every seed. The pre-seed
+gate covers roster pools below a stage's own minimum, `unique` variables whose
+effective value space is smaller than the walk's guaranteed demand, and
+censuses whose author-declared population exceeds the pair cap. The error's
+`conflicts` array names the entity, variables, and rules per problem; a
+consumer can render it directly.
 
-Most refusals are decided before anything is drawn, from the declared bounds alone, so they do not depend on the seed. The remainder are raised while drawing, when a variable runs out of values against the ones its rules tie it to.
+## Family pedigree generation
 
-The error's `conflicts` array carries one `ConstraintConflict` per problem, each naming the entity (`entity`, plus `entityType` and `entityTypeName` for nodes and edges), the `variableIds` and `variableNames` involved, the `rules` at issue, and a `reason`. A consumer can render these directly; the error's `message` is the same information as text.
+FamilyPedigree stages use an isolated demographic generator. The bundled
+`US_FAMILY_PEDIGREE_POPULATION` profile derives completed family sizes from
+the 2017–2019 National Survey of Family Growth, then uses size-biased draws
+for a focal person's siblings and parents' sibling groups; it includes source
+URLs so callers can audit or replace the profile. Pass the `familyPedigree`
+option to customise the population, cap optional branches, disable planted
+disease lineages, or force an adoption, donor-conception, or surrogacy
+scenario. Family topology uses a stage-specific deterministic stream, so
+changing a pedigree does not move the draws of other stages.
 
 ## Consumers
 
-- `apps/architect` — `generateNetwork` populates protocol previews.
-- `apps/interviewer` — `generateNetwork` backs synthetic interview generation.
-- `@codaco/interview` — `SyntheticInterview` builds Storybook and E2E fixtures. Dev-only consumer.
-- Fresco — external consumer of `generateNetwork`.
+- `apps/interviewer` — the synthetic-data panel generates batches through
+  `generateInterviews`.
+- Fresco — the generate-test-interviews route, with a server-side asset
+  resolver.
+- `apps/architect` — stage previews build their session with
+  `stopAt: { stageIndex }`.
+- `@codaco/interview` — `ProtocolBuilder` builds Storybook and E2E fixtures.
+  Dev-only consumer.

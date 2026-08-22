@@ -41,6 +41,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/protocols": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@octokit/types": "^16.0.0",
     "@types/gunzip-maybe": "^1.4.3",

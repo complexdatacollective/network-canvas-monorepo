@@ -91,6 +91,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/protocol-utilities": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@types/node": "catalog:",
     "typescript": "catalog:",

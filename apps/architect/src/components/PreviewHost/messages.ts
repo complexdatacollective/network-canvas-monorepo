@@ -14,6 +14,13 @@ export type PreviewMemoryAsset = {
 
 export type PreviewPayload = {
   type: 'preview:payload';
+  /**
+   * The SCHEMA-PARSE OUTPUT of the protocol being previewed, not the editor's
+   * working document. Synthetic generation reads the per-stage `synthetic`
+   * descriptors that parsing supplies, and refuses a stage that carries none
+   * rather than re-defaulting one — so the editor's own validation pass is what
+   * makes a stage previewable with synthetic data.
+   */
   protocol: CurrentProtocol;
   protocolId: string;
   startStage: number;

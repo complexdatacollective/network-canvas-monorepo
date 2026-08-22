@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -69,7 +69,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         const ageVar = personType.addVariable({ name: 'age', type: 'number' });
         const locationVar = personType.addVariable({
@@ -156,7 +156,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         'sortOptions.sortableProperties',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
 
         // Stage A: general CSV load + add, using the shared development-protocol
         // fixture (previousInterview.csv: name,nickname,age — 98 data rows, all
@@ -321,7 +321,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-dataSource-missing-asset-error',
       covers: ['dataSource=error'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({ name: 'age', type: 'number' });
         personType.addVariable({ name: 'location', type: 'text' });
@@ -375,7 +375,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-sort-order-omitted-desc-and-insertion',
       covers: ['sortOptions.sortOrder', 'sortOptions.sortOrder=*'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({ name: 'age', type: 'number' });
         personType.addVariable({ name: 'location', type: 'text' });
@@ -472,7 +472,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-sortable-properties-ordinal-hierarchy',
       covers: ['sortOptions.sortableProperties'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({
           name: 'closeness',
@@ -545,7 +545,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-search-presence-and-fuzziness',
       covers: ['searchOptions', 'searchOptions.fuzziness'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({ name: 'location', type: 'text' });
 
@@ -608,7 +608,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-search-matchProperties-scoping',
       covers: ['searchOptions.matchProperties'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({ name: 'location', type: 'text' });
 
@@ -650,7 +650,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-exhausted-empty-state',
       covers: ['exhausted-roster-empty-state'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         personType.addVariable({ name: 'location', type: 'text' });
 
@@ -737,7 +737,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-behaviours-min-nodes',
       covers: ['behaviours.minNodes'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
 
         synth.addAsset({
@@ -788,7 +788,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       covers: ['behaviours.maxNodes'],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
 
         synth.addAsset({
@@ -848,7 +848,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-multiple-prompts-additional-attributes',
       covers: ['prompts', 'prompts[].text', 'prompts[].additionalAttributes'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         // Dedupes to the auto-seeded "name" text variable — captures its id for
         // assertions below without creating a duplicate variable.
@@ -951,7 +951,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-remove-node-round-trip',
       covers: ['remove-node-round-trip'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
 
         synth.addAsset({
@@ -995,7 +995,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-encrypted-variable-passphrase-gate',
       covers: ['encrypted-variable-passphrase-gate'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const personType = synth.addNodeType({ name: 'Person' });
         // Redeclaring the auto-seeded "name" variable with encrypted:true
         // mutates its existing codebook entry (addVariableToNodeType dedupe).
@@ -1061,7 +1061,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       id: 'roster-label-fallback-heuristic',
       covers: ['label-fallback-heuristic'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         // addNodeType seeds a "name" variable, but the roster rows below are
         // keyed under codebook-absent UUIDs, so the "name" heuristic cannot
         // match and the fallback (first usable value, then placeholder) runs.

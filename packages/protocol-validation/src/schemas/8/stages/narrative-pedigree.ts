@@ -8,6 +8,7 @@ import {
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
+import { stageNoDataSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -75,6 +76,9 @@ export const duplicateDiseaseRows = (
 // no subject.
 const narrativePedigreeStageShape = baseStageSchema.extend({
   type: z.literal('NarrativePedigree'),
+  synthetic: stageNoDataSynthetic('NarrativePedigree').prefault({
+    generatesData: false,
+  }),
 
   sourceStageId: z.string(),
 

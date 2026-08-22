@@ -3,18 +3,15 @@ import { useMemo } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function setOptionalNodeAttribute(
-  interview: SyntheticInterview,
+  interview: ProtocolBuilder,
   nodeIndex: number,
   variableId: string,
-  value:
-    | Parameters<SyntheticInterview['setNodeAttribute']>[2]
-    | null
-    | undefined,
+  value: Parameters<ProtocolBuilder['setNodeAttribute']>[2] | null | undefined,
 ): void {
   if (value === null || value === undefined) {
     interview.unsetNodeAttribute(nodeIndex, variableId);
@@ -24,19 +21,19 @@ function setOptionalNodeAttribute(
 }
 
 function createNarrativeInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   const nt = si.addNodeType({ name: 'Person' });
   const layoutVar1 = nt.addVariable({
     type: 'layout',
-    name: 'Narrative Layout 1',
+    name: 'NarrativeLayout1',
   });
   const layoutVar2 = nt.addVariable({
     type: 'layout',
-    name: 'Narrative Layout 2',
+    name: 'NarrativeLayout2',
   });
   const closeVar = nt.addVariable({
     type: 'boolean',
-    name: 'Close Friend',
+    name: 'CloseFriend',
   });
   const trustedVar = nt.addVariable({
     type: 'boolean',
@@ -70,7 +67,7 @@ function createNarrativeInterview(seed: number) {
 function NarrativeStoryWrapper({
   buildFn,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -742,7 +739,7 @@ const buildTwoNodeGroup = () => {
 type Point = { x: number; y: number };
 
 const setLayout = (
-  si: SyntheticInterview,
+  si: ProtocolBuilder,
   layoutVariableId: string,
   positions: Point[],
 ) => {

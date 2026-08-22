@@ -5,6 +5,7 @@ import type {
   CurrentProtocol,
   SkipLogicDestination,
 } from '@codaco/protocol-validation';
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import SkipLogic from '../SkipLogic';
@@ -21,6 +22,12 @@ const protocol = {
       label: 'Source',
       title: 'Source',
       items: [],
+      // Schema-injected generation metadata: a parsed stage always carries
+      // it, and nothing in this test reads it.
+      synthetic: {
+        generatesData: false,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+      },
     },
     {
       id: 'debrief',
@@ -28,6 +35,10 @@ const protocol = {
       label: 'Debrief',
       title: 'Debrief',
       items: [],
+      synthetic: {
+        generatesData: false,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+      },
     },
   ],
 } satisfies CurrentProtocol;

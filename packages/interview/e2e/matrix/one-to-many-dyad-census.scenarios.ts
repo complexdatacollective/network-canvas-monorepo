@@ -1,11 +1,11 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { OneToManyDyadCensusFixture } from '../fixtures/one-to-many-dyad-census-fixture.js';
 import type { InterfaceScenarios } from './types.js';
 
 /** Build a node type with a real "name" text variable id. */
-function addPersonType(synth: SyntheticInterview, typeName = 'Person') {
+function addPersonType(synth: ProtocolBuilder, typeName = 'Person') {
   const nt = synth.addNodeType({ name: typeName });
   const nameVar = nt.addVariable({ name: 'name', type: 'text' });
   return { nt, nameVarId: nameVar.id };
@@ -29,7 +29,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       // buildSyntheticPayload wipes nodes/edges otherwise (synthetic-payload.ts).
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth, 'Person');
         const { nt: place, nameVarId: placeNameVarId } = addPersonType(
           synth,
@@ -115,7 +115,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       covers: ['behaviours.removeAfterConsideration'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
@@ -156,7 +156,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       covers: ['behaviours.removeAfterConsideration'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
@@ -194,7 +194,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const advice = synth.addEdgeType({ name: 'Advice' });
@@ -288,7 +288,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       covers: ['prompts[].bucketSortOrder'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
@@ -326,7 +326,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       covers: ['prompts[].binSortOrder'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
@@ -366,7 +366,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       covers: ['prompts[].bucketSortOrder'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {

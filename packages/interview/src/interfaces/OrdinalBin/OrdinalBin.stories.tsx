@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { VariableOption } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -54,7 +54,7 @@ function buildOptions(binCount: number, hasMissingValue: boolean) {
 }
 
 function buildInterview(args: StoryArgs) {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
   const options = buildOptions(args.binCount, args.hasMissingValue);
 
   const nodeType = interview.addNodeType({ name: 'Person' });
@@ -62,7 +62,7 @@ function buildInterview(args: StoryArgs) {
   const variables: string[] = [];
   for (let i = 0; i < args.promptCount; i++) {
     const ref = nodeType.addVariable({
-      name: `Rating ${i + 1}`,
+      name: `Rating${i + 1}`,
       type: 'ordinal',
       options,
     });
@@ -89,7 +89,7 @@ function buildInterview(args: StoryArgs) {
   }
 
   // Clear ordinal values on the first `unassignedCount` nodes so they appear
-  // in the bucket (unassigned). By default SyntheticInterview auto-generates
+  // in the bucket (unassigned). By default ProtocolBuilder auto-generates
   // values via ValueGenerator.
   const clampedUnassigned = Math.min(
     args.unassignedCount,

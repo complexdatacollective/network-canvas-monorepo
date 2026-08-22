@@ -2,6 +2,7 @@ import { ensureError } from '@codaco/shared-consts';
 
 import {
   type VersionedProtocol,
+  type VersionedProtocolDocument,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
 
@@ -48,7 +49,9 @@ export type ProtocolValidationResult =
  * ProtocolValidationError carrying the validation issues on failure.
  */
 const validateProtocol = async (
-  protocol: VersionedProtocol,
+  // A DOCUMENT, not parse output: validation is the parse, so its argument is
+  // whatever a host stored — parsed values satisfy the type too.
+  protocol: VersionedProtocolDocument,
 ): Promise<ProtocolValidationResult> => {
   if (protocol === undefined) {
     throw new Error('Protocol is undefined');

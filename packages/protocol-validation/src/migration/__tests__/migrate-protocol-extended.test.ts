@@ -325,3 +325,45 @@ describe('Protocol Migration - Extended Tests', () => {
   // Note: Complex migration scenarios with full protocol structures require
   // valid schema-compliant data which is better tested in the existing migrations.test.ts file
 });
+
+describe('migration of a current-schema document is identity', () => {
+  it('returns the document byte-for-byte, nothing schema-resolved', () => {
+    // Parsing resolves `synthetic` descriptors; migration must NOT. A host
+    // stores, hashes, and identity-compares the pre-parse document, so a
+    // "migration" that rewrote an already-current document would republish
+    // every stored protocol as changed and move migrated-import hashes each
+    // time the schema learns a new default. Regression: Studio's
+    // republish-as-unchanged flow caught exactly this in CI.
+    const document = {
+      name: 'Identity',
+      schemaVersion: 8,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              name: { name: 'name', type: 'text', component: 'Text' },
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'info',
+          type: 'Information',
+          label: 'Welcome',
+          title: 'Welcome',
+          items: [{ id: 'w', type: 'text', content: 'Hello.' }],
+        },
+      ],
+    };
+    const before = JSON.stringify(document);
+
+    const migrated = migrateProtocol(document, 8);
+
+    expect(JSON.stringify(migrated)).toBe(before);
+    expect(JSON.stringify(document)).toBe(before);
+  });
+});

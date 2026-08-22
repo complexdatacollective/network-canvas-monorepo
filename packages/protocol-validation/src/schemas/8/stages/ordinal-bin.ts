@@ -6,10 +6,12 @@ import {
   ordinalBinPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageValuesSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const ordinalBinStage = baseStageSchema.extend({
   type: z.literal('OrdinalBin'),
+  synthetic: stageValuesSynthetic('OrdinalBin').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z

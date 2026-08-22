@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { buildSyntheticPayload } from './synthetic-payload.js';
 
 /** The smallest schema-valid EgoForm: an intro panel and one text field. */
 function egoFormWithTextField(
-  synth: SyntheticInterview,
+  synth: ProtocolBuilder,
   variableName: string,
 ): string {
   const variable = synth.addEgoVariable({
@@ -28,7 +28,7 @@ function egoFormWithTextField(
 
 describe('buildSyntheticPayload', () => {
   it('produces a schema-valid ProtocolPayload with hash and ResolvedAsset[]', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorQuickAdd', {
       subject: { entity: 'node', type: person.id },
@@ -50,7 +50,7 @@ describe('buildSyntheticPayload', () => {
   });
 
   it('seeds the session network when seedNetwork is set', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('Sociogram', {
       subject: { entity: 'node', type: person.id },
@@ -66,7 +66,7 @@ describe('buildSyntheticPayload', () => {
   });
 
   it('seeds the generated ego attributes when seedNetwork is set', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const name = egoFormWithTextField(synth, 'fullName');
     const { session } = buildSyntheticPayload(synth, {
       protocolName: 'seeded-ego',
@@ -79,7 +79,7 @@ describe('buildSyntheticPayload', () => {
   });
 
   it('starts from an empty network when seedNetwork is not set', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('Sociogram', {
       subject: { entity: 'node', type: person.id },
@@ -89,14 +89,17 @@ describe('buildSyntheticPayload', () => {
     const { session } = buildSyntheticPayload(synth, {
       protocolName: 'unseeded',
     });
+    // The stage seeds three people, so this is only empty because the walk
+    // never reached it.
     expect(session.network.nodes).toHaveLength(0);
     expect(session.network.edges).toHaveLength(0);
   });
 
-  it('empties the ego attributes too when seedNetwork is not set', () => {
-    // `getNetwork()` answers every ego variable, so an unseeded run that kept
-    // them would open each EgoForm scenario on a form already filled in.
-    const synth = new SyntheticInterview();
+  it('leaves the ego unanswered when seedNetwork is not set', () => {
+    // Every EgoForm scenario would otherwise open on a form already filled
+    // in, and one about what an unanswered form does could not express
+    // itself.
+    const synth = new ProtocolBuilder();
     egoFormWithTextField(synth, 'fullName');
     const { session } = buildSyntheticPayload(synth, {
       protocolName: 'unseeded-ego',
@@ -106,8 +109,30 @@ describe('buildSyntheticPayload', () => {
     expect(session.network.ego[entityAttributesProperty]).toEqual({});
   });
 
+  it('takes the unseeded network from the delegate stopped at stage 0', () => {
+    // Not an emptied network but the interview before it started: whatever
+    // the generator learns to put in a session, an unseeded fixture keeps
+    // showing the untouched one without this adapter being told about it.
+    const synth = new ProtocolBuilder();
+    const person = synth.addNodeType({ name: 'Person' });
+    egoFormWithTextField(synth, 'fullName');
+    const stage = synth.addStage('Sociogram', {
+      subject: { entity: 'node', type: person.id },
+      initialNodes: { count: 3 },
+    });
+    stage.addPrompt();
+
+    const { session } = buildSyntheticPayload(synth, {
+      protocolName: 'unseeded-is-the-delegate',
+    });
+
+    expect(session.network).toEqual(
+      synth.getInterviewPayload({ stopAt: { stageIndex: 0 } }).network,
+    );
+  });
+
   it('rejects a protocol that fails CurrentProtocolSchema', () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorRoster', {
       subject: { entity: 'node', type: person.id },

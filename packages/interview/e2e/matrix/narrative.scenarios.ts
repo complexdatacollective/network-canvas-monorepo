@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { NarrativeFixture } from '../fixtures/narrative-fixture.js';
@@ -28,7 +28,7 @@ const backgroundImageAsset: SyntheticAssetSpec = {
  * buildSyntheticPayload wipes nodes/edges otherwise (synthetic-payload.ts).
  */
 function buildBaseNarrative() {
-  const synth = new SyntheticInterview();
+  const synth = new ProtocolBuilder();
   const person = synth.addNodeType({ name: 'Person' });
   const nameVar = person.addVariable({ type: 'text', name: 'name' });
   const layoutVar = person.addVariable({
@@ -820,7 +820,7 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
   covers: ['subject'],
   seedNetwork: true,
   build: () => {
-    const synth = new SyntheticInterview();
+    const synth = new ProtocolBuilder();
     const person = synth.addNodeType({ name: 'Person' });
     const personName = person.addVariable({ type: 'text', name: 'name' });
     const personLayout = person.addVariable({ type: 'layout', name: 'Layout' });

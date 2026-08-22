@@ -24,9 +24,6 @@ const config: KnipConfig = {
   ignoreIssues: {
     // Server actions for passkey password management — UI not yet wired
     'actions/webauthn.ts': ['exports'],
-
-    // Pre-existing unused type exports
-    'lib/protocol/validateAndMigrateProtocol.ts': ['types'],
   },
 };
 

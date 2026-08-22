@@ -17,6 +17,8 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
   type Codebook,
+  DEFAULT_CATEGORICAL_OTHER_BIN_PROBABILITY,
+  DEFAULT_RESPONSE_BURDEN,
   type Validation,
 } from '@codaco/protocol-validation';
 import {
@@ -185,6 +187,12 @@ function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
+    // Schema-injected generation metadata: a parsed stage always carries it,
+    // and the interview runtime never reads it.
+    synthetic: {
+      generatesData: true,
+      responseBurden: DEFAULT_RESPONSE_BURDEN.CategoricalBin,
+    },
     label: 'Categorise people',
     subject: { entity: 'node', type: NODE_TYPE },
     prompts: [
@@ -195,6 +203,9 @@ function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
         otherVariable: asEntityAttributeReference(otherVariable),
         otherVariablePrompt: OTHER_PROMPT_TEXT,
         otherOptionLabel: 'Other',
+        synthetic: {
+          otherBinProbability: DEFAULT_CATEGORICAL_OTHER_BIN_PROBABILITY,
+        },
       },
     ],
   };

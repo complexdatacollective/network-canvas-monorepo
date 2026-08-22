@@ -20,16 +20,18 @@ import {
   type GetProtocolsQuery,
   type GetProtocolsReturnType,
 } from '~/queries/protocols';
-import { MAX_SYNTHETIC_INTERVIEWS } from '~/schemas/synthetic-interviews';
 
 type SyntheticInterviewDataSectionProps = {
   protocolsPromise: GetProtocolsReturnType;
   initialCounts: { interviewCount: number; participantCount: number };
+  /** The batch ceiling, read from the generator package by the server component. */
+  maxInterviews: number;
 };
 
 export default function SyntheticInterviewDataSection({
   protocolsPromise,
   initialCounts,
+  maxInterviews,
 }: SyntheticInterviewDataSectionProps) {
   const rawProtocols = use(protocolsPromise);
   const protocols = SuperJSON.parse<GetProtocolsQuery>(rawProtocols);
@@ -41,7 +43,11 @@ export default function SyntheticInterviewDataSection({
     useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [progress, setProgress] = useState<{
+    current: number;
+    total: number;
+    phase: 'generating' | 'saving';
+  }>({ current: 0, total: 0, phase: 'generating' });
   const [syntheticCounts, setSyntheticCounts] = useState(initialCounts);
   const { toast } = useToast();
   const router = useRouter();
@@ -50,7 +56,7 @@ export default function SyntheticInterviewDataSection({
     if (!selectedProtocolId) return;
 
     setIsGenerating(true);
-    setProgress({ current: 0, total: count });
+    setProgress({ current: 0, total: count, phase: 'generating' });
 
     try {
       const response = await fetch('/api/generate-test-interviews', {
@@ -102,9 +108,11 @@ export default function SyntheticInterviewDataSection({
 
           const data = JSON.parse(dataLine.slice(6)) as {
             type: string;
+            phase?: 'generating' | 'saving';
             current?: number;
             total?: number;
             created?: number;
+            seed?: number;
             message?: string;
           };
 
@@ -112,6 +120,7 @@ export default function SyntheticInterviewDataSection({
             setProgress({
               current: data.current,
               total: data.total ?? count,
+              phase: data.phase ?? 'generating',
             });
           } else if (data.type === 'error' && data.message) {
             toast({
@@ -127,7 +136,12 @@ export default function SyntheticInterviewDataSection({
             }));
             toast({
               title: 'Generation complete',
-              description: `Successfully generated ${String(created)} synthetic interviews.`,
+              description:
+                data.seed === undefined
+                  ? `Successfully generated ${String(created)} synthetic interviews.`
+                  : // The seed is what makes a batch reproducible: generating
+                    // again with it produces the same interviews.
+                    `Successfully generated ${String(created)} synthetic interviews (seed ${String(data.seed)}).`,
               variant: 'success',
             });
           }
@@ -188,12 +202,12 @@ export default function SyntheticInterviewDataSection({
             name="count"
             type="number"
             min={1}
-            max={MAX_SYNTHETIC_INTERVIEWS}
+            max={maxInterviews}
             value={String(count)}
             onChange={(value) => {
               const parsed = Number(value);
               if (Number.isNaN(parsed)) return;
-              setCount(Math.min(Math.max(parsed, 1), MAX_SYNTHETIC_INTERVIEWS));
+              setCount(Math.min(Math.max(parsed, 1), maxInterviews));
             }}
             disabled={isGenerating}
             className="shrink-0"
@@ -215,7 +229,8 @@ export default function SyntheticInterviewDataSection({
               className="h-2"
             />
             <p className="text-sm opacity-60">
-              {progress.current} / {progress.total} interviews generated
+              {progress.current} / {progress.total} interviews{' '}
+              {progress.phase === 'saving' ? 'saved' : 'generated'}
             </p>
           </div>
         )}

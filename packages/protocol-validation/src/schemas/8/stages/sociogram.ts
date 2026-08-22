@@ -8,10 +8,12 @@ import {
   sociogramPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageEdgeSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const sociogramStage = baseStageSchema.extend({
   type: z.literal('Sociogram'),
+  synthetic: stageEdgeSynthetic('Sociogram').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   background: imageOrCirclesBackgroundSchema,

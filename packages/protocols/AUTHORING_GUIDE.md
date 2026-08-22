@@ -208,7 +208,39 @@ Participant-facing `Information` screens should also use a **single** `type:"tex
 (`"size":"LARGE"`) holding all the screen's content as Markdown, rather than several smaller
 items, so the screen reads as one block.
 
-## 7. Workflow
+## 8. Synthetic generation parameters (optional)
+
+Every stage, panel, prompt, and variable accepts an optional `synthetic` block
+describing how a generated interview should answer it. The whole surface is
+additive — author none of it and generation derives sensible defaults from the
+rules each variable is already held to.
+
+- **Stage level**: name generators take `count` (a distribution:
+  `{ "distribution": "constant", "value": 5 }`, or `normal`/`uniform`/`poisson`
+  shapes with their own parameters); edge-creating stages (Sociogram,
+  censuses, NetworkComposer) take `topology`
+  (`{ "metric": "density" | "meanDegree", "distribution": … }`); every stage
+  accepts `responseBurden` (a non-negative effort rate driving simulated
+  drop-out — demanding stages late in long protocols end more sessions).
+- **Panel level**: existing-network panels take `nominationProbability`
+  (0–1, per shown candidate).
+- **Prompt level**: CategoricalBin prompts with an other-option take
+  `otherBinProbability`.
+- **Variable level**: distributions for numbers/scalars/datetimes,
+  `optionWeights` and `selectionCount` for categoricals, `probabilityTrue`
+  for booleans, a `generator` persona for text, and `missingProbability` for
+  any non-required variable.
+
+Generated values always satisfy the variable's validation plus what its
+interfaces imply (a bin-written categorical holds one value; a quick-add name
+is never blank), so a `synthetic` block can narrow but never contradict the
+rules. A protocol whose constraints cannot all be satisfied is refused with a
+structured explanation before anything is drawn. The authoritative descriptor
+shapes live in `@codaco/protocol-validation` under `src/schemas/8/synthetic/`;
+the bundled `synthetic-showcase` protocol exercises the whole authored
+surface.
+
+## 9. Workflow
 
 1. Draft `protocol.json`. 2. Run the §0 command. 3. If EXIT=1, read the ZodError `path`/`message`,
    fix exactly that, re-run. 4. Repeat until EXIT=0. 5. Spot-check that your codebook keys referenced

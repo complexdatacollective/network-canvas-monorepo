@@ -9,10 +9,14 @@ import {
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageNoDataSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const narrativeStage = baseStageSchema.extend({
   type: z.literal('Narrative'),
+  synthetic: stageNoDataSynthetic('Narrative').prefault({
+    generatesData: false,
+  }),
   filter: FilterSchema.optional(),
   subject: NodeStageSubjectSchema,
   presets: z

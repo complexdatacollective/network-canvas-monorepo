@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -12,13 +12,13 @@ import CaptureStory, {
  * to change the published screenshots.
  */
 const build = () => {
-  const si = new SyntheticInterview(1);
+  const si = new ProtocolBuilder(1);
   const nt = si.addNodeType({ name: 'Person' });
   const layoutVar = nt.addVariable({
     type: 'layout',
-    name: 'Narrative Layout',
+    name: 'NarrativeLayout',
   });
-  const closeVar = nt.addVariable({ type: 'boolean', name: 'Close Friend' });
+  const closeVar = nt.addVariable({ type: 'boolean', name: 'CloseFriend' });
   const communityVar = nt.addVariable({
     type: 'categorical',
     name: 'Community',

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+import { CategoricalBinPromptSyntheticSchema } from '../synthetic/index.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
@@ -184,6 +185,12 @@ const categoricalBinPromptFields = {
 // refine accepts, so every state the union cannot represent (the 'other'
 // fields partially set, or set to empty strings) is rejected by the refine
 // first with a targeted message.
+//
+// The union is also what resolves the synthetic other-bin odds, and only on
+// the branch that has an other bin to send an alter to. Declaring the field
+// on the loose shape as well is what lets the refine below answer a prompt
+// that sets it without one in its own words, rather than as strict mode's
+// unrecognised key.
 export const categoricalBinPromptSchema = promptSchema
   .extend({
     ...categoricalBinPromptFields,
@@ -194,6 +201,7 @@ export const categoricalBinPromptSchema = promptSchema
     }).optional(),
     otherVariablePrompt: z.string().optional(),
     otherOptionLabel: z.string().optional(),
+    synthetic: CategoricalBinPromptSyntheticSchema.optional(),
   })
   .superRefine((prompt, ctx) => {
     if (prompt.otherVariable === '') {
@@ -236,6 +244,26 @@ export const categoricalBinPromptSchema = promptSchema
         path: ['otherVariablePrompt'],
       });
     }
+    // Same reasoning, for the odds of reaching that bin: with no other bin to
+    // reach for, there is nothing for a probability to decide. Refused rather
+    // than ignored, as an option weight naming a value the variable does not
+    // offer is refused — metadata that can never take effect is better
+    // rejected than quietly dropped, because the author wrote it expecting it
+    // to do something.
+    //
+    // This reads the AUTHORED value: the loose shape leaves the field
+    // optional and carries no default of its own, so it is absent here unless
+    // a human wrote it. The resolved default is applied by the union in the
+    // transform below, after this check has already run — were the order
+    // reversed, every bin prompt without an other bin would be refused for
+    // metadata the schema itself had just put there.
+    if (!prompt.otherVariable && prompt.synthetic !== undefined) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'synthetic other-bin odds require otherVariable to be set.',
+        path: ['synthetic'],
+      });
+    }
   })
   .transform(
     narrowTo(
@@ -249,12 +277,23 @@ export const categoricalBinPromptSchema = promptSchema
           }),
           otherVariablePrompt: z.string().min(1),
           otherOptionLabel: z.string().min(1),
+          // `.prefault({})` rather than `.default({})`. In Zod 4 an outer
+          // `.default()` SHORT-CIRCUITS: given an absent value it hands back
+          // the literal it was given, unparsed, so no field-level default
+          // inside ever fires and the prompt would come out carrying `{}`
+          // with no odds at all. `.prefault()` substitutes and then parses,
+          // which is what puts `otherBinProbability` there.
+          synthetic: CategoricalBinPromptSyntheticSchema.prefault({}),
         }),
         promptSchema.extend({
           ...categoricalBinPromptFields,
           otherVariable: z.undefined().optional(),
           otherVariablePrompt: z.undefined().optional(),
           otherOptionLabel: z.undefined().optional(),
+          // No other bin, so no odds — this branch is the static half of the
+          // refusal above, and is why generation can read the odds off any
+          // prompt that has an other bin without a fallback.
+          synthetic: z.undefined().optional(),
         }),
       ]),
     ),

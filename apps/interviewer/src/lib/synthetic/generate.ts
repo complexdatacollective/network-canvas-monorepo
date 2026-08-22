@@ -1,7 +1,6 @@
-import { v4 as uuid } from 'uuid';
-
 import { getInterviewProgress } from '@codaco/interview';
-import { generateNetwork } from '@codaco/protocol-utilities';
+import { generateInterviews } from '@codaco/protocol-utilities';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
 import {
   createSession,
@@ -9,61 +8,113 @@ import {
   getProtocolByHash,
   updateSession,
 } from '~/lib/db/api';
+import type { StoredProtocol } from '~/lib/db/types';
 
-import { loadRosterNodesForStages } from './loadRosterData';
+import { loadSyntheticAssetData } from './loadAssetData';
+
+/**
+ * Generation runs in two phases the researcher can tell apart: the engine
+ * draws the whole batch in one synchronous call, then each session is
+ * encrypted and written. Reporting them separately keeps the progress bar
+ * honest — a long pause before the first row lands is the draw, not a stall.
+ */
+export type SyntheticGenerationProgress = {
+  phase: 'generating' | 'storing';
+  current: number;
+  total: number;
+};
 
 type GenerateOptions = {
   protocolHash: string;
   count: number;
   simulateDropOut: boolean;
-  respectSkipLogicAndFiltering: boolean;
-  onProgress?: (current: number, total: number) => void;
+  respectSkipLogic: boolean;
+  /** Pin the batch. Omitted, a fresh random seed is drawn and reported back. */
+  seed?: number;
+  onProgress?: (progress: SyntheticGenerationProgress) => void;
 };
 
-type GeneratedRow = {
-  sessionId: string;
-  droppedOut: boolean;
+export type SyntheticGenerationSummary = {
+  created: number;
+  /** The seed the batch actually ran on, so it can be reproduced exactly. */
+  seed: number;
 };
+
+/**
+ * A fresh seed for a batch nobody pinned.
+ *
+ * This is the one place in synthetic generation where entropy is allowed: the
+ * engine itself is a pure function of its seed, which is what makes a batch
+ * reproducible, so the unrepeatable part has to be chosen by the host and
+ * handed back to the researcher. A 32-bit integer is short enough to read off
+ * a toast and type into the seed field.
+ */
+function drawSeed(): number {
+  const [value] = crypto.getRandomValues(new Uint32Array(1));
+  return value ?? 0;
+}
+
+/**
+ * Re-parse the stored protocol through the current schema.
+ *
+ * The engine refuses a stage that declares no `synthetic` parameters, because
+ * those parameters are supplied by parsing rather than by defaulting inside
+ * the engine — one model of what a stage generates, owned by the schema. A
+ * stored protocol is whatever the schema looked like on the day it was
+ * imported, so generation parses it again here rather than trusting the row.
+ */
+function parseStoredProtocol(protocol: StoredProtocol) {
+  const result = CurrentProtocolSchema.safeParse(protocol.protocol);
+  if (!result.success) {
+    throw new Error(
+      `"${protocol.name}" could not be read by the current protocol schema, so synthetic data cannot be generated for it. Re-import the protocol and try again.`,
+      { cause: result.error },
+    );
+  }
+  return result.data;
+}
 
 export async function generateSyntheticSessions(
   opts: GenerateOptions,
-): Promise<number> {
-  const {
-    protocolHash,
-    count,
-    simulateDropOut,
-    respectSkipLogicAndFiltering,
-    onProgress,
-  } = opts;
+): Promise<SyntheticGenerationSummary> {
+  const { protocolHash, count, simulateDropOut, respectSkipLogic, onProgress } =
+    opts;
 
   const protocol = await getProtocolByHash(protocolHash);
   if (!protocol) {
     throw new Error(`Protocol not found for hash "${protocolHash}".`);
   }
 
-  const externalData = await loadRosterNodesForStages(protocol);
+  const parsed = parseStoredProtocol(protocol);
+  const assetData = await loadSyntheticAssetData(protocol);
+  const seed = opts.seed ?? drawSeed();
 
-  const genOptions = {
-    codebook: protocol.codebook,
-    stages: protocol.protocol.stages,
-    simulateDropOut,
-    respectSkipLogicAndFiltering,
-    externalData,
-  };
-  const generated: GeneratedRow[] = [];
+  // Nothing is written yet, so a refusal here — the engine proves up front
+  // that the protocol's validation rules cannot all be satisfied — leaves
+  // storage untouched and needs no rollback. The completed floor and every
+  // retry live inside the engine: it re-runs a dropped session on its own
+  // substreams rather than drawing a fresh one, so the batch stays a pure
+  // function of `seed`.
+  const results = generateInterviews(
+    parsed,
+    { count, seed, simulateDropOut, respectSkipLogic },
+    assetData,
+    (current, total) => onProgress?.({ phase: 'generating', current, total }),
+  );
+
+  const written: string[] = [];
 
   try {
-    let completedCount = 0;
+    for (const [index, result] of results.entries()) {
+      const { session, currentStep } = result;
 
-    for (let i = 0; i < count; i++) {
-      const { network, stageMetadata, currentStep, droppedOut } =
-        generateNetwork(genOptions);
-
-      const session = await createSession({
+      const stored = await createSession({
         protocolHash,
         protocolName: protocol.name,
-        caseId: `synthetic-${uuid()}`,
-        initialNetwork: network,
+        // The engine's own session id, so a pinned seed reproduces the batch
+        // down to the case ids a researcher sees in the interview table.
+        caseId: `synthetic-${session.id}`,
+        initialNetwork: session.network,
         isSynthetic: true,
       });
 
@@ -71,68 +122,45 @@ export async function generateSyntheticSessions(
       // committed it, so a rejected `updateSession` (a failed encryption or
       // IndexedDB write) has to roll this row back too, not just its
       // predecessors.
-      generated.push({ sessionId: session.id, droppedOut });
+      written.push(stored.id);
 
-      await updateSession(session.id, {
+      await updateSession(stored.id, {
         currentStep,
-        progress: getInterviewProgress(protocol.protocol.stages, currentStep)
-          .progress,
+        progress: getInterviewProgress(parsed.stages, currentStep).progress,
         stageMetadata:
-          stageMetadata === null || stageMetadata === undefined
+          session.stageMetadata === undefined
             ? undefined
-            : StageMetadataSchema.parse(stageMetadata),
-        finishedAt: droppedOut ? null : new Date().toISOString(),
+            : StageMetadataSchema.parse(session.stageMetadata),
+        // The engine's clock, not this device's: sessions start spread across
+        // the days before now and finish after however long their stages
+        // would have taken, so a batch looks like fieldwork rather than like
+        // one instant. A drop-out has no finish time at all — it is a genuine
+        // unfinished session, resumable exactly like an abandoned real one.
+        // `lastUpdatedAt` stays the write time: `updateSession` stamps it for
+        // every caller, and a synthetic row is not worth a second write path.
+        startedAt: session.startTime,
+        finishedAt: session.finishTime,
       });
 
-      if (!droppedOut) completedCount++;
-      onProgress?.(i + 1, count);
-    }
-
-    // Mirror fresco-next: guarantee at least 10% completed sessions when
-    // simulating drop-out, so exports always have some completed data.
-    if (simulateDropOut) {
-      const minCompleted = Math.max(1, Math.ceil(count * 0.1));
-      if (completedCount < minCompleted) {
-        const deficit = minCompleted - completedCount;
-        const toFix = generated.filter((g) => g.droppedOut).slice(0, deficit);
-
-        for (const row of toFix) {
-          const { network, stageMetadata, currentStep } = generateNetwork({
-            ...genOptions,
-            simulateDropOut: false,
-          });
-          await updateSession(row.sessionId, {
-            network,
-            currentStep,
-            progress: getInterviewProgress(
-              protocol.protocol.stages,
-              currentStep,
-            ).progress,
-            stageMetadata:
-              stageMetadata === null || stageMetadata === undefined
-                ? undefined
-                : StageMetadataSchema.parse(stageMetadata),
-            finishedAt: new Date().toISOString(),
-          });
-        }
-      }
+      onProgress?.({
+        phase: 'storing',
+        current: index + 1,
+        total: results.length,
+      });
     }
   } catch (error) {
-    // `generateNetwork` refuses a protocol whose validation rules can't all be
-    // satisfied. Its up-front feasibility analysis catches most of those, but a
-    // protocol can pass that check and still exhaust the draw on a later seed,
-    // so the throw can land part-way through a batch that has already written
-    // sessions. Undo them: nothing is kept unless the whole batch succeeded, so
-    // a retry can't stack a partial duplicate batch on top of the first attempt.
+    // A write failed part-way through a batch that has already committed
+    // rows. Undo them: nothing is kept unless the whole batch succeeded, so a
+    // retry can't stack a partial duplicate batch on top of the first attempt.
     try {
-      await deleteSessions(generated.map((row) => row.sessionId));
+      await deleteSessions(written);
     } catch {
-      // A failing rollback means the database itself is broken; the generation
+      // A failing rollback means the database itself is broken; the write
       // failure is still the actionable error, and the caller re-reads the
       // stored count either way, so the number on screen stays honest.
     }
     throw error;
   }
 
-  return count;
+  return { created: results.length, seed };
 }

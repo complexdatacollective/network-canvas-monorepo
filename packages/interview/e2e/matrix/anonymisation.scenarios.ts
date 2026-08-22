@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
@@ -35,7 +35,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       visual: true,
       captureMask: (page) => [page.locator('.transform-3d')],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Welcome',
           text: 'Before the anonymisation stage.',
@@ -100,7 +100,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         'beforeNext.gating',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -172,7 +172,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       id: 'min-max-length-validation',
       covers: ['validation.minLength', 'validation.maxLength'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -224,7 +224,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       id: 'backwards-nav-and-revisit-persistence',
       covers: ['beforeNext.backwardsAllowed', 'passphrase.persistOnRevisit'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -287,7 +287,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       slow: true,
       captureMask: (page) => [page.locator('.transform-3d')],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',
@@ -361,7 +361,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       // With the experiment off, useEncryption short-circuits to false, so the
       // write is plaintext (no PBKDF2) — a fast round-trip, not crypto-heavy.
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         // setExperiments is never called: getShouldEncryptNames stays false,
         // so the decrypt path in useNodeAttributes is disabled.
         synth.addInformationStage({
@@ -446,7 +446,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
       ],
       slow: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',

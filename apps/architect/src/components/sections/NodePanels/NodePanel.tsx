@@ -43,6 +43,11 @@ export type NodePanelValue = Record<string, unknown> & {
   title: string | undefined;
   dataSource: string;
   filter: RuleSetValue | undefined;
+  // Authored generation parameters (`panelSchema.synthetic`). No control
+  // renders it, so it is optional rather than `| undefined`: a panel that was
+  // never given one must keep the key absent, not carry an explicit
+  // `undefined` that would read as a cleared value.
+  synthetic?: Record<string, unknown>;
 };
 
 type NodePanelProps = ArrayFieldItemProps<NodePanelValue>;

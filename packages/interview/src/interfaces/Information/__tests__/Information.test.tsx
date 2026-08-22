@@ -4,7 +4,10 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { Item } from '@codaco/protocol-validation';
+import {
+  DEFAULT_RESPONSE_BURDEN,
+  type Item,
+} from '@codaco/protocol-validation';
 
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
@@ -71,6 +74,12 @@ function renderInformation(
 const makeStage = (items: Item[]): InformationStage => ({
   id: 'info-1',
   type: 'Information',
+  // Schema-injected generation metadata: a parsed stage always carries
+  // it, and nothing in this test reads it.
+  synthetic: {
+    generatesData: false,
+    responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+  },
   label: 'Info',
   title: 'Information',
   items,

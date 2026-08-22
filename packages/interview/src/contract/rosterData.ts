@@ -115,8 +115,8 @@ function getRosterStage(stage: Stage): RosterStage | null {
   // Hosts pass draft/unvalidated stages (Architect previews the protocol being
   // edited), so `dataSource`, `subject`, and panel fields can be absent even
   // though the schema types mark them required. Every field is re-checked at
-  // runtime and the stage is skipped on a mismatch rather than throwing — the
-  // same widening-without-assertion posture as generateNetwork's subject.ts.
+  // runtime and the stage is skipped on a mismatch rather than throwing —
+  // widening without assertion, so a draft stage can never crash the reader.
   const sources: RosterSource[] = [];
 
   if (stage.type === 'NameGeneratorRoster') {

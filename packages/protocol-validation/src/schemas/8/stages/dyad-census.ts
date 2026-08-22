@@ -7,10 +7,12 @@ import {
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageEdgeSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const dyadCensusStage = baseStageSchema.extend({
   type: z.literal('DyadCensus'),
+  synthetic: stageEdgeSynthetic('DyadCensus').prefault({}),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
   prompts: z

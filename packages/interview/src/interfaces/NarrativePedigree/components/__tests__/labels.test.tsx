@@ -67,10 +67,10 @@ function makeEdge(uid: string, from: string, to: string): NcEdge {
 /**
  * Builds the nodes/edges maps that NarrativePedigreeView would pass to
  * computeNodeDisplayLabels. The critical scenario: some non-ego nodes have
- * egoVariable=true, simulating what SyntheticInterview's random boolean
+ * egoVariable=true, simulating what ProtocolBuilder's random boolean
  * generation produces for unset attributes.
  *
- * Root cause of the bug: SyntheticInterview.getNetwork() calls
+ * Root cause of the bug: ProtocolBuilder.getNetwork() calls
  * faker.datatype.boolean() for any boolean variable not in explicitAttributes.
  * When the egoVariable is unset for a non-ego node, it may become true.
  * The old computeNodeDisplayLabels excluded ALL nodes with egoVariable===true

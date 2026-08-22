@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
@@ -76,6 +77,12 @@ const INFORMATION_WITH_IMAGE_ITEM = (): CurrentProtocol => ({
         { id: 'item-image', type: 'asset', content: 'photo-asset' },
         { id: 'item-text', type: 'text', content: 'Original text body' },
       ],
+      // Schema-injected generation metadata: a parsed stage always carries
+      // it, and nothing in this spec reads it.
+      synthetic: {
+        generatesData: false,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+      },
     },
   ],
 });

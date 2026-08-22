@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import CaptureStory, {
   type CaptureParameters,
@@ -12,17 +12,25 @@ import CaptureStory, {
  * to change the published screenshots.
  */
 const build = () => {
-  const si = new SyntheticInterview(1);
+  const si = new ProtocolBuilder(1);
   const nt = si.addNodeType({ name: 'Person' });
   const et = si.addEdgeType({ name: 'Friendship' });
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   // NameGenerator creates the nodes that the edges connect, so the
-  // AlterEdgeForm stage lands at currentStep 2.
-  si.addStage('NameGenerator', {
+  // AlterEdgeForm stage lands at currentStep 2. A name generator must carry at
+  // least one prompt and a form, so give it the minimum a real one would have.
+  const nameGenerator = si.addStage('NameGenerator', {
     label: 'Name Generator',
     initialNodes: { count: 4 },
     subject: { entity: 'node', type: nt.id },
+  });
+  nameGenerator.addPrompt({
+    text: 'Who are the people you spend time with?',
+  });
+  nameGenerator.addFormField({
+    component: 'Text',
+    prompt: 'What is their name?',
   });
   si.addEdges(
     [

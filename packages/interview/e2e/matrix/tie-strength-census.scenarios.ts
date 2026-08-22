@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -55,7 +55,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -149,7 +149,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       covers: ['subject.type'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const place = synth.addNodeType({ name: 'Place' });
         const placeName = place.addVariable({ type: 'text', name: 'name' });
@@ -251,7 +251,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -370,7 +370,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       covers: ['response-required-validation'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -422,7 +422,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       covers: ['prompts[].edgeVariable', 'auto-advance-timing'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -495,7 +495,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -575,7 +575,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       slow: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -745,7 +745,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({
           name: 'Friendship',
@@ -793,7 +793,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       covers: ['label', 'interviewScript'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({

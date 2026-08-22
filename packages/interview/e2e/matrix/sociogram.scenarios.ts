@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import type { Locator, Page } from '@playwright/test';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   edgeSourceProperty,
   edgeTargetProperty,
@@ -203,7 +203,7 @@ function buildManualBaseline(): ScenarioDefinition {
     visual: true,
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const layoutVar = personType.addVariable({
@@ -295,7 +295,7 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
     visual: true,
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const layoutVar = personType.addVariable({
         type: 'layout',
@@ -365,7 +365,7 @@ function buildBackgroundImage(): ScenarioDefinition {
     visual: true,
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const layoutVar = personType.addVariable({
         type: 'layout',
@@ -435,7 +435,7 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
     ],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
@@ -594,7 +594,7 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
     covers: ['prompts[].layout.layoutVariable'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
@@ -658,7 +658,7 @@ function buildAutomaticLayoutSettle(): ScenarioDefinition {
     covers: ['behaviours.automaticLayout'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const layoutVar = personType.addVariable({
         type: 'layout',
@@ -721,7 +721,7 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
     covers: ['behaviours.automaticLayout'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const layoutVar = personType.addVariable({
@@ -796,7 +796,7 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
     covers: ['behaviours.automaticLayout'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
@@ -865,7 +865,7 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
     covers: ['prompts[].edges.create', 'prompts[].edges.display'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const layoutVar = personType.addVariable({
@@ -1005,7 +1005,7 @@ function buildHighlightToggle(): ScenarioDefinition {
     ],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
@@ -1086,7 +1086,7 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
     ],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
@@ -1173,7 +1173,7 @@ function buildMultiPromptNavigationAndCollapse(): ScenarioDefinition {
     covers: ['prompts', 'prompts[].text'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const layoutVar = personType.addVariable({
@@ -1253,7 +1253,7 @@ function buildSortOrderDrawer(): ScenarioDefinition {
     covers: ['prompts[].sortOrder'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       const layoutVar = personType.addVariable({
@@ -1318,7 +1318,7 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
     covers: ['subject'],
     seedNetwork: true,
     build: () => {
-      const synth = new SyntheticInterview();
+      const synth = new ProtocolBuilder();
       const personType = synth.addNodeType({ name: 'Person' });
       const personName = personType.addVariable({
         type: 'text',
