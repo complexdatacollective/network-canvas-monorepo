@@ -1,4 +1,10 @@
-import { ArrowLeftToLine, Check, Download, Save } from 'lucide-react';
+import {
+  ArrowLeftToLine,
+  Check,
+  Download,
+  FlaskConical,
+  Save,
+} from 'lucide-react';
 import {
   type ReactNode,
   useCallback,
@@ -14,6 +20,7 @@ import {
   ToolbarGroup,
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import { SyntheticGenerationDialog } from '~/components/SyntheticGeneration/SyntheticGenerationDialog';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
@@ -75,7 +82,6 @@ const ProjectActions = ({
     '/protocol/assets',
     '/protocol/codebook',
     '/protocol/summary',
-    '/protocol/synthetic',
   ].includes(location);
   const returnDestination = returnsToTimeline ? '/protocol' : '/';
   const returnLabel = returnsToTimeline
@@ -85,6 +91,12 @@ const ProjectActions = ({
     () => setLocation(returnDestination),
     [returnDestination, setLocation],
   );
+
+  // Generating synthetic data only READS the protocol, so it is offered in
+  // every mode — including `locked`, where the actions left are exactly the
+  // ones that cannot write.
+  const [isSyntheticOpen, setIsSyntheticOpen] = useState(false);
+  const openSynthetic = useCallback(() => setIsSyntheticOpen(true), []);
 
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -257,6 +269,12 @@ const ProjectActions = ({
         additionalActions ? (
           <ToolbarSeparator key="additional-separator" />
         ) : null,
+        <ToolbarGroup key="synthetic" aria-label="Synthetic data actions">
+          <ToolbarButton icon={<FlaskConical />} onClick={openSynthetic}>
+            Generate synthetic data…
+          </ToolbarButton>
+        </ToolbarGroup>,
+        <ToolbarSeparator key="synthetic-separator" />,
         <ToolbarGroup key="download" aria-label="Download actions">
           <ToolbarButton
             icon={downloadSuccess ? <Check /> : <Download />}
@@ -303,6 +321,7 @@ const ProjectActions = ({
       handleUndo,
       isExporting,
       isSavingSource,
+      openSynthetic,
       returnLabel,
       showHistoryActions,
       sourceSaveSuccess,
@@ -311,7 +330,14 @@ const ProjectActions = ({
 
   useActionToolbar(toolbarProps);
 
-  return null;
+  return (
+    <SyntheticGenerationDialog
+      open={isSyntheticOpen}
+      onOpenChange={setIsSyntheticOpen}
+      protocol={protocol}
+      protocolId={activeProtocolId}
+    />
+  );
 };
 
 export default ProjectActions;

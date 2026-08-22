@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { getAssetById } from './assetUtils';
+import { downloadBlob, downloadTimestamp } from './downloadBlob';
 
 // An asset that could not be included in the export (unresolvable scope or a
 // stranded manifest entry). Reported back to the caller so it can warn the
@@ -181,26 +182,10 @@ export async function downloadProtocolAsNetcanvas(
   try {
     const { blob, skippedAssets } = await bundleProtocol(protocol, protocolId);
 
-    // build local timestamp YYYY-MM-DD_HH-MM
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
-
     // Use provided name, or default to "protocol"
-    const fileName = `${(protocolName ?? 'protocol').replace(/\s+/g, '_')}-${timestamp}.netcanvas`;
+    const fileName = `${(protocolName ?? 'protocol').replace(/\s+/g, '_')}-${downloadTimestamp()}.netcanvas`;
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, fileName);
 
     return skippedAssets;
   } catch (error) {

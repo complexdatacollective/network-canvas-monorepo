@@ -39,6 +39,7 @@
     "csvtojson": "catalog:",
     "cva": "1.0.0-beta.4",
     "dexie": "^4.4.4",
+    "effect": "catalog:",
     "es-toolkit": "catalog:",
     "fuse.js": "catalog:",
     "jszip": "catalog:",

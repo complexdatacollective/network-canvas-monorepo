@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { getDisplayAssetManifest } from '~/selectors/protocol';
 import { getAssetById } from '~/utils/assetUtils';
+import { downloadBlob } from '~/utils/downloadBlob';
 import { reportError } from '~/utils/reportError';
 
 const defaultMeta = {
@@ -45,19 +46,7 @@ const useExternalDataDownload = () => {
           return;
         }
 
-        // Create a download link
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = meta?.name || asset.name || 'download';
-
-        // Trigger download
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Clean up blob URL
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, meta?.name || asset.name || 'download');
       } catch (error) {
         reportError(error);
         void openDialog({
