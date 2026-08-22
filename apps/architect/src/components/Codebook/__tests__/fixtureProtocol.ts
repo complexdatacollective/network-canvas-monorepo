@@ -4,40 +4,30 @@ import {
 } from '@codaco/protocol-validation';
 
 /**
- * One protocol DOCUMENT covering every shape the overview has to describe, and
- * the parse of that same document.
+ * One protocol DOCUMENT covering every shape the codebook's synthetic columns
+ * have to describe, and the parse of that same document.
  *
- * Deliberately a document rather than a hand-built parsed object: the whole
- * point of the screen is that its effective values come from the schema while
- * its badges come from the file, so a fixture that skipped the parse would test
- * the fixture instead of the screen. `parseFixture` therefore throws loudly if
- * the document ever stops being valid.
+ * Deliberately a document rather than a hand-built parsed object: what the
+ * codebook shows is the schema's resolution of what the file states, and the
+ * document is also what the editing surfaces really hold — the redux buffer is
+ * the stored protocol, pre-parse. A fixture that skipped the parse would test
+ * the fixture instead of the screen; `parseFixture` throws loudly if the
+ * document ever stops being valid.
  *
  * What it exercises:
- *  - an authored count on a bounded name generator (bounds resolved from
- *    `behaviours`), and an authored response burden beside it;
- *  - a default count, a default topology, and an authored density topology
- *    whose declared bounds merely restate the metric domain;
- *  - a Sociogram whose prompts create no edges, so its topology is inert;
- *  - a panel carrying nomination odds, authored or not;
- *  - a stage that generates no data at all;
  *  - variables of every synthetic-bearing type, one authored, one written only
- *    by a categorical bin, and one written by a quick-add field.
+ *    by a categorical bin, and one written by a quick-add field;
+ *  - a layout variable, which generation places deterministically and which
+ *    therefore has nothing to author;
+ *  - stages of several kinds around them — a categorical bin, a quick-add name
+ *    generator, forms, sociograms and a census — so the interface-implied rules
+ *    the columns report have real sources to name.
  */
 
-export type FixtureOptions = {
-  /**
-   * Written into the one panel's `synthetic` block. Omitted — the usual case —
-   * the document states nothing there and the schema resolves the odds.
-   */
-  panelNominationProbability?: number;
-};
-
-export const fixtureDocument = ({
-  panelNominationProbability,
-}: FixtureOptions = {}) => ({
-  name: 'Synthetic overview fixture',
-  description: 'A protocol shaped to exercise the synthetic overview.',
+export const FIXTURE_DOCUMENT = {
+  name: 'Synthetic codebook fixture',
+  description:
+    'A protocol shaped to exercise the codebook’s synthetic columns.',
   schemaVersion: 8,
   codebook: {
     ego: {
@@ -98,6 +88,10 @@ export const fixtureDocument = ({
     edge: {
       friend: {
         name: 'Friend',
+        // The codebook screen renders a type only once it carries both a name
+        // and a colour (`getEntityProperties`), so an edge without one shows no
+        // attribute rows at all.
+        color: 'edge-color-seq-1',
         variables: {
           friendStrength: {
             name: 'strength',
@@ -139,13 +133,6 @@ export const fixtureDocument = ({
           id: 'panel-existing',
           title: 'People you named',
           dataSource: 'existing',
-          ...(panelNominationProbability === undefined
-            ? {}
-            : {
-                synthetic: {
-                  nominationProbability: panelNominationProbability,
-                },
-              }),
         },
       ],
     },
@@ -237,9 +224,7 @@ export const fixtureDocument = ({
       ],
     },
   ],
-});
-
-export const FIXTURE_DOCUMENT = fixtureDocument();
+};
 
 const PERSON_TYPE = {
   name: 'Person',
@@ -258,8 +243,8 @@ const PERSON_TYPE = {
  * Two name generators guarantee a hundred people each, so the sociogram after
  * them is asked about every pair of two hundred — far past the pair ceiling one
  * stage may enumerate. The engine writes that refusal itself and names the
- * stage inside the reason, which is what the overview's per-stage attribution
- * has to find.
+ * stage inside the reason, which is what the codebook's verdict must reproduce
+ * verbatim rather than paraphrase.
  */
 export const PAIR_CEILING_DOCUMENT = {
   name: 'Pair ceiling fixture',
@@ -267,7 +252,7 @@ export const PAIR_CEILING_DOCUMENT = {
   schemaVersion: 8,
   codebook: {
     node: { person: PERSON_TYPE },
-    edge: { friend: { name: 'Friend' } },
+    edge: { friend: { name: 'Friend', color: 'edge-color-seq-1' } },
   },
   stages: [
     {

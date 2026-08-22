@@ -6,12 +6,12 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
  * `createTypeAsync`/`createVariableAsync` key the codebook by a generated
  * uuid, not by the name the researcher typed — so a spec that built its own
  * node type cannot look it up by that name as a key. Reading the pair back
- * (the key AND the definition) is what lets an assertion name both the
- * attribute and the `node:<type>/<variable>` row a deep link points at.
+ * (the key AND the definition) is what lets an assertion name both the type and
+ * the attributes hanging off it.
  *
- * Both helpers THROW when they find nothing, rather than returning a sentinel:
- * a lookup that quietly resolved to `undefined` would turn every assertion
- * built on it into a claim about nothing.
+ * It THROWS when it finds nothing, rather than returning a sentinel: a lookup
+ * that quietly resolved to `undefined` would turn every assertion built on it
+ * into a claim about nothing.
  */
 
 type NodeTypes = NonNullable<CurrentProtocol['codebook']['node']>;
@@ -44,21 +44,4 @@ export function nodeTypeByName(
   }
   const [typeId, definition] = entry;
   return { typeId, definition, variables: definition.variables ?? {} };
-}
-
-export function variableIdByName(
-  variables: CodebookVariables,
-  name: string,
-): string {
-  const entry = Object.entries(variables).find(
-    ([, variable]) => variable.name === name,
-  );
-  if (!entry) {
-    throw new Error(
-      `no attribute named "${name}" in ${JSON.stringify(
-        Object.values(variables).map((variable) => variable.name),
-      )}`,
-    );
-  }
-  return entry[0];
 }

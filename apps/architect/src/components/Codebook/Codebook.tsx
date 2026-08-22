@@ -12,12 +12,16 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
-import { getCodebook } from '~/selectors/protocol';
+import { useAppSelector } from '~/ducks/hooks';
+import { getActiveProtocolId } from '~/ducks/modules/app';
+import { useSyntheticFeasibility } from '~/hooks/useSyntheticFeasibility';
+import { getCodebook, getProtocol } from '~/selectors/protocol';
 
 import { codebookEntityMarker, useCodebookDeepLink } from './deepLink';
 import EgoType from './EgoType';
 import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
+import { SyntheticVerdict } from './SyntheticVerdict';
 import { useCodebookData } from './useCodebookData';
 
 type CodebookProps = {
@@ -55,12 +59,27 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
   const [unusedOnly, setUnusedOnly] = useState(false);
   const unusedOnlyId = useId();
 
+  // The whole-protocol synthetic verdict, live against the protocol being
+  // edited. It sits above everything because it is a statement about the
+  // protocol rather than about any one type: a refusal names the attribute or
+  // stage it is about, and every attribute it could name is on this screen.
+  const protocol = useAppSelector(getProtocol);
+  const protocolId = useAppSelector(getActiveProtocolId);
+  const feasibility = useSyntheticFeasibility({
+    document: protocol,
+    protocolId,
+  });
+
   // After the rows above have rendered, so a link naming one of them can find
   // it. Filters are at their defaults on arrival, so a linked row is present.
   useCodebookDeepLink();
 
   return (
     <div className="my-10">
+      <div className="mb-14">
+        <SyntheticVerdict feasibility={feasibility} />
+      </div>
+
       <Surface className="mb-14" spacing="sm" shadow="sm">
         <div className="flex flex-wrap items-end gap-5">
           <Form

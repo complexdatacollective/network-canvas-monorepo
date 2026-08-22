@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearch } from 'wouter';
 
 import { syntheticSubjectKey } from '@codaco/protocol-validation';
@@ -11,6 +11,12 @@ import { syntheticSubjectKey } from '@codaco/protocol-validation';
  * carried in the query — `?entity=node:person&variable=<id>` — and the page
  * scrolls that row into view and puts focus on it. A plain
  * `/protocol/codebook` carries no target and is unaffected.
+ *
+ * A link naming an ATTRIBUTE asks for more than a scroll: the row it lands on
+ * opens its synthetic sub-editor too, so the researcher arrives at the controls
+ * rather than one click short of them (see `useCodebookVariableTarget`, which
+ * the attribute table reads). Focus is unchanged either way — the row's own
+ * first control, as below.
  *
  * The entity is keyed by `syntheticSubjectKey`, the schema's own way of naming
  * a subject, so a link and the row it points at cannot disagree about what
@@ -60,6 +66,35 @@ const codebookTargetOf = (search: string): CodebookTarget | undefined => {
     subjectKey,
     variableId: params.get(VARIABLE_PARAM) ?? undefined,
   };
+};
+
+/** The attribute the current query names, where it names one. */
+export type CodebookVariableTarget = {
+  /** `node:person`, `edge:friend`, or `ego`. */
+  subjectKey: string;
+  variableId: string;
+};
+
+/**
+ * The attribute a link asks the codebook to open at, for the row that has to
+ * open AT it.
+ *
+ * Separate from {@link useCodebookDeepLink}, which moves the page: this is the
+ * same question asked declaratively, by the one row whose own state the link
+ * changes. Reading the query in both places rather than passing a target down
+ * keeps the link's meaning in one module while letting each consumer answer
+ * it in its own terms — a scroll and a focus there, an opened sub-editor here.
+ */
+export const useCodebookVariableTarget = ():
+  | CodebookVariableTarget
+  | undefined => {
+  const search = useSearch();
+
+  return useMemo(() => {
+    const target = codebookTargetOf(search);
+    if (target?.variableId === undefined) return undefined;
+    return { subjectKey: target.subjectKey, variableId: target.variableId };
+  }, [search]);
 };
 
 /** Marks the section an `?entity=` link lands on. */

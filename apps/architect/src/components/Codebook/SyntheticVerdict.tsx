@@ -1,16 +1,21 @@
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import {
+  conflictKey,
+  SyntheticConflictAlert,
+} from '~/components/Synthetic/SyntheticConflictAlert';
 import { SyntheticFeasibilityAnnouncer } from '~/components/Synthetic/SyntheticFeasibilityAnnouncer';
 import type { SyntheticFeasibility } from '~/hooks/useSyntheticFeasibility';
 
-import { conflictKey, SyntheticConflictAlert } from './SyntheticConflictAlert';
-
 /**
- * The protocol-wide verdict at the top of the overview (spec, Surfaces §4):
- * either "Generation is possible" or the engine's own list of conflicts.
+ * The protocol-wide synthetic verdict, at the top of the Codebook: either
+ * "Generation is possible" or the engine's own list of conflicts.
  *
- * The verdict comes from `useSyntheticFeasibility`, which runs the same
- * pre-seed gate `generateInterviews` refuses with — so this screen and a real
- * generation run cannot disagree. Verdict CHANGES are announced politely by
+ * The Codebook is where a protocol's attributes and their generated values are
+ * read, so it is where the whole-protocol answer belongs (spec revision 2,
+ * item 6 — the separate overview screen is gone). The verdict comes from
+ * `useSyntheticFeasibility`, which runs the same pre-seed gate
+ * `generateInterviews` refuses with, so this screen and a real generation run
+ * cannot disagree. Verdict CHANGES are announced politely by
  * `SyntheticFeasibilityAnnouncer`; nothing here announces on its own.
  */
 
@@ -28,7 +33,7 @@ const FEASIBLE_DESCRIPTION =
 
 const CONFLICTS_TITLE = 'Synthetic data cannot be generated';
 const CONFLICTS_DESCRIPTION =
-  'These demands cannot all be met, so no synthetic interview could be produced. Open the stage or attribute named in each one to change it.';
+  'These demands cannot all be met, so no synthetic interview could be produced. Change the attribute named in each one below, or open the stage it names.';
 
 export type SyntheticVerdictProps = {
   feasibility: SyntheticFeasibility;

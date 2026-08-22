@@ -7,7 +7,6 @@ import {
   ExperimentsPage,
   StageEditorPage,
   SummaryPage,
-  SyntheticOverviewPage,
 } from '~/components/pages';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
@@ -42,11 +41,6 @@ const Routes = () => {
           <Route path="/protocol/codebook">
             <ProjectLayout>
               <CodebookPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/synthetic">
-            <ProjectLayout>
-              <SyntheticOverviewPage />
             </ProjectLayout>
           </Route>
           <Route path="/protocol/summary">
