@@ -77,11 +77,55 @@ const sociogramStage = {
 const ids = (stage: Record<string, unknown>) =>
   stagePrimaryWrittenVariables(stage).map((entry) => entry.variableId);
 
+const familyPedigreeStage = {
+  id: 'stage-5',
+  type: 'FamilyPedigree',
+  label: 'Family history',
+  // A pedigree names its node type through its own nodeConfig rather than a
+  // `subject` field; the walk resolves the stage subject from it.
+  nodeConfig: { type: 'person' },
+  censusPrompt: 'Build your family.',
+  nominationPrompts: [
+    {
+      id: 'np1',
+      text: 'Who has this condition?',
+      variable: 'condition-variable',
+    },
+  ],
+};
+
+const narrativePedigreeStage = {
+  id: 'stage-6',
+  type: 'NarrativePedigree',
+  label: 'Family narrative',
+  subject: SUBJECT,
+  diseases: [{ id: 'd1', label: 'Condition', variable: 'disease-variable' }],
+};
+
 describe('stagePrimaryWrittenVariables', () => {
   it('finds a quick-add stage’s own attribute', () => {
     expect(stagePrimaryWrittenVariables(quickAddStage)).toEqual([
       { variableId: 'name-variable', subject: SUBJECT, path: 'quickAdd' },
     ]);
+  });
+
+  it('finds a family pedigree nomination prompt’s attribute', () => {
+    expect(stagePrimaryWrittenVariables(familyPedigreeStage)).toEqual([
+      {
+        variableId: 'condition-variable',
+        subject: SUBJECT,
+        path: 'nominationPrompts.0.variable',
+      },
+    ]);
+  });
+
+  it('cannot resolve a narrative pedigree on a one-stage draft', () => {
+    // A NarrativePedigree's subject lives on its SOURCE stage, so the
+    // one-stage walk this module deliberately enters cannot resolve it — its
+    // disease attributes stay codebook-edited. The `diseases` slot shape is
+    // admitted above so richer contexts that can resolve the subject cover
+    // it without another change here.
+    expect(stagePrimaryWrittenVariables(narrativePedigreeStage)).toEqual([]);
   });
 
   it('finds a bin prompt’s bound attribute', () => {

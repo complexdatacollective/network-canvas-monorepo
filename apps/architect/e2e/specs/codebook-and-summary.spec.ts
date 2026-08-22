@@ -248,6 +248,18 @@ test(
         exact: true,
       }),
     ).toBeVisible();
+    // The feasibility verdict at the top of the Codebook settles only after a
+    // debounced engine run; capturing earlier would bake the transient
+    // "Checking this protocol…" banner — or no banner at all — into the
+    // baseline, and every later comparison would race the same window.
+    // Anchoring on either SETTLED title (rather than on the transient's
+    // absence, which also holds before the verdict mounts) keeps the guard
+    // honest if the fixture ever gains a refusal.
+    await expect(
+      architectPage.getByText(
+        /^(Generation is possible|Synthetic data cannot be generated)$/,
+      ),
+    ).toBeVisible();
 
     const capture = makeCapture(architectPage);
     await capture(baseline);

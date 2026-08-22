@@ -29,9 +29,15 @@ import type { StageDraft } from './stageSynthetic';
  * stage carries in its own right:
  *
  *  - `stages[i].quickAdd` — the one attribute a quick-add palette collects;
- *  - `stages[i].prompts[j].variable` — the attribute a prompt binds, which is
- *    the bins' bin variable, the Geospatial map's assignment, and the family
- *    pedigree's nomination attribute.
+ *  - `stages[i].prompts[j].variable` — the attribute a prompt binds: the
+ *    bins' bin variable and the Geospatial map's assignment;
+ *  - `stages[i].nominationPrompts[j].variable` and
+ *    `stages[i].diseases[j].variable` — the pedigree interfaces' own slots,
+ *    the same one-variable-per-entry shape under a different list name. A
+ *    FamilyPedigree resolves here (its subject lives on its own nodeConfig);
+ *    a NarrativePedigree's subject lives on its SOURCE stage, which the
+ *    one-stage walk below cannot see, so its disease attributes remain
+ *    codebook-edited.
  *
  * Both are PATH SHAPES rather than stage-type lists. The stage-type sets in
  * `collectInterfaceImpliedRules` answer a different question — which RULE a
@@ -55,6 +61,18 @@ const QUICK_ADD_PATH_LENGTH = 3;
 const PROMPT_VARIABLE_PATH_LENGTH = 5;
 
 /**
+ * The list-of-slots collections whose entries bind one variable each in the
+ * stage's own right: a prompt (the bins' bin variable, the Geospatial map's
+ * assignment), a FamilyPedigree nomination prompt, and a NarrativePedigree
+ * disease mapping all share the `stages[0].<list>[j].variable` shape.
+ */
+const PRIMARY_SLOT_LISTS = new Set([
+  'prompts',
+  'nominationPrompts',
+  'diseases',
+]);
+
+/**
  * Whether this writer is one of the stage's own primary slots.
  *
  * The walk is entered on a document holding this stage alone, so the stage
@@ -64,7 +82,11 @@ const isPrimarySlot = (path: VariableRoleHit['path']): boolean => {
   if (path[0] !== 'stages') return false;
   if (path.length === QUICK_ADD_PATH_LENGTH) return path[2] === 'quickAdd';
   if (path.length === PROMPT_VARIABLE_PATH_LENGTH) {
-    return path[2] === 'prompts' && path[4] === 'variable';
+    return (
+      typeof path[2] === 'string' &&
+      PRIMARY_SLOT_LISTS.has(path[2]) &&
+      path[4] === 'variable'
+    );
   }
   return false;
 };
