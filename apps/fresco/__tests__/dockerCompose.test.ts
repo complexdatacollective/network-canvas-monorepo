@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { describe, expect, it } from 'vitest';
+
 const composeFiles = [
   'docker-compose.prod.yml',
   'docker-compose.external-s3.yml',
