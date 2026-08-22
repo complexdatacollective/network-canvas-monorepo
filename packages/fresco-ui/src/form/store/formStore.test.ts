@@ -2515,6 +2515,108 @@ describe('container paths', () => {
       expect(store.getState().getValue('parameters')).toEqual(first);
       expect(store.getState().getValue('parameters')).not.toBe(first);
     });
+
+    /**
+     * The mirror image of a container: one field registered at an ANCESTOR
+     * path holds values readable at names no field is registered under. The
+     * form's own output shows them, so a read of one that answered `undefined`
+     * would tell a caller layering live values over committed ones that the
+     * form holds nothing there — and it would revive the committed value.
+     */
+    const registerCompoundParameters = () => {
+      store.getState().registerField({
+        name: 'parameters',
+        initialValue: { type: 'relative', bounds: { min: 1 } },
+      });
+    };
+
+    it('reads a sub-path out of a field registered above it', () => {
+      registerCompoundParameters();
+
+      expect(store.getState().getFormValues()).toEqual({
+        parameters: { type: 'relative', bounds: { min: 1 } },
+      });
+      expect(store.getState().getValue('parameters.type')).toBe('relative');
+      expect(store.getState().hasValue('parameters.type')).toBe(true);
+    });
+
+    it('reads an object-valued sub-path out of a field registered above it', () => {
+      registerCompoundParameters();
+
+      expect(store.getState().getValue('parameters.bounds')).toEqual({
+        min: 1,
+      });
+      expect(store.getState().hasValue('parameters.bounds')).toBe(true);
+    });
+
+    it('reads a sub-path the ancestor covers but does not currently carry', () => {
+      registerCompoundParameters();
+
+      // The form owns the whole subtree, so a key missing from it is a value
+      // the person has emptied rather than one the form has yet to hold.
+      expect(store.getState().getValue('parameters.max')).toBeUndefined();
+      expect(store.getState().hasValue('parameters.max')).toBe(true);
+    });
+
+    it('holds a sub-path read stable while nothing beneath the ancestor changes', () => {
+      registerCompoundParameters();
+      store.getState().registerField({ name: 'label', initialValue: 'Age' });
+
+      const first = store.getState().getValue('parameters.bounds');
+      store.getState().setFieldValue('label', 'Age at diagnosis');
+
+      expect(first).toEqual({ min: 1 });
+      expect(store.getState().getValue('parameters.bounds')).toBe(first);
+    });
+
+    it('reads a sub-path past a leaf registered elsewhere under the same ancestor', () => {
+      registerCompoundParameters();
+      // `getFormValues` replays the more specific field over the compound one,
+      // rebuilding the object it sits in; the read still resolves and still
+      // holds its identity.
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+
+      const first = store.getState().getValue('parameters.bounds');
+
+      expect(first).toEqual({ min: 1 });
+      expect(store.getState().getValue('parameters.type')).toBe('absolute');
+      expect(store.getState().getValue('parameters.bounds')).toBe(first);
+    });
+
+    it('reads a field registered AT the sub-path name as itself', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+
+      expect(store.getState().getValue('parameters.type')).toBe('absolute');
+    });
+
+    it('takes the registered ancestor over a dormant field at the name', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+      store.getState().unregisterField('parameters.type');
+
+      // Same ordering the container read uses, and for the same reason: the
+      // unmounted leaf is gone from `getFormValues`, so a read that preferred
+      // it would answer with a value a submit would not send.
+      expect(store.getState().getValue('parameters.type')).toBe('relative');
+    });
+
+    it('reads nothing through an ancestor that has unmounted', () => {
+      registerCompoundParameters();
+      store.getState().unregisterField('parameters');
+
+      // A dormant field contributes nothing to `getFormValues`, so there is no
+      // assembled object to read a sub-path out of — and the name itself is
+      // one the form has never held a field at.
+      expect(store.getState().getValue('parameters.type')).toBeUndefined();
+      expect(store.getState().hasValue('parameters.type')).toBe(false);
+    });
   });
 
   describe('clearing', () => {

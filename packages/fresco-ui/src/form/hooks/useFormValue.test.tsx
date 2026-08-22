@@ -1,12 +1,32 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '../Field/Field';
 import InputField from '../fields/InputField';
-import FormStoreProvider from '../store/formStoreProvider';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '../store/formStoreProvider';
 import useFormStore from './useFormStore';
 import { useFormHasValue, useFormValue } from './useFormValue';
+
+/**
+ * Registers one field holding a whole object, the way Architect mirrors a
+ * committed value into a hidden whole-value field. No control renders a shape
+ * like this, so there is no `Field` to mount for it.
+ */
+function CompoundParameters() {
+  const store = useContext(FormStoreContext);
+
+  useEffect(() => {
+    store?.getState().registerField({
+      name: 'parameters',
+      initialValue: { type: 'relative', bounds: { min: 1 } },
+    });
+  }, [store]);
+
+  return null;
+}
 
 describe('useFormValue', () => {
   it('reads an opaque dotted field name as one key', async () => {
@@ -174,6 +194,29 @@ describe('useFormValue', () => {
     expect(seen).toHaveLength(settled + 1);
     expect(seen.at(-1)).toEqual({ type: 'absolute' });
   });
+
+  it('reads a name held only inside a field registered above it', async () => {
+    function SubPathProbe() {
+      const values = useFormValue([
+        'parameters.type',
+        'parameters.bounds',
+      ] as const);
+      return <output>{JSON.stringify(values)}</output>;
+    }
+
+    render(
+      <FormStoreProvider>
+        <CompoundParameters />
+        <SubPathProbe />
+      </FormStoreProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        '{"parameters.type":"relative","parameters.bounds":{"min":1}}',
+      ),
+    ).toBeVisible();
+  });
 });
 
 describe('useFormHasValue', () => {
@@ -251,5 +294,32 @@ describe('useFormHasValue', () => {
       expect(screen.queryByLabelText('Type')).not.toBeInTheDocument();
     });
     expect(screen.getByText('true')).toBeVisible();
+  });
+
+  it('reports a name a field registered above it owns, carried or not', async () => {
+    function PresenceProbe() {
+      const present = useFormHasValue([
+        'parameters.type',
+        'parameters.max',
+        'missing.max',
+      ] as const);
+      return <output>{JSON.stringify(present)}</output>;
+    }
+
+    render(
+      <FormStoreProvider>
+        <CompoundParameters />
+        <PresenceProbe />
+      </FormStoreProvider>,
+    );
+
+    // `parameters.max` is a key the compound value does not carry: its value
+    // read is `undefined`, and only this tells it apart from a name inside no
+    // registered field at all, which the committed value should still supply.
+    expect(
+      await screen.findByText(
+        '{"parameters.type":true,"parameters.max":true,"missing.max":false}',
+      ),
+    ).toBeVisible();
   });
 });

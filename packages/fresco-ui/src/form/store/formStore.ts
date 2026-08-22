@@ -131,6 +131,13 @@ const collectDescendantPaths = (
   return paths;
 };
 
+/**
+ * Whether any strict prefix of `path` is registered as a field of its own.
+ *
+ * Looked up by key rather than scanned, which is sound only because
+ * `registerField` keys every record by `formatObjectPath` of its own path —
+ * the same formatting applied to a prefix here.
+ */
 const hasRegisteredAncestor = (
   fields: Map<string, FieldState>,
   path: ObjectPath,
@@ -893,20 +900,25 @@ export const createFormStore = (): FormStoreApi => {
       },
 
       /**
-       * The value at `fieldName`, whether the form holds it as one field or as
-       * a CONTAINER of leaves registered beneath it.
+       * The value at `fieldName`, from whichever of three places the form
+       * holds it: a field of its own, leaves registered BENEATH it, or a
+       * compound field registered at an ANCESTOR of it.
        *
-       * The field maps are exact-string-keyed and carry no hierarchy, so a form
-       * that registers `parameters.type` and `parameters.min` never registers
-       * `parameters` at all — the container exists only once `getFormValues`
-       * assembles it. A read that stopped at the exact key would report
-       * `undefined` for a container every consumer can see in the form's own
-       * output, so a name with no field of its own falls through to that
-       * assembly. It is the whole-form assembly and not just the leaves
-       * beneath the container, because a field registered at an ANCESTOR path
-       * contributes to the container too. A field registered AT the name is
-       * still read as itself, on the terms every other value read uses — that
-       * is the value its own control is showing.
+       * The field maps are exact-string-keyed and carry no hierarchy, so the
+       * name a value is readable at and the name it is registered under come
+       * apart in both directions. A form that registers `parameters.type` and
+       * `parameters.min` never registers `parameters` at all; a form that
+       * registers `parameters` whole never registers `parameters.type`. Both
+       * names are nonetheless there in the form's own output, so a read that
+       * stopped at the exact key would report `undefined` for a value every
+       * other consumer can see — and a caller layering live values over
+       * committed ones would take that as "not in the form" and revive the
+       * committed one. A name with no field of its own therefore falls through
+       * to the assembled output whenever a registered field sits beneath it or
+       * above it. It is the whole-form assembly and not just the subtree,
+       * because both directions resolve against the same object. A field
+       * registered AT the name is still read as itself, on the terms every
+       * other value read uses — that is the value its own control is showing.
        *
        * The result is returned by IDENTITY while it stays deep-equal to the
        * last one handed out, because `getFormValues` builds a fresh object
@@ -915,13 +927,17 @@ export const createFormStore = (): FormStoreApi => {
        * depending on the value would loop. Exact-name reads never reach any of
        * this.
        *
-       * REGISTERED leaves outrank a dormant field sitting at the container's
-       * own name, because `getFormValues` is built from registered fields
-       * alone. `clearValue` is what makes that ordering load-bearing: clearing
-       * a container parks a dormant `undefined` at its name, and taking that
-       * ahead of the leaves would leave every later read of the container
-       * answering `undefined` — permanently, since nothing registers at a
-       * container name to displace it.
+       * REGISTERED fields above or below outrank a dormant field sitting at
+       * the name itself, because `getFormValues` is built from registered
+       * fields alone. `clearValue` is what makes that ordering load-bearing:
+       * clearing a container parks a dormant `undefined` at its name, and
+       * taking that ahead of the leaves would leave every later read of the
+       * container answering `undefined` — permanently, since nothing registers
+       * at a container name to displace it.
+       *
+       * DORMANT ancestors are excluded for the same reason dormant leaves are:
+       * an unmounted field contributes nothing to `getFormValues`, so there is
+       * no assembled object to read a sub-path out of.
        */
       getValue: (fieldReference) => {
         const fieldName = resolveRegisteredFieldName(
@@ -933,7 +949,11 @@ export const createFormStore = (): FormStoreApi => {
         if (registered) return registered.value;
 
         const containerPath = parseFieldReference(fieldReference);
-        if (containerPath && hasDescendantField(fieldRecords, containerPath)) {
+        if (
+          containerPath &&
+          (hasDescendantField(fieldRecords, containerPath) ||
+            hasRegisteredAncestor(fieldRecords, containerPath))
+        ) {
           // `getFormValues` assembles its output out of `FieldValue` leaves,
           // so every node within it is itself a `FieldValue`.
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -959,13 +979,20 @@ export const createFormStore = (): FormStoreApi => {
 
       /**
        * Whether the form holds anything at `fieldName` — a registered field, a
-       * dormant one, or leaves registered beneath it.
+       * dormant one, leaves registered beneath it, or a registered field above
+       * it that owns the subtree the name sits in.
        *
        * Separate from `getValue` because a value read collapses "the form owns
        * nothing here" and "the form owns `undefined` here" into the same
        * answer, and a caller merging live values over committed ones has to
        * tell those apart: before the leaves of a container register, the
-       * committed value is the only one there is.
+       * committed value is the only one there is. A registered ANCESTOR
+       * answers `true` whatever the assembled sub-path currently reads as —
+       * the form owns that subtree, so a sub-path missing from it is a value
+       * the person has emptied, not one the form has yet to hold.
+       *
+       * DORMANT ancestors are excluded, matching `getValue`: an unmounted
+       * field is not part of the form's output, so it owns no subtree here.
        */
       hasValue: (fieldReference) => {
         if (get().getFieldState(fieldReference) !== undefined) return true;
@@ -975,7 +1002,8 @@ export const createFormStore = (): FormStoreApi => {
 
         return (
           hasDescendantField(fieldRecords, containerPath) ||
-          hasDescendantField(dormantRecords, containerPath)
+          hasDescendantField(dormantRecords, containerPath) ||
+          hasRegisteredAncestor(fieldRecords, containerPath)
         );
       },
 
