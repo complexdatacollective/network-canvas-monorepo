@@ -1,5 +1,17 @@
 # @codaco/shared-consts
 
+## 6.0.0
+
+### Major Changes
+
+- fdb3b56: Entity attributes now have one serialization-safe contract: every stored value is defined, and a missing key means the answer is unset. Legacy networks containing `null` or `undefined` attributes remain readable and are normalized without losing valid empty values such as `false`, `0`, empty text, or empty selections.
+
+  This is a breaking type and data-shape change: `VariableValue` no longer includes `null`, and parsed `NcNetwork` values omit nullish attributes. Consumers should treat attribute absence as the unset state.
+
+### Minor Changes
+
+- e9a6522: Shared error formatting now turns unexpected failures into concise user-facing messages without exposing stack traces. Applications and protocol tooling use this common implementation for validation, imports, roster loading, and synchronization errors.
+
 ## 5.6.1
 
 ### Patch Changes

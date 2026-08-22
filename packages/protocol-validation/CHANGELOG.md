@@ -1,5 +1,24 @@
 # @codaco/protocol-validation
 
+## 12.2.0
+
+### Minor Changes
+
+- e9a6522: Protocol validation now catches references and variable uses that could previously produce missing or conflicting interview data.
+
+  - Form fields cannot write the same variable twice, and Family or Narrative Pedigree attributes cannot be overwritten by incompatible prompts, diseases, or interactions.
+  - Pedigree prompts, forms, and diseases now resolve their Codebook references during validation rather than failing silently during an interview.
+  - Prompt sort orders and roster display, search, and sort variables are included when collecting Codebook usage.
+  - Asset references are derived from schema metadata through the new `collectAssetReferences` helper.
+  - Malformed `.netcanvas` archives now produce structured `MalformedNetcanvasError` failures, with `loadNetcanvasArchive` and `describeProtocolFileError` available for actionable import messages.
+
+  Protocols containing one of the newly detected problems may now be reported as invalid even though the underlying broken reference was already present.
+
+### Patch Changes
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+
 ## 12.1.1
 
 ### Patch Changes

@@ -1,5 +1,77 @@
 # @codaco/fresco-ui
 
+## 6.1.0
+
+### Minor Changes
+
+- 43c7746: Fresco UI now owns two answers its consumers were each working out for themselves.
+
+  **`stripManagedProperties`.** `ArrayField` adds its own bookkeeping properties to every item it hands out, and a consumer that saves an item has to take them off first. Three consumers were doing that with their own inline copy of the list, each frozen on the properties that existed when it was written — so a property added to `ArrayField` would have started arriving in saved data. The strip is now exported from `@codaco/fresco-ui/form/fields/ArrayField/ArrayField` and derived from the property definitions themselves, and adding a managed property without listing it is a compile error.
+
+  **`selectIsFormDirty`.** Exported from `@codaco/fresco-ui/form/store/formStoreProvider`, this answers whether a form currently holds values that differ from the ones its fields registered with. It is a live comparison, unlike the `isDirty` flag beside it in the same store, which is set by the first keystroke and cleared only by a reset — so anything guarding unsaved work on that flag keeps asking about a form the person has already put back by hand, and treats a form that normalised its own values at mount as edited before it was touched.
+
+  No visible change for anyone using Architect: it consumed both from its own copies and now consumes them from here.
+
+- e9a6522: Shared form and interaction components now provide more reliable validation, focus, accessibility, and responsive layout behavior.
+
+  - Required fields, errors, hints, and custom controls expose only the ARIA relationships they actually render, and a blocked submission focuses the first usable invalid control.
+  - Optional blank values no longer trigger format, range, or length errors. External value changes clear stale errors and remain synchronized with rich text fields.
+  - Dialogs keep the rest of the page inert, restore focus when closed, and expose scrollable content only when it can actually scroll.
+  - Toolbars retain keyboard focus when an action becomes unavailable, and buttons, repeated fields, selected-resource cards, and segmented controls can shrink within narrow containers.
+  - `Node` can render as presentational content inside another control, and `IconButton` accepts `aria-labelledby` as an accessible name.
+
+  `ArrayField` no longer imposes a minimum width. It fills and shrinks with its container, so hosts that relied on it to hold a column open must set that width themselves.
+
+- f03b1e4: Names that are too long for a node now shrink to fit instead of being cut off, so most are readable in full at a glance. A name that is still too long at the smallest readable size can be read in full by pressing and holding it, or by moving to it with the keyboard. Holding never moves or selects the person, and letting go leaves everything exactly as it was.
+
+  For developers, the Node component is now the single gesture recognizer for its own pointer sequence: hosts declare `onClick`, `onLongPress`, and `onDragStart`/`onDragMove`/`onDragEnd`, and the node classifies each gesture as exactly one of them and renders every visual and accessibility consequence itself — press animation, hold indicator, grab/grabbing cursor, pointer capture, `aria-grabbed`, `aria-pressed` from `selected`, and a tab stop whenever focusing does something. Canvas hosts implement drag effects through `useCanvasDrag`'s callback API instead of attaching their own pointer listeners.
+
+  Compatibility: the names `onDrag`, `onDragStart`, and `onDragEnd` were already omitted from Node's props before this release (and at runtime were claimed by Motion's own gesture system, so they never received native HTML5 drag events); they now form Node's pointer-gesture drag API. `onClick` handlers written for a plain button remain assignable — the new `details` argument is optional in the type and always supplied at runtime.
+
+### Patch Changes
+
+- e3e7b2c: Respect Motion's global skip-animation setting in `useSafeAnimate`.
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- 88d7db0: Boolean and rich-select option cards now set their own text colour alongside their background, so their labels stay readable on any surface. Previously the label inherited the surrounding surface's text colour, which could leave it unreadable — white on a white card — wherever the card sat on a dark surface.
+
+  Modal popups now finish their exit animation instead of restarting it whenever a surrounding component re-renders, which could leave a closed modal mounted on screen and covering whatever opened next.
+
+  Form values now resolve a nested field over the field that holds its container path, instead of whichever registered last winning. A form with both `mapOptions` and `mapOptions.style` registered could previously lose one of them on submit.
+
+  Submit buttons keep the same label while a form is submitting, showing progress through their spinner and disabled state instead of renaming themselves. A button that renamed itself mid-submit could make an automated check believe a dialog had already closed. Pass `submittingText` to opt back in to a changed label.
+
+  Surfaces gained a fourth nesting level, so deeply nested content has one more step of contrast before it repeats its parent's colour.
+
+  Fields no longer establish a CSS size container unless they lay out inline, which is the only layout that queries it. Making every field a size container could, in Chromium, leave a field's control with its styles but without any layout at all — rendering it invisible and unusable — when a large neighbouring section appeared at the same moment.
+
+  Adding a row to a list field now keeps the row's own identity instead of assigning it an unrelated one. The mismatch surfaced a moment later and remounted the row, and any form fields it contained were torn down with it, losing what had just been entered.
+
+  A field that is checked while part of the form appears or disappears now finishes that check instead of abandoning it. Previously the field kept whatever error it was already showing, so an answered field could go on reporting itself as required — most visibly where answering one field is what reveals the next section.
+
+  Apps may now supply `checkUnsavedWork` to `useAppUpdate`, re-checked at the moment an update would be applied automatically. An app whose "unsaved work" reading is coalesced can otherwise still report itself idle for work the person has just done, and that path reloads without asking.
+
+- ae3c616: Read-only checkboxes and toggle button groups no longer show hover and press affordances for a click they silently ignore. A read-only `Checkbox` (and the checkboxes rendered by `CheckboxGroup`) and a read-only `ToggleButtonGroup` option now stop responding to the pointer entirely — no hover state, no press animation — while remaining focusable and still announced as read-only to assistive technology.
+- 59f131c: Fixes interactions that were advertised to assistive technology but did nothing when activated.
+
+  `ArrayField` now omits `onDelete`/`onEdit`/`onChange`/`onUpdate` (and the editor's `onSave`) entirely while disabled or read-only, instead of substituting no-op stand-ins. An `itemComponent`/`editorComponent` that renders its edit/delete/save affordance from handler presence — the normal pattern — now correctly hides that affordance rather than drawing a live-looking control wired to nothing.
+
+  `SegmentedToolbar`'s toggle and group segments now forward `onPressedChange`/`onValueChange` straight through to Base UI, the same way button segments already forward `onClick`. This also fixes those callbacks silently losing Base UI's `eventDetails` argument, which a consumer needs to veto a change via `eventDetails.cancel()`. A controlled toggle or group segment supplied without its change callback — which can never change state once controlled — is now disabled outright instead of staying tappable for nothing.
+
+  Architect's library panel gallery promo card no longer announces itself as a selectable option — clicking or activating it never did anything, since the collection it sits in doesn't support selection. It's now rendered as its own labelled group alongside the templates list rather than as one of the list's items, so its Dismiss button and gallery link stay independently operable without the collection's listbox/option structure being misapplied to a card that isn't a selectable option.
+
+- 7ca985f: Keep fitted node labels accurate as fluid type changes, make long labels scroll within the available viewport when revealed, and release keyboard press feedback when activation moves focus into an opened form.
+- c78135c: Stop offering click affordances for nodes that cannot be clicked. A collection with no selection, a node list with no tap handler, and a name generator stage with no form each handed their items a click handler that did nothing, so nodes showed a pointer cursor and press feedback for a tap that could never have an effect.
+- dcbc7aa: Popover now honours a consumer's `event.cancel()` in `onOpenChange` for uncontrolled popovers: cancelling a close (as SegmentedToolbar's sticky popovers do for outside presses) previously left the internal mounted state closed anyway, so only controlled popovers stayed open.
+- 0f20ff5: SegmentedToolbar keyboard nudges now stay within a `RefObject` drag constraint, not only an object-form one. Arrow-key moves measure the constraint container against the toolbar, and an oversized toolbar receives a pannable range instead of jumping to one edge.
+- 4a4a9f4: Tooltips now hide instantly on close instead of waiting for an exit animation, so rapid movement across controls never leaves stale tooltip popups visible.
+- 54650ab: Prevent null form field values from crashing Architect when changing the node type of configured ordinal or categorical bin stages.
+- a9825f4: `SegmentedToolbar` items can now opt into remaining focused when they become unavailable. The default remains native disabled-button behavior.
+
+  The opt-in is available as `focusableWhenDisabled` on button, toggle, group-option, menu, and popover items. These items report `aria-disabled="true"`; other unavailable items continue to use the native `disabled` attribute. All unavailable items now dim and suppress hover and active styling.
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+
 ## 6.0.0
 
 ### Major Changes

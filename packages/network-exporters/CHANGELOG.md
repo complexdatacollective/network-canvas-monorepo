@@ -1,5 +1,17 @@
 # @codaco/network-exporters
 
+## 2.0.0
+
+### Major Changes
+
+- e9a6522: CSV and GraphML exports continue to declare Codebook variables when every response is unanswered under the new sparse-attribute contract. GraphML keys are now scoped correctly across ego, node, and edge data, including external attributes and colliding identifiers.
+
+### Patch Changes
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/protocol-validation@12.2.0
+  - @codaco/shared-consts@6.0.0
+
 ## 1.1.7
 
 ### Patch Changes

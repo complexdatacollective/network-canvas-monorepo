@@ -1,5 +1,49 @@
 # @codaco/interview
 
+## 9.0.0
+
+### Major Changes
+
+- e9a6522: Interview session updates now remove cleared entity attributes instead of retaining null-valued keys. Legacy session payloads remain readable and are normalized without losing valid empty values such as `false`, `0`, empty text, or empty selections.
+
+  This is a breaking data-shape change for hosts that inspect `SessionPayload` or sync callbacks: attribute absence is now the unset state.
+
+### Minor Changes
+
+- e9a6522: Interview forms and interfaces now communicate unanswered, loading, error, and completion states more accurately.
+
+  - Required yes/no questions start unselected, required scales no longer announce a value before one is chosen, and blocked submission focuses the first unanswered question.
+  - Optional blanks no longer produce unrelated validation errors, comparisons use participant-facing question text, and each unanswered field reports a single useful message.
+  - Name Generator rosters and external panels distinguish loading, empty, exhausted, and no-match states. Quick-add controls expose valid accessible names and descriptions.
+  - Location search restores focus after selection, announces results and failures, and ignores stale responses.
+  - Family Pedigree person editing no longer crashes or discards work, and completeness checks reject missing or duplicate ego records.
+  - Dialogs and history toolbars retain keyboard focus, including confirmations presented by an interview host.
+
+- 43c7746: The owner that hands out interview asset URLs is now part of the public contract.
+
+  For anyone embedding the interview engine, `createAssetUrlOwner` is available
+  from `@codaco/interview/contract`. It gives a host one live URL per asset
+  however many parts of a screen ask for it at once, replaces that URL when a
+  newer copy of the asset arrives, and takes every URL back when the host is
+  finished with it, so interview data stays decrypted in memory for no longer than
+  it is on screen.
+
+### Patch Changes
+
+- b51ef59: Prevent malicious form field paths from modifying object prototypes while preserving dotted protocol variable identifiers and nested field namespaces.
+- e9a6522: Network Composer's Undo and Redo controls now retain keyboard focus when the corresponding history becomes empty.
+- 7ca985f: Keep fitted node labels accurate as fluid type changes, make long labels scroll within the available viewport when revealed, and release keyboard press feedback when activation moves focus into an opened form.
+- c78135c: Stop offering click affordances for nodes that cannot be clicked. A collection with no selection, a node list with no tap handler, and a name generator stage with no form each handed their items a click handler that did nothing, so nodes showed a pointer cursor and press feedback for a tap that could never have an effect.
+- f03b1e4: Names that are too long for a node now shrink to fit instead of being cut off, so most are readable in full at a glance. A name that is still too long at the smallest readable size can be read in full by pressing and holding it, or by moving to it with the keyboard. Holding never moves or selects the person, and letting go leaves everything exactly as it was.
+
+  For developers, the Node component is now the single gesture recognizer for its own pointer sequence: hosts declare `onClick`, `onLongPress`, and `onDragStart`/`onDragMove`/`onDragEnd`, and the node classifies each gesture as exactly one of them and renders every visual and accessibility consequence itself — press animation, hold indicator, grab/grabbing cursor, pointer capture, `aria-grabbed`, `aria-pressed` from `selected`, and a tab stop whenever focusing does something. Canvas hosts implement drag effects through `useCanvasDrag`'s callback API instead of attaching their own pointer listeners.
+
+  Compatibility: the names `onDrag`, `onDragStart`, and `onDragEnd` were already omitted from Node's props before this release (and at runtime were claimed by Motion's own gesture system, so they never received native HTML5 drag events); they now form Node's pointer-gesture drag API. `onClick` handlers written for a plain button remain assignable — the new `details` argument is optional in the type and always supplied at runtime.
+
+- Updated dependencies ([e9a6522](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e9a652266ef9ddfa7fc42de1c8123bd7011c52a1), [fdb3b56](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fdb3b56440f6cad89a44718d24ff725be3bb5e15))
+  - @codaco/shared-consts@6.0.0
+  - @codaco/network-query@1.2.4
+
 ## 8.0.0
 
 ### Patch Changes

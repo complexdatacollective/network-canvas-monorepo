@@ -1,5 +1,15 @@
 # @codaco/tailwind-config
 
+## 1.3.0
+
+### Minor Changes
+
+- e9a6522: The new `ui-disabled` and `ui-enabled` variants match both native and ARIA-disabled controls. `Button` uses these variants for availability-dependent styles, so overrides should use forms such as `ui-enabled:hover:…` instead of `hover:enabled:…`.
+
+### Patch Changes
+
+- 469d404: Scope the `focus-styles` transition to the outline properties it animates. `transition-all` captured every property on a `:focus-visible` element, re-tweening each frame of script-driven animations (a node's press scale, a dragged node's position) through a 200ms ease and smearing them visibly behind the input.
+
 ## 1.2.2
 
 ### Patch Changes
