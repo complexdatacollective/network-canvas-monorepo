@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { EdgeTopology } from '../index.ts';
 import {
   topologyDrawWindow,
+  topologyRealisedEdgeCeiling,
   topologyTargetBounds,
   topologyTargetFromDraw,
 } from '../topology.ts';
@@ -118,5 +119,53 @@ describe('topologyDrawWindow', () => {
     expect(
       topologyDrawWindow(density({ distribution: 'beta', mean: 0.3, sd: 0.1 })),
     ).toEqual({ min: 0, max: 1 });
+  });
+});
+
+describe('topologyRealisedEdgeCeiling', () => {
+  it('holds a constant density to its own value, not the domain ceiling', () => {
+    // A constant draw is returned untruncated, so its value IS its largest:
+    // density 0.1 over 45 pairs selects five on the luckiest realisation.
+    expect(
+      topologyRealisedEdgeCeiling(
+        {
+          metric: 'density',
+          distribution: { distribution: 'constant', value: 0.1 },
+        },
+        45,
+        10,
+      ),
+    ).toBe(5);
+  });
+
+  it('caps a bounded family at its truncation window', () => {
+    expect(
+      topologyRealisedEdgeCeiling(
+        {
+          metric: 'density',
+          distribution: {
+            distribution: 'normal',
+            mean: 0.2,
+            sd: 0.1,
+            max: 0.5,
+          },
+        },
+        40,
+        10,
+      ),
+    ).toBe(20);
+  });
+
+  it('resolves an open mean degree to the whole pair set', () => {
+    expect(
+      topologyRealisedEdgeCeiling(
+        {
+          metric: 'meanDegree',
+          distribution: { distribution: 'normal', mean: 3, sd: 1 },
+        },
+        45,
+        10,
+      ),
+    ).toBe(45);
   });
 });

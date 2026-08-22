@@ -235,3 +235,77 @@ describe('synthetic count vs behaviours window (verify-15)', () => {
     });
   });
 });
+
+describe('a minNodes gate above the population ceiling', () => {
+  const gatedStage = (synthetic?: Record<string, unknown>): Loose => ({
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: 'Name generator',
+    subject: { entity: 'node', type: 'person' },
+    form: {
+      title: 'Add a person',
+      fields: [{ variable: 'name', prompt: 'Name' }],
+    },
+    prompts: [{ id: 'p1', text: 'Name people' }],
+    behaviours: { minNodes: 150 },
+    ...(synthetic ? { synthetic } : {}),
+  });
+
+  it('keeps a protocol with no synthetic block valid', () => {
+    // Such a stage was valid before generation parameters existed: the
+    // interface caps nothing at the population ceiling, only generation
+    // does. The derived count clamps to the ceiling and the containment rule
+    // stands aside — the refusal belongs to the feasibility gate, which
+    // names the generation limit instead of invalidating the document.
+    const result = ProtocolSchemaV8.safeParse(protocolWith(gatedStage()));
+    expect(result.success).toBe(true);
+  });
+
+  it('leaves an authored count alone too: no count can reach the gate', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith(
+        gatedStage({ count: { distribution: 'constant', value: 50 } }),
+      ),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('still holds authored counts to a reachable minNodes', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith(
+        disjointStage(
+          { minNodes: 90 },
+          { distribution: 'constant', value: 50 },
+        ),
+      ),
+    );
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('a burden-only synthetic block on a name generator', () => {
+  it('derives the omitted count instead of refusing the block', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      protocolWith({
+        id: 'stage-1',
+        type: 'NameGenerator',
+        label: 'Name generator',
+        subject: { entity: 'node', type: 'person' },
+        form: {
+          title: 'Add a person',
+          fields: [{ variable: 'name', prompt: 'Name' }],
+        },
+        prompts: [{ id: 'p1', text: 'Name people' }],
+        synthetic: { responseBurden: 0.9 },
+      }),
+    );
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    const stage = result.data.stages[0] as {
+      synthetic: { responseBurden: number; count?: { distribution: string } };
+    };
+    expect(stage.synthetic.responseBurden).toBe(0.9);
+    // The sibling-aware transform supplies the count the author omitted.
+    expect(stage.synthetic.count?.distribution).toBe('normal');
+  });
+});

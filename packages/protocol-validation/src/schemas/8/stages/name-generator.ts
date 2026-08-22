@@ -64,7 +64,7 @@ export const nameGeneratorBehavioursSchema = z
 export const requireCountWithinBehaviours = (
   stage: {
     behaviours?: { minNodes?: number; maxNodes?: number };
-    synthetic?: { count: SyntheticCount };
+    synthetic?: { count?: SyntheticCount };
   },
   ctx: z.RefinementCtx,
 ) => {
@@ -79,7 +79,17 @@ export const requireCountWithinBehaviours = (
       path: ['synthetic', 'count'],
     });
   }
-  if (minNodes !== undefined && floor < minNodes) {
+  // A `minNodes` above `MAX_SYNTHETIC_POPULATION` is a window NO count can
+  // satisfy — the count schemas cap every bound at the population ceiling —
+  // so flagging the count would make the protocol invalid over something no
+  // author can fix here. Such a stage was valid before generation parameters
+  // existed and stays valid now; the feasibility gate refuses GENERATION for
+  // it instead, naming the ceiling (`populationConflicts`).
+  if (
+    minNodes !== undefined &&
+    minNodes <= MAX_SYNTHETIC_POPULATION &&
+    floor < minNodes
+  ) {
     ctx.addIssue({
       code: 'custom' as const,
       message: `This count can draw as few as ${floor} nodes, and behaviours.minNodes requires at least ${minNodes} — give the count a minimum of ${minNodes} or higher`,
@@ -225,7 +235,7 @@ export const withResolvedSyntheticCount = <
   T extends {
     type: BurdenedStageType;
     behaviours?: { minNodes?: number; maxNodes?: number };
-    synthetic?: { count: SyntheticCount; responseBurden: number };
+    synthetic?: { count?: SyntheticCount; responseBurden: number };
   },
 >(
   stage: T,
