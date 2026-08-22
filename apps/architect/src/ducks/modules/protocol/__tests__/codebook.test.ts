@@ -129,4 +129,43 @@ describe('codebook.updateVariable', () => {
 
     expect(next).toEqual(state);
   });
+
+  it('reconciles synthetic option metadata the new options have outgrown', () => {
+    // Every prompt editor that binds a categorical attribute writes its option
+    // list back through this action, carrying no synthetic block of its own —
+    // so a renamed option used to leave a weight naming a value the variable
+    // no longer offers, which `VariableSchema` refuses. The protocol became
+    // invalid from an editor that never mentioned generation.
+    const weighted = {
+      name: 'hobbies',
+      type: 'categorical',
+      options: [
+        { label: 'Sport', value: 'sport' },
+        { label: 'Music', value: 'music' },
+      ],
+      synthetic: {
+        optionWeights: [
+          { value: 'sport', weight: 5 },
+          { value: 'music', weight: 1 },
+        ],
+      },
+    } as unknown as Variable;
+
+    const next = reducer(
+      codebookWith(weighted),
+      test.updateVariable({
+        variable: AGE,
+        configuration: {
+          options: [
+            { label: 'Sport', value: 'exercise' },
+            { label: 'Music', value: 'music' },
+          ],
+        } as Partial<Variable>,
+      }),
+    );
+
+    expect(getAge(next)).toMatchObject({
+      synthetic: { optionWeights: [{ value: 'music', weight: 1 }] },
+    });
+  });
 });

@@ -21,6 +21,7 @@ import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import prune from '~/utils/prune';
+import { reconcileVariableSynthetic } from '~/utils/reconcileVariableSynthetic';
 import safeName from '~/utils/safeName';
 
 import { commitStageEditorDraft } from './commitStageEditorDraft';
@@ -406,10 +407,21 @@ const getStateWithUpdatedVariable = (
     existingVariable && typeof existingVariable === 'object'
       ? omit(existingVariable as Partial<Variable>, replaceProperties)
       : {};
-  const variableConfiguration = {
+  /**
+   * The merged definition, with any synthetic option metadata the edit has
+   * outgrown reconciled away.
+   *
+   * Here rather than in the editors, because this is the ONE place a variable
+   * is written: the option list of a categorical or ordinal attribute is
+   * edited from every prompt editor that binds one, and each of them would
+   * otherwise have to remember that a renamed option leaves a weight naming a
+   * value the variable no longer offers — which `VariableSchema` refuses,
+   * invalidating the protocol from an editor that never mentioned generation.
+   */
+  const variableConfiguration = reconcileVariableSynthetic({
     ...preservedProperties,
     ...configuration,
-  } as Variable;
+  }) as Variable;
 
   const existingVariables = get(state, [...entityPath, 'variables']);
   const newVariables: Record<string, Variable> = {
