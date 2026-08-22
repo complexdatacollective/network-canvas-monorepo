@@ -11,7 +11,7 @@ import {
 import { seedParameterValue } from '~/components/Synthetic/useNumericDraft';
 
 import { syntheticIsAdmissible, type SyntheticVariableDraft } from '../draft';
-import { parameterWindow } from '../parameterWindows';
+import { parameterEntryWindow, parameterWindow } from '../parameterWindows';
 
 const OPEN = { min: Number.NEGATIVE_INFINITY, max: Number.POSITIVE_INFINITY };
 
@@ -86,6 +86,84 @@ describe('where a parameter’s window meets the variable’s', () => {
         OPEN,
       ),
     ).toEqual({ exclusiveMin: false, exclusiveMax: false, integer: false });
+  });
+});
+
+describe('the window a parameter’s control is held to', () => {
+  /**
+   * The probe the editor supplies, run against the REAL schema: does this
+   * variable accept this parameter at this value, with the rest of the block
+   * as it stands?
+   */
+  const admittedBy =
+    (variable: SyntheticVariableDraft, block: Record<string, unknown>) =>
+    (key: string, candidate: number) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      syntheticIsAdmissible(variable, { ...block, [key]: candidate } as never);
+
+  const AGE: SyntheticVariableDraft = {
+    name: 'age',
+    type: 'number',
+    validation: { minValue: 18, maxValue: 80 },
+  };
+
+  it('opens a mean the schema lets reach outside the variable’s range', () => {
+    // `normal(mean 10, sd 5)` on an age validated 18–80 parses: generation
+    // clamps its draws into the window rather than refusing the declaration.
+    expect(
+      parameterEntryWindow(
+        parameterOf(NumberSyntheticSchema, 'normal', 'mean'),
+        { min: 18, max: 80 },
+        admittedBy(AGE, { distribution: 'normal', mean: 49, sd: 5 }),
+      ),
+    ).toEqual({ exclusiveMin: false, exclusiveMax: false, integer: false });
+  });
+
+  it('closes it again where the spread can reach nothing else', () => {
+    expect(
+      parameterEntryWindow(
+        parameterOf(NumberSyntheticSchema, 'normal', 'mean'),
+        { min: 18, max: 80 },
+        admittedBy(AGE, { distribution: 'normal', mean: 49, sd: 0 }),
+      ),
+    ).toMatchObject({ min: 18, max: 80 });
+  });
+
+  it('keeps a constant inside the range the schema holds it to', () => {
+    expect(
+      parameterEntryWindow(
+        parameterOf(NumberSyntheticSchema, 'constant', 'value'),
+        { min: 18, max: 80 },
+        admittedBy(AGE, { distribution: 'constant', value: 49 }),
+      ),
+    ).toMatchObject({ min: 18, max: 80 });
+  });
+
+  it('never widens past the parameter’s own window', () => {
+    // A scalar's own domain is the unit interval whatever the probe says, so
+    // an editor that asked about -1 could not offer it anyway.
+    expect(
+      parameterEntryWindow(
+        parameterOf(ScalarSyntheticSchema, 'constant', 'value'),
+        { min: 0, max: 1 },
+        () => true,
+      ),
+    ).toMatchObject({ min: 0, max: 1 });
+  });
+
+  it('leaves a spread parameter to its own window without asking', () => {
+    let asked = false;
+    expect(
+      parameterEntryWindow(
+        parameterOf(NumberSyntheticSchema, 'normal', 'sd'),
+        { min: 18, max: 80 },
+        () => {
+          asked = true;
+          return true;
+        },
+      ),
+    ).toMatchObject({ min: 0 });
+    expect(asked).toBe(false);
   });
 });
 

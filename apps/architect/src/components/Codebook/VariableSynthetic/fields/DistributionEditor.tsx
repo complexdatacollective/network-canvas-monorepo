@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -13,7 +13,7 @@ import {
   withinWindow,
 } from '~/components/Synthetic/useNumericDraft';
 
-import { parameterWindow } from '../parameterWindows';
+import { parameterEntryWindow, parameterWindow } from '../parameterWindows';
 
 /**
  * The value-distribution half of a variable's synthetic block: which family
@@ -111,6 +111,17 @@ export function DistributionEditor({
   const specs = useMemo(() => describeDistributions(schema), [schema]);
 
   /**
+   * What the schema would accept for one parameter, with the rest of the block
+   * as it stands — the question `parameterEntryWindow` asks to decide whether
+   * the variable's own value range really bounds that parameter.
+   */
+  const admits = useCallback(
+    (key: string, candidate: number) =>
+      refusalsFor({ ...synthetic, [key]: candidate }).length === 0,
+    [refusalsFor, synthetic],
+  );
+
+  /**
    * Offer the proposal to the schema: commit it, or keep what it said about
    * it. Attributed to the control the gesture came from, so the refusal lands
    * beside the number that caused it rather than somewhere down the form.
@@ -204,7 +215,7 @@ export function DistributionEditor({
           : {})}
       />
       {spec?.parameters.map((parameter) => {
-        const window = parameterWindow(parameter, valueWindow);
+        const window = parameterEntryWindow(parameter, valueWindow, admits);
         const carried = synthetic?.[parameter.key];
         return (
           <SyntheticNumberField

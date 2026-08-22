@@ -308,6 +308,46 @@ describe('the window a parameter is held inside', () => {
     expect(latest()).toEqual({ distribution: 'constant', value: 65 });
   });
 
+  it('lets a spread distribution reach outside the variable’s own range', () => {
+    // Generation clamps a drawn value into the validation window, so a mean
+    // below the floor is a declaration the schema ACCEPTS — the draws pile up
+    // at 18 rather than being refused. Holding the box to the validation
+    // window made a schema-legal descriptor unwritable.
+    const { expand, latest } = setup({
+      variable: {
+        ...BOUNDED_NUMBER,
+        synthetic: { distribution: 'normal', mean: 49, sd: 5 },
+      },
+    });
+    expand();
+
+    const mean = screen.getByRole('spinbutton', { name: 'Mean' });
+    expect(mean).not.toHaveAttribute('min');
+    commit(mean, '10');
+
+    expect(latest()).toEqual({ distribution: 'normal', mean: 10, sd: 5 });
+  });
+
+  it('closes the same box onto the range when nothing else can reach it', () => {
+    // A spread of zero draws the mean and nothing else, and the schema refuses
+    // a mean outside the window then — so the window binds the box again. The
+    // rule is the schema's, asked of it, rather than a list kept here.
+    const { expand, latest } = setup({
+      variable: {
+        ...BOUNDED_NUMBER,
+        synthetic: { distribution: 'normal', mean: 49, sd: 0 },
+      },
+    });
+    expand();
+
+    const mean = screen.getByRole('spinbutton', { name: 'Mean' });
+    expect(mean).toHaveAttribute('min', '18');
+    expect(mean).toHaveAttribute('max', '80');
+
+    commit(mean, '10');
+    expect(latest()).toBeUndefined();
+  });
+
   it('holds a probability to nought and one', () => {
     const { expand, latest } = setup({ variable: BOOLEAN });
     expand();
