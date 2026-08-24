@@ -132,9 +132,9 @@ describe('SourceStage', () => {
 
   it('renders the sourceStageId field with its label', () => {
     renderSection();
-    expect(
-      screen.getByRole('combobox', { name: 'Source stage' }),
-    ).toBeInTheDocument();
+    const sourceStage = screen.getByRole('combobox', { name: 'Source stage' });
+    expect(sourceStage).toHaveAttribute('aria-required', 'true');
+    expect(sourceStage).toHaveAccessibleDescription(/Required/);
   });
 
   it('lists only FamilyPedigree stages as options', () => {

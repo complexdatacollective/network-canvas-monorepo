@@ -92,6 +92,7 @@ const SourceStage = (_props: StageEditorSectionProps) => {
           </Paragraph>
         }
         initialValue={sourceStageIdInitial}
+        validation={{ required: true }}
         placeholder="Select a Family Pedigree stage..."
         options={options}
         disabled={options.length === 0}

@@ -57,7 +57,7 @@ vi.mock('./MapView', () => ({
 
 import ArchitectField from '../../ArchitectField';
 import GeoAPIKey from './GeoAPIKey';
-import MapSelection, { requiredMapView } from './MapSelection';
+import MapSelection, { completeMapView } from './MapSelection';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
@@ -89,7 +89,7 @@ describe('geospatial field adapters', () => {
           name="map"
           label="Initial map view"
           component={MapSelection}
-          validation={{ required: true }}
+          validation={{ required: 'Required', completeMapView }}
         />
       </Form>,
     );
@@ -118,12 +118,12 @@ describe('geospatial field adapters', () => {
     });
   });
 
-  it('requires a complete center rather than any truthy map-options object', () => {
-    expect(requiredMapView(undefined)).toBe('Required');
-    expect(requiredMapView({ tokenAssetId: 'key' })).toBe('Required');
-    expect(requiredMapView({ center: [1] })).toBe('Required');
-    expect(requiredMapView({ center: ['x', 'y'] })).toBe('Required');
-    expect(requiredMapView({ center: [Number.NaN, 2] })).toBe('Required');
-    expect(requiredMapView({ center: [1, 2] })).toBeUndefined();
+  it('checks the center of present map options and leaves absence to required', () => {
+    expect(completeMapView(undefined)).toBeUndefined();
+    expect(completeMapView({ tokenAssetId: 'key' })).toBe('Required');
+    expect(completeMapView({ center: [1] })).toBe('Required');
+    expect(completeMapView({ center: ['x', 'y'] })).toBe('Required');
+    expect(completeMapView({ center: [Number.NaN, 2] })).toBe('Required');
+    expect(completeMapView({ center: [1, 2] })).toBeUndefined();
   });
 });

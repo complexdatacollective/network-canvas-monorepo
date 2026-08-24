@@ -14,7 +14,7 @@ import ColorPicker from '../Form/Fields/ColorPicker';
 import GeoAPIKey from '../Form/Fields/Geospatial/GeoAPIKey';
 import GeoDataSource from '../Form/Fields/Geospatial/GeoDataSource';
 import MapSelection, {
-  requiredMapView,
+  completeMapView,
   type MapValue,
 } from '../Form/Fields/Geospatial/MapSelection';
 import {
@@ -198,7 +198,7 @@ const MapOptions = () => {
           name="mapOptions"
           component={MapSelection}
           initialValue={initialMapOptions}
-          validation={{ required: requiredMapView }}
+          validation={{ required: 'Required', completeMapView }}
           label="Initial Map View"
           hint="Configure the initial map view to adjust where it will be centered and zoomed to."
           previewOptions={{ tokenAssetId, style }}

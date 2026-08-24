@@ -7,7 +7,10 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import type { OptionValue } from '../Option';
-import Options, { optionsValidation } from '../Options';
+import Options, {
+  MINIMUM_OPTIONS_MESSAGE,
+  optionsValidation,
+} from '../Options';
 
 const TWO_VALID_OPTIONS: OptionValue[] = [
   { label: 'One', value: 1 },
@@ -61,6 +64,23 @@ const finishButton = () =>
   screen.queryByRole('button', { name: 'Finish editing option' });
 
 describe('Options', () => {
+  it('presents the option list as required', () => {
+    setup();
+
+    const options = screen.getByRole('list', { name: 'Options' });
+    expect(options).toHaveAttribute('aria-required', 'true');
+    expect(options).toHaveAccessibleDescription(/Required/);
+  });
+
+  it('rejects an empty option list once with the existing minimum copy', async () => {
+    const { onSubmit } = setup([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findAllByText(MINIMUM_OPTIONS_MESSAGE)).toHaveLength(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('opens a freshly added blank option straight into its editor', async () => {
     setup();
 
@@ -70,7 +90,7 @@ describe('Options', () => {
     // Opening the row must not write anything back: the rich-text editor's
     // mount-time change would otherwise dirty the stage on every add.
     expect(getOptions()).toEqual([...TWO_VALID_OPTIONS, {}]);
-    expect(screen.queryByText('Required')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/-field-error$/)).not.toBeInTheDocument();
   });
 
   it('keeps the editor open when finishing an option with no label or value', async () => {

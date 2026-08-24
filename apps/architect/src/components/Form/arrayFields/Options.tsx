@@ -22,10 +22,17 @@ export type { OptionValue } from './Option';
  * through fresco-ui's `custom` entry with the whole array as the value — rows
  * are not registered fields and cannot carry them.
  */
+export const MINIMUM_OPTIONS_MESSAGE =
+  'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.';
+
 export const minTwoOptions = (value: unknown) =>
   !value || (Array.isArray(value) && value.length < 2)
-    ? 'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.'
+    ? MINIMUM_OPTIONS_MESSAGE
     : undefined;
+
+/** Native `required` owns an absent/empty list; this owns the one-row case. */
+export const minTwoPopulatedOptions = (value: unknown) =>
+  Array.isArray(value) && value.length > 0 ? minTwoOptions(value) : undefined;
 
 export const completeOptions = (value: unknown) =>
   Array.isArray(value) && !value.every(isOptionComplete)
@@ -114,7 +121,8 @@ export const allowedOptionValues = (value: unknown) =>
  * rule by rule so a call site cannot silently keep some and drop others.
  */
 export const optionsValidation = {
-  minTwoOptions,
+  required: MINIMUM_OPTIONS_MESSAGE,
+  minTwoOptions: minTwoPopulatedOptions,
   completeOptions,
   uniqueOptionValues,
   uniqueOptionLabels,
