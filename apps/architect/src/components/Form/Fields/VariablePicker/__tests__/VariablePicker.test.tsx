@@ -27,11 +27,13 @@ vi.mock('../VariableSpotlight', () => ({
     onSelect,
     onOpenChange,
     onCreateOption,
+    shouldPropagateBlur,
   }: {
     open: boolean;
     onSelect: (value: string) => void;
     onOpenChange: (open: boolean) => void;
     onCreateOption: (value: string) => void;
+    shouldPropagateBlur?: () => boolean;
   }) =>
     open
       ? createPortal(
@@ -39,8 +41,21 @@ vi.mock('../VariableSpotlight', () => ({
             role="dialog"
             aria-label="Attribute library"
             data-variable-spotlight=""
+            onBlur={(event) => {
+              if (!shouldPropagateBlur?.()) event.stopPropagation();
+            }}
           >
-            <button autoFocus type="button" onClick={() => onSelect('age')}>
+            <button
+              autoFocus
+              type="button"
+              onClick={(event) => {
+                onSelect('age');
+                // The real Base UI popup emits a final focusout as it unmounts.
+                // Keep the mock mounted until this handler returns so jsdom can
+                // exercise the same answered-selection boundary.
+                event.currentTarget.blur();
+              }}
+            >
               Choose age
             </button>
             <button type="button" onClick={() => onCreateOption('height')}>
@@ -229,6 +244,39 @@ describe('VariablePicker', () => {
     fireEvent.click(chooseAge);
     expect(getValue()).toBe('age');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(storeApi.getState().getFieldState('variable')?.meta.isBlurred).toBe(
+      true,
+    );
+  });
+
+  it('does not blur an owning array while a nested row is still incomplete', async () => {
+    const onArrayBlur = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <div
+        data-field-name="additionalAttributes"
+        data-field-path="additionalAttributes"
+        onBlur={onArrayBlur}
+      >
+        <div data-field-name="additionalAttributes[0].variable">
+          <VariablePicker
+            name="additionalAttributes[0].variable"
+            value=""
+            onChange={onChange}
+            options={options}
+          />
+        </div>
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const chooseAge = screen.getByRole('button', { name: 'Choose age' });
+    await waitFor(() => expect(chooseAge).toHaveFocus());
+    onArrayBlur.mockClear();
+    fireEvent.click(chooseAge);
+
+    expect(onChange).toHaveBeenCalledWith('age');
+    expect(onArrayBlur).not.toHaveBeenCalled();
   });
 
   /**

@@ -107,4 +107,38 @@ describe('VariableSpotlight', () => {
 
     expect(onOwnerBlur).not.toHaveBeenCalled();
   });
+
+  it('lets a completed direct-field pick blur its owning field', () => {
+    const onOwnerBlur = vi.fn();
+    const shouldPropagateBlur = vi
+      .fn()
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false);
+    render(
+      <div onBlur={onOwnerBlur}>
+        <Provider store={mockStore}>
+          <VariableSpotlight
+            open={true}
+            onOpenChange={noop}
+            onSelect={noop}
+            entity=""
+            type=""
+            onCreateOption={noop}
+            options={[]}
+            shouldPropagateBlur={shouldPropagateBlur}
+          />
+        </Provider>
+      </div>,
+    );
+
+    const search = screen.getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    search.focus();
+    onOwnerBlur.mockClear();
+    fireEvent.blur(search, { relatedTarget: document.body });
+
+    expect(onOwnerBlur).toHaveBeenCalled();
+    expect(shouldPropagateBlur).toHaveBeenCalled();
+  });
 });
