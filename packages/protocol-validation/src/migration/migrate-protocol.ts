@@ -13,6 +13,7 @@ import {
   SchemaVersionSchema,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
+import { repairLegacyColorReferences } from '../utils/repairLegacyColorReferences.ts';
 import { SchemaVersionDetectionError, ValidationError } from './errors.ts';
 import { type ProtocolDocument, protocolMigrations } from './index.ts';
 
@@ -49,10 +50,16 @@ export function migrateProtocol(
   dependencies: Record<string, unknown> = {},
 ): CurrentProtocol {
   const detectedVersion = detectSchemaVersion(document);
+  // Architect briefly offered Narrative Pedigree node positions 9 and 10 even
+  // though the theme defines only eight. Repair those exact app-generated v8
+  // values before strict pre-validation; arbitrary colours remain invalid.
+  const legacyColorRepair = repairLegacyColorReferences(document);
+  const migrationInput = legacyColorRepair.protocol;
 
   // Only pre-validate versions that have Zod schemas (7+)
   if (detectedVersion >= 7) {
-    const preValidationResult = VersionedProtocolSchema.safeParse(document);
+    const preValidationResult =
+      VersionedProtocolSchema.safeParse(migrationInput);
     if (!preValidationResult.success) {
       throw new ValidationError(
         `Invalid protocol document for version ${detectedVersion}: ${preValidationResult.error.message}`,
@@ -63,7 +70,7 @@ export function migrateProtocol(
 
   // Ensure schemaVersion is numeric before passing to migration chain
   const normalizedDocument = {
-    ...(document as Record<string, unknown>),
+    ...(migrationInput as Record<string, unknown>),
     schemaVersion: detectedVersion,
   };
 
