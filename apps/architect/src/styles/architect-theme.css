@@ -11,7 +11,7 @@
     --background: oklch(var(--platinum));
     --text: oklch(var(--cyber-grape));
     --primary: oklch(var(--sea-green));
-    --neutral: oklch(var(--white));
+    --neutral: oklch(var(--platinum));
     --neutral-contrast: oklch(var(--cyber-grape));
     --secondary: oklch(var(--neon-coral));
     --accent: oklch(var(--slate-blue));

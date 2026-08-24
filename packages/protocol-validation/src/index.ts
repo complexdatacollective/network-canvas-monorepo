@@ -77,6 +77,11 @@ export {
   repairConfigurationConflicts,
 } from './utils/repairConfigurationConflicts.ts';
 export {
+  type LegacyColorReferenceRepair,
+  type LegacyColorReferenceRepairResult,
+  repairLegacyColorReferences,
+} from './utils/repairLegacyColorReferences.ts';
+export {
   asEntityAttributeReference,
   type AssetReferenceHit,
   collectAssetReferences,

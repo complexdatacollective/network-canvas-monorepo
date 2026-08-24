@@ -10,6 +10,7 @@ import {
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
+  repairLegacyColorReferences,
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
@@ -114,8 +115,9 @@ async function importParsedProtocol(
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
   const version = detectSchemaVersion(document);
+  const repairedDocument = repairLegacyColorReferences(document).protocol;
 
-  let migratedDocument: unknown = document;
+  let migratedDocument: unknown = repairedDocument;
   let didMigrate = false;
   if (version !== APP_SCHEMA_VERSION) {
     const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
@@ -127,7 +129,7 @@ async function importParsedProtocol(
       };
     }
     try {
-      migratedDocument = migrateProtocol(document, APP_SCHEMA_VERSION, {
+      migratedDocument = migrateProtocol(repairedDocument, APP_SCHEMA_VERSION, {
         name: nameOverride ?? sourceName.replace(/\.netcanvas$/i, ''),
       });
       didMigrate = true;
