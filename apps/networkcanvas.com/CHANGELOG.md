@@ -1,5 +1,11 @@
 # networkcanvas.com
 
+## 0.4.2
+
+### Patch Changes
+
+- Add newly identified publications that used Network Canvas in research data collection.
+
 ## 0.4.1
 
 ### Patch Changes
