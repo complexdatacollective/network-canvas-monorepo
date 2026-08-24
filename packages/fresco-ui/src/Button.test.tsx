@@ -16,10 +16,10 @@ describe('Button', () => {
       'bg-(--component-text)',
       'border-(--component-raised-edge)',
       'border-b-4',
-      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-5',
+      'ui-enabled:hover:border-b-5',
       '[--component-text:var(--success)]',
       '[--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
-      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:elevation-medium',
+      'ui-enabled:hover:elevation-medium',
       'ui-enabled:active:translate-y-1',
       'uppercase',
       'tracking-widest',
@@ -41,11 +41,11 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
       'border-b-3',
-      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-4',
+      'ui-enabled:hover:border-b-4',
     );
     expect(screen.getByRole('button', { name: 'Extra large' })).toHaveClass(
       'border-b-6',
-      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-8',
+      'ui-enabled:hover:border-b-8',
       'normal-case',
       'tracking-wide',
       'text-xl',
@@ -139,7 +139,7 @@ describe('Button', () => {
     expect(button).toHaveClass(
       'ui-disabled:cursor-not-allowed',
       'ui-disabled:opacity-50',
-      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text)',
+      'ui-enabled:hover:bg-(--component-text)',
       'ui-enabled:active:translate-y-[2px]',
     );
   });
@@ -221,32 +221,26 @@ describe('Button', () => {
     }
   });
 
-  it('guards hover treatments against an open menu trigger, not just a toggle', () => {
+  // Regression: the interview's "next" button asks for `ui-enabled:hover:bg-success`
+  // and is navigated by clicking, so the pointer is still on it when the next
+  // stage renders. The variant's hover background must therefore MERGE AWAY
+  // rather than coexist — `tailwind-merge` only does that while both carry the
+  // same modifier chain, so any extra guard on the variant's hover (a
+  // `not-aria-pressed:`, say) leaves both in place, and the guarded selector's
+  // extra `:not()`s then outrank the call site's, silently repainting it. That
+  // is what took the green off the "next" button under the resting pointer.
+  it('lets a call site replace the hover background rather than layering over it', () => {
     render(
-      <>
-        <Button variant="text" aria-expanded>
-          Options
-        </Button>
-        <IconButton
-          aria-label="Icon options"
-          variant="text"
-          aria-expanded
-          icon={<Check />}
-        />
-      </>,
+      <Button variant="text" className="ui-enabled:hover:bg-success">
+        Next
+      </Button>,
     );
 
-    const disclosureButtons = [
-      screen.getByRole('button', { name: 'Options' }),
-      screen.getByRole('button', { name: 'Icon options' }),
-    ];
-
-    for (const disclosureButton of disclosureButtons) {
-      expect(disclosureButton).toHaveClass(
-        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text)',
-        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg)',
-      );
-    }
+    const button = screen.getByRole('button', { name: 'Next' });
+    expect(button).toHaveClass('ui-enabled:hover:bg-success');
+    expect(button.className).not.toMatch(
+      /(?:^|:)hover:(?:[\w-]+:)*bg-\(--component-text\)/,
+    );
   });
 
   it('renders the selected treatment from a prop, without claiming an ARIA state', () => {

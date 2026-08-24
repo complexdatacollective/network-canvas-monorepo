@@ -1051,9 +1051,15 @@ export const createFormStore = (): FormStoreApi => {
        * expects an object, a key it never carried — is left exactly as it is
        * rather than rebuilt around a value it never had.
        *
-       * A REGISTERED field at the name needs no such write: `getFormValues`
-       * replays the more specific field OVER its ancestor, so clearing that
-       * field is already what every read of the name answers with.
+       * A REGISTERED field at the name gets this same ancestor write, not just
+       * its own value cleared: while it stays mounted, `getFormValues` replays
+       * it OVER its ancestor, so the ancestor's stale value is invisible either
+       * way. But the leaf can unmount later — a conditional field whose
+       * governing value just changed, which is exactly when clearing one
+       * matters — and an unmounted field contributes nothing to
+       * `getFormValues`. Skipping the ancestor write here would leave its
+       * stale sub-path to resurface the moment the leaf goes dormant, silently
+       * reviving data the person just cleared.
        */
       clearValue: (fieldReference) => {
         const pathOperations = get().pathOperations;
@@ -1081,9 +1087,10 @@ export const createFormStore = (): FormStoreApi => {
           ...collectDescendantPaths(fieldRecords, containerPath),
           ...collectDescendantPaths(dormantRecords, containerPath),
         ];
-        const ancestorPath = fieldRecords.has(fieldName)
-          ? undefined
-          : findRegisteredAncestorPath(fieldRecords, containerPath);
+        const ancestorPath = findRegisteredAncestorPath(
+          fieldRecords,
+          containerPath,
+        );
 
         get().setFieldValue(fieldReference, undefined);
         descendants.forEach((path) => {

@@ -2844,7 +2844,7 @@ describe('container paths', () => {
       );
     });
 
-    it('leaves the ancestor alone when a field is registered at the name itself', () => {
+    it('clears the ancestor sub-path too, even while a field is registered at the name itself', () => {
       registerCompoundParameters();
       store
         .getState()
@@ -2853,12 +2853,30 @@ describe('container paths', () => {
       store.getState().clearValue('parameters.type');
 
       // `getFormValues` replays the more specific field OVER the compound
-      // one, so clearing that field is the whole answer; rewriting the
-      // ancestor as well would only rebuild a value the replay covers.
+      // one, so the leaf alone answers every read while both stay mounted —
+      // but the ancestor is cleared too, because the leaf can unmount later
+      // and an unmounted field contributes nothing to `getFormValues`.
       expect(store.getState().getValue('parameters.type')).toBeUndefined();
       expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
-        { type: 'relative', bounds: { min: 1 } },
+        { bounds: { min: 1 } },
       );
+    });
+
+    it('keeps a cleared sub-path cleared once the leaf that held it unmounts', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.type', initialValue: 'absolute' });
+
+      store.getState().clearValue('parameters.type');
+      store.getState().unregisterField('parameters.type');
+
+      // Only the ancestor is left holding the name once the leaf unmounts.
+      // Had clearing skipped the ancestor because the exact leaf was
+      // registered, its stale `type` would resurface here.
+      expect(store.getState().getFormValues()).toStrictEqual({
+        parameters: { bounds: { min: 1 } },
+      });
     });
 
     it('clears through the ancestor for a field that has unmounted at the name', () => {
