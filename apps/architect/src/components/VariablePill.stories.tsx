@@ -19,7 +19,14 @@ const VARIABLE_TYPES = [
 
 type StoryArgs = Pick<
   VariablePillProps,
-  'animated' | 'editable' | 'label' | 'maxWidth' | 'minWidth' | 'type' | 'width'
+  | 'animated'
+  | 'displayMaxWidth'
+  | 'editable'
+  | 'label'
+  | 'maxWidth'
+  | 'minWidth'
+  | 'type'
+  | 'width'
 >;
 
 const StoryVariablePill = ({ label, ...props }: StoryArgs) => {
@@ -80,6 +87,9 @@ independently:
 - Without \`width\`, the pill grows with its content between \`minWidth\`
   (default \`12rem\`) and \`maxWidth\` (default \`20rem\`).
 - Labels truncate with an ellipsis only after reaching \`maxWidth\`.
+- \`displayMaxWidth\` overrides that resting bound without changing the
+  editable pill's expansion ceiling. Use it when the surrounding layout, not
+  the editor design, determines where truncation begins.
 - \`width\` forces a preferred CSS width for contexts such as
   \`VariableSpotlight\`; unless \`maxWidth\` is also supplied, that width is
   used as the maximum.
@@ -121,6 +131,11 @@ independently:
       control: 'text',
       description:
         'Maximum CSS width, after which the label truncates. Defaults to 20rem.',
+    },
+    displayMaxWidth: {
+      control: 'text',
+      description:
+        'Optional resting maximum that does not change the edit-mode ceiling.',
     },
     animated: {
       control: 'boolean',

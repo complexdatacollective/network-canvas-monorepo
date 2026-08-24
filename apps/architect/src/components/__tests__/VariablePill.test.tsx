@@ -190,6 +190,47 @@ describe('ConnectedVariablePill', () => {
 });
 
 describe('VariablePill', () => {
+  it('keeps a display-only container bound out of the name editor sizing', async () => {
+    render(
+      <VariablePill
+        editable
+        displayMaxWidth="100%"
+        label="subject_var"
+        type="text"
+        width="fit-content"
+      />,
+    );
+    const pill = screen.getByRole('button', {
+      name: 'Edit attribute name: subject_var',
+    });
+    vi.spyOn(pill, 'getBoundingClientRect').mockReturnValue({
+      bottom: 148,
+      height: 48,
+      left: 100,
+      right: 292,
+      top: 100,
+      width: 192,
+      x: 100,
+      y: 100,
+      toJSON: () => ({}),
+    });
+
+    expect(pill.style.getPropertyValue('--variable-pill-max-width')).toBe(
+      '100%',
+    );
+
+    fireEvent.click(pill);
+    const editor = (
+      await screen.findByRole('dialog', {
+        name: 'Edit attribute name',
+      })
+    ).querySelector<HTMLElement>('.variable-pill');
+
+    expect(editor?.style.getPropertyValue('--variable-pill-max-width')).toBe(
+      '320px',
+    );
+  });
+
   it('uses a data element and a static border for a non-interactive reference', () => {
     const { container } = render(
       <VariablePill label="subject_var" type="text" />,

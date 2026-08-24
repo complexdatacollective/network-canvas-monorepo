@@ -150,9 +150,9 @@ export const VariablePickerControl = ({
       return (
         <ConnectedVariablePill
           animated
+          displayMaxWidth="100%"
           editable
           uuid={selectedOption.value}
-          maxWidth="100%"
           width="fit-content"
         />
       );
@@ -167,7 +167,7 @@ export const VariablePickerControl = ({
       <VariablePill
         label={finalLabel}
         type={variableType}
-        maxWidth="100%"
+        displayMaxWidth="100%"
         width="fit-content"
       />
     );
