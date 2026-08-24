@@ -98,7 +98,7 @@ const getRawColorToken = (color: string) =>
  * it.
  *
  * The unreadable-value branch therefore falls back to the design maximum, not
- * to `currentWidth`. `max-width` is now `min(20rem, 100%)` — the `100%` is what
+ * to the resting width. `max-width` is now `min(20rem, 100%)` — the `100%` is what
  * keeps an inline pill inside its container (#1388) — and `Number.parseFloat`
  * cannot read a `min()`. Returning the element's current width there would
  * silently pin the editor to whatever the pill happened to be, which for a
@@ -106,7 +106,7 @@ const getRawColorToken = (color: string) =>
  */
 const getResolvedMaximumWidth = (
   element: HTMLElement,
-  currentWidth: number,
+  containingFallbackWidth: number,
   editorMaxWidth: string,
 ) => {
   // `displayMaxWidth` can impose a container-relative resting bound without
@@ -126,16 +126,17 @@ const getResolvedMaximumWidth = (
         Number.parseFloat(
           window.getComputedStyle(document.documentElement).fontSize,
         ) || 16;
-      return Math.max(currentWidth, DEFAULT_MAX_WIDTH_REM * rootFontSize);
+      return DEFAULT_MAX_WIDTH_REM * rootFontSize;
     }
 
     if (computedMaxWidth.endsWith('%')) {
       const containingWidth =
-        element.parentElement?.getBoundingClientRect().width ?? currentWidth;
-      return Math.max(currentWidth, containingWidth * (numericMaxWidth / 100));
+        element.parentElement?.getBoundingClientRect().width ??
+        containingFallbackWidth;
+      return containingWidth * (numericMaxWidth / 100);
     }
 
-    return Math.max(currentWidth, numericMaxWidth);
+    return numericMaxWidth;
   } finally {
     element.style.setProperty(MAX_WIDTH_PROPERTY, displayMaxWidth);
   }
@@ -364,33 +365,41 @@ export const VariablePill = ({
     }
 
     const availableWidth = window.innerWidth - EDITOR_FRAME_GUTTER;
-    const targetPillWidth = Math.max(
+    const availablePillWidth =
+      (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE;
+    const targetPillWidth = Math.min(editorAnchor.maxWidth, availablePillWidth);
+    const initialPillWidth = Math.min(
       editorAnchor.width,
-      Math.min(
-        editorAnchor.maxWidth,
-        (availableWidth - EDITOR_FRAME_PADDING * 2) / EDIT_MODE_SCALE,
-      ),
+      availableWidth - EDITOR_FRAME_PADDING * 2,
     );
     const frameWidth = Math.min(
       availableWidth,
       Math.max(
         EDITOR_FRAME_MIN_WIDTH,
+        initialPillWidth + EDITOR_FRAME_PADDING * 2,
         targetPillWidth * EDIT_MODE_SCALE + EDITOR_FRAME_PADDING * 2,
       ),
     );
+    const centeredLeft =
+      editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2;
+    const left = Math.min(
+      window.innerWidth - EDITOR_FRAME_GUTTER / 2 - frameWidth,
+      Math.max(EDITOR_FRAME_GUTTER / 2, centeredLeft),
+    );
 
     return {
+      initialPillWidth,
       targetPillWidth,
       style: {
-        left: editorAnchor.left + editorAnchor.width / 2 - frameWidth / 2,
+        left,
         top: editorAnchor.top - EDITOR_FRAME_PADDING,
         width: frameWidth,
       } satisfies React.CSSProperties,
       pillStyle: {
         ...style,
         '--variable-pill-width': `${targetPillWidth}px`,
-        '--variable-pill-min-width': `${editorAnchor.width}px`,
-        '--variable-pill-max-width': `${targetPillWidth}px`,
+        '--variable-pill-min-width': `${Math.min(initialPillWidth, targetPillWidth)}px`,
+        '--variable-pill-max-width': `${Math.max(initialPillWidth, targetPillWidth)}px`,
       } satisfies VariablePillStyle,
     };
   }, [editorAnchor, style]);
@@ -466,7 +475,9 @@ export const VariablePill = ({
           >
             <motion.div
               initial={
-                reduceMotion ? false : { scale: 1, width: editorAnchor?.width }
+                reduceMotion
+                  ? false
+                  : { scale: 1, width: editorFrame.initialPillWidth }
               }
               animate={{
                 scale: reduceMotion ? 1 : EDIT_MODE_SCALE,
@@ -474,7 +485,7 @@ export const VariablePill = ({
               }}
               exit={{
                 scale: 1,
-                width: editorAnchor?.width,
+                width: editorFrame.initialPillWidth,
               }}
               transition={
                 reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING

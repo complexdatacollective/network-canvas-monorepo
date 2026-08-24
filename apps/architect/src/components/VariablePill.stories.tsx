@@ -96,8 +96,10 @@ independently:
 - \`animated\` changes only the border treatment.
 - \`editable\` changes the semantic element to a button, adds the raised
   interaction affordance and edit tooltip, and enables the editing workflow.
-- On entering edit mode, the pill expands from its current width to
-  \`maxWidth\` while remaining anchored around the same center point.
+- On entering edit mode, the pill transitions from its current width toward
+  \`maxWidth\` while remaining anchored around the same center point. The target
+  is clamped before the 1.5× edit zoom so a wide resting pill cannot overflow
+  the viewport.
 `,
       },
     },
