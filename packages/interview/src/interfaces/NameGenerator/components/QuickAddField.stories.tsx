@@ -4,7 +4,7 @@ import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
 import { action } from 'storybook/actions';
-import { expect, fn, screen, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
@@ -279,6 +279,52 @@ export const WithValidation: Story = {
   },
 };
 
+// Opens the quick-add input and waits out the 5s usage-hint timer, then waits
+// for the tooltip's spring to finish. Motion clears its inline transform on
+// completion, so `transform: none` is the terminal state — asserting it keeps
+// Chromatic from capturing a half-animated frame.
+async function showSettledHint(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('quick-add-toggle'));
+
+  const hint = await screen.findByRole('tooltip', {}, { timeout: 10000 });
+
+  await waitFor(() => {
+    const style = getComputedStyle(hint);
+    expect(style.opacity).toBe('1');
+    expect(style.transform).toBe('none');
+  });
+
+  return hint;
+}
+
+export const MultiEntryHint: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+    maxNodes: 0,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
+  ),
+  play: async ({ canvasElement }) => {
+    const hint = await showSettledHint(canvasElement);
+
+    await expect(hint).toHaveTextContent(
+      'Press Enter when you are finished. The box will stay open so you can quickly enter multiple names in a row.',
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A stage with room for more than one more node keeps the full hint, including the promise that the box stays open. Paired with `SingleEntryHint` so the two copy variants can be compared visually.',
+      },
+    },
+  },
+};
+
 export const SingleEntryHint: Story = {
   args: {
     name: 'name',
@@ -290,11 +336,7 @@ export const SingleEntryHint: Story = {
     <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
   ),
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByTestId('quick-add-toggle'));
-
-    // The usage hint appears after 5s of inactivity.
-    const hint = await screen.findByRole('tooltip', {}, { timeout: 10000 });
+    const hint = await showSettledHint(canvasElement);
 
     await expect(hint).toHaveTextContent('Press Enter when you are finished.');
     await expect(hint).not.toHaveTextContent('multiple names in a row');
@@ -303,7 +345,7 @@ export const SingleEntryHint: Story = {
     docs: {
       description: {
         story:
-          'A stage whose remaining `maxNodes` allowance is a single node closes the box on the next successful add, so the usage hint drops its promise that the box stays open. Open the input and wait five seconds to see the hint.',
+          'A stage whose remaining `maxNodes` allowance is a single node closes the box on the next successful add, so the usage hint drops its promise that the box stays open.',
       },
     },
   },
