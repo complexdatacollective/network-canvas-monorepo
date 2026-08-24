@@ -2793,7 +2793,7 @@ describe('container paths', () => {
       expect(store.getState().getValue('items[0]')).toBe('a');
     });
 
-    it('clears out of the NEAREST registered ancestor, not the outermost', () => {
+    it('clears out of every registered ancestor, nearest and outermost alike', () => {
       store.getState().registerField({
         name: 'parameters',
         initialValue: { bounds: { min: 1, max: 5 } },
@@ -2806,8 +2806,11 @@ describe('container paths', () => {
       store.getState().clearValue('parameters.bounds.min');
 
       // `getFormValues` replays the deeper field OVER the compound one, so
-      // the deeper field is the one the name reads its value out of — and
-      // clearing the outer one would leave the read answering as it did.
+      // while both are mounted the deeper field alone answers the read. That
+      // is precisely why the outermost has to be cleared as well: it is
+      // shadowed, not absent, and it starts answering again the moment the
+      // deeper field unmounts. Leaving it would hand back a value the person
+      // cleared, at the point where nothing is left to overwrite it.
       expect(
         store.getState().getValue('parameters.bounds.min'),
       ).toBeUndefined();
@@ -2815,7 +2818,7 @@ describe('container paths', () => {
         store.getState().getFieldState('parameters.bounds')?.value,
       ).toStrictEqual({ max: 6 });
       expect(store.getState().getFieldState('parameters')?.value).toStrictEqual(
-        { bounds: { min: 1, max: 5 } },
+        { bounds: { max: 5 } },
       );
     });
 
@@ -2876,6 +2879,30 @@ describe('container paths', () => {
       // registered, its stale `type` would resurface here.
       expect(store.getState().getFormValues()).toStrictEqual({
         parameters: { bounds: { min: 1 } },
+      });
+    });
+
+    it('clears the sub-path from EVERY registered ancestor, not just the nearest', () => {
+      registerCompoundParameters();
+      store
+        .getState()
+        .registerField({ name: 'parameters.bounds', initialValue: { min: 1 } });
+      store
+        .getState()
+        .registerField({ name: 'parameters.bounds.min', initialValue: 1 });
+
+      store.getState().clearValue('parameters.bounds.min');
+
+      // Three overlapping registrations, so `parameters.bounds` is the NEAREST
+      // ancestor but not the only one. Clearing only it leaves the root
+      // `parameters` still holding `bounds.min` — masked for as long as the
+      // inner fields are mounted, because `getFormValues` replays deeper paths
+      // over shallower ones, and exposed the moment they unmount.
+      store.getState().unregisterField('parameters.bounds.min');
+      store.getState().unregisterField('parameters.bounds');
+
+      expect(store.getState().getFormValues()).toStrictEqual({
+        parameters: { type: 'relative', bounds: {} },
       });
     });
 

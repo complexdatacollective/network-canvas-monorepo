@@ -157,6 +157,33 @@ const findRegisteredAncestorPath = (
   return undefined;
 };
 
+/**
+ * EVERY strict prefix of `path` registered as a field of its own, nearest
+ * first — not just the nearest one, which is all a clear used to reach.
+ *
+ * Overlapping registrations nest arbitrarily deep: `parameters`,
+ * `parameters.bounds`, and `parameters.bounds.min` can all be fields. Dropping
+ * a sub-path from only the nearest container leaves every container above it
+ * still holding that sub-path, and nothing shows it while the inner fields are
+ * mounted, because `getFormValues` replays deeper paths over shallower ones.
+ * The stale value surfaces later, when those fields unmount and stop
+ * overwriting it.
+ */
+const collectRegisteredAncestorPaths = (
+  fields: Map<string, FieldState>,
+  path: ObjectPath,
+): ObjectPath[] => {
+  const ancestorPaths: ObjectPath[] = [];
+  for (let length = path.length - 1; length >= 1; length -= 1) {
+    const ancestorPath = path.slice(0, length);
+    if (fields.has(formatObjectPath(ancestorPath))) {
+      ancestorPaths.push(ancestorPath);
+    }
+  }
+
+  return ancestorPaths;
+};
+
 /** Whether any strict prefix of `path` is registered as a field of its own. */
 const hasRegisteredAncestor = (
   fields: Map<string, FieldState>,
@@ -1087,7 +1114,7 @@ export const createFormStore = (): FormStoreApi => {
           ...collectDescendantPaths(fieldRecords, containerPath),
           ...collectDescendantPaths(dormantRecords, containerPath),
         ];
-        const ancestorPath = findRegisteredAncestorPath(
+        const ancestorPaths = collectRegisteredAncestorPaths(
           fieldRecords,
           containerPath,
         );
@@ -1097,25 +1124,25 @@ export const createFormStore = (): FormStoreApi => {
           pathOperations.setFieldValue(path, undefined);
         });
 
-        if (!ancestorPath) return;
+        ancestorPaths.forEach((ancestorPath) => {
+          const ancestor = fieldRecords.get(formatObjectPath(ancestorPath));
+          if (!ancestor) return;
 
-        const ancestor = fieldRecords.get(formatObjectPath(ancestorPath));
-        if (!ancestor) return;
+          // A copy of a `FieldValue` with one sub-path dropped out of it is
+          // itself a `FieldValue`: `omitValue` only ever removes a key from a
+          // container it has already copied.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+          const clearedAncestorValue = omitValue(
+            ancestor.value,
+            containerPath.slice(ancestorPath.length),
+          ) as FieldValue;
+          // Identity is `omitValue`'s report that the value held nothing at
+          // the sub-path. Writing anyway would mark a field dirty over a value
+          // the person never had.
+          if (clearedAncestorValue === ancestor.value) return;
 
-        // A copy of a `FieldValue` with one sub-path dropped out of it is
-        // itself a `FieldValue`: `omitValue` only ever removes a key from a
-        // container it has already copied.
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-        const clearedAncestorValue = omitValue(
-          ancestor.value,
-          containerPath.slice(ancestorPath.length),
-        ) as FieldValue;
-        // Identity is `omitValue`'s report that the value held nothing at the
-        // sub-path. Writing anyway would mark a field dirty over a value the
-        // person never had.
-        if (clearedAncestorValue === ancestor.value) return;
-
-        pathOperations.setFieldValue(ancestorPath, clearedAncestorValue);
+          pathOperations.setFieldValue(ancestorPath, clearedAncestorValue);
+        });
       },
 
       getFormValues: () => {

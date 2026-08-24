@@ -385,10 +385,10 @@ type LibraryPanelProps = {
   // Open one of the bundled research templates.
   onOpenTemplate: (template: BundledTemplate) => void;
 };
-// Once the list is at its floor and the card is at its natural height, a panel
-// too short for both has to give somewhere. It scrolls: `Surface` is
-// `overflow-clip`, so anything the panel cannot hold would otherwise be cut off
-// with no way to reach it — which is how the card disappears on a short window.
+// A panel too short for both the list and the gallery card below it has to
+// give somewhere. It scrolls: `Surface` is `overflow-clip`, so anything the
+// panel cannot hold would otherwise be cut off with no way to reach it — which
+// is how the card disappears on a short window.
 const PANEL_CLASSES = 'flex min-h-0 flex-col overflow-x-hidden overflow-y-auto';
 
 const LibraryPanel = ({
@@ -745,13 +745,12 @@ const LibraryPanel = ({
       </div>
     ) : null;
   return (
-    // 22rem is the height this panel already settles at on a 1280x720 window:
-    // its own padding, the tab header, a list a little above its floor, and the
-    // whole gallery card. Holding that as a floor is what makes a shorter
-    // window scroll the page — `Home`'s `<main>` is already `overflow-y-auto` —
-    // instead of taking the difference out of the list, which is all the
-    // `min-h-0` chain down to the list could do. Deliberately outranks
-    // `max-h-[85dvh]`, which CSS resolves in the floor's favour.
+    // `grow` takes the height `Home`'s column has left rather than stating one:
+    // no floor and no `max-h`, so the panel neither forces the page to scroll
+    // nor caps itself below the space it was given. What a short window gives
+    // up is taken inside, by the tab panels, which scroll (`PANEL_CLASSES`) —
+    // `Surface` is `overflow-clip`, so that is what keeps the gallery card
+    // reachable instead of cut off.
     <Surface spacing="sm" className="publish-colors w-full grow" noContainer>
       <Tabs
         aria-label="Protocol library"
