@@ -158,10 +158,10 @@ try {
   );
 
   await pool.query(
-    `INSERT INTO workspaces (id, name, slug) VALUES ('demo-workspace', 'Demo', 'demo-workspace')
+    `INSERT INTO teams (id, name, slug) VALUES ('demo-team', 'Demo', 'demo-team')
      ON CONFLICT (id) DO NOTHING`,
   );
-  const tenantDb = createTenantDb(pool, 'demo-workspace');
+  const tenantDb = createTenantDb(pool, 'demo-team');
   const store = new ProtocolStore(tenantDb);
 
   // ── 1 ──────────────────────────────────────────────────────────────────

@@ -207,8 +207,8 @@ describe.skipIf(!db)('magic-link sign-in', () => {
   });
 });
 
-describe.skipIf(!db)('workspaces (organization plugin)', () => {
-  it('creates a workspace and resolves the creator membership', async () => {
+describe.skipIf(!db)('teams (organization plugin)', () => {
+  it('creates a team and resolves the creator membership', async () => {
     if (!db) throw new Error('unreachable');
     const scratch = await createScratchSchema(db);
     try {
@@ -220,7 +220,7 @@ describe.skipIf(!db)('workspaces (organization plugin)', () => {
       const me = await createRpcClient(app, { cookie }).me();
 
       // Through the plugin's own endpoint: exercises the drizzle adapter
-      // against the folded workspace tables end to end.
+      // against the folded team tables end to end.
       const create = await app.request('/api/auth/organization/create', {
         method: 'POST',
         headers: {
@@ -231,23 +231,23 @@ describe.skipIf(!db)('workspaces (organization plugin)', () => {
         body: JSON.stringify({ name: 'My Study Group', slug: 'my-studies' }),
       });
       expect(create.status).toBe(200);
-      const workspace = (await create.json()) as { id: string; slug: string };
-      expect(workspace.slug).toBe('my-studies');
+      const team = (await create.json()) as { id: string; slug: string };
+      expect(team.slug).toBe('my-studies');
 
-      expect(await auth.getMembership(me.userId, workspace.id)).toEqual({
+      expect(await auth.getMembership(me.userId, team.id)).toEqual({
         role: 'owner',
       });
-      expect(await auth.getMembership(me.userId, 'not-a-workspace')).toBeNull();
-      expect(await auth.getMembership('someone-else', workspace.id)).toBeNull();
+      expect(await auth.getMembership(me.userId, 'not-a-team')).toBeNull();
+      expect(await auth.getMembership('someone-else', team.id)).toBeNull();
 
       // The plugin only check-then-inserts memberships, so the composite
       // unique index is what keeps that single-row read unambiguous. Omitting
       // created_at also exercises its default.
       await expect(
         scratch.pool.query(
-          `insert into workspace_members (id, workspace_id, user_id, role)
+          `insert into team_members (id, team_id, user_id, role)
            values ($1, $2, $3, 'member')`,
-          ['second-membership', workspace.id, me.userId],
+          ['second-membership', team.id, me.userId],
         ),
       ).rejects.toThrow(/duplicate key/);
     } finally {

@@ -15,9 +15,9 @@ import type { S3Env } from './env.ts';
 // are keyed by content hash, so retrieval is immutable-cacheable by
 // construction. Asset bytes ride these plain HTTP routes rather than the RPC
 // surface: files don't belong in RPC payloads, and retrieval must be
-// streamable and cacheable. The key prefix gains a workspace scope when
-// multi-tenancy lands (#1249) — cross-workspace dedup is deliberately not a
-// goal (confidentiality boundary).
+// streamable and cacheable. The key prefix gains a team scope when
+// multi-tenancy lands (#1249) — cross-team dedup is deliberately not a goal
+// (confidentiality boundary).
 
 const KEY_PREFIX = 'assets/';
 const SHA256_HEX = /^[0-9a-f]{64}$/;

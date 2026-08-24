@@ -107,14 +107,11 @@ export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
 }
 
-export async function seedWorkspace(
-  db: pg.Pool,
-  workspaceId: string,
-): Promise<void> {
+export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {
   await db.query(
-    `INSERT INTO workspaces (id, name, slug) VALUES ($1, $1, $1)
+    `INSERT INTO teams (id, name, slug) VALUES ($1, $1, $1)
      ON CONFLICT (id) DO NOTHING`,
-    [workspaceId],
+    [teamId],
   );
 }
 

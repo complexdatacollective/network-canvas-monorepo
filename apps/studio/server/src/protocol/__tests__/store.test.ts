@@ -22,7 +22,7 @@ import { ProtocolStore } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
 import { SectionValidationFailedError } from '../validate.ts';
 import {
-  TEST_WORKSPACE_ID,
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
   storeDb,
@@ -371,19 +371,19 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const head = await store.getDraftSections(draftId);
     const advanced = { ...head.sectionHashes, settings: 'advanced-hash' };
     await blocker.query(
-      `INSERT INTO sections (workspace_id, hash, doc)
+      `INSERT INTO sections (team_id, hash, doc)
        VALUES ($1, 'advanced-hash', '{}'::jsonb)`,
-      [TEST_WORKSPACE_ID],
+      [TEST_TEAM_ID],
     );
     await blocker.query(
-      `INSERT INTO manifests (draft_id, workspace_id, seq, hash, parent_hash, section_hashes)
+      `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
        VALUES ($1, $5, $2, 'advanced-manifest', $3, $4)`,
       [
         draftId,
         String(head.headSeq + 1n),
         head.headManifestHash,
         advanced,
-        TEST_WORKSPACE_ID,
+        TEST_TEAM_ID,
       ],
     );
     await blocker.query(

@@ -13,15 +13,15 @@ import {
 
 import { drafts, sections } from '@codaco/studio-sync/schema';
 
-import { workspaces } from '../db/auth-schema.ts';
+import { teams } from '../db/auth-schema.ts';
 
 const protocols = pgTable(
   'protocols',
   {
     id: uuid('id').primaryKey(),
-    workspaceId: text('workspace_id')
+    teamId: text('team_id')
       .notNull()
-      .references(() => workspaces.id),
+      .references(() => teams.id),
     name: text('name').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -31,8 +31,8 @@ const protocols = pgTable(
       .defaultNow(),
   },
   (table) => [
-    unique().on(table.id, table.workspaceId),
-    index('protocols_workspace_id_idx').on(table.workspaceId),
+    unique().on(table.id, table.teamId),
+    index('protocols_team_id_idx').on(table.teamId),
   ],
 );
 
@@ -41,7 +41,7 @@ const protocolVersions = pgTable(
   {
     id: uuid('id').primaryKey(),
     protocolId: uuid('protocol_id').notNull(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     label: text('label'),
     versionHash: text('version_hash').notNull(),
@@ -58,14 +58,14 @@ const protocolVersions = pgTable(
   (table) => [
     unique().on(table.protocolId, table.versionNumber),
     unique().on(table.protocolId, table.versionHash),
-    unique().on(table.id, table.workspaceId),
+    unique().on(table.id, table.teamId),
     foreignKey({
-      columns: [table.protocolId, table.workspaceId],
-      foreignColumns: [protocols.id, protocols.workspaceId],
+      columns: [table.protocolId, table.teamId],
+      foreignColumns: [protocols.id, protocols.teamId],
     }),
     foreignKey({
-      columns: [table.migratedFromVersionId, table.workspaceId],
-      foreignColumns: [table.id, table.workspaceId],
+      columns: [table.migratedFromVersionId, table.teamId],
+      foreignColumns: [table.id, table.teamId],
     }),
   ],
 );
@@ -76,22 +76,22 @@ const versionSections = pgTable(
   'version_sections',
   {
     versionId: uuid('version_id').notNull(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     sectionId: text('section_id').notNull(),
     sectionHash: text('section_hash').notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.versionId, table.sectionId] }),
     foreignKey({
-      columns: [table.versionId, table.workspaceId],
-      foreignColumns: [protocolVersions.id, protocolVersions.workspaceId],
+      columns: [table.versionId, table.teamId],
+      foreignColumns: [protocolVersions.id, protocolVersions.teamId],
     }),
     foreignKey({
-      columns: [table.workspaceId, table.sectionHash],
-      foreignColumns: [sections.workspaceId, sections.hash],
+      columns: [table.teamId, table.sectionHash],
+      foreignColumns: [sections.teamId, sections.hash],
     }),
-    index('version_sections_workspace_id_section_hash_idx').on(
-      table.workspaceId,
+    index('version_sections_team_id_section_hash_idx').on(
+      table.teamId,
       table.sectionHash,
     ),
   ],
@@ -101,7 +101,7 @@ const protocolDrafts = pgTable(
   'protocol_drafts',
   {
     draftId: uuid('draft_id').primaryKey(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     protocolId: uuid('protocol_id').notNull(),
     basedOnVersionId: uuid('based_on_version_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -110,16 +110,16 @@ const protocolDrafts = pgTable(
   },
   (table) => [
     foreignKey({
-      columns: [table.draftId, table.workspaceId],
-      foreignColumns: [drafts.id, drafts.workspaceId],
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
     }),
     foreignKey({
-      columns: [table.protocolId, table.workspaceId],
-      foreignColumns: [protocols.id, protocols.workspaceId],
+      columns: [table.protocolId, table.teamId],
+      foreignColumns: [protocols.id, protocols.teamId],
     }),
     foreignKey({
-      columns: [table.basedOnVersionId, table.workspaceId],
-      foreignColumns: [protocolVersions.id, protocolVersions.workspaceId],
+      columns: [table.basedOnVersionId, table.teamId],
+      foreignColumns: [protocolVersions.id, protocolVersions.teamId],
     }),
   ],
 );

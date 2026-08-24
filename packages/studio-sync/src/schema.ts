@@ -15,31 +15,31 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-// workspace_id carries no foreign key: this package cannot import the
-// app-owned workspaces table. Children pin the denormalized column through
-// composite foreign keys into drafts instead.
+// team_id carries no foreign key: this package cannot import the app-owned
+// teams table. Children pin the denormalized column through composite foreign
+// keys into drafts instead.
 export const drafts = pgTable(
   'drafts',
   {
     id: uuid('id').primaryKey(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     headSeq: bigint('head_seq', { mode: 'bigint' }).notNull().default(0n),
     headManifestHash: text('head_manifest_hash').notNull(),
   },
   (table) => [
-    unique().on(table.id, table.workspaceId),
-    index('drafts_workspace_id_idx').on(table.workspaceId),
+    unique().on(table.id, table.teamId),
+    index('drafts_team_id_idx').on(table.teamId),
   ],
 );
 
-// Immutable content-addressed section documents, deduplicated per workspace —
+// Immutable content-addressed section documents, deduplicated per team —
 // a shared row would leak content across the tenant boundary.
 // clock_timestamp() rather than now(): expiry comparisons must be wall-clock,
 // not transaction time.
 export const sections = pgTable(
   'sections',
   {
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     hash: text('hash').notNull(),
     doc: jsonb('doc').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -47,7 +47,7 @@ export const sections = pgTable(
       .default(sql`clock_timestamp()`),
     unreferencedAt: timestamp('unreferenced_at', { withTimezone: true }),
   },
-  (table) => [primaryKey({ columns: [table.workspaceId, table.hash] })],
+  (table) => [primaryKey({ columns: [table.teamId, table.hash] })],
 );
 
 // Manifests: ordered map of section id -> section hash, one row per commit.
@@ -57,7 +57,7 @@ const manifests = pgTable(
   'manifests',
   {
     draftId: uuid('draft_id').notNull(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     seq: bigint('seq', { mode: 'bigint' }).notNull(),
     hash: text('hash').notNull(),
     parentHash: text('parent_hash'),
@@ -66,10 +66,10 @@ const manifests = pgTable(
   (table) => [
     primaryKey({ columns: [table.draftId, table.seq] }),
     foreignKey({
-      columns: [table.draftId, table.workspaceId],
-      foreignColumns: [drafts.id, drafts.workspaceId],
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
     }),
-    index('manifests_workspace_id_idx').on(table.workspaceId),
+    index('manifests_team_id_idx').on(table.teamId),
   ],
 );
 
@@ -80,7 +80,7 @@ const leases = pgTable(
   'leases',
   {
     draftId: uuid('draft_id').notNull(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     sectionId: text('section_id').notNull(),
     owner: text('owner').notNull(),
     epoch: bigint('epoch', { mode: 'bigint' }).notNull(),
@@ -89,8 +89,8 @@ const leases = pgTable(
   (table) => [
     primaryKey({ columns: [table.draftId, table.sectionId] }),
     foreignKey({
-      columns: [table.draftId, table.workspaceId],
-      foreignColumns: [drafts.id, drafts.workspaceId],
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
     }),
   ],
 );
@@ -106,7 +106,7 @@ const commandLog = pgTable(
       .generatedAlwaysAsIdentity()
       .primaryKey(),
     draftId: uuid('draft_id').notNull(),
-    workspaceId: text('workspace_id').notNull(),
+    teamId: text('team_id').notNull(),
     sectionId: text('section_id').notNull(),
     owner: text('owner').notNull(),
     epoch: bigint('epoch', { mode: 'bigint' }).notNull(),
@@ -147,6 +147,6 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER sections_immutable
   BEFORE UPDATE ON sections
   FOR EACH ROW
-  WHEN (NEW.workspace_id IS DISTINCT FROM OLD.workspace_id OR NEW.hash IS DISTINCT FROM OLD.hash OR NEW.doc IS DISTINCT FROM OLD.doc)
+  WHEN (NEW.team_id IS DISTINCT FROM OLD.team_id OR NEW.hash IS DISTINCT FROM OLD.hash OR NEW.doc IS DISTINCT FROM OLD.doc)
   EXECUTE FUNCTION sections_are_immutable();
 `;

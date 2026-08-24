@@ -10,12 +10,12 @@ import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
-  seedWorkspace,
+  seedTeam,
 } from '../../__tests__/support/postgres.ts';
 
 export const storeDb = await reachableDb();
 
-export const TEST_WORKSPACE_ID = 'ws-test';
+export const TEST_TEAM_ID = 'team-test';
 
 export const GC_OPTS = {
   retainManifestsPerDraft: 0,
@@ -26,12 +26,12 @@ export const GC_OPTS = {
 /** Backdates the sweep quarantine so a GC run can collect immediately. */
 export async function ageQuarantine(
   db: pg.Pool,
-  workspaceId?: string,
+  teamId?: string,
 ): Promise<void> {
   await db.query(
     `UPDATE sections SET unreferenced_at = unreferenced_at - interval '1 hour'
-     ${workspaceId === undefined ? '' : 'WHERE workspace_id = $1'}`,
-    workspaceId === undefined ? [] : [workspaceId],
+     ${teamId === undefined ? '' : 'WHERE team_id = $1'}`,
+    teamId === undefined ? [] : [teamId],
   );
 }
 
@@ -44,14 +44,14 @@ export async function makeStoreSchema(): Promise<{
   const scratch = await createScratchSchema(storeDb);
   try {
     await provisionScratchSchema(scratch.pool);
-    await seedWorkspace(scratch.pool, TEST_WORKSPACE_ID);
+    await seedTeam(scratch.pool, TEST_TEAM_ID);
   } catch (error) {
     await scratch.dispose();
     throw error;
   }
   return {
     db: scratch.pool,
-    tenantDb: createTenantDb(scratch.pool, TEST_WORKSPACE_ID),
+    tenantDb: createTenantDb(scratch.pool, TEST_TEAM_ID),
     dispose: scratch.dispose,
   };
 }

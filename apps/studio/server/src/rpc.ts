@@ -29,26 +29,26 @@ export function createRpcRouter(
   deps: { auth: AuthService; pool?: pg.Pool },
 ) {
   const { auth, pool } = deps;
-  // Tenancy is checked per request against an explicit workspaceId in the
-  // procedure input — never the session's active workspace. A non-member and
-  // a nonexistent workspace both read FORBIDDEN, so the check is not an
-  // existence oracle; a router wired without a database is a deployment bug,
-  // not an authorization refusal.
-  const requireWorkspace = os.middleware(
-    async ({ context, next }, input: { workspaceId: string }) => {
+  // Tenancy is checked per request against an explicit teamId in the
+  // procedure input — never the session's active team. A non-member and a
+  // nonexistent team both read FORBIDDEN, so the check is not an existence
+  // oracle; a router wired without a database is a deployment bug, not an
+  // authorization refusal.
+  const requireTeam = os.middleware(
+    async ({ context, next }, input: { teamId: string }) => {
       const { principal } = context;
       if (!principal) throw new ORPCError('UNAUTHORIZED');
       if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
       const membership = await auth.getMembership(
         principal.userId,
-        input.workspaceId,
+        input.teamId,
       );
       if (!membership) throw new ORPCError('FORBIDDEN');
       return next({
         context: {
           principal,
-          workspace: { id: input.workspaceId, role: membership.role },
-          tenantDb: createTenantDb(pool, input.workspaceId),
+          team: { id: input.teamId, role: membership.role },
+          tenantDb: createTenantDb(pool, input.teamId),
         },
       });
     },
@@ -64,13 +64,13 @@ export function createRpcRouter(
     })),
     protocols: {
       create: os.protocols.create
-        .use(requireWorkspace)
+        .use(requireTeam)
         .handler(async ({ context, input }) => {
           const store = new ProtocolStore(context.tenantDb);
           return store.createProtocol({ protocol: emptyProtocol(input.name) });
         }),
       list: os.protocols.list
-        .use(requireWorkspace)
+        .use(requireTeam)
         .handler(({ context }) =>
           new ProtocolStore(context.tenantDb).listProtocols(),
         ),

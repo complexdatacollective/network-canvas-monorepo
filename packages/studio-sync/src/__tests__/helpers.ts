@@ -12,7 +12,7 @@ import { SyncServer } from '../server.ts';
 import { createTenantDb } from '../tenant.ts';
 import { CI, PGPORT } from './test-env.ts';
 
-export const TEST_WORKSPACE_ID = 'ws-test';
+export const TEST_TEAM_ID = 'team-test';
 
 /**
  * A scratch database carrying the sync schema. Connects as the postgres
@@ -87,7 +87,7 @@ export const dbAvailable = await (async () => {
 
 export async function makeServer(dbName: string, ttlMs?: number) {
   const db = await createSyncDatabase(PGPORT, dbName);
-  const tenantDb = createTenantDb(db, TEST_WORKSPACE_ID);
+  const tenantDb = createTenantDb(db, TEST_TEAM_ID);
   const server = new SyncServer(tenantDb, ttlMs);
   return { db, tenantDb, server };
 }

@@ -1,6 +1,6 @@
-// Cross-workspace isolation at the application layer: identical content
-// dedupes per workspace, reads cannot cross the boundary, and GC in one
-// workspace never collects another's rows.
+// Cross-team isolation at the application layer: identical content dedupes per
+// team, reads cannot cross the boundary, and GC in one team never collects
+// another's rows.
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -11,7 +11,7 @@ import {
 } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
-import { seedWorkspace } from '../../__tests__/support/postgres.ts';
+import { seedTeam } from '../../__tests__/support/postgres.ts';
 import { gcProtocolStore } from '../gc.ts';
 import { ProtocolStore, ProtocolStoreError } from '../store.ts';
 import {
@@ -22,7 +22,7 @@ import {
   storeDb,
 } from './helpers.ts';
 
-describe.skipIf(!storeDb)('workspace isolation', () => {
+describe.skipIf(!storeDb)('team isolation', () => {
   let db: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
@@ -32,10 +32,10 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
 
   beforeAll(async () => {
     ({ db, dispose } = await makeStoreSchema());
-    await seedWorkspace(db, 'ws-a');
-    await seedWorkspace(db, 'ws-b');
-    tenantA = createTenantDb(db, 'ws-a');
-    tenantB = createTenantDb(db, 'ws-b');
+    await seedTeam(db, 'team-a');
+    await seedTeam(db, 'team-b');
+    tenantA = createTenantDb(db, 'team-a');
+    tenantB = createTenantDb(db, 'team-b');
     storeA = new ProtocolStore(tenantA);
     storeB = new ProtocolStore(tenantB);
   });
@@ -43,7 +43,7 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
     await dispose();
   });
 
-  it('deduplicates identical section content per workspace, not globally', async () => {
+  it('deduplicates identical section content per team, not globally', async () => {
     const a = await storeA.createProtocol({ protocol: baseProtocol() });
     const b = await storeB.createProtocol({ protocol: baseProtocol() });
 
@@ -53,16 +53,13 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
 
     const settingsHash = headA.sectionHashes.settings!;
     const rows = await db.query(
-      `SELECT workspace_id FROM sections WHERE hash = $1 ORDER BY workspace_id`,
+      `SELECT team_id FROM sections WHERE hash = $1 ORDER BY team_id`,
       [settingsHash],
     );
-    expect(rows.rows).toEqual([
-      { workspace_id: 'ws-a' },
-      { workspace_id: 'ws-b' },
-    ]);
+    expect(rows.rows).toEqual([{ team_id: 'team-a' }, { team_id: 'team-b' }]);
   });
 
-  it('refuses reads across the workspace boundary', async () => {
+  it('refuses reads across the team boundary', async () => {
     const bOnlyProtocol = { ...baseProtocol(), name: 'Only in B' };
     const b = await storeB.createProtocol({ protocol: bOnlyProtocol });
     await expect(storeA.getDraftSections(b.draftId)).rejects.toThrow(
@@ -92,7 +89,7 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
     ).resolves.toMatchObject({ name: 'Only in B' });
   });
 
-  it('lists only the workspace’s own protocols', async () => {
+  it('lists only the team’s own protocols', async () => {
     const { protocolId } = await storeA.createProtocol({
       protocol: baseProtocol(),
     });
@@ -102,8 +99,8 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
     expect(inB.map((p) => p.id)).not.toContain(protocolId);
   });
 
-  it('GC of one workspace never collects another’s identical-content sections', async () => {
-    // Content unique to this test, identical in both workspaces, so A's copy
+  it('GC of one team never collects another’s identical-content sections', async () => {
+    // Content unique to this test, identical in both teams, so A's copy
     // becomes unreferenced on discard while B's stays pinned by its draft.
     const shared = { ...baseProtocol(), name: 'GC Shared' };
     const a = await storeA.createProtocol({ protocol: shared });
@@ -113,18 +110,16 @@ describe.skipIf(!storeDb)('workspace isolation', () => {
 
     await storeA.discardDraft(a.draftId);
     await gcProtocolStore(db, GC_OPTS);
-    await ageQuarantine(db, 'ws-a');
+    await ageQuarantine(db, 'team-a');
     await gcProtocolStore(db, GC_OPTS);
 
     const survivors = await db.query(
-      `SELECT workspace_id FROM sections WHERE hash = $1`,
+      `SELECT team_id FROM sections WHERE hash = $1`,
       [settingsHash],
     );
     expect(
-      (survivors.rows as { workspace_id: string }[]).map(
-        (row) => row.workspace_id,
-      ),
-    ).toEqual(['ws-b']);
+      (survivors.rows as { team_id: string }[]).map((row) => row.team_id),
+    ).toEqual(['team-b']);
     expect(await storeB.getDraftDocument(b.draftId)).toEqual(shared);
   });
 });

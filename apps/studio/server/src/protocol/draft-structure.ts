@@ -23,13 +23,13 @@ type HeadState = {
 
 async function lockHead(
   client: pg.PoolClient,
-  workspaceId: string,
+  teamId: string,
   draftId: string,
 ): Promise<HeadState> {
   const locked = await client.query(
     `SELECT head_seq, head_manifest_hash FROM drafts
-     WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
-    [draftId, workspaceId],
+     WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+    [draftId, teamId],
   );
   const draft = locked.rows[0] as
     | { head_seq: string; head_manifest_hash: string }
@@ -39,8 +39,8 @@ async function lockHead(
   }
   const head = await client.query(
     `SELECT section_hashes FROM manifests
-     WHERE draft_id = $1 AND seq = $2 AND workspace_id = $3`,
-    [draftId, draft.head_seq, workspaceId],
+     WHERE draft_id = $1 AND seq = $2 AND team_id = $3`,
+    [draftId, draft.head_seq, teamId],
   );
   const row = head.rows[0] as
     | { section_hashes: Record<string, string> }
@@ -59,12 +59,12 @@ async function lockHead(
 
 async function loadDoc(
   client: pg.PoolClient,
-  workspaceId: string,
+  teamId: string,
   hash: string,
 ): Promise<SectionDoc> {
   const res = await client.query(
-    `SELECT doc FROM sections WHERE workspace_id = $1 AND hash = $2`,
-    [workspaceId, hash],
+    `SELECT doc FROM sections WHERE team_id = $1 AND hash = $2`,
+    [teamId, hash],
   );
   const row = res.rows[0] as { doc: SectionDoc } | undefined;
   if (row === undefined) {
@@ -89,20 +89,20 @@ function stageOrderOf(doc: SectionDoc): string[] {
 // accept the old owner's stale edits.
 async function fenceLeases(
   client: pg.PoolClient,
-  workspaceId: string,
+  teamId: string,
   draftId: string,
   sectionIds: string[],
 ): Promise<void> {
   await client.query(
     `UPDATE leases SET epoch = epoch + 1, expires_at = clock_timestamp()
-     WHERE draft_id = $1 AND section_id = ANY($2) AND workspace_id = $3`,
-    [draftId, sectionIds, workspaceId],
+     WHERE draft_id = $1 AND section_id = ANY($2) AND team_id = $3`,
+    [draftId, sectionIds, teamId],
   );
 }
 
 async function advanceManifest(
   client: pg.PoolClient,
-  workspaceId: string,
+  teamId: string,
   draftId: string,
   head: HeadState,
   newSections: Record<string, SectionDoc>,
@@ -116,20 +116,20 @@ async function advanceManifest(
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (workspace_id, hash, doc) VALUES ($1, $2, $3)
-       ON CONFLICT (workspace_id, hash) DO UPDATE
+      `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
+       ON CONFLICT (team_id, hash) DO UPDATE
        SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-      [workspaceId, hash, doc],
+      [teamId, hash, doc],
     );
   }
   const newSeq = head.headSeq + 1n;
   const newManifestHash = manifestHash(sectionHashes, head.headManifestHash);
   await client.query(
-    `INSERT INTO manifests (draft_id, workspace_id, seq, hash, parent_hash, section_hashes)
+    `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [
       draftId,
-      workspaceId,
+      teamId,
       String(newSeq),
       newManifestHash,
       head.headManifestHash,
@@ -138,8 +138,8 @@ async function advanceManifest(
   );
   await client.query(
     `UPDATE drafts SET head_seq = $2, head_manifest_hash = $3
-     WHERE id = $1 AND workspace_id = $4`,
-    [draftId, String(newSeq), newManifestHash, workspaceId],
+     WHERE id = $1 AND team_id = $4`,
+    [draftId, String(newSeq), newManifestHash, teamId],
   );
   return { manifestSeq: newSeq, manifestHash: newManifestHash };
 }
@@ -155,9 +155,9 @@ export async function addStage(
   const id = sectionId({ kind: 'stage', stageId });
   assertSectionValid(id, params.stage);
 
-  const workspaceId = db.workspaceId;
+  const teamId = db.teamId;
   return db.transaction(async (client) => {
-    const head = await lockHead(client, workspaceId, params.draftId);
+    const head = await lockHead(client, teamId, params.draftId);
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`stage ${stageId} already exists`);
     }
@@ -166,17 +166,17 @@ export async function addStage(
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, workspaceId, orderHash));
+    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
     const index = params.index ?? order.length;
     if (!Number.isInteger(index) || index < 0 || index > order.length) {
       throw new DraftStructureError(`stage index ${index} out of range`);
     }
     const newOrder = [...order];
     newOrder.splice(index, 0, stageId);
-    await fenceLeases(client, workspaceId, params.draftId, [orderId, id]);
+    await fenceLeases(client, teamId, params.draftId, [orderId, id]);
     return advanceManifest(
       client,
-      workspaceId,
+      teamId,
       params.draftId,
       head,
       { [id]: params.stage, [orderId]: { stages: newOrder } },
@@ -190,9 +190,9 @@ export async function removeStage(
   params: { draftId: string; stageId: string },
 ): Promise<StructuralResult> {
   const id = sectionId({ kind: 'stage', stageId: params.stageId });
-  const workspaceId = db.workspaceId;
+  const teamId = db.teamId;
   return db.transaction(async (client) => {
-    const head = await lockHead(client, workspaceId, params.draftId);
+    const head = await lockHead(client, teamId, params.draftId);
     if (head.sectionHashes[id] === undefined) {
       throw new DraftStructureError(`no stage ${params.stageId} in draft`);
     }
@@ -201,12 +201,12 @@ export async function removeStage(
     if (orderHash === undefined) {
       throw new DraftStructureError('draft has no stageOrder section');
     }
-    const order = stageOrderOf(await loadDoc(client, workspaceId, orderHash));
+    const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
     const newOrder = order.filter((entry) => entry !== params.stageId);
-    await fenceLeases(client, workspaceId, params.draftId, [orderId, id]);
+    await fenceLeases(client, teamId, params.draftId, [orderId, id]);
     return advanceManifest(
       client,
-      workspaceId,
+      teamId,
       params.draftId,
       head,
       { [orderId]: { stages: newOrder } },
@@ -241,16 +241,16 @@ export async function addCodebookEntity(
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
   assertSectionValid(id, params.definition);
-  const workspaceId = db.workspaceId;
+  const teamId = db.teamId;
   return db.transaction(async (client) => {
-    const head = await lockHead(client, workspaceId, params.draftId);
+    const head = await lockHead(client, teamId, params.draftId);
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`codebook section ${id} already exists`);
     }
-    await fenceLeases(client, workspaceId, params.draftId, [id]);
+    await fenceLeases(client, teamId, params.draftId, [id]);
     return advanceManifest(
       client,
-      workspaceId,
+      teamId,
       params.draftId,
       head,
       { [id]: params.definition },
@@ -264,13 +264,13 @@ export async function removeCodebookEntity(
   params: { draftId: string; ref: CodebookEntityRef },
 ): Promise<StructuralResult> {
   const id = entitySectionId(params.ref);
-  const workspaceId = db.workspaceId;
+  const teamId = db.teamId;
   return db.transaction(async (client) => {
-    const head = await lockHead(client, workspaceId, params.draftId);
+    const head = await lockHead(client, teamId, params.draftId);
     if (head.sectionHashes[id] === undefined) {
       throw new DraftStructureError(`no codebook section ${id} in draft`);
     }
-    await fenceLeases(client, workspaceId, params.draftId, [id]);
-    return advanceManifest(client, workspaceId, params.draftId, head, {}, [id]);
+    await fenceLeases(client, teamId, params.draftId, [id]);
+    return advanceManifest(client, teamId, params.draftId, head, {}, [id]);
   });
 }

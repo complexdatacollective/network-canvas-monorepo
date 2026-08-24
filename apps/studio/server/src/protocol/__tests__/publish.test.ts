@@ -7,7 +7,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 import { ProtocolStore } from '../store.ts';
 import {
   FIXTURES,
-  TEST_WORKSPACE_ID,
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
   readFixtureProtocol,
@@ -241,9 +241,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
 
     await expect(
       db.query(
-        `INSERT INTO version_sections (version_id, workspace_id, section_id, section_hash)
+        `INSERT INTO version_sections (version_id, team_id, section_id, section_hash)
          VALUES ($1, $2, 'stage:smuggled', $3)`,
-        [result.versionId, TEST_WORKSPACE_ID, pinnedHash],
+        [result.versionId, TEST_TEAM_ID, pinnedHash],
       ),
     ).rejects.toThrow(/immutable/);
   });

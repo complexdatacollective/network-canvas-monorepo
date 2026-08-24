@@ -8,7 +8,7 @@ import {
 
 export async function insertDraftRows(
   client: pg.PoolClient,
-  workspaceId: string,
+  teamId: string,
   draftId: string,
   sections: Record<string, SectionDoc>,
 ): Promise<void> {
@@ -17,21 +17,21 @@ export async function insertDraftRows(
     const hash = contentHash(doc);
     sectionHashes[id] = hash;
     await client.query(
-      `INSERT INTO sections (workspace_id, hash, doc) VALUES ($1, $2, $3)
-       ON CONFLICT (workspace_id, hash) DO UPDATE
+      `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
+       ON CONFLICT (team_id, hash) DO UPDATE
        SET created_at = clock_timestamp(), unreferenced_at = NULL`,
-      [workspaceId, hash, doc],
+      [teamId, hash, doc],
     );
   }
   const mHash = manifestHash(sectionHashes, null);
   await client.query(
-    `INSERT INTO drafts (id, workspace_id, head_seq, head_manifest_hash)
+    `INSERT INTO drafts (id, team_id, head_seq, head_manifest_hash)
      VALUES ($1, $2, 0, $3)`,
-    [draftId, workspaceId, mHash],
+    [draftId, teamId, mHash],
   );
   await client.query(
-    `INSERT INTO manifests (draft_id, workspace_id, seq, hash, parent_hash, section_hashes)
+    `INSERT INTO manifests (draft_id, team_id, seq, hash, parent_hash, section_hashes)
      VALUES ($1, $2, 0, $3, NULL, $4)`,
-    [draftId, workspaceId, mHash, sectionHashes],
+    [draftId, teamId, mHash, sectionHashes],
   );
 }

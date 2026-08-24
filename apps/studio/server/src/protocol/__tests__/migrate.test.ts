@@ -10,7 +10,7 @@ import type { TenantDb } from '@codaco/studio-sync/tenant';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import { ProtocolStore } from '../store.ts';
 import {
-  TEST_WORKSPACE_ID,
+  TEST_TEAM_ID,
   baseProtocol,
   makeStoreSchema,
   storeDb,
@@ -52,14 +52,14 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const protocolId = randomUUID();
     const draftId = randomUUID();
     await db.query(
-      `INSERT INTO protocols (id, workspace_id, name) VALUES ($1, $2, $3)`,
-      [protocolId, TEST_WORKSPACE_ID, 'Legacy Protocol'],
+      `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
+      [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
     );
     await new SyncServer(tenantDb).createDraft(draftId, V7_SECTIONS);
     await db.query(
-      `INSERT INTO protocol_drafts (draft_id, workspace_id, protocol_id)
+      `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
        VALUES ($1, $2, $3)`,
-      [draftId, TEST_WORKSPACE_ID, protocolId],
+      [draftId, TEST_TEAM_ID, protocolId],
     );
     const published = await store.publishDraft({ draftId });
     if (published.status !== 'published') {

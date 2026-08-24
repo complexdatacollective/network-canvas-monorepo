@@ -56,31 +56,31 @@ export async function gcProtocolStore(
 
   const referenced = `EXISTS (
       SELECT 1 FROM version_sections vs
-      WHERE vs.workspace_id = s.workspace_id AND vs.section_hash = s.hash
+      WHERE vs.team_id = s.team_id AND vs.section_hash = s.hash
     )
     OR EXISTS (
       SELECT 1 FROM manifests m
       CROSS JOIN LATERAL jsonb_each_text(m.section_hashes) kv
-      WHERE m.workspace_id = s.workspace_id AND kv.value = s.hash
+      WHERE m.team_id = s.team_id AND kv.value = s.hash
     )`;
 
-  // The one deliberately cross-workspace read: maintenance visits every
-  // tenant. Not a membership lookup, so the AuthService seam stays intact;
-  // a BYPASSRLS maintenance role replaces this direct scan when row-level
-  // security lands (#1249).
-  const workspaces = await db.query(`SELECT id FROM workspaces ORDER BY id`);
-  for (const { id: workspaceId } of workspaces.rows as { id: string }[]) {
-    const tenant = createTenantDb(db, workspaceId);
+  // The one deliberately cross-team read: maintenance visits every tenant.
+  // Not a membership lookup, so the AuthService seam stays intact; a BYPASSRLS
+  // maintenance role replaces this direct scan when row-level security lands
+  // (#1249).
+  const teams = await db.query(`SELECT id FROM teams ORDER BY id`);
+  for (const { id: teamId } of teams.rows as { id: string }[]) {
+    const tenant = createTenantDb(db, teamId);
 
     const drafts = await tenant.query(
-      `SELECT id FROM drafts WHERE workspace_id = $1 ORDER BY id`,
-      [workspaceId],
+      `SELECT id FROM drafts WHERE team_id = $1 ORDER BY id`,
+      [teamId],
     );
     for (const { id: draftId } of drafts.rows as { id: string }[]) {
       await tenant.transaction(async (client) => {
         const head = await client.query(
-          `SELECT head_seq FROM drafts WHERE id = $1 AND workspace_id = $2 FOR UPDATE`,
-          [draftId, workspaceId],
+          `SELECT head_seq FROM drafts WHERE id = $1 AND team_id = $2 FOR UPDATE`,
+          [draftId, teamId],
         );
         const headRow = head.rows[0] as { head_seq: string } | undefined;
         if (headRow === undefined) return;
@@ -91,32 +91,32 @@ export async function gcProtocolStore(
         const commandLog = await client.query(
           `DELETE FROM command_log cl
            WHERE cl.draft_id = $1
-             AND cl.workspace_id = $4
+             AND cl.team_id = $4
              AND cl.manifest_seq < $2::bigint
              AND cl.created_at < now() - make_interval(secs => $3::float / 1000)
              AND NOT EXISTS (
                SELECT 1 FROM leases l
                WHERE l.draft_id = cl.draft_id
-                 AND l.workspace_id = cl.workspace_id
+                 AND l.team_id = cl.team_id
                  AND l.section_id = cl.section_id
                  AND l.owner = cl.owner
                  AND l.epoch = cl.epoch
                  AND l.expires_at > clock_timestamp()
              )`,
-          [draftId, oldest, commandRetryHorizonMs, workspaceId],
+          [draftId, oldest, commandRetryHorizonMs, teamId],
         );
         const manifests = await client.query(
           `DELETE FROM manifests m
            WHERE m.draft_id = $1
-             AND m.workspace_id = $3
+             AND m.team_id = $3
              AND m.seq < $2::bigint
              AND NOT EXISTS (
                SELECT 1 FROM command_log cl
                WHERE cl.draft_id = m.draft_id
-                 AND cl.workspace_id = m.workspace_id
+                 AND cl.team_id = m.team_id
                  AND cl.manifest_seq = m.seq
              )`,
-          [draftId, oldest, workspaceId],
+          [draftId, oldest, teamId],
         );
         result.commandLogDeleted += commandLog.rowCount ?? 0;
         result.manifestsDeleted += manifests.rowCount ?? 0;
@@ -125,22 +125,22 @@ export async function gcProtocolStore(
 
     await tenant.query(
       `UPDATE sections s SET unreferenced_at = NULL
-       WHERE s.workspace_id = $1 AND s.unreferenced_at IS NOT NULL
+       WHERE s.team_id = $1 AND s.unreferenced_at IS NOT NULL
          AND (${referenced})`,
-      [workspaceId],
+      [teamId],
     );
     await tenant.query(
       `UPDATE sections s SET unreferenced_at = clock_timestamp()
-       WHERE s.workspace_id = $1 AND s.unreferenced_at IS NULL
+       WHERE s.team_id = $1 AND s.unreferenced_at IS NULL
          AND NOT (${referenced})`,
-      [workspaceId],
+      [teamId],
     );
     const sections = await tenant.query(
       `DELETE FROM sections s
-       WHERE s.workspace_id = $2
+       WHERE s.team_id = $2
          AND s.unreferenced_at < now() - make_interval(secs => $1::float / 1000)
          AND NOT (${referenced})`,
-      [sectionGraceMs, workspaceId],
+      [sectionGraceMs, teamId],
     );
     result.sectionsDeleted += sections.rowCount ?? 0;
   }

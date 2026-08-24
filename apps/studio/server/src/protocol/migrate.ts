@@ -27,14 +27,14 @@ export async function migrateStoredVersionToDraft(
   toSchemaVersion: number;
 }> {
   const draftId = params.draftId ?? randomUUID();
-  const workspaceId = db.workspaceId;
+  const teamId = db.teamId;
 
   const version = await db.query(
     `SELECT v.protocol_id, v.schema_version, p.name
      FROM protocol_versions v
-     JOIN protocols p ON p.id = v.protocol_id AND p.workspace_id = v.workspace_id
-     WHERE v.id = $1 AND v.workspace_id = $2`,
-    [params.versionId, workspaceId],
+     JOIN protocols p ON p.id = v.protocol_id AND p.team_id = v.team_id
+     WHERE v.id = $1 AND v.team_id = $2`,
+    [params.versionId, teamId],
   );
   const versionRow = version.rows[0] as
     | { protocol_id: string; schema_version: number; name: string }
@@ -46,9 +46,9 @@ export async function migrateStoredVersionToDraft(
   const pins = await db.query(
     `SELECT vs.section_id, s.doc
      FROM version_sections vs
-     JOIN sections s ON s.workspace_id = vs.workspace_id AND s.hash = vs.section_hash
-     WHERE vs.version_id = $1 AND vs.workspace_id = $2`,
-    [params.versionId, workspaceId],
+     JOIN sections s ON s.team_id = vs.team_id AND s.hash = vs.section_hash
+     WHERE vs.version_id = $1 AND vs.team_id = $2`,
+    [params.versionId, teamId],
   );
   const sections: Record<string, SectionDoc> = {};
   for (const row of pins.rows as { section_id: string; doc: SectionDoc }[]) {
@@ -65,11 +65,11 @@ export async function migrateStoredVersionToDraft(
   const migratedSections = sectionizeProtocol(migrated);
 
   await db.transaction(async (client) => {
-    await insertDraftRows(client, workspaceId, draftId, migratedSections);
+    await insertDraftRows(client, teamId, draftId, migratedSections);
     await client.query(
-      `INSERT INTO protocol_drafts (draft_id, workspace_id, protocol_id, based_on_version_id)
+      `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id, based_on_version_id)
        VALUES ($1, $2, $3, $4)`,
-      [draftId, workspaceId, versionRow.protocol_id, params.versionId],
+      [draftId, teamId, versionRow.protocol_id, params.versionId],
     );
   });
 
