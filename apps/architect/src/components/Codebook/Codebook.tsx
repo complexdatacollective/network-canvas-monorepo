@@ -91,7 +91,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
 
       {!hasAnyContent && (
         <div className="bg-surface-2 border-outline mb-7 rounded border p-7">
-          <Paragraph className="text-muted text-center">
+          <Paragraph className="text-center text-current/70">
             There are currently no types or attributes defined in this protocol.
             Use the buttons below to create your first node or edge type, or add
             ego attributes.
@@ -123,7 +123,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {nodes.length === 0 ? (
-          <Paragraph className="text-muted">No node types yet.</Paragraph>
+          <Paragraph className="text-current/70">No node types yet.</Paragraph>
         ) : (
           <div className="space-y-8">
             {nodes.map((node) => (
@@ -157,7 +157,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
           </Button>
         </div>
         {edges.length === 0 ? (
-          <Paragraph className="text-muted">No edge types yet.</Paragraph>
+          <Paragraph className="text-current/70">No edge types yet.</Paragraph>
         ) : (
           <div className="space-y-8">
             {edges.map((edge) => (

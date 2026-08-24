@@ -5,7 +5,6 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
-import { clearFieldValue } from '~/components/Form/clearFieldValue';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import {
@@ -28,7 +27,7 @@ import { getStageList } from '~/selectors/protocol';
  * missing required field instead once schema-validated.
  */
 const clearDiseasesValue = (storeApi: StageFormStoreApi) => {
-  clearFieldValue(storeApi, 'diseases');
+  storeApi.getState().clearValue('diseases');
   storeApi.getState().setFieldValue('diseases', []);
 };
 

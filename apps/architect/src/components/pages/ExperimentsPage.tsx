@@ -85,7 +85,7 @@ const ExperimentsPage = () => {
                 <Heading level="h4" id={encryptedVariablesLabelId}>
                   Encrypted Attributes
                 </Heading>
-                <Paragraph className="text-muted text-sm">
+                <Paragraph className="text-sm text-current/70">
                   Enable support for encrypted attributes in the codebook. This
                   allows sensitive data to be collected securely.
                 </Paragraph>

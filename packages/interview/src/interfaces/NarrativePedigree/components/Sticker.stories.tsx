@@ -70,9 +70,7 @@ function StickerCell({
         color={SAMPLE_COLOR}
         size={GRID_SIZE}
       />
-      <span className="text-muted" style={{ fontSize: 9, textAlign: 'center' }}>
-        {caption}
-      </span>
+      <span style={{ fontSize: 9, textAlign: 'center' }}>{caption}</span>
     </div>
   );
 }
@@ -95,12 +93,7 @@ export const ShapesAndStatuses: Story = {
           key={shape}
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
-          <span
-            className="text-muted"
-            style={{ fontSize: 12, fontWeight: 600 }}
-          >
-            {shape}
-          </span>
+          <span style={{ fontSize: 12, fontWeight: 600 }}>{shape}</span>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {ALL_STATUSES.map((status) => (
               <StickerCell

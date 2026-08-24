@@ -33,7 +33,7 @@ export const buildPedigreeDialog: AcknowledgeDialog = {
           alt="Example of the context menu showing options to add parent, child, partner, sibling, edit, or delete"
           className="w-40 rounded-lg shadow-lg"
         />
-        <figcaption className="text-muted text-xs">
+        <figcaption className="text-xs">
           Select a person to see this menu
         </figcaption>
       </figure>

@@ -469,14 +469,13 @@ export const VariablePill = ({
             </motion.div>
 
             {validation && (
-              <div className="[&>div]:bg-destructive! [&>div]:text-destructive-contrast! [&>div]:px-4 [&>div]:py-2">
-                <FieldErrors
-                  id={validationId}
-                  name="variable-name"
-                  errors={[validation]}
-                  show
-                />
-              </div>
+              <FieldErrors
+                id={validationId}
+                name="variable-name"
+                errors={[validation]}
+                show
+                variant="box"
+              />
             )}
 
             <motion.div

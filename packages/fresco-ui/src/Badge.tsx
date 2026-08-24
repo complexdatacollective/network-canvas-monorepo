@@ -3,7 +3,7 @@ import type * as React from 'react';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const BADGE_BASE_CLASSES =
-  'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors';
+  'inline-flex shrink items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold';
 
 type ThemeColorStyle = {
   color: string;
@@ -15,12 +15,10 @@ const badgeVariants = cva({
   base: BADGE_BASE_CLASSES,
   variants: {
     variant: {
-      default:
-        'bg-primary text-primary-contrast hover:bg-primary/80 border-transparent',
-      secondary:
-        'bg-secondary text-secondary-contrast hover:bg-secondary/80 border-transparent',
+      default: 'bg-primary text-primary-contrast border-transparent',
+      secondary: 'bg-secondary text-secondary-contrast border-transparent',
       destructive:
-        'bg-destructive text-destructive-contrast hover:bg-destructive/80 border-transparent',
+        'bg-destructive text-destructive-contrast border-transparent',
       outline: 'text-current',
     },
   },
@@ -205,10 +203,9 @@ const themedBadgeVariants = cva({
   base: BADGE_BASE_CLASSES,
   variants: {
     variant: {
-      filled:
-        'border-transparent bg-(--badge-color) text-(--badge-contrast) hover:bg-[color-mix(in_oklab,var(--badge-color)_85%,var(--color-black)_15%)]',
+      filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
       outline:
-        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--badge-label) hover:bg-[color-mix(in_oklab,var(--badge-color)_24%,transparent)]',
+        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--badge-label)',
     },
   },
 });

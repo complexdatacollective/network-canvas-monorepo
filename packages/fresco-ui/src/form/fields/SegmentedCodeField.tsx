@@ -132,7 +132,11 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
 
-  const chars = value.split('').slice(0, segments);
+  // Rendering only: for one render the store can still hold the previous
+  // field's value (see the render-tolerance contract on `useField`), and
+  // anything but a string renders as an empty code.
+  const code = typeof value === 'string' ? value : '';
+  const chars = code.split('').slice(0, segments);
 
   const focusSegment = useCallback(
     (index: number) => {
@@ -151,10 +155,10 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   );
 
   useEffect(() => {
-    if (value.length === segments && onComplete) {
-      onComplete(value);
+    if (code.length === segments && onComplete) {
+      onComplete(code);
     }
-  }, [value, segments, onComplete]);
+  }, [code, segments, onComplete]);
 
   const handleInput = useCallback(
     (index: number, inputValue: string) => {
