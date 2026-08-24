@@ -6,6 +6,11 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
 
+const LONG_CATEGORY_LABEL =
+  'People I know through my extended family and their close friends';
+const LONG_NODE_LABEL =
+  'Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva von Hohenberg-Sforza Montgomery-Wellington the Third';
+
 /**
  * Keyboard-drag a node onto a drop target the CategoricalBinFixture cannot
  * express: the "Other" bin (whose drop opens a follow-up dialog before writing,
@@ -188,6 +193,78 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         },
       };
     })(),
+
+    {
+      id: 'long-category-and-node-labels',
+      covers: ['codebook:variable-options', 'codebook:node-label-and-type'],
+      visual: true,
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const personType = synth.addNodeType({ name: 'Person' });
+        const personName = personType.addVariable({
+          name: 'name',
+          type: 'text',
+        });
+        const categoryVar = personType.addVariable({
+          name: 'Category',
+          type: 'categorical',
+          // Ten bins keep the circles small enough to exercise the clipped
+          // layout while remaining above the breakpoint that hides summaries.
+          options: [
+            { label: 'Family', value: 1 },
+            { label: LONG_CATEGORY_LABEL, value: 2 },
+            { label: 'Work', value: 3 },
+            { label: 'School', value: 4 },
+            { label: 'Neighborhood', value: 5 },
+            { label: 'Social', value: 6 },
+            { label: 'Online', value: 7 },
+            { label: 'Sports', value: 8 },
+            { label: 'Religious', value: 9 },
+            { label: 'Political', value: 10 },
+          ],
+        });
+
+        const stage = synth.addStage('CategoricalBin', {
+          label: 'Categorise People',
+          subject: { entity: 'node', type: personType.id },
+          initialNodes: { count: 3 },
+        });
+        stage.addPrompt({ variable: categoryVar.id });
+
+        synth.setNodeAttribute(0, personName.id, LONG_NODE_LABEL);
+        synth.setNodeAttribute(0, categoryVar.id, []);
+        synth.setNodeAttribute(1, personName.id, 'Beatrice');
+        synth.setNodeAttribute(1, categoryVar.id, []);
+        synth.setNodeAttribute(2, personName.id, 'Charlotte');
+        synth.setNodeAttribute(2, categoryVar.id, []);
+
+        return synth;
+      },
+      run: async ({ stage }) => {
+        const longCategoryBin =
+          stage.categoricalBin.getBin(LONG_CATEGORY_LABEL);
+        await expect(
+          longCategoryBin.getByRole('heading', {
+            name: LONG_CATEGORY_LABEL,
+          }),
+        ).toBeVisible();
+
+        await stage.categoricalBin.dragNodeToBin(LONG_NODE_LABEL, 'Family');
+        await stage.categoricalBin.dragNodeToBin('Beatrice', 'Family');
+        await stage.categoricalBin.dragNodeToBin('Charlotte', 'Family');
+
+        const familyBin = stage.categoricalBin.getBin('Family');
+        await expect(familyBin).toHaveAccessibleName(
+          'Category Family, 3 items',
+        );
+        await expect(
+          familyBin.getByRole('heading', { name: 'Family' }),
+        ).toBeVisible();
+        await expect(familyBin.getByText(LONG_NODE_LABEL)).toBeVisible();
+        await expect(familyBin.getByText('and 2 others')).toBeVisible();
+      },
+    },
 
     ((): ScenarioDefinition => {
       let varAId = '';
