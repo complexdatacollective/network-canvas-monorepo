@@ -950,7 +950,7 @@
         {
           "id": "condition",
           "label": "This condition",
-          "color": "#e53e3e",
+          "color": "node-color-seq-1",
           "variable": "has_condition",
           "inheritancePattern": "unknown"
         }
