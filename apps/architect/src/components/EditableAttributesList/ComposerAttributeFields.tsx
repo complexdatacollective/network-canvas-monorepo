@@ -112,6 +112,8 @@ const ComposerAttributeFields = ({
         layout="vertical"
         id={getFieldId('label')}
         disabled={!fields.variable}
+        required={false}
+        title={!fields.variable ? 'Label' : undefined}
       >
         <ArchitectField
           name="label"

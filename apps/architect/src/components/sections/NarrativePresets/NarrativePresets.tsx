@@ -51,11 +51,6 @@ const template = () => ({
   },
   highlight: [],
 });
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 // Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
 // only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
 // disabledMessage}` (injected) — the component it wraps must accept exactly
@@ -78,6 +73,7 @@ const NarrativePresets = ({
       disabled={disabled}
       disabledMessage={disabledMessage}
       layout="vertical"
+      title={disabled ? 'Narrative presets' : undefined}
     >
       <ArchitectArrayField
         name="presets"
@@ -90,7 +86,7 @@ const NarrativePresets = ({
         }
         component={DialogArrayField}
         addButtonLabel="Create new preset"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialPresets}
         addTitle="Edit Preset"
         editorFieldsComponent={

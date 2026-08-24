@@ -10,11 +10,6 @@ import ItemEditor from './ItemEditor';
 import ItemPreview from './ItemPreview';
 import { denormalizeType, normalizeType } from './itemTypes';
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 type Item = Record<string, unknown>;
 
 const ContentGrid = (_props: StageEditorSectionProps) => {
@@ -28,7 +23,7 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
         hint="Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size."
         component={DialogArrayField}
         addButtonLabel="Create new content item"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialItems}
         addTitle="Edit Item"
         editorFieldsComponent={

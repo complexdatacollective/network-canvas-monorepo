@@ -37,10 +37,6 @@ const diseaseTemplate = (): DiseaseRow => ({
   variable: '',
   inheritancePattern: '',
 });
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 type FamilyPedigreeStage = Extract<
@@ -126,7 +122,7 @@ const Diseases = (_props: StageEditorSectionProps) => {
         }
         component={DialogArrayField}
         addButtonLabel="Create new disease"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={diseasesInitial ?? []}
         addTitle="Edit Disease"
         editorFieldsComponent={DiseaseFields as unknown as Renderer}

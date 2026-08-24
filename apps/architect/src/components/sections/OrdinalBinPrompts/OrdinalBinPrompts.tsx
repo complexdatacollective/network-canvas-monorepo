@@ -19,11 +19,6 @@ import PromptFields from './PromptFields';
 
 const template = () => ({ color: 'ord-color-seq-1' });
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 type Prompt = Record<string, unknown>;
 
 /**
@@ -73,6 +68,7 @@ const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
       disabled={!type}
       disabledMessage="Select a node type above to configure this section."
       layout="vertical"
+      title={!type ? 'Prompts' : undefined}
     >
       <ArchitectArrayField
         name="prompts"
@@ -80,7 +76,7 @@ const OrdinalBinPrompts = (_props: StageEditorSectionProps) => {
         hint="Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable handles on the left hand side."
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialPrompts}
         addTitle="Edit Prompt"
         previewComponent={

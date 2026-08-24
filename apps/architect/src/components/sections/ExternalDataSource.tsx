@@ -73,6 +73,7 @@ const ExternalDataSource = ({
       disabled={disabled}
       disabledMessage={disabledMessage}
       layout="vertical"
+      title={disabled ? 'Roster data source' : undefined}
     >
       <ArchitectField
         component={DataSource}

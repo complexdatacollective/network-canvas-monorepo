@@ -121,6 +121,7 @@ const VariableDefinitionFields = ({
         layout="vertical"
         id={getFieldId('component')}
         disabled={!variable}
+        title={!variable ? 'Input control' : undefined}
       >
         <ArchitectField
           name="component"

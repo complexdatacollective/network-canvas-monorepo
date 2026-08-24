@@ -178,7 +178,11 @@ const MapOptions = () => {
           initialValue={initialAllowSearch ?? false}
         />
       </Section>
-      <Section disabled={disabled} layout="vertical">
+      <Section
+        disabled={disabled}
+        layout="vertical"
+        title={disabled ? 'Initial Map View' : undefined}
+      >
         {/*
           NOTE: this registers a SEPARATE field at the parent `mapOptions`
           path, alongside the `mapOptions.*` leaf fields above — inherited

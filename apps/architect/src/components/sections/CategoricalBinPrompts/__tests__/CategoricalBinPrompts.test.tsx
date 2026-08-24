@@ -219,6 +219,7 @@ const waitForSave = (submitLabel: string) =>
 describe('CategoricalBinPrompts', () => {
   it('disables the section when the stage has no subject type', () => {
     renderSection({ subject: { entity: 'node' } });
+    expect(screen.getByText('Prompts')).toBeVisible();
     expect(
       screen.getByText(/select a node type above to configure this section/i),
     ).toBeInTheDocument();
@@ -226,7 +227,9 @@ describe('CategoricalBinPrompts', () => {
 
   it('renders the prompts array field for a node subject', () => {
     renderSection({ subject: { entity: 'node', type: 'person' } });
-    expect(screen.getAllByText('Prompts').length).toBeGreaterThan(0);
+    const prompts = screen.getByRole('list', { name: 'Prompts' });
+    expect(prompts).toHaveAttribute('aria-required', 'true');
+    expect(prompts).toHaveAccessibleDescription(/Required/);
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeInTheDocument();

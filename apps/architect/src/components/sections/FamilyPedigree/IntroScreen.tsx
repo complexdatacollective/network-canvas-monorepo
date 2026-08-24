@@ -25,11 +25,6 @@ import {
 // own properties into it, so the cast is safe.
 type Renderer = ComponentType<Record<string, unknown>>;
 
-const notEmpty = (value: unknown) =>
-  value && Array.isArray(value) && value.length > 0
-    ? undefined
-    : 'You must create at least one item.';
-
 const IntroScreen = (_props: StageEditorSectionProps) => {
   const setStageValue = useSetStageValue();
   // The registered LEAF is `introScreen.items` — `introScreen` itself is
@@ -79,7 +74,7 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
         label="Content sections"
         component={DialogArrayField}
         addButtonLabel="Create new content section"
-        validation={{ notEmpty }}
+        validation={{ required: 'You must create at least one item.' }}
         initialValue={initialItems ?? []}
         addTitle="Edit Section"
         previewComponent={ItemPreview as unknown as Renderer}
