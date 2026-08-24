@@ -1,7 +1,7 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -82,6 +82,29 @@ export const VariablePickerControl = ({
     [],
   );
 
+  /**
+   * The spotlight is part of this field's interaction, but its popup is
+   * portalled outside the field's DOM subtree. Without this boundary check,
+   * fresco-ui's container-scoped blur validation treats the popup's autofocus
+   * as leaving the field. A dirty AssignAttributes array then validates and
+   * re-renders underneath the popup before its first option click completes.
+   */
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const nextTarget = event.relatedTarget;
+      if (
+        showPicker ||
+        (nextTarget instanceof Element &&
+          nextTarget.closest('[data-variable-spotlight]'))
+      ) {
+        event.stopPropagation();
+        return;
+      }
+      onBlur?.(event);
+    },
+    [onBlur, showPicker],
+  );
+
   const handleSelectVariable = (variable: string) => {
     if (disabled || readOnly) return;
     answeredRef.current = true;
@@ -123,7 +146,7 @@ export const VariablePickerControl = ({
     <>
       <div
         data-name={name}
-        onBlur={onBlur}
+        onBlur={handleBlur}
         onFocus={onFocus}
         className="flex w-full flex-col items-start gap-4"
       >

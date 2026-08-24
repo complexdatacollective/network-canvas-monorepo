@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { Info, Plus, Search, TriangleAlert } from 'lucide-react';
 import {
+  type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
   useCallback,
@@ -253,6 +254,13 @@ const VariableSpotlight = ({
     setFilterTerm(value ?? '');
   }, []);
 
+  const handlePopupBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    // Portal events bubble through the React owner tree even though the popup
+    // is outside the field in the DOM. Keep the popup's focus lifecycle from
+    // masquerading as a blur of the owning form field.
+    event.stopPropagation();
+  }, []);
+
   const handleInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       // Escape is deliberately NOT handled here. Closing the picker directly
@@ -347,6 +355,8 @@ const VariableSpotlight = ({
       />
       <ModalPopup
         key="variable-spotlight-popup"
+        data-variable-spotlight=""
+        onBlur={handlePopupBlur}
         finalFocus={finalFocus}
         className="fixed top-10 left-1/2 z-2000 w-xl max-w-[calc(100vw-3rem)] -translate-x-1/2 bg-transparent shadow-none outline-none"
       >
