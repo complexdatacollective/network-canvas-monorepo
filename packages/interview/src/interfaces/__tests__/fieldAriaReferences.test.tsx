@@ -19,6 +19,7 @@ vi.mock('../../selectors/session', () => ({
 }));
 
 vi.mock('../../selectors/name-generator', () => ({
+  getCanAddMultipleNodes: 'getCanAddMultipleNodes',
   getNodeIconName: 'getNodeIconName',
 }));
 
@@ -33,6 +34,8 @@ vi.mock('../../hooks/useStageSelector', () => ({
         return {};
       case 'getNodeIconName':
         return 'add-a-person';
+      case 'getCanAddMultipleNodes':
+        return true;
       default:
         return undefined;
     }
