@@ -74,28 +74,24 @@ const IntroScreen = (_props: StageEditorSectionProps) => {
       startExpanded={isEnabled}
       handleToggleChange={handleToggleChange}
     >
-      <>
-        <ArchitectArrayField
-          name="introScreen.items"
-          label="Content sections"
-          component={DialogArrayField}
-          addButtonLabel="Create new content section"
-          validation={{ notEmpty }}
-          initialValue={initialItems ?? []}
-          addTitle="Edit Section"
-          previewComponent={ItemPreview as unknown as Renderer}
-          editorFieldsComponent={ItemEditor}
-          editorTitle="Edit Section"
-          itemLabel="content section"
-          sortable
-          normalizeItem={
-            normalizeType as unknown as (value: unknown) => unknown
-          }
-          itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
-          requestedEditFormName="editable-list-form"
-          emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
-        />
-      </>
+      <ArchitectArrayField
+        name="introScreen.items"
+        label="Content sections"
+        component={DialogArrayField}
+        addButtonLabel="Create new content section"
+        validation={{ notEmpty }}
+        initialValue={initialItems ?? []}
+        addTitle="Edit Section"
+        previewComponent={ItemPreview as unknown as Renderer}
+        editorFieldsComponent={ItemEditor}
+        editorTitle="Edit Section"
+        itemLabel="content section"
+        sortable
+        normalizeItem={normalizeType as unknown as (value: unknown) => unknown}
+        itemSelector={denormalizeType as unknown as DialogArrayItemSelector}
+        requestedEditFormName="editable-list-form"
+        emptyStateMessage='No content sections have been created yet. Click "Create new content section" to add text or media to the intro screen.'
+      />
     </Section>
   );
 };

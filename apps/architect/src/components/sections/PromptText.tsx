@@ -18,18 +18,16 @@ type PromptTextProps = {
 const PromptText = ({ name = 'text', initialValue }: PromptTextProps) => {
   return (
     <Section id={getFieldId(name)} layout="vertical">
-      <>
-        <ArchitectField
-          name={name}
-          component={RichText}
-          singleLine
-          label="Prompt text"
-          hint="Provide instructions or context to the participant about the task you want them to complete."
-          placeholder="Enter your prompt..."
-          validation={{ required: true }}
-          initialValue={initialValue}
-        />
-      </>
+      <ArchitectField
+        name={name}
+        component={RichText}
+        singleLine
+        label="Prompt text"
+        hint="Provide instructions or context to the participant about the task you want them to complete."
+        placeholder="Enter your prompt..."
+        validation={{ required: true }}
+        initialValue={initialValue}
+      />
     </Section>
   );
 };

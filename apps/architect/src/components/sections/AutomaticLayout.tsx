@@ -61,17 +61,15 @@ const AutomaticLayout = () => {
   const initialValue = useStageInitialValue<boolean>(FIELD_PATH) ?? false;
 
   return (
-    <Section title="Layout Mode">
-      <>
-        <ArchitectField
-          name={FIELD_PATH}
-          label="Layout mode"
-          hint="How Interviewer positions nodes on the sociogram when the stage opens."
-          component={LayoutModeField}
-          initialValue={initialValue}
-          validation={{ required: true }}
-        />
-      </>
+    <Section layout="vertical">
+      <ArchitectField
+        name={FIELD_PATH}
+        label="Layout mode"
+        hint="How Interviewer positions nodes on the sociogram when the stage opens."
+        component={LayoutModeField}
+        initialValue={initialValue}
+        validation={{ required: true }}
+      />
     </Section>
   );
 };

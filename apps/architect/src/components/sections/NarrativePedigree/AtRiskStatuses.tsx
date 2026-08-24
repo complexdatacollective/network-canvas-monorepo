@@ -18,22 +18,20 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
 
   return (
     <Section title="At-Risk Statuses">
-      <>
-        <ArchitectField
-          name={FIELD_NAME}
-          component={ToggleField}
-          inline
-          initialValue={initialValue}
-          label="Show possible (at-risk) statuses"
-          hint={
-            <Paragraph>
-              Optionally show <strong>possible</strong> (at-risk) statuses
-              alongside the certain ones, inferred from family structure and
-              inheritance patterns.
-            </Paragraph>
-          }
-        />
-      </>
+      <ArchitectField
+        name={FIELD_NAME}
+        component={ToggleField}
+        inline
+        initialValue={initialValue}
+        label="Show possible (at-risk) statuses"
+        hint={
+          <Paragraph>
+            Optionally show <strong>possible</strong> (at-risk) statuses
+            alongside the certain ones, inferred from family structure and
+            inheritance patterns.
+          </Paragraph>
+        }
+      />
       <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
         <Paragraph>
           When enabled, the pedigree also shows a person who{' '}

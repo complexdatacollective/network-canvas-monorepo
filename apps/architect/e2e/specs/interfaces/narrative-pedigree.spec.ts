@@ -176,29 +176,29 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
   await editor.createNew('NarrativePedigree');
   await editor.setStageName('Family Health History');
 
-  // SourceStage.tsx: `Field name="sourceStageId" ... fieldComponent={
-  // FrescoStyledSelectField} label="Family Pedigree stage"` — a Base UI
-  // Select combobox (same "combobox" trigger role + "option" item role
-  // pattern `createVariableWithOptions` already exercises for "Variable
-  // type"), listing only the seeded FamilyPedigree stage by its `label`.
+  // SourceStage.tsx owns `sourceStageId` through a StyledSelectField labelled
+  // "Source stage" — a Base UI Select combobox (same "combobox" trigger role
+  // + "option" item role pattern `createVariableWithOptions` already
+  // exercises for "Variable type"), listing only the seeded FamilyPedigree
+  // stage by its `label`.
   // Diseases.tsx reads `nodeType` from THIS field's live value (via
   // `getStage(state, sourceStageId)`), so it must be set before the disease
   // dialog's variable picker has anything to offer — hence selecting it
   // first, as the task brief specifies.
   await editor
     .field('sourceStageId')
-    .getByRole('combobox', { name: 'Family Pedigree stage' })
+    .getByRole('combobox', { name: 'Source stage' })
     .click();
   await architectPage.getByRole('option', { name: 'Family Pedigree' }).click();
 
-  // Diseases.tsx wraps its `diseases` array in the same DialogArrayField
-  // pattern every other prompt-array section in this suite uses, even though
-  // the section is titled "Diseases" rather than "Prompts" — so the add button
-  // is named for what it adds, and addPrompt is told which label to click.
+  // Diseases.tsx exposes its `diseases` ArchitectArrayField through the same
+  // DialogArrayField pattern every other prompt array in this suite uses, so
+  // the add button is named for what it adds and addPrompt is told which label
+  // to click.
   await addPrompt(
-    editor.section('Diseases'),
+    editor.field('diseases'),
     async () => {
-      // DiseaseFields.tsx: "Disease label" (labelHidden InputField).
+      // DiseaseFields.tsx: visible "Disease label" InputField.
       await architectPage
         .getByRole('textbox', { name: 'Disease label' })
         .fill('Condition X');

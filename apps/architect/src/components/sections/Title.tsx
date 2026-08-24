@@ -8,7 +8,7 @@ const Title = (_props: StageEditorSectionProps) => {
   const initialValue = useStageInitialValue<string>('title');
 
   return (
-    <Section title="Page Heading">
+    <Section layout="vertical">
       <ArchitectField
         label="Page heading"
         hint="Use the page heading to show a large title element on your information stage."

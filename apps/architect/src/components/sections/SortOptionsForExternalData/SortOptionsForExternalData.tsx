@@ -95,57 +95,48 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       handleToggleChange={handleToggleSortOptions}
       disabled={disabled}
     >
-      <>
-        <Heading level="h4">Initial Sort Order</Heading>
-        <Paragraph>
-          Create one or more rules to determine the default sort order or the
-          roster, when it is first shown to the participant. By default,
-          Interviewer will use the order that nodes are defined in your data
-          file.
-        </Paragraph>
-        <ArchitectArrayField
-          name="sortOptions.sortOrder"
-          label="Initial sort order"
-          labelHidden
-          component={MultiSelect}
-          addButtonLabel="Add new sort rule"
-          initialValue={initialSortOrder}
-          maxItems={1}
-          properties={SORT_ORDER_PROPERTIES}
-          validation={SORT_ORDER_VALIDATION}
-          options={sortOrderOptionGetter}
-        />
-      </>
-      <>
-        <Heading level="h4">Participant Sortable Properties</Heading>
-        <Paragraph>
-          This interface allows the participant to sort the roster, to help with
-          locating a specific member. Select one or more attributes from your
-          roster that the participant can use to sort the list.
-        </Paragraph>
-        <ArchitectArrayField
-          name="sortOptions.sortableProperties"
-          label="Participant sortable properties"
-          labelHidden
-          component={MultiSelect}
-          addButtonLabel="Add new sortable property"
-          initialValue={initialSortableProperties}
-          maxItems={maxVariableOptions}
-          properties={SORTABLE_PROPERTIES}
-          validation={SORTABLE_PROPERTIES_VALIDATION}
-          options={(
-            fieldName: string,
-            rowValues: unknown,
-            allValues: unknown,
-          ) =>
-            variableOptionsGetter(
-              fieldName,
-              rowValues,
-              allValues as Array<Record<string, unknown>>,
-            )
-          }
-        />
-      </>
+      <Heading level="h4">Initial Sort Order</Heading>
+      <Paragraph>
+        Create one or more rules to determine the default sort order or the
+        roster, when it is first shown to the participant. By default,
+        Interviewer will use the order that nodes are defined in your data file.
+      </Paragraph>
+      <ArchitectArrayField
+        name="sortOptions.sortOrder"
+        label="Initial sort order"
+        labelHidden
+        component={MultiSelect}
+        addButtonLabel="Add new sort rule"
+        initialValue={initialSortOrder}
+        maxItems={1}
+        properties={SORT_ORDER_PROPERTIES}
+        validation={SORT_ORDER_VALIDATION}
+        options={sortOrderOptionGetter}
+      />
+      <Heading level="h4">Participant Sortable Properties</Heading>
+      <Paragraph>
+        This interface allows the participant to sort the roster, to help with
+        locating a specific member. Select one or more attributes from your
+        roster that the participant can use to sort the list.
+      </Paragraph>
+      <ArchitectArrayField
+        name="sortOptions.sortableProperties"
+        label="Participant sortable properties"
+        labelHidden
+        component={MultiSelect}
+        addButtonLabel="Add new sortable property"
+        initialValue={initialSortableProperties}
+        maxItems={maxVariableOptions}
+        properties={SORTABLE_PROPERTIES}
+        validation={SORTABLE_PROPERTIES_VALIDATION}
+        options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
+          variableOptionsGetter(
+            fieldName,
+            rowValues,
+            allValues as Array<Record<string, unknown>>,
+          )
+        }
+      />
     </Section>
   );
 };

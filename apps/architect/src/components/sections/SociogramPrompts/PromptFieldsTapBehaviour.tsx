@@ -150,69 +150,62 @@ const TapBehaviour = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <>
-        <RadioGroupField
-          onChange={handleChangeTapBehaviour}
-          value={tapBehaviour ?? undefined}
-          options={[
-            {
-              value: TAP_BEHAVIOURS.CREATE_EDGES,
-              label:
-                '**Edge Creation**\n\nClicking or tapping a node will allow the participant to create an edge.',
-            },
-            {
-              value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
-              label:
-                '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean attribute to true or false.',
-            },
-          ]}
+      <RadioGroupField
+        onChange={handleChangeTapBehaviour}
+        value={tapBehaviour ?? undefined}
+        options={[
+          {
+            value: TAP_BEHAVIOURS.CREATE_EDGES,
+            label:
+              '**Edge Creation**\n\nClicking or tapping a node will allow the participant to create an edge.',
+          },
+          {
+            value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
+            label:
+              '**Attribute Toggling**\n\nClicking or tapping a node will toggle a boolean attribute to true or false.',
+          },
+        ]}
+      />
+      {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
+        <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
+      )}
+      {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
+        <ArchitectField
+          name="highlight.variable"
+          label="Boolean Attribute to Toggle"
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={initialHighlight?.variable ?? undefined}
+          entity={entity}
+          type={type}
+          onCreateOption={(value: string) =>
+            handleCreateVariable(value, 'boolean', 'highlight.variable')
+          }
+          options={highlightVariablesForSubject}
         />
-      </>
-      {tapBehaviour && (
-        <>
-          {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
-            <>
-              <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
-              <ArchitectField
-                name="highlight.variable"
-                label="Boolean Attribute to Toggle"
-                component={VariablePicker}
-                validation={{ required: true }}
-                initialValue={initialHighlight?.variable ?? undefined}
-                entity={entity}
-                type={type}
-                onCreateOption={(value: string) =>
-                  handleCreateVariable(value, 'boolean', 'highlight.variable')
-                }
-                options={highlightVariablesForSubject}
-              />
-            </>
-          )}
-          {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
-            <>
-              {showNetworkFilterWarning && (
-                <Alert variant="warning" className="my-7">
-                  <AlertTitle>Network filter hides this edge type</AlertTitle>
-                  <AlertDescription>
-                    Stage level network filtering is enabled, but the edge type
-                    you want to create on this prompt is not currently included
-                    in the filter. This means that these edges may not be
-                    displayed. Either remove the stage-level network filtering,
-                    or add these edge types to the filter to resolve this issue.
-                  </AlertDescription>
-                </Alert>
-              )}
-              <ArchitectField
-                name="edges.create"
-                label="Create edges of the following type"
-                component={EntitySelectField}
-                validation={{ required: true }}
-                initialValue={initialEdges?.create ?? undefined}
-                entityType="edge"
-              />
-            </>
-          )}
-        </>
+      )}
+      {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES &&
+        showNetworkFilterWarning && (
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Network filter hides this edge type</AlertTitle>
+            <AlertDescription>
+              Stage level network filtering is enabled, but the edge type you
+              want to create on this prompt is not currently included in the
+              filter. This means that these edges may not be displayed. Either
+              remove the stage-level network filtering, or add these edge types
+              to the filter to resolve this issue.
+            </AlertDescription>
+          </Alert>
+        )}
+      {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
+        <ArchitectField
+          name="edges.create"
+          label="Create edges of the following type"
+          component={EntitySelectField}
+          validation={{ required: true }}
+          initialValue={initialEdges?.create ?? undefined}
+          entityType="edge"
+        />
       )}
     </Section>
   );

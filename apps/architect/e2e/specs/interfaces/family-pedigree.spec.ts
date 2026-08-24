@@ -145,12 +145,9 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
     options: [],
   });
 
-  // CensusPrompt.tsx: `Section title="Census Prompt"`, a single RichText
-  // field labelled "Prompt for building the family pedigree" (labelHidden).
-  await editor.fillRichText(
-    'Prompt for building the family pedigree',
-    'Who is in your family?',
-  );
+  // CensusPrompt.tsx now lets its single RichText field own the visible label
+  // instead of proxying it through a Section title.
+  await editor.fillRichText('Census prompt', 'Who is in your family?');
 
   // NominationPrompts.tsx's `nominationPrompts` array is optional
   // (`familyPedigreeStage`'s zod schema) and deliberately left untouched.

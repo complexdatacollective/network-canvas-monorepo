@@ -149,40 +149,36 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           </AlertDescription>
         </Alert>
       )}
-      <>
-        <ArchitectField
-          name="behaviours.minNodes"
-          component={IntegerInputField}
-          initialValue={initialMinValue}
-          validation={{
-            lessThanMax: minValidation,
-            positiveNumber: (value: number | null | undefined) => {
-              if (!value && value !== 0) return undefined;
-              return value >= 0 ? undefined : 'Must be a positive number';
-            },
-          }}
-          label="Minimum Number of Alters"
-          hint="0 = no minimum"
-          placeholder="0"
-        />
-      </>
-      <>
-        <ArchitectField
-          name="behaviours.maxNodes"
-          component={IntegerInputField}
-          initialValue={initialMaxValue}
-          validation={{
-            greaterThanMin: maxValidation,
-            minValue: (value: number | null | undefined) => {
-              if (!value) return undefined;
-              return value >= 1 ? undefined : 'Must be at least 1';
-            },
-          }}
-          label="Maximum Number of Alters"
-          hint="Leave empty for no maximum"
-          placeholder="Infinity"
-        />
-      </>
+      <ArchitectField
+        name="behaviours.minNodes"
+        component={IntegerInputField}
+        initialValue={initialMinValue}
+        validation={{
+          lessThanMax: minValidation,
+          positiveNumber: (value: number | null | undefined) => {
+            if (!value && value !== 0) return undefined;
+            return value >= 0 ? undefined : 'Must be a positive number';
+          },
+        }}
+        label="Minimum Number of Alters"
+        hint="0 = no minimum"
+        placeholder="0"
+      />
+      <ArchitectField
+        name="behaviours.maxNodes"
+        component={IntegerInputField}
+        initialValue={initialMaxValue}
+        validation={{
+          greaterThanMin: maxValidation,
+          minValue: (value: number | null | undefined) => {
+            if (!value) return undefined;
+            return value >= 1 ? undefined : 'Must be at least 1';
+          },
+        }}
+        label="Maximum Number of Alters"
+        hint="Leave empty for no maximum"
+        placeholder="Infinity"
+      />
     </Section>
   );
 };

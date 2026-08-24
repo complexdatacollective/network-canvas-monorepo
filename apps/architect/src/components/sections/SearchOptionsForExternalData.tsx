@@ -75,16 +75,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
       }
       disabled={disabled}
     >
-      <Section
-        title="Searchable Attributes"
-        summary={
-          <Paragraph>
-            You can configure which attributes are considered when matching
-            roster nodes to the user&apos;s query.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
+      <Section layout="vertical">
         <Alert variant="info" className="my-7">
           <AlertDescription>
             Selecting lots of attributes here may slow the performance of the
@@ -98,19 +89,11 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
           initialValue={initialMatchProperties}
           validation={{ minSelected: 1 }}
           label="Which attributes should be searchable?"
+          hint="You can configure which attributes are considered when matching roster nodes to the user's query."
           options={variableOptions}
         />
       </Section>
-      <Section
-        title="Search Accuracy"
-        summary={
-          <Paragraph>
-            Search accuracy determines how closely the text the participant
-            types must be to an attribute for it to be considered a match.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
+      <Section layout="vertical">
         <Alert variant="info" className="my-7">
           <AlertDescription>
             If the roster contains many similar nodes, selecting
@@ -125,7 +108,7 @@ const SearchOptions = ({ dataSource, disabled }: SearchOptionsProps) => {
           initialValue={initialFuzziness}
           validation={{ requiredAcceptsZero: true }}
           label="Search accuracy"
-          labelHidden
+          hint="Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match."
           options={[
             { value: 0.75, label: 'Low accuracy' },
             { value: 0.5, label: 'Medium accuracy' },

@@ -24,20 +24,17 @@ const FilteredEdgeType = (props: FilteredEdgeTypeProps) => {
   // are properly integrated with form state management
 
   return (
-    <Section title="Edge Type">
-      <>
-        <IssueAnchor fieldName="subject" description="Edge Type" />
-        <ArchitectField
-          name="subject"
-          entityType="edge"
-          promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
-          component={SubjectSelectField}
-          initialValue={initialSubject}
-          validation={{ required: true }}
-          label="Edge type"
-          labelHidden
-        />
-      </>
+    <Section layout="vertical">
+      <IssueAnchor fieldName="subject" description="Edge Type" />
+      <ArchitectField
+        name="subject"
+        entityType="edge"
+        promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
+        component={SubjectSelectField}
+        initialValue={initialSubject}
+        validation={{ required: true }}
+        label="Edge type"
+      />
       <Filter />
     </Section>
   );

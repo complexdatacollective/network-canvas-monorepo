@@ -99,7 +99,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   // OrdinalBin's *second* live exercise of that branch, not a first for the
   // "must click through the combobox" path — that remains unverified by any
   // bin/census interface discovered so far.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Rank these');
     await createVariableViaSpotlight(architectPage, { variableName: 'rank' });
     await createVariableWithOptions(architectPage, {

@@ -90,7 +90,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // 'categorical' } }, { field: 'variable' })` — the same pre-locked-type
   // NewVariableWindow pattern as OrdinalBin/TieStrengthCensus, so
   // `createVariableWithOptions` again takes the disabled-combobox branch.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Group these');
     await createVariableViaSpotlight(architectPage, { variableName: 'group' });
     await createVariableWithOptions(architectPage, {

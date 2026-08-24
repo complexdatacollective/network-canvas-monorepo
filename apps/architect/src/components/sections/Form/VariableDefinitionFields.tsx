@@ -49,11 +49,9 @@ type SharedProps = {
   /** The variable/input-control state both editors already own. */
   fields: FieldHandlers;
   /**
-   * Whether each section carries a heading. NetworkComposer's attribute
-   * dialog titles its sections because it has no other structure; the Form
-   * field editor's sections sit inside a titled stage editor and do not. The
-   * flag also moves the options heading between the section title and the
-   * array field's own label, so the phrase appears exactly once either way.
+   * Whether a section with no single owning field carries a group heading.
+   * NetworkComposer's attribute dialog needs those headings because it has no
+   * other structure; the Form field editor sits inside a titled stage editor.
    */
   withSectionTitles?: boolean;
 };
@@ -68,14 +66,9 @@ export const VariablePickerSection = ({
   type = null,
   item,
   fields,
-  withSectionTitles = false,
   hint,
 }: SharedProps & { hint: ReactNode }) => (
-  <Section
-    layout="vertical"
-    id={getFieldId('variable')}
-    title={withSectionTitles ? 'Attribute' : undefined}
-  >
+  <Section layout="vertical" id={getFieldId('variable')}>
     <ArchitectField
       name="variable"
       label="Attribute"
@@ -127,7 +120,6 @@ const VariableDefinitionFields = ({
       <Section
         layout="vertical"
         id={getFieldId('component')}
-        title={withSectionTitles ? 'Input Control' : undefined}
         disabled={!variable}
       >
         <ArchitectField
@@ -184,16 +176,18 @@ const VariableDefinitionFields = ({
         <Section
           layout="vertical"
           id={getFieldId('options')}
-          title={withSectionTitles ? 'Categorical/Ordinal options' : undefined}
+          title={
+            lockedOptions && withSectionTitles
+              ? 'Categorical/Ordinal options'
+              : undefined
+          }
         >
           {lockedOptions ? (
             <LockedOptions options={lockedOptions} />
           ) : (
             <ArchitectArrayField
               name="options"
-              label={
-                withSectionTitles ? 'Options' : 'Categorical/Ordinal options'
-              }
+              label="Categorical/Ordinal options"
               hint="The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between."
               component={Options}
               addButtonLabel="Create new option"
@@ -207,11 +201,7 @@ const VariableDefinitionFields = ({
         // BooleanChoice writes to the `options` field, so anchor it there (it
         // is mutually exclusive with the Categorical/Ordinal options section
         // above, so the shared id never collides at runtime).
-        <Section
-          layout="vertical"
-          id={getFieldId('options')}
-          title={withSectionTitles ? 'BooleanChoice Options' : undefined}
-        >
+        <Section layout="vertical" id={getFieldId('options')}>
           <BooleanChoice initialValue={asOptions(item.options)} />
         </Section>
       )}

@@ -40,15 +40,15 @@ test('creates a valid NameGenerator stage from scratch', async ({
     inputControl: 'Text Input',
   });
 
-  // NameGeneratorPrompts.tsx, `Section title="Prompts"` — a SECOND
-  // DialogArrayField rendered alongside Form's own field array (both share
-  // the default "Create new" label), hence addPrompt's section-scoped open
-  // click (see prompts.ts's own comment). Inside the opened dialog,
+  // NameGeneratorPrompts.tsx's `prompts` field is a SECOND DialogArrayField
+  // rendered alongside Form's own field array (both share the default "Create
+  // new" label), hence addPrompt's field-scoped open click (see prompts.ts's
+  // own comment). Inside the opened dialog,
   // PromptFields.tsx renders PromptText.tsx's RichText field (name `text`)
   // with an explicit `label="Prompt text"` that wins over the name fallback
   // (same rule ego-form.spec.ts / alter-form.spec.ts already documented for
   // IntroductionPanel) — NOT the brief's guessed accessible name `'text'`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });
 

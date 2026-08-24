@@ -220,51 +220,44 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section id={getFieldId('variable')} layout="vertical">
-        <>
-          <ArchitectField
-            name="variable"
-            label="Categorical attribute"
-            hint="Select a categorical attribute to assign a value to."
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={variable}
-            type={type}
-            entity={entity}
-            options={categoricalVariableOptions}
-            onCreateOption={handleNewVariable}
+        <ArchitectField
+          name="variable"
+          label="Categorical attribute"
+          hint="Select a categorical attribute to assign a value to."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={variable}
+          type={type}
+          entity={entity}
+          options={categoricalVariableOptions}
+          onCreateOption={handleNewVariable}
+        />
+        {currentVariable && lockedOptions && (
+          <LockedOptions options={lockedOptions} />
+        )}
+        {currentVariable && !lockedOptions && showVariableOptionsTip && (
+          <Alert variant="destructive" className="my-7">
+            <AlertTitle>Too many option values</AlertTitle>
+            <AlertDescription>
+              The categorical bin interface is designed to use{' '}
+              <strong>up to 8 option values</strong> (including an
+              &quot;other&quot; attribute). Using more will create a sub-optimal
+              experience for participants, and might reduce data quality.
+              Consider grouping your attribute options and capturing further
+              detail with follow-up questions.
+            </AlertDescription>
+          </Alert>
+        )}
+        {currentVariable && !lockedOptions && (
+          <ArchitectArrayField
+            name="variableOptions"
+            label="Option values"
+            hint="A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute."
+            component={Options}
+            addButtonLabel="Create new option"
+            validation={optionsValidation}
+            initialValue={variableOptions}
           />
-        </>
-        {currentVariable && (
-          <>
-            {lockedOptions ? (
-              <LockedOptions options={lockedOptions} />
-            ) : (
-              <>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The categorical bin interface is designed to use{' '}
-                      <strong>up to 8 option values</strong> (including an
-                      &quot;other&quot; attribute). Using more will create a
-                      sub-optimal experience for participants, and might reduce
-                      data quality. Consider grouping your attribute options and
-                      capturing further detail with follow-up questions.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <ArchitectArrayField
-                  name="variableOptions"
-                  label="Option values"
-                  hint="A categorical attribute contains pre-defined categories made up of a label (shown to the participant) and a value. Create <strong>up to 8</strong> option values for this attribute."
-                  component={Options}
-                  addButtonLabel="Create new option"
-                  validation={optionsValidation}
-                  initialValue={variableOptions}
-                />
-              </>
-            )}
-          </>
         )}
       </Section>
       <Section
@@ -284,20 +277,18 @@ const PromptFields = ({
         handleToggleChange={handleToggleOtherVariable}
         layout="vertical"
       >
-        <>
-          <ArchitectField
-            name="otherVariable"
-            label="Other attribute"
-            hint="Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option."
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={otherVariable}
-            entity={entity}
-            type={type}
-            options={otherVariableTextOptions}
-            onCreateOption={handleCreateOtherVariable}
-          />
-        </>
+        <ArchitectField
+          name="otherVariable"
+          label="Other attribute"
+          hint="Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={otherVariable}
+          entity={entity}
+          type={type}
+          options={otherVariableTextOptions}
+          onCreateOption={handleCreateOtherVariable}
+        />
         {currentOtherVariable && (
           <div className="mb-8">
             <CodebookVariableValidationSection
@@ -309,30 +300,26 @@ const PromptFields = ({
             />
           </div>
         )}
-        <>
-          <ArchitectField
-            name="otherOptionLabel"
-            label="Label for 'Other' bin"
-            hint="Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above."
-            component={RichTextField}
-            validation={{ required: true }}
-            initialValue={otherOptionLabel}
-            singleLine
-            placeholder='Enter a label (such as "other") for this bin...'
-          />
-        </>
-        <>
-          <ArchitectField
-            name="otherVariablePrompt"
-            label="Question Prompt for Dialog"
-            hint="Enter a question prompt to show when the other option is triggered."
-            component={RichTextField}
-            validation={{ required: true }}
-            initialValue={otherVariablePrompt}
-            singleLine
-            placeholder="Enter a question prompt to show when the other option is triggered..."
-          />
-        </>
+        <ArchitectField
+          name="otherOptionLabel"
+          label="Label for 'Other' bin"
+          hint="Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above."
+          component={RichTextField}
+          validation={{ required: true }}
+          initialValue={otherOptionLabel}
+          singleLine
+          placeholder='Enter a label (such as "other") for this bin...'
+        />
+        <ArchitectField
+          name="otherVariablePrompt"
+          label="Question Prompt for Dialog"
+          hint="Enter a question prompt to show when the other option is triggered."
+          component={RichTextField}
+          validation={{ required: true }}
+          initialValue={otherVariablePrompt}
+          singleLine
+          placeholder="Enter a question prompt to show when the other option is triggered..."
+        />
       </Section>
       <BucketSortOrderSection
         disabled={!currentVariable}

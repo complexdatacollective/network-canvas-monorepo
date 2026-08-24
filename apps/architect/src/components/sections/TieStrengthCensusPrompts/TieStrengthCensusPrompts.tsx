@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
@@ -66,18 +65,12 @@ const TieStrengthCensusPrompts = (_props: StageEditorSectionProps) => {
     <Section
       disabled={!type}
       disabledMessage="Select a node type above to configure this section."
-      summary={
-        <Paragraph>
-          Add one or more prompts below to frame the task for the user. You can
-          reorder the prompts using the draggable handles on the left hand side.
-        </Paragraph>
-      }
-      title="Prompts"
+      layout="vertical"
     >
       <ArchitectArrayField
         name="prompts"
         label="Prompts"
-        labelHidden
+        hint="Add one or more prompts below to frame the task for the user. You can reorder the prompts using the draggable handles on the left hand side."
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
         validation={{ notEmpty }}

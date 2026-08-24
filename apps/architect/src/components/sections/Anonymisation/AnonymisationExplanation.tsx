@@ -22,26 +22,22 @@ const AnonymisationExplanation = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <>
-        <ArchitectField
-          name="explanationText.title"
-          label="Title"
-          component={InputField}
-          validation={{ required: true, maxLength: 50 }}
-          initialValue={titleInitialValue}
-          placeholder="This interview uses enhanced privacy protection"
-        />
-      </>
-      <>
-        <ArchitectField
-          name="explanationText.body"
-          label="Body"
-          component={RichText}
-          validation={{ required: true }}
-          initialValue={bodyInitialValue}
-          placeholder="Enter your passphrase below, and click the 'continue' button."
-        />
-      </>
+      <ArchitectField
+        name="explanationText.title"
+        label="Title"
+        component={InputField}
+        validation={{ required: true, maxLength: 50 }}
+        initialValue={titleInitialValue}
+        placeholder="This interview uses enhanced privacy protection"
+      />
+      <ArchitectField
+        name="explanationText.body"
+        label="Body"
+        component={RichText}
+        validation={{ required: true }}
+        initialValue={bodyInitialValue}
+        placeholder="Enter your passphrase below, and click the 'continue' button."
+      />
     </Section>
   );
 };

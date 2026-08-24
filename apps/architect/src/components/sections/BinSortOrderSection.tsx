@@ -59,21 +59,19 @@ const BinSortOrderSection = ({
       handleToggleChange={handleToggleChange}
       layout="vertical"
     >
-      <>
-        <ArchitectArrayField
-          name="binSortOrder"
-          label="Bin sort rules"
-          hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
-          component={MultiSelect}
-          emptyStateMessage="No sort rules have been created yet."
-          addButtonLabel="Add new bin sort rule"
-          initialValue={initialValue}
-          properties={SORT_RULE_PROPERTIES}
-          validation={SORT_RULE_VALIDATION}
-          maxItems={maxItems}
-          options={optionGetter}
-        />
-      </>
+      <ArchitectArrayField
+        name="binSortOrder"
+        label="Bin sort rules"
+        hint="Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed."
+        component={MultiSelect}
+        emptyStateMessage="No sort rules have been created yet."
+        addButtonLabel="Add new bin sort rule"
+        initialValue={initialValue}
+        properties={SORT_RULE_PROPERTIES}
+        validation={SORT_RULE_VALIDATION}
+        maxItems={maxItems}
+        options={optionGetter}
+      />
     </Section>
   );
 };

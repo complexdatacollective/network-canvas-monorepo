@@ -86,7 +86,7 @@ test('creates a valid Sociogram stage from scratch', async ({
     .getByRole('spinbutton')
     .fill('4');
 
-  // SociogramPrompts.tsx, `Section title="Prompts"` (same DialogArrayField
+  // SociogramPrompts.tsx exposes the `prompts` field (same DialogArrayField
   // shape as every other prompts array in this suite). Inside the dialog,
   // PromptFields.tsx renders the shared `PromptText` component first (label
   // "Prompt text", same as name-generator.spec.ts) followed by
@@ -103,7 +103,7 @@ test('creates a valid Sociogram stage from scratch', async ({
   // variable anywhere in this suite (confirmed again in NodeConfiguration.tsx
   // and NarrativePresets/withPresetProps.tsx for the other two specs in this
   // task).
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Place them');
     await createVariableViaSpotlight(architectPage, { variableName: 'layout' });
   });

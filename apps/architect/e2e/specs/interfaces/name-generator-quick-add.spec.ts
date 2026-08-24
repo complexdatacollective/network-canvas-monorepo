@@ -30,11 +30,10 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
   // step.
   await createVariableViaSpotlight(architectPage, { variableName: 'name' });
 
-  // NameGeneratorQuickAdd reuses the same NameGeneratorPrompts.tsx section
-  // (`Section title="Prompts"`) as NameGenerator — see name-generator.spec.ts
-  // for why the RichText field's accessible name is "Prompt text", not the
-  // brief's guessed `'text'`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  // NameGeneratorQuickAdd reuses NameGeneratorPrompts.tsx's `prompts`
+  // ArchitectArrayField — see name-generator.spec.ts for why the RichText
+  // field's accessible name is "Prompt text", not the brief's guessed `'text'`.
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });
 

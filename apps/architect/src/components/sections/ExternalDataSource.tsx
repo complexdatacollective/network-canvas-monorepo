@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { compose } from 'react-recompose';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -71,25 +70,18 @@ const ExternalDataSource = ({
 
   return (
     <Section
-      title="Data source for Roster"
-      summary={
-        <Paragraph>
-          This stage needs a source of nodes to populate the roster. Select a
-          network data file to use.
-        </Paragraph>
-      }
       disabled={disabled}
       disabledMessage={disabledMessage}
+      layout="vertical"
     >
-      <>
-        <ArchitectField
-          component={DataSource}
-          name="dataSource"
-          initialValue={initialDataSource}
-          label="Roster data source"
-          validation={{ required: true }}
-        />
-      </>
+      <ArchitectField
+        component={DataSource}
+        name="dataSource"
+        initialValue={initialDataSource}
+        label="Roster data source"
+        hint="This stage needs a source of nodes to populate the roster. Select a network data file to use."
+        validation={{ required: true }}
+      />
     </Section>
   );
 };

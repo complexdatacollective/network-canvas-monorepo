@@ -93,52 +93,40 @@ const PresetFields = ({
 
   return (
     <>
-      <Section
-        title="Preset Label"
-        summary={
-          <Paragraph>
-            The preset label will used to quickly identify the preset from
-            within the narrative interface. It will be visible to the
-            participant.
-          </Paragraph>
-        }
-        layout="vertical"
-      >
-        <>
-          <ArchitectField
-            name="label"
-            label="Preset label"
-            labelHidden
-            component={InputField}
-            validation={{ required: true }}
-            initialValue={label ?? ''}
-            placeholder="Enter a label for the preset..."
-          />
-        </>
+      <Section layout="vertical">
+        <ArchitectField
+          name="label"
+          label="Preset label"
+          hint={
+            <Paragraph>
+              The preset label will used to quickly identify the preset from
+              within the narrative interface. It will be visible to the
+              participant.
+            </Paragraph>
+          }
+          component={InputField}
+          validation={{ required: true }}
+          initialValue={label ?? ''}
+          placeholder="Enter a label for the preset..."
+        />
       </Section>
-      <Section
-        layout="vertical"
-        title="Layout Attribute"
-        summary={
-          <Paragraph>
-            Select an attribute to use to position the nodes for this preset.
-          </Paragraph>
-        }
-      >
-        <>
-          <ArchitectField
-            name="layoutVariable"
-            label="Layout attribute"
-            labelHidden
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={layoutVariable}
-            entity={entity}
-            type={type}
-            options={layoutVariablesForSubject}
-            onCreateOption={handleCreateLayoutVariable}
-          />
-        </>
+      <Section layout="vertical">
+        <ArchitectField
+          name="layoutVariable"
+          label="Layout attribute"
+          hint={
+            <Paragraph>
+              Select an attribute to use to position the nodes for this preset.
+            </Paragraph>
+          }
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={layoutVariable}
+          entity={entity}
+          type={type}
+          options={layoutVariablesForSubject}
+          onCreateOption={handleCreateLayoutVariable}
+        />
       </Section>
       <Section
         title="Group Attribute"
@@ -154,25 +142,23 @@ const PresetFields = ({
         handleToggleChange={handleToggleGroupVariable}
         layout="vertical"
       >
-        <>
-          <Paragraph>
-            This feature will draw a semi-transparent convex hull for each
-            categorical value of the attribute you select. If a node&apos;s
-            attributes include this categorical value, the hull will be expanded
-            to include the node. If a node has multiple values for this
-            categorical attribute, it will appear in multiple overlapping hulls.
-          </Paragraph>
-          <ArchitectField
-            name="groupVariable"
-            label="Select a categorical attribute for grouping"
-            component={VariablePicker}
-            initialValue={groupVariable ?? undefined}
-            entity={entity}
-            type={type}
-            options={groupVariablesForSubject}
-            disallowCreation
-          />
-        </>
+        <Paragraph>
+          This feature will draw a semi-transparent convex hull for each
+          categorical value of the attribute you select. If a node&apos;s
+          attributes include this categorical value, the hull will be expanded
+          to include the node. If a node has multiple values for this
+          categorical attribute, it will appear in multiple overlapping hulls.
+        </Paragraph>
+        <ArchitectField
+          name="groupVariable"
+          label="Select a categorical attribute for grouping"
+          component={VariablePicker}
+          initialValue={groupVariable ?? undefined}
+          entity={entity}
+          type={type}
+          options={groupVariablesForSubject}
+          disallowCreation
+        />
       </Section>
       <Section
         title="Display Edges"
@@ -187,15 +173,13 @@ const PresetFields = ({
         }
         layout="vertical"
       >
-        <>
-          <ArchitectField
-            name="edges.display"
-            component={CheckboxGroupField}
-            label="Edge types"
-            initialValue={edges?.display ?? []}
-            options={edgesForSubject}
-          />
-        </>
+        <ArchitectField
+          name="edges.display"
+          component={CheckboxGroupField}
+          label="Edge types"
+          initialValue={edges?.display ?? []}
+          options={edgesForSubject}
+        />
       </Section>
       <Section
         title="Highlight Node Attributes"
@@ -214,15 +198,13 @@ const PresetFields = ({
         handleToggleChange={handleToggleHighlightVariables}
         layout="vertical"
       >
-        <>
-          <ArchitectField
-            name="highlight"
-            component={CheckboxGroupField}
-            label="Select one or more boolean attributes"
-            initialValue={highlight ?? []}
-            options={highlightVariablesForSubject}
-          />
-        </>
+        <ArchitectField
+          name="highlight"
+          component={CheckboxGroupField}
+          label="Select one or more boolean attributes"
+          initialValue={highlight ?? []}
+          options={highlightVariablesForSubject}
+        />
       </Section>
     </>
   );

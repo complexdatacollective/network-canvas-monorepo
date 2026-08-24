@@ -75,19 +75,7 @@ const MapOptions = () => {
   };
   return (
     <>
-      <Section
-        title="API Key"
-        summary={
-          <Paragraph>
-            This interface requires an API key from Mapbox. For more information
-            about Mapbox and retrieving an API key, read our{' '}
-            <ExternalLink href={documentationLinks.geospatialInterface}>
-              documentation
-            </ExternalLink>{' '}
-            on the interface.
-          </Paragraph>
-        }
-      >
+      <Section layout="vertical">
         <div data-name="Map Options Mapbox Key" />
         <ArchitectField
           name="mapOptions.tokenAssetId"
@@ -95,6 +83,16 @@ const MapOptions = () => {
           initialValue={initialMapOptions?.tokenAssetId}
           validation={{ required: true }}
           label="Mapbox API Key"
+          hint={
+            <>
+              This interface requires an API key from Mapbox. For more
+              information about Mapbox and retrieving an API key, read our{' '}
+              <ExternalLink href={documentationLinks.geospatialInterface}>
+                documentation
+              </ExternalLink>{' '}
+              on the interface.
+            </>
+          }
         />
       </Section>
       <Section
@@ -106,37 +104,33 @@ const MapOptions = () => {
           </Paragraph>
         }
       >
-        <>
-          <div data-name="Layer data-source" />
-          <ArchitectField
-            component={GeoDataSource}
-            name="mapOptions.dataSourceAssetId"
-            initialValue={initialMapOptions?.dataSourceAssetId}
-            validation={{ required: true }}
-            label="Layer data source"
-          />
-        </>
+        <div data-name="Layer data-source" />
+        <ArchitectField
+          component={GeoDataSource}
+          name="mapOptions.dataSourceAssetId"
+          initialValue={initialMapOptions?.dataSourceAssetId}
+          validation={{ required: true }}
+          label="Layer data source"
+        />
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
-          <>
-            <ArchitectField
-              name="mapOptions.targetFeatureProperty"
-              label="Which property should be used for map selection?"
-              component={FrescoNativeSelectField}
-              initialValue={initialTargetFeatureProperty}
-              validation={{
-                required: noSelectableProperties
-                  ? noSelectablePropertiesGuard
-                  : true,
-              }}
-              options={variableOptions}
-              disabled={noSelectableProperties}
-              hint={
-                noSelectableProperties
-                  ? NO_SELECTABLE_PROPERTIES_MESSAGE
-                  : undefined
-              }
-            />
-          </>
+          <ArchitectField
+            name="mapOptions.targetFeatureProperty"
+            label="Which property should be used for map selection?"
+            component={FrescoNativeSelectField}
+            initialValue={initialTargetFeatureProperty}
+            validation={{
+              required: noSelectableProperties
+                ? noSelectablePropertiesGuard
+                : true,
+            }}
+            options={variableOptions}
+            disabled={noSelectableProperties}
+            hint={
+              noSelectableProperties
+                ? NO_SELECTABLE_PROPERTIES_MESSAGE
+                : undefined
+            }
+          />
         )}
       </Section>
       <Section
@@ -184,16 +178,7 @@ const MapOptions = () => {
           initialValue={initialAllowSearch ?? false}
         />
       </Section>
-      <Section
-        title="Initial Map View"
-        summary={
-          <Paragraph>
-            Configure the initial map view to adjust where it will be centered
-            and zoomed to.
-          </Paragraph>
-        }
-        disabled={disabled}
-      >
+      <Section disabled={disabled} layout="vertical">
         {/*
           NOTE: this registers a SEPARATE field at the parent `mapOptions`
           path, alongside the `mapOptions.*` leaf fields above — inherited
@@ -210,7 +195,8 @@ const MapOptions = () => {
           component={MapSelection}
           initialValue={initialMapOptions}
           validation={{ required: requiredMapView }}
-          label="Map center and zoom"
+          label="Initial Map View"
+          hint="Configure the initial map view to adjust where it will be centered and zoomed to."
           previewOptions={{ tokenAssetId, style }}
         />
       </Section>

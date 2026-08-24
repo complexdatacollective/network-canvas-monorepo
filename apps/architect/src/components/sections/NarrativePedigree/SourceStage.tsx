@@ -79,26 +79,23 @@ const SourceStage = (_props: StageEditorSectionProps) => {
   }, [draft, restoreVersion, sourceStageId, storeApi]);
 
   return (
-    <Section
-      title="Source Stage"
-      summary={
-        <Paragraph>
-          Select the Family Pedigree stage whose network data this Narrative
-          Pedigree will visualize. Only Family Pedigree stages are listed here.
-        </Paragraph>
-      }
-    >
-      <>
-        <ArchitectField
-          name="sourceStageId"
-          component={StyledSelectField}
-          label="Family Pedigree stage"
-          initialValue={sourceStageIdInitial}
-          placeholder="Select a Family Pedigree stage..."
-          options={options}
-          disabled={options.length === 0}
-        />
-      </>
+    <Section layout="vertical">
+      <ArchitectField
+        name="sourceStageId"
+        component={StyledSelectField}
+        label="Source stage"
+        hint={
+          <Paragraph>
+            Select the Family Pedigree stage whose network data this Narrative
+            Pedigree will visualize. Only Family Pedigree stages are listed
+            here.
+          </Paragraph>
+        }
+        initialValue={sourceStageIdInitial}
+        placeholder="Select a Family Pedigree stage..."
+        options={options}
+        disabled={options.length === 0}
+      />
     </Section>
   );
 };

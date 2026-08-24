@@ -216,7 +216,7 @@ test("excludes each writer's picker from offering the other class's variable, wh
   // prompt's own current value (sharedVar) and the unrelated cleanVar.
   await timeline.openStage('Contact Category');
   await editor
-    .section('Prompts')
+    .field('prompts')
     .getByRole('button', { name: 'Edit prompt' })
     .click();
   const promptDialog = architectPage.getByRole('dialog', {

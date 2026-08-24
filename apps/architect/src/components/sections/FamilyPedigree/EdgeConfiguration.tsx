@@ -350,18 +350,16 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
           </>
         }
       >
-        <>
-          <IssueAnchor fieldName="edgeConfig.type" description="Edge Type" />
-          <ArchitectField
-            name="edgeConfig.type"
-            component={EntitySelectControl}
-            entityType="edge"
-            promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the attributes selected for this edge type must be cleared. Do you want to change the edge type now?"
-            validation={{ required: true }}
-            label="Edge type"
-            initialValue={edgeTypeInitial}
-          />
-        </>
+        <IssueAnchor fieldName="edgeConfig.type" description="Edge Type" />
+        <ArchitectField
+          name="edgeConfig.type"
+          component={EntitySelectControl}
+          entityType="edge"
+          promptBeforeChange="You attempted to change the edge type of a stage that you have already configured. Before you can proceed the attributes selected for this edge type must be cleared. Do you want to change the edge type now?"
+          validation={{ required: true }}
+          label="Edge type"
+          initialValue={edgeTypeInitial}
+        />
         {edgeType && (
           <Surface
             noContainer

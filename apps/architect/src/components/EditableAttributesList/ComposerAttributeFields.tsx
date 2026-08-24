@@ -111,7 +111,6 @@ const ComposerAttributeFields = ({
       <Section
         layout="vertical"
         id={getFieldId('label')}
-        title="Label"
         disabled={!fields.variable}
       >
         <ArchitectField

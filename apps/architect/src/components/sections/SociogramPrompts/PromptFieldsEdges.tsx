@@ -120,36 +120,34 @@ const DisplayEdges = ({ edges: initialEdges }: DisplayEdgesProps) => {
       }}
       layout="vertical"
     >
-      <>
-        {shouldShowNetworkFilterWarning && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>Network filter hides configured edge types</AlertTitle>
-            <AlertDescription>
-              Stage level network filtering is enabled, but one or more of the
-              edge types you have configured to display on this prompt are not
-              currently included in the filter. This means that these edges may
-              not be displayed. Either remove the stage-level network filtering,
-              or add these edge types to the filter to resolve this issue.
-            </AlertDescription>
-          </Alert>
-        )}
-        {hasDisabledEdgeOption && (
-          <Alert variant="info" className="my-7">
-            <AlertDescription>
-              The edge type being created must always be displayed. This edge
-              type is shown in italics below, and cannot be deselected.
-            </AlertDescription>
-          </Alert>
-        )}
-        <ArchitectField
-          name="edges.display"
-          component={CheckboxGroupField}
-          options={displayEdgesOptions}
-          label="Display edges of the following type(s)"
-          labelHidden
-          initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
-        />
-      </>
+      {shouldShowNetworkFilterWarning && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>Network filter hides configured edge types</AlertTitle>
+          <AlertDescription>
+            Stage level network filtering is enabled, but one or more of the
+            edge types you have configured to display on this prompt are not
+            currently included in the filter. This means that these edges may
+            not be displayed. Either remove the stage-level network filtering,
+            or add these edge types to the filter to resolve this issue.
+          </AlertDescription>
+        </Alert>
+      )}
+      {hasDisabledEdgeOption && (
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            The edge type being created must always be displayed. This edge type
+            is shown in italics below, and cannot be deselected.
+          </AlertDescription>
+        </Alert>
+      )}
+      <ArchitectField
+        name="edges.display"
+        component={CheckboxGroupField}
+        options={displayEdgesOptions}
+        label="Display edges of the following type(s)"
+        labelHidden
+        initialValue={initialEdges?.display ?? EMPTY_DISPLAY_EDGES}
+      />
     </Section>
   );
 };

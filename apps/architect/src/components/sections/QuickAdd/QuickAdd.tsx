@@ -46,14 +46,13 @@ const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
       disabled={disabled}
       disabledMessage={disabledMessage}
       group
-      title="Quick Add Attribute"
       id="issue-form"
-      summary="Select the attribute that is assigned a value when creating a new node using the Quick Add button."
+      layout="vertical"
     >
       <ArchitectField
         name="quickAdd"
         label="Select an attribute"
-        hint="Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview."
+        hint="Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview."
         component={VariablePicker}
         validation={{ required: true }}
         initialValue={initialQuickAdd}

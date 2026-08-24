@@ -14,36 +14,30 @@ const NarrativeBehaviours = (_props: StageEditorSectionProps) => {
   );
   return (
     <Section title="Narrative Behaviours">
-      <>
-        <ArchitectField
-          name="behaviours.automaticLayout"
-          label="Automatic layout"
-          hint="Position nodes automatically using a force-directed layout"
-          component={ToggleField}
-          inline
-          initialValue={initialAutomaticLayout ?? false}
-        />
-      </>
-      <>
-        <ArchitectField
-          name="behaviours.freeDraw"
-          label="Free-draw"
-          hint="Allow drawing on the canvas"
-          component={ToggleField}
-          inline
-          initialValue={initialFreeDraw ?? false}
-        />
-      </>
-      <>
-        <ArchitectField
-          name="behaviours.allowRepositioning"
-          label="Allow repositioning"
-          hint="Allow nodes to be repositioned"
-          component={ToggleField}
-          inline
-          initialValue={initialAllowRepositioning ?? false}
-        />
-      </>
+      <ArchitectField
+        name="behaviours.automaticLayout"
+        label="Automatic layout"
+        hint="Position nodes automatically using a force-directed layout"
+        component={ToggleField}
+        inline
+        initialValue={initialAutomaticLayout ?? false}
+      />
+      <ArchitectField
+        name="behaviours.freeDraw"
+        label="Free-draw"
+        hint="Allow drawing on the canvas"
+        component={ToggleField}
+        inline
+        initialValue={initialFreeDraw ?? false}
+      />
+      <ArchitectField
+        name="behaviours.allowRepositioning"
+        label="Allow repositioning"
+        hint="Allow nodes to be repositioned"
+        component={ToggleField}
+        inline
+        initialValue={initialAllowRepositioning ?? false}
+      />
     </Section>
   );
 };

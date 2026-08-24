@@ -78,56 +78,48 @@ const CardDisplayOptions = ({
       handleToggleChange={handleToggleCardDisplayOptions}
       disabled={disabled}
     >
-      <>
-        <Alert variant="info" className="my-7">
-          <AlertDescription>
-            Cards will use the <strong>name</strong> attribute from your
-            external data as the main card title.
-          </AlertDescription>
-        </Alert>
-      </>
-      <>
-        <Heading level="h4">Additional Display Properties</Heading>
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
+          Cards will use the <strong>name</strong> attribute from your external
+          data as the main card title.
+        </AlertDescription>
+      </Alert>
+      <Heading level="h4">Additional Display Properties</Heading>
+      <Paragraph>
+        Would you like to display any other attributes to help the participant
+        recognize a roster alter?
+      </Paragraph>
+      {maxVariableOptions === 0 && (
         <Paragraph>
-          Would you like to display any other attributes to help the participant
-          recognize a roster alter?
+          <em>
+            Your external data does not seem to contain any usable attributes.
+            Is it correctly formatted?
+          </em>
         </Paragraph>
-        {maxVariableOptions === 0 && (
-          <Paragraph>
-            <em>
-              Your external data does not seem to contain any usable attributes.
-              Is it correctly formatted?
-            </em>
-          </Paragraph>
-        )}
-        {/* Mounted unconditionally, including while the roster's variables are
-            still loading (or if the asset can no longer be parsed). The stage
-            saves the registered fields only, so a field that never mounts for
-            an already-configured value silently deletes it; `maxItems` of 0
-            still hides the add affordance, which is all the empty case needs. */}
-        <ArchitectArrayField
-          name="cardOptions.additionalProperties"
-          label="Additional display properties"
-          labelHidden
-          component={MultiSelect}
-          addButtonLabel="Add new display property"
-          initialValue={initialAdditionalProperties}
-          maxItems={maxVariableOptions}
-          properties={DISPLAY_PROPERTIES}
-          validation={DISPLAY_PROPERTIES_VALIDATION}
-          options={(
-            fieldName: string,
-            rowValues: unknown,
-            allValues: unknown,
-          ) =>
-            variableOptionsGetter(
-              fieldName,
-              rowValues,
-              allValues as Array<Record<string, unknown>>,
-            )
-          }
-        />
-      </>
+      )}
+      {/* Mounted unconditionally, including while the roster's variables are
+          still loading (or if the asset can no longer be parsed). The stage
+          saves the registered fields only, so a field that never mounts for
+          an already-configured value silently deletes it; `maxItems` of 0
+          still hides the add affordance, which is all the empty case needs. */}
+      <ArchitectArrayField
+        name="cardOptions.additionalProperties"
+        label="Additional display properties"
+        labelHidden
+        component={MultiSelect}
+        addButtonLabel="Add new display property"
+        initialValue={initialAdditionalProperties}
+        maxItems={maxVariableOptions}
+        properties={DISPLAY_PROPERTIES}
+        validation={DISPLAY_PROPERTIES_VALIDATION}
+        options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
+          variableOptionsGetter(
+            fieldName,
+            rowValues,
+            allValues as Array<Record<string, unknown>>,
+          )
+        }
+      />
     </Section>
   );
 };

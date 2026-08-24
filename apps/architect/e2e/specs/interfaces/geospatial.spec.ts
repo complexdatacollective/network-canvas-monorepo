@@ -313,7 +313,7 @@ test('creates a valid Geospatial stage from scratch', async ({
   // NewVariableWindow locked to `type: 'location'` — the
   // spotlight-then-window two-step already proven by tie-strength-census.spec.ts's
   // locked-ordinal `edgeVariable`.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Where do you live?');
     await createVariableViaSpotlight(architectPage, {
       variableName: 'location',

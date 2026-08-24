@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { type StageEditor } from '../stage-editor.js';
 import { pickResource, uploadIntoResourceBrowser } from './asset-upload.js';
 
-// Information stage Items (sections/ContentGrid/*). The item dialog is
+// Information stage `items` field (sections/ContentGrid/*). The item dialog is
 // titled 'Edit Item' for both new and edit; its type radios are 'Image' /
 // 'Video' / 'Audio' / 'Text' (ContentGrid/options.tsx), the Content field
 // mounts once a type is chosen, and 'Display size' radios ('Full size' /
@@ -22,7 +22,7 @@ async function openFreshItemDialog(
 ): Promise<Locator> {
   const dialog = page.getByRole('dialog', { name: 'Edit Item' });
   const create = editor
-    .section('Items')
+    .field('items')
     .getByRole('button', { name: 'Create new content item', exact: true });
   await create.click();
   await expect(dialog).toBeVisible();

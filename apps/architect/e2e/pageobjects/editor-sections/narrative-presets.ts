@@ -36,7 +36,7 @@ export async function addNarrativePreset(
   },
 ): Promise<void> {
   await addPrompt(
-    editor.section('Narrative Presets'),
+    editor.field('presets'),
     async () => {
       await page
         .getByPlaceholder('Enter a label for the preset...')

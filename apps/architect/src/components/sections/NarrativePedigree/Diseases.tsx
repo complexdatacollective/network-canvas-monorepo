@@ -114,19 +114,16 @@ const Diseases = (_props: StageEditorSectionProps) => {
   );
 
   return (
-    <Section
-      title="Diseases"
-      summary={
-        <Paragraph>
-          Define the diseases to visualize on the pedigree. Each disease maps to
-          a boolean node attribute from the source Family Pedigree stage.
-        </Paragraph>
-      }
-    >
+    <Section layout="vertical">
       <ArchitectArrayField
         name="diseases"
         label="Diseases"
-        labelHidden
+        hint={
+          <Paragraph>
+            Define the diseases to visualize on the pedigree. Each disease maps
+            to a boolean node attribute from the source Family Pedigree stage.
+          </Paragraph>
+        }
         component={DialogArrayField}
         addButtonLabel="Create new disease"
         validation={{ notEmpty }}

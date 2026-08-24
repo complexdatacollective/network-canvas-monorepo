@@ -84,21 +84,19 @@ const PromptFields = ({
   return (
     <>
       <PromptText initialValue={text} />
-      <Section title="Selection Attribute" layout="vertical">
-        <>
-          <ArchitectField
-            name="variable"
-            label="Selection attribute"
-            labelHidden
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={variable}
-            type={type}
-            entity={entity}
-            options={geoVariableOptions}
-            onCreateOption={handleNewVariable}
-          />
-        </>
+      <Section layout="vertical">
+        <ArchitectField
+          name="variable"
+          label="Selection attribute"
+          hint="Select a location attribute to store the participant's selection."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={variable}
+          type={type}
+          entity={entity}
+          options={geoVariableOptions}
+          onCreateOption={handleNewVariable}
+        />
       </Section>
       <NewVariableWindow {...newVariableWindowProps} />
     </>

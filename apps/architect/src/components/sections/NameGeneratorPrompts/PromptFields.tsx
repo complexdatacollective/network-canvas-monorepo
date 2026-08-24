@@ -181,39 +181,37 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section layout="vertical">
-        <>
-          {/*
-            The field only mounts once a node type is chosen: with no subject
-            there is no pool to pick from and nothing to validate. Hoisting it
-            out of this guard would register `additionalAttributes` on prompts
-            that never had it and — through the dialog's overwrite save — write
-            an empty key onto them.
-          */}
-          {subject && (
-            <ArchitectArrayField
-              name="additionalAttributes"
-              label="Assign Additional Attributes"
-              hint="This feature allows you to assign an attribute and associated value
+        {/*
+          The field only mounts once a node type is chosen: with no subject
+          there is no pool to pick from and nothing to validate. Hoisting it
+          out of this guard would register `additionalAttributes` on prompts
+          that never had it and — through the dialog's overwrite save — write
+          an empty key onto them.
+        */}
+        {subject && (
+          <ArchitectArrayField
+            name="additionalAttributes"
+            label="Assign Additional Attributes"
+            hint="This feature allows you to assign an attribute and associated value
             to any nodes created on this prompt. You could then use this
             attribute in your skip logic or stage filtering rules."
-              component={AssignAttributes}
-              initialValue={additionalAttributes}
-              entity={subject.entity}
-              type={subject.type}
-              variableOptions={draftSafeOptions}
-              draftValidatedVariables={draftValidatedVariables}
-              currentStageIndex={currentStageIndex}
-              committedVariableIds={committedVariableIds}
-              // The rows' own rules are display-only (see `RowField`), so both
-              // of them have to exist here too or the dialog saves what it has
-              // just refused in red: a half-finished stamp, or a variable a
-              // form elsewhere already collects.
-              // `NameGeneratorRosterPrompts` shares this component, so both
-              // stages are covered from here.
-              validation={validation}
-            />
-          )}
-        </>
+            component={AssignAttributes}
+            initialValue={additionalAttributes}
+            entity={subject.entity}
+            type={subject.type}
+            variableOptions={draftSafeOptions}
+            draftValidatedVariables={draftValidatedVariables}
+            currentStageIndex={currentStageIndex}
+            committedVariableIds={committedVariableIds}
+            // The rows' own rules are display-only (see `RowField`), so both
+            // of them have to exist here too or the dialog saves what it has
+            // just refused in red: a half-finished stamp, or a variable a
+            // form elsewhere already collects.
+            // `NameGeneratorRosterPrompts` shares this component, so both
+            // stages are covered from here.
+            validation={validation}
+          />
+        )}
       </Section>
     </>
   );

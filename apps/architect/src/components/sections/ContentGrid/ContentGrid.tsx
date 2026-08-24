@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react';
 
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { Section } from '~/components/EditorLayout';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
@@ -22,46 +21,34 @@ const ContentGrid = (_props: StageEditorSectionProps) => {
   const initialItems = useStageInitialValue<Item[]>('items');
 
   return (
-    <Section
-      title="Items"
-      summary={
-        <Paragraph>
-          Add text, image, video, and audio blocks below, and drag them to
-          reorder. Participants can scroll through the screen, so add as many
-          blocks as you need. Image and video blocks can be given a display
-          size.
-        </Paragraph>
-      }
-    >
-      <>
-        <ArchitectArrayField
-          name="items"
-          label="Content items"
-          labelHidden
-          component={DialogArrayField}
-          addButtonLabel="Create new content item"
-          validation={{ notEmpty }}
-          initialValue={initialItems}
-          addTitle="Edit Item"
-          editorFieldsComponent={
-            ItemEditor as ComponentType<Record<string, unknown>>
-          }
-          editorDialogSize="editor"
-          editorProps={{ allowSize: true }}
-          editorTitle="Edit Item"
-          emptyStateMessage='No items have been created yet. Click "Create new content item" to add text or media.'
-          itemLabel="item"
-          itemSelector={denormalizeType}
-          normalizeItem={(value) =>
-            normalizeType(value as Parameters<typeof normalizeType>[0])
-          }
-          previewComponent={
-            ItemPreview as unknown as ComponentType<Record<string, unknown>>
-          }
-          requestedEditFormName="editable-list-form"
-          sortable
-        />
-      </>
+    <Section layout="vertical">
+      <ArchitectArrayField
+        name="items"
+        label="Items"
+        hint="Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size."
+        component={DialogArrayField}
+        addButtonLabel="Create new content item"
+        validation={{ notEmpty }}
+        initialValue={initialItems}
+        addTitle="Edit Item"
+        editorFieldsComponent={
+          ItemEditor as ComponentType<Record<string, unknown>>
+        }
+        editorDialogSize="editor"
+        editorProps={{ allowSize: true }}
+        editorTitle="Edit Item"
+        emptyStateMessage='No items have been created yet. Click "Create new content item" to add text or media.'
+        itemLabel="item"
+        itemSelector={denormalizeType}
+        normalizeItem={(value) =>
+          normalizeType(value as Parameters<typeof normalizeType>[0])
+        }
+        previewComponent={
+          ItemPreview as unknown as ComponentType<Record<string, unknown>>
+        }
+        requestedEditFormName="editable-list-form"
+        sortable
+      />
     </Section>
   );
 };

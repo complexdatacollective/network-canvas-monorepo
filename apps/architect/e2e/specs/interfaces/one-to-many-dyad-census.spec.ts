@@ -29,14 +29,14 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
   // author there.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // OneToManyDyadCensusPrompts.tsx, `Section title="Prompts"` — the same
-  // DialogArrayField shape as DyadCensus, whose dialog (PromptFields.tsx)
-  // exposes `text` (RichText, `label: 'Prompt Text'`) and `createEdge`
+  // OneToManyDyadCensusPrompts.tsx exposes the same `prompts` DialogArrayField
+  // shape as DyadCensus, whose dialog (PromptFields.tsx) exposes `text`
+  // (RichText, `label: 'Prompt Text'`) and `createEdge`
   // (EntitySelectField). The dialog also renders BucketSortOrderSection /
   // BinSortOrderSection, both disabled until `createEdge` has a value and
   // entirely optional (SortOrderSchema.optional() in protocol-validation),
   // so left untouched here.
-  await addPrompt(editor.section('Prompts'), async () => {
+  await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt Text', 'Who does this person know?');
     await selectOrCreateEdgeType(architectPage, 'knows');
   });

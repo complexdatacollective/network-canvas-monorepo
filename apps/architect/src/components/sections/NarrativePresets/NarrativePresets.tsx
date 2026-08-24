@@ -77,18 +77,17 @@ const NarrativePresets = ({
     <Section
       disabled={disabled}
       disabledMessage={disabledMessage}
-      summary={
-        <Paragraph>
-          Add one or more &quot;presets&quot; below, to create different
-          visualizations that you can switch between within the interview.
-        </Paragraph>
-      }
-      title="Narrative Presets"
+      layout="vertical"
     >
       <ArchitectArrayField
         name="presets"
         label="Narrative presets"
-        labelHidden
+        hint={
+          <Paragraph>
+            Add one or more &quot;presets&quot; below, to create different
+            visualizations that you can switch between within the interview.
+          </Paragraph>
+        }
         component={DialogArrayField}
         addButtonLabel="Create new preset"
         validation={{ notEmpty }}

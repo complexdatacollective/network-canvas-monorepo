@@ -181,41 +181,35 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
       }
     >
       {imageAllowed && (
-        <>
-          <UnconnectedField
-            name="background-type"
-            label="Choose a background type"
-            component={RichSelectGroupField}
-            value={useImage ? 'image' : 'concentric-circles'}
-            onChange={handleChooseBackgroundType}
-            options={backgroundTypeOptions}
-            orientation="horizontal"
-          />
-        </>
+        <UnconnectedField
+          name="background-type"
+          label="Choose a background type"
+          component={RichSelectGroupField}
+          value={useImage ? 'image' : 'concentric-circles'}
+          onChange={handleChooseBackgroundType}
+          options={backgroundTypeOptions}
+          orientation="horizontal"
+        />
       )}
       {!showImage && (
-        <>
-          <>
-            <ArchitectField
-              name="background.concentricCircles"
-              component={IntegerInput}
-              validation={{ required: true, positiveNumber: true }}
-              label="Number of concentric circles to use:"
-              initialValue={concentricCirclesInitialValue}
-              inline
-            />
-          </>
-          <>
-            <ArchitectField
-              name="background.skewedTowardCenter"
-              component={ToggleField}
-              inline
-              label="Skew circle size?"
-              hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
-              initialValue={skewedTowardCenterInitialValue ?? false}
-            />
-          </>
-        </>
+        <ArchitectField
+          name="background.concentricCircles"
+          component={IntegerInput}
+          validation={{ required: true, positiveNumber: true }}
+          label="Number of concentric circles to use:"
+          initialValue={concentricCirclesInitialValue}
+          inline
+        />
+      )}
+      {!showImage && (
+        <ArchitectField
+          name="background.skewedTowardCenter"
+          component={ToggleField}
+          inline
+          label="Skew circle size?"
+          hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
+          initialValue={skewedTowardCenterInitialValue ?? false}
+        />
       )}
       {showImage && (
         <ArchitectField

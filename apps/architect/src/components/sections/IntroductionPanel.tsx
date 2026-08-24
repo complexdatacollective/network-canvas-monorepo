@@ -24,24 +24,20 @@ const IntroductionPanel = (_props: StageEditorSectionProps) => {
         </Paragraph>
       }
     >
-      <>
-        <ArchitectField
-          name="introductionPanel.title"
-          label="Title"
-          component={InputField}
-          validation={{ required: true, maxLength: 50 }}
-          initialValue={titleInitialValue}
-        />
-      </>
-      <>
-        <ArchitectField
-          name="introductionPanel.text"
-          component={RichText}
-          label="Introduction text"
-          validation={{ required: true }}
-          initialValue={textInitialValue}
-        />
-      </>
+      <ArchitectField
+        name="introductionPanel.title"
+        label="Title"
+        component={InputField}
+        validation={{ required: true, maxLength: 50 }}
+        initialValue={titleInitialValue}
+      />
+      <ArchitectField
+        name="introductionPanel.text"
+        component={RichText}
+        label="Introduction text"
+        validation={{ required: true }}
+        initialValue={textInitialValue}
+      />
     </Section>
   );
 };

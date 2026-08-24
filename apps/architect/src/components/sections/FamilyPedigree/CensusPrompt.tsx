@@ -10,26 +10,21 @@ const CensusPrompt = (_props: StageEditorSectionProps) => {
   const initialValue = useStageInitialValue<string>('censusPrompt');
 
   return (
-    <Section
-      title="Census Prompt"
-      summary={
-        <Paragraph>
-          Configure the prompt shown to participants during the family building
-          phase.
-        </Paragraph>
-      }
-    >
-      <>
-        <IssueAnchor fieldName="censusPrompt" description="Census Prompt" />
-        <ArchitectField
-          name="censusPrompt"
-          component={RichText}
-          label="Prompt for building the family pedigree"
-          labelHidden
-          initialValue={initialValue}
-          validation={{ required: true }}
-        />
-      </>
+    <Section layout="vertical">
+      <IssueAnchor fieldName="censusPrompt" description="Census Prompt" />
+      <ArchitectField
+        name="censusPrompt"
+        component={RichText}
+        label="Census prompt"
+        hint={
+          <Paragraph>
+            Configure the prompt shown to participants during the family
+            building phase.
+          </Paragraph>
+        }
+        initialValue={initialValue}
+        validation={{ required: true }}
+      />
     </Section>
   );
 };

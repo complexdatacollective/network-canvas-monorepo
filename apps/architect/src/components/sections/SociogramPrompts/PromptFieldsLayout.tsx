@@ -100,28 +100,26 @@ const PromptFieldsLayout = ({
       group
       layout="vertical"
     >
-      <>
-        <Alert variant="info" className="my-7">
-          <AlertDescription>
-            If you use the same layout attribute across all prompts, the
-            position of nodes will be automatically set as the participant moves
-            between tasks.
-          </AlertDescription>
-        </Alert>
-        <ArchitectField
-          name="layout.layoutVariable"
-          label="Create or select an attribute to store node coordinates"
-          component={VariablePicker}
-          validation={{ required: true }}
-          initialValue={layout?.layoutVariable ?? undefined}
-          type={type}
-          entity={entity}
-          options={layoutVariablesForSubject}
-          onCreateOption={(value: string) =>
-            handleCreateVariable(value, 'layout', 'layout.layoutVariable')
-          }
-        />
-      </>
+      <Alert variant="info" className="my-7">
+        <AlertDescription>
+          If you use the same layout attribute across all prompts, the position
+          of nodes will be automatically set as the participant moves between
+          tasks.
+        </AlertDescription>
+      </Alert>
+      <ArchitectField
+        name="layout.layoutVariable"
+        label="Create or select an attribute to store node coordinates"
+        component={VariablePicker}
+        validation={{ required: true }}
+        initialValue={layout?.layoutVariable ?? undefined}
+        type={type}
+        entity={entity}
+        options={layoutVariablesForSubject}
+        onCreateOption={(value: string) =>
+          handleCreateVariable(value, 'layout', 'layout.layoutVariable')
+        }
+      />
       <Section
         toggleable
         title="Sort Unplaced Nodes"
@@ -137,30 +135,24 @@ const PromptFieldsLayout = ({
         handleToggleChange={handleToggleSortOrder}
         layout="vertical"
       >
-        <>
-          <ArchitectArrayField
-            name="sortOrder"
-            label="Sort order"
-            labelHidden
-            component={MultiSelect}
-            addButtonLabel="Add new sort rule"
-            initialValue={initialSortOrder ?? EMPTY_SORT_ORDER}
-            properties={SORT_RULE_PROPERTIES}
-            validation={SORT_RULE_VALIDATION}
-            maxItems={5}
-            options={(
-              property: string,
-              rowValues: unknown,
-              allValues: unknown,
-            ) =>
-              getSortOrderOptionGetter(variableOptions)(
-                property,
-                rowValues,
-                allValues as Record<string, unknown>[],
-              )
-            }
-          />
-        </>
+        <ArchitectArrayField
+          name="sortOrder"
+          label="Sort order"
+          labelHidden
+          component={MultiSelect}
+          addButtonLabel="Add new sort rule"
+          initialValue={initialSortOrder ?? EMPTY_SORT_ORDER}
+          properties={SORT_RULE_PROPERTIES}
+          validation={SORT_RULE_VALIDATION}
+          maxItems={5}
+          options={(property: string, rowValues: unknown, allValues: unknown) =>
+            getSortOrderOptionGetter(variableOptions)(
+              property,
+              rowValues,
+              allValues as Record<string, unknown>[],
+            )
+          }
+        />
       </Section>
     </Section>
   );

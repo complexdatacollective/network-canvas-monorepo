@@ -169,58 +169,50 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section id={getFieldId('variable')} layout="vertical">
-        <>
-          <ArchitectField
-            name="variable"
-            label="Ordinal attribute"
-            hint="Select an ordinal attribute to assign a value to."
-            component={VariablePicker}
-            validation={{ required: true }}
-            initialValue={variable}
-            entity={entity}
-            type={type}
-            options={ordinalVariableOptions}
-            onCreateOption={handleNewVariable}
-          />
-        </>
+        <ArchitectField
+          name="variable"
+          label="Ordinal attribute"
+          hint="Select an ordinal attribute to assign a value to."
+          component={VariablePicker}
+          validation={{ required: true }}
+          initialValue={variable}
+          entity={entity}
+          type={type}
+          options={ordinalVariableOptions}
+          onCreateOption={handleNewVariable}
+        />
       </Section>
       {currentVariable && (
         <Section id={getFieldId('variableOptions')} layout="vertical">
-          <>
-            {lockedOptions ? (
-              <LockedOptions options={lockedOptions} />
-            ) : (
-              <>
-                {showVariableOptionsTip && (
-                  <Alert variant="destructive" className="my-7">
-                    <AlertTitle>Too many option values</AlertTitle>
-                    <AlertDescription>
-                      The ordinal bin interface is designed to use{' '}
-                      <strong>up to 5 option values</strong>. Using more will
-                      create a sub-optimal experience for participants, and
-                      might reduce data quality.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <ArchitectArrayField
-                  name="variableOptions"
-                  label="Option values"
-                  hint={
-                    <>
-                      An ordinal attribute contains pre-defined categories made
-                      up of a label (shown to the participant) and a value.
-                      Create <strong>up to 5</strong> option values for this
-                      attribute.
-                    </>
-                  }
-                  component={Options}
-                  addButtonLabel="Create new option"
-                  validation={optionsValidation}
-                  initialValue={variableOptions}
-                />
-              </>
-            )}
-          </>
+          {lockedOptions && <LockedOptions options={lockedOptions} />}
+          {!lockedOptions && showVariableOptionsTip && (
+            <Alert variant="destructive" className="my-7">
+              <AlertTitle>Too many option values</AlertTitle>
+              <AlertDescription>
+                The ordinal bin interface is designed to use{' '}
+                <strong>up to 5 option values</strong>. Using more will create a
+                sub-optimal experience for participants, and might reduce data
+                quality.
+              </AlertDescription>
+            </Alert>
+          )}
+          {!lockedOptions && (
+            <ArchitectArrayField
+              name="variableOptions"
+              label="Option values"
+              hint={
+                <>
+                  An ordinal attribute contains pre-defined categories made up
+                  of a label (shown to the participant) and a value. Create{' '}
+                  <strong>up to 5</strong> option values for this attribute.
+                </>
+              }
+              component={Options}
+              addButtonLabel="Create new option"
+              validation={optionsValidation}
+              initialValue={variableOptions}
+            />
+          )}
         </Section>
       )}
       <Section id={getFieldId('color')} layout="vertical">

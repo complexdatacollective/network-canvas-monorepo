@@ -1,5 +1,4 @@
 // Screen message listeners removed as part of screen system refactor
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageInitialValue } from '~/components/StageEditor/stageFormHooks';
@@ -23,32 +22,19 @@ const NodeType = (props: NodeTypeProps) => {
   // TODO: Restore auto-selection of newly created types when type creation dialogs
   // are properly integrated with form state management
   return (
-    <Section
-      title="Node Type"
-      summary={
-        <Paragraph>
-          Select the type of node that this stage will create.
-        </Paragraph>
-      }
-    >
-      <>
-        <IssueAnchor fieldName="subject" description="Node Type" />
-        <ArchitectField
-          name="subject"
-          entityType="node"
-          label="Node type"
-          labelHidden
-          promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
-          component={SubjectSelectField}
-          initialValue={initialSubject}
-          validation={{ required: true }}
-        />
-      </>
-      {withFilter && (
-        <>
-          <Filter />
-        </>
-      )}
+    <Section layout="vertical">
+      <IssueAnchor fieldName="subject" description="Node Type" />
+      <ArchitectField
+        name="subject"
+        entityType="node"
+        label="Node type"
+        hint="Select the type of node that this stage will create."
+        promptBeforeChange="You attempted to change the node type of a stage that you have already configured. Before you can proceed the stage must be reset, which will remove any existing configuration. Do you want to reset the stage now?"
+        component={SubjectSelectField}
+        initialValue={initialSubject}
+        validation={{ required: true }}
+      />
+      {withFilter && <Filter />}
     </Section>
   );
 };

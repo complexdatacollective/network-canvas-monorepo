@@ -43,7 +43,7 @@ export async function addSociogramPrompt(
       .locator('[data-field-name="layout.layoutVariable"]')
       .getByRole('button', { name: 'Select attribute' });
   await addPrompt(
-    editor.section('Prompts'),
+    editor.field('prompts'),
     async () => {
       await editor.fillRichTextMarkdown('Prompt text', spec.text);
       await createVariableViaSpotlight(page, {

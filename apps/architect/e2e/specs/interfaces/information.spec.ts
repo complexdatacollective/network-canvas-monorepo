@@ -102,7 +102,7 @@ const openItemDialog = async (
   position: number,
 ) => {
   await editor
-    .section('Items')
+    .field('items')
     .getByRole('button', { name: 'Edit item' })
     .nth(position)
     .click();

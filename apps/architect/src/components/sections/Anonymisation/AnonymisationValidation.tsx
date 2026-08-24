@@ -69,20 +69,18 @@ const AnonymisationValidation = ({
       forceExpanded={hasValidationSyncError}
       handleToggleChange={handleToggleValidation}
     >
-      <>
-        <Validations
-          name="validation"
-          initialValue={initialValidation}
-          variableType="passphrase"
-          entity="ego"
-          // The stage editor reinitializes in place when the edited stage
-          // changes, and keeps same-interface sections mounted — so without
-          // stage identity the rule list would carry one passphrase's
-          // uncommitted rows onto the next stage's saved rules. `stagePath` is
-          // the edited stage's own slot, and is null only before it exists.
-          scopeId={stagePath ?? `new-${interfaceType}`}
-        />
-      </>
+      <Validations
+        name="validation"
+        initialValue={initialValidation}
+        variableType="passphrase"
+        entity="ego"
+        // The stage editor reinitializes in place when the edited stage
+        // changes, and keeps same-interface sections mounted — so without
+        // stage identity the rule list would carry one passphrase's
+        // uncommitted rows onto the next stage's saved rules. `stagePath` is
+        // the edited stage's own slot, and is null only before it exists.
+        scopeId={stagePath ?? `new-${interfaceType}`}
+      />
       {/* fresco-ui's own Field error slot only shows once the field is both
           dirty and blurred, which a field revealed here for the first time
           (the section was collapsed) never is. Render the message directly,

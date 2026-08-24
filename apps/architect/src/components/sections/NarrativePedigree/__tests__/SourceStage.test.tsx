@@ -115,24 +115,32 @@ const renderSection = ({
 };
 
 describe('SourceStage', () => {
-  it('renders the Source Stage section title', () => {
+  it('renders the field label and guidance visibly', () => {
     renderSection();
-    expect(screen.getByText('Source Stage')).toBeDefined();
+    const label = screen.getByText('Source stage');
+    expect(label).toBeVisible();
+    // Visibility is the behaviour under test; jsdom does not load Tailwind's
+    // screen-reader-only declaration, so assert the design-system visibility
+    // token directly as well as the accessible name.
+    expect(label).not.toHaveClass('sr-only');
+    expect(
+      screen.getByText(
+        'Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.',
+      ),
+    ).toBeVisible();
   });
 
   it('renders the sourceStageId field with its label', () => {
     renderSection();
     expect(
-      screen.getByRole('combobox', { name: 'Family Pedigree stage' }),
+      screen.getByRole('combobox', { name: 'Source stage' }),
     ).toBeInTheDocument();
   });
 
   it('lists only FamilyPedigree stages as options', () => {
     renderSection();
 
-    fireEvent.click(
-      screen.getByRole('combobox', { name: 'Family Pedigree stage' }),
-    );
+    fireEvent.click(screen.getByRole('combobox', { name: 'Source stage' }));
 
     expect(
       screen.getByRole('option', { name: 'My Family Tree' }),
@@ -146,14 +154,14 @@ describe('SourceStage', () => {
   it('disables the field when no FamilyPedigree stage exists', () => {
     renderSection({ stages: [] });
     expect(
-      screen.getByRole('combobox', { name: 'Family Pedigree stage' }),
+      screen.getByRole('combobox', { name: 'Source stage' }),
     ).toBeDisabled();
   });
 
   it('leaves the field enabled when a FamilyPedigree stage exists', () => {
     renderSection();
     expect(
-      screen.getByRole('combobox', { name: 'Family Pedigree stage' }),
+      screen.getByRole('combobox', { name: 'Source stage' }),
     ).toBeEnabled();
   });
 

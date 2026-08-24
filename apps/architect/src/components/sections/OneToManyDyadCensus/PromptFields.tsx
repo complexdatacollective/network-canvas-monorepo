@@ -92,27 +92,23 @@ const PromptFields = ({
             from the group.
           </AlertDescription>
         </Alert>
-        <>
-          <ArchitectField
-            name="text"
-            label="Prompt Text"
-            component={RichText}
-            validation={{ required: true }}
-            initialValue={text}
-            singleLine
-            placeholder="Enter text for the prompt here..."
-          />
-        </>
-        <>
-          <ArchitectField
-            name="createEdge"
-            label="Create edges of the following type"
-            component={EntitySelectField}
-            validation={{ required: true }}
-            initialValue={createEdge}
-            entityType="edge"
-          />
-        </>
+        <ArchitectField
+          name="text"
+          label="Prompt Text"
+          component={RichText}
+          validation={{ required: true }}
+          initialValue={text}
+          singleLine
+          placeholder="Enter text for the prompt here..."
+        />
+        <ArchitectField
+          name="createEdge"
+          label="Create edges of the following type"
+          component={EntitySelectField}
+          validation={{ required: true }}
+          initialValue={createEdge}
+          entityType="edge"
+        />
       </Section>
 
       <BucketSortOrderSection

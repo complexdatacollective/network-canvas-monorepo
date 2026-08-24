@@ -49,52 +49,47 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
           the condition is satisfied.
         </li>
       </ul>
-      <>
-        <IssueAnchor
-          fieldName="boundaries.requireGrandparents"
-          description="Require Grandparents"
-        />
-        <ArchitectField
-          name="boundaries.requireGrandparents"
-          component={NativeSelectField}
-          validation={{ required: true }}
-          label="Require Grandparents"
-          initialValue={requireGrandparentsInitial}
-          options={BOUNDARY_REQUIREMENT_OPTIONS}
-          placeholder="Select an option"
-          hint={
-            <Paragraph>
-              Asks the participant to record two parents for each of their own
-              parents, so that all of the participant&rsquo;s grandparents
-              appear in the family pedigree.
-            </Paragraph>
-          }
-        />
-      </>
-      <>
-        <IssueAnchor
-          fieldName="boundaries.requireChildrenContributors"
-          description="Require Co-Parents' Families"
-        />
-        <ArchitectField
-          name="boundaries.requireChildrenContributors"
-          component={NativeSelectField}
-          validation={{ required: true }}
-          label="Require Co-Parents' Families"
-          initialValue={requireChildrenContributorsInitial}
-          options={BOUNDARY_REQUIREMENT_OPTIONS}
-          placeholder="Select an option"
-          hint={
-            <Paragraph>
-              For each of the participant&rsquo;s children, asks that the
-              child&rsquo;s other genetic parent has their own parents and
-              grandparents recorded, extending the family pedigree to that side
-              of the family. Participants without children can affirm this
-              instead.
-            </Paragraph>
-          }
-        />
-      </>
+      <IssueAnchor
+        fieldName="boundaries.requireGrandparents"
+        description="Require Grandparents"
+      />
+      <ArchitectField
+        name="boundaries.requireGrandparents"
+        component={NativeSelectField}
+        validation={{ required: true }}
+        label="Require Grandparents"
+        initialValue={requireGrandparentsInitial}
+        options={BOUNDARY_REQUIREMENT_OPTIONS}
+        placeholder="Select an option"
+        hint={
+          <Paragraph>
+            Asks the participant to record two parents for each of their own
+            parents, so that all of the participant&rsquo;s grandparents appear
+            in the family pedigree.
+          </Paragraph>
+        }
+      />
+      <IssueAnchor
+        fieldName="boundaries.requireChildrenContributors"
+        description="Require Co-Parents' Families"
+      />
+      <ArchitectField
+        name="boundaries.requireChildrenContributors"
+        component={NativeSelectField}
+        validation={{ required: true }}
+        label="Require Co-Parents' Families"
+        initialValue={requireChildrenContributorsInitial}
+        options={BOUNDARY_REQUIREMENT_OPTIONS}
+        placeholder="Select an option"
+        hint={
+          <Paragraph>
+            For each of the participant&rsquo;s children, asks that the
+            child&rsquo;s other genetic parent has their own parents and
+            grandparents recorded, extending the family pedigree to that side of
+            the family. Participants without children can affirm this instead.
+          </Paragraph>
+        }
+      />
     </Section>
   );
 };
