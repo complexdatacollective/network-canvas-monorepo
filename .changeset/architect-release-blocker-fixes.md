@@ -2,8 +2,8 @@
 '@codaco/architect': patch
 '@codaco/development-protocol': patch
 '@codaco/interview': patch
-'@codaco/protocol-utilities': patch
-'@codaco/protocol-validation': patch
+'@codaco/protocol-utilities': major
+'@codaco/protocol-validation': major
 ---
 
 This release improves the reliability, accessibility, and recovery of protocol editing in Architect.

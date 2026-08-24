@@ -13,6 +13,7 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const LEGACY_NODE_COLOR = /^node-color-seq-(9|10)$/;
 const LEGACY_PRIMARY_COLOR = /^primary-color-seq-([1-8])$/;
 const CEGRM_RAW_COLOR = '#e53e3e';
+const DEVELOPMENT_PEDIGREE_RAW_COLOR = '#cc0000';
 const DEVELOPMENT_GEOGRAPHIC_RAW_COLOR = '#3399ff';
 
 type LegacyColorReferenceRepair =
@@ -41,8 +42,9 @@ type LegacyColorReferenceRepairResult = {
 /**
  * Repairs exact legacy values generated or shipped by Network Canvas itself:
  * the two undefined node references from the old Narrative Pedigree picker,
- * the CEGRM template's raw disease color, the development protocol's raw map
- * color, and Geospatial's old `primary-color-seq-*` alias.
+ * the CEGRM template and development protocol's raw disease colors, the
+ * development protocol's raw map color, and Geospatial's old
+ * `primary-color-seq-*` alias.
  *
  * The continuation wraps around the finite sequence, exactly as Architect's
  * entity-colour assignment does: position 9 becomes 1 and position 10 becomes
@@ -64,8 +66,10 @@ export const repairLegacyColorReferences = (
       if (!isRecord(disease) || typeof disease.color !== 'string') return;
       const match = LEGACY_NODE_COLOR.exec(disease.color);
       const position = match ? Number(match[1]) : undefined;
+      const normalizedColor = disease.color.toLowerCase();
       const to =
-        disease.color.toLowerCase() === CEGRM_RAW_COLOR
+        normalizedColor === CEGRM_RAW_COLOR ||
+        normalizedColor === DEVELOPMENT_PEDIGREE_RAW_COLOR
           ? NodeColorSequence[0]
           : position === undefined
             ? undefined

@@ -235,20 +235,19 @@ describe('repairConfigurationConflicts', () => {
     ).toEqual(['node-color-seq-9', 'node-color-seq-10']);
   });
 
-  it('repairs the raw disease color shipped by the old CEGRM template', async () => {
-    const result = await expectRepairsToValidate(
-      protocolWith([
-        familyPedigree(),
-        narrativePedigree([
-          disease('d1', 'Condition X', 'hasConditionX', '#e53e3e'),
-        ]),
-      ]),
-    );
+  it.each([
+    ['old CEGRM template', '#e53e3e'],
+    ['published development protocol', '#cc0000'],
+  ])('repairs the raw disease color shipped by the %s', async (_, color) => {
+    const protocol = protocolWith([
+      familyPedigree(),
+      narrativePedigree([disease('d1', 'Condition X', 'hasConditionX', color)]),
+    ]);
+    const result = await expectRepairsToValidate(protocol);
 
     expect(result.problems).toEqual([
       {
-        problem:
-          'The disease "Condition X" uses "#e53e3e", which has no defined node palette color.',
+        problem: `The disease "Condition X" uses "${color}", which has no defined node palette color.`,
         repair:
           'Its color will use the defined palette reference "node-color-seq-1".',
       },
@@ -257,6 +256,10 @@ describe('repairConfigurationConflicts', () => {
     expect(stage).toBeDefined();
     if (!stage) return;
     expect((stage.diseases as Stage[])[0]?.color).toBe('node-color-seq-1');
+    expect(migrateProtocol(protocol).stages[1]).toMatchObject({
+      type: 'NarrativePedigree',
+      diseases: [{ color: 'node-color-seq-1' }],
+    });
   });
 
   it.each([
