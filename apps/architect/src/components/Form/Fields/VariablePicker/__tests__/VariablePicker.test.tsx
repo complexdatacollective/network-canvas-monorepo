@@ -14,11 +14,39 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
+type MockVariablePillProps = {
+  displayMaxWidth?: string;
+  maxWidth?: string;
+  width?: string;
+};
+
 vi.mock('~/components/VariablePill', () => ({
-  ConnectedVariablePill: () => (
-    <div data-testid="connected-variable-pill">ConnectedVariablePill</div>
+  ConnectedVariablePill: ({
+    displayMaxWidth,
+    maxWidth,
+    width,
+  }: MockVariablePillProps) => (
+    <div
+      data-testid="connected-variable-pill"
+      data-editor-max-width={maxWidth}
+      style={{ maxWidth: displayMaxWidth, width }}
+    >
+      ConnectedVariablePill
+    </div>
   ),
-  VariablePill: () => <div data-testid="variable-pill">VariablePill</div>,
+  VariablePill: ({
+    displayMaxWidth,
+    maxWidth,
+    width,
+  }: MockVariablePillProps) => (
+    <div
+      data-testid="variable-pill"
+      data-editor-max-width={maxWidth}
+      style={{ maxWidth: displayMaxWidth, width }}
+    >
+      VariablePill
+    </div>
+  ),
 }));
 
 vi.mock('../VariableSpotlight', () => ({
@@ -193,7 +221,12 @@ describe('VariablePicker', () => {
   it('renders the selected variable using the appropriate pill', () => {
     setup('age');
 
-    expect(screen.getByTestId('connected-variable-pill')).toBeInTheDocument();
+    const pill = screen.getByTestId('connected-variable-pill');
+    expect(pill).toHaveStyle({
+      maxWidth: '100%',
+      width: 'fit-content',
+    });
+    expect(pill).not.toHaveAttribute('data-editor-max-width');
     expect(
       screen.getByRole('button', { name: 'Change attribute' }),
     ).toBeInTheDocument();
@@ -202,7 +235,12 @@ describe('VariablePicker', () => {
   it('renders an untyped selected variable using the unconnected pill', () => {
     setup('new-variable');
 
-    expect(screen.getByTestId('variable-pill')).toBeInTheDocument();
+    const pill = screen.getByTestId('variable-pill');
+    expect(pill).toHaveStyle({
+      maxWidth: '100%',
+      width: 'fit-content',
+    });
+    expect(pill).not.toHaveAttribute('data-editor-max-width');
   });
 
   it('persists a spotlight selection to the form store', () => {
