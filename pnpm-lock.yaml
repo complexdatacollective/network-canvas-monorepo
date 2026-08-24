@@ -1148,6 +1148,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.2.1(storybook@10.5.9(@types/react@19.2.18)(prettier@2.8.8)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+      '@codaco/development-protocol':
+        specifier: workspace:^
+        version: link:../../packages/development-protocol
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript

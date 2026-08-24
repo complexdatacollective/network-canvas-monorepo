@@ -16,7 +16,7 @@ const CEGRM_RAW_COLOR = '#e53e3e';
 const DEVELOPMENT_PEDIGREE_RAW_COLOR = '#cc0000';
 const DEVELOPMENT_GEOGRAPHIC_RAW_COLOR = '#3399ff';
 
-type LegacyColorReferenceRepair =
+export type LegacyColorReferenceRepair =
   | {
       kind: 'narrative-pedigree';
       stageIndex: number;
@@ -33,7 +33,7 @@ type LegacyColorReferenceRepair =
       to: ColorReference;
     };
 
-type LegacyColorReferenceRepairResult = {
+export type LegacyColorReferenceRepairResult = {
   /** The input itself when no repair is needed; otherwise a repaired clone. */
   protocol: unknown;
   repairs: LegacyColorReferenceRepair[];
