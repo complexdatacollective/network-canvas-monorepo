@@ -1,6 +1,9 @@
 import type { MapMouseEvent } from 'mapbox-gl/esm';
 
-import type { MapOptions } from '@codaco/protocol-validation';
+import type {
+  MapOptions,
+  OrdinalColorReference,
+} from '@codaco/protocol-validation';
 
 export type ExtendedMapOptions = MapOptions & {
   showTransit?: boolean;
@@ -32,7 +35,7 @@ const MAP_CONSTS = {
 } as const;
 
 // Map protocol color names to Tailwind CSS variable names
-const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
+const PROTOCOL_TO_THEME_VAR = {
   'ord-color-seq-1': '--ord-1',
   'ord-color-seq-2': '--ord-2',
   'ord-color-seq-3': '--ord-3',
@@ -43,27 +46,8 @@ const PROTOCOL_TO_THEME_VAR: Record<string, string> = {
   'ord-color-seq-8': '--ord-8',
   'ord-color-seq-9': '--ord-9',
   'ord-color-seq-10': '--ord-10',
-  'primary-color-seq-1': '--node-1',
-  'primary-color-seq-2': '--node-2',
-  'primary-color-seq-3': '--node-3',
-  'primary-color-seq-4': '--node-4',
-  'primary-color-seq-5': '--node-5',
-  'primary-color-seq-6': '--node-6',
-  'primary-color-seq-7': '--node-7',
-  'primary-color-seq-8': '--node-8',
-  'cat-color-seq-1': '--cat-1',
-  'cat-color-seq-2': '--cat-2',
-  'cat-color-seq-3': '--cat-3',
-  'cat-color-seq-4': '--cat-4',
-  'cat-color-seq-5': '--cat-5',
-  'cat-color-seq-6': '--cat-6',
-  'cat-color-seq-7': '--cat-7',
-  'cat-color-seq-8': '--cat-8',
-  'cat-color-seq-9': '--cat-9',
-  'cat-color-seq-10': '--cat-10',
-};
+} as const satisfies Record<OrdinalColorReference, string>;
 
-const DEFAULT_COLOR_VAR = '--node-1';
 const DEFAULT_FALLBACK = 'rgb(226, 33, 91)';
 
 /**
@@ -235,7 +219,7 @@ export const useMapbox = ({
       // Read CSS variables and convert to RGB format for Mapbox GL compatibility
       // (Mapbox doesn't support oklch colors used in the theme)
       const styles = getComputedStyle(document.documentElement);
-      const colorVar = PROTOCOL_TO_THEME_VAR[color] ?? DEFAULT_COLOR_VAR;
+      const colorVar = PROTOCOL_TO_THEME_VAR[color];
       const rawColor = styles.getPropertyValue(colorVar).trim();
       const ncColor = rawColor
         ? convertCssColorToHex(rawColor)

@@ -1,6 +1,9 @@
 ---
 '@codaco/architect': patch
+'@codaco/development-protocol': patch
 '@codaco/interview': patch
+'@codaco/protocol-utilities': patch
+'@codaco/protocol-validation': patch
 ---
 
 This release improves the reliability, accessibility, and recovery of protocol editing in Architect.
@@ -12,4 +15,4 @@ This release improves the reliability, accessibility, and recovery of protocol e
 - Invalid imports, blocked edits, migration conflicts, preview completion, and deleted protocol routes now explain what happened and provide a safe recovery path.
 - Existing protocols with invalid references or conflicting interface-owned variables are explained before opening. Automatic repairs are described and are not applied without confirmation.
 - Recent protocols in the library now show their description, and starter templates show their stage, node type, and edge type counts.
-- The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Narrative Pedigree resolves node palette selections through the active theme in its key, pedigree, dimming, and snapshots, while neutral dialog actions remain distinct from white dialog surfaces.
+- The CEGRM starter template now uses an available color for its Narrative Pedigree condition. Protocol colors are constrained to typed node, edge, or ordinal palette references; Narrative Pedigree and Geospatial resolve those references through the active theme. Neutral dialog actions remain distinct from white dialog surfaces.

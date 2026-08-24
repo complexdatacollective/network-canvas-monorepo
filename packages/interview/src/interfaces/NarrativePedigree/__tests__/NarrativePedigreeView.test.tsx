@@ -190,14 +190,14 @@ function makeNarrativeStage(): NarrativeStage {
       {
         id: 'da',
         label: 'Disease A',
-        color: '#ff0000',
+        color: 'node-color-seq-1',
         variable: asEntityAttributeReference(DISEASE_A_VAR),
         inheritancePattern: 'autosomalDominant',
       },
       {
         id: 'db',
         label: 'Disease B',
-        color: '#00ff00',
+        color: 'node-color-seq-5',
         variable: asEntityAttributeReference(DISEASE_B_VAR),
         inheritancePattern: 'autosomalRecessive',
       },
@@ -373,17 +373,6 @@ describe('NarrativePedigreeView — condition colours', () => {
     expect(
       snapshot?.querySelector('[data-shape-outline][stroke="var(--node-3)"]'),
     ).toBeTruthy();
-  });
-
-  it('preserves legacy CSS colour values', async () => {
-    renderView();
-
-    const conditionButton = await screen.findByRole('button', {
-      name: 'Disease A',
-    });
-    expect(conditionButton.querySelector('[aria-hidden]')).toHaveStyle({
-      backgroundColor: '#ff0000',
-    });
   });
 });
 
@@ -580,7 +569,7 @@ function makeCousinNarrativeStage(showAtRiskStatuses = true): NarrativeStage {
       {
         id: AR_DISEASE_ID,
         label: 'AR Disease',
-        color: '#ff0000',
+        color: 'node-color-seq-1',
         variable: asEntityAttributeReference(AR_DISEASE_VAR),
         inheritancePattern: 'autosomalRecessive',
       },
@@ -823,7 +812,7 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
         {
           id: 'da',
           label: 'Disease A',
-          color: '#ff0000',
+          color: 'node-color-seq-1',
           variable: asEntityAttributeReference(DISEASE_A_VAR),
           inheritancePattern: 'autosomalDominant',
         },

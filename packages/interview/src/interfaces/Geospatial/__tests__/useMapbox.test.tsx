@@ -94,7 +94,7 @@ const baseMapOptions = {
   center: [0, 0],
   initialZoom: 0,
   tokenAssetId: 'token-asset',
-  color: 'primary-color-seq-1',
+  color: 'ord-color-seq-1',
   targetFeatureProperty: 'id',
   style: 'mapbox://styles/mapbox/streets-v12',
   showTransit: false,

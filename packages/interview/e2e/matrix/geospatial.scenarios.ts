@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { OrdinalColorReference } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -21,8 +22,8 @@ const TOKEN_ASSET_ID = 'mapbox-token';
 const CHICAGO_ASSET_ID = 'geojson-chicago';
 const TWO_TRACTS_ASSET_ID = 'two-tracts';
 
-// The raw constant Geospatial paints when a colour cannot be resolved
-// (useMapbox.ts DEFAULT_FALLBACK). Scenarios assert the resolved colour is
+// The raw constant Geospatial paints if the referenced CSS variable cannot be
+// read (useMapbox.ts DEFAULT_FALLBACK). Scenarios assert the resolved colour is
 // NOT this, proving the theme variable was actually applied.
 const DEFAULT_FALLBACK_COLOR = 'rgb(226, 33, 91)';
 
@@ -58,7 +59,7 @@ type GeoMapOptions = {
   center: [number, number];
   initialZoom: number;
   dataSourceAssetId: string;
-  color: string;
+  color: OrdinalColorReference;
   targetFeatureProperty: string;
   showTransit?: boolean;
   allowSearch?: boolean;
@@ -844,68 +845,6 @@ function buildMapStyleColorTransitScenario(): ScenarioDefinition {
   };
 }
 
-function buildColorFallbackScenario(): ScenarioDefinition {
-  return {
-    id: 'color-unknown-name-falls-back',
-    covers: ['mapOptions.color=default'],
-    chromiumOnly: true,
-    slow: true,
-    build: () => {
-      const { synth, person } = newPersonInterview();
-      const locationVar = person.addVariable({
-        type: 'location',
-        name: 'Location',
-      });
-
-      const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
-        initialNodes: { count: 1 },
-        mapOptions: chicagoMapOptions({ color: 'not-a-real-palette-color' }),
-      });
-      geo.addPrompt({
-        variable: locationVar.id,
-        text: 'Where does this person currently live?',
-      });
-
-      clearNodeLocations(synth, [0], [locationVar.id]);
-      return synth;
-    },
-    assets: [TOKEN_ASSET, CHICAGO_ASSET],
-    currentStep: 0,
-    seedNetwork: true,
-    run: async ({ page, stage }) => {
-      await stage.geospatial.waitForMapIdle();
-
-      // Independently compute the colour the unknown name must fall back to
-      // (DEFAULT_COLOR_VAR = --node-1), using the same canvas conversion the
-      // app applies in useMapbox.ts.
-      const expectedColor = await page.evaluate(() => {
-        const raw = getComputedStyle(document.documentElement)
-          .getPropertyValue('--node-1')
-          .trim();
-        if (!raw) return 'rgb(226, 33, 91)';
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return 'rgb(226, 33, 91)';
-        ctx.clearRect(0, 0, 1, 1);
-        ctx.fillStyle = raw;
-        ctx.fillRect(0, 0, 1, 1);
-        const data = ctx.getImageData(0, 0, 1, 1).data;
-        if (data[3] === 0) return 'rgb(226, 33, 91)';
-        const hex = (v: number) => v.toString(16).padStart(2, '0');
-        return `#${hex(data[0]!)}${hex(data[1]!)}${hex(data[2]!)}`;
-      });
-
-      const fillColor = await page.evaluate(() =>
-        window.__e2eMap?.getPaintProperty('selection', 'fill-color'),
-      );
-      expect(fillColor).toBe(expectedColor);
-    },
-  };
-}
-
 function buildSearchFlowScenario(): ScenarioDefinition {
   let variableId = '';
 
@@ -1169,7 +1108,6 @@ export const geospatialScenarios: InterfaceScenarios = {
     buildEmptySubjectScenario(),
     buildZoomControlsScenario(),
     buildMapStyleColorTransitScenario(),
-    buildColorFallbackScenario(),
     buildSearchFlowScenario(),
     buildMapErrorOverlayScenario(),
     buildOfflineIndicatorScenario(),

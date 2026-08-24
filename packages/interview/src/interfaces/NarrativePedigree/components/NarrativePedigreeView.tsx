@@ -16,7 +16,7 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, NodeColorReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcEdge,
@@ -55,10 +55,21 @@ import ZoomableViewport from './ZoomableViewport';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
+type ResolvedDisease = Omit<Disease, 'color'> & { color: string };
 
-function resolveDiseaseColor(color: string): string {
-  const sequenceMatch = /^node-color-seq-(\d+)$/.exec(color);
-  return sequenceMatch ? `var(--node-${sequenceMatch[1]})` : color;
+const NODE_COLOR_VARIABLES = {
+  'node-color-seq-1': 'var(--node-1)',
+  'node-color-seq-2': 'var(--node-2)',
+  'node-color-seq-3': 'var(--node-3)',
+  'node-color-seq-4': 'var(--node-4)',
+  'node-color-seq-5': 'var(--node-5)',
+  'node-color-seq-6': 'var(--node-6)',
+  'node-color-seq-7': 'var(--node-7)',
+  'node-color-seq-8': 'var(--node-8)',
+} as const satisfies Record<NodeColorReference, string>;
+
+function resolveDiseaseColor(color: NodeColorReference): string {
+  return NODE_COLOR_VARIABLES[color];
 }
 
 type SourceStageConfig = {
@@ -133,11 +144,11 @@ type NarrativePedigreeViewProps = {
 export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
-  // Architect stores the selected node palette entry as a protocol token. SVG
-  // and inline CSS need the corresponding theme variable, so resolve every
-  // disease once at the view boundary before it reaches the key, pedigree,
-  // dimming, or printable snapshot. Imported legacy CSS colours pass through.
-  const diseases = useMemo(
+  // Architect stores the selected node palette entry as a typed protocol
+  // reference. SVG and inline CSS need the corresponding theme variable, so
+  // resolve every disease once at the view boundary before it reaches the key,
+  // pedigree, dimming, or printable snapshot.
+  const diseases = useMemo<ResolvedDisease[]>(
     () =>
       stage.diseases.map((disease) => ({
         ...disease,
@@ -232,7 +243,7 @@ export default function NarrativePedigreeView({
   }, [pedigreeNodes, sourceConfig]);
 
   // When a disease is selected, show only that disease; otherwise show all.
-  const shownDiseases = useMemo<Disease[]>(() => {
+  const shownDiseases = useMemo<ResolvedDisease[]>(() => {
     if (selectedDiseaseId === null) return diseases;
     const found = diseases.find((d) => d.id === selectedDiseaseId);
     return found !== undefined ? [found] : diseases;
@@ -460,7 +471,7 @@ export default function NarrativePedigreeView({
     node: RenderableNode,
     shape: NodeShape,
     label: string,
-    disease: Disease,
+    disease: ResolvedDisease,
     dimmed: boolean,
     selected: boolean,
   ): ReactNode => {

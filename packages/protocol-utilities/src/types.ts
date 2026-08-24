@@ -6,8 +6,11 @@ import type {
   FamilyPedigreeIntroItem,
   FamilyPedigreeNodeConfigInput,
   FamilyPedigreeNominationPromptInput,
+  EdgeColorReference,
   FilterOperator,
   Item,
+  NodeColorReference,
+  OrdinalColorReference,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -84,7 +87,7 @@ type ShapeMapping =
 export type NodeTypeEntry = {
   id: string;
   name: string;
-  color: string;
+  color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
   variables: Map<string, VariableEntry>;
@@ -93,7 +96,7 @@ export type NodeTypeEntry = {
 export type EdgeTypeEntry = {
   id: string;
   name: string;
-  color: string;
+  color: EdgeColorReference;
   variables: Map<string, VariableEntry>;
 };
 
@@ -145,7 +148,7 @@ export type OrdinalBinPromptEntry = {
   variable: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
-  color?: string;
+  color?: OrdinalColorReference;
 };
 
 export type CategoricalBinPromptEntry = {
@@ -185,7 +188,7 @@ type MapOptionsEntry = {
   center: [number, number];
   initialZoom: number;
   dataSourceAssetId: string;
-  color: string;
+  color: OrdinalColorReference;
   targetFeatureProperty: string;
   showTransit?: boolean;
   allowSearch?: boolean;
@@ -366,14 +369,14 @@ export type InitialNodesSpec = {
 
 export type AddNodeTypeInput = {
   name?: string;
-  color?: string;
+  color?: NodeColorReference;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
 };
 
 export type AddEdgeTypeInput = {
   name?: string;
-  color?: string;
+  color?: EdgeColorReference;
 };
 
 export type AddVariableInput = {
@@ -529,7 +532,7 @@ export type AddOrdinalBinPromptInput = {
   variable?: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
-  color?: string;
+  color?: OrdinalColorReference;
 };
 
 export type AddCategoricalBinPromptInput = {
@@ -572,7 +575,7 @@ export type AddPresetInput = {
 export type NarrativeDiseaseEntry = {
   id: string;
   label: string;
-  color: string;
+  color: NodeColorReference;
   variable: string;
   inheritancePattern: string;
 };

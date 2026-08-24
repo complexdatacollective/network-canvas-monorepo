@@ -71,7 +71,7 @@ function collectingFamilyStage(stage: Stage, variable: string): Stage {
 const narrativeDisease = {
   id: 'condition',
   label: 'Condition',
-  color: '#cc0000',
+  color: 'node-color-seq-1',
   variable: 'condition',
   inheritancePattern: 'autosomalDominant',
 } as const;

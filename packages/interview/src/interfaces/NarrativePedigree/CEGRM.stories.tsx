@@ -279,7 +279,7 @@ export function buildCegrmInterview(seed: number) {
       {
         id: 'hboc',
         label: 'Hereditary breast/ovarian cancer',
-        color: '#e53e3e',
+        color: 'node-color-seq-1',
         variable: CANCER_VAR,
         inheritancePattern: 'autosomalDominant',
       },
