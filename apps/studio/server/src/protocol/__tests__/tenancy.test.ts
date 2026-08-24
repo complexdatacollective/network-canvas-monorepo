@@ -27,6 +27,8 @@ import {
 
 describe.skipIf(!storeDb)('team isolation', () => {
   let db: pg.Pool;
+  let app: pg.Pool;
+  let maintenance: pg.Pool;
   let dispose: () => Promise<void>;
   let tenantA: TenantDb;
   let tenantB: TenantDb;
@@ -34,11 +36,11 @@ describe.skipIf(!storeDb)('team isolation', () => {
   let storeB: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, dispose } = await makeStoreSchema());
+    ({ db, app, maintenance, dispose } = await makeStoreSchema());
     await seedTeam(db, 'team-a');
     await seedTeam(db, 'team-b');
-    tenantA = createTenantDb(db, 'team-a');
-    tenantB = createTenantDb(db, 'team-b');
+    tenantA = createTenantDb(app, 'team-a');
+    tenantB = createTenantDb(app, 'team-b');
     storeA = new ProtocolStore(tenantA);
     storeB = new ProtocolStore(tenantB);
   });
@@ -112,9 +114,9 @@ describe.skipIf(!storeDb)('team isolation', () => {
       .sectionHashes.settings!;
 
     await storeA.discardDraft(a.draftId);
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     await ageQuarantine(db, 'team-a');
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
 
     const survivors = await db.query(
       `SELECT team_id FROM sections WHERE hash = $1`,
@@ -131,7 +133,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
     // sync path never requires one to exist — so GC has to enumerate tenants
     // from the tables it sweeps. Enumerating from teams would strand these
     // rows permanently.
-    const ghost = createTenantDb(db, 'team-ghost');
+    const ghost = createTenantDb(app, 'team-ghost');
     const sync = new SyncServer(ghost);
     const draftId = randomUUID();
     await sync.createDraft(draftId, {
@@ -149,7 +151,7 @@ describe.skipIf(!storeDb)('team isolation', () => {
     await forceExpire(ghost, draftId, 'settings');
 
     // Reached through `drafts`: the superseded manifest is collectable.
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     const manifests = await db.query(
       `SELECT seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
       [draftId],
@@ -159,9 +161,9 @@ describe.skipIf(!storeDb)('team isolation', () => {
     // Discarding the draft leaves the team present only in `sections`, the
     // other half of the enumeration.
     await new ProtocolStore(ghost).discardDraft(draftId);
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     await ageQuarantine(db, 'team-ghost');
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     const orphaned = await db.query(
       `SELECT count(*)::int AS remaining FROM sections WHERE team_id = $1`,
       ['team-ghost'],

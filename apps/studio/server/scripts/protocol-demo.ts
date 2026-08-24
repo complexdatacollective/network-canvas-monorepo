@@ -7,7 +7,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import { createPool } from '../src/db/pool.ts';
+import { createOwnerPool, createPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
 import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
@@ -141,16 +141,17 @@ if (!isLocalDatabase(env.db.url) && !values.force) {
 }
 
 const url = new URL(env.db.url);
+const owner = createOwnerPool(env.db);
 const pool = createPool(env.db);
 
 try {
-  const schema = await checkSchema(pool);
+  const schema = await checkSchema(owner);
   if (schema.kind === 'stale') {
     console.error(schemaProblemMessage(schema));
     process.exit(1);
   }
   if (schema.kind === 'absent') {
-    await applySchema(pool);
+    await applySchema(owner);
   }
 
   console.log(
@@ -323,4 +324,5 @@ Inspect what was written:
 Published versions cannot be deleted, so db:reset is how you clear them.`);
 } finally {
   await pool.end();
+  await owner.end();
 }

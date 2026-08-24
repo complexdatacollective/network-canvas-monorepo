@@ -3,9 +3,11 @@ import process from 'node:process';
 
 import pg from 'pg';
 
+import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+
 import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { createPool } from '../../db/pool.ts';
+import { createOwnerPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
@@ -27,10 +29,12 @@ export async function reachableDb(): Promise<DbEnv | null> {
   if (!isLocalDatabase(db.url)) {
     return unavailable(`${db.url} is not a local database`);
   }
-  const pool = createPool(db);
+  const pool = createOwnerPool(db);
   let timer: NodeJS.Timeout | undefined;
   try {
-    const probe = pool.query('SELECT 1');
+    // The application pools pin roles the schema apply creates; provisioning
+    // them here means no suite depends on another having run first.
+    const probe = pool.query(TENANT_ROLES_SQL);
     // When the timeout wins the race, this query is still in flight and
     // `pool.end()` below rejects it. Promise.race has already settled by then,
     // so nothing is listening — and an unhandled rejection fails the run.
@@ -54,40 +58,54 @@ export async function reachableDb(): Promise<DbEnv | null> {
   }
 }
 
+export type ScratchSchema = {
+  /** The connecting login: provisioning, fixtures, and cross-team oracles. */
+  pool: pg.Pool;
+  /** What the server runs as, with row-level security enforced. */
+  app: pg.Pool;
+  /** What garbage collection runs as. */
+  maintenance: pg.Pool;
+  dispose: () => Promise<void>;
+};
+
 /**
- * An isolated Postgres schema with its own pool. Suites that write a
+ * An isolated Postgres schema with its own pools. Suites that write a
  * deliberately wrong fingerprint need this: doing that in the shared
  * `studio_dev` would leave the developer's next `pnpm dev` refusing to boot.
  * Every statement in the composed schema is unqualified — tables, plpgsql
  * functions, and the triggers that bind to them — so all of it lands here.
  */
-export async function createScratchSchema(
-  db: DbEnv,
-): Promise<{ pool: pg.Pool; dispose: () => Promise<void> }> {
+export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
   const name = `studio_test_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
 
-  const admin = createPool(db);
+  const admin = createOwnerPool(db);
   try {
     await admin.query(`create schema "${name}"`);
   } finally {
     await admin.end();
   }
 
-  // Not createPool: the search_path is the whole point, and the server's pool
-  // deliberately never carries one.
+  // Not the server's constructors: the search_path is the whole point, and
+  // the server's pools deliberately never carry one.
   // The timeout turns a leaked client into a fast failure rather than a hang.
-  const pool = new pg.Pool({
-    connectionString: db.url,
-    options: `-c search_path=${name}`,
-    max: 20,
-    connectionTimeoutMillis: 10_000,
-  });
+  const connect = (role?: string) =>
+    new pg.Pool({
+      connectionString: db.url,
+      options: `-c search_path=${name}${role === undefined ? '' : ` -c role=${role}`}`,
+      max: 20,
+      connectionTimeoutMillis: 10_000,
+    });
+  const pool = connect();
+  const app = connect(TENANT_ROLES.app);
+  const maintenance = connect(TENANT_ROLES.maintenance);
 
   return {
     pool,
+    app,
+    maintenance,
     dispose: async () => {
-      await pool.end();
-      const cleanup = createPool(db);
+      await Promise.all([app.end(), maintenance.end(), pool.end()]);
+      const cleanup = createOwnerPool(db);
       try {
         await cleanup.query(`drop schema if exists "${name}" cascade`);
       } finally {
@@ -100,7 +118,8 @@ export async function createScratchSchema(
 /**
  * Builds the schema from the same statements scripts/apply.ts pushes; push
  * itself cannot target a scratch schema (it introspects `public`), so the
- * push path is exercised by the scratch-database suite instead.
+ * push path is exercised by the scratch-database suite instead. Takes the
+ * owner pool: the statements are DDL.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await pool.query((await renderSchemaStatements()).join('\n'));
@@ -121,7 +140,7 @@ export async function createScratchDatabase(
 ): Promise<{ db: DbEnv; pool: pg.Pool; dispose: () => Promise<void> }> {
   const name = `studio_test_db_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
 
-  const admin = createPool(db);
+  const admin = createOwnerPool(db);
   try {
     await admin.query(`create database ${pg.escapeIdentifier(name)}`);
   } finally {
@@ -131,14 +150,14 @@ export async function createScratchDatabase(
   const url = new URL(db.url);
   url.pathname = `/${name}`;
   const scratchDb = { url: url.toString() };
-  const pool = createPool(scratchDb);
+  const pool = createOwnerPool(scratchDb);
 
   return {
     db: scratchDb,
     pool,
     dispose: async () => {
       await pool.end();
-      const cleanup = createPool(db);
+      const cleanup = createOwnerPool(db);
       try {
         await cleanup.query(
           `drop database if exists ${pg.escapeIdentifier(name)} with (force)`,

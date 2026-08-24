@@ -41,15 +41,16 @@ class GatedServer extends SyncServer {
 
 describe.skipIf(!dbAvailable)('reconnect and resume', () => {
   let db: Pool;
+  let dispose: () => Promise<void>;
   let tenantDb: TenantDb;
   let server: SyncServer;
 
   beforeAll(async () => {
-    ({ db, tenantDb, server } = await makeServer('sync_resume'));
+    ({ db, tenantDb, server, dispose } = await makeServer('sync_resume'));
   });
 
   afterAll(async () => {
-    await db.end();
+    await dispose();
   });
   it('retransmits unacknowledged batches idempotently after a lost ack', async () => {
     const draft = await makeDraft(server);

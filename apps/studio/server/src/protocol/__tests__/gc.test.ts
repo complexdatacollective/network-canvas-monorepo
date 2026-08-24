@@ -40,12 +40,13 @@ async function sectionExists(db: pg.Pool, hash: string): Promise<boolean> {
 
 describe.skipIf(!storeDb)('gcProtocolStore', () => {
   let db: pg.Pool;
+  let maintenance: pg.Pool;
   let tenantDb: TenantDb;
   let dispose: () => Promise<void>;
   let store: ProtocolStore;
 
   beforeAll(async () => {
-    ({ db, tenantDb, dispose } = await makeStoreSchema());
+    ({ db, maintenance, tenantDb, dispose } = await makeStoreSchema());
     store = new ProtocolStore(tenantDb);
   });
   afterAll(async () => {
@@ -69,7 +70,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
 
     // Expire the live lease: this case is about the manifest/section window.
     await forceExpire(tenantDb, draftId, 'settings');
-    const marked = await gcProtocolStore(db, GC_OPTS);
+    const marked = await gcProtocolStore(maintenance, GC_OPTS);
 
     expect(marked.manifestsDeleted).toBe(2);
     expect(marked.commandLogDeleted).toBe(1);
@@ -83,7 +84,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     expect(await sectionExists(db, intermediateSettingsHash)).toBe(true);
 
     await ageQuarantine(db);
-    const swept = await gcProtocolStore(db, GC_OPTS);
+    const swept = await gcProtocolStore(maintenance, GC_OPTS);
     expect(swept.sectionsDeleted).toBe(1);
     expect(await sectionExists(db, intermediateSettingsHash)).toBe(false);
     expect(await sectionExists(db, publishedSettingsHash)).toBe(true);
@@ -119,7 +120,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       commands: [{ op: 'set', key: 'description', value: 'second' }],
     });
 
-    const result = await gcProtocolStore(db, GC_OPTS);
+    const result = await gcProtocolStore(maintenance, GC_OPTS);
     expect(result.commandLogDeleted).toBe(0);
 
     const replay = await sync.commit({
@@ -140,7 +141,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     });
     await commitDescription(tenantDb, draftId, 'kept', 30n);
     await forceExpire(tenantDb, draftId, 'settings');
-    const result = await gcProtocolStore(db, {
+    const result = await gcProtocolStore(maintenance, {
       ...GC_OPTS,
       commandRetryHorizonMs: 60_000,
     });
@@ -161,7 +162,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     await commitDescription(tenantDb, draftId, 'superseding it', 41n);
     await forceExpire(tenantDb, draftId, 'settings');
 
-    await gcProtocolStore(db, GC_OPTS);
+    await gcProtocolStore(maintenance, GC_OPTS);
     expect(await sync.getSection(resumed)).toMatchObject({
       description: 'the resumed head',
     });
@@ -184,7 +185,9 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       [hash],
     );
     expect((mark.rows[0] as { cleared: boolean }).cleared).toBe(true);
-    expect((await gcProtocolStore(db, GC_OPTS)).sectionsDeleted).toBe(0);
+    expect((await gcProtocolStore(maintenance, GC_OPTS)).sectionsDeleted).toBe(
+      0,
+    );
   });
 
   it('the grace window protects freshly unreferenced sections', async () => {
@@ -194,7 +197,7 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
     await commitDescription(tenantDb, draftId, 'about to be superseded', 10n);
     await commitDescription(tenantDb, draftId, 'head', 11n);
 
-    const result = await gcProtocolStore(db, GC_OPTS);
+    const result = await gcProtocolStore(maintenance, GC_OPTS);
     expect(result.sectionsDeleted).toBe(0);
   });
 
@@ -207,9 +210,15 @@ describe.skipIf(!storeDb)('gcProtocolStore', () => {
       .settings!;
     await commitDescription(tenantDb, draftId, 'newest', 21n);
 
-    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
+    await gcProtocolStore(maintenance, {
+      ...GC_OPTS,
+      retainManifestsPerDraft: 1,
+    });
     await ageQuarantine(db);
-    await gcProtocolStore(db, { ...GC_OPTS, retainManifestsPerDraft: 1 });
+    await gcProtocolStore(maintenance, {
+      ...GC_OPTS,
+      retainManifestsPerDraft: 1,
+    });
     expect(await sectionExists(db, superseded)).toBe(true);
   });
 

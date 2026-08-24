@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 export type GcResult = {
@@ -7,6 +8,20 @@ export type GcResult = {
   sectionsDeleted: number;
   commandLogDeleted: number;
 };
+
+/**
+ * The pool handed to gcProtocolStore was not a maintenance pool. Under any
+ * other role the tenant enumeration below sees nothing, so the run would
+ * report a clean sweep without having visited anyone.
+ */
+export class GcRoleError extends Error {
+  constructor(role: string) {
+    super(
+      `garbage collection must run as ${TENANT_ROLES.maintenance}, not ${role}`,
+    );
+    this.name = 'GcRoleError';
+  }
+}
 
 export type GcOptions = {
   /** Manifests kept per draft below the head. */
@@ -48,6 +63,10 @@ export async function gcProtocolStore(
   }
   assertNonNegativeFinite('commandRetryHorizonMs', commandRetryHorizonMs);
 
+  const who = await db.query<{ role: string }>(`SELECT current_user AS role`);
+  const role = who.rows[0]?.role ?? '';
+  if (role !== TENANT_ROLES.maintenance) throw new GcRoleError(role);
+
   const result: GcResult = {
     manifestsDeleted: 0,
     sectionsDeleted: 0,
@@ -69,9 +88,9 @@ export async function gcProtocolStore(
   // team_id carries no foreign key into it (studio-sync/src/schema.ts): a
   // tenant whose team row never existed or has since been deleted still owns
   // collectable rows, and driving the loop from `teams` would strand them
-  // forever. Not a membership lookup, so the AuthService seam stays intact; a
-  // BYPASSRLS maintenance role replaces this direct scan when row-level
-  // security lands (#1249).
+  // forever. Not a membership lookup, so the AuthService seam stays intact.
+  // The row-level security policies admit this scan only to the maintenance
+  // role checked above (studio-sync/src/rls.ts).
   const tenants = await db.query(
     `SELECT team_id FROM drafts
      UNION

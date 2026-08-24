@@ -1,6 +1,6 @@
 // Ships in the server's production bundle: import nothing beyond
-// drizzle-orm/pg-core. No pgSchema() — scratch-schema test isolation relies
-// on unqualified DDL.
+// drizzle-orm/pg-core and ./rls.ts. No pgSchema() — scratch-schema test
+// isolation relies on unqualified DDL.
 import { sql } from 'drizzle-orm';
 import {
   bigint,
@@ -14,6 +14,12 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+import {
+  TENANT_ROLES_SQL,
+  teamIsolationPolicy,
+  tenantTablesSql,
+} from './rls.ts';
 
 // team_id carries no foreign key: this package cannot import the app-owned
 // teams table. Children pin the denormalized column through composite foreign
@@ -29,6 +35,7 @@ export const drafts = pgTable(
   (table) => [
     unique().on(table.id, table.teamId),
     index('drafts_team_id_idx').on(table.teamId),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -47,7 +54,10 @@ export const sections = pgTable(
       .default(sql`clock_timestamp()`),
     unreferencedAt: timestamp('unreferenced_at', { withTimezone: true }),
   },
-  (table) => [primaryKey({ columns: [table.teamId, table.hash] })],
+  (table) => [
+    primaryKey({ columns: [table.teamId, table.hash] }),
+    teamIsolationPolicy(),
+  ],
 );
 
 // Manifests: ordered map of section id -> section hash, one row per commit.
@@ -70,6 +80,7 @@ const manifests = pgTable(
       foreignColumns: [drafts.id, drafts.teamId],
     }),
     index('manifests_team_id_idx').on(table.teamId),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -92,6 +103,7 @@ const leases = pgTable(
       columns: [table.draftId, table.teamId],
       foreignColumns: [drafts.id, drafts.teamId],
     }),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -125,6 +137,7 @@ const commandLog = pgTable(
       table.epoch,
       table.clientSeq,
     ),
+    teamIsolationPolicy(),
   ],
 );
 
@@ -136,7 +149,9 @@ export const SYNC_TABLES = {
   commandLog,
 };
 
-// Hashed into the schema fingerprint — whitespace counts.
+// Hashed into the schema fingerprint — whitespace counts. Carries the RLS
+// roles as well as the trigger, so this package's own conformance suite —
+// which applies only SYNC_TABLES and this sidecar — runs under enforcement.
 export const SYNC_SIDECAR_SQL = `
 CREATE OR REPLACE FUNCTION sections_are_immutable() RETURNS trigger AS $$
 BEGIN
@@ -149,4 +164,6 @@ CREATE OR REPLACE TRIGGER sections_immutable
   FOR EACH ROW
   WHEN (NEW.team_id IS DISTINCT FROM OLD.team_id OR NEW.hash IS DISTINCT FROM OLD.hash OR NEW.doc IS DISTINCT FROM OLD.doc)
   EXECUTE FUNCTION sections_are_immutable();
+${TENANT_ROLES_SQL}
+${tenantTablesSql(['drafts', 'sections', 'manifests', 'leases', 'command_log'])}
 `;

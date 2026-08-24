@@ -1,4 +1,4 @@
-import { createPool } from '../src/db/pool.ts';
+import { createOwnerPool } from '../src/db/pool.ts';
 import { readEnv } from '../src/env.ts';
 import { applySchema } from './apply.ts';
 
@@ -12,7 +12,7 @@ if (!env.db) {
   process.exit(1);
 }
 
-const pool = createPool(env.db);
+const pool = createOwnerPool(env.db);
 
 try {
   const outcome = await applySchema(pool);

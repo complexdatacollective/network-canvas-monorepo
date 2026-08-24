@@ -7,7 +7,7 @@ import type { Context } from 'hono';
 import { WebSocketServer } from 'ws';
 
 import { createApp } from './app.ts';
-import { createPool } from './db/pool.ts';
+import { createPool, isMissingRoleError } from './db/pool.ts';
 import {
   checkSchema,
   type SchemaState,
@@ -70,23 +70,32 @@ if (pool) {
     retry.unref();
   };
 
+  const waitForSchema = () => {
+    exitIfFatal({ kind: 'absent' });
+    // oxlint-disable-next-line no-console -- boot diagnostics
+    console.warn(
+      'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset',
+    );
+    waitUntilCurrent();
+  };
+
   try {
     const state = await checkSchema(pool);
     exitIfFatal(state);
-    if (state.kind === 'absent') {
+    if (state.kind === 'absent') waitForSchema();
+  } catch (error) {
+    // The pool runs as a role the schema apply creates, so a never-applied
+    // database refuses the connection before the fingerprint can be read.
+    if (isMissingRoleError(error)) {
+      waitForSchema();
+    } else {
+      if (!env.devDefaults) throw error;
       // oxlint-disable-next-line no-console -- boot diagnostics
       console.warn(
-        'Database has no Studio schema; sign-in will fail until it is created: pnpm --filter @codaco/studio-server db:reset',
+        `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
       );
       waitUntilCurrent();
     }
-  } catch (error) {
-    if (!env.devDefaults) throw error;
-    // oxlint-disable-next-line no-console -- boot diagnostics
-    console.warn(
-      `Database unreachable; sign-in will fail until it is available: ${String(error)}`,
-    );
-    waitUntilCurrent();
   }
 }
 

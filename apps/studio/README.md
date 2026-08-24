@@ -125,8 +125,13 @@ sync engine's drafts, sections, manifests, leases and command log in
 `packages/studio-sync/src/schema.ts`, and the protocol store's versioning
 tables in `server/src/protocol/schema.ts`. The PL/pgSQL immutability functions
 and triggers, which Drizzle cannot express, ride in raw-SQL sidecar exports
-beside their tables. `server/src/db/schema.ts` collects all of it into the
-`SCHEMA` and `SIDECARS` exports that `server/scripts/apply.ts` applies.
+beside their tables — as do the parts of row-level security that drizzle-kit
+does not manage: the roles, `FORCE ROW LEVEL SECURITY`, and the grants (see
+[Tenancy](#tenancy)). `server/src/db/schema.ts` collects all of it into the
+`SCHEMA` and `SIDECARS` exports that `server/scripts/apply.ts` applies. The
+policies themselves are `pgPolicy` entries on the table definitions, which is
+why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
+`push` silently drops their `USING`/`WITH CHECK` expressions.
 
 The server never applies schema — it only verifies. Application is
 `drizzle-kit push`, run programmatically by `apply-schema` and `db:reset` from
@@ -191,15 +196,37 @@ because a shared row would leak content across the boundary. The data layer
 only speaks through a `TenantDb` (`@codaco/studio-sync/tenant`), a pool handle
 pinned to one team: the `ProtocolStore` and `SyncServer` constructors take one
 instead of a pool, every statement carries an explicit team predicate, and
-`transaction()` stamps `app.team_id` as a transaction-local GUC so row-level
-security can be layered on later without reworking callers. A team's id enters
-a request explicitly — `requireTeam` in `server/src/rpc.ts` resolves the
-procedure input's `teamId` against the caller's membership
-(`AuthService.getMembership`) and yields the pinned `TenantDb`; the session's
-active team is never the authorization input. Garbage collection is the one
-deliberately cross-team caller: it iterates teams and runs each sweep under
-that team's `TenantDb`. Until RLS lands, scoping is opt-in per procedure — a
-team-scoped procedure must `.use(requireTeam)`.
+every statement runs inside a transaction that stamps `app.team_id` as a
+transaction-local GUC. A team's id enters a request explicitly — `requireTeam`
+in `server/src/rpc.ts` resolves the procedure input's `teamId` against the
+caller's membership (`AuthService.getMembership`) and yields the pinned
+`TenantDb`; the session's active team is never the authorization input.
+
+Beneath that, Postgres row-level security enforces the same boundary
+(`@codaco/studio-sync/rls`). Every tenant table carries a `team_isolation`
+policy — a row is visible, and may be written, only when its `team_id` equals
+the stamped GUC — so a statement that forgets its predicate returns nothing
+rather than another team's rows, and a write aimed at another team is refused.
+Row-level security is _forced_, so the table owner is not exempt; a superuser
+always is, which is why the server never runs as the connecting login.
+`createPool` starts every session as `studio_app`, a `NOLOGIN` role with
+neither `SUPERUSER` nor `BYPASSRLS`, which the schema apply creates and grants
+the login the right to assume (`role=` is a startup parameter: a missing role
+refuses the connection, and `RESET ROLE` returns to it). That holds in
+development too, where the login is the container's superuser. Garbage
+collection is the one deliberately cross-team caller: it runs on a
+`studio_maintenance` pool — the one role the policies admit across every
+team, a policy clause rather than a `BYPASSRLS` role because only a superuser
+can create one of those and managed Postgres offers none — enumerates tenants
+from the swept tables, sweeps each under that team's `TenantDb`, and refuses
+any other role, under which it would report a clean sweep without having
+visited anyone. The better-auth tables carry no policy: better-auth and
+`AuthService.getMembership` run on the application pool without team context.
+Two consequences are worth knowing. `COPY FROM` is refused for any role
+subject to row-level security, so a bulk import must batch `INSERT`s or run as
+maintenance. And the test suites run the store and the sync engine as
+`studio_app`, so every existing case also proves the policies admit what they
+should; `server/src/db/__tests__/rls.test.ts` proves what they refuse.
 
 Better-auth's organization plugin backs these tables, and its own optional
 `teams` feature — a subdivision _inside_ an organization — stays disabled, so
@@ -316,9 +343,9 @@ fails `pnpm typecheck`.
 
 ### Database
 
-| Variable       | What it is                                             | Development default                                    | Real deployment                                                         |
-| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. |
+| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. |
 
 ### Authentication
 
@@ -377,6 +404,18 @@ them:
   anyway and keeps retrying, because only there is the cause a container that
   has not finished starting or a `dev-pg` schema provision that has not
   landed yet (`dev-pg` applies the schema itself when the database has none).
+- **The login needs `CREATEROLE` the first time.** `apply-schema` creates the
+  `studio_app` and `studio_maintenance` roles the server runs as (see
+  [Tenancy](#tenancy)) and grants the login the right to assume them. The
+  default login on managed Postgres (Neon, RDS, Supabase) holds `CREATEROLE`;
+  where yours does not, create them once as an administrator and re-run:
+
+  ```sql
+  CREATE ROLE studio_app NOLOGIN;
+  CREATE ROLE studio_maintenance NOLOGIN;
+  GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE;
+  ```
+
 - **The Netlify lane has no automation.** Its build command does not touch the
   database and its function has no boot, so `apply-schema` is a manual step
   there — and consequently the only place that lane ever detects a stale
@@ -454,6 +493,13 @@ The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
 none (partial configuration fails fast). Unset means asset routes refuse
 with 503. See [Environment](#environment).
+
+The Postgres login in `DATABASE_URL` owns the schema and needs `CREATEROLE`
+the first time it is applied (see
+[Database schema and seeding](#database-schema-and-seeding)); the server
+itself runs as `studio_app` (see [Tenancy](#tenancy)). A self-host is one
+team, or a few, under exactly the enforcement the managed service runs — there
+is no single-tenant code path.
 
 ### What deploys when
 
