@@ -39,6 +39,11 @@ const buttonSpecificVariants = cva({
     // also claim to be a toggle — uses the `selected` prop instead.
     'aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-selected-contrast',
     'aria-expanded:border-selected aria-expanded:bg-selected aria-expanded:text-selected-contrast',
+    // Every hover override below is guarded `not-aria-pressed:not-aria-expanded:`
+    // — not just `not-aria-pressed:` — because a menu trigger carries its open
+    // state in `aria-expanded`, never `aria-pressed`. Guarding on `aria-pressed`
+    // alone left the hover treatment free to paint over the pressed/selected
+    // look the moment the pointer sat over an open menu trigger.
     'focusable',
     'elevation-low',
     'ui-enabled:active:elevation-none ui-enabled:active:translate-y-[2px]',
@@ -49,18 +54,18 @@ const buttonSpecificVariants = cva({
       'default': 'bg-(--component-text) text-(--component-bg)',
       'default-inverted': 'bg-white text-(--component-text)',
       'raised':
-        'ui-enabled:hover:elevation-medium ui-enabled:hover:-translate-y-0.5 ui-enabled:active:border-b-transparent border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:elevation-medium ui-enabled:hover:not-aria-pressed:not-aria-expanded:-translate-y-0.5 ui-enabled:active:border-b-transparent border-(--component-raised-edge) bg-(--component-text) tracking-widest text-(--component-bg) uppercase [--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
       'outline':
-        'ui-enabled:hover:bg-(--component-text) ui-enabled:hover:text-(--component-bg) border-2 border-(--component-text) text-(--component-text)',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text) ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg) border-2 border-(--component-text) text-(--component-text)',
       'text':
-        'ui-enabled:hover:bg-(--component-text) ui-enabled:hover:text-(--component-bg) text-(--component-text)',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text) ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg) text-(--component-text)',
       'dashed':
-        'ui-enabled:hover:bg-(--component-text) ui-enabled:hover:text-(--component-bg) border-2 border-dashed border-(--component-text) text-(--component-text)',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text) ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg) border-2 border-dashed border-(--component-text) text-(--component-text)',
       'glass':
-        'control-glass ui-enabled:hover:bg-(--component-text) ui-enabled:hover:text-(--component-bg) border-(--component-text) text-(--component-text)',
+        'control-glass ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text) ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg) border-(--component-text) text-(--component-text)',
       'link': cx(
         NATIVE_LINK_ROOT_CLASS_NAME,
-        'font-body elevation-none hover:elevation-none! ui-disabled:[&>span]:bg-[length:0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:translate-none! active:translate-none!',
+        'font-body elevation-none hover:not-aria-pressed:not-aria-expanded:elevation-none! ui-disabled:[&>span]:bg-[length:0%_2px]! h-auto! overflow-visible p-0! tracking-normal hover:not-aria-pressed:not-aria-expanded:translate-none! active:translate-none!',
       ),
     },
     textStyle: {
@@ -129,7 +134,7 @@ const buttonSpecificVariants = cva({
       variant: ['outline', 'text', 'dashed', 'glass'],
       color: 'default',
       className:
-        'interview:[--component-text:var(--neutral)] ui-enabled:hover:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)]',
+        'interview:[--component-text:var(--neutral)] ui-enabled:hover:not-aria-pressed:not-aria-expanded:[--component-text:var(--neutral)] [--component-text:var(--neutral-contrast)]',
     },
     {
       variant: ['outline', 'dashed', 'glass'],
@@ -144,25 +149,25 @@ const buttonSpecificVariants = cva({
       variant: 'raised',
       size: 'sm',
       className:
-        'ui-enabled:hover:border-b-4 ui-enabled:active:translate-y-0.75 ui-enabled:active:border-b-3 border-b-3 text-xs',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-4 ui-enabled:active:translate-y-0.75 ui-enabled:active:border-b-3 border-b-3 text-xs',
     },
     {
       variant: 'raised',
       size: 'md',
       className:
-        'ui-enabled:hover:border-b-5 ui-enabled:active:translate-y-1 ui-enabled:active:border-b-4 border-b-4 text-sm',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-5 ui-enabled:active:translate-y-1 ui-enabled:active:border-b-4 border-b-4 text-sm',
     },
     {
       variant: 'raised',
       size: 'lg',
       className:
-        'ui-enabled:hover:border-b-6 ui-enabled:active:translate-y-1.25 ui-enabled:active:border-b-5 border-b-5 text-base',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-6 ui-enabled:active:translate-y-1.25 ui-enabled:active:border-b-5 border-b-5 text-base',
     },
     {
       variant: 'raised',
       size: 'xl',
       className:
-        'ui-enabled:hover:border-b-8 ui-enabled:active:translate-y-1.5 ui-enabled:active:border-b-6 border-b-6 text-lg',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-8 ui-enabled:active:translate-y-1.5 ui-enabled:active:border-b-6 border-b-6 text-lg',
     },
     {
       textStyle: 'uppercase',

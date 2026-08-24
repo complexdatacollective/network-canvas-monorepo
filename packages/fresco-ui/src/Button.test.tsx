@@ -16,10 +16,10 @@ describe('Button', () => {
       'bg-(--component-text)',
       'border-(--component-raised-edge)',
       'border-b-4',
-      'ui-enabled:hover:border-b-5',
+      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-5',
       '[--component-text:var(--success)]',
       '[--component-raised-edge:color-mix(in_oklab,var(--component-text)_78%,var(--color-black)_22%)]',
-      'ui-enabled:hover:elevation-medium',
+      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:elevation-medium',
       'ui-enabled:active:translate-y-1',
       'uppercase',
       'tracking-widest',
@@ -41,11 +41,11 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
       'border-b-3',
-      'ui-enabled:hover:border-b-4',
+      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-4',
     );
     expect(screen.getByRole('button', { name: 'Extra large' })).toHaveClass(
       'border-b-6',
-      'ui-enabled:hover:border-b-8',
+      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:border-b-8',
       'normal-case',
       'tracking-wide',
       'text-xl',
@@ -139,7 +139,7 @@ describe('Button', () => {
     expect(button).toHaveClass(
       'ui-disabled:cursor-not-allowed',
       'ui-disabled:opacity-50',
-      'ui-enabled:hover:bg-(--component-text)',
+      'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text)',
       'ui-enabled:active:translate-y-[2px]',
     );
   });
@@ -217,6 +217,34 @@ describe('Button', () => {
         'aria-expanded:border-selected',
         'aria-expanded:bg-selected',
         'aria-expanded:text-selected-contrast',
+      );
+    }
+  });
+
+  it('guards hover treatments against an open menu trigger, not just a toggle', () => {
+    render(
+      <>
+        <Button variant="text" aria-expanded>
+          Options
+        </Button>
+        <IconButton
+          aria-label="Icon options"
+          variant="text"
+          aria-expanded
+          icon={<Check />}
+        />
+      </>,
+    );
+
+    const disclosureButtons = [
+      screen.getByRole('button', { name: 'Options' }),
+      screen.getByRole('button', { name: 'Icon options' }),
+    ];
+
+    for (const disclosureButton of disclosureButtons) {
+      expect(disclosureButton).toHaveClass(
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:bg-(--component-text)',
+        'ui-enabled:hover:not-aria-pressed:not-aria-expanded:text-(--component-bg)',
       );
     }
   });

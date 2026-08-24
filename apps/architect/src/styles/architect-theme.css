@@ -11,7 +11,7 @@
     --background: oklch(var(--platinum));
     --text: oklch(var(--cyber-grape));
     --primary: oklch(var(--sea-green));
-    --neutral: oklch(var(--platinum));
+    --neutral: oklch(var(--white));
     --neutral-contrast: oklch(var(--cyber-grape));
     --secondary: oklch(var(--neon-coral));
     --accent: oklch(var(--slate-blue));
@@ -52,9 +52,7 @@
     --timeline: oklch(var(--neon-coral));
     --timeline-contrast: oklch(var(--white));
     --sortable-contrast: oklch(var(--white));
-    --table-row-tint: oklch(var(--sea-serpent) / 5%);
     --action: oklch(var(--sea-green));
-    --muted: oklch(var(--cyber-grape) / 60%);
     --active: oklch(var(--sea-green));
     --surface-accent: oklch(var(--navy-taupe));
     --surface-accent-contrast: oklch(var(--white));
@@ -68,9 +66,7 @@
   --color-timeline: var(--timeline);
   --color-timeline-contrast: var(--timeline-contrast);
   --color-sortable-contrast: var(--sortable-contrast);
-  --color-table-row-tint: var(--table-row-tint);
   --color-action: var(--action);
-  --color-muted: var(--muted);
   --color-active: var(--active);
   --color-surface-accent: var(--surface-accent);
   --color-surface-accent-contrast: var(--surface-accent-contrast);
@@ -95,7 +91,7 @@
 }
 
 @utility hint {
-  @apply text-muted text-xs leading-normal;
+  @apply text-xs leading-normal text-current/70;
 }
 @utility code {
   @apply bg-text/5 font-monospace rounded-sm px-1 py-0.5 text-[0.9em];

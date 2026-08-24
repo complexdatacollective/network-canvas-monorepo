@@ -63,7 +63,7 @@ const EgoType = ({
       {filteredVariables.length > 0 ? (
         <VariablesTyped variables={filteredVariables} entity="ego" />
       ) : (
-        <Paragraph className="text-muted mt-5">
+        <Paragraph className="mt-5 text-current/70">
           {variableArray.length === 0
             ? 'No ego attributes yet.'
             : 'No ego attributes match the current filter.'}

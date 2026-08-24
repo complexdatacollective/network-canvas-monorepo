@@ -50,9 +50,10 @@ const Brand = ({ onClick, className, variant = 'pill' }: BrandProps) => {
       {iconImg}
       <span
         className={headingVariants({
-          level: 'h3',
+          level: 'h1',
           margin: 'none',
-          className: 'font-semibold',
+          // Shared with BrandHeader in Interviewer. TODO: Merge into component, add header styles for this to headerVariants.
+          className: 'text-xl font-black',
         })}
       >
         Architect
