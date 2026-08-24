@@ -56,6 +56,11 @@ import ZoomableViewport from './ZoomableViewport';
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 type Disease = NarrativeStage['diseases'][number];
 
+function resolveDiseaseColor(color: string): string {
+  const sequenceMatch = /^node-color-seq-(\d+)$/.exec(color);
+  return sequenceMatch ? `var(--node-${sequenceMatch[1]})` : color;
+}
+
 type SourceStageConfig = {
   nodeType: string;
   edgeType: string;
@@ -128,7 +133,18 @@ type NarrativePedigreeViewProps = {
 export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
-  const { diseases } = stage;
+  // Architect stores the selected node palette entry as a protocol token. SVG
+  // and inline CSS need the corresponding theme variable, so resolve every
+  // disease once at the view boundary before it reaches the key, pedigree,
+  // dimming, or printable snapshot. Imported legacy CSS colours pass through.
+  const diseases = useMemo(
+    () =>
+      stage.diseases.map((disease) => ({
+        ...disease,
+        color: resolveDiseaseColor(disease.color),
+      })),
+    [stage.diseases],
+  );
 
   const sourceConfigSelector = useMemo(
     () => makeSourceConfigSelector(stage.sourceStageId),

@@ -220,8 +220,7 @@ const codebook = {
   ego: { variables: {} },
 };
 
-function makeStore() {
-  const narrativeStage = makeNarrativeStage();
+function makeStore(narrativeStage = makeNarrativeStage()) {
   return configureStore({
     reducer: { protocol, session },
     preloadedState: {
@@ -240,9 +239,8 @@ function makeStore() {
   });
 }
 
-function renderView() {
-  const store = makeStore();
-  const stage = makeNarrativeStage();
+function renderView(stage = makeNarrativeStage()) {
+  const store = makeStore(stage);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -317,6 +315,75 @@ describe('NarrativePedigreeView — node mode selection', () => {
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeNull(),
     );
+  });
+});
+
+describe('NarrativePedigreeView — condition colours', () => {
+  it('resolves Architect node colour tokens for the key, pedigree, dimming, and snapshot', async () => {
+    const baseStage = makeNarrativeStage();
+    const stage: NarrativeStage = {
+      ...baseStage,
+      diseases: baseStage.diseases.map((disease, index) =>
+        index === 0 ? { ...disease, color: 'node-color-seq-3' } : disease,
+      ),
+    };
+    renderView(stage);
+
+    const conditionButton = await screen.findByRole('button', {
+      name: 'Disease A',
+    });
+    expect(conditionButton.querySelector('[aria-hidden]')).toHaveStyle({
+      backgroundColor: 'var(--node-3)',
+    });
+
+    await userEvent.click(conditionButton);
+    const mother = await waitFor(() => {
+      const member = document.querySelector('[data-node-id="mother"]');
+      expect(member).toBeTruthy();
+      return member;
+    });
+    expect(mother?.querySelector('[data-filled-shape]')).toHaveAttribute(
+      'fill',
+      'var(--node-3)',
+    );
+
+    const egoFocal = document.querySelector('[data-node-id="ego"]');
+    expect(egoFocal).toBeInstanceOf(HTMLElement);
+    await userEvent.click(egoFocal as HTMLElement);
+    const dimmedOutline = await waitFor(() => {
+      const outline = document.querySelector(
+        '[data-pedigree-member][data-dimmed="true"] [data-shape-outline]',
+      );
+      expect(outline).toBeTruthy();
+      return outline;
+    });
+    expect(dimmedOutline).toHaveAttribute(
+      'stroke',
+      'color-mix(in oklab, var(--node-3) 30%, var(--dim-blend, var(--background)))',
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /save snapshot/i }),
+    );
+    await waitFor(() => expect(exportSnapshotMock).toHaveBeenCalledTimes(1));
+    const snapshot = exportSnapshotMock.mock.calls[0]?.[0];
+    expect(
+      snapshot?.querySelector('[data-filled-shape][fill="var(--node-3)"]'),
+    ).toBeTruthy();
+    expect(
+      snapshot?.querySelector('[data-shape-outline][stroke="var(--node-3)"]'),
+    ).toBeTruthy();
+  });
+
+  it('preserves legacy CSS colour values', async () => {
+    renderView();
+
+    const conditionButton = await screen.findByRole('button', {
+      name: 'Disease A',
+    });
+    expect(conditionButton.querySelector('[aria-hidden]')).toHaveStyle({
+      backgroundColor: '#ff0000',
+    });
   });
 });
 

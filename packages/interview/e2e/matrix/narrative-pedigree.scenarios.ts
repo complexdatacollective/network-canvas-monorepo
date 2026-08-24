@@ -217,7 +217,7 @@ function buildAdScenario(): SyntheticInterview {
       {
         id: 'hd',
         label: "Huntington's Disease",
-        color: '#e53e3e',
+        color: 'node-color-seq-1',
         variable: HD_VAR,
         inheritancePattern: 'autosomalDominant',
       },
@@ -423,10 +423,14 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
         ).toHaveCount(1);
-        // The condition-key swatch renders in the disease's authored colour.
+        // Architect persists a node palette token; the runtime resolves it to
+        // the matching theme variable for both CSS and SVG consumers.
         await expect(
           conditionButton.locator('span[aria-hidden]').first(),
-        ).toHaveCSS('background-color', 'rgb(229, 62, 62)');
+        ).toHaveAttribute('style', 'background-color: var(--node-1);');
+        await expect(
+          page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
+        ).toHaveAttribute('fill', 'var(--node-1)');
         await expect(
           page.getByText("Showing Huntington's Disease"),
         ).toBeVisible();
