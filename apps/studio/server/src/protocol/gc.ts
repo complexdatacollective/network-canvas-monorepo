@@ -65,11 +65,20 @@ export async function gcProtocolStore(
     )`;
 
   // The one deliberately cross-team read: maintenance visits every tenant.
-  // Not a membership lookup, so the AuthService seam stays intact; a BYPASSRLS
-  // maintenance role replaces this direct scan when row-level security lands
-  // (#1249).
-  const teams = await db.query(`SELECT id FROM teams ORDER BY id`);
-  for (const { id: teamId } of teams.rows as { id: string }[]) {
+  // Enumerated from the swept tables rather than from `teams`, because
+  // team_id carries no foreign key into it (studio-sync/src/schema.ts): a
+  // tenant whose team row never existed or has since been deleted still owns
+  // collectable rows, and driving the loop from `teams` would strand them
+  // forever. Not a membership lookup, so the AuthService seam stays intact; a
+  // BYPASSRLS maintenance role replaces this direct scan when row-level
+  // security lands (#1249).
+  const tenants = await db.query(
+    `SELECT team_id FROM drafts
+     UNION
+     SELECT team_id FROM sections
+     ORDER BY team_id`,
+  );
+  for (const { team_id: teamId } of tenants.rows as { team_id: string }[]) {
     const tenant = createTenantDb(db, teamId);
 
     const drafts = await tenant.query(

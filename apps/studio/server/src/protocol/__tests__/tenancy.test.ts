@@ -1,6 +1,8 @@
 // Cross-team isolation at the application layer: identical content dedupes per
 // team, reads cannot cross the boundary, and GC in one team never collects
 // another's rows.
+import { randomUUID } from 'node:crypto';
+
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -8,6 +10,7 @@ import {
   SyncServer,
   UnknownSectionDocumentError,
   UnknownSectionError,
+  forceExpire,
 } from '@codaco/studio-sync/server';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
@@ -121,5 +124,48 @@ describe.skipIf(!storeDb)('team isolation', () => {
       (survivors.rows as { team_id: string }[]).map((row) => row.team_id),
     ).toEqual(['team-b']);
     expect(await storeB.getDraftDocument(b.draftId)).toEqual(shared);
+  });
+
+  it('collects rows belonging to a team with no teams row', async () => {
+    // The sync tables carry team_id without a foreign key into teams, and the
+    // sync path never requires one to exist — so GC has to enumerate tenants
+    // from the tables it sweeps. Enumerating from teams would strand these
+    // rows permanently.
+    const ghost = createTenantDb(db, 'team-ghost');
+    const sync = new SyncServer(ghost);
+    const draftId = randomUUID();
+    await sync.createDraft(draftId, {
+      settings: { name: 'Ghost', description: 'first' },
+    });
+    const lease = await sync.acquire(draftId, 'settings', 'ghost-tab');
+    await sync.commit({
+      draftId,
+      sectionId: 'settings',
+      owner: 'ghost-tab',
+      epoch: lease!.epoch,
+      clientSeq: 1n,
+      commands: [{ op: 'set', key: 'description', value: 'second' }],
+    });
+    await forceExpire(ghost, draftId, 'settings');
+
+    // Reached through `drafts`: the superseded manifest is collectable.
+    await gcProtocolStore(db, GC_OPTS);
+    const manifests = await db.query(
+      `SELECT seq FROM manifests WHERE draft_id = $1 ORDER BY seq`,
+      [draftId],
+    );
+    expect(manifests.rows).toEqual([{ seq: '1' }]);
+
+    // Discarding the draft leaves the team present only in `sections`, the
+    // other half of the enumeration.
+    await new ProtocolStore(ghost).discardDraft(draftId);
+    await gcProtocolStore(db, GC_OPTS);
+    await ageQuarantine(db, 'team-ghost');
+    await gcProtocolStore(db, GC_OPTS);
+    const orphaned = await db.query(
+      `SELECT count(*)::int AS remaining FROM sections WHERE team_id = $1`,
+      ['team-ghost'],
+    );
+    expect(orphaned.rows[0]).toEqual({ remaining: 0 });
   });
 });

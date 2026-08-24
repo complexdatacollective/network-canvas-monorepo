@@ -87,6 +87,14 @@ export function createBetterAuthInstance(
       // `activeTeamId` session field this mapping already uses. A grouping
       // layer below the team is a Project, and would not be built on it.
       organization({
+        // Deleting a team would strand its tenant data. Only team_members and
+        // team_invitations cascade; protocols would refuse the delete with a
+        // raw foreign-key violation, and the sync tables — which carry team_id
+        // with no foreign key at all — would silently orphan their drafts,
+        // sections, manifests and leases. Nothing in Studio calls this
+        // endpoint yet, so it stays closed until a deliberate tenant-purge
+        // path lands with roles and row-level security (#1249).
+        disableOrganizationDeletion: true,
         schema: {
           session: { fields: { activeOrganizationId: 'activeTeamId' } },
           organization: {

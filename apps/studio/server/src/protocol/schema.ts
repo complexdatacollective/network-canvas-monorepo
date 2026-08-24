@@ -19,6 +19,9 @@ const protocols = pgTable(
   'protocols',
   {
     id: uuid('id').primaryKey(),
+    // No cascade: a team's sync-side rows carry team_id without a foreign key,
+    // so no delete of a team row could ever be complete. Team deletion is
+    // refused outright in src/auth/better-auth.ts; this FK is the backstop.
     teamId: text('team_id')
       .notNull()
       .references(() => teams.id),

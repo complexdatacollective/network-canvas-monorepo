@@ -254,4 +254,48 @@ describe.skipIf(!db)('teams (organization plugin)', () => {
       await scratch.dispose();
     }
   });
+
+  it('refuses to delete a team, as its tenant data cannot be deleted with it', async () => {
+    if (!db) throw new Error('unreachable');
+    const scratch = await createScratchSchema(db);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const { app, cookie } = await signInWithMagicLink(scratch.pool, 'owner');
+      const create = await app.request('/api/auth/organization/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+          cookie,
+        },
+        body: JSON.stringify({ name: 'Doomed', slug: 'doomed' }),
+      });
+      expect(create.status).toBe(200);
+      const team = (await create.json()) as { id: string };
+
+      // The owner would otherwise be allowed to delete it, orphaning every
+      // sync-side row that names the team without a foreign key.
+      const deleted = await app.request('/api/auth/organization/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost:5173',
+          cookie,
+        },
+        body: JSON.stringify({ organizationId: team.id }),
+      });
+      expect(deleted.status).not.toBe(200);
+      expect(await deleted.json()).toMatchObject({
+        code: 'ORGANIZATION_DELETION_DISABLED',
+      });
+
+      const survivors = await scratch.pool.query(
+        `select id from teams where id = $1`,
+        [team.id],
+      );
+      expect(survivors.rowCount).toBe(1);
+    } finally {
+      await scratch.dispose();
+    }
+  });
 });
