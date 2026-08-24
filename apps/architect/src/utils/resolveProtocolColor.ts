@@ -2,6 +2,7 @@ const SEQ_PREFIXES = [
   'node-color-seq-',
   'edge-color-seq-',
   'ord-color-seq-',
+  'cat-color-seq-',
 ] as const;
 
 /**
@@ -21,11 +22,12 @@ const OUT_OF_RANGE_FALLBACK = 'var(--input-contrast)';
 /**
  * Resolve a protocol color name to a CSS color expression built on variables
  * that exist at runtime under the shared fresco theme. Codebook sequence
- * names ('node-color-seq-3') map onto the theme's --node-N/--edge-N/--ord-N
- * variables, which re-resolve inside themed regions; the theme ships no dark
- * sequence variants, so `dark` derives one via relative color syntax
- * (mirroring the palette's 0.05 lightness step). Named palette hues resolve
- * from the raw oklch triplets, which require the color-function wrapper.
+ * names ('node-color-seq-3') map onto the theme's
+ * --node-N/--edge-N/--ord-N/--cat-N variables, which re-resolve inside themed
+ * regions; the theme ships no dark sequence variants, so `dark` derives one
+ * via relative color syntax (mirroring the palette's 0.05 lightness step).
+ * Named palette hues resolve from the raw oklch triplets, which require the
+ * color-function wrapper.
  *
  * Every sequence name resolves through a CSS custom-property fallback, so a
  * name the theme has no variable for still paints something visible. There is

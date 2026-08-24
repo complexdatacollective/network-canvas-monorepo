@@ -298,10 +298,18 @@ const runRepair = (protocol: unknown, verify: boolean): RepairResult => {
     : originalSource;
 
   const problems: ConfigurationProblem[] = legacyColorRepair.repairs.map(
-    ({ diseaseLabel, from, to }) => ({
-      problem: `${diseaseLabel ? `The disease "${diseaseLabel}"` : 'A Narrative Pedigree disease'} uses "${from}", which has no defined node palette color.`,
-      repair: `Its color will wrap to the defined palette reference "${to}".`,
-    }),
+    (repair) => {
+      if (repair.kind === 'geospatial') {
+        return {
+          problem: `${repair.stageLabel ? `The Geospatial stage "${repair.stageLabel}"` : 'A Geospatial stage'} uses legacy color "${repair.from}", which is not a current color reference.`,
+          repair: `Its color will use the defined palette reference "${repair.to}".`,
+        };
+      }
+      return {
+        problem: `${repair.diseaseLabel ? `The disease "${repair.diseaseLabel}"` : 'A Narrative Pedigree disease'} uses "${repair.from}", which has no defined node palette color.`,
+        repair: `Its color will use the defined palette reference "${repair.to}".`,
+      };
+    },
   );
   const removals = new Map<string, PendingRemoval>();
   const propertyDeletions = new Map<string, (string | number)[]>();

@@ -1,4 +1,5 @@
 import type {
+  ColorReference,
   ComponentType,
   FamilyPedigreeBoundaries,
   FamilyPedigreeEdgeConfigInput,
@@ -188,7 +189,7 @@ type MapOptionsEntry = {
   center: [number, number];
   initialZoom: number;
   dataSourceAssetId: string;
-  color: OrdinalColorReference;
+  color: ColorReference;
   targetFeatureProperty: string;
   showTransit?: boolean;
   allowSearch?: boolean;

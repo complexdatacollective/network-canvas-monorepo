@@ -113,6 +113,64 @@ const protocolWith = (stages: Stage[]) => ({
   stages,
 });
 
+const geospatialProtocolWithColor = (color: string) => {
+  const protocol = protocolWith([]);
+  return {
+    ...protocol,
+    codebook: {
+      ...protocol.codebook,
+      node: {
+        ...protocol.codebook.node,
+        family_member: {
+          ...protocol.codebook.node.family_member,
+          variables: {
+            ...protocol.codebook.node.family_member.variables,
+            homeLocation: { name: 'homeLocation', type: 'location' },
+          },
+        },
+      },
+    },
+    assetManifest: {
+      token: {
+        id: 'token',
+        type: 'apikey',
+        name: 'Mapbox Token',
+        value: 'pk.example',
+      },
+      geography: {
+        id: 'geography',
+        type: 'geojson',
+        name: 'map.geojson',
+        source: 'map.geojson',
+      },
+    },
+    stages: [
+      {
+        id: 'geo',
+        label: 'Home map',
+        type: 'Geospatial',
+        subject: { entity: 'node', type: 'family_member' },
+        mapOptions: {
+          tokenAssetId: 'token',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [-73.935242, 40.73061],
+          initialZoom: 10,
+          dataSourceAssetId: 'geography',
+          color,
+          targetFeatureProperty: 'name',
+        },
+        prompts: [
+          {
+            id: 'location',
+            text: 'Where do they live?',
+            variable: 'homeLocation',
+          },
+        ],
+      },
+    ],
+  };
+};
+
 /** Every repair this module offers must yield a protocol that opens. */
 const expectRepairsToValidate = async (protocol: unknown) => {
   const result = repairConfigurationConflicts(protocol);
@@ -156,13 +214,13 @@ describe('repairConfigurationConflicts', () => {
         problem:
           'The disease "Condition X" uses "node-color-seq-9", which has no defined node palette color.',
         repair:
-          'Its color will wrap to the defined palette reference "node-color-seq-1".',
+          'Its color will use the defined palette reference "node-color-seq-1".',
       },
       {
         problem:
           'The disease "Testing" uses "node-color-seq-10", which has no defined node palette color.',
         repair:
-          'Its color will wrap to the defined palette reference "node-color-seq-2".',
+          'Its color will use the defined palette reference "node-color-seq-2".',
       },
     ]);
     const repairedStage = (result.protocol as { stages: Stage[] }).stages[1];
@@ -176,6 +234,57 @@ describe('repairConfigurationConflicts', () => {
       ),
     ).toEqual(['node-color-seq-9', 'node-color-seq-10']);
   });
+
+  it('repairs the raw disease color shipped by the old CEGRM template', async () => {
+    const result = await expectRepairsToValidate(
+      protocolWith([
+        familyPedigree(),
+        narrativePedigree([
+          disease('d1', 'Condition X', 'hasConditionX', '#e53e3e'),
+        ]),
+      ]),
+    );
+
+    expect(result.problems).toEqual([
+      {
+        problem:
+          'The disease "Condition X" uses "#e53e3e", which has no defined node palette color.',
+        repair:
+          'Its color will use the defined palette reference "node-color-seq-1".',
+      },
+    ]);
+    const stage = (result.protocol as { stages: Stage[] }).stages[1];
+    expect(stage).toBeDefined();
+    if (!stage) return;
+    expect((stage.diseases as Stage[])[0]?.color).toBe('node-color-seq-1');
+  });
+
+  it.each([
+    ['#3399ff', 'ord-color-seq-6'],
+    ['primary-color-seq-3', 'node-color-seq-3'],
+  ])(
+    'repairs legacy Geospatial color %s to %s before v8 validation',
+    async (from, to) => {
+      const protocol = geospatialProtocolWithColor(from);
+      const result = await expectRepairsToValidate(protocol);
+      expect(result.problems).toEqual([
+        {
+          problem: `The Geospatial stage "Home map" uses legacy color "${from}", which is not a current color reference.`,
+          repair: `Its color will use the defined palette reference "${to}".`,
+        },
+      ]);
+      const repairedStage = (result.protocol as { stages: Stage[] }).stages[0];
+      expect(repairedStage).toBeDefined();
+      if (!repairedStage) return;
+      expect((repairedStage.mapOptions as Stage).color).toBe(to);
+
+      const migrated = migrateProtocol(protocol);
+      const migratedStage = migrated.stages[0];
+      expect(migratedStage?.type).toBe('Geospatial');
+      if (migratedStage?.type !== 'Geospatial') return;
+      expect(migratedStage.mapOptions.color).toBe(to);
+    },
+  );
 
   it('normalizes old picker colors before migrateProtocol pre-validates v8', () => {
     const migrated = migrateProtocol(

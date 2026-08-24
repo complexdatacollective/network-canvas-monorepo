@@ -2369,7 +2369,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it.each(['#3399ff', 'node-color-seq-1', 'ord-color-seq-11'])(
+    it.each([
+      'node-color-seq-1',
+      'edge-color-seq-1',
+      'ord-color-seq-10',
+      'cat-color-seq-10',
+    ])('accepts Geospatial stage color reference %s', (color) => {
+      const protocol = createGeospatialProtocol({ color });
+      const result = ProtocolSchemaV8.safeParse(protocol);
+      expect(result.success).toBe(true);
+    });
+
+    it.each(['#3399ff', 'primary-color-seq-1', 'ord-color-seq-11'])(
       'rejects Geospatial stage color %s',
       (color) => {
         const protocol = createGeospatialProtocol({ color });

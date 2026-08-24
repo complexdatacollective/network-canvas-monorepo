@@ -50,9 +50,9 @@ export function migrateProtocol(
   dependencies: Record<string, unknown> = {},
 ): CurrentProtocol {
   const detectedVersion = detectSchemaVersion(document);
-  // Architect briefly offered Narrative Pedigree node positions 9 and 10 even
-  // though the theme defines only eight. Repair those exact app-generated v8
-  // values before strict pre-validation; arbitrary colours remain invalid.
+  // Repair exact legacy colors generated or shipped by Network Canvas before
+  // strict pre-validation. The repair is deliberately bounded; arbitrary raw
+  // and custom values remain invalid.
   const legacyColorRepair = repairLegacyColorReferences(document);
   const migrationInput = legacyColorRepair.protocol;
 

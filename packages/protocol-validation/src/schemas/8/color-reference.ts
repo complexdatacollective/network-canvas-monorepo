@@ -44,9 +44,28 @@ export const OrdinalColorSequence = [
 export const OrdinalColorReferenceSchema = z.enum(OrdinalColorSequence);
 export type OrdinalColorReference = z.infer<typeof OrdinalColorReferenceSchema>;
 
+export const CategoricalColorSequence = [
+  'cat-color-seq-1',
+  'cat-color-seq-2',
+  'cat-color-seq-3',
+  'cat-color-seq-4',
+  'cat-color-seq-5',
+  'cat-color-seq-6',
+  'cat-color-seq-7',
+  'cat-color-seq-8',
+  'cat-color-seq-9',
+  'cat-color-seq-10',
+] as const;
+
+export const CategoricalColorReferenceSchema = z.enum(CategoricalColorSequence);
+export type CategoricalColorReference = z.infer<
+  typeof CategoricalColorReferenceSchema
+>;
+
 export const ColorReferenceSchema = z.union([
   NodeColorReferenceSchema,
   EdgeColorReferenceSchema,
   OrdinalColorReferenceSchema,
+  CategoricalColorReferenceSchema,
 ]);
 export type ColorReference = z.infer<typeof ColorReferenceSchema>;

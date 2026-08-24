@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
+  CategoricalColorReferenceSchema,
+  CategoricalColorSequence,
   ColorReferenceSchema,
   EdgeColorReferenceSchema,
   EdgeColorSequence,
@@ -8,6 +10,7 @@ import {
   NodeColorSequence,
   OrdinalColorReferenceSchema,
   OrdinalColorSequence,
+  type CategoricalColorReference,
   type ColorReference,
   type EdgeColorReference,
   type NodeColorReference,
@@ -15,9 +18,12 @@ import {
 } from './color-reference.ts';
 
 describe('color references', () => {
-  it('combines the node, edge, and ordinal reference types', () => {
+  it('combines every defined protocol color reference type', () => {
     expectTypeOf<ColorReference>().toEqualTypeOf<
-      NodeColorReference | EdgeColorReference | OrdinalColorReference
+      | NodeColorReference
+      | EdgeColorReference
+      | OrdinalColorReference
+      | CategoricalColorReference
     >();
   });
 
@@ -36,10 +42,20 @@ describe('color references', () => {
     expect(ColorReferenceSchema.parse(reference)).toBe(reference);
   });
 
-  it.each(['#ff0000', 'node-color-seq-9', 'custom-color'])(
-    'rejects non-reference value %s',
-    (value) => {
-      expect(ColorReferenceSchema.safeParse(value).success).toBe(false);
+  it.each(CategoricalColorSequence)(
+    'accepts categorical reference %s',
+    (reference) => {
+      expect(CategoricalColorReferenceSchema.parse(reference)).toBe(reference);
+      expect(ColorReferenceSchema.parse(reference)).toBe(reference);
     },
   );
+
+  it.each([
+    '#ff0000',
+    'node-color-seq-9',
+    'primary-color-seq-1',
+    'custom-color',
+  ])('rejects non-reference value %s', (value) => {
+    expect(ColorReferenceSchema.safeParse(value).success).toBe(false);
+  });
 });

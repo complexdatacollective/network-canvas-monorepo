@@ -68,8 +68,13 @@ const NODE_COLOR_VARIABLES = {
   'node-color-seq-8': 'var(--node-8)',
 } as const satisfies Record<NodeColorReference, string>;
 
-function resolveDiseaseColor(color: NodeColorReference): string {
-  return NODE_COLOR_VARIABLES[color];
+export function resolveDiseaseColor(color: unknown): string {
+  if (typeof color !== 'string')
+    return NODE_COLOR_VARIABLES['node-color-seq-1'];
+  if (!Object.hasOwn(NODE_COLOR_VARIABLES, color)) {
+    return NODE_COLOR_VARIABLES['node-color-seq-1'];
+  }
+  return NODE_COLOR_VARIABLES[color as NodeColorReference];
 }
 
 type SourceStageConfig = {

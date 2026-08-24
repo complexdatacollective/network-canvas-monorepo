@@ -27,7 +27,9 @@ vi.mock('../export/snapshot', () => ({
     exportSnapshotMock(element, filename),
 }));
 
-import NarrativePedigreeView from '../components/NarrativePedigreeView';
+import NarrativePedigreeView, {
+  resolveDiseaseColor,
+} from '../components/NarrativePedigreeView';
 
 // jsdom lacks ResizeObserver, which fresco-ui layout primitives observe.
 // The stub immediately reports a fixed content size so the off-screen node
@@ -319,6 +321,11 @@ describe('NarrativePedigreeView — node mode selection', () => {
 });
 
 describe('NarrativePedigreeView — condition colours', () => {
+  it('falls back to a defined node variable for a stale raw session color', () => {
+    expect(resolveDiseaseColor('#cc0000')).toBe('var(--node-1)');
+    expect(resolveDiseaseColor('custom-color')).toBe('var(--node-1)');
+  });
+
   it('resolves Architect node colour tokens for the key, pedigree, dimming, and snapshot', async () => {
     const baseStage = makeNarrativeStage();
     const stage: NarrativeStage = {
