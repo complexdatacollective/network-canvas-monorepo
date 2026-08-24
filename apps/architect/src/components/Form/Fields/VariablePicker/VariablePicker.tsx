@@ -148,7 +148,13 @@ export const VariablePickerControl = ({
 
     if (has(selectedOption, 'type') && selectedOption.type) {
       return (
-        <ConnectedVariablePill animated editable uuid={selectedOption.value} />
+        <ConnectedVariablePill
+          animated
+          editable
+          uuid={selectedOption.value}
+          maxWidth="100%"
+          width="fit-content"
+        />
       );
     }
 
@@ -157,7 +163,14 @@ export const VariablePickerControl = ({
     const finalLabel = selectedLabel || selectedValue || '';
     const variableType = (selectedOption.type ?? 'text') as VariableType;
 
-    return <VariablePill label={finalLabel} type={variableType} />;
+    return (
+      <VariablePill
+        label={finalLabel}
+        type={variableType}
+        maxWidth="100%"
+        width="fit-content"
+      />
+    );
   };
 
   return (
