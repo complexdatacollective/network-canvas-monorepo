@@ -1,7 +1,7 @@
 import { get, has } from 'es-toolkit/compat';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -57,6 +57,7 @@ export const VariablePickerControl = ({
   const [showPicker, setShowPicker] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const answeredRef = useRef(false);
+  const propagatedAnsweredBlurRef = useRef(false);
 
   /**
    * The picker is a modal opened from INSIDE another modal, so leaving focus on
@@ -81,6 +82,46 @@ export const VariablePickerControl = ({
     () => (answeredRef.current ? false : triggerRef.current),
     [],
   );
+
+  /**
+   * The spotlight is part of this field's interaction, but its popup is
+   * portalled outside the field's DOM subtree. Without this boundary check,
+   * fresco-ui's container-scoped blur validation treats the popup's autofocus
+   * as leaving the field. A dirty AssignAttributes array then validates and
+   * re-renders underneath the popup before its first option click completes.
+   */
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const nextTarget = event.relatedTarget;
+      if (
+        showPicker ||
+        (nextTarget instanceof Element &&
+          nextTarget.closest('[data-variable-spotlight]'))
+      ) {
+        event.stopPropagation();
+        return;
+      }
+      onBlur?.(event);
+    },
+    [onBlur, showPicker],
+  );
+
+  const shouldPropagatePopupBlur = useCallback(() => {
+    if (propagatedAnsweredBlurRef.current || !answeredRef.current) return false;
+
+    // A direct connected Field owns the completed pick and must receive the
+    // popup's final blur so it marks itself blurred and validates the committed
+    // value. A picker inside RowField is different: its nearest field is
+    // unconnected, while the next connected ancestor owns the whole array.
+    // Propagating there would immediately reject the still-incomplete row
+    // before the researcher can choose its value.
+    const nearestField =
+      triggerRef.current?.closest<HTMLElement>('[data-field-name]');
+    const shouldPropagate =
+      nearestField?.hasAttribute('data-field-path') ?? false;
+    if (shouldPropagate) propagatedAnsweredBlurRef.current = true;
+    return shouldPropagate;
+  }, []);
 
   const handleSelectVariable = (variable: string) => {
     if (disabled || readOnly) return;
@@ -123,7 +164,7 @@ export const VariablePickerControl = ({
     <>
       <div
         data-name={name}
-        onBlur={onBlur}
+        onBlur={handleBlur}
         onFocus={onFocus}
         className="flex w-full flex-col items-start gap-4"
       >
@@ -176,6 +217,7 @@ export const VariablePickerControl = ({
           icon={<Plus />}
           onClick={() => {
             answeredRef.current = false;
+            propagatedAnsweredBlurRef.current = false;
             setShowPicker(true);
           }}
           color="primary"
@@ -197,6 +239,7 @@ export const VariablePickerControl = ({
         entity={entity ?? undefined}
         type={type ?? undefined}
         onSelect={handleSelectVariable}
+        shouldPropagateBlur={shouldPropagatePopupBlur}
         finalFocus={finalFocus}
         options={options}
         onCreateOption={handleCreateOption}
