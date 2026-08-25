@@ -1,5 +1,9 @@
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { FramingId, NcEdge, NcNode } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { getNodeLabel } from '../../pedigree-layout/utils/getDisplayLabel';
 import type { VariableConfig } from '../../store';

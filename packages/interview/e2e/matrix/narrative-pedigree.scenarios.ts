@@ -3,7 +3,7 @@ import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import type { ProtocolPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';

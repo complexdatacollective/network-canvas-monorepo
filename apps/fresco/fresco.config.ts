@@ -1,9 +1,32 @@
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { buildAppSuperProperties } from '@codaco/shared-consts';
 
 import pkg from './package.json' with { type: 'json' };
 
 export const PROTOCOL_EXTENSION = '.netcanvas';
-export const APP_SUPPORTED_SCHEMA_VERSIONS = [7, 8];
+
+/**
+ * The oldest protocol schema version Fresco accepts for upload. Files at or
+ * above this version but below the compatible version are migrated during
+ * import (`lib/protocol/validateAndMigrateProtocol.ts`); anything older is
+ * rejected outright. This floor is a product decision, so it stays explicit.
+ */
+const OLDEST_SUPPORTED_SCHEMA_VERSION = 7;
+
+/**
+ * Every protocol schema version Fresco accepts for upload, inclusive.
+ *
+ * The ceiling is the version the embedded `@codaco/interview` runtime can
+ * execute, so bumping that package's compatible version widens this window
+ * automatically rather than leaving a literal behind to be forgotten.
+ */
+export const APP_SUPPORTED_SCHEMA_VERSIONS: readonly number[] = Array.from(
+  {
+    length:
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION - OLDEST_SUPPORTED_SCHEMA_VERSION + 1,
+  },
+  (_, offset) => OLDEST_SUPPORTED_SCHEMA_VERSION + offset,
+);
 
 // Analytics. The project key, relay host and super-property shape are shared by
 // every Network Canvas product so their events land in one project under one

@@ -4,8 +4,10 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { Stage } from '@codaco/protocol-validation';
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   asStage,
   renderStageForm,

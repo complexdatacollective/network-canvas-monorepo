@@ -1,13 +1,11 @@
 import { z } from 'zod';
 
-import {
-  INHERITANCE_PATTERNS,
-  normalizeForComparison,
-} from '@codaco/shared-consts';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 

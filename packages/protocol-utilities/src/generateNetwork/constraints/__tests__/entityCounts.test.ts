@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  RELATIONSHIP_TYPE_OPTIONS,
   type Stage,
   type Variables,
 } from '@codaco/protocol-validation';
@@ -9,7 +10,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
-  RELATIONSHIP_TYPE_OPTIONS,
   type VariableValue,
 } from '@codaco/shared-consts';
 

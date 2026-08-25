@@ -1,9 +1,6 @@
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
-import {
-  type BiologicalSex,
-  type VariableValue,
-  VariableValueSchema,
-} from '@codaco/shared-consts';
+import type { BiologicalSex } from '@codaco/protocol-validation';
+import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
 import { writeOwnAttribute } from '../../../utils/writeOwnAttributes';
 

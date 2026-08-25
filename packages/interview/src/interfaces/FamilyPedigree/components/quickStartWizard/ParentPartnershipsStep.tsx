@@ -7,8 +7,8 @@ import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioMatrixField from '@codaco/fresco-ui/form/fields/RadioMatrixField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { FRAMING_TERMS } from '@codaco/shared-consts';
 
+import { FRAMING_TERMS } from '../../framingTerms';
 import { useFramedTerms } from '../../hooks/useFramedTerms';
 
 const partnershipOptions = [

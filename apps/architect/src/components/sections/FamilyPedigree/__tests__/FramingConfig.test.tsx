@@ -31,6 +31,18 @@ describe('FramingConfig', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
+  it('offers an author-facing label for every framing the schema defines', () => {
+    renderSection({ framing: { mode: 'fixed', value: 'gamete' } });
+    expect(
+      [...screen.getByRole('combobox').querySelectorAll('option')].map(
+        (option) => [option.value, option.textContent],
+      ),
+    ).toEqual([
+      ['gamete', 'Gamete-based'],
+      ['gendered', 'Gendered'],
+    ]);
+  });
+
   it('does not show the terminology select when mode is participantChoice', () => {
     renderSection({ framing: { mode: 'participantChoice' } });
     expect(screen.queryByRole('combobox')).toBeNull();

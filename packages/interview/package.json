@@ -20,6 +20,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
+    "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -31,6 +32,10 @@
       "./contract": {
         "types": "./dist/contract.d.ts",
         "default": "./dist/contract.js"
+      },
+      "./protocol-schema-version": {
+        "types": "./dist/protocol-schema-version.d.ts",
+        "default": "./dist/protocol-schema-version.js"
       },
       "./styles.css": "./dist/styles.css"
     },

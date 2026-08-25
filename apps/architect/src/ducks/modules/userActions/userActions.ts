@@ -566,6 +566,13 @@ export const exportNetcanvas = createAppAsyncThunk(
 
 // Load a protocol already saved in the library into the editing buffer. Its
 // assets are already namespaced under this id in IndexedDB.
+//
+// Schema compatibility is decided by `admitStoredProtocol`, shared with the
+// startup session restore, so a library protocol behaves the same however it is
+// reached. Note that this path has NO migration approval dialog and needs none:
+// unlike `openLocalNetcanvas`, which migrates a file into a new library entry
+// and leaves the researcher's own copy on disk untouched, there is no second
+// copy here to fall back to.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async ({ id }: { id: string }, { dispatch }): Promise<ProtocolOpenResult> => {
@@ -578,15 +585,9 @@ export const openLibraryProtocol = createAppAsyncThunk(
       };
     }
 
-    const protocol = row.protocol;
+    let admission: Awaited<ReturnType<typeof admitStoredProtocol>>;
     try {
-      const admission = await admitStoredProtocol(row);
-      if (!admission.success) {
-        return {
-          status: 'validation-error',
-          message: ensureError(admission.error).message,
-        };
-      }
+      admission = await admitStoredProtocol(row);
     } catch (error: unknown) {
       reportError(error, { operation: 'stored-protocol-admission' });
       const { message, detail } = describeImportFailure(
@@ -601,12 +602,21 @@ export const openLibraryProtocol = createAppAsyncThunk(
       };
     }
 
+    // Every refusal is already described as a protocol-open result, so the
+    // dialog a researcher sees for a stored protocol is the one the import path
+    // would have shown them for the same problem.
+    if (!admission.success) {
+      return admission.refusal;
+    }
+
     // This protocol is loaded from durable storage, so any earlier in-memory
     // unload warning/storage failure no longer applies.
     dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
-    dispatch(setActiveProtocol(protocol));
+    // The admitted document, which is the upgraded one when the row was below
+    // this build's schema — `row.protocol` is stale by then.
+    dispatch(setActiveProtocol(admission.protocol));
     navigate('/protocol');
     return openedResult;
   },

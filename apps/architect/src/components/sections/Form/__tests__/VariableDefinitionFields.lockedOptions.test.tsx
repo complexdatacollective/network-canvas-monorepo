@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
+import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
 
 // Editor chrome only — `LockedOptions` stays REAL, because which option list
 // it is handed is the whole point of this file.

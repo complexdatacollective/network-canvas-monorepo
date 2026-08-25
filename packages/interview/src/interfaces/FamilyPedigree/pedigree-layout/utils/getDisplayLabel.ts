@@ -1,12 +1,11 @@
+import type { FramingId, RelationshipType } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
-  FRAMING_TERMS,
-  type FramingId,
   type NcEdge,
   type NcNode,
-  type RelationshipType,
 } from '@codaco/shared-consts';
 
+import { FRAMING_TERMS } from '../../framingTerms';
 import type { FamilyEdge, GameteRole, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 

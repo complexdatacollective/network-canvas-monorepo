@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  BIOLOGICAL_SEX_OPTIONS,
+  GAMETE_ROLE_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
   type Stage,
   type StructuralCodebook,
 } from '@codaco/protocol-validation';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';

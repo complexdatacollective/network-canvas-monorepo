@@ -4,6 +4,7 @@ import {
 } from '@reduxjs/toolkit';
 
 import { posthog } from '~/analytics';
+import { APP_SCHEMA_VERSION } from '~/config';
 
 import { setActiveProtocol } from '../modules/activeProtocol';
 import { commitStageEditorDraft } from '../modules/protocol/commitStageEditorDraft';
@@ -23,7 +24,10 @@ startAppListening({
   effect: (action) => {
     const protocol = action.payload;
     posthog.capture('protocol_opened', {
-      schema_version: protocol?.schemaVersion ?? 8,
+      // A protocol reaching the editor always carries a version; the fallback
+      // is this build's own, never a literal that would freeze at 8 after a
+      // schema bump and misreport every open.
+      schema_version: protocol?.schemaVersion ?? APP_SCHEMA_VERSION,
       stage_count: protocol?.stages?.length ?? 0,
     });
   },

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_OPTIONS,
+  type Stage,
+} from '@codaco/protocol-validation';
+import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,

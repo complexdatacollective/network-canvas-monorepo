@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { FramingId } from '@codaco/shared-consts';
+import type { FramingId } from '@codaco/protocol-validation';
 
 import { FamilyPedigreeContext } from '../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../store';

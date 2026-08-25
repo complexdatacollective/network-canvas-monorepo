@@ -1,12 +1,12 @@
 import type { Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
+  asEntityAttributeReference,
   BIOLOGICAL_SEX_OPTIONS,
+  type CurrentProtocol,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';

@@ -1,5 +1,5 @@
 import type { RichSelectOption } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import type { RelationshipType } from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
 
 export type ParentEdgeTypeOption = RichSelectOption & {
   value: RelationshipType;

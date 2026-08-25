@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { FRAMING_IDS } from '@codaco/shared-consts';
-
 import {
   duplicateIdRefinement,
   findDuplicateId,
@@ -13,6 +11,7 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
+import { FRAMING_IDS } from '../family-pedigree-values.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
 

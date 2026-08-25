@@ -1,11 +1,8 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
 
-import {
-  entityAttributesProperty,
-  type NcEdge,
-  type RelationshipType,
-} from '@codaco/shared-consts';
+import type { RelationshipType } from '@codaco/protocol-validation';
+import { entityAttributesProperty, type NcEdge } from '@codaco/shared-consts';
 
 import { getCurrentStage } from '../../../selectors/session';
 

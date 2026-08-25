@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  FRAMING_IDS,
-  FRAMING_AUTHOR_LABELS,
-  FRAMING_TERMS,
-} from '../family-pedigree-framing.ts';
-import { BIOLOGICAL_SEX_VALUES } from '../family-pedigree.ts';
+import { FRAMING_IDS } from '@codaco/protocol-validation';
 
-describe('family-pedigree-framing', () => {
-  it('has exactly two framings with author labels', () => {
-    expect(FRAMING_IDS).toEqual(['gamete', 'gendered']);
-    expect(FRAMING_AUTHOR_LABELS).toEqual({
-      gamete: 'Gamete-based',
-      gendered: 'Gendered',
-    });
+import { FRAMING_TERMS } from '../framingTerms';
+
+describe('FRAMING_TERMS', () => {
+  it('covers every framing the schema defines', () => {
+    expect(Object.keys(FRAMING_TERMS).toSorted()).toEqual(
+      FRAMING_IDS.toSorted(),
+    );
   });
+
   it('maps gamete vs gendered parent terms, sharing carrier/donor', () => {
     expect(FRAMING_TERMS.gamete.eggParent).toBe('Egg Parent');
     expect(FRAMING_TERMS.gamete.spermParent).toBe('Sperm Parent');
@@ -26,15 +22,7 @@ describe('family-pedigree-framing', () => {
       expect(FRAMING_TERMS[id].spermDonor).toBe('Sperm Donor');
     }
   });
-  it('exposes the canonical biological-sex values', () => {
-    expect(BIOLOGICAL_SEX_VALUES).toEqual([
-      'female',
-      'male',
-      'intersex',
-      'unknown',
-      'preferNotToSay',
-    ]);
-  });
+
   it('frames the gamete-provider question, hiding egg/sperm under gendered', () => {
     expect(FRAMING_TERMS.gamete.eggProviderQuestion).toBe(
       'Who provided the egg?',

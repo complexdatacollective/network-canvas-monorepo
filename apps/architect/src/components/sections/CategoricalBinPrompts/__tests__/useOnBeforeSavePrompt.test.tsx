@@ -8,7 +8,7 @@ import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
-} from '@codaco/shared-consts';
+} from '@codaco/protocol-validation';
 
 import { useOnBeforeSavePrompt } from '../useOnBeforeSavePrompt';
 

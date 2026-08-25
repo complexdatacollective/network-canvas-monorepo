@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InterviewPayload, SessionPayload } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -108,6 +109,7 @@ function makeProtocol() {
   return {
     id: 'p1',
     hash: 'h1',
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-01-01T00:00:00.000Z',
     protocol: {
       stages: [
@@ -499,6 +501,20 @@ describe('InterviewRoute finish flow', () => {
 
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+  });
+
+  it('refuses to run a session whose protocol is below the runtime schema version', async () => {
+    getProtocolByHashMock.mockResolvedValue({
+      ...makeProtocol(),
+      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1,
+    });
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', { name: /interview unavailable/i }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
   });
 
   it('applies the exit gate from the completion screen', async () => {
