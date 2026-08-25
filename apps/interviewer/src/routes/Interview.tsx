@@ -16,6 +16,7 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { InterviewComplete } from '~/components/InterviewComplete';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
@@ -52,6 +53,7 @@ const NAVIGATION_SAFE_AREA_CLASSNAMES = {
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
+  | { kind: 'incompatible' }
   | {
       kind: 'ready';
       payload: InterviewPayload;
@@ -164,6 +166,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       const protocol = await getProtocolByHash(session.protocolHash);
       if (!protocol) {
         if (active) setState({ kind: 'missing' });
+        return;
+      }
+      // The launch-time sweep migrates stored protocols before routes render,
+      // so a row still below the runtime's schema version is one that could
+      // not be migrated. Refuse to run rather than hand the runtime a document
+      // it cannot execute.
+      if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+        if (active) setState({ kind: 'incompatible' });
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -284,6 +294,34 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return (
       <div className="bg-background flex h-full items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (state.kind === 'incompatible') {
+    return (
+      <div className="mx-auto flex h-full max-w-lg items-center justify-center p-8">
+        <Surface
+          floating
+          spacing="lg"
+          shadow="lg"
+          className="flex flex-col items-center gap-4 text-center"
+        >
+          <Heading level="h1">Interview unavailable</Heading>
+          <Paragraph>
+            The protocol this interview uses could not be updated to work with
+            this version of the app. Repair the protocol in Architect and import
+            it again to continue.
+          </Paragraph>
+          <Button
+            onClick={() => {
+              setAuthorizedInterviewId(null);
+              goHome();
+            }}
+          >
+            Return home
+          </Button>
+        </Surface>
       </div>
     );
   }

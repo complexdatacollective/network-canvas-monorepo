@@ -51,10 +51,11 @@ function failedToast(names: string[]): { title: string; description: string } {
  * under.
  *
  * The caller is expected to withhold the app's routes until this reports
- * 'settled', so no session can resume against a protocol the interview runtime
- * cannot execute. That wait is the only thing gating launch: the sweep never
- * rejects, and a protocol it could not migrate is reported in a toast rather
- * than held against the app starting.
+ * 'settled', so every protocol that can migrate has migrated before a session
+ * loads. A protocol this sweep could NOT migrate is left at its old version
+ * and reported in a toast rather than held against the app starting; the
+ * interview route separately refuses to run a session whose protocol is not
+ * at the runtime's schema version, so such a row cannot reach the runtime.
  */
 export function useStoredProtocolMigration(
   enabled: boolean,

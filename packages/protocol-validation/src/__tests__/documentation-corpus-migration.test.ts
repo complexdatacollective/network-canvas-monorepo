@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../migration/migrate-protocol.ts';
+import { CURRENT_SCHEMA_VERSION } from '../schemas/index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
 import validateProtocol from '../validation/validate-protocol.ts';
 
@@ -45,10 +46,10 @@ describe('documentation protocol corpus', () => {
 
       // The v7→v8 step requires a `name`; Architect and Interviewer both pass
       // the file's own name, so this mirrors what a researcher's import does.
-      const migrated = migrateProtocol(protocol, 8, {
+      const migrated = migrateProtocol(protocol, CURRENT_SCHEMA_VERSION, {
         name: file.replace(/\.netcanvas$/, ''),
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
       // `migrateProtocol` already checks the structural schema and throws.
       // This second pass adds the cross-reference and logic checks a host
