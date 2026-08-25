@@ -96,6 +96,13 @@ const clampDepth = (depth: number): 0 | 1 | 2 | 3 | 4 => {
 const SurfaceDepthContext = createContext(0);
 
 /**
+ * Returns the depth a Surface rendered at this point in the component tree will
+ * use. The value may exceed the rendered token scale; Surface clamps its own
+ * visual treatment while retaining the true nesting depth for descendants.
+ */
+export const useSurfaceDepth = () => useContext(SurfaceDepthContext);
+
+/**
  * Restarts the Surface depth ladder for a subtree, as if the subtree were
  * mounted directly inside a depth-0 surface. Used by floating chrome that
  * applies the popover surface treatment via classes rather than by rendering

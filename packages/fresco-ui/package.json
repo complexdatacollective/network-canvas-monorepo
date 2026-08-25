@@ -28,12 +28,14 @@
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
     "./ScrollArea": "./src/ScrollArea.tsx",
+    "./Section": "./src/Section.tsx",
     "./SegmentedSwitcher": "./src/SegmentedSwitcher/SegmentedSwitcher.tsx",
     "./SegmentedToolbar": "./src/SegmentedToolbar/SegmentedToolbar.tsx",
     "./Skeleton": "./src/Skeleton.tsx",
     "./Spinner": "./src/Spinner.tsx",
     "./StorageRiskBanner": "./src/StorageRiskBanner.tsx",
     "./TimeAgo": "./src/TimeAgo.tsx",
+    "./Toggle": "./src/Toggle.tsx",
     "./Button": "./src/Button.tsx",
     "./SplitButton": "./src/SplitButton.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
@@ -217,6 +219,10 @@
         "types": "./dist/ScrollArea.d.ts",
         "default": "./dist/ScrollArea.js"
       },
+      "./Section": {
+        "types": "./dist/Section.d.ts",
+        "default": "./dist/Section.js"
+      },
       "./SegmentedSwitcher": {
         "types": "./dist/SegmentedSwitcher/SegmentedSwitcher.d.ts",
         "default": "./dist/SegmentedSwitcher/SegmentedSwitcher.js"
@@ -240,6 +246,10 @@
       "./TimeAgo": {
         "types": "./dist/TimeAgo.d.ts",
         "default": "./dist/TimeAgo.js"
+      },
+      "./Toggle": {
+        "types": "./dist/Toggle.d.ts",
+        "default": "./dist/Toggle.js"
       },
       "./Button": {
         "types": "./dist/Button.d.ts",
