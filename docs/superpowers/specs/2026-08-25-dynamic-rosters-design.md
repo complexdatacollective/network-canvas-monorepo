@@ -95,11 +95,15 @@ Each decision records the alternative it displaced and why.
    secrets into URLs).
 7. **Authoring-time data comes from a stored sample response.** Architect's
    "Send test request" performs the real request and stores the response in
-   the protocol as the asset's `source` file. Column pickers, Preview, and
-   synthetic generation read the sample; none of them ever contact the
-   endpoint. Rejected live-fetch-everywhere (Architect and CI become
-   dependent on the endpoint being up) and manual column declaration
-   (typo-prone, Preview gets nothing).
+   the protocol as the asset's `source` file. Column pickers, synthetic
+   generation, and CI read the sample and never contact the endpoint —
+   those surfaces must be deterministic and work offline. Rejected manual
+   column declaration (typo-prone) and live-fetching column options
+   (Architect editing becomes dependent on the endpoint being up).
+   **Preview is the deliberate exception** (revised 2026-08-25 during spec
+   review): it executes the live request exactly as an interview would
+   (§5.9), because Preview is the researcher's end-to-end test surface for
+   the endpoint.
 8. **Failure reuses the existing roster load-error surfaces, enhanced with
    retry.** No hard block (a dead endpoint must never strand an interview)
    and no fallback to the sample (that is authoring test data; showing it to
@@ -139,8 +143,9 @@ const dynamicNetworkAssetSchema = baseAssetSchema.extend({
   /**
    * Stored sample response (canonical response shape, JSON), written by
    * Architect's "Send test request". Ships in the zip like any file asset;
-   * it is the data source for column pickers, Preview, and synthetic
-   * generation, and is never used during a real interview.
+   * it backs column pickers and synthetic generation. Interviews and
+   * Preview fetch live instead (§5.9) — the sample is never shown to a
+   * participant.
    */
   source: assetSourceSchema,
   /**
@@ -177,7 +182,7 @@ const dynamicNetworkAssetSchema = baseAssetSchema.extend({
 
 `source` is **required**: a dynamic roster asset is not valid until a test
 request has succeeded once. This is the guarantee that makes every authoring
-surface (columns, Preview, synthetic, CI) deterministic and offline. And the
+surface (columns, synthetic generation, CI) deterministic and offline. And the
 sample must be **fresh**: `sampleOf` binds the stored sample to the exact
 request configuration it was produced by, so editing the URL, method, headers,
 or body invalidates the sample at the protocol level — not merely in the
@@ -391,8 +396,9 @@ and copy are extended to cover dynamic rosters.
   the existing asset-storage path, and writes `sampleOf` from the tested
   request. The asset cannot be saved without a stored sample, **and any edit
   to the request configuration disables save until a test of the edited
-  configuration succeeds** — otherwise columns and Preview would describe an
-  endpoint participants never call, failing only during collection. The
+  configuration succeeds** — otherwise column pickers and synthetic data
+  would describe an endpoint participants never call, failing only during
+  collection. The
   `sampleOf` refinement (§7) backs this at the protocol level.
 - **Development-URL alert.** A protocol whose dynamic roster targets an
   `http://localhost` origin gets a timeline alert (the
@@ -414,13 +420,29 @@ and copy are extended to cover dynamic rosters.
 
 ### 5.9 Preview and synthetic generation
 
-Rule: **Preview and synthetic generation never contact the endpoint; they
-always read the stored sample.** The `collectRosterExternalData` host adapters
-(`apps/architect/src/components/PreviewHost/previewRosterData.ts`,
-`apps/interviewer/src/lib/synthetic/loadRosterData.ts`) extend their
-`type !== 'network'` guard to also accept `dynamicnetwork` and resolve its
-sample file exactly as they resolve a static file. Preview interviews
-therefore exercise roster stages deterministically and offline.
+Rule: **Preview executes the live request; every surface that must be
+deterministic and offline reads the stored sample.**
+
+- **Architect Preview** behaves exactly like a real interview: the
+  stage-entry fetch, retry affordances, and failure states all run against
+  the researcher's real endpoint, with Preview's synthetic
+  `interviewContext` and the live preview network filling the placeholders.
+  This is deliberate — Preview is where a researcher proves the endpoint
+  works end to end before deployment, including how the stage degrades when
+  it doesn't. Previewing a dynamic-roster stage therefore needs internet,
+  surfaced by the same offline indicators as a real interview.
+- **Synthetic state generation** — the `collectRosterExternalData` host
+  adapters (`apps/architect/src/components/PreviewHost/previewRosterData.ts`,
+  `apps/interviewer/src/lib/synthetic/loadRosterData.ts`) — reads the
+  stored sample: it runs at startup across many stages at once and must be
+  deterministic, offline-capable, and incapable of hammering the endpoint.
+  The adapters extend their `type !== 'network'` guard to also accept
+  `dynamicnetwork` and resolve the sample file exactly as a static file.
+  A synthetic node drawn from the sample that still matches a live row
+  dedupes naturally (same content, same hash); a changed row appears as
+  both — acceptable in a test surface.
+- **Column pickers and CI** likewise read the sample; e2e intercepts the
+  endpoint with Playwright routes wherever it exercises the live path.
 
 ### 5.10 Host changes
 
@@ -453,14 +475,12 @@ therefore exercise roster stages deterministically and offline.
   becomes an in-place update (asset connections, request configs, name,
   description, `lastModified`) behind a confirmation; same-hash means
   codebook and stages are identical, so existing interviews are unaffected.
-- **Architect preview.** `currentProtocolToPayload` converts each
-  `dynamicnetwork` asset into a sample-backed static `network` asset
-  (type `'network'`, `source` = the sample file) and passes no `request`.
-  The runtime therefore has no preview-awareness and structurally cannot
-  contact the endpoint from Preview — which is what makes the §5.9 rule
-  true rather than aspirational. (Passing `request` through, as an earlier
-  draft did, would have made the preview's own `useExternalData` execute
-  the live endpoint.)
+- **Architect preview.** `currentProtocolToPayload` passes the asset
+  through unchanged — type `'dynamicnetwork'` with `request` intact — and
+  `PreviewHost` supplies a synthetic `interviewContext`, so the runtime's
+  dynamic branch executes in Preview exactly as it does in the field
+  (§5.9). The preview asset resolver still serves the sample file, which
+  synthetic state generation consumes.
 
 ### 5.11 CSP changes
 
@@ -641,7 +661,8 @@ components/NodePanel.tsx` — retry UI + failure copy; the roster stage
 `src/components/AssetBrowser/`), `assetManifest` duck action, `AssetBrowser`
 type filter + preview renderer, `ResourcePicker`/`DataSource` type lists,
 `useVariablesFromExternalData`, `PreviewHost/previewRosterData.ts`,
-`currentProtocolToPayload.ts` (sample-backed conversion, §5.10),
+`currentProtocolToPayload.ts` + `PreviewHost` (pass `request` through,
+synthetic `interviewContext`, §5.10),
 a localhost-URL timeline alert (`TestingMapboxTokenAlert` pattern, §5.8),
 `ProtocolInfoCard` (use shared helper), `vite.config.ts` CSP (dev-gated
 localhost, §5.11).
@@ -689,7 +710,10 @@ Prisma migration, `utils/protocolImport.tsx` + `schemas/protocol.ts` +
   baselines per `preparing-e2e-visual-baselines` if pixels move.
 - **Architect e2e:** create a dynamic roster resource against an intercepted
   endpoint, run the test request, configure a roster stage from its sample
-  columns, confirm Preview uses the sample with the endpoint unreachable.
+  columns; confirm Preview executes the live (route-intercepted) request
+  with the synthetic context substituted, shows the fetched rows, and shows
+  the error + retry state when the intercepted endpoint fails; confirm
+  synthetic state generation reads the sample without issuing any request.
 - **Interviewer:** session-gate dialog for a dynamic-roster protocol while
   offline; re-import test proving an endpoint-config-only change (same
   protocol hash) takes effect.
@@ -697,9 +721,10 @@ Prisma migration, `utils/protocolImport.tsx` + `schemas/protocol.ts` +
   import persists `request`/`sampleOf`; regression test for the same-hash
   in-place update — an endpoint-only re-import takes effect without
   deleting the protocol or its interviews.
-- **Oracle discipline:** every "fetch was not made" assertion (Preview,
-  synthetic, sample paths) must fail when a fetch _is_ made — assert via
-  route interception counters, not absence of visible change
+- **Oracle discipline:** every "fetch was not made" assertion (synthetic
+  generation, column pickers) must fail when a fetch _is_ made, and
+  Preview's "fetch was made" assertions must fail when it wasn't — assert
+  via route interception counters, not absence of visible change
   (`writing-an-oracle-that-can-fail`).
 
 ## 10. Documentation
