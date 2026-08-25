@@ -98,6 +98,33 @@ async function rekeyAssets(
   return rekeyed;
 }
 
+/**
+ * The source row moved on (or disappeared) between this sweep's read and its
+ * commit — another tab re-imported or deleted the protocol while decryption,
+ * migration, validation, and encryption were awaiting. The peer's write wins;
+ * the row is skipped and the next launch sweep re-evaluates whatever is
+ * stored then.
+ */
+class SourceChangedError extends Error {
+  constructor(name: string) {
+    super(`"${name}" changed while it was being migrated.`);
+    this.name = 'SourceChangedError';
+  }
+}
+
+// `importedAt` refreshes on every import, so together with the version and
+// name it identifies the revision that was read. The document body cannot be
+// compared directly here — it may be ciphertext — and does not need to be:
+// nothing rewrites a stored protocol in place except imports and this sweep.
+const sourceUnchanged = (
+  current: StoredProtocolRow | undefined,
+  read: StoredProtocolRow,
+): current is StoredProtocolRow =>
+  current !== undefined &&
+  current.importedAt === read.importedAt &&
+  current.schemaVersion === read.schemaVersion &&
+  current.name === read.name;
+
 async function migrateStoredProtocolRow(
   row: StoredProtocolRow,
 ): Promise<MigratedStoredProtocol> {
@@ -148,7 +175,18 @@ async function migrateStoredProtocolRow(
   // the row's key. Nothing moves: rewrite the row in place and leave sessions
   // and assets alone.
   if (hash === previousHash) {
-    await db.protocols.put(protocolRow);
+    // Guarded like every other commit in this sweep: the async work above
+    // left a gap in which another tab may have re-imported (same hash, and —
+    // because the hash excludes assets and experiments — possibly different
+    // resources) or deleted this protocol. Only the revision that was read
+    // may be replaced.
+    await db.transaction('rw', db.protocols, async () => {
+      const source = await db.protocols.get(row.id);
+      if (!sourceUnchanged(source, row)) {
+        throw new SourceChangedError(row.name);
+      }
+      await db.protocols.put(protocolRow);
+    });
     return {
       name: nextStored.name,
       fromVersion,
@@ -179,6 +217,13 @@ async function migrateStoredProtocolRow(
   const assetRows = await rekeyAssets(previousHash, hash);
 
   await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
+    // The source must still be the revision that was read — another tab
+    // re-importing or deleting it in the gap wins, and this row waits for the
+    // next launch sweep.
+    const source = await db.protocols.get(row.id);
+    if (!sourceUnchanged(source, row)) {
+      throw new SourceChangedError(row.name);
+    }
     const existing = await db.protocols.where('hash').equals(hash).first();
     // A collider that appeared since the check above aborts the transaction,
     // rolling back everything, and reports the refusal.
@@ -256,6 +301,12 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
       if (!row) continue;
       migrated.push(await migrateStoredProtocolRow(row));
     } catch (cause) {
+      if (cause instanceof SourceChangedError) {
+        // Not a failure: a peer's write superseded this row mid-migration and
+        // nothing was changed. The next launch sweep re-evaluates it.
+        console.info(cause.message);
+        continue;
+      }
       const name = row?.name ?? id;
       console.error(`Could not migrate stored protocol "${name}"`, cause);
       failed.push({
