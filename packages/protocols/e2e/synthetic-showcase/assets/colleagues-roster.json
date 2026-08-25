@@ -1,0 +1,60 @@
+{
+  "nodes": [
+    {
+      "attributes": {
+        "name": "Priya Raman",
+        "age": 41,
+        "occupation": "Research coordinator"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Marcus Webb",
+        "age": 29,
+        "occupation": "Data analyst"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Elena Sørensen",
+        "age": 52,
+        "occupation": "Professor"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Tom Okafor",
+        "age": 35,
+        "occupation": "Software engineer"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Hannah Lee",
+        "age": 47,
+        "occupation": "Project manager"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Diego Fuentes",
+        "age": 31,
+        "occupation": "Field interviewer"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Ruth Adler",
+        "age": 58,
+        "occupation": "Department administrator"
+      }
+    },
+    {
+      "attributes": {
+        "name": "Sam Whittaker",
+        "age": 26,
+        "occupation": "Graduate student"
+      }
+    }
+  ]
+}

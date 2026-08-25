@@ -24,6 +24,10 @@ import { clickDialogPrimary } from './familyPedigreeWizardHelpers';
  */
 const build = () => buildScenarioInterview();
 
+// Stable identity: a fresh object each render would re-derive the payload and
+// restart the wizard replay under the capture runner.
+const STOP_AT_PEDIGREE = { stageIndex: 1 };
+
 const meta: Meta<StoryArgs> = {
   // '!test' matches the scenario stories: the wizard replay is too slow for
   // the vitest storybook project.
@@ -39,7 +43,11 @@ export default meta;
 
 export const Capture: StoryObj<StoryArgs> = {
   args: { scaffoldingText: '' },
-  render: () => <CaptureStory build={build} />,
+  // The picture is of the pedigree the wizard below builds, so the stage has
+  // to arrive empty: `stopAt` ends the walk on it (index 1, behind the
+  // leading Information stage), and the get-started button the replay needs
+  // only appears while the network has no nodes.
+  render: () => <CaptureStory build={build} stopAt={STOP_AT_PEDIGREE} />,
   play: async (ctx) => {
     await WithPartnerAndChildren.play?.(ctx);
     // Dismiss the post-wizard "Building the rest of your pedigree" hint so

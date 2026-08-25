@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { VariableOption } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -62,7 +62,7 @@ function buildOptions(
 }
 
 function buildInterview(args: StoryArgs) {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
   const options = buildOptions(
     args.categoryCount,
     args.hasMissingValue,
@@ -80,7 +80,7 @@ function buildInterview(args: StoryArgs) {
   // its own required state.
   const otherVariableId = args.hasOtherOption
     ? nodeType.addVariable({
-        name: 'Other Reason',
+        name: 'OtherReason',
         type: 'text',
         component: 'Text',
         ...(args.otherReasonRequired ? { validation: { required: true } } : {}),
@@ -90,7 +90,7 @@ function buildInterview(args: StoryArgs) {
   const variables: string[] = [];
   for (let i = 0; i < args.promptCount; i++) {
     const ref = nodeType.addVariable({
-      name: `Category ${i + 1}`,
+      name: `Category${i + 1}`,
       type: 'categorical',
       options,
     });

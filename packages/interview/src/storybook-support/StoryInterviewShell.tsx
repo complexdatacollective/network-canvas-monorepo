@@ -15,24 +15,23 @@ import {
   type StepChangeHandler,
 } from '..';
 
-// SyntheticInterview emits assets as plain objects whose `url` field
+// ProtocolBuilder emits assets as plain objects whose `url` field
 // (set by stories via `addAsset({ url: '/storybook/roster-100.json' })`)
 // is what we resolve `onRequestAsset` against. The shape isn't part of
 // the package's public ResolvedAsset type, so we treat each entry as a
 // loose record and pull off the fields we need.
 type RawAsset = Record<string, unknown>;
 
-type RawSyntheticPayload = {
-  id: string;
-  startTime: Date;
-  finishTime: Date | null;
-  exportTime: Date | null;
-  lastUpdated: Date;
+// The builder's payload already carries the session's timestamps as ISO
+// strings, so the only shape this differs from InterviewPayload in is its
+// assets: raw records rather than resolved ones.
+type RawSyntheticPayload = Omit<
+  InterviewPayload['session'],
+  'stageMetadata'
+> & {
   currentStep: number;
   stageMetadata?: unknown;
-  network: InterviewPayload['session']['network'];
-  protocol: Omit<InterviewPayload['protocol'], 'assets' | 'importedAt'> & {
-    importedAt: Date;
+  protocol: Omit<InterviewPayload['protocol'], 'assets'> & {
     assets: RawAsset[];
   };
 };
@@ -58,7 +57,7 @@ function buildPayload(raw: RawSyntheticPayload): {
     protocol,
     currentStep: _currentStep,
     stageMetadata,
-    ...sessionDateFields
+    ...sessionFields
   } = raw;
 
   const assets: ResolvedAsset[] = protocol.assets.flatMap((a) => {
@@ -82,16 +81,13 @@ function buildPayload(raw: RawSyntheticPayload): {
     }
   }
 
-  // SessionState expects ISO date strings (Redux refuses non-serializable
-  // values). SyntheticInterview emits live Date objects, so coerce here.
+  // Only the stage metadata still needs work: stories may hand over anything,
+  // and SessionState takes it only in the schema's shape. The timestamps
+  // arrive as the ISO strings SessionState wants, so they pass straight
+  // through.
   const parsedStageMetadata = StageMetadataSchema.safeParse(stageMetadata);
   const session: InterviewPayload['session'] = {
-    id: sessionDateFields.id,
-    startTime: sessionDateFields.startTime.toISOString(),
-    finishTime: sessionDateFields.finishTime?.toISOString() ?? null,
-    exportTime: sessionDateFields.exportTime?.toISOString() ?? null,
-    lastUpdated: sessionDateFields.lastUpdated.toISOString(),
-    network: sessionDateFields.network,
+    ...sessionFields,
     ...(parsedStageMetadata.success
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),
@@ -106,7 +102,6 @@ function buildPayload(raw: RawSyntheticPayload): {
           typeof protocol.id === 'string'
             ? `storybook-${protocol.id}`
             : 'storybook-hash',
-        importedAt: protocol.importedAt.toISOString(),
         assets,
       },
     },

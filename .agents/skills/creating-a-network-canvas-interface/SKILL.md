@@ -35,7 +35,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 
 **Easy-to-miss sync points** (a stage-type that compiles can still be half-wired):
 
-- **`protocol-utilities` switches on stage type** in `generateNetwork.ts` and `SyntheticInterview.ts` for synthetic-network generation — add a case if the new stage produces, clears, or shapes alter data. (`StageType` is sourced from `@codaco/protocol-validation`, so the type tracks the schema automatically; only the per-stage behaviour needs wiring.)
+- **`protocol-utilities` registers one simulator per stage type** in `src/synthetic-interviews/index.ts`'s `REGISTRY` — a new interface needs its own simulator under `src/synthetic-interviews/simulators/` (writing only what the interface can write, through the session engine's primitives) plus C4 property tests, or a `simulateContentStage` registration if it generates nothing. The walk throws on an unregistered type rather than falling through. The stage's schema must also declare its `synthetic` descriptor surface in `@codaco/protocol-validation` (`src/schemas/8/synthetic/`).
 - **The Capture story is mandatory, not optional.** Every interface needs a `Capture/` storybook story so timeline/preview images generate. Seed every attribute explicitly in the fixture (`getNetwork()` randomises unset attributes).
 - **Architect variable-usage detection** keys off hand-maintained reference paths. If the stage references variables at non-standard locations, mirror the schema's cross-reference keys or the variables get falsely flagged "unused".
 
@@ -55,7 +55,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 - [ ] **Builder:** picker entry, editor sections, default name — researcher can fully configure it in Architect.
 - [ ] **Instrument:** runtime component registered in `getInterface`, renders from config, consumes `Prompts`.
 - [ ] **Documentation:** `<name>.en.mdx` page written in `apps/documentation`.
-- [ ] Sync points: `protocol-utilities` behaviour (`generateNetwork`/`SyntheticInterview` case if it shapes data); Capture story added and `pnpm generate:interface-images` run.
+- [ ] Sync points: `protocol-utilities` simulator registered (or content no-op) with C4 tests, and a replay-parity fixture if it writes data; Capture story added and `pnpm generate:interface-images` run.
 - [ ] Participant copy a researcher would want to control is configuration, not hardcoded (generic/boilerplate chrome excepted).
 - [ ] One stage-type string is identical everywhere it is referenced.
 
@@ -68,7 +68,7 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 | Skipping the documentation page because "code works"       | The `apps/documentation` page is a required surface, not a follow-up.                                                           |
 | Baking study-specific participant copy into the component  | If a researcher would want to change the wording, make it a config field; hardcode only essential/boilerplate chrome.           |
 | Inventing a bespoke per-stage task list                    | Use the `prompts` concept across schema, editor, and runtime.                                                                   |
-| Adding the stage type only where it's declared             | Also wire its runtime behaviour — e.g. a `generateNetwork`/`SyntheticInterview` case in `protocol-utilities` if it shapes data. |
+| Adding the stage type only where it's declared             | Also wire its simulator — a `REGISTRY` entry in `protocol-utilities`' `synthetic-interviews`, with C4 tests, if it shapes data. |
 | Forgetting the Capture story                               | Add `<Name>.capture.stories.tsx`, then `pnpm generate:interface-images`.                                                        |
 
 ## Quick reference
@@ -77,4 +77,4 @@ The stage-type string (e.g. `'TimelineSorter'`) is the single contract. It is wi
 - **Architect editor registry:** `apps/architect/src/components/StageEditor/Interfaces.tsx`; picker in `NewStageScreen/interfaceOptions.ts`; sections in `components/sections/`.
 - **Runtime registry:** `packages/interview/src/interfaces/index.tsx` (`getInterface`); prompts at `src/components/Prompts/Prompts.tsx`.
 - **Docs:** `apps/documentation/docs/desktop/interface-documentation/<name>.en.mdx`.
-- **Sync points:** `packages/protocol-utilities/src/SyntheticInterview.ts` / `generateNetwork.ts` (per-stage behaviour); images via `pnpm generate:interface-images`.
+- **Sync points:** `packages/protocol-utilities/src/synthetic-interviews/` (the stage's simulator + registry entry) and `ProtocolBuilder.ts` (an `addXStage` construction method); images via `pnpm generate:interface-images`.

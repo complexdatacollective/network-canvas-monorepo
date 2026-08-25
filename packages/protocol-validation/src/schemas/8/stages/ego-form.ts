@@ -5,6 +5,7 @@ import {
   TitlelessFormSchema,
 } from '../common/index.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
+import { stageValuesSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 // The only stage whose subject is fixed rather than authored: an ego form
@@ -13,6 +14,7 @@ import { baseStageSchema } from './base.ts';
 export const egoFormStage = withStageSubjectResolution(
   baseStageSchema.extend({
     type: z.literal('EgoForm'),
+    synthetic: stageValuesSynthetic('EgoForm').prefault({}),
     form: TitlelessFormSchema,
     introductionPanel: IntroductionPanelSchema,
   }),

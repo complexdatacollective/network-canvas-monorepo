@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type Stage,
+  DEFAULT_EDGE_TOPOLOGY,
+  DEFAULT_RESPONSE_BURDEN,
 } from '@codaco/protocol-validation';
 import {
   asStage,
@@ -45,6 +47,13 @@ describe('allowsBackgroundImage', () => {
           },
         },
       ],
+      // Schema-injected generation metadata: a parsed stage always carries
+      // it, and nothing in this test reads it.
+      synthetic: {
+        generatesData: true,
+        responseBurden: DEFAULT_RESPONSE_BURDEN.Sociogram,
+        topology: DEFAULT_EDGE_TOPOLOGY,
+      },
     } satisfies Stage;
 
     const { getPresent } = renderStageForm({
@@ -75,6 +84,11 @@ const circlesStage = {
   subject: { entity: 'node', type: 'person' },
   background: { concentricCircles: 4, skewedTowardCenter: true },
   prompts: [],
+  synthetic: {
+    generatesData: true,
+    responseBurden: DEFAULT_RESPONSE_BURDEN.Sociogram,
+    topology: DEFAULT_EDGE_TOPOLOGY,
+  },
 } satisfies Stage;
 
 const renderBackground = () =>

@@ -1,6 +1,6 @@
 import { type Page } from '@playwright/test';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -99,7 +99,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -169,7 +169,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       covers: ['subject', 'variable.component=Text'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -239,7 +239,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       covers: [],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         nt.addVariable({ id: 'excluded', name: 'excluded', type: 'boolean' });
@@ -322,7 +322,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const ab = edges.find((e) => e[entityPrimaryKeyProperty] === 'ab');
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
         expect(ab?.attributes['met-at']).toBe('Work');
-        // SyntheticInterview materialises every declared variable on manual
+        // ProtocolBuilder materialises every declared variable on manual
         // entities with its type-neutral value. The filtered edge remains
         // untouched; only the visible A-B edge receives the submitted answer.
         expect(bc?.attributes['met-at']).toBe('');
@@ -335,7 +335,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       covers: ['zero-edges auto-skip'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -407,7 +407,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -473,7 +473,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       covers: ['variable.component=Number'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -534,7 +534,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -656,7 +656,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -742,7 +742,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -817,7 +817,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -959,7 +959,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -1094,7 +1094,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
@@ -1288,7 +1288,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({
           name: 'Person',
           color: 'node-color-seq-2',
@@ -1399,7 +1399,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });

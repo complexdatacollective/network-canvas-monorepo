@@ -3,6 +3,9 @@ import { z } from 'zod';
 // Export base stage schema
 export * from './base.ts';
 
+// The burden table the exhaustiveness assertion at the foot of this file holds
+// to `StageType`.
+import { type DEFAULT_RESPONSE_BURDEN } from '../synthetic/index.ts';
 // Import all stage types
 import { alterEdgeFormStage } from './alter-edge-form.ts';
 import { alterFormStage } from './alter-form.ts';
@@ -76,3 +79,24 @@ export type StageType = z.infer<typeof stageSchema>['type'];
 
 export type Stage = z.infer<typeof stageSchema>;
 export type Prompt = Extract<Stage, { prompts: unknown }>['prompts'][number];
+
+/**
+ * `DEFAULT_RESPONSE_BURDEN` prices every stage type, but cannot say so where
+ * it is written: every stage schema imports the synthetic module, so naming
+ * `StageType` there would close an import cycle. The annotation that would
+ * have carried the exhaustiveness lives here instead, where `StageType` is
+ * finally in scope.
+ *
+ * Both directions matter. A stage type with no burden would resolve to
+ * `undefined` and turn the accumulated burden into `NaN`, which silently
+ * disables dropout for the whole interview rather than failing anywhere near
+ * the cause; a burden entry naming a stage type that no longer exists is dead
+ * calibration that reads as if it were live. Either is a typecheck failure.
+ */
+type Exhaustive<T extends never> = T;
+type _EveryStageTypeIsPriced = Exhaustive<
+  Exclude<StageType, keyof typeof DEFAULT_RESPONSE_BURDEN>
+>;
+type _EveryPriceNamesAStageType = Exhaustive<
+  Exclude<keyof typeof DEFAULT_RESPONSE_BURDEN, StageType>
+>;

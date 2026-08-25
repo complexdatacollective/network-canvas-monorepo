@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import type { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from './StoryInterviewShell';
 
@@ -40,19 +40,32 @@ export type CaptureParameters = {
  * `showNavigation` keeps the navigation mounted for stories whose capture
  * parameters use `advance` — the runner needs the Next button, and removes
  * the navigation from the DOM before screenshotting.
+ *
+ * `stopAt` bounds the generated walk for a capture whose picture is of the
+ * stage BEFORE anybody answers it — one whose play function works the stage
+ * by hand. Without it the recipe arrives already answered, and a play
+ * function that drives an empty-state affordance has nothing to drive.
  */
 const CaptureStory = ({
   build,
   currentStep = 1,
   showNavigation = false,
+  stopAt,
 }: {
-  build: () => SyntheticInterview;
+  build: () => ProtocolBuilder;
   currentStep?: number;
   showNavigation?: boolean;
+  stopAt?: { stageIndex: number; promptIndex?: number };
 }) => {
   const rawPayload = useMemo(
-    () => SuperJSON.stringify(build().getInterviewPayload({ currentStep })),
-    [build, currentStep],
+    () =>
+      SuperJSON.stringify(
+        build().getInterviewPayload({
+          currentStep,
+          ...(stopAt !== undefined ? { stopAt } : {}),
+        }),
+      ),
+    [build, currentStep, stopAt],
   );
 
   return (

@@ -1,7 +1,10 @@
 import type { Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  DEFAULT_RESPONSE_BURDEN,
+} from '@codaco/protocol-validation';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
@@ -135,6 +138,12 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
         id: SOURCE_STAGE_ID,
         type: 'FamilyPedigree',
         label: 'Family Pedigree',
+        // Schema-injected generation metadata: a parsed stage always carries
+        // it, and nothing in this spec reads it.
+        synthetic: {
+          generatesData: true,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.FamilyPedigree,
+        },
         nodeConfig: {
           type: 'person',
           nodeLabelVariable: asEntityAttributeReference('name'),

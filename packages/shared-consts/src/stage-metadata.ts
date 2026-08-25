@@ -79,6 +79,7 @@ export const StageMetadataSchema = z.record(
 );
 
 export type StageMetadata = z.infer<typeof StageMetadataSchema>;
+export type StageMetadataEntry = StageMetadata[string];
 
 // Validate-and-narrow a persisted metadata entry to the NetworkComposer shape.
 // Using the schema (rather than a hand-rolled `'automaticLayout' in value` check)

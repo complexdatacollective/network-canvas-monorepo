@@ -14,8 +14,8 @@ import {
 } from '@codaco/interview';
 import {
   type ConstraintConflict,
-  generateNetwork,
-  SyntheticDataConstraintError,
+  DEFAULT_SYNTHETIC_SEED,
+  generateInterviews,
 } from '@codaco/protocol-utilities';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
@@ -24,10 +24,22 @@ import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
-import { collectPreviewRosterData } from './previewRosterData';
+import { collectPreviewAssetData } from './previewAssetData';
 import { useAssetResolver } from './useAssetResolver';
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
+
+/**
+ * The fixed end of the synthetic start window every preview generates
+ * against. A preview promises that the same protocol previews the same way
+ * every time, and the seed alone cannot deliver that: `generateInterviews`
+ * anchors session dates — and every date-relative drawn value — to this
+ * instant, falling back to the wall clock when none is given. Pinning it
+ * alongside the fixed seed is what makes a rebuilt preview byte-identical to
+ * the one a researcher compared against yesterday. The date itself is
+ * arbitrary and visible only in generated timestamps and date answers.
+ */
+const PREVIEW_START_WINDOW = '2026-01-01T00:00:00.000Z';
 
 // Shown in the interview's finish confirmation instead of the participant
 // default ("…satisfied with your responses"), which is untrue in a preview:
@@ -49,56 +61,98 @@ function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
 }
 
 async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
-  const now = new Date().toISOString();
-  const base: SessionPayload = {
-    id: uuid(),
-    startTime: now,
-    finishTime: null,
-    exportTime: null,
-    lastUpdated: now,
-    network: createInitialNetwork(),
-  };
   if (!payload.useSyntheticData) {
-    return base;
+    const now = new Date().toISOString();
+    return {
+      id: uuid(),
+      startTime: now,
+      finishTime: null,
+      exportTime: null,
+      lastUpdated: now,
+      network: createInitialNetwork(),
+    };
   }
-  // Draw roster-stage people from the protocol's real roster assets. Failures
-  // are isolated per-asset and never throw, so a roster problem degrades to
-  // fabricated people rather than blocking the preview.
-  const externalData = await collectPreviewRosterData(
+  // Draw roster people and Geospatial answers from the protocol's real assets.
+  // Failures are isolated per-asset and never throw, so an asset problem
+  // degrades to fabricated values rather than blocking the preview.
+  const assetData = await collectPreviewAssetData(
     payload.protocol,
     payload.protocolId,
   );
-  const generated = generateNetwork({
-    codebook: payload.protocol.codebook,
-    stages: payload.protocol.stages,
-    externalData,
-    // Leave the previewed stage partially complete so interaction-driven
-    // interfaces (ordinal/categorical bins, sociogram) still have
-    // unplaced nodes to work with.
-    inProgressStageIndex: payload.startStage,
-  });
+  const [result] = generateInterviews(
+    payload.protocol,
+    {
+      count: 1,
+      // A preview is a stage, not a study: a run that abandoned itself partway
+      // would show the researcher an empty screen for reasons of its own.
+      simulateDropOut: false,
+      // Unconditional, including when the researcher left routing switched
+      // on: they asked for THIS stage, and a generated participant whom skip
+      // logic routed past it would arrive with nothing to look at. The
+      // payload's `respectSkipLogic` decides how the Shell navigates the
+      // preview, not how the network behind it was built.
+      respectSkipLogic: false,
+      // Stop on arrival at the previewed stage with nothing applied there (the
+      // default prompt bound of 0), so every earlier stage has built a
+      // plausible network while interaction-driven interfaces (ordinal and
+      // categorical bins, sociogram) still have unplaced nodes to work with.
+      stopAt: { stageIndex: payload.startStage },
+      // Fixed, so the same protocol previews the same way every time: a
+      // researcher comparing a change against what they saw a moment ago is
+      // comparing the change, not two different draws. The seed pins the
+      // draws and the start window pins the clock they are dated against —
+      // without the second, date-relative answers would drift with the wall
+      // clock even under a fixed seed.
+      seed: DEFAULT_SYNTHETIC_SEED,
+      startWindow: PREVIEW_START_WINDOW,
+    },
+    assetData,
+  );
+  if (!result) {
+    throw new Error('Synthetic generation produced no interview to preview');
+  }
   // Stages that record a finalized state (e.g. a FamilyPedigree's committed
   // network) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
   // dropped rather than discarding every stage's metadata. Interaction-driven
   // stages emit no metadata, so their "unplaced nodes" intent is preserved.
   let stageMetadata: StageMetadata | undefined;
-  if (generated.stageMetadata) {
+  if (result.session.stageMetadata) {
     const validEntries: StageMetadata = {};
-    for (const [stageId, entry] of Object.entries(generated.stageMetadata)) {
-      const parsed = StageMetadataSchema.safeParse({ [stageId]: entry });
+    for (const [step, entry] of Object.entries(result.session.stageMetadata)) {
+      const parsed = StageMetadataSchema.safeParse({ [step]: entry });
       if (parsed.success) {
         Object.assign(validEntries, parsed.data);
       }
     }
     stageMetadata = validEntries;
   }
-  return {
-    ...base,
-    network: generated.network,
-    stageMetadata,
-  };
+  return { ...result.session, stageMetadata };
 }
+
+type ConstraintRefusal = Error & { conflicts: ConstraintConflict[] };
+
+/**
+ * Whether generation refused because the protocol declares validation rules
+ * that no value can satisfy — the one refusal with something the researcher can
+ * act on, which is why it gets a screen of its own.
+ *
+ * Recognised by the error's NAME rather than by `instanceof
+ * SyntheticDataConstraintError`. The class identity is not one thing: the
+ * package's root still exports the old engine's copy while the interview engine
+ * throws its own, structurally identical copy from
+ * `synthetic-interviews/constraints/error`, so an `instanceof` against the
+ * export would silently miss every conflict this preview can actually hit. The
+ * name is what the two copies share now and what survives them merging into
+ * one, so this reads the same either side of that.
+ */
+function isConstraintRefusal(error: unknown): error is ConstraintRefusal {
+  if (!(error instanceof Error)) return false;
+  if (error.name !== 'SyntheticDataConstraintError') return false;
+  const { conflicts } = error as Partial<ConstraintRefusal>;
+  return Array.isArray(conflicts);
+}
+
 // A preview fails for exactly one reason — the payload never arrived, or the
 // build it started failed — so the reasons share one slot: a later failure can
 // never leave an earlier one's screen behind. A payload that arrives is no
@@ -150,7 +204,7 @@ export function PreviewHost() {
         // Clear any previously successful preview so a failed rebuild never
         // leaves a stale network on screen with no sign that this build failed.
         setInterviewPayload(null);
-        if (error instanceof SyntheticDataConstraintError) {
+        if (isConstraintRefusal(error)) {
           setFailure({ kind: 'constraints', conflicts: error.conflicts });
         } else {
           console.error('Failed to build preview payload', error);

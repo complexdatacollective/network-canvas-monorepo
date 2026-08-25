@@ -49,29 +49,19 @@ export type SkipLogicInput = {
   destination?: SkipLogicDestinationInput;
 };
 
-/**
- * Structural variable option input: boolean values are legal on boolean
- * variables (schema-validated downstream), which the exported VariableOption
- * union does not admit.
- */
-export type VariableOptionInput = {
-  label: string;
-  value: string | number | boolean;
-  negative?: boolean;
-};
+// One definition of the variable-entry shape, shared with the engine's
+// constraint machinery: the builder assembles entries, the engine reasons
+// about them, and a second copy of the type here is exactly the drift the
+// engine's own docblock warns against.
+import type {
+  VariableEntry,
+  VariableOptionInput,
+} from './synthetic-interviews/constraints/variableEntry';
 
-export type VariableEntry = {
-  id: string;
-  name: string;
-  type: VariableType;
-  component?: ComponentType;
-  options?: VariableOptionInput[];
-  validation?: Record<string, unknown>;
-  parameters?: Record<string, unknown>;
-  // Only meaningful on node text variables; the variable schema rejects
-  // `encrypted` on ego/edge variables, so only the node codebook emits it.
-  encrypted?: boolean;
-};
+export type {
+  VariableEntry,
+  VariableOptionInput,
+} from './synthetic-interviews/constraints/variableEntry';
 
 type ShapeMapping =
   | {
@@ -286,6 +276,9 @@ export type StageEntry = {
   title?: string;
   items?: Item[];
   initialEdges: [number, number][];
+  // Remembered from AddStageInput so the payload delegate can translate it
+  // (overrides listing + the authored constant count, plan D21).
+  initialNodes?: InitialNodesSpec;
   // NameGeneratorQuickAdd
   quickAdd?: string;
   // NameGeneratorRoster
@@ -582,7 +575,26 @@ export type NarrativeDiseaseEntry = {
 };
 
 export type GetSessionInput = {
+  /**
+   * Presentation state: the step the payload's consumer mounts the interview
+   * at. Defaults to the walk's resume position under `stopAt`, 0 otherwise.
+   * It does not shape the generated session — `stopAt` does that.
+   */
   currentStep?: number;
+  /**
+   * Accepted for compatibility and ignored, exactly as the old builder
+   * ignored it. A prompt-bounded session state is `stopAt.promptIndex`.
+   */
   promptIndex?: number;
+  /** Replaces the engine-produced stage metadata outright when present. */
   stageMetadata?: Record<number, unknown> | null;
+  /**
+   * Bound the delegated walk: the session is the state of an interview
+   * stopped at this stage (and optionally before this prompt).
+   * `{ stageIndex: 0 }` is the blank session — nothing has run, so network
+   * and ego are empty by construction.
+   */
+  stopAt?: { stageIndex: number; promptIndex?: number };
+  /** Honour skip logic during the delegated walk. Defaults to false. */
+  respectSkipLogic?: boolean;
 };

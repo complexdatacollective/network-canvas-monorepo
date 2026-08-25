@@ -43,6 +43,11 @@ export type NodePanelValue = Record<string, unknown> & {
   title: string | undefined;
   dataSource: string;
   filter: RuleSetValue | undefined;
+  // Authored generation parameters (`panelSchema.synthetic`). No control
+  // renders it, so it is optional rather than `| undefined`: a panel that was
+  // never given one must keep the key absent, not carry an explicit
+  // `undefined` that would read as a cleared value.
+  synthetic?: Record<string, unknown>;
 };
 
 type NodePanelProps = ArrayFieldItemProps<NodePanelValue>;
@@ -84,6 +89,12 @@ const NodePanel = ({
     `${fieldName}.dataSource`,
   );
   const filter = useStageFormValue<PanelFilterInput>(`${fieldName}.filter`);
+  // Authored generation parameters. This editor renders no control for them
+  // (see NodePanels' registration), but the effect below must clear them when
+  // the panel stops drawing on the in-progress network.
+  const synthetic = useStageFormValue<Record<string, unknown> | undefined>(
+    `${fieldName}.synthetic`,
+  );
   const initialTitle = useStageInitialValue<string>(`${fieldName}.title`);
   const initialDataSource = useStageInitialValue<string | undefined>(
     `${fieldName}.dataSource`,
@@ -93,7 +104,11 @@ const NodePanel = ({
   // side effect — `ArchitectField` strips a caller `onChange` defensively, see
   // stageFormHooks.ts): switching away from the in-progress interview network
   // while the panel's filter has edge rules asks for confirmation, since an
-  // external data file has no edges to filter.
+  // external data file has no edges to filter. A switch that stands also takes
+  // the panel's authored `synthetic` block with it: `panelSchema` refuses
+  // nomination odds on any panel whose `dataSource` is not 'existing', and
+  // with no control rendering the block the researcher could never clear it
+  // themselves — the stage would simply stop validating.
   const previousDataSourceRef = useRef(dataSource);
   const restoreVersion = useStageRestoreVersion();
   const previousRestoreVersionRef = useRef(restoreVersion);
@@ -106,10 +121,9 @@ const NodePanel = ({
       previousValue === undefined ||
       dataSource === previousValue ||
       dataSource === EXISTING_DATA_SOURCE ||
-      !hasEdgeRules(filter) ||
       // A superseded row reads the slot values of the panel that replaced it,
       // so its `dataSource` appears to change when the list is re-indexed.
-      // Prompting there would ask about a panel that no longer exists.
+      // Acting there would act on a panel that no longer exists.
       !ownsSlot
     ) {
       return;
@@ -119,8 +133,23 @@ const NodePanel = ({
     // an external data source with the edge rules that had not been stripped
     // yet. Stepping onto it must not re-open the dialog: confirming would
     // delete the rules the restore just brought back, and cancelling would
-    // write the data source back and undo the step itself.
+    // write the data source back and undo the step itself. The synthetic
+    // clear is guarded with it, so a restore replays snapshots verbatim
+    // instead of being edited as it lands.
     if (previousRestoreVersion !== restoreVersion) return;
+
+    // Cleared only once the switch is settled: the cancel branch below
+    // reverts the data source, and a block must survive a cancelled switch.
+    const clearSynthetic = () => {
+      if (synthetic !== undefined) {
+        setStageValue(`${fieldName}.synthetic`, undefined);
+      }
+    };
+
+    if (!hasEdgeRules(filter)) {
+      clearSynthetic();
+      return;
+    }
 
     void (async () => {
       const confirmed = await confirm({
@@ -135,12 +164,14 @@ const NodePanel = ({
 
       if (confirmed) {
         setStageValue(`${fieldName}.filter`, stripEdgeRules(filter));
+        clearSynthetic();
       } else {
         setStageValue(`${fieldName}.dataSource`, previousValue);
       }
     })();
-    // Only the dataSource transition itself should retrigger this — `filter`
-    // and `confirm` are read at fire time, not watched for their own changes.
+    // Only the dataSource transition itself should retrigger this — `filter`,
+    // `synthetic` and `confirm` are read at fire time, not watched for their
+    // own changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource, fieldName, ownsSlot, restoreVersion, setStageValue]);
 

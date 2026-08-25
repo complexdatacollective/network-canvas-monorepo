@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
+import {
+  BIOLOGICAL_SEX_OPTIONS,
+  RELATIONSHIP_TYPE_OPTIONS,
+} from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -72,9 +76,14 @@ const FAMILY_PEDIGREE_STAGE_INDEX = 1;
  * later-added friends do not appear on the family tree.
  */
 export function buildCegrmInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
 
   // --- One Person node type for kin AND non-kin -------------------------------
+  // Pedigree notation: square for male, circle for female, diamond wherever
+  // the sex recorded at birth does not determine one of those. The map keys off
+  // the canonical biological-sex values (see BIO_SEX_VAR below); a discrete
+  // shape mapping reads a categorical, ordinal, or boolean attribute, which is
+  // what makes that variable categorical rather than free text.
   const person = si.addNodeType({
     name: 'Person',
     shape: {
@@ -85,7 +94,9 @@ export function buildCegrmInterview(seed: number) {
         map: [
           { value: 'male', shape: 'square' },
           { value: 'female', shape: 'circle' },
-          { value: 'other', shape: 'diamond' },
+          { value: 'intersex', shape: 'diamond' },
+          { value: 'unknown', shape: 'diamond' },
+          { value: 'preferNotToSay', shape: 'diamond' },
         ],
       },
     },
@@ -96,7 +107,16 @@ export function buildCegrmInterview(seed: number) {
   // falling through to another text variable (e.g. biological sex).
   const NAME_VAR = person.addVariable({ name: 'name', type: 'text' }).id;
   person.addVariable({ id: EGO_VAR, name: EGO_VAR, type: 'boolean' });
-  person.addVariable({ id: BIO_SEX_VAR, name: BIO_SEX_VAR, type: 'text' });
+  // The sex recorded at birth is an interface-owned value set: the pedigree
+  // stage binds it as its `biologicalSexVariable`, and the schema holds a
+  // categorical bound there to exactly the canonical options — which is also
+  // the domain the shape mapping above and the genetics engine branch on.
+  person.addVariable({
+    id: BIO_SEX_VAR,
+    name: BIO_SEX_VAR,
+    type: 'categorical',
+    options: [...BIOLOGICAL_SEX_OPTIONS],
+  });
   person.addVariable({
     id: REL_TO_EGO_VAR,
     name: REL_TO_EGO_VAR,
@@ -129,14 +149,14 @@ export function buildCegrmInterview(seed: number) {
 
   // --- Edge types: family (pedigree) and social (member-to-member) ------------
   const familyEdge = si.addEdgeType({ name: 'Family' });
+  // The relationship type is another interface-owned value set, so the
+  // categorical carries the canonical options verbatim; the two this pedigree
+  // actually stores ('biological' and 'partner') are members of it.
   familyEdge.addVariable({
     id: REL_TYPE_VAR,
     name: REL_TYPE_VAR,
     type: 'categorical',
-    options: [
-      { label: 'biological', value: 'biological' },
-      { label: 'partner', value: 'partner' },
-    ],
+    options: [...RELATIONSHIP_TYPE_OPTIONS],
   });
   familyEdge.addVariable({
     id: IS_ACTIVE_VAR,
@@ -338,18 +358,18 @@ export function buildCegrmInterview(seed: number) {
   // the paternal grandmother is a key information disseminator.
   kin('mgm', {
     [NAME_VAR]: 'Rosa',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
   });
   kin('mgf', {
     [NAME_VAR]: 'Bill',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [KIN_TYPE_VAR]: ['biological'],
   });
   kin('pgm', {
     [NAME_VAR]: 'Mary',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [DISSEMINATOR_VAR]: true,
     [INFO_IN_VAR]: true,
@@ -361,21 +381,21 @@ export function buildCegrmInterview(seed: number) {
   });
   kin('pgf', {
     [NAME_VAR]: 'Simon',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [KIN_TYPE_VAR]: ['biological'],
   });
 
   // Generation 2 — parents and a maternal aunt.
   kin('mother', {
     [NAME_VAR]: 'Nancy',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [BARRIER_VAR]: true,
   });
   kin('father', {
     [NAME_VAR]: 'David',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [KIN_TYPE_VAR]: ['biological'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
@@ -386,7 +406,7 @@ export function buildCegrmInterview(seed: number) {
   });
   kin('aunt', {
     [NAME_VAR]: 'Carol',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [FEELINGS_IN_VAR]: true,
@@ -397,12 +417,12 @@ export function buildCegrmInterview(seed: number) {
   kin('ego', {
     [NAME_VAR]: 'Jane',
     [EGO_VAR]: true,
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
   });
   kin('sister', {
     [NAME_VAR]: 'Cynthia',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [CANCER_VAR]: true,
     [INFO_IN_VAR]: true,
@@ -412,7 +432,7 @@ export function buildCegrmInterview(seed: number) {
   });
   kin('husband', {
     [NAME_VAR]: 'Mark',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [KIN_TYPE_VAR]: ['affinal'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
@@ -426,13 +446,13 @@ export function buildCegrmInterview(seed: number) {
   // her daughter but does not receive it — a one-way exchange (…Out only).
   kin('daughter', {
     [NAME_VAR]: 'Ada',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [KIN_TYPE_VAR]: ['biological'],
     [SUPPORT_OUT_VAR]: true,
   });
   kin('son', {
     [NAME_VAR]: 'Sam',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [KIN_TYPE_VAR]: ['biological'],
   });
 
@@ -441,7 +461,7 @@ export function buildCegrmInterview(seed: number) {
   // childhood friend, and receives one-way information from a colleague.
   nonKin('bestfriend', {
     [NAME_VAR]: 'Priya',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [INFO_IN_VAR]: true,
     [INFO_OUT_VAR]: true,
     [SUPPORT_IN_VAR]: true,
@@ -451,12 +471,12 @@ export function buildCegrmInterview(seed: number) {
   });
   nonKin('colleague', {
     [NAME_VAR]: 'Tom',
-    [BIO_SEX_VAR]: 'male',
+    [BIO_SEX_VAR]: ['male'],
     [INFO_IN_VAR]: true,
   });
   nonKin('childhoodfriend', {
     [NAME_VAR]: 'Beth',
-    [BIO_SEX_VAR]: 'female',
+    [BIO_SEX_VAR]: ['female'],
     [FEELINGS_IN_VAR]: true,
     [FEELINGS_OUT_VAR]: true,
   });
@@ -512,11 +532,26 @@ export function buildCegrmInterview(seed: number) {
   return { si, stageMetadata };
 }
 
+// The sociogram is stage index 3 — the first stage this demonstration does not
+// seed itself.
+const SOCIOGRAM_STAGE_INDEX = 3;
+
 function CegrmWrapper({ seed, step }: { seed: number; step: number }) {
   const rawPayload = useMemo(() => {
     const { si, stageMetadata } = buildCegrmInterview(seed);
+    // `stopAt` bounds the walk at the sociogram: the pedigree and the
+    // name-generator run (their output is exactly the people seeded above),
+    // and the sociogram itself does not. Everything the sociogram would
+    // collect — the six exchange booleans, the two role booleans, the layout
+    // positions and the member-to-member ties — is what this example seeds by
+    // hand, so letting the builder simulate that stage would overwrite the
+    // worked example with drawn answers and scatter the arrangement.
     return SuperJSON.stringify(
-      si.getInterviewPayload({ currentStep: step, stageMetadata }),
+      si.getInterviewPayload({
+        currentStep: step,
+        stageMetadata,
+        stopAt: { stageIndex: SOCIOGRAM_STAGE_INDEX },
+      }),
     );
   }, [seed, step]);
   return (

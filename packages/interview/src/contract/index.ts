@@ -15,6 +15,7 @@ export {
   type AssetUrlSource,
   createAssetUrlOwner,
 } from './assetUrlOwner';
+export { collectGeospatialPropertyValues } from './geospatialData';
 export { createInitialNetwork } from './network';
 export {
   collectRosterExternalData,

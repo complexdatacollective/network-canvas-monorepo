@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -42,7 +42,7 @@ type PanelHost = {
  * plain existing-network panel.
  */
 function addConfiguredPanels(
-  interview: SyntheticInterview,
+  interview: ProtocolBuilder,
   stage: PanelHost,
   args: StoryArgs,
 ) {
@@ -82,10 +82,10 @@ function addConfiguredPanels(
  * prompt" round-trip work in the demo stage.
  */
 function buildInterview(args: StoryArgs): {
-  interview: SyntheticInterview;
+  interview: ProtocolBuilder;
   demoStageStep: number;
 } {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
 
   const nodeType = interview.addNodeType({ name: 'Person' });
   const nameVar = nodeType.addVariable({ type: 'text', name: 'Name' });
@@ -169,10 +169,18 @@ const NameGeneratorStoryWrapper = (args: StoryArgs) => {
     () => buildInterview(args),
     [configKey],
   );
+  // Every story here drives the demo stage by hand, so the interview has to
+  // arrive at it unanswered: `stopAt` ends the generated walk on that stage,
+  // leaving the earlier Setup stage's people in the network and the demo
+  // stage's own list empty. Without it the generator answers the demo stage
+  // first and each play function starts from somebody else's work.
   const rawPayload = useMemo(
     () =>
       SuperJSON.stringify(
-        interview.getInterviewPayload({ currentStep: demoStageStep }),
+        interview.getInterviewPayload({
+          currentStep: demoStageStep,
+          stopAt: { stageIndex: demoStageStep },
+        }),
       ),
     [interview, demoStageStep],
   );
@@ -552,7 +560,7 @@ function buildExternalDataUrl(names: string[]) {
 }
 
 function buildExternalDataInterview() {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
 
   const nodeType = interview.addNodeType({ name: 'Person' });
   const nameVar = nodeType.addVariable({ type: 'text', name: 'Name' });
@@ -615,9 +623,17 @@ function buildExternalDataInterview() {
 
 const ExternalDataStoryWrapper = () => {
   const interview = useMemo(() => buildExternalDataInterview(), []);
+  // See NameGeneratorStoryWrapper: the walk stops on the stage the story
+  // drives, so its main list starts empty and the drag is the only thing that
+  // ever put a node in it.
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
+      SuperJSON.stringify(
+        interview.getInterviewPayload({
+          currentStep: 1,
+          stopAt: { stageIndex: 1 },
+        }),
+      ),
     [interview],
   );
 

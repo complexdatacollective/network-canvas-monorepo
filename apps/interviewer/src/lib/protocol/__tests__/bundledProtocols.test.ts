@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { type VersionedProtocol } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 
+import { resolveAssets } from '../bundledAssets';
 import { loadBundledSampleProtocol } from '../bundledProtocols';
 import { importBundledProtocol } from '../importProtocol';
 
@@ -64,9 +66,8 @@ describe('bundled sample protocol', () => {
 
   it('loads the bundled sample document and its assets without network', async () => {
     const bundled = await loadBundledSampleProtocol();
-    const doc = bundled.document as { schemaVersion: number; name: string };
 
-    expect(doc.schemaVersion).toBe(8);
+    expect(bundled.document.schemaVersion).toBe(8);
     expect(bundled.name).toBe('Sample Protocol');
     // Sample protocol ships media assets; they must be resolved to Blobs.
     expect(bundled.assets.length).toBeGreaterThan(0);
@@ -106,12 +107,16 @@ describe('bundled sample protocol', () => {
     const result = await importBundledProtocol({
       name: 'Invalid Protocol',
       assets: [],
+      // Deliberately malformed. `BundledProtocol.document` is typed as the
+      // document a loader asserts it has — the same assertion the archive
+      // reader makes — so a document that is *not* one can only be described
+      // here by widening, which is exactly the runtime path under test.
       document: {
         schemaVersion: 8,
         name: 'Invalid Protocol',
         codebook: {},
         stages: 'not an array',
-      },
+      } as unknown as VersionedProtocol,
     });
 
     expect(result.success).toBe(false);
@@ -132,7 +137,9 @@ describe('bundled sample protocol', () => {
     const result = await importBundledProtocol({
       name: 'Invalid Development Protocol',
       assets: [],
-      document: developmentProtocolWithRawColors(),
+      // Deliberately raw-colored, so it can only be described by widening —
+      // the same runtime path the malformed-document test above exercises.
+      document: developmentProtocolWithRawColors() as VersionedProtocol,
     });
 
     expect(result.success).toBe(false);
@@ -145,4 +152,64 @@ describe('bundled sample protocol', () => {
     ).toHaveLength(2);
     expect(saveProtocol).not.toHaveBeenCalled();
   });
+});
+
+describe('resolveAssets manifest identity', () => {
+  // The manifest KEY is the asset id; the inline `id` field is an optional
+  // legacy echo (schema 8 keeps it optional). The Development protocol's
+  // canonical source carries no inline ids, and requiring one silently
+  // dropped every bundled asset — installs "succeeded" with an empty asset
+  // store, so roster stages resolved no rows and synthetic generation's
+  // feasibility gate refused the whole protocol.
+  it('resolves entries that carry no inline id, keyed by the manifest key', () => {
+    const bytes = new TextEncoder().encode('uid,name\n1,Community Clinic\n')
+      .buffer as ArrayBuffer;
+    const assets = resolveAssets(
+      {
+        assetManifest: {
+          'HIVServices-csv': {
+            name: 'HIVServices.csv',
+            source: 'HIVServices.csv',
+            type: 'network',
+          },
+          'mapbox-key': {
+            name: 'Mapbox token',
+            type: 'apikey',
+            value: 'pk.test',
+          },
+        },
+      },
+      { '/x/assets/HIVServices.csv': bytes },
+    );
+
+    expect(assets.map((asset) => asset.id).toSorted()).toEqual([
+      'HIVServices-csv',
+      'mapbox-key',
+    ]);
+    expect(assets.find((a) => a.id === 'HIVServices-csv')?.data).toBeInstanceOf(
+      Blob,
+    );
+    expect(assets.find((a) => a.id === 'mapbox-key')?.data).toBe('pk.test');
+  });
+
+  // The dev bundle eagerly globs ~25MB of assets (a 24MB video included);
+  // transforming that to arraybuffer modules can exceed the default timeout
+  // on a contended CI runner, so this test gets generous headroom.
+  it(
+    'resolves every Development protocol manifest entry',
+    { timeout: 120_000 },
+    async () => {
+      const { loadBundledDevelopmentProtocol } =
+        await import('../bundledDevelopmentProtocol');
+      const bundled = await loadBundledDevelopmentProtocol();
+      const manifest =
+        (bundled.document as { assetManifest?: Record<string, unknown> })
+          .assetManifest ?? {};
+
+      expect(Object.keys(manifest).length).toBeGreaterThan(0);
+      expect(bundled.assets.map((asset) => asset.id).toSorted()).toEqual(
+        Object.keys(manifest).toSorted(),
+      );
+    },
+  );
 });

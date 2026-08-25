@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -25,7 +25,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const nickname = person.addVariable({
           id: 'nickname',
@@ -93,7 +93,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({
           name: 'Person',
           color: 'node-color-seq-3',
@@ -186,7 +186,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const fullName = person.addVariable({
           id: 'fullName',
@@ -263,7 +263,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const bio = person.addVariable({
           id: 'bio',
@@ -334,7 +334,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const interests = person.addVariable({
           id: 'interests',
@@ -403,7 +403,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const personName = person.addVariable({ name: 'name', type: 'text' });
         const codeName = person.addVariable({
@@ -518,7 +518,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const start = person.addVariable({
           id: 'start',
@@ -632,7 +632,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const text = person.addVariable({
           id: 'text',
@@ -892,7 +892,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       covers: ['backNav.discardDialog', 'backNav.autosave'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const personName = person.addVariable({ name: 'name', type: 'text' });
         const age = person.addVariable({
@@ -967,7 +967,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       covers: ['emptyItemShortCircuit'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const name = person.addVariable({
           id: 'personLabel',
@@ -1017,7 +1017,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       // snapshot flaky. The passphrase is set by navigating back to step 0.
       currentStep: 1,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.setExperiments({ encryptedVariables: true });
         const person = synth.addNodeType({ name: 'Person' });
         const secret = person.addVariable({

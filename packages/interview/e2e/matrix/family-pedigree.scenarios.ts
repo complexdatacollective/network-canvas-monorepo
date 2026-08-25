@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { NcEdge, NcNetwork, NcNode } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -44,7 +44,7 @@ type FormFieldEntry = {
  * inferred from gamete role rather than asked, so no gender/attribute form field
  * is needed. The one scenario that exercises form fields adds them itself.
  */
-function buildBaseFamilyPedigree(si: SyntheticInterview) {
+function buildBaseFamilyPedigree(si: ProtocolBuilder) {
   const nodeType = si.addNodeType({
     name: 'Person',
     shape: { default: 'diamond' },
@@ -185,13 +185,13 @@ async function pollCommittedNetwork(
 }
 
 // --- Scenario builders -----------------------------------------------------
-// Each factory builds its SyntheticInterview once so `build()` and `run()` share
+// Each factory builds its ProtocolBuilder once so `build()` and `run()` share
 // the generated variable ids through the closure (the ids are assigned at
 // addNodeType/addVariable time and are stable across the non-mutating
 // getInterviewPayload reads the payload adapter performs).
 
 function smokeNuclearFamily(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const {
     nodeType,
@@ -302,7 +302,7 @@ function smokeNuclearFamily(): ScenarioDefinition {
 }
 
 function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { nameVar, isEgoVar, relToEgoVar, relTypeVar, isActiveVar } = base;
 
@@ -419,7 +419,7 @@ function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
 }
 
 function framingParticipantChoiceWithIntro(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -469,7 +469,7 @@ function framingParticipantChoiceWithIntro(): ScenarioDefinition {
 }
 
 function framingFixedGendered(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -498,7 +498,7 @@ function framingFixedGendered(): ScenarioDefinition {
 }
 
 function introScreenAssetImage(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addAsset({
@@ -558,7 +558,7 @@ function introScreenAssetImage(): ScenarioDefinition {
 }
 
 function boundariesGrandparentsRequiredBlocked(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -601,7 +601,7 @@ function boundariesGrandparentsRequiredBlocked(): ScenarioDefinition {
 }
 
 function boundariesGrandparentsRecommendedNudge(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -645,7 +645,7 @@ function boundariesGrandparentsRecommendedNudge(): ScenarioDefinition {
 }
 
 function boundariesChildrenContributorsRequired(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -723,7 +723,7 @@ function boundariesChildrenContributorsRequired(): ScenarioDefinition {
 }
 
 function adoptiveRelationshipEdgeStyling(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { nameVar, isEgoVar, relTypeVar } = base;
 
@@ -790,7 +790,7 @@ function adoptiveRelationshipEdgeStyling(): ScenarioDefinition {
 }
 
 function nominationPromptsSequentialToggle(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const diseaseVar = base.nodeType.addVariable({
     name: 'hasBreastCancer',
@@ -885,7 +885,7 @@ function nominationPromptsSequentialToggle(): ScenarioDefinition {
 }
 
 function surrogateTwoDonorsGestationalCarrier(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { isEgoVar, bioSexVar, isGestCarrierVar, gameteRoleVar } = base;
 
@@ -975,7 +975,7 @@ function surrogateTwoDonorsGestationalCarrier(): ScenarioDefinition {
 }
 
 function blendedFamilyStepParentRelationshipType(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { nameVar, isEgoVar, relTypeVar, isActiveVar } = base;
 
@@ -1057,7 +1057,7 @@ function blendedFamilyStepParentRelationshipType(): ScenarioDefinition {
 }
 
 function singleParentAbsentSecondParent(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { nodeType, nameVar, isEgoVar, relToEgoVar } = base;
 
@@ -1148,7 +1148,7 @@ async function walkMinimalTwoParents(fp: FamilyPedigreeFixture): Promise<void> {
 }
 
 function checklistRestingState(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
 
   si.addStage('FamilyPedigree', {
@@ -1187,7 +1187,7 @@ function checklistRestingState(): ScenarioDefinition {
  * value, and the rest of the pedigree survives the edit.
  */
 function personEditorRoundTrip(): ScenarioDefinition {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
   const base = buildBaseFamilyPedigree(si);
   const { nameVar, isEgoVar } = base;
 

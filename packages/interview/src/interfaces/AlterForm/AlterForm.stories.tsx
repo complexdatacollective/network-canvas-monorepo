@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -34,7 +34,7 @@ type StoryArgs = {
 };
 
 function buildInterview(args: StoryArgs) {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
 
   const nodeType = interview.addNodeType({ name: 'Person' });
 
@@ -145,7 +145,7 @@ export const ManyFields: Story = {
 };
 
 function buildValidatedInterview() {
-  const interview = new SyntheticInterview();
+  const interview = new ProtocolBuilder();
   const nodeType = interview.addNodeType({ name: 'Person' });
 
   interview.addInformationStage({

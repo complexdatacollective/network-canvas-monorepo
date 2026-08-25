@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -74,7 +74,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       smoke: true,
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', {
           label: 'INTERNAL LABEL',
           interviewScript: 'SCRIPT TEXT',
@@ -178,7 +178,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       visual: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', {
           introductionPanel: {
             title: 'About You',
@@ -451,7 +451,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         'Boolean-options[].negative',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         // 7 ordinal options (> 6) turns on the columns layout
@@ -537,7 +537,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         'validation.requiredAcceptsNull',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         const nameVar = synth.addEgoVariable({
@@ -615,7 +615,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'length-validation',
       covers: ['validation.minLength/maxLength'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
         const textVar = synth.addEgoVariable({
           type: 'text',
@@ -661,7 +661,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'numeric-range-validation',
       covers: ['validation.minValue/maxValue'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
         const numberVar = synth.addEgoVariable({
           type: 'number',
@@ -704,7 +704,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'selection-count-validation',
       covers: ['validation.minSelected/maxSelected'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
         const checkboxVar = synth.addEgoVariable({
           type: 'categorical',
@@ -757,7 +757,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'cross-field-equality-validation',
       covers: ['validation.sameAs', 'validation.differentFrom'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         // Not `required` on purpose: a required field's label text carries a
@@ -856,7 +856,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'cross-field-comparison-validation',
       covers: ['validation.greaterThanVariable-family'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         const startVar = synth.addEgoVariable({
@@ -925,7 +925,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'required-error-focus',
       covers: ['invalid-submit-focuses-first-invalid-control'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
         focusFamilyVarIds = {};
 
@@ -1090,7 +1090,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'required-unanswered-state',
       covers: ['required-boolean-renders-as-unselected-choice'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         const booleanVar = synth.addEgoVariable({
@@ -1180,7 +1180,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'comparison-error-copy',
       covers: ['comparison-copy-uses-authored-prompt'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         const targetVar = synth.addEgoVariable({
@@ -1248,7 +1248,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         'form.fields[].showValidationHints',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
 
         const nameVar = synth.addEgoVariable({
@@ -1299,7 +1299,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         'RelativeDatePicker.parameters(anchor/before/after)-range-validation',
       ],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
         // anchor 2026-07-01, before 30 days, after 0 → valid window is
         // 2026-06-01 .. 2026-07-01. useProtocolForm pre-computes these into
@@ -1350,7 +1350,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       // buildSyntheticPayload hands a scenario that does not ask for this.
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nameVar = synth.addEgoVariable({
           type: 'text',
           component: 'Text',
@@ -1419,7 +1419,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['backwards-nav-discard-and-autosubmit'],
       currentStep: 1,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         synth.addInformationStage({
           title: 'Before',
           text: 'Placeholder stage so Back has somewhere to land.',
@@ -1507,7 +1507,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'scroll-nudge-yields-to-errors',
       covers: ['scroll-nudge-suppressed-by-errors'],
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', {
           introductionPanel: {
             title: 'About You',
@@ -1574,7 +1574,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       slow: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const stage = synth.addStage('EgoForm', {
           introductionPanel: {
             title: 'About You',

@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import type { DragControls } from 'motion/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -96,19 +96,18 @@ const itemProps: ArrayFieldItemProps<NodePanelValue> = {
   getAddTrigger: () => null,
 };
 
-const renderPanel = () =>
+const renderPanelWith = (panel: Record<string, unknown>) =>
   renderStageForm({
-    committedStage: asStage({
-      panels: [
-        {
-          id: 'panel-1',
-          title: 'Existing people',
-          dataSource: 'existing',
-          filter: EDGE_FILTER,
-        },
-      ],
-    }),
+    committedStage: asStage({ panels: [panel] }),
     children: <NodePanel {...itemProps} />,
+  });
+
+const renderPanel = () =>
+  renderPanelWith({
+    id: 'panel-1',
+    title: 'Existing people',
+    dataSource: 'existing',
+    filter: EDGE_FILTER,
   });
 
 const setDataSource = (view: ReturnType<typeof renderPanel>, value: string) => {
@@ -187,5 +186,97 @@ describe('NodePanel edge-rule confirmation', () => {
     setDataSource(view, 'asset-1');
 
     expect(confirmMock).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * `panelSchema` refuses a `synthetic` block on any panel whose dataSource is
+ * not 'existing', and no control renders the block — so the switch itself is
+ * the only moment the editor can drop it. These assert against the stage
+ * form's field state: the leaf is unregistered here (NodePanels owns the
+ * registration), so a clear parks a dormant `undefined` record and an
+ * untouched block leaves no record at all.
+ */
+describe('NodePanel synthetic clearing on data-source switch', () => {
+  const SYNTHETIC = { nominationProbability: 0.6 };
+
+  const syntheticState = (view: ReturnType<typeof renderPanel>) =>
+    view.getFieldState('panels[0].synthetic');
+
+  beforeEach(() => {
+    confirmMock.mockReset();
+    confirmMock.mockResolvedValue(true);
+  });
+
+  it('clears the block when the researcher picks an external file', () => {
+    const view = renderPanelWith({
+      id: 'panel-1',
+      title: 'Existing people',
+      dataSource: 'existing',
+      synthetic: SYNTHETIC,
+    });
+
+    setDataSource(view, 'asset-1');
+
+    // No edge rules, so no confirmation gates the switch: the clear lands in
+    // the same commit, as a dormant record holding the cleared value.
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(syntheticState(view)).toBeDefined();
+    expect(syntheticState(view)?.value).toBeUndefined();
+  });
+
+  it('clears the block once an edge-rule confirmation is accepted', async () => {
+    const view = renderPanelWith({
+      id: 'panel-1',
+      title: 'Existing people',
+      dataSource: 'existing',
+      filter: EDGE_FILTER,
+      synthetic: SYNTHETIC,
+    });
+
+    setDataSource(view, 'asset-1');
+
+    expect(confirmMock).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(syntheticState(view)).toBeDefined();
+      expect(syntheticState(view)?.value).toBeUndefined();
+    });
+  });
+
+  it('keeps the block when the edge-rule confirmation is cancelled', async () => {
+    confirmMock.mockResolvedValue(false);
+    const view = renderPanelWith({
+      id: 'panel-1',
+      title: 'Existing people',
+      dataSource: 'existing',
+      filter: EDGE_FILTER,
+      synthetic: SYNTHETIC,
+    });
+
+    setDataSource(view, 'asset-1');
+
+    // A cancelled confirm reverts the data source, so the panel still draws
+    // on the in-progress network and its block must survive untouched.
+    await waitFor(() =>
+      expect(view.getFieldState('panels[0].dataSource')?.value).toBe(
+        'existing',
+      ),
+    );
+    expect(syntheticState(view)).toBeUndefined();
+  });
+
+  it('does not clear the block when a restore replays the switch', () => {
+    const view = renderPanelWith({
+      id: 'panel-1',
+      title: 'Existing people',
+      dataSource: 'existing',
+      synthetic: SYNTHETIC,
+    });
+
+    // Undo/redo writes snapshots verbatim; editing them as they land would
+    // corrupt the very state the researcher asked to step back onto.
+    restore(view, { 'panels[0].dataSource': 'asset-1' });
+
+    expect(syntheticState(view)).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { DEFAULT_RESPONSE_BURDEN } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
@@ -49,6 +50,12 @@ test('reads a seeded stage back from the store', async ({
         type: 'Information',
         title: 'Info',
         items: [],
+        // Schema-injected generation metadata: a parsed stage always carries
+        // it, and nothing in this spec reads it.
+        synthetic: {
+          generatesData: false,
+          responseBurden: DEFAULT_RESPONSE_BURDEN.Information,
+        },
       },
     ],
   };

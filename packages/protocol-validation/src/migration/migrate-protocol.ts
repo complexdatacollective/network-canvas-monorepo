@@ -7,7 +7,7 @@ import migrationV6toV7 from '../schemas/7/migration.ts';
 import migrationV7toV8 from '../schemas/8/migration.ts';
 import {
   CURRENT_SCHEMA_VERSION,
-  type CurrentProtocol,
+  type CurrentProtocolDocument,
   CurrentProtocolSchema,
   type SchemaVersion,
   SchemaVersionSchema,
@@ -47,7 +47,7 @@ export function migrateProtocol(
   document: unknown,
   targetVersion: SchemaVersion = CURRENT_SCHEMA_VERSION,
   dependencies: Record<string, unknown> = {},
-): CurrentProtocol {
+): CurrentProtocolDocument {
   const detectedVersion = detectSchemaVersion(document);
 
   // Only pre-validate versions that have Zod schemas (7+)
@@ -74,7 +74,13 @@ export function migrateProtocol(
     dependencies,
   );
 
-  // Validate migrated document against target schema
+  // Validate the migrated document against the target schema — a GATE, not
+  // a rewrite. The parse RESULT is deliberately discarded: parsing resolves
+  // `synthetic` descriptors into the document, and returning that would make
+  // migration of an already-current document non-identity — rewriting what a
+  // host stores, moving the identity hash of every migrated import whenever
+  // the schema learns a new default, and materialising derived values into
+  // Architect's editor. Callers parse at their own generation boundary.
   const postValidationResult = CurrentProtocolSchema.safeParse(migrated);
   if (!postValidationResult.success) {
     throw new ValidationError(
@@ -83,7 +89,10 @@ export function migrateProtocol(
     );
   }
 
-  return postValidationResult.data;
+  // The safeParse above just proved `migrated` is valid current-schema input;
+  // the chain's own static type is a cross-version union TS cannot narrow.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return migrated as CurrentProtocolDocument;
 }
 
 export function getMigrationInfo(
@@ -104,7 +113,7 @@ export type MigrationInfo = ReturnType<typeof getMigrationInfo>;
 export type MigrationNote = MigrationInfo['notes'][number];
 
 export class ProtocolMigrator {
-  private cache = new Map<string, CurrentProtocol>();
+  private cache = new Map<string, CurrentProtocolDocument>();
 
   async migrate(
     document: unknown,
@@ -113,7 +122,7 @@ export class ProtocolMigrator {
       targetVersion?: SchemaVersion;
       dependencies?: Record<string, unknown>;
     },
-  ): Promise<CurrentProtocol> {
+  ): Promise<CurrentProtocolDocument> {
     const { cacheKey, targetVersion, dependencies } = options || {};
 
     if (cacheKey && this.cache.has(cacheKey)) {

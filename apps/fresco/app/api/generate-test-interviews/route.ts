@@ -1,13 +1,45 @@
-import { createId } from '@paralleldrive/cuid2';
-
 import {
-  generateNetwork,
-  type GenerateNetworkParams,
+  formatSyntheticBatchToken,
+  freshBatchStartWindow,
+  generateInterviews,
+  parseSyntheticBatchToken,
+  type SyntheticInterviewResult,
 } from '@codaco/protocol-utilities';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
+import { collectSyntheticAssetData } from '~/lib/synthetic/assetData';
+import { parseStoredProtocol } from '~/lib/synthetic/storedProtocol';
 import { generateSyntheticInterviewsSchema } from '~/schemas/synthetic-interviews';
+
+/**
+ * A refusal the generator raised because the protocol's own declarations make
+ * the data it asks for impossible — an unsatisfiable validation rule, or a
+ * roster pool too small for the stage that draws from it.
+ *
+ * Recognised by name and shape rather than with `instanceof`: the class lives
+ * in another package, and a duplicated module instance (two resolutions of
+ * `@codaco/protocol-utilities`, or a bundler splitting server chunks) would
+ * make the prototype check quietly false while the error is exactly the one we
+ * mean to report.
+ */
+type ConstraintRefusal = {
+  message: string;
+  conflicts: unknown[];
+};
+
+function asConstraintRefusal(error: unknown): ConstraintRefusal | null {
+  if (
+    !(error instanceof Error) ||
+    error.name !== 'SyntheticDataConstraintError'
+  )
+    return null;
+
+  const { conflicts } = error as Error & { conflicts?: unknown };
+  if (!Array.isArray(conflicts)) return null;
+
+  return { message: error.message, conflicts };
+}
 
 export async function POST(request: Request) {
   let username: string;
@@ -40,15 +72,49 @@ export async function POST(request: Request) {
   const { protocolId, count, simulateDropOut, respectSkipLogicAndFiltering } =
     parsed.data;
 
-  const protocol = await prisma.protocol.findUnique({
+  const protocolRecord = await prisma.protocol.findUnique({
     where: { id: protocolId },
+    include: { assets: true },
   });
 
-  if (!protocol) {
+  if (!protocolRecord) {
     return new Response(JSON.stringify({ error: 'Protocol not found' }), {
       status: 404,
     });
   }
+
+  // The generation boundary: the engine takes schema-parse output, and the
+  // stored columns are not that until they are put back together and parsed.
+  // Done before the stream opens so an inadmissible protocol answers as a plain
+  // HTTP error rather than as a stream that only ever carries a failure.
+  const protocolResult = await parseStoredProtocol(protocolRecord);
+
+  if (!protocolResult.success) {
+    return new Response(
+      JSON.stringify({
+        error: `Protocol "${protocolRecord.name}" could not be read for generation:\n${protocolResult.message}`,
+      }),
+      { status: 422 },
+    );
+  }
+
+  const { protocol } = protocolResult;
+
+  // A fresh seed per batch unless the caller pinned one, so two runs of the
+  // same protocol are different interviews rather than the same ones twice.
+  // The start-window anchor is the identity's other half — session dates and
+  // every date-relative drawn value follow it — so it is drawn (day-quantised)
+  // the same way. Both travel back with the completion event, as the one
+  // copyable token that makes the batch reproducible after the fact. A
+  // `batchToken` carries the whole identity at once (the schema has already
+  // proved it parses); the split fields serve API callers pinning halves.
+  const pinned = parsed.data.batchToken
+    ? parseSyntheticBatchToken(parsed.data.batchToken)
+    : null;
+  const seed =
+    pinned?.seed ?? parsed.data.seed ?? Math.floor(Math.random() * 2 ** 31);
+  const startWindow =
+    pinned?.startWindow ?? parsed.data.startWindow ?? freshBatchStartWindow();
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -58,109 +124,140 @@ export async function POST(request: Request) {
       };
 
       try {
-        const genParams = {
-          codebook: protocol.codebook as GenerateNetworkParams['codebook'],
-          stages: protocol.stages as GenerateNetworkParams['stages'],
-          simulateDropOut,
-          respectSkipLogicAndFiltering,
-        } satisfies GenerateNetworkParams;
+        const assetData = await collectSyntheticAssetData(
+          protocol,
+          protocolRecord.assets,
+        );
 
-        let completedCount = 0;
-        const incompleteInterviewIds: string[] = [];
+        let results: SyntheticInterviewResult[];
+        try {
+          results = generateInterviews(
+            protocol,
+            {
+              count,
+              seed,
+              startWindow,
+              simulateDropOut,
+              // One request field, both engine flags: the setting has always
+              // been labelled "skip logic and filtering", and stage filters
+              // are the second half of that promise.
+              respectSkipLogic: respectSkipLogicAndFiltering,
+              respectFiltering: respectSkipLogicAndFiltering,
+            },
+            assetData,
+            // Generation runs to completion synchronously, so these land as one
+            // burst rather than as a ticking bar; they are still what says how
+            // far the batch got if it fails partway, and the writes below are
+            // the phase with something to watch.
+            (done, total) => {
+              send({
+                type: 'progress',
+                phase: 'generating',
+                current: done,
+                total,
+              });
+            },
+          );
+        } catch (error) {
+          const refusal = asConstraintRefusal(error);
+          if (!refusal) throw error;
 
-        for (let i = 0; i < count; i++) {
-          const { network, stageMetadata, currentStep, droppedOut } =
-            generateNetwork(genParams);
+          send({
+            type: 'error',
+            code: 'constraint-conflict',
+            message: refusal.message,
+            conflicts: refusal.conflicts,
+          });
+          return;
+        }
 
-          const isCompleted = !droppedOut;
-          if (isCompleted) {
-            completedCount++;
+        let created = 0;
+
+        // Which of this batch's participants the database already holds. A
+        // replayed batch reconnects to them rather than minting strangers, so
+        // counting one new participant per interview would tell the dashboard
+        // its test population had doubled when nobody was added at all.
+        const identifiers = results.map(({ session }) => `test-${session.id}`);
+        const alreadyPresent = new Set(
+          (
+            await prisma.participant.findMany({
+              where: { identifier: { in: identifiers } },
+              select: { identifier: true },
+            })
+          ).map((participant) => participant.identifier),
+        );
+        let participantsCreated = 0;
+
+        for (const result of results) {
+          const { session } = result;
+          // Derived from the engine's own session id, which is drawn from the
+          // batch's seed: Fresco exports the identifier as the case key, so a
+          // replayed batch must yield the same case keys or its export is not
+          // a reproduction. Replaying therefore CONNECTS to the participant
+          // the first run created rather than minting a stranger.
+          const participantIdentifier = `test-${session.id}`;
+          if (!alreadyPresent.has(participantIdentifier)) {
+            participantsCreated += 1;
+            alreadyPresent.add(participantIdentifier);
           }
 
-          const participantIdentifier = `test-${createId()}`;
-          const startTime = new Date(
-            Date.now() - Math.floor(Math.random() * 3600000),
-          );
-          const finishTime = isCompleted
-            ? new Date(
-                startTime.getTime() +
-                  Math.floor(Math.random() * 1800000) +
-                  300000,
-              )
-            : null;
-
-          const created = await prisma.interview.create({
+          await prisma.interview.create({
             data: {
-              network: network as object,
-              currentStep,
-              startTime,
-              finishTime,
+              // The engine's own session id is deliberately not reused as the
+              // row id: it is drawn from the batch's seed, so re-running a
+              // pinned seed would collide with the rows the first run wrote.
+              network: session.network as object,
+              // A drop-out is a genuine unfinished interview — no finish time,
+              // and the step the participant stopped at, so it resumes there.
+              currentStep: result.currentStep,
+              startTime: new Date(session.startTime),
+              finishTime: session.finishTime
+                ? new Date(session.finishTime)
+                : null,
               isSynthetic: true,
-              stageMetadata: stageMetadata as object | undefined,
+              stageMetadata: session.stageMetadata as object | undefined,
               participant: {
-                create: {
-                  identifier: participantIdentifier,
-                  label: participantIdentifier,
-                  isSynthetic: true,
+                connectOrCreate: {
+                  where: { identifier: participantIdentifier },
+                  create: {
+                    identifier: participantIdentifier,
+                    label: participantIdentifier,
+                    isSynthetic: true,
+                  },
                 },
               },
               protocol: {
                 connect: { id: protocolId },
               },
             },
+            // `lastUpdated` is not written from `session.lastUpdated`: the
+            // column is Prisma's `@updatedAt`, so the write time wins whatever
+            // we pass. Accepted rather than worked around.
+            select: { id: true },
           });
 
-          if (!isCompleted) {
-            incompleteInterviewIds.push(created.id);
-          }
-
-          send({ type: 'progress', current: i + 1, total: count });
-        }
-
-        // Enforce 10% minimum completion when drop-out is enabled.
-        // Regenerate incomplete interviews from this batch with drop-out
-        // disabled and update them in-place.
-        if (simulateDropOut) {
-          const minCompleted = Math.max(1, Math.ceil(count * 0.1));
-
-          if (completedCount < minCompleted) {
-            const deficit = minCompleted - completedCount;
-            const toFix = incompleteInterviewIds.slice(0, deficit);
-
-            const incompleteInterviews = await prisma.interview.findMany({
-              where: { id: { in: toFix } },
-              select: { id: true, startTime: true },
-            });
-
-            for (const interview of incompleteInterviews) {
-              const { network, stageMetadata, currentStep } = generateNetwork({
-                ...genParams,
-                simulateDropOut: false,
-              });
-
-              await prisma.interview.update({
-                where: { id: interview.id },
-                data: {
-                  network: network as object,
-                  currentStep,
-                  stageMetadata: stageMetadata as object | undefined,
-                  finishTime: new Date(
-                    interview.startTime.getTime() +
-                      Math.floor(Math.random() * 1800000) +
-                      300000,
-                  ),
-                },
-              });
-            }
-          }
+          created += 1;
+          send({
+            type: 'progress',
+            phase: 'saving',
+            current: created,
+            total: results.length,
+          });
         }
 
         void addEvent(
           'Synthetic Data Generated',
-          `User ${username} generated ${String(count)} synthetic interviews for protocol "${protocol.name}"`,
+          `User ${username} generated ${String(created)} synthetic interviews for protocol "${protocolRecord.name}"`,
         );
 
-        send({ type: 'complete', created: count });
+        send({
+          type: 'complete',
+          created,
+          participantsCreated,
+          seed,
+          startWindow,
+          batchToken: formatSyntheticBatchToken(seed, startWindow),
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Unknown error';

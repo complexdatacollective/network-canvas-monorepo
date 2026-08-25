@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -25,7 +25,7 @@ import {
  * the pedigree interface can resolve all required stage variables.
  */
 function buildCousinProtocol(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -38,10 +38,14 @@ function buildCousinProtocol(seed: number) {
     component: 'Text',
   });
 
+  // Single-select, so `ordinal` rather than `categorical`: the schema only
+  // renders a categorical through CheckboxGroup/ToggleButtonGroup (multi-
+  // select), and this question takes exactly one answer per person — which is
+  // what the RadioGroup control below asks for.
   const genderVar = nodeType.addVariable({
     id: 'gender_identity',
-    name: 'Current Gender Identity',
-    type: 'categorical',
+    name: 'CurrentGenderIdentity',
+    type: 'ordinal',
     options: [
       { label: 'Man/boy', value: 'man' },
       { label: 'Woman/girl', value: 'woman' },
@@ -50,13 +54,13 @@ function buildCousinProtocol(seed: number) {
     component: 'RadioGroup',
   });
 
-  const isEgoVar = nodeType.addVariable({ name: 'Is Ego', type: 'boolean' });
+  const isEgoVar = nodeType.addVariable({ name: 'IsEgo', type: 'boolean' });
   const relationshipToEgoVar = nodeType.addVariable({
-    name: 'Relationship to Ego',
+    name: 'RelationshipToEgo',
     type: 'text',
   });
   const biologicalSexVar = nodeType.addVariable({
-    name: 'Biological Sex',
+    name: 'BiologicalSex',
     type: 'text',
   });
 
@@ -70,11 +74,11 @@ function buildCousinProtocol(seed: number) {
     options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
-    name: 'Is Active',
+    name: 'IsActive',
     type: 'boolean',
   });
   const isGestCarrierVar = edgeType.addVariable({
-    name: 'Is Gestational Carrier',
+    name: 'IsGestationalCarrier',
     type: 'boolean',
   });
 
@@ -93,16 +97,33 @@ function buildCousinProtocol(seed: number) {
   };
 }
 
+/**
+ * `stopAt` bounds the delegated walk. A story whose pedigree is SEEDED (via
+ * `initialNodes` plus explicit attributes) must let the pedigree stage run, so
+ * its seeded people actually materialise — it passes no bound. A story that
+ * builds the pedigree through the quick-start wizard passes
+ * `{ stageIndex: 1 }`, stopping the walk before the pedigree stage (index 1,
+ * behind the leading Information stage) so the builder's engine never
+ * simulates a pedigree of its own: the get-started button that opens the wizard
+ * only appears while the network has no nodes.
+ */
 function CousinStoryWrapper({
   buildFn,
+  stopAt,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
+  stopAt?: { stageIndex: number };
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
-    [interview],
+      SuperJSON.stringify(
+        interview.getInterviewPayload({
+          currentStep: 1,
+          ...(stopAt ? { stopAt } : {}),
+        }),
+      ),
+    [interview, stopAt],
   );
   return (
     <div className="h-screen">
@@ -227,12 +248,18 @@ export const FirstCousinRepresentation: Story = {
 
       // Relationship types stored as single-element arrays (categorical variable).
       //
-      // Every variable the edge type declares is set on every edge, including
+      // Every variable this fixture declares is set on every edge, including
       // isGestCarrierVar. A variable the fixture leaves unset is not absent:
-      // SyntheticInterview draws a value for it, so a `true` could land on a
+      // ProtocolBuilder draws a value for it, so a `true` could land on a
       // parent edge and record a gestational carriage this pedigree does not
       // mean. Nobody here carried for anybody, so the flag is pinned false
       // throughout — which is what an absent value already resolved to.
+      //
+      // The one edge variable this fixture does not declare is gameteRole: the
+      // pedigree stage requires that slot, so the builder adds a text variable
+      // for it. Its drawn value is prose, never 'egg' or 'sperm', so every
+      // reader treats it as unrecorded and falls back to declaration order —
+      // which is the parentage this fixture already lays out.
       si.setEdgeAttribute(0, relationshipVar.id, ['biological']);
       si.setEdgeAttribute(0, isActiveVar.id, true);
       si.setEdgeAttribute(0, isGestCarrierVar.id, false);
@@ -356,7 +383,7 @@ export const FirstCousinCreationViaWizard: Story = {
       return si;
     };
 
-    return <CousinStoryWrapper buildFn={buildFn} />;
+    return <CousinStoryWrapper buildFn={buildFn} stopAt={{ stageIndex: 1 }} />;
   },
 
   play: async () => {

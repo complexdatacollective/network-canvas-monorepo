@@ -6,10 +6,12 @@ import {
   oneToManyDyadCensusPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { stageEdgeSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
 
 export const oneToManyDyadCensusStage = baseStageSchema.extend({
   type: z.literal('OneToManyDyadCensus'),
+  synthetic: stageEdgeSynthetic('OneToManyDyadCensus').prefault({}),
   filter: FilterSchema.optional(),
   subject: NodeStageSubjectSchema,
   behaviours: z.strictObject({

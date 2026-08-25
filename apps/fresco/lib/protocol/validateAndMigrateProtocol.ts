@@ -1,6 +1,7 @@
 import {
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
+  type VersionedProtocolDocument,
   getMigrationInfo,
   migrateProtocol,
   validateProtocol,
@@ -11,6 +12,18 @@ import { APP_SUPPORTED_SCHEMA_VERSIONS } from '~/fresco.config';
 type ProtocolValidationSuccess = {
   success: true;
   protocol: CurrentProtocol;
+  /**
+   * The document this protocol is identified by — the object the file
+   * contained for a v8 protocol, the migration's output for anything older.
+   *
+   * Deliberately not `protocol`. Hashing the parse output would fold the
+   * schema's own injected defaults into a protocol's identity, so a protocol
+   * that had not changed would stop matching itself the next time the schema
+   * grew a default (spec decision 15). Surfacing it here is the only way the
+   * caller can hash what it validated rather than what validation produced;
+   * `validateAndMigrateProtocol` is the one place both are in scope.
+   */
+  documentForHashing: VersionedProtocolDocument;
 };
 
 export type ProtocolValidationError =
@@ -62,7 +75,7 @@ export async function validateAndMigrateProtocol(
   }
 
   // Migrate if needed
-  let protocolToValidate: CurrentProtocol;
+  let protocolToValidate: VersionedProtocolDocument;
 
   if (protocolVersion < CURRENT_SCHEMA_VERSION) {
     // Check required dependencies for migration
@@ -102,5 +115,13 @@ export async function validateAndMigrateProtocol(
     };
   }
 
-  return { success: true, protocol: validationResult.data as CurrentProtocol };
+  // `protocolToValidate` is both halves of `documentForHashing`'s contract by
+  // construction: the file's own object on the v8 branch, the migration's
+  // output on the pre-v8 one. Returning that same binding — rather than
+  // recomputing either — is what makes the two impossible to drift apart.
+  return {
+    success: true,
+    protocol: validationResult.data as CurrentProtocol,
+    documentForHashing: protocolToValidate,
+  };
 }

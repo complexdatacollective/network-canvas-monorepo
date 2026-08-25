@@ -1,12 +1,10 @@
-import type {
-  ConstraintConflict,
-  SyntheticDataConstraintError,
-} from '@codaco/protocol-utilities';
+import type { ConstraintConflict } from '@codaco/protocol-utilities';
+import type { SyntheticConstraintRefusal } from '~/lib/synthetic/constraintError';
 
 // Mirrors the bullet wording `SyntheticDataConstraintError` composes into its
 // flat, newline-joined message (see
-// packages/protocol-utilities/src/generateNetwork/constraints/error.ts), but
-// renders each conflict as its own list item so the toast stays readable
+// packages/protocol-utilities/src/synthetic-interviews/constraints/error.ts),
+// but renders each conflict as its own list item so the toast stays readable
 // without depending on whitespace being preserved.
 function ConstraintConflictItem({
   conflict,
@@ -38,7 +36,7 @@ function ConstraintConflictItem({
 export function GenerationFailureDescription({
   error,
 }: {
-  error: SyntheticDataConstraintError;
+  error: SyntheticConstraintRefusal;
 }) {
   const [summary] = error.message.split('\n');
   return (

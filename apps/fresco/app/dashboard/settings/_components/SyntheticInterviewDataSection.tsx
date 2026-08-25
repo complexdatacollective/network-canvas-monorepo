@@ -20,29 +20,50 @@ import {
   type GetProtocolsQuery,
   type GetProtocolsReturnType,
 } from '~/queries/protocols';
-import { MAX_SYNTHETIC_INTERVIEWS } from '~/schemas/synthetic-interviews';
 
 type SyntheticInterviewDataSectionProps = {
   protocolsPromise: GetProtocolsReturnType;
   initialCounts: { interviewCount: number; participantCount: number };
+  /** The batch ceiling, read from the generator package by the server component. */
+  maxInterviews: number;
 };
 
 export default function SyntheticInterviewDataSection({
   protocolsPromise,
   initialCounts,
+  maxInterviews,
 }: SyntheticInterviewDataSectionProps) {
   const rawProtocols = use(protocolsPromise);
   const protocols = SuperJSON.parse<GetProtocolsQuery>(rawProtocols);
 
   const [selectedProtocolId, setSelectedProtocolId] = useState<string>();
   const [count, setCount] = useState(10);
+  // The token a finished batch reports (`<seed>-<YYYY-MM-DD>`, or a bare
+  // seed): entering it regenerates that batch exactly. Opaque here — the
+  // route parses and validates it, so the identity logic stays server-side
+  // with the engine instead of being duplicated into this client bundle.
+  const [batchToken, setBatchToken] = useState('');
   const [simulateDropOut, setSimulateDropOut] = useState(true);
   const [respectSkipLogicAndFiltering, setRespectSkipLogicAndFiltering] =
     useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [progress, setProgress] = useState<{
+    current: number;
+    total: number;
+    phase: 'generating' | 'saving';
+  }>({ current: 0, total: 0, phase: 'generating' });
+  // Optimistic while a batch runs, and reconciled the moment the server sends
+  // a fresh count: `router.refresh()` re-renders this section's server parent
+  // with the real figures, and holding the old state past that would leave the
+  // panel describing a population the database does not have.
   const [syntheticCounts, setSyntheticCounts] = useState(initialCounts);
+  const serverCounts = `${String(initialCounts.interviewCount)}:${String(initialCounts.participantCount)}`;
+  const [lastServerCounts, setLastServerCounts] = useState(serverCounts);
+  if (serverCounts !== lastServerCounts) {
+    setLastServerCounts(serverCounts);
+    setSyntheticCounts(initialCounts);
+  }
   const { toast } = useToast();
   const router = useRouter();
 
@@ -50,7 +71,7 @@ export default function SyntheticInterviewDataSection({
     if (!selectedProtocolId) return;
 
     setIsGenerating(true);
-    setProgress({ current: 0, total: count });
+    setProgress({ current: 0, total: count, phase: 'generating' });
 
     try {
       const response = await fetch('/api/generate-test-interviews', {
@@ -61,6 +82,9 @@ export default function SyntheticInterviewDataSection({
           count,
           simulateDropOut,
           respectSkipLogicAndFiltering,
+          ...(batchToken.trim() === ''
+            ? {}
+            : { batchToken: batchToken.trim() }),
         }),
       });
 
@@ -102,9 +126,13 @@ export default function SyntheticInterviewDataSection({
 
           const data = JSON.parse(dataLine.slice(6)) as {
             type: string;
+            phase?: 'generating' | 'saving';
             current?: number;
             total?: number;
             created?: number;
+            participantsCreated?: number;
+            seed?: number;
+            batchToken?: string;
             message?: string;
           };
 
@@ -112,6 +140,7 @@ export default function SyntheticInterviewDataSection({
             setProgress({
               current: data.current,
               total: data.total ?? count,
+              phase: data.phase ?? 'generating',
             });
           } else if (data.type === 'error' && data.message) {
             toast({
@@ -121,13 +150,23 @@ export default function SyntheticInterviewDataSection({
             });
           } else if (data.type === 'complete' && data.created !== undefined) {
             const created = data.created;
+            // A replayed batch reconnects to the participants its first run
+            // created, so the route says how many people were actually added
+            // rather than this assuming one per interview.
+            const participantsCreated = data.participantsCreated ?? created;
             setSyntheticCounts((prev) => ({
               interviewCount: prev.interviewCount + created,
-              participantCount: prev.participantCount + created,
+              participantCount: prev.participantCount + participantsCreated,
             }));
             toast({
               title: 'Generation complete',
-              description: `Successfully generated ${String(created)} synthetic interviews.`,
+              description:
+                data.batchToken === undefined
+                  ? `Successfully generated ${String(created)} synthetic interviews.`
+                  : // The token is what makes a batch reproducible: entering
+                    // it in the field above regenerates exactly the same
+                    // interviews, dates included.
+                    `Successfully generated ${String(created)} synthetic interviews (batch ${data.batchToken}).`,
               variant: 'success',
             });
           }
@@ -188,12 +227,12 @@ export default function SyntheticInterviewDataSection({
             name="count"
             type="number"
             min={1}
-            max={MAX_SYNTHETIC_INTERVIEWS}
+            max={maxInterviews}
             value={String(count)}
             onChange={(value) => {
               const parsed = Number(value);
               if (Number.isNaN(parsed)) return;
-              setCount(Math.min(Math.max(parsed, 1), MAX_SYNTHETIC_INTERVIEWS));
+              setCount(Math.min(Math.max(parsed, 1), maxInterviews));
             }}
             disabled={isGenerating}
             className="shrink-0"
@@ -215,11 +254,26 @@ export default function SyntheticInterviewDataSection({
               className="h-2"
             />
             <p className="text-sm opacity-60">
-              {progress.current} / {progress.total} interviews generated
+              {progress.current} / {progress.total} interviews{' '}
+              {progress.phase === 'saving' ? 'saved' : 'generated'}
             </p>
           </div>
         )}
       </SettingsField>
+      <SettingsField
+        label="Batch token"
+        description="Leave blank for a new batch each time. Every batch reports the token it ran on — enter that token to regenerate exactly the same interviews, dates included. A bare seed number pins the draws but dates the sessions around today."
+        testId="synthetic-batch-token"
+        control={
+          <InputField
+            name="batchToken"
+            type="text"
+            value={batchToken}
+            onChange={(value) => setBatchToken(value ?? '')}
+            disabled={isGenerating}
+          />
+        }
+      />
       <SettingsField
         label="Simulate participant drop-out"
         description="When enabled, participants have an increasing chance of abandoning the interview at each stage."

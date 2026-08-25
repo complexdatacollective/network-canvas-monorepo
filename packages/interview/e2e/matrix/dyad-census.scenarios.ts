@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import { DyadCensusFixture } from '../fixtures/dyad-census-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
@@ -9,10 +9,9 @@ import type { InterfaceScenarios } from './types.js';
  *
  * Notes on deviations from the plan, pinned to observed behaviour:
  * - Every scenario that relies on subject nodes sets `seedNetwork: true`. The
- *   synthetic-payload adapter strips `network.nodes`/`edges` unless
- *   `seedNetwork` is set (synthetic-payload.ts:147-149), so `initialNodes`
- *   /`addManualNode` only materialise when the network is seeded. Without it a
- *   DyadCensus has zero pairs and force-skips.
+ *   synthetic-payload adapter otherwise hands over the interview before any
+ *   stage has run, so `initialNodes`/`addManualNode` only materialise when the
+ *   network is seeded. Without it a DyadCensus has zero pairs and force-skips.
  * - `getStageMetadata(step)` is read at the DyadCensus's actual step index
  *   (updateStageMetadata keys by the live `currentStep` — DyadCensus.tsx +
  *   session.ts:858-867). That is 0 when the DyadCensus is the only stage and 1
@@ -41,7 +40,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       visual: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         synth
           .addStage('DyadCensus', {
@@ -100,7 +99,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       covers: ['answer-required-validation', 'prompts[].createEdge=no-path'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         const friend = synth.addEdgeType({ name: 'Friend' });
         synth
@@ -150,7 +149,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       ],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         const friend = synth.addEdgeType({ name: 'Friend' });
         synth
@@ -222,7 +221,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         synth.addInformationStage({ title: 'Before the stage' });
         synth
@@ -269,7 +268,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       slow: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const person = synth.addNodeType({ name: 'Person' });
         const personName = person.addVariable({ type: 'text', name: 'name' });
         const place = synth.addNodeType({ name: 'Place' });
@@ -334,7 +333,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       slow: true,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({
           name: 'Person',
           color: 'node-color-seq-2',
@@ -431,7 +430,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       covers: ['prompts[].createEdge=shared-prefill'],
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         const knows = synth.addEdgeType({ name: 'Knows' });
         const stage = synth.addStage('DyadCensus', {
@@ -494,7 +493,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       currentStep: 1,
       seedNetwork: true,
       build: () => {
-        const synth = new SyntheticInterview();
+        const synth = new ProtocolBuilder();
         const nodeType = synth.addNodeType({ name: 'Person' });
         synth.addInformationStage({ title: 'Before the stage' });
         synth

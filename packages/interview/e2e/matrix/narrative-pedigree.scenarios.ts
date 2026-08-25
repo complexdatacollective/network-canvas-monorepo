@@ -1,4 +1,4 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
@@ -21,7 +21,7 @@ const IS_GEST_VAR = 'isGestationalCarrier';
 const GAMETE_ROLE_VAR = 'gameteRole';
 
 type PedigreeScaffold = {
-  synth: SyntheticInterview;
+  synth: ProtocolBuilder;
   nodeTypeId: string;
   edgeTypeId: string;
   nameVarId: string;
@@ -36,7 +36,7 @@ type PedigreeScaffold = {
 
 /**
  * Builds the shared Person/Family codebook + a FamilyPedigree source stage on a
- * fresh SyntheticInterview. The pedigree is entirely pre-seeded via
+ * fresh ProtocolBuilder. The pedigree is entirely pre-seeded via
  * addManualNode/addManualEdge — no participant interaction reaches the census, so
  * the FamilyPedigree stage exists only to give NarrativePedigree a source of
  * node/edge config. The Person node type uses the dynamic sex→shape mapping
@@ -45,7 +45,7 @@ type PedigreeScaffold = {
  * categoricals plus the isActive / isGestationalCarrier booleans.
  */
 function scaffoldPedigree(diseaseVarIds: string[]): PedigreeScaffold {
-  const synth = new SyntheticInterview();
+  const synth = new ProtocolBuilder();
   const nodeType = synth.addNodeType({
     name: 'Person',
     shape: {
@@ -178,7 +178,7 @@ const HD_VAR = 'hasHuntingtons';
  * ego is focused). One autosomal-dominant disease, at-risk display off. Reused by
  * the focal, read-only, and misconfigured scenarios.
  */
-function buildAdScenario(): SyntheticInterview {
+function buildAdScenario(): ProtocolBuilder {
   const { synth, nameVarId, fpStageId, person, bioEdge, partnerEdge } =
     scaffoldPedigree([HD_VAR]);
   person('grandparent', {
@@ -236,7 +236,7 @@ const CF_VAR = 'hasCf';
  * to obligate carriers and the four grandparents to at-risk carriers. Shared by the
  * at-risk-hidden and at-risk-shown scenarios; only `showAtRiskStatuses` differs.
  */
-function buildCousinUnion(showAtRiskStatuses: boolean): SyntheticInterview {
+function buildCousinUnion(showAtRiskStatuses: boolean): ProtocolBuilder {
   const { synth, nameVarId, fpStageId, person, bioEdge, partnerEdge } =
     scaffoldPedigree([CF_VAR]);
 
@@ -591,7 +591,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       slow: true,
       currentStep: 1,
       seedNetwork: true,
-      build: (): SyntheticInterview => {
+      build: (): ProtocolBuilder => {
         const HAEMOPHILIA_VAR = 'hasHaemophilia';
         const HYPOPHOSPHATAEMIA_VAR = 'hasHypophosphataemia';
         const HEARING_LOSS_VAR = 'hasHearingLoss';
@@ -837,7 +837,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       ],
       currentStep: 1,
       seedNetwork: true,
-      build: (): SyntheticInterview => {
+      build: (): ProtocolBuilder => {
         const MULTI_VAR = 'hasHeartDisease';
         const UNKNOWN_VAR = 'hasRareCondition';
         const { synth, nameVarId, fpStageId, person, bioEdge, partnerEdge } =
@@ -974,7 +974,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           ],
         },
       },
-      build: (): SyntheticInterview => {
+      build: (): ProtocolBuilder => {
         const { synth, nameVarId, fpStageId, person, bioEdge } =
           scaffoldPedigree([HD_VAR]);
         person('mother', { [nameVarId]: 'Rose', [BIO_SEX_VAR]: 'female' });
@@ -1073,7 +1073,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       chromiumOnly: true,
       currentStep: 1,
       seedNetwork: true,
-      build: (): SyntheticInterview => {
+      build: (): ProtocolBuilder => {
         const { synth, nameVarId, fpStageId, person, bioEdge } =
           scaffoldPedigree([HD_VAR]);
         person('mother', { [nameVarId]: 'Rose', [BIO_SEX_VAR]: 'female' });

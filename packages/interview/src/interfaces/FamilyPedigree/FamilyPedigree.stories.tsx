@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/shared-consts';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -18,7 +18,7 @@ import {
 import { SuppressPedigreeHintContext } from './pedigreeHintContext';
 
 function createFamilyPedigreeInterview(seed: number) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
 
   const nodeType = si.addNodeType({
     name: 'Person',
@@ -30,10 +30,14 @@ function createFamilyPedigreeInterview(seed: number) {
     component: 'Text',
   });
 
+  // Single-select, so `ordinal` rather than `categorical`: the schema only
+  // renders a categorical through CheckboxGroup/ToggleButtonGroup (multi-
+  // select), and this question takes exactly one answer per person — which is
+  // what the RadioGroup control below asks for.
   const genderVar = nodeType.addVariable({
     id: 'gender_identity',
-    name: 'Current Gender Identity',
-    type: 'categorical',
+    name: 'CurrentGenderIdentity',
+    type: 'ordinal',
     options: [
       { label: 'Man/boy', value: 'man' },
       { label: 'Woman/girl', value: 'woman' },
@@ -66,23 +70,23 @@ function createFamilyPedigreeInterview(seed: number) {
     },
   });
   const diseaseVar = nodeType.addVariable({
-    name: 'Has Disease',
+    name: 'HasDisease',
     type: 'boolean',
   });
   const diabetesVar = nodeType.addVariable({
-    name: 'Has Diabetes',
+    name: 'HasDiabetes',
     type: 'boolean',
   });
   const isEgoVar = nodeType.addVariable({
-    name: 'Is Ego',
+    name: 'IsEgo',
     type: 'boolean',
   });
   const relationshipToEgoVar = nodeType.addVariable({
-    name: 'Relationship to Ego',
+    name: 'RelationshipToEgo',
     type: 'text',
   });
   const biologicalSexVar = nodeType.addVariable({
-    name: 'Biological Sex',
+    name: 'BiologicalSex',
     type: 'text',
   });
 
@@ -97,11 +101,11 @@ function createFamilyPedigreeInterview(seed: number) {
     options: RELATIONSHIP_TYPE_OPTIONS,
   });
   const isActiveVar = edgeType.addVariable({
-    name: 'Is Active',
+    name: 'IsActive',
     type: 'boolean',
   });
   const isGestCarrierVar = edgeType.addVariable({
-    name: 'Is Gestational Carrier',
+    name: 'IsGestationalCarrier',
     type: 'boolean',
   });
 
@@ -125,12 +129,22 @@ function createFamilyPedigreeInterview(seed: number) {
 function FamilyPedigreeStoryWrapper({
   buildFn,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
+  // `stopAt: { stageIndex: 1 }` stops the walk before the FamilyPedigree stage
+  // (index 1, behind the leading Information stage) runs, so the builder's
+  // engine never simulates a pedigree of its own and the stage opens empty.
+  // Every story here builds the pedigree through the quick-start wizard, whose
+  // get-started button only appears while the network has no nodes.
   const rawPayload = useMemo(
     () =>
-      SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
+      SuperJSON.stringify(
+        interview.getInterviewPayload({
+          currentStep: 1,
+          stopAt: { stageIndex: 1 },
+        }),
+      ),
     [interview],
   );
 

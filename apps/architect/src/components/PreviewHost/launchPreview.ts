@@ -13,6 +13,7 @@ const HANDSHAKE_TIMEOUT_MS = 10_000;
 const POPUP_CLOSED_POLL_MS = 1_000;
 
 type LaunchOptions = {
+  /** Schema-parse output — see `PreviewPayload.protocol`. */
   protocol: CurrentProtocol;
   startStage: number;
   useSyntheticData: boolean;

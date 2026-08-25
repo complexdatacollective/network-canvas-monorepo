@@ -1,4 +1,4 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { CurrentProtocolDocument } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { sectionId } from './taxonomy.ts';
@@ -7,7 +7,8 @@ import { sectionId } from './taxonomy.ts';
 export class SectionizeError extends Error {}
 
 export function sectionizeProtocol(
-  protocol: CurrentProtocol,
+  // A DOCUMENT: sections store what a host stores, nothing schema-resolved.
+  protocol: CurrentProtocolDocument,
 ): Record<string, SectionDoc> {
   const sections: Record<string, SectionDoc> = {};
 

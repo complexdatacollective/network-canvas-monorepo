@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-import type { SyntheticInterview } from '@codaco/protocol-utilities';
+import type { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import type { InterviewFixture } from '../fixtures/interview-fixture.js';
 import type { ProtocolFixture } from '../fixtures/protocol-fixture.js';
@@ -28,13 +28,18 @@ export type ScenarioDefinition = {
   /** mark test.slow() (e.g. Geospatial, crypto-heavy Anonymisation) */
   slow?: true;
   /** returns a fully-configured builder */
-  build: () => SyntheticInterview;
+  build: () => ProtocolBuilder;
   /** asset files to register + copy (synthetic-payload adapter convention) */
   assets?: SyntheticAssetSpec[];
   /** start step (default 0); driven via the URL, not the session */
   currentStep?: number;
-  /** install synth.getNetwork() as the starting network (default false) */
+  /**
+   * Start from the interview a simulated participant would have produced
+   * rather than the untouched one (default false).
+   */
   seedNetwork?: boolean;
+  /** With seedNetwork: stop the simulated walk on arrival at this stage. */
+  stopAt?: { stageIndex: number; promptIndex?: number };
   /** seeded stage metadata (e.g. NarrativePedigree source-stage state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */

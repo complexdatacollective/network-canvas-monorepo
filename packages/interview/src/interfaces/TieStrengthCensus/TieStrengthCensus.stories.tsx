@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 import SuperJSON from 'superjson';
 
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -49,7 +49,7 @@ const promptConfigs = [
 ];
 
 function buildInterview(args: StoryArgs) {
-  const si = new SyntheticInterview();
+  const si = new ProtocolBuilder();
 
   const nt = si.addNodeType({ name: 'Person' });
 

@@ -58,7 +58,8 @@
       "project": [
         "src/**/*.{ts,tsx,js}",
         ".storybook/**/*.{ts,tsx}",
-        "e2e/**/*.{ts,tsx}"
+        "e2e/**/*.{ts,tsx}",
+        "__tests__/**/*.ts"
       ],
       "paths": {
         "~/*": ["./*"]

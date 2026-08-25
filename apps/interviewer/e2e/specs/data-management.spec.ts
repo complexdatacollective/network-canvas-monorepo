@@ -11,17 +11,27 @@ import {
 // generated networks (complete + dropped-out mix), so they populate the table
 // AND are exportable with real content.
 //
-// Deviation from the brief: seeded 20 sessions rather than 6. The lean e2e
-// protocol has 4 stages, and generateNetwork's per-stage drop-out check
-// (((i+1)/totalStages) * 0.15, checked at every stage) only guarantees a
-// *minimum* of ceil(count * 0.1) COMPLETE sessions when simulateDropOut is on
-// — it never guarantees a minimum number of IN-PROGRESS ones. With 6 sessions
-// there is a ~9% chance every session finishes naturally (0 in-progress
-// rows), which would flake the "In progress" chip and resume tests. At 20
-// sessions that chance drops to ~0.03%, and 20 still fits inside the table's
-// single default page (25 rows), so "select all on this page" still selects
-// everything.
-const SYNTHETIC_SESSION_COUNT = 20;
+// The batch is PINNED to a seed, because generation is a pure function of it:
+// the same seed always produces the same split and the same networks, so this
+// file asserts counts rather than ranges.
+//
+// Which counts, and why this seed. Drop-out is a hazard on accumulated
+// response burden — `1 - exp(-DROPOUT_HAZARD_RATE * burden)` rolled after
+// each stage — and this fixture's four stages carry 0 (Information) + 0.4
+// (EgoForm) + 0.2 (NameGeneratorQuickAdd) + 0.6 (Sociogram), so a session
+// survives to the end with probability ~99.8%. Dropping out is therefore
+// RARE here, and an unpinned batch of any practical size would usually
+// contain no in-progress rows at all — the "In progress" chip and resume
+// tests would have nothing to find. Seed 228 over 6 sessions yields exactly
+// one in-progress session (abandoned before the Sociogram, carrying 4 people)
+// and five complete ones, every complete session holding at least 5 nodes and
+// 4 edges, so the export assertions have real content to check. 6 rows also
+// sit inside the table's single default page (25), so "select all on this
+// page" still selects the whole batch.
+const SYNTHETIC_SESSION_COUNT = 6;
+const SYNTHETIC_SEED = 228;
+const COMPLETE_COUNT = 5;
+const IN_PROGRESS_COUNT = 1;
 
 // Deviation from the brief: the brief's importAndSeed calls seed.synthetic()
 // immediately after protocol.import() resolves. That races a real bug in
@@ -43,14 +53,14 @@ const SYNTHETIC_SESSION_COUNT = 20;
 // reload both complete — before opening Settings.
 async function importAndSeed(
   protocol: { import: (p: string, n?: string) => Promise<void> },
-  seed: { synthetic: (n: number) => Promise<void> },
+  seed: { synthetic: (n: number, seed?: number) => Promise<void> },
   page: Page,
 ): Promise<void> {
   await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
   await expect(page.getByText('Protocol imported')).toBeVisible({
     timeout: 15_000,
   });
-  await seed.synthetic(SYNTHETIC_SESSION_COUNT);
+  await seed.synthetic(SYNTHETIC_SESSION_COUNT, SYNTHETIC_SEED);
 }
 
 test.describe('interview data management', () => {
@@ -61,14 +71,26 @@ test.describe('interview data management', () => {
   }) => {
     await importAndSeed(protocol, seed, page);
     await page.goto('/data');
-    // Chips read "All · N", "In progress · N", "Complete · N".
-    await expect(page.getByRole('button', { name: /^All ·/ })).toBeVisible();
+    // Chips read "All · N", "In progress · N", "Complete · N". The seed fixes
+    // the split, so these are exact — a change in the generator that shifts
+    // who finishes is a change this spec should notice.
+    await expect(
+      page.getByRole('button', { name: `All · ${SYNTHETIC_SESSION_COUNT}` }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: `In progress · ${IN_PROGRESS_COUNT}` }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: `Complete · ${COMPLETE_COUNT}` }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: /^Complete ·/ }).click();
     await expect(page).toHaveURL(/status=complete/);
-    // No visual snapshot here: the /data table shows random synthetic case ids
-    // and a Math.random-driven complete/in-progress split, so the status-chip
-    // counts ("Complete · N") are non-deterministic between seeds. The table is
-    // covered functionally by the tests in this file.
+    await expect(page.getByTestId('data-review')).toHaveCount(COMPLETE_COUNT);
+    // No visual snapshot here: case ids and generated attribute values still
+    // vary with the session's own date, so the rendered table is not
+    // byte-stable even under a pinned seed. The table is covered functionally
+    // by the tests in this file.
   });
 
   test('search narrows rows by case id', async ({ protocol, seed, page }) => {
@@ -138,7 +160,8 @@ test.describe('interview data management', () => {
     // against packages/network-exporters/src/utils/general.ts's
     // makeFilename/getFileExtension.
     const graphmls = readEntries(files, '.graphml');
-    expect(graphmls.length).toBeGreaterThan(0);
+    // One per complete session, and the seed says how many that is.
+    expect(graphmls).toHaveLength(COMPLETE_COUNT);
     // Every exported (complete) session's GraphML must contain nodes — validate
     // the whole batch, not just the first entry.
     for (const graphml of graphmls) {
@@ -174,6 +197,11 @@ test.describe('interview data management', () => {
     await importAndSeed(protocol, seed, page);
     await page.goto('/data');
     await page.getByRole('button', { name: /^In progress ·/ }).click();
+    // The seeded batch abandons exactly one session, so there is exactly one
+    // interview to resume.
+    await expect(page.getByTestId('data-resume')).toHaveCount(
+      IN_PROGRESS_COUNT,
+    );
     await page.getByTestId('data-resume').first().click();
     await expect(page).toHaveURL(/\/interview\//);
   });

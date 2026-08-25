@@ -280,9 +280,20 @@ describe('every stage type can resolve its own subject', () => {
     expect(stageOptions.length).toBeGreaterThan(10);
   });
 
+  // A branch carrying a transform (a name generator, which resolves a default
+  // synthetic count) is a pipe rather than an object, and has no `.shape` of
+  // its own. Its input side is the object that declares the stage's fields.
+  const asObject = (option: (typeof stageOptions)[number]) => {
+    const node: unknown = option instanceof z.ZodPipe ? option.in : option;
+    if (!(node instanceof z.ZodObject)) {
+      throw new Error('Stage branch is not an object schema');
+    }
+    return node;
+  };
+
   it.each(
     stageOptions.map((option) => {
-      const typeField: unknown = option.shape.type;
+      const typeField: unknown = asObject(option).shape.type;
       const name =
         typeField instanceof z.ZodLiteral
           ? String([...typeField.values][0])
@@ -291,7 +302,10 @@ describe('every stage type can resolve its own subject', () => {
     }),
   )('%s declares or carries a subject', (_name, option) => {
     if (!usesStageSubject(option)) return;
-    const carriesSubjectField = Object.hasOwn(option.shape, 'subject');
+    const carriesSubjectField = Object.hasOwn(
+      asObject(option).shape,
+      'subject',
+    );
     const declaresResolution = getStageSubjectResolution(option) !== undefined;
     expect(carriesSubjectField || declaresResolution).toBe(true);
   });

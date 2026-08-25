@@ -194,7 +194,15 @@ export const useProtocolImport = () => {
 
       // Phase: Checking duplicates
       updateToastPhase(toastId, 'checking-duplicates');
-      const protocolHash = hashProtocol(validatedProtocol);
+      // Computed here only for the duplicate pre-check. The stored hash is
+      // derived by `insertProtocol` at its trust boundary, from the same
+      // pre-parse document this one is taken from — the payload's
+      // `protocolDocument` below — by the same pure function, so the hash a
+      // duplicate is detected by and the hash a protocol is stored under
+      // cannot disagree. It is taken from the document as validated rather
+      // than as parsed so that a researcher's authored content moves it and
+      // the schema's injected defaults do not (spec decision 15).
+      const protocolHash = hashProtocol(validationResult.documentForHashing);
       const exists = await getProtocolByHash(protocolHash);
       if (exists) {
         updateToastPhase(toastId, 'error', {
@@ -302,7 +310,9 @@ export const useProtocolImport = () => {
       // Phase: Saving
       updateToastPhase(toastId, 'saving');
       const result = await insertProtocol({
-        protocol: validatedProtocol,
+        // The pre-parse document, not `validatedProtocol`: the action derives
+        // the stored hash and the stored parse output from this server-side.
+        protocolDocument: validationResult.documentForHashing,
         protocolName: fileName,
         newAssets: [...newAssetsWithCombinedMetadata, ...newApikeyAssets],
         existingAssetIds: existingAssetIds,

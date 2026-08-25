@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -9,6 +9,8 @@ vi.mock('../NodePanel', async () => ({
   default: (await import('./nodePanelStub')).default,
 }));
 
+// eslint-disable-next-line import/first -- must follow the vi.mock call above
+import { HiddenFieldValue } from '~/components/sections/Form/withFieldsHandlers';
 // eslint-disable-next-line import/first -- must follow the vi.mock call above
 import {
   asStage,
@@ -156,5 +158,164 @@ describe('NodePanels panel identity', () => {
     expect(
       screen.getByRole('button', { name: 'Add new panel' }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * A panel's `synthetic` block — its generation parameters — has no control in
+ * this editor, so it survives only because `usePanelAt` reads it and
+ * `writePanelAt` writes it back. They are a closed pair: `handlePanelsChange`
+ * is `ArrayField`'s `onChange`, and it rewrites the whole bounded slot set
+ * from the list `usePanelAt` assembled. A key missing from either side is lost
+ * on the next add, reorder or toggle-off — long before any save.
+ */
+describe('NodePanels authored synthetic parameters', () => {
+  const FIRST_SYNTHETIC = { nominationProbability: 0.6 };
+  const SECOND_SYNTHETIC = { nominationProbability: 0.15 };
+
+  const panelWithSynthetic = (
+    id: string,
+    title: string,
+    synthetic: Record<string, unknown>,
+  ) => ({ id, title, dataSource: 'existing', filter: undefined, synthetic });
+
+  // The subject is a real registered field in the editor, and has to be one
+  // here too: an unregistered name is absent from every snapshot, so an undo
+  // would park it in dormant storage and disable the section under test for
+  // reasons that have nothing to do with panels.
+  const renderWithSubject = (panels: Record<string, unknown>[]) =>
+    renderStageForm({
+      committedStage: asStage({
+        subject: { entity: 'node', type: 'person' },
+        panels,
+      }),
+      children: (
+        <DialogProvider>
+          <HiddenFieldValue name="subject.entity" initialValue="node" />
+          <HiddenFieldValue name="subject.type" initialValue="person" />
+          <NodePanels
+            stagePath="stages[0]"
+            stagePosition={0}
+            interfaceType="NameGeneratorQuickAdd"
+          />
+        </DialogProvider>
+      ),
+    });
+
+  const panelsIn = (values: unknown) =>
+    (values as { panels?: { id?: string; synthetic?: unknown }[] }).panels;
+
+  it('keeps an existing panel’s block when another panel is added', async () => {
+    const { getFormValues } = renderPanels([
+      panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(1),
+    );
+    expect(panelsIn(getFormValues())?.[0]?.synthetic).toEqual(FIRST_SYNTHETIC);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add new panel' }));
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(2),
+    );
+
+    // The add rewrites BOTH slots from the assembled list, so an unread key is
+    // erased from the untouched panel by the act of adding a different one.
+    await waitFor(() => {
+      const panels = panelsIn(getFormValues());
+      expect(panels).toHaveLength(2);
+      expect(panels?.[0]?.synthetic).toEqual(FIRST_SYNTHETIC);
+    });
+    // The new panel is authored by nobody, so it must not acquire a block.
+    expect(panelsIn(getFormValues())?.[1]?.synthetic).toBeUndefined();
+  });
+
+  it('moves each panel’s own block with it through a reorder', async () => {
+    const { getFormValues } = renderPanels([
+      panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),
+      panelWithSynthetic('panel-2', 'B', SECOND_SYNTHETIC),
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(2),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move side panel 2 up' }),
+    );
+
+    // Distinct values on the two panels, because equal ones would pass even if
+    // the reorder wrote every slot from the same source panel.
+    await waitFor(() => {
+      const panels = panelsIn(getFormValues());
+      expect(panels?.[0]?.id).toBe('panel-2');
+      expect(panels?.[0]?.synthetic).toEqual(SECOND_SYNTHETIC);
+      expect(panels?.[1]?.id).toBe('panel-1');
+      expect(panels?.[1]?.synthetic).toEqual(FIRST_SYNTHETIC);
+    });
+  });
+
+  it('drops a stale block from a roster panel when a gesture rewrites the slots', async () => {
+    // `panelSchema` refuses a `synthetic` block on any panel whose dataSource
+    // is not 'existing', and this editor renders no control that could remove
+    // one — so a rewrite gesture must not carry the invalid pair forward (an
+    // imported protocol can arrive holding it). The existing-network panel's
+    // block must survive the same rewrite untouched.
+    const { getFormValues } = renderPanels([
+      panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),
+      {
+        id: 'panel-2',
+        title: 'B',
+        dataSource: 'asset-1',
+        filter: undefined,
+        synthetic: SECOND_SYNTHETIC,
+      },
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('node-panel')).toHaveLength(2),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move side panel 2 up' }),
+    );
+
+    await waitFor(() => {
+      const panels = panelsIn(getFormValues());
+      expect(panels?.[0]?.id).toBe('panel-2');
+      expect(panels?.[0]?.synthetic).toBeUndefined();
+      expect(panels?.[1]?.id).toBe('panel-1');
+      expect(panels?.[1]?.synthetic).toEqual(FIRST_SYNTHETIC);
+    });
+  });
+
+  it('restores the block when a toggle-off is undone', async () => {
+    const { getFormValues, getHistory } = renderWithSubject([
+      panelWithSynthetic('panel-1', 'A', FIRST_SYNTHETIC),
+    ]);
+
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute('aria-checked', 'true'),
+    );
+
+    fireEvent.click(toggle());
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute('aria-checked', 'false'),
+    );
+    expect(getFormValues()).not.toHaveProperty('panels');
+
+    act(() => {
+      getHistory().undo();
+    });
+
+    // The toggle-off parks every leaf in dormant storage, where a remount
+    // prefers it over `initialValue` — so a block that was never a registered
+    // leaf could not come back at all.
+    await waitFor(() => {
+      expect(panelsIn(getFormValues())?.[0]?.synthetic).toEqual(
+        FIRST_SYNTHETIC,
+      );
+    });
   });
 });

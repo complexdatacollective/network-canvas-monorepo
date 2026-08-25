@@ -37,7 +37,8 @@
     "@codaco/shared-consts": "workspace:^",
     "@faker-js/faker": "catalog:",
     "es-toolkit": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",

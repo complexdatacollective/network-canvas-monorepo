@@ -127,6 +127,15 @@ const SKIP_LOGIC = {
   },
 };
 
+// The generation parameters a hand-authored protocol may carry on a name
+// generator. No Architect section renders them, which is what the carry below
+// exists for.
+const SYNTHETIC = {
+  generatesData: true,
+  responseBurden: 0.42,
+  count: { distribution: 'constant', value: 5 },
+};
+
 const makeProtocol = (
   stageOverrides: Record<string, unknown> = {},
 ): CurrentProtocol =>
@@ -216,6 +225,12 @@ const renderEditor = (
       </Provider>,
     ),
   };
+};
+
+const submitStageForm = (container: HTMLElement) => {
+  const form = container.querySelector('form');
+  expect(form).not.toBeNull();
+  fireEvent.submit(form!);
 };
 
 describe('StageEditor', () => {
@@ -406,12 +421,6 @@ describe('StageEditor', () => {
   });
 
   describe('committed skipLogic preservation', () => {
-    const submitStageForm = (container: HTMLElement) => {
-      const form = container.querySelector('form');
-      expect(form).not.toBeNull();
-      fireEvent.submit(form!);
-    };
-
     it('carries committed skipLogic through a zero-edit save when no section owns it', async () => {
       // Anonymisation-shaped interface: its section list omits SkipLogic, so
       // no field can ever register the key.
@@ -473,6 +482,76 @@ describe('StageEditor', () => {
       expect('skipLogic' in findUpdateStage(dispatched)!.payload.stage).toBe(
         false,
       );
+    });
+  });
+
+  describe('committed synthetic preservation', () => {
+    it('carries a committed synthetic block through a zero-edit save', async () => {
+      // No interface's section list authors `synthetic`, so the form's values
+      // structurally cannot carry it and the overwrite save would delete the
+      // author's generation parameters outright.
+      const { container, dispatched } = renderEditor({
+        stageOverrides: { synthetic: SYNTHETIC },
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      expect(findUpdateStage(dispatched)!.payload.stage.synthetic).toEqual(
+        SYNTHETIC,
+      );
+    });
+
+    it('does not invent a synthetic key for a stage that never had one', async () => {
+      // The carry is unconditional, which is only safe because no interface
+      // template seeds the key: an invented one would appear in every stage a
+      // researcher creates, and in every committed e2e stage snapshot.
+      const { container, dispatched } = renderEditor();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      expect('synthetic' in findUpdateStage(dispatched)!.payload.stage).toBe(
+        false,
+      );
+    });
+
+    it('leaves the carried block byte-identical after an unrelated edit', async () => {
+      // Editing the one field the stub interface owns is the realistic case:
+      // the researcher renames the stage, and the parameters they authored by
+      // hand must come back out exactly as written — not re-normalised, not
+      // topped up with schema defaults, not partially merged.
+      const { container, dispatched } = renderEditor({
+        stageOverrides: { synthetic: SYNTHETIC },
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Label' }), {
+        target: { value: 'Renamed stage' },
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      const { stage } = findUpdateStage(dispatched)!.payload;
+      expect(stage.label).toBe('Renamed stage');
+      // `toEqual` alone would pass on a block that gained a key holding
+      // `undefined`, which is exactly what a half-done carry produces.
+      expect(JSON.stringify(stage.synthetic)).toBe(JSON.stringify(SYNTHETIC));
     });
   });
 });

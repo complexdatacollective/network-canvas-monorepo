@@ -4,7 +4,7 @@ import SuperJSON from 'superjson';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { ProtocolBuilder } from '@codaco/protocol-utilities';
 import type { OrdinalColorReference } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -76,7 +76,7 @@ type StoryArgs = {
 };
 
 function createGeospatialInterview(seed: number, region: Region) {
-  const si = new SyntheticInterview(seed);
+  const si = new ProtocolBuilder(seed);
   const nt = si.addNodeType({ name: 'Person' });
   const regionConfig = REGIONS[region];
 
@@ -112,7 +112,7 @@ function MissingTokenMessage() {
 function GeospatialStoryWrapper({
   buildFn,
 }: {
-  buildFn: () => SyntheticInterview;
+  buildFn: () => ProtocolBuilder;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -235,8 +235,8 @@ export const Default: Story = {
       });
 
       const location1Var = nt.addVariable({
-        type: 'text',
-        name: 'Location 1',
+        type: 'location',
+        name: 'Location1',
       });
       stage.addPrompt({
         text: prompt1Text,
@@ -245,8 +245,8 @@ export const Default: Story = {
 
       if (promptCount === 2) {
         const location2Var = nt.addVariable({
-          type: 'text',
-          name: 'Location 2',
+          type: 'location',
+          name: 'Location2',
         });
         stage.addPrompt({
           text: prompt2Text,

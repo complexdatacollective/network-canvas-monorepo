@@ -73,6 +73,38 @@ export {
   type InterfaceOwnedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
+  type BinOnlyVariables,
+  collectInterfaceImpliedRules,
+  declaresTextGenerator,
+  type EffectiveVariableRules,
+  type InterfaceImpliedRules,
+  inferTextGenerator,
+  narrowVariableRules,
+  type ResolvedBooleanSynthetic,
+  type ResolvedCategoricalSynthetic,
+  type ResolvedDatetimeSynthetic,
+  type ResolvedNumberSynthetic,
+  type ResolvedOrdinalSynthetic,
+  type ResolvedScalarSynthetic,
+  type ResolvedTextSynthetic,
+  type ResolvedVariableSynthetic,
+  resolveNumberWindow,
+  resolveVariableSynthetic,
+  SCALAR_DOMAIN,
+  type SubjectInterfaceRules,
+  type SyntheticResolvableVariable,
+  syntheticSubjectKey,
+} from './utils/resolveVariableSynthetic.ts';
+// The population and pair ceilings generation plans against, and the support a
+// declared count can actually reach. Named here because `shared/synthetic` and
+// `schemas/8/synthetic/helpers.ts` sit below the schema barrel that carries
+// everything else synthetic to the root.
+export {
+  MAX_SYNTHETIC_PAIRS,
+  MAX_SYNTHETIC_POPULATION,
+} from './shared/synthetic/helpers.ts';
+export { syntheticCountSupport } from './schemas/8/synthetic/helpers.ts';
+export {
   asEntityAttributeReference,
   type AssetReferenceHit,
   collectAssetReferences,

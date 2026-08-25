@@ -24,7 +24,10 @@ import { Tabs, TabsPanel } from '@codaco/fresco-ui/Tabs';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
+import {
+  formatSyntheticBatchToken,
+  parseSyntheticBatchToken,
+} from '@codaco/protocol-utilities';
 import { GenerationFailureDescription } from '~/components/GenerationFailureDescription';
 import { HomeModal } from '~/components/HomeModal';
 import {
@@ -54,7 +57,11 @@ import {
   isStoragePersisted,
   type StorageEstimate,
 } from '~/lib/storage';
-import { generateSyntheticSessions } from '~/lib/synthetic/generate';
+import { isSyntheticConstraintRefusal } from '~/lib/synthetic/constraintError';
+import {
+  generateSyntheticSessions,
+  type SyntheticGenerationProgress,
+} from '~/lib/synthetic/generate';
 
 type SettingsDialogProps = {
   open: boolean;
@@ -124,12 +131,16 @@ export function SettingsDialog({
   const [selectedProtocolHash, setSelectedProtocolHash] = useState('');
   const [syntheticCount, setSyntheticCount] = useState(0);
   const [count, setCount] = useState(10);
+  const [seedInput, setSeedInput] = useState('');
   const [simulateDropOut, setSimulateDropOut] = useState(true);
-  const [respectSkipLogicAndFiltering, setRespectSkipLogicAndFiltering] =
-    useState(false);
+  // Defaults on: skip logic and filters are part of what the protocol says an
+  // interview is, so generated data that ignores them is not data that
+  // protocol could have produced.
+  const [respectSkipLogic, setRespectSkipLogic] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [progress, setProgress] = useState<{ current: number; total: number }>({
+  const [progress, setProgress] = useState<SyntheticGenerationProgress>({
+    phase: 'generating',
     current: 0,
     total: 0,
   });
@@ -230,17 +241,39 @@ export function SettingsDialog({
   const handleGenerate = useCallback(async () => {
     if (!selectedProtocolHash) return;
     setIsGenerating(true);
-    setProgress({ current: 0, total: count });
+    setProgress({ phase: 'generating', current: 0, total: count });
     try {
-      const created = await generateSyntheticSessions({
+      // A batch's identity is its seed AND the day its sessions are dated
+      // against; the reported token carries both, and a bare seed pins only
+      // the draws. Anything else typed here is a mistake worth naming rather
+      // than silently generating a fresh batch over.
+      const pinned =
+        seedInput.trim() === ''
+          ? undefined
+          : parseSyntheticBatchToken(seedInput);
+      if (seedInput.trim() !== '' && pinned === null) {
+        toast.add({
+          title: 'Generation not started',
+          description:
+            'That batch token could not be read. Enter the value a batch reported — a number, or number-YYYY-MM-DD — or leave the field blank.',
+          variant: 'destructive',
+          timeout: 0,
+        });
+        return;
+      }
+      const { created, seed, startWindow } = await generateSyntheticSessions({
         protocolHash: selectedProtocolHash,
         count,
         simulateDropOut,
-        respectSkipLogicAndFiltering,
-        onProgress: (current, total) => setProgress({ current, total }),
+        respectSkipLogic,
+        ...(pinned ? pinned : {}),
+        onProgress: setProgress,
       });
       toast.add({
         title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
+        // The token is the whole batch: entering it above regenerates exactly
+        // these interviews, so it is worth reading off the toast.
+        description: `Batch ${formatSyntheticBatchToken(seed, startWindow)}`,
         variant: 'success',
       });
     } catch (error) {
@@ -248,7 +281,7 @@ export function SettingsDialog({
       // structured `conflicts` array that renders as a readable list; any
       // other failure falls back to its flat message. Either way, this needs
       // a researcher to read and act on it, so it doesn't auto-dismiss.
-      if (error instanceof SyntheticDataConstraintError) {
+      if (isSyntheticConstraintRefusal(error)) {
         toast.add({
           title: 'Generation failed',
           description: <GenerationFailureDescription error={error} />,
@@ -273,8 +306,9 @@ export function SettingsDialog({
   }, [
     selectedProtocolHash,
     count,
+    seedInput,
     simulateDropOut,
-    respectSkipLogicAndFiltering,
+    respectSkipLogic,
     toast,
     reloadSyntheticWithFeedback,
     onDataChange,
@@ -345,8 +379,15 @@ export function SettingsDialog({
     label: p.name,
   }));
   const noProtocols = protocols.length === 0;
+  // Generation is two passes over the batch — the engine draws every session,
+  // then each one is encrypted and written — so the bar spans both and fills
+  // once, rather than running to the end and starting again.
+  const completedUnits =
+    progress.phase === 'generating'
+      ? progress.current
+      : progress.total + progress.current;
   const percentProgress =
-    progress.total > 0 ? (progress.current / progress.total) * 100 : 0;
+    progress.total > 0 ? (completedUnits / (progress.total * 2)) * 100 : 0;
 
   const behavior: Behavior = {
     idleTimeoutMinutes: auth.idleTimeoutMinutes,
@@ -672,6 +713,19 @@ export function SettingsDialog({
                 }}
               />
               <UnconnectedField
+                name="syntheticSeed"
+                label="Batch token"
+                hint="Leave blank for a new batch each time. Every batch reports the token it ran on — enter that token to regenerate exactly the same interviews, dates included. A bare seed number pins the draws but dates the sessions around today."
+                data-testid="synthetic-seed"
+                component={InputField}
+                type="text"
+                value={seedInput}
+                disabled={isGenerating}
+                onChange={(next: string | undefined) =>
+                  setSeedInput(next ?? '')
+                }
+              />
+              <UnconnectedField
                 name="simulateDropOut"
                 label="Simulate participant drop-out"
                 hint="Some sessions will be left incomplete to mirror real-world data."
@@ -684,15 +738,15 @@ export function SettingsDialog({
                 }
               />
               <UnconnectedField
-                name="respectSkipLogicAndFiltering"
+                name="respectSkipLogic"
                 label="Respect skip logic and filtering"
-                hint="Apply protocol skip logic and stage filters during generation."
+                hint="Apply protocol skip logic and stage filters during generation. Turn off to make every session visit every stage."
                 inline
                 component={ToggleField}
-                value={respectSkipLogicAndFiltering}
+                value={respectSkipLogic}
                 disabled={isGenerating}
                 onChange={(v: boolean | undefined) =>
-                  setRespectSkipLogicAndFiltering(v === true)
+                  setRespectSkipLogic(v === true)
                 }
               />
 
@@ -718,7 +772,8 @@ export function SettingsDialog({
                     className="text-sea-green h-2"
                   />
                   <div className="text-text/60 mt-2 text-sm">
-                    {progress.current} / {progress.total} interviews generated
+                    {progress.phase === 'generating' ? 'Generating' : 'Storing'}{' '}
+                    {progress.current} / {progress.total} interviews
                   </div>
                 </div>
               ) : null}

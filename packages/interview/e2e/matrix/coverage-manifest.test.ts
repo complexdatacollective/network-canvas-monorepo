@@ -48,7 +48,9 @@ describe('e2e matrix coverage manifest', () => {
 
   it('every landed interface inventory includes the top-level and prompt-level stage schema keys', () => {
     // Base keys every stage carries; covered globally, not per-interface.
-    const BASE_KEYS = new Set(['id', 'type', 'label']);
+    // `synthetic` is authoring-time generation metadata the runtime never
+    // renders, so no scenario can claim it.
+    const BASE_KEYS = new Set(['id', 'type', 'label', 'synthetic']);
     // Inventory keys are free-form (e.g. 'items[].size'); a schema key counts
     // as inventoried when any inventory key starts with it.
     const inventoryCoversSchemaKey = (
@@ -106,6 +108,9 @@ describe('e2e matrix coverage manifest', () => {
             if (element instanceof z.ZodObject) {
               for (const promptKey of Object.keys(element.shape)) {
                 if (promptKey === 'id') continue;
+                // Authoring-time generation metadata the runtime never
+                // renders, so no scenario can claim it.
+                if (promptKey === 'synthetic') continue;
                 if (
                   !inventoryCoversSchemaKey(inventory, `prompts[].${promptKey}`)
                 ) {

@@ -8,8 +8,14 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+import { stageNodeSynthetic } from '../synthetic/index.ts';
 import { baseStageSchema } from './base.ts';
-import { nameGeneratorBehavioursSchema } from './name-generator.ts';
+import {
+  nameGeneratorBehavioursSchema,
+  requireCountWithinBehaviours,
+  requireDrawableCount,
+  withResolvedSyntheticCount,
+} from './name-generator.ts';
 
 /**
  * A roster column name. The roster is an external data source, so this is NOT
@@ -33,54 +39,59 @@ const rosterColumnReference = () =>
     existence: 'unchecked',
   });
 
-export const nameGeneratorRosterStage = baseStageSchema.extend({
-  type: z.literal('NameGeneratorRoster'),
-  subject: NodeStageSubjectSchema,
-  dataSource: assetReference(),
-  cardOptions: z
-    .strictObject({
-      additionalProperties: z
-        .array(
-          z.strictObject({
-            label: z.string(),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  sortOptions: z
-    .strictObject({
-      sortOrder: SortOrderSchema.optional(),
-      sortableProperties: z
-        .array(
-          z.strictObject({
-            label: z.string(),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  searchOptions: z
-    .strictObject({
-      fuzziness: z.number(),
-      matchProperties: z.array(rosterColumnReference()).min(1),
-    })
-    .optional(),
-  prompts: z
-    .array(nameGeneratorPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  behaviours: nameGeneratorBehavioursSchema,
-});
+export const nameGeneratorRosterStage = baseStageSchema
+  .extend({
+    type: z.literal('NameGeneratorRoster'),
+    synthetic: stageNodeSynthetic('NameGeneratorRoster').optional(),
+    subject: NodeStageSubjectSchema,
+    dataSource: assetReference(),
+    cardOptions: z
+      .strictObject({
+        additionalProperties: z
+          .array(
+            z.strictObject({
+              label: z.string(),
+              variable: rosterColumnReference(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    sortOptions: z
+      .strictObject({
+        sortOrder: SortOrderSchema.optional(),
+        sortableProperties: z
+          .array(
+            z.strictObject({
+              label: z.string(),
+              variable: rosterColumnReference(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    searchOptions: z
+      .strictObject({
+        fuzziness: z.number(),
+        matchProperties: z.array(rosterColumnReference()).min(1),
+      })
+      .optional(),
+    prompts: z
+      .array(nameGeneratorPromptSchema)
+      .min(1)
+      .superRefine((prompts, ctx) => {
+        // Check for duplicate prompt IDs
+        const duplicatePromptId = findDuplicateId(prompts);
+        if (duplicatePromptId) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+            path: [],
+          });
+        }
+      }),
+    behaviours: nameGeneratorBehavioursSchema,
+  })
+  .transform(withResolvedSyntheticCount)
+  .superRefine(requireCountWithinBehaviours)
+  .superRefine(requireDrawableCount);
