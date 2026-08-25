@@ -52,6 +52,12 @@ const variableRow = (variableId: string) =>
     `[data-codebook-variable="node:${PERSON}/${variableId}"]`,
   );
 
+/** Where a link to that attribute is supposed to land. */
+const variableLanding = (variableId: string) =>
+  document.querySelector<HTMLElement>(
+    `[data-codebook-variable-landing="node:${PERSON}/${variableId}"]`,
+  );
+
 // jsdom implements neither, and both are called on the way to a row.
 const scrollIntoView = vi.fn();
 Element.prototype.scrollIntoView = scrollIntoView;
@@ -63,18 +69,24 @@ afterEach(() => {
 });
 
 describe('opening the codebook at an attribute', () => {
-  it('scrolls to the row the link names and lands focus in it', async () => {
+  it('scrolls to the row the link names and lands focus on what it opened', async () => {
     renderCodebook(codebookHref({ entity: 'node', type: PERSON }, AGE));
 
     const row = variableRow(AGE);
+    const landing = variableLanding(AGE);
     expect(row).not.toBeNull();
+    expect(landing).not.toBeNull();
 
     await waitFor(() => {
-      expect(row!.contains(document.activeElement)).toBe(true);
+      expect(landing!.contains(document.activeElement)).toBe(true);
     });
-    // The row's own control, so the next keystroke acts on this attribute
-    // rather than on a container that merely holds it.
+    // A control, so the next keystroke acts on this attribute rather than on a
+    // container that merely holds it — and the attribute's OWN generation
+    // controls, which is what a link to an attribute opens. The row's first
+    // focusable in document order is the rename pill at the other side of the
+    // table, which is where this used to land.
     expect(document.activeElement?.tagName).toBe('BUTTON');
+    expect(row!.contains(document.activeElement)).toBe(false);
     expect(scrollIntoView.mock.instances).toContain(row);
   });
 

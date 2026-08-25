@@ -4,6 +4,7 @@ import type { Variable, VariableSynthetic } from '@codaco/protocol-validation';
 import { useAppDispatch } from '~/ducks/hooks';
 import { updateVariableAsync } from '~/ducks/modules/protocol/codebook';
 
+import { codebookVariableLandingMarker } from './deepLink';
 import { asSyntheticVariableDraft } from './VariableSynthetic/draft';
 import type { VariableImpliedRules } from './VariableSynthetic/impliedRules';
 import {
@@ -153,7 +154,17 @@ export function SyntheticEditorCell({
   if (draft === undefined) return null;
 
   return (
-    <div className="min-w-64 whitespace-normal">
+    <div
+      className="min-w-64 whitespace-normal"
+      // Where a link to this attribute lands. The row it scrolls to is marked
+      // on the name cell, whose first control is the rename pill — so without
+      // this a link that opened these very settings put focus at the other end
+      // of the table and left the researcher to find them.
+      {...codebookVariableLandingMarker(
+        { entity, ...(type === undefined ? {} : { type }) },
+        variableId,
+      )}
+    >
       <VariableSyntheticProvider
         variable={draft}
         implied={implied}

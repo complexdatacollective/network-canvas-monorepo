@@ -97,6 +97,30 @@ export const useCodebookVariableTarget = ():
   }, [search]);
 };
 
+/**
+ * Marks the region an attribute link LANDS in, where the row has one.
+ *
+ * The row marker below is where a link SCROLLS to; this is where it puts
+ * focus. They are not the same element, because a row's first focusable
+ * control in document order is its name pill — so a link asking for an
+ * attribute's generation settings, which opens that attribute's sub-editor,
+ * dropped the researcher on the rename control at the other side of the table
+ * and left them to find the thing the link had just opened.
+ *
+ * A region rather than the control itself, so the cell can say "the link lands
+ * here" without the disclosure inside it having to take a prop for it; the
+ * first control within is what focus goes to. A row with no such region — an
+ * attribute nothing is generated for — falls back to the row, as before.
+ */
+const VARIABLE_LANDING_ATTRIBUTE = 'data-codebook-variable-landing';
+
+export const codebookVariableLandingMarker = (
+  subject: CodebookSubject,
+  variableId: string,
+) => ({
+  [VARIABLE_LANDING_ATTRIBUTE]: `${syntheticSubjectKey(subject)}/${variableId}`,
+});
+
 /** Marks the section an `?entity=` link lands on. */
 export const codebookEntityMarker = (subject: CodebookSubject) => ({
   [ENTITY_ATTRIBUTE]: syntheticSubjectKey(subject),
@@ -132,10 +156,12 @@ const escapeAttributeValue = (value: string): string =>
  * an attribute row.
  *
  * Focus moves only for a row: an attribute link is a request to work on that
- * attribute, and the row's own control is where that work starts. A link
- * naming only an entity type has no such destination, so it scrolls and leaves
- * focus where the route change put it — on the page heading, with the whole
- * page ahead of the next Tab.
+ * attribute, and the control that work starts at is where focus goes — the
+ * row's landing region where it declares one (see
+ * {@link codebookVariableLandingMarker}), and the row's own first control
+ * otherwise. A link naming only an entity type has no such destination, so it
+ * scrolls and leaves focus where the route change put it — on the page
+ * heading, with the whole page ahead of the next Tab.
  *
  * A target that is not on the page — an attribute the current filter hides, or
  * one that has since been deleted — falls back to its entity's section, and
@@ -150,16 +176,25 @@ export const useCodebookDeepLink = (): void => {
     if (target === undefined) return;
 
     const { subjectKey, variableId } = target;
-    const row =
+    const rowKey =
       variableId === undefined
+        ? undefined
+        : escapeAttributeValue(`${subjectKey}/${variableId}`);
+    const row =
+      rowKey === undefined
         ? null
         : document.querySelector<HTMLElement>(
-            `[${VARIABLE_ATTRIBUTE}="${escapeAttributeValue(`${subjectKey}/${variableId}`)}"]`,
+            `[${VARIABLE_ATTRIBUTE}="${rowKey}"]`,
           );
 
     if (row) {
       row.scrollIntoView({ block: 'center' });
-      const control = row.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      const landing = document.querySelector<HTMLElement>(
+        `[${VARIABLE_LANDING_ATTRIBUTE}="${rowKey ?? ''}"]`,
+      );
+      const control =
+        landing?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+        row.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
       (control ?? row).focus({ preventScroll: true });
       return;
     }
