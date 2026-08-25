@@ -32,6 +32,8 @@ type MapOptionsValue = MapValue & {
 
 const NO_SELECTABLE_PROPERTIES_MESSAGE =
   'The selected GeoJSON has no feature properties available for map selection. Choose a GeoJSON file whose features include properties.';
+const MAP_SELECTION_PROPERTY_HINT =
+  "Choose the feature property whose value will identify a selected area and be stored in each prompt's location attribute. Use a property with a unique, non-empty value for every feature, such as a census tract ID, ZIP code, or neighborhood name.";
 
 const noSelectablePropertiesGuard = () => NO_SELECTABLE_PROPERTIES_MESSAGE;
 
@@ -126,7 +128,7 @@ const MapOptions = () => {
             hint={
               noSelectableProperties
                 ? NO_SELECTABLE_PROPERTIES_MESSAGE
-                : undefined
+                : MAP_SELECTION_PROPERTY_HINT
             }
           />
         )}
