@@ -10,7 +10,6 @@ import {
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
-  repairLegacyColorReferences,
   validateProtocol,
   type VersionedProtocol,
   type VersionedProtocolDocument,
@@ -122,9 +121,8 @@ async function importParsedProtocol(
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
   const version = detectSchemaVersion(document);
-  const repairedDocument = repairLegacyColorReferences(document).protocol;
 
-  let migratedDocument: VersionedProtocolDocument = repairedDocument;
+  let migratedDocument: VersionedProtocolDocument = document;
   let didMigrate = false;
   if (version !== APP_SCHEMA_VERSION) {
     const info = getMigrationInfo(version, APP_SCHEMA_VERSION);
@@ -136,7 +134,7 @@ async function importParsedProtocol(
       };
     }
     try {
-      migratedDocument = migrateProtocol(repairedDocument, APP_SCHEMA_VERSION, {
+      migratedDocument = migrateProtocol(document, APP_SCHEMA_VERSION, {
         name: nameOverride ?? sourceName.replace(/\.netcanvas$/i, ''),
       });
       didMigrate = true;

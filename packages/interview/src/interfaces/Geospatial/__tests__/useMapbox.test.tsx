@@ -104,14 +104,11 @@ const baseMapOptions = {
   showTransit: false,
 } as unknown as ExtendedMapOptions;
 
-it('resolves every supported sequence family and safely falls back for stale raw colors', () => {
+it('resolves every supported sequence family', () => {
   expect(resolveProtocolThemeVariable('node-color-seq-3')).toBe('--node-3');
   expect(resolveProtocolThemeVariable('edge-color-seq-4')).toBe('--edge-4');
   expect(resolveProtocolThemeVariable('ord-color-seq-5')).toBe('--ord-5');
   expect(resolveProtocolThemeVariable('cat-color-seq-6')).toBe('--cat-6');
-  expect(resolveProtocolThemeVariable('primary-color-seq-7')).toBe('--node-7');
-  expect(resolveProtocolThemeVariable('#3399ff')).toBe('--node-1');
-  expect(resolveProtocolThemeVariable('custom-color')).toBe('--node-1');
 });
 
 function TestHarness({ mapOptions }: { mapOptions: ExtendedMapOptions }) {

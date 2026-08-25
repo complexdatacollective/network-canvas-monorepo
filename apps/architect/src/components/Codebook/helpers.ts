@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import {
+  type ColorReference,
   type EdgeDefinition,
   type EgoDefinition,
   type NodeDefinition,
@@ -260,7 +261,7 @@ type VariableWithUsage = Variable & {
 
 type EntityProperties = {
   name: string;
-  color?: string;
+  color?: ColorReference;
   shape?: NodeShape;
   variables: Record<string, VariableWithUsage>;
 };

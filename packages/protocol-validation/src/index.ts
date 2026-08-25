@@ -64,8 +64,8 @@ export {
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
-// protocol schema's own refinement and the repair below, and a host that wants
-// to know whether a protocol is admissible should call `validateProtocol`.
+// protocol schema's own refinement, and a host that wants to know whether a
+// protocol is admissible should call `validateProtocol`.
 export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
@@ -108,11 +108,6 @@ export {
   MAX_SYNTHETIC_POPULATION,
 } from './shared/synthetic/helpers.ts';
 export { syntheticCountSupport } from './schemas/8/synthetic/helpers.ts';
-export {
-  type LegacyColorReferenceRepair,
-  type LegacyColorReferenceRepairResult,
-  repairLegacyColorReferences,
-} from './utils/repairLegacyColorReferences.ts';
 export {
   asEntityAttributeReference,
   type AssetReferenceHit,

@@ -1,7 +1,10 @@
 import { map, pickBy } from 'es-toolkit/compat';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
-import type { VariableOptions } from '@codaco/protocol-validation';
+import type {
+  ColorReference,
+  VariableOptions,
+} from '@codaco/protocol-validation';
 
 const extraProperties = new Set(['type', 'color']);
 const typesWithOptions = new Set(['categorical', 'ordinal']);
@@ -9,7 +12,7 @@ const typesWithOptions = new Set(['categorical', 'ordinal']);
 type Item = {
   name: string;
   type?: string;
-  color?: string;
+  color?: ColorReference;
   shape?: { default: NodeShape };
   // Any codebook variable's options: categorical/ordinal (string/number) or
   // boolean variables (boolean value). Only categorical/ordinal options are
@@ -22,7 +25,7 @@ type Option = {
   label: string;
   value: string;
   type?: string;
-  color?: string;
+  color?: ColorReference;
   shape?: NodeShape;
   options?: VariableOptions;
 };

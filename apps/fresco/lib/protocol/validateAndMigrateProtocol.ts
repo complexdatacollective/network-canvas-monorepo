@@ -4,7 +4,6 @@ import {
   type VersionedProtocolDocument,
   getMigrationInfo,
   migrateProtocol,
-  repairLegacyColorReferences,
   validateProtocol,
   type VersionedProtocol,
 } from '@codaco/protocol-validation';
@@ -65,14 +64,8 @@ export async function validateAndMigrateProtocol(
     return { success: false, error: 'invalid-object' };
   }
 
-  // Current-version documents can contain exact legacy colors shipped by old
-  // Network Canvas releases. Repair only those known values before the strict
-  // schema sees them; arbitrary raw/custom values still fail validation.
-  const repairedProtocol = repairLegacyColorReferences(protocolJson)
-    .protocol as VersionedProtocol;
-
   // Check schema version
-  const protocolVersion = repairedProtocol.schemaVersion;
+  const protocolVersion = protocolJson.schemaVersion;
   if (!APP_SUPPORTED_SCHEMA_VERSIONS.includes(protocolVersion)) {
     return {
       success: false,
@@ -103,12 +96,12 @@ export async function validateAndMigrateProtocol(
     }
 
     protocolToValidate = migrateProtocol(
-      repairedProtocol,
+      protocolJson,
       CURRENT_SCHEMA_VERSION,
       dependencies,
     );
   } else {
-    protocolToValidate = repairedProtocol as CurrentProtocol;
+    protocolToValidate = protocolJson as CurrentProtocol;
   }
 
   // Validate

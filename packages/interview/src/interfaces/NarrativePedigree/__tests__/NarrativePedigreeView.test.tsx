@@ -330,9 +330,9 @@ describe('NarrativePedigreeView — node mode selection', () => {
 });
 
 describe('NarrativePedigreeView — condition colours', () => {
-  it('falls back to a defined node variable for a stale raw session color', () => {
-    expect(resolveDiseaseColor('#cc0000')).toBe('var(--node-1)');
-    expect(resolveDiseaseColor('custom-color')).toBe('var(--node-1)');
+  it('resolves every defined node color reference', () => {
+    expect(resolveDiseaseColor('node-color-seq-1')).toBe('var(--node-1)');
+    expect(resolveDiseaseColor('node-color-seq-8')).toBe('var(--node-8)');
   });
 
   it('resolves Architect node colour tokens for the key, pedigree, dimming, and snapshot', async () => {

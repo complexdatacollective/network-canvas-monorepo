@@ -255,7 +255,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
   // test, and `toLocaleLowerCase()` with no argument folds by exactly that. So
   // stand in for a Turkish host: under it `I` lowercases to `ı` rather than
   // `i`, which is what would let this one protocol be valid on one researcher's
-  // laptop and repair-required on another's.
+  // laptop and invalid on another's.
   const withTurkishHostLocale = (run: () => void) => {
     const original = String.prototype.toLocaleLowerCase;
     String.prototype.toLocaleLowerCase = function (this: string) {

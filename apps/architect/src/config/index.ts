@@ -1,3 +1,5 @@
+import type { ColorReference } from '@codaco/protocol-validation';
+
 // Color palette sizes, they follow the pattern: ord-color-seq-1...ord-color-seq-n
 // Node/edge sizes must not exceed the schema's Node/EdgeColorSequence (8 each):
 // the picker offers `<palette>-1..N`, and anything past the sequence would fail
@@ -26,10 +28,8 @@ export const COLOR_PALETTE_BY_ENTITY = {
  * fails if a palette is reordered underneath these names — a swatch announcing
  * the wrong colour is worse than one announcing a position.
  *
- * Every position the THEME defines is named, which is more than the picker
- * currently offers (see `COLOR_PALETTES`): a protocol authored against an
- * over-ranged picker can hold `ord-color-seq-10`, and that value still has to
- * be nameable when the picker shows it back.
+ * Every position the theme defines is named, even when an individual picker
+ * deliberately offers only a subset of that sequence.
  */
 export const COLOR_PALETTE_SWATCH_NAMES: Record<string, readonly string[]> = {
   'node-color-seq': [
@@ -85,11 +85,9 @@ const SWATCH_PATTERN = /^(.*)-(\d+)$/;
 /**
  * The human name for a protocol colour token.
  *
- * Falls back to the swatch's position for a token the theme does not define —
- * a colour that cannot be rendered still has to be identifiable, or the
- * researcher holding it has no way to say which one they are replacing.
+ * Falls back to the swatch's position if this naming catalogue is incomplete.
  */
-export const getColorSwatchName = (color: string): string => {
+export const getColorSwatchName = (color: ColorReference): string => {
   const match = SWATCH_PATTERN.exec(color);
   if (!match) return color;
 

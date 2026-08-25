@@ -22,7 +22,7 @@ type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const developmentProtocolWithLegacyColors = (): unknown => {
+const developmentProtocolWithRawColors = (): unknown => {
   const document: unknown = structuredClone(developmentProtocol);
   if (!isRecord(document)) {
     throw new Error('Development protocol fixture has no stages');
@@ -133,34 +133,24 @@ describe('bundled sample protocol', () => {
     expect(saveProtocol).not.toHaveBeenCalled();
   });
 
-  it('repairs shipped colors before admitting a current-version protocol', async () => {
+  it('rejects raw colors in a current-version protocol', async () => {
     const result = await importBundledProtocol({
-      name: 'Legacy Development Protocol',
+      name: 'Invalid Development Protocol',
       assets: [],
-      // Deliberately legacy-shaped (raw hex colors the repair rewrites), so
-      // it can only be described by widening — the same runtime path the
-      // malformed-document test above exercises.
-      document: developmentProtocolWithLegacyColors() as VersionedProtocol,
+      // Deliberately raw-colored, so it can only be described by widening —
+      // the same runtime path the malformed-document test above exercises.
+      document: developmentProtocolWithRawColors() as VersionedProtocol,
     });
 
-    expect(result.success).toBe(true);
-    if (!result.success) {
-      throw new Error(`Expected import success, received ${result.error}`);
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected raw protocol colors to fail validation');
     }
-    expect(result.migrated).toBe(false);
-    const narrative = result.protocol.stages.find(
-      (stage) => stage.type === 'NarrativePedigree',
-    );
-    const geospatial = result.protocol.stages.find(
-      (stage) => stage.type === 'Geospatial',
-    );
-    expect(narrative).toMatchObject({
-      diseases: [{ color: 'node-color-seq-1' }],
-    });
-    expect(geospatial).toMatchObject({
-      mapOptions: { color: 'ord-color-seq-6' },
-    });
-    expect(saveProtocol).toHaveBeenCalledTimes(1);
+    expect(result.error).toBe('validation-failed');
+    expect(
+      result.issues?.filter((issue) => issue.path.endsWith('.color')),
+    ).toHaveLength(2);
+    expect(saveProtocol).not.toHaveBeenCalled();
   });
 });
 
