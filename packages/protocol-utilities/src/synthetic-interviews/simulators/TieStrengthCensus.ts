@@ -14,6 +14,7 @@ import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { clearCensusAnswer, recordCensusAnswer } from './shared/censusMetadata';
 import { pairKeyOf, walkCensusPairs } from './shared/censusTraversal';
+import { deleteEdgeReleasingValues } from './shared/edgeDeletion';
 import {
   currentStepOf,
   generationFor,
@@ -147,7 +148,13 @@ export const simulateTieStrengthCensus: StageSimulator<
 
         if (strength === undefined) {
           if (existing !== null) {
-            engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
+            deleteEdgeReleasingValues({
+              engine,
+              edge: existing,
+              scope,
+              constraints,
+              uniqueRegistry: context.uniqueRegistry,
+            });
           }
           recordCensusAnswer({
             engine,

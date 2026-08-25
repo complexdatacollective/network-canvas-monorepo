@@ -56,6 +56,47 @@ const mulberry32 = (seed: number): (() => number) => {
 
 const HEX = '0123456789abcdef';
 
+/** The tag a batch's seed is mixed with to make the batch's own word. */
+const BATCH_TAG = splitmix32(0);
+
+/** The word a batch contributes before any session position is folded in. */
+const batchWord = (seed: number): number =>
+  splitmix32((splitmix32(seed >>> 0) ^ BATCH_TAG) >>> 0);
+
+/**
+ * Fold a session's position into a batch word, in that order.
+ *
+ * Ordered rather than symmetric, and that is the whole point. A commutative
+ * mix (`f(seed) ^ f(index)`) reads the batch seed and the session position as
+ * a SET, so batch 1's session 2 and batch 2's session 1 land on one state:
+ * two batches reporting different tokens would hand back sessions carrying
+ * identical ids, values, timestamps and case identifiers — duplicating
+ * experimental rows, and making a host that keys participants by those
+ * identifiers fold the colliding pair into one person. Here the seed is mixed
+ * into a word of its own first and the position folded into that word after,
+ * so a position can never stand in for a seed.
+ *
+ * Position 0 IS the batch, and takes the batch's own word rather than one
+ * derived from it: a single-interview run — every builder recipe, every
+ * preview — never touches the position machinery at all.
+ */
+const atPosition = (batch: number, index: number): number =>
+  index === 0 ? batch : splitmix32((batch ^ splitmix32(index >>> 0)) >>> 0);
+
+/**
+ * The seed a session's persona generator (`ValueGenerator`) runs from.
+ *
+ * The values themselves are not drawn here — the constraint machinery keeps
+ * its own faker — but WHICH batch position a generator speaks for is this
+ * module's question, and it is answered by the same ordered derivation the
+ * substreams use, in a lane of its own so the two never walk one word.
+ * Position 0 runs from the batch seed itself.
+ */
+export const sessionValueSeed = (seed: number, index: number): number =>
+  index === 0
+    ? seed >>> 0
+    : atPosition(splitmix32((seed >>> 0) ^ hashName('values')), index);
+
 export type SessionStreams = {
   /** Uniform [0, 1) draw from the named stream. */
   draw: (stream: StreamName) => number;
@@ -76,9 +117,7 @@ export const createSessionStreams = (
   seed: number,
   index: number,
 ): SessionStreams => {
-  const sessionState = splitmix32(
-    splitmix32(seed >>> 0) ^ splitmix32(index >>> 0),
-  );
+  const sessionState = atPosition(batchWord(seed), index);
   const generators = new Map<StreamName, () => number>(
     STREAM_NAMES.map((name) => [
       name,

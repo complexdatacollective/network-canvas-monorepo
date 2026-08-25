@@ -1044,6 +1044,18 @@ describe('byte-level reproducibility (C9)', () => {
     const four = batch(FULL_PROTOCOL, { count: 4, seed: 21 });
     expect(four.slice(0, 3)).toStrictEqual(three);
   });
+
+  it('keeps two batches apart where their seeds and positions cross', () => {
+    // Seed and position must not read as a SET: batch 1's session 2 and
+    // batch 2's session 1 are different sessions of different batches, and a
+    // host keying participants by the identifiers they carry would otherwise
+    // fold the pair into one person.
+    const one = batch(FULL_PROTOCOL, { count: 3, seed: 1 });
+    const two = batch(FULL_PROTOCOL, { count: 3, seed: 2 });
+
+    expect(JSON.stringify(two[1])).not.toBe(JSON.stringify(one[2]));
+    expect(JSON.stringify(two[0])).not.toBe(JSON.stringify(one[1]));
+  });
 });
 
 describe('a stopped walk is a prefix of the full one (C5)', () => {

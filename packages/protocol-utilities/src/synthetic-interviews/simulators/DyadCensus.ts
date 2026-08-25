@@ -1,5 +1,4 @@
 import type { Stage } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import {
   chooseLinkedPairs,
@@ -10,6 +9,7 @@ import { edgesForStage, nodesForStage } from '../utils/eligibleNodes';
 import { invariant } from '../utils/invariant';
 import { recordCensusAnswer } from './shared/censusMetadata';
 import { pairKeyOf, walkCensusPairs } from './shared/censusTraversal';
+import { deleteEdgeReleasingValues } from './shared/edgeDeletion';
 import {
   currentStepOf,
   promptsWorked,
@@ -120,7 +120,16 @@ export const simulateDyadCensus: StageSimulator<DyadCensusStage> = (
         }
 
         if (!present && existing !== null) {
-          engine.deleteEdge({ edgeId: existing[entityPrimaryKeyProperty] });
+          deleteEdgeReleasingValues({
+            engine,
+            edge: existing,
+            scope: { entity: 'edge', type: edgeType },
+            constraints: context.entityConstraints.forScope({
+              entity: 'edge',
+              type: edgeType,
+            }),
+            uniqueRegistry: context.uniqueRegistry,
+          });
         }
 
         recordCensusAnswer({

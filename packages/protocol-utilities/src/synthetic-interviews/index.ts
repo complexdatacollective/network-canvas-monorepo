@@ -25,7 +25,10 @@ import {
   finaliseSession,
   type SyntheticInterviewResult,
 } from './session-engine/envelope';
-import { createSessionStreams } from './session-engine/streams';
+import {
+  createSessionStreams,
+  sessionValueSeed,
+} from './session-engine/streams';
 import { simulateAlterEdgeForm } from './simulators/AlterEdgeForm';
 import { simulateAlterForm } from './simulators/AlterForm';
 import { simulateCategoricalBin } from './simulators/CategoricalBin';
@@ -264,8 +267,12 @@ export const generateInterviews = (
     // Values are the one thing NOT drawn from the session's substreams: the
     // constraint machinery needs personas rather than uniform bits, so it
     // keeps its own faker, seeded from the same batch seed and this session's
-    // position in it.
-    const valueGen = new ValueGenerator(options.seed + index, today);
+    // position in it — through the ordered, domain-separated mix, so two
+    // batches never meet on one session.
+    const valueGen = new ValueGenerator(
+      sessionValueSeed(options.seed, index),
+      today,
+    );
     const uniqueRegistry = new UniqueRegistry();
     const entityConstraints = createEntityConstraintCache({
       codebook: protocol.codebook,

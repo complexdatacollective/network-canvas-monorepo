@@ -400,4 +400,68 @@ describe('a filter that reacts to the census’s own edges', () => {
     ]);
     expect(answers(harness)).toHaveLength(1);
   });
+
+  describe('the unique values a "no" gives back', () => {
+    const GRADED_CODEBOOK = {
+      ...CODEBOOK,
+      edge: {
+        ...CODEBOOK.edge,
+        friend: {
+          name: 'friend',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'strength',
+              type: 'ordinal',
+              component: 'LikertScale',
+              options: [
+                { label: 'Sort of close', value: 1 },
+                { label: 'Very close', value: 2 },
+              ],
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    };
+
+    /**
+     * An edge an earlier stage graded: in the network, and its value issued
+     * from the registry exactly as that stage's own draw would have left it.
+     */
+    const gradedPair = (): Harness => {
+      const protocol = parseProtocol(GRADED_CODEBOOK, [
+        priorStage,
+        stageWith({ synthetic: constantDensity(0) }),
+      ]);
+      const harness = harnessFor(protocol);
+      harness.seedAlters(2);
+      const [a, b] = harness
+        .nodes()
+        .map((node) => node[entityPrimaryKeyProperty]);
+      if (!a || !b) throw new Error('fixture needs two alters');
+
+      harness.engine.addEdge({
+        edgeType: 'friend',
+        uid: 'edge-ab',
+        from: a,
+        to: b,
+        attributeData: { strength: 1 },
+        currentStep: 0,
+      });
+      harness.context.uniqueRegistry.claim('edge:friend', 'strength', 1);
+
+      return harness;
+    };
+
+    it('releases the value of an edge it deleted', () => {
+      const harness = gradedPair();
+      runStage(harness);
+
+      expect(edgesOfType(harness, 'friend')).toEqual([]);
+      expect(
+        harness.context.uniqueRegistry.isTaken('edge:friend', 'strength', 1),
+      ).toBe(false);
+    });
+  });
 });
