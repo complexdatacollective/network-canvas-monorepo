@@ -108,6 +108,7 @@ const MapOptions = () => {
           initialValue={initialMapOptions?.dataSourceAssetId}
           validation={{ required: true }}
           label="Layer data source"
+          hint="Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading."
         />
         {Boolean(dataSourceAssetId) && !isVariablesLoading && (
           <ArchitectField
