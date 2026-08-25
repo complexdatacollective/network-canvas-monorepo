@@ -123,21 +123,108 @@ describe('an option list the synthetic block has outgrown', () => {
     expect(reconcileVariableSynthetic(authored)).toBe(authored);
   });
 
-  it('leaves a refusal no option edit can explain to the commit-time backstop', () => {
-    // A missingness on an attribute its own validation requires: nothing about
-    // the option list caused it, and silently deleting what the researcher
-    // authored is not this function's business.
-    const contradictory = hobbies({
-      validation: { required: true },
-      synthetic: { missingProbability: 0.3 },
-    });
-
-    expect(reconcileVariableSynthetic(contradictory)).toBe(contradictory);
-    expect(parses(contradictory)).toBe(false);
-  });
-
   it('leaves a variable that carries no block alone', () => {
     const plain = hobbies();
     expect(reconcileVariableSynthetic(plain)).toBe(plain);
+  });
+});
+
+/**
+ * The sibling fields a field editor writes besides the option list. Each of
+ * these edits is legitimate, made from a stage editor that renders no
+ * generation control at all — so each one used to hand back a variable
+ * `VariableSchema` refuses, and a protocol invalidated by an ordinary change
+ * to an attribute.
+ */
+describe('validation and picker rules the synthetic block has outgrown', () => {
+  const age = (
+    overrides: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    name: 'age',
+    type: 'number',
+    component: 'Number',
+    ...overrides,
+  });
+
+  it('drops a constant the new validation bounds exclude, and keeps the rest', () => {
+    const narrowed = age({
+      validation: { minValue: 18, maxValue: 80 },
+      synthetic: {
+        distribution: 'constant',
+        value: 5,
+        missingProbability: 0.2,
+      },
+    });
+    expect(parses(narrowed)).toBe(false);
+
+    const reconciled = reconcileVariableSynthetic(narrowed);
+
+    // The family went with the value it could not keep — a constant with no
+    // value is not a declaration — but the missingness beside it is untouched
+    // by anything the bounds say.
+    expect(reconciled.synthetic).toEqual({ missingProbability: 0.2 });
+    expect(parses(reconciled)).toBe(true);
+  });
+
+  it('keeps a distribution the new bounds can still be satisfied inside', () => {
+    // A normal is clamped into the validation window rather than refused by
+    // it, so narrowing the attribute costs this descriptor nothing.
+    const narrowed = age({
+      validation: { minValue: 18, maxValue: 80 },
+      synthetic: { distribution: 'normal', mean: 40, sd: 12 },
+    });
+
+    expect(reconcileVariableSynthetic(narrowed)).toBe(narrowed);
+    expect(parses(narrowed)).toBe(true);
+  });
+
+  it('drops a date bound the picker’s new resolution cannot express', () => {
+    // The field editor moved the picker to whole years; a day-precision bound
+    // is a date this variable can no longer hold.
+    const coarsened = {
+      name: 'met_on',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+      synthetic: {
+        distribution: 'uniform',
+        min: '2020-06-15',
+        missingProbability: 0.1,
+      },
+    };
+    expect(parses(coarsened)).toBe(false);
+
+    const reconciled = reconcileVariableSynthetic(coarsened);
+
+    expect(reconciled.synthetic).toEqual({
+      distribution: 'uniform',
+      missingProbability: 0.1,
+    });
+    expect(parses(reconciled)).toBe(true);
+  });
+
+  it('drops a missingness the attribute has just been made to require', () => {
+    const required = hobbies({
+      validation: { required: true },
+      synthetic: { missingProbability: 0.3 },
+    });
+    expect(parses(required)).toBe(false);
+
+    const reconciled = reconcileVariableSynthetic(required);
+
+    expect(reconciled).not.toHaveProperty('synthetic');
+    expect(parses(reconciled)).toBe(true);
+  });
+
+  it('drops a block the schema will not have on any terms', () => {
+    // An empty block is refused in its own right and names no key to remove;
+    // the last resort is the only thing that can clear it.
+    const empty = hobbies({ synthetic: {} });
+    expect(parses(empty)).toBe(false);
+
+    const reconciled = reconcileVariableSynthetic(empty);
+
+    expect(reconciled).not.toHaveProperty('synthetic');
+    expect(parses(reconciled)).toBe(true);
   });
 });

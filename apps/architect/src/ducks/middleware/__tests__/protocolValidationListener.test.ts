@@ -16,9 +16,13 @@ vi.mock('wouter/use-browser-location', () => ({
 
 // Mock the underlying validator so each test controls success / failure /
 // throw, while the real validateProtocolAsync thunk (which flips isValidating)
-// still runs.
+// still runs. Only that one export is replaced: the reducers under test reach
+// the schema for other things (the codebook's synthetic reconciliation reads
+// `VariableSchema` and `VARIABLE_TYPE_VALIDATIONS`), and a whole-module stub
+// took those away from them.
 const validateProtocol = vi.fn();
-vi.mock('@codaco/protocol-validation', () => ({
+vi.mock('@codaco/protocol-validation', async (original) => ({
+  ...(await original<typeof import('@codaco/protocol-validation')>()),
   validateProtocol: (...args: unknown[]) => validateProtocol(...args),
 }));
 

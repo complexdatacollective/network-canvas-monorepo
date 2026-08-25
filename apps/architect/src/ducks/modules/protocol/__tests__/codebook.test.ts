@@ -205,4 +205,41 @@ describe('codebook.updateVariable', () => {
       synthetic: { optionWeights: [{ value: 'music', weight: 1 }] },
     });
   });
+
+  it('reconciles a distribution the new validation bounds have outgrown', () => {
+    // The same write from a stage's field editor, this time carrying
+    // validation rather than options: narrowing the attribute to 18–80 strands
+    // a synthetic constant of 5, which `VariableSchema` refuses just as firmly
+    // as a stale weight — and there is no generation control in that editor
+    // either.
+    const constant = {
+      ...ageVariable,
+      synthetic: {
+        distribution: 'constant',
+        value: 5,
+        missingProbability: 0.2,
+      },
+    } as unknown as Variable;
+
+    const next = reducer(
+      codebookWith(constant),
+      test.updateVariable({
+        variable: AGE,
+        configuration: {
+          validation: { minValue: 18, maxValue: 80 },
+        } as Partial<Variable>,
+        replaceProperties: ['validation'],
+      }),
+    );
+
+    // The constant went with the bounds it could not satisfy; the missingness
+    // beside it, which nothing about the bounds touches, stayed.
+    expect(getAge(next)).toEqual({
+      name: 'age',
+      type: 'number',
+      component: 'Number',
+      validation: { minValue: 18, maxValue: 80 },
+      synthetic: { missingProbability: 0.2 },
+    });
+  });
 });

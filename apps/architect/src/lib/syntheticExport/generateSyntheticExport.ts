@@ -1,6 +1,6 @@
 import type { InterviewExportInput } from '@codaco/network-exporters/input';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import { generateInterviews } from '@codaco/protocol-utilities';
+import { generateInterviewsAsync } from '@codaco/protocol-utilities';
 import {
   CURRENT_SCHEMA_VERSION,
   hashProtocol,
@@ -190,14 +190,33 @@ export async function generateSyntheticExport({
   // front that the protocol's rules cannot all be satisfied — leaves the
   // researcher exactly where they were. It reaches the caller as the engine's
   // own `SyntheticDataConstraintError`, conflicts and all.
-  const results = generateInterviews(
+  //
+  // Drawn through the engine's yielding driver because this runs on the tab's
+  // only thread. A session costs real work and a batch may ask for a thousand
+  // of them, so the synchronous driver would hold the thread for the whole run
+  // — the dialog frozen, the progress below reporting into frames that never
+  // come, and the browser eventually offering to kill the page.
+  const results = await generateInterviewsAsync(
     parsed,
     { count, seed, simulateDropOut, respectSkipLogic },
     assetData,
     (current, total) => onProgress?.({ phase: 'generating', current, total }),
   );
 
-  const hash = hashProtocol(parsed);
+  // Hashed from the SAVED document, never from the parse of it.
+  //
+  // `hashProtocol` hashes the codebook and stages as they are written, and
+  // parsing expands every field the schema defaults — so the two copies hash
+  // differently for any protocol that leaves a default unstated. Interviewer
+  // hashes the document as it arrived for exactly this reason
+  // (`apps/interviewer/src/lib/protocol/importProtocol.ts`), and a researcher
+  // who compares this archive with a real one from the same `.netcanvas` is
+  // grouping by that identifier. Hashing the parse here would give the same
+  // protocol two identities and silently split those analyses.
+  //
+  // The parsed copy still supplies the codebook: it is what generation drew
+  // against, so it is what describes the columns in this archive.
+  const hash = hashProtocol(protocol);
   const sessions: InterviewExportInput[] = results.map(({ session }) => ({
     id: session.id,
     // The same case id Interviewer gives a generated session, so the two

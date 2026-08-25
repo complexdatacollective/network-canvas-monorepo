@@ -12,14 +12,14 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { StoredProtocol } from '../../db/types';
 
 const {
-  mockGenerateInterviews,
+  mockGenerateInterviewsAsync,
   mockGetProtocolByHash,
   mockCreateSession,
   mockUpdateSession,
   mockDeleteSessions,
   mockLoadAssetData,
 } = vi.hoisted(() => ({
-  mockGenerateInterviews: vi.fn(),
+  mockGenerateInterviewsAsync: vi.fn(),
   mockGetProtocolByHash: vi.fn(),
   mockCreateSession: vi.fn(),
   mockUpdateSession: vi.fn(),
@@ -31,7 +31,18 @@ vi.mock('@codaco/protocol-utilities', async () => {
   const actual = await vi.importActual<typeof ProtocolUtilities>(
     '@codaco/protocol-utilities',
   );
-  return { ...actual, generateInterviews: mockGenerateInterviews };
+  return {
+    ...actual,
+    generateInterviewsAsync: mockGenerateInterviewsAsync,
+    // Every test below doubles as a guard on WHICH driver this host draws
+    // through: the synchronous one holds the tab's only thread for the entire
+    // batch, so the progress reported here would have no frame to render in.
+    generateInterviews: () => {
+      throw new Error(
+        'generateSyntheticSessions must draw through generateInterviewsAsync',
+      );
+    },
+  };
 });
 
 vi.mock('../../db/api', () => ({
@@ -130,7 +141,7 @@ function interview(
 
 /** The engine returns `count` finished interviews. */
 function completeBatch() {
-  mockGenerateInterviews.mockImplementation(
+  mockGenerateInterviewsAsync.mockImplementation(
     (
       _protocol: CurrentProtocol,
       options: GenerateInterviewsOptions,
@@ -205,7 +216,7 @@ describe('generateSyntheticSessions', () => {
 
     await generateSyntheticSessions(BATCH);
 
-    const [protocol] = mockGenerateInterviews.mock.calls[0] as [
+    const [protocol] = mockGenerateInterviewsAsync.mock.calls[0] as [
       CurrentProtocol,
     ];
     // The row carries no `synthetic` anywhere; re-parsing is what puts the
@@ -224,7 +235,7 @@ describe('generateSyntheticSessions', () => {
     await expect(generateSyntheticSessions(BATCH)).rejects.toThrow(
       /could not be read by the current protocol schema/,
     );
-    expect(mockGenerateInterviews).not.toHaveBeenCalled();
+    expect(mockGenerateInterviewsAsync).not.toHaveBeenCalled();
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
@@ -238,7 +249,7 @@ describe('generateSyntheticSessions', () => {
 
     await generateSyntheticSessions(BATCH);
 
-    expect(mockGenerateInterviews.mock.calls[0]?.[2]).toBe(assetData);
+    expect(mockGenerateInterviewsAsync.mock.calls[0]?.[2]).toBe(assetData);
   });
 
   it('asks the engine for the batch the researcher configured', async () => {
@@ -253,7 +264,7 @@ describe('generateSyntheticSessions', () => {
       startWindow: '2026-08-01T00:00:00.000Z',
     });
 
-    expect(mockGenerateInterviews.mock.calls[0]?.[1]).toEqual({
+    expect(mockGenerateInterviewsAsync.mock.calls[0]?.[1]).toEqual({
       count: 3,
       seed: 4321,
       startWindow: '2026-08-01T00:00:00.000Z',
@@ -282,17 +293,17 @@ describe('generateSyntheticSessions', () => {
     expect(Number.isInteger(first.seed)).toBe(true);
     // The drawn seed is the one the engine actually ran on — otherwise
     // re-entering it would reproduce a different batch.
-    expect(mockGenerateInterviews.mock.calls[0]?.[1]).toMatchObject({
+    expect(mockGenerateInterviewsAsync.mock.calls[0]?.[1]).toMatchObject({
       seed: first.seed,
     });
-    expect(mockGenerateInterviews.mock.calls[1]?.[1]).toMatchObject({
+    expect(mockGenerateInterviewsAsync.mock.calls[1]?.[1]).toMatchObject({
       seed: second.seed,
     });
     expect(second.seed).not.toBe(first.seed);
   });
 
   it('stores each session under the envelope the engine produced', async () => {
-    mockGenerateInterviews.mockReturnValue([
+    mockGenerateInterviewsAsync.mockReturnValue([
       interview(1, {
         currentStep: 2,
         session: {
@@ -325,7 +336,7 @@ describe('generateSyntheticSessions', () => {
   });
 
   it('stores a dropped interview as a genuine unfinished session', async () => {
-    mockGenerateInterviews.mockReturnValue([
+    mockGenerateInterviewsAsync.mockReturnValue([
       interview(1, {
         droppedOut: true,
         currentStep: 1,
@@ -356,7 +367,7 @@ describe('generateSyntheticSessions', () => {
   });
 
   it('surfaces a refusal without having written anything to roll back', async () => {
-    mockGenerateInterviews.mockImplementation(() => {
+    mockGenerateInterviewsAsync.mockImplementation(() => {
       throw refusal();
     });
 
@@ -421,6 +432,6 @@ describe('generateSyntheticSessions', () => {
     await expect(generateSyntheticSessions(BATCH)).rejects.toThrow(
       'Protocol not found for hash "protocol-hash".',
     );
-    expect(mockGenerateInterviews).not.toHaveBeenCalled();
+    expect(mockGenerateInterviewsAsync).not.toHaveBeenCalled();
   });
 });

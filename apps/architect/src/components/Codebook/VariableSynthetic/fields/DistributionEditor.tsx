@@ -26,7 +26,12 @@ import { parameterEntryWindow, parameterWindow } from '../parameterWindows';
  *
  * Every proposal goes through `isAdmissible` before it is committed, which
  * parses the whole variable rather than checking a rule of its own. Switching
- * family therefore cannot land on a combination the schema refuses.
+ * family therefore cannot land on a combination the schema refuses — and,
+ * because a family's numbers are carried over one at a time and each is kept
+ * only where the schema still accepts the block, cannot be blocked by one
+ * either. The old family's numbers come across where the new family can hold
+ * them; where it cannot, that parameter starts at its own window's middle
+ * instead of the whole switch being refused.
  */
 
 /** How each distribution family is named to a researcher. */
@@ -169,22 +174,40 @@ export function DistributionEditor({
     const nextSpec = specs.find((candidate) => candidate.family === family);
     if (!nextSpec) return;
 
-    const proposal: SyntheticBlockDraft = {
+    // The family as it would arrive carrying nothing: every required parameter
+    // at the middle of its own window, every optional one unstated. This is the
+    // floor the search below starts from, because a family a researcher
+    // selected has to arrive somewhere its controls can be seen and worked
+    // with — a refusal that leaves the select on the old family gives them a
+    // sentence about a distribution that is not on screen.
+    const seeded: SyntheticBlockDraft = {
       ...preserved,
       distribution: family,
     };
     for (const parameter of nextSpec.parameters) {
-      const window = parameterWindow(parameter, valueWindow);
+      if (parameter.optional) continue;
+      seeded[parameter.key] = seedParameterValue(
+        parameterWindow(parameter, valueWindow),
+      );
+    }
+
+    // Then keep as much of the old family's numbers as the NEW family will
+    // take — offered one at a time, so each is judged against the block it
+    // would actually join rather than on its own. A normal's mean of 0.5
+    // survives the move to beta; the standard deviation of 0.9 beside it does
+    // not, because `sd² < mean × (1 − mean)` is a fact about the pair. Asking
+    // the schema per parameter is what tells those two apart without this
+    // editor knowing a single family's arithmetic.
+    let proposal = seeded;
+    for (const parameter of nextSpec.parameters) {
       const carried = synthetic?.[parameter.key];
-      if (typeof carried === 'number' && withinWindow(carried, window)) {
-        proposal[parameter.key] = carried;
+      if (typeof carried !== 'number') continue;
+      if (carried === proposal[parameter.key]) continue;
+      if (!withinWindow(carried, parameterWindow(parameter, valueWindow))) {
         continue;
       }
-      // An optional parameter simply stays unstated; a required one has to
-      // arrive with a value the window admits.
-      if (!parameter.optional) {
-        proposal[parameter.key] = seedParameterValue(window);
-      }
+      const candidate = { ...proposal, [parameter.key]: carried };
+      if (refusalsFor(candidate).length === 0) proposal = candidate;
     }
 
     commit(FAMILY_KEY, proposal);

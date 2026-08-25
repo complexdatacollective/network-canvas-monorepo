@@ -430,6 +430,67 @@ describe('a refusal no single field can state', () => {
   });
 });
 
+describe('changing which family draws the values', () => {
+  /**
+   * The numbers come across where the new family can hold them, and only the
+   * ones it cannot start over. Carrying the pair wholesale meant a normal
+   * whose spread beta's `sd² < mean × (1 − mean)` cannot support refused the
+   * switch outright: the select stayed on Normal, beta's controls never
+   * mounted, and the only way through was to guess which number to shrink
+   * first, on a distribution that was not on screen.
+   */
+  it('starts the parameters the new family cannot carry, and keeps the ones it can', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...SCALAR,
+        synthetic: {
+          distribution: 'normal',
+          mean: 0.5,
+          sd: 0.9,
+          missingProbability: 0.1,
+        },
+      },
+    });
+    expand();
+
+    const select = screen.getByRole('combobox', {
+      name: 'How values are spread',
+    });
+    fireEvent.change(select, { target: { value: 'beta' } });
+
+    // 0.9² ≥ 0.5 × 0.5, so the spread cannot come with it; the mean can.
+    expect(latest()).toEqual({
+      distribution: 'beta',
+      mean: 0.5,
+      sd: 0,
+      missingProbability: 0.1,
+    });
+    // The switch actually happened, so the beta controls are there to work on.
+    expect(select).toHaveValue('beta');
+    expect(
+      screen.getByRole('spinbutton', { name: 'Standard deviation' }),
+    ).toHaveValue(0);
+  });
+
+  it('carries both numbers when the new family accepts them together', () => {
+    const { expand, latest } = setup({
+      variable: {
+        ...SCALAR,
+        synthetic: { distribution: 'normal', mean: 0.9, sd: 0.05 },
+      },
+    });
+    expand();
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'How values are spread' }),
+      { target: { value: 'beta' } },
+    );
+
+    // 0.05² < 0.9 × 0.1, so nothing here has to be given up.
+    expect(latest()).toEqual({ distribution: 'beta', mean: 0.9, sd: 0.05 });
+  });
+});
+
 describe('option weights', () => {
   it('bounds a weight by the schema’s own ceiling', () => {
     const { expand, latest } = setup({ variable: ORDINAL });

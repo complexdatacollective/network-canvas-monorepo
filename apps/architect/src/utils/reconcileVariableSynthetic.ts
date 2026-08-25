@@ -1,4 +1,8 @@
 import { optionValueKey, VariableSchema } from '@codaco/protocol-validation';
+import {
+  asSyntheticVariableDraft,
+  syntheticRefusals,
+} from '~/components/Codebook/VariableSynthetic/draft';
 
 /**
  * Keeps a variable's synthetic block honest about the option list beside it.
@@ -20,20 +24,40 @@ import { optionValueKey, VariableSchema } from '@codaco/protocol-validation';
  * every step below is offered to `VariableSchema` and kept only if it made the
  * complaint go away.
  *
- * Deliberately narrow. Only the two option-dependent tables are touched;
- * missingness, distributions and generators are left exactly as authored, and
- * a block the schema still refuses for some other reason is left alone for the
- * commit-time validation listener to report, as it already does.
+ * Option lists are not the only sibling a synthetic block depends on. The same
+ * field editors write `validation` and a date picker's `parameters`, and both
+ * bound the block just as directly: narrowing an attribute to 18–80 strands a
+ * synthetic constant of 5, and moving a date picker to whole years strands a
+ * bound written as `2020-06-15`. So the repair is ordered by how much authored
+ * content it gives up — the option tables first, since they are the ones an
+ * option edit can explain, then whatever the schema itself names, and the
+ * block as a whole only when nothing inside it could be kept.
+ *
+ * The result is one guarantee: **an ordinary field edit cannot leave a
+ * `synthetic` block the schema refuses.** Whatever survives, generation reads
+ * the rest as unstated and resolves it, which is always a valid protocol —
+ * where leaving it would invalidate the protocol from an editor that shows no
+ * generation control at all.
  */
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Whether the schema complains about anything INSIDE the synthetic block. */
+/**
+ * Whether the schema's complaint about this variable is the BLOCK's.
+ *
+ * The editors' own question, asked through their own implementation: the
+ * variable is parsed with the block and without it, and only what the second
+ * parse did not already raise counts. Reading issue paths instead was not
+ * enough — a branch of `VariableSchema` that no longer matches at all reports
+ * `invalid_union` at the variable's root, naming nothing, so a block missing
+ * the parameter its family requires looked to this file like a variable the
+ * schema was content with.
+ */
 const refusesSynthetic = (variable: unknown): boolean => {
-  const result = VariableSchema.safeParse(variable);
-  if (result.success) return false;
-  return result.error.issues.some((issue) => issue.path[0] === 'synthetic');
+  const draft = asSyntheticVariableDraft(variable);
+  if (draft === undefined) return false;
+  return syntheticRefusals(draft, draft.synthetic).length > 0;
 };
 
 /**
@@ -79,6 +103,21 @@ const selectionEntries = (
   );
 };
 
+/** The variable carrying this block, or carrying none where it is empty. */
+const withSyntheticBlock = (
+  variable: Record<string, unknown>,
+  synthetic: Record<string, unknown>,
+): Record<string, unknown> => {
+  // Authored = key present (spec governing rule 4): a block whose last stated
+  // property has just gone is no block, not an empty one — which the schema
+  // refuses in its own right.
+  if (Object.keys(synthetic).length === 0) {
+    const { synthetic: _dropped, ...withoutBlock } = variable;
+    return withoutBlock;
+  }
+  return { ...variable, synthetic };
+};
+
 /** The variable with one key of its synthetic block replaced, or removed. */
 const withSyntheticKey = (
   variable: Record<string, unknown>,
@@ -87,15 +126,82 @@ const withSyntheticKey = (
   value: unknown,
 ): Record<string, unknown> => {
   const { [key]: _removed, ...rest } = synthetic;
-  const next = value === undefined ? rest : { ...rest, [key]: value };
-  // Authored = key present (spec governing rule 4): a block whose last stated
-  // property has just gone is no block, not an empty one — which the schema
-  // refuses in its own right.
-  if (Object.keys(next).length === 0) {
-    const { synthetic: _dropped, ...withoutBlock } = variable;
-    return withoutBlock;
+  return withSyntheticBlock(
+    variable,
+    value === undefined ? rest : { ...rest, [key]: value },
+  );
+};
+
+/**
+ * The synthetic keys the schema is complaining about, read off the issue paths
+ * rather than worked out here.
+ *
+ * Asking the schema which key is at fault is what lets this repair reach rules
+ * it knows nothing about: a constant outside a validation window reports
+ * `synthetic.value`, a date bound at the wrong resolution reports
+ * `synthetic.min`, and a rule added tomorrow will report its own key without
+ * this file being edited (spec governing rule 1).
+ */
+const refusedSyntheticKeys = (variable: unknown): Set<string> => {
+  const result = VariableSchema.safeParse(variable);
+  const keys = new Set<string>();
+  if (result.success) return keys;
+  for (const issue of result.error.issues) {
+    if (issue.path[0] !== 'synthetic') continue;
+    const key = issue.path[1];
+    if (typeof key === 'string') keys.add(key);
   }
-  return { ...variable, synthetic: next };
+  return keys;
+};
+
+/**
+ * The block with everything the schema objects to taken out of it, a round of
+ * complaints at a time.
+ *
+ * The family itself is the last thing to go, and goes as one thing: it is
+ * removed only once the schema has stopped naming a removable parameter, and
+ * once it is gone every parameter still standing is an unrecognised key to the
+ * branch that remains — which the schema then names, so the next round clears
+ * them. That is why this terminates on rules nobody wrote it against.
+ */
+const withoutRefusedKeys = (
+  variable: Record<string, unknown>,
+): Record<string, unknown> => {
+  let current = variable;
+  let familyDropped = false;
+  // Every round removes at least one key or stops, so the number of keys the
+  // block started with (plus the round that gives up the family) bounds it.
+  const startingKeys = isRecord(variable.synthetic)
+    ? Object.keys(variable.synthetic).length
+    : 0;
+
+  for (let round = 0; round <= startingKeys + 1; round += 1) {
+    if (!refusesSynthetic(current)) return current;
+    const block = isRecord(current.synthetic) ? current.synthetic : {};
+    if (Object.keys(block).length === 0) return current;
+
+    // The discriminant is held back from the ordinary sweep: dropping it on
+    // the first complaint would take a whole authored distribution away over
+    // one parameter the edit had outgrown.
+    const named = [...refusedSyntheticKeys(current)].filter(
+      (key) => key !== 'distribution' && key in block,
+    );
+
+    if (named.length > 0) {
+      const remaining = { ...block };
+      for (const key of named) delete remaining[key];
+      current = withSyntheticBlock(current, remaining);
+      continue;
+    }
+    if (!familyDropped && 'distribution' in block) {
+      const { distribution: _gone, ...remaining } = block;
+      current = withSyntheticBlock(current, remaining);
+      familyDropped = true;
+      continue;
+    }
+    return current;
+  }
+  return current;
 };
 
 /**
@@ -183,8 +289,18 @@ export const reconcileVariableSynthetic = (
     if (!refusesSynthetic(candidate)) return candidate;
   }
 
-  // Still refused, for something no option edit can explain — a distribution
-  // outside a bound, a missingness on a required attribute. Left as authored;
-  // the commit-time validation listener is what reports those, as it does now.
-  return variable;
+  // Still refused, for something no option edit explains — a constant the new
+  // validation bounds exclude, a date bound at a resolution the picker has
+  // stopped offering, a missingness on an attribute just made required. The
+  // schema names the key in each case, so each goes on its own terms.
+  candidate = withoutRefusedKeys(candidate);
+  if (!refusesSynthetic(candidate)) return candidate;
+
+  // Nothing inside the block could be kept. It goes whole, and generation
+  // resolves the variable from the schema's defaults — because the alternative
+  // is a protocol that an ordinary field edit has invalidated, reported later
+  // by the commit-time listener, from an editor with no control on screen that
+  // could put it right.
+  const { synthetic: _dropped, ...withoutBlock } = candidate;
+  return withoutBlock;
 };

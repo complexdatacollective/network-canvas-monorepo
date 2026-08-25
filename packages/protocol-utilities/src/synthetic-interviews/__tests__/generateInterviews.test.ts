@@ -13,8 +13,10 @@ import {
 } from '@codaco/shared-consts';
 
 import { DEFAULT_SYNTHETIC_SEED, MAX_SYNTHETIC_INTERVIEWS } from '../constants';
+import { SyntheticDataConstraintError } from '../constraints/error';
 import {
   generateInterviews,
+  generateInterviewsAsync,
   type GenerateInterviewsOptions,
   REGISTRY,
   type SyntheticInterviewResult,
@@ -1332,5 +1334,156 @@ describe('the fixture channel', () => {
         },
       }),
     ).toThrow(/codebook does not define/);
+  });
+});
+
+describe('generateInterviewsAsync', () => {
+  /**
+   * Two claims, and the second is worthless without the first: the yielding
+   * driver must hand the thread back BETWEEN sessions, and the batch it draws
+   * must be the batch the synchronous driver draws — the same interviews, in
+   * the same order, down to the bytes.
+   */
+  const options: GenerateInterviewsOptions = {
+    count: 6,
+    seed: 91,
+    simulateDropOut: true,
+    startWindow: START_WINDOW,
+  };
+
+  /**
+   * Long and demanding, exactly as the dropout suite's is and for the same
+   * reason: burden accumulates quadratically, so a protocol this size makes
+   * leaving early common — and a batch nobody leaves would never reach the
+   * completed floor, which is the half of the run that redraws sessions after
+   * the walk has finished.
+   */
+  const DEMANDING_PROTOCOL = parse([
+    quickAddStage({
+      generatesData: true,
+      count: { distribution: 'constant', value: 2 },
+    }),
+    ...Array.from({ length: 40 }, (_unused, index) => ({
+      ...ordinalBinStage,
+      id: `bin-${index}`,
+      prompts: [
+        {
+          id: `bin-${index}-p1`,
+          text: 'How close are they?',
+          variable: 'closeness',
+          color: 'ord-color-seq-1',
+        },
+      ],
+    })),
+  ]);
+
+  it(
+    'draws the same batch the synchronous driver draws, byte for byte',
+    { timeout: 120_000 },
+    async () => {
+      const asynchronous = await generateInterviewsAsync(
+        DEMANDING_PROTOCOL,
+        options,
+      );
+      const synchronous = generateInterviews(DEMANDING_PROTOCOL, options);
+
+      // Stringified rather than compared structurally: a session destined for
+      // storage and export must not differ even in key order.
+      expect(JSON.stringify(asynchronous)).toBe(JSON.stringify(synchronous));
+      // Not a vacuous comparison: this batch really does reach the floor.
+      expect(
+        generateInterviews(DEMANDING_PROTOCOL, {
+          ...options,
+          minimumCompletedRatio: 0,
+        }).some((result) => result.droppedOut),
+      ).toBe(true);
+    },
+  );
+
+  it('lets other work on the thread run before the batch is finished', async () => {
+    // The whole point: `onProgress` only schedules a render, and a driver that
+    // never returns to the event loop never lets that render happen. A
+    // macrotask queued alongside the run stands in for it — under the
+    // synchronous driver nothing here could land before the last session.
+    const order: string[] = [];
+    let ticking = true;
+    const tick = () => {
+      if (!ticking) return;
+      order.push('tick');
+      setTimeout(tick, 0);
+    };
+    setTimeout(tick, 0);
+
+    await generateInterviewsAsync(
+      FULL_PROTOCOL,
+      options,
+      {},
+      (done) => order.push(`session ${done}`),
+      // Every session, so the assertion does not depend on how long this
+      // fixture's stages happen to take on the machine running it.
+      { sliceMs: 0 },
+    );
+    ticking = false;
+
+    expect(order.indexOf('tick')).toBeGreaterThan(-1);
+    expect(order.indexOf('tick')).toBeLessThan(
+      order.indexOf(`session ${options.count}`),
+    );
+  });
+
+  it('hands the thread back the way the caller asks it to', async () => {
+    const handovers: number[] = [];
+    const results = await generateInterviewsAsync(
+      FULL_PROTOCOL,
+      { ...options, simulateDropOut: false },
+      {},
+      undefined,
+      {
+        yieldControl: async () => {
+          handovers.push(handovers.length);
+        },
+        sliceMs: 0,
+      },
+    );
+
+    expect(results).toHaveLength(options.count);
+    expect(handovers).toHaveLength(options.count);
+  });
+
+  it('refuses an impossible protocol before drawing anything, as its sibling does', async () => {
+    // The pre-seed gate belongs to the preparation both drivers share, so a
+    // refusal has to arrive here as a rejection rather than as an empty batch.
+    // A roster floor no resolved roster can meet is the engine's own example.
+    const impossible = CurrentProtocolSchema.parse({
+      name: 'Walk test protocol',
+      schemaVersion: 8,
+      assetManifest: {
+        colleagues: {
+          id: 'colleagues',
+          name: 'Colleagues',
+          type: 'network',
+          source: 'colleagues.json',
+        },
+      },
+      codebook,
+      stages: [
+        {
+          id: 'roster',
+          type: 'NameGeneratorRoster',
+          label: 'Colleagues',
+          subject: { entity: 'node', type: 'person' },
+          dataSource: 'colleagues',
+          behaviours: { minNodes: 3 },
+          prompts: [{ id: 'roster-p1', text: 'Who do you work with?' }],
+        },
+      ],
+    }) as unknown as CurrentProtocol;
+
+    expect(() => generateInterviews(impossible, { count: 1, seed: 1 })).toThrow(
+      SyntheticDataConstraintError,
+    );
+    await expect(
+      generateInterviewsAsync(impossible, { count: 1, seed: 1 }),
+    ).rejects.toThrow(SyntheticDataConstraintError);
   });
 });

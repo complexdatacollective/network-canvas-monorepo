@@ -254,25 +254,29 @@ export const analyseSyntheticFeasibility = (
 };
 
 /**
- * Generate `count` synthetic interviews for a PARSED protocol, walking it
- * stage by stage as a participant would and returning complete
- * Interviewer-shaped sessions (spec: Public API). Drop-outs are genuine
- * abandoned sessions among the N (decision 11).
+ * A batch with everything decided except the drawing: the parsed options, and
+ * the one function that turns an index into a session.
  *
- * `protocol` must be schema-parse output: stage-level `synthetic` descriptors
- * exist because parsing put them there, and the engine refuses rather than
- * re-defaults. Hosts parse at their generation boundary (plan D8/Phase 5).
- *
- * `assetData` carries host-resolved roster rows (stage-id keyed, the
- * three-way contract) and Geospatial property candidates; `onProgress` fires
- * after each session lands.
+ * Held apart from the loop because there are two loops — one that runs the
+ * batch straight through and one that hands the thread back between sessions
+ * — and every decision above them (the refusal, the interface rules, the
+ * anchor a whole batch dates from) has to be made exactly once and identically
+ * for both. A session is a pure function of its index and this preparation, so
+ * the two drivers cannot draw different interviews.
  */
-export const generateInterviews = (
+type PreparedBatch = {
+  options: z.output<typeof generateInterviewsOptions>;
+  generateOne: (
+    index: number,
+    simulateDropOut: boolean,
+  ) => SyntheticInterviewResult;
+};
+
+const prepareBatch = (
   protocol: CurrentProtocol,
   userOptions: GenerateInterviewsOptions,
-  assetData: AssetData = {},
-  onProgress?: (done: number, total: number) => void,
-): SyntheticInterviewResult[] => {
+  assetData: AssetData,
+): PreparedBatch => {
   const options = generateInterviewsOptions.parse(userOptions);
 
   // A stop target the protocol does not have is a caller holding a stale
@@ -419,31 +423,156 @@ export const generateInterviews = (
     });
   };
 
+  return { options, generateOne };
+};
+
+/**
+ * The sessions the completed floor has to redraw (decision 20): a deficit
+ * session re-runs on its OWN substreams with dropout disabled — the same
+ * participant finishing — so the floor stays deterministic and sessions
+ * outside the deficit are untouched.
+ *
+ * Returned as indices rather than performed here, so the driver that yields
+ * between draws can yield between these too: the repair pass is drawing whole
+ * sessions, and is exactly as long as the run that produced the deficit.
+ */
+const completionDeficit = (
+  { options }: PreparedBatch,
+  results: readonly SyntheticInterviewResult[],
+): number[] => {
+  if (!options.simulateDropOut || options.minimumCompletedRatio <= 0) return [];
+  const minimumCompleted = Math.max(
+    1,
+    Math.ceil(options.count * options.minimumCompletedRatio),
+  );
+  let completed = results.filter((result) => !result.droppedOut).length;
+  const deficit: number[] = [];
+  for (
+    let index = 0;
+    index < options.count && completed < minimumCompleted;
+    index += 1
+  ) {
+    if (!results[index]?.droppedOut) continue;
+    deficit.push(index);
+    completed += 1;
+  }
+  return deficit;
+};
+
+/**
+ * Generate `count` synthetic interviews for a PARSED protocol, walking it
+ * stage by stage as a participant would and returning complete
+ * Interviewer-shaped sessions (spec: Public API). Drop-outs are genuine
+ * abandoned sessions among the N (decision 11).
+ *
+ * `protocol` must be schema-parse output: stage-level `synthetic` descriptors
+ * exist because parsing put them there, and the engine refuses rather than
+ * re-defaults. Hosts parse at their generation boundary (plan D8/Phase 5).
+ *
+ * `assetData` carries host-resolved roster rows (stage-id keyed, the
+ * three-way contract) and Geospatial property candidates; `onProgress` fires
+ * after each session lands.
+ *
+ * Draws the whole batch without pausing, which is right for a caller that owns
+ * its thread — a server route, a test, a one-session preview. A caller sharing
+ * a thread with a user interface wants {@link generateInterviewsAsync}, which
+ * draws the same batch and lets the thread breathe between sessions.
+ */
+export const generateInterviews = (
+  protocol: CurrentProtocol,
+  userOptions: GenerateInterviewsOptions,
+  assetData: AssetData = {},
+  onProgress?: (done: number, total: number) => void,
+): SyntheticInterviewResult[] => {
+  const batch = prepareBatch(protocol, userOptions, assetData);
+  const { options, generateOne } = batch;
+
   const results: SyntheticInterviewResult[] = [];
   for (let index = 0; index < options.count; index += 1) {
     results.push(generateOne(index, options.simulateDropOut));
     onProgress?.(index + 1, options.count);
   }
 
-  // The completed floor (decision 20): a deficit session re-runs on its OWN
-  // substreams with dropout disabled — the same participant finishing — so
-  // the floor stays deterministic and sessions outside the deficit are
-  // untouched.
-  if (options.simulateDropOut && options.minimumCompletedRatio > 0) {
-    const minimumCompleted = Math.max(
-      1,
-      Math.ceil(options.count * options.minimumCompletedRatio),
-    );
-    let completed = results.filter((result) => !result.droppedOut).length;
-    for (
-      let index = 0;
-      index < options.count && completed < minimumCompleted;
-      index += 1
-    ) {
-      if (!results[index]?.droppedOut) continue;
-      results[index] = generateOne(index, false);
-      completed += 1;
-    }
+  for (const index of completionDeficit(batch, results)) {
+    results[index] = generateOne(index, false);
+  }
+
+  return results;
+};
+
+/**
+ * How long a batch may hold the thread before handing it back, in
+ * milliseconds. One frame: long enough that a protocol whose sessions cost
+ * almost nothing is not paying a scheduler round-trip for each of them, short
+ * enough that a browser gets its next paint on time.
+ */
+const YIELD_SLICE_MS = 16;
+
+/** Hand the thread back, far enough for a browser to paint on the way. */
+const macrotask = (): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+export type AsyncBatchOptions = {
+  /**
+   * How the thread is handed back. A macrotask by default, which is what lets
+   * a browser render between sessions; a host with a better scheduler of its
+   * own can supply it.
+   */
+  yieldControl?: () => Promise<void>;
+  /**
+   * Work to accumulate before handing the thread back, in milliseconds. Zero
+   * yields after every session.
+   */
+  sliceMs?: number;
+};
+
+/**
+ * {@link generateInterviews}, run so that the thread it is on stays usable.
+ *
+ * Same batch, session for session and byte for byte: the two drivers share one
+ * {@link prepareBatch}, and a session is a pure function of its index and that
+ * preparation, so nothing about the pauses can reach the interviews. What the
+ * pauses reach is everything else — a progress bar that actually moves, a
+ * dialog that can still be read, a tab the browser does not offer to kill.
+ *
+ * Drawing a session costs real work (tens of milliseconds on a protocol with
+ * many stages), and a batch may ask for {@link MAX_SYNTHETIC_INTERVIEWS} of
+ * them, so a host that draws them all in one synchronous call freezes for as
+ * long as that takes — during which its own `onProgress` renders nothing,
+ * because it never gets a frame to render in.
+ */
+export const generateInterviewsAsync = async (
+  protocol: CurrentProtocol,
+  userOptions: GenerateInterviewsOptions,
+  assetData: AssetData = {},
+  onProgress?: (done: number, total: number) => void,
+  {
+    yieldControl = macrotask,
+    sliceMs = YIELD_SLICE_MS,
+  }: AsyncBatchOptions = {},
+): Promise<SyntheticInterviewResult[]> => {
+  const batch = prepareBatch(protocol, userOptions, assetData);
+  const { options, generateOne } = batch;
+
+  let held = Date.now();
+  const breathe = async () => {
+    if (Date.now() - held < sliceMs) return;
+    await yieldControl();
+    held = Date.now();
+  };
+
+  const results: SyntheticInterviewResult[] = [];
+  for (let index = 0; index < options.count; index += 1) {
+    results.push(generateOne(index, options.simulateDropOut));
+    onProgress?.(index + 1, options.count);
+    await breathe();
+  }
+
+  for (const index of completionDeficit(batch, results)) {
+    results[index] = generateOne(index, false);
+    await breathe();
   }
 
   return results;

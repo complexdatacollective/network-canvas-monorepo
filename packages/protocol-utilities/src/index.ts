@@ -43,6 +43,14 @@ export {
   generateInterviewsOptions,
   type GenerateInterviewsOptions,
 } from './synthetic-interviews';
+// The same batch, drawn so that the thread it runs on stays usable. Published
+// because a host that shares a thread with a user interface cannot draw a
+// thousand sessions in one call: the tab freezes for the whole run, and the
+// progress it reports has no frame to render in.
+export {
+  generateInterviewsAsync,
+  type AsyncBatchOptions,
+} from './synthetic-interviews';
 // The pre-seed feasibility gate on its own: the exact analysis
 // `generateInterviews` refuses with, callable without generating anything.
 // Published so an authoring surface (Architect's live feasibility) can render
