@@ -500,6 +500,38 @@ const completionDeficit = (
  * a thread with a user interface wants {@link generateInterviewsAsync}, which
  * draws the same batch and lets the thread breathe between sessions.
  */
+/**
+ * How a batch reports itself, given that it may still repair itself afterwards.
+ *
+ * The completed floor redraws WHOLE sessions once the walk is over — up to
+ * `minimumCompletedRatio` of the batch, which on a demanding protocol is
+ * seconds of work — and every one of them has already been counted once by
+ * the loop that drew it. Reporting the last interview before that pass left
+ * every host's bar sitting at the end while the work carried on.
+ *
+ * So where a repair is possible the final tick WAITS, and the total stays
+ * `count`: a host renders "interview 999 of 1000" through the repairs and
+ * reaches the end when the batch really has. A run that cannot repair itself
+ * — no dropout, or no floor — reports exactly as it always did.
+ */
+const batchProgress = (
+  options: PreparedBatch['options'],
+  onProgress?: (done: number, total: number) => void,
+) => {
+  const mayRepair =
+    options.simulateDropOut && options.minimumCompletedRatio > 0;
+  return {
+    drew: (done: number) =>
+      onProgress?.(
+        mayRepair ? Math.min(done, options.count - 1) : done,
+        options.count,
+      ),
+    finished: () => {
+      if (mayRepair) onProgress?.(options.count, options.count);
+    },
+  };
+};
+
 export const generateInterviews = (
   protocol: CurrentProtocol,
   userOptions: GenerateInterviewsOptions,
@@ -508,16 +540,18 @@ export const generateInterviews = (
 ): SyntheticInterviewResult[] => {
   const batch = prepareBatch(protocol, userOptions, assetData);
   const { options, generateOne } = batch;
+  const progress = batchProgress(options, onProgress);
 
   const results: SyntheticInterviewResult[] = [];
   for (let index = 0; index < options.count; index += 1) {
     results.push(generateOne(index, options.simulateDropOut));
-    onProgress?.(index + 1, options.count);
+    progress.drew(index + 1);
   }
 
   for (const index of completionDeficit(batch, results)) {
     results[index] = generateOne(index, false);
   }
+  progress.finished();
 
   return results;
 };
@@ -577,6 +611,7 @@ export const generateInterviewsAsync = async (
 ): Promise<SyntheticInterviewResult[]> => {
   const batch = prepareBatch(protocol, userOptions, assetData);
   const { options, generateOne } = batch;
+  const progress = batchProgress(options, onProgress);
 
   let held = Date.now();
   const breathe = async () => {
@@ -588,7 +623,7 @@ export const generateInterviewsAsync = async (
   const results: SyntheticInterviewResult[] = [];
   for (let index = 0; index < options.count; index += 1) {
     results.push(generateOne(index, options.simulateDropOut));
-    onProgress?.(index + 1, options.count);
+    progress.drew(index + 1);
     await breathe();
   }
 
@@ -596,6 +631,7 @@ export const generateInterviewsAsync = async (
     results[index] = generateOne(index, false);
     await breathe();
   }
+  progress.finished();
 
   return results;
 };

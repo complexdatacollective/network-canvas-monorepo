@@ -81,9 +81,10 @@ type UseFieldResult = {
     // (a slot button, a sibling radio…) does not validate prematurely. Nor
     // does opening an overlay from inside the field, or moving around within
     // one — a portal's events bubble through the tree that RENDERED it, so
-    // some of what arrives here is not this field's blur at all. The move
-    // that RELEASES focus is: an overlay closing with nothing to hand focus
-    // to is the researcher leaving, and the only notice of it the field gets.
+    // some of what arrives here is not this field's blur at all. A move that
+    // LEAVES the overlay is: whether it releases focus or hands it to another
+    // control, that is the researcher leaving, and the only notice of it the
+    // field gets.
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
@@ -160,6 +161,44 @@ const isInOverlayAbove = (
   return (
     overlay !== null && !overlay.contains(field) && !field.contains(overlay)
   );
+};
+
+/**
+ * The outermost element the portalled event came from — the surface itself,
+ * for a portal mounted where portals go — or `null` where the walk runs into
+ * the field, which means the two are not separated by a portal at all.
+ *
+ * Needed because a surface is not obliged to announce a role, and the deferral
+ * below rests on the PORTAL boundary rather than on a recognised one.
+ */
+const portalSurfaceOf = (field: HTMLElement, from: Element): Element | null => {
+  const root = from.ownerDocument.body;
+  let node: Element = from;
+  while (node.parentElement !== null && node.parentElement !== root) {
+    node = node.parentElement;
+  }
+  return node.contains(field) ? null : node;
+};
+
+/**
+ * Whether focus is still inside the surface a portalled focusout came from.
+ *
+ * The question the deferral really wants answered. A move from one part of an
+ * overlay to another is the researcher still working in it; a move from the
+ * overlay straight to some other control is them leaving the field — and it is
+ * the ONLY notice the field gets, since focus never returns to it and no later
+ * event can come from inside it. Answered by role where a surface announces
+ * one, and by the portal boundary where it does not.
+ */
+const stayedInSurface = (
+  field: HTMLElement,
+  from: Element,
+  landed: Element | null,
+): boolean => {
+  if (landed === null) return false;
+  if (isInOverlayAbove(field, landed)) return true;
+  const surface = portalSurfaceOf(field, from);
+  return surface !== null && surface.contains(landed);
 };
 
 type UseFieldConfig = {
@@ -429,16 +468,18 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       // something the field put in front of them, whatever shape of portal it
       // is rendered through and whether or not it announces an overlay role.
       //
-      // The move that RELEASES focus is the exception, and is let through. A
-      // surface that closes having been answered leaves focus nowhere, and
-      // that focusout is the only one the field will ever receive for the
-      // departure — focus never came back, so no later event can come from
-      // inside it. Deferring that one too would leave a field the researcher
-      // finished with and left permanently unblurred, and a value they
-      // committed never validated until the save.
+      // A move that LEAVES the overlay is the exception, and is let through.
+      // Whether it releases focus — a surface closing, having been answered —
+      // or hands it straight to some other control, that focusout is the only
+      // one the field will ever receive for the departure: focus never came
+      // back, so no later event can come from inside it. Deferring those too
+      // would leave a field the researcher finished with permanently
+      // unblurred, and the value they committed never validated until the
+      // save.
       if (
         !(e.target instanceof Element) ||
-        (!e.currentTarget.contains(e.target) && e.relatedTarget !== null)
+        (!e.currentTarget.contains(e.target) &&
+          stayedInSurface(e.currentTarget, e.target, e.relatedTarget))
       ) {
         return;
       }

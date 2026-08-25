@@ -1450,6 +1450,53 @@ describe('generateInterviewsAsync', () => {
     expect(handovers).toHaveLength(options.count);
   });
 
+  it('does not report the last interview until the floor has finished repairing', async () => {
+    // The completed floor redraws WHOLE sessions after the walk is over. Every
+    // one of them has already been counted once, so reporting the last
+    // interview before that pass left both hosts' bars sitting at the end
+    // while seconds of full-session work carried on.
+    const reported: [number, number][] = [];
+    await generateInterviewsAsync(
+      DEMANDING_PROTOCOL,
+      options,
+      {},
+      (done, total) => reported.push([done, total]),
+      { sliceMs: 0 },
+    );
+
+    // Not a vacuous assertion: this batch really does reach the floor.
+    expect(
+      generateInterviews(DEMANDING_PROTOCOL, {
+        ...options,
+        minimumCompletedRatio: 0,
+      }).some((result) => result.droppedOut),
+    ).toBe(true);
+
+    const complete = reported.filter(([done, total]) => done === total);
+    expect(complete).toEqual([[options.count, options.count]]);
+    expect(reported.at(-1)).toEqual([options.count, options.count]);
+    // The total a host renders is still the batch it was asked for.
+    expect(reported.every(([, total]) => total === options.count)).toBe(true);
+  });
+
+  it('counts exactly, interview for interview, where no repair is possible', async () => {
+    const reported: [number, number][] = [];
+    await generateInterviewsAsync(
+      FULL_PROTOCOL,
+      { ...options, simulateDropOut: false },
+      {},
+      (done, total) => reported.push([done, total]),
+      { sliceMs: 0 },
+    );
+
+    expect(reported).toEqual(
+      Array.from({ length: options.count }, (_unused, index) => [
+        index + 1,
+        options.count,
+      ]),
+    );
+  });
+
   it('refuses an impossible protocol before drawing anything, as its sibling does', async () => {
     // The pre-seed gate belongs to the preparation both drivers share, so a
     // refusal has to arrive here as a rejection rather than as an empty batch.

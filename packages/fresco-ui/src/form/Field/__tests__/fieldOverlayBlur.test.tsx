@@ -193,6 +193,46 @@ describe('a field whose control opens an overlay', () => {
     expect(screen.queryByText(TOO_SHORT_MESSAGE)).toBeNull();
   });
 
+  it('validates when focus goes straight from the overlay to another control', async () => {
+    // The other way of leaving, and the one a deferral resting on "the event
+    // came from a portal" swallowed whole: focus never returns to the field,
+    // so no later blur repairs the omission and a dirty, invalid field stayed
+    // unvalidated until the save.
+    setup();
+    await pick();
+
+    const trigger = screen.getByRole('button', { name: 'Change attribute' });
+    trigger.focus();
+    trigger.click();
+    const search = await screen.findByLabelText('Find an attribute');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+
+    expect(await screen.findByText(TOO_SHORT_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('validates on that move out of a surface announcing no role either', async () => {
+    setup({ surfaceRole: '', quiet: true });
+
+    const trigger = screen.getByRole('button', { name: 'Select attribute' });
+    trigger.focus();
+    trigger.click();
+    await screen.findByLabelText('Find an attribute');
+    screen.getByRole('button', { name: 'Pick' }).click();
+    await screen.findByRole('button', { name: 'Change attribute' });
+
+    const reopen = screen.getByRole('button', { name: 'Change attribute' });
+    reopen.focus();
+    reopen.click();
+    const search = await screen.findByLabelText('Find an attribute');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+
+    expect(await screen.findByText(TOO_SHORT_MESSAGE)).toBeInTheDocument();
+  });
+
   /**
    * The overlay closing is the researcher LEAVING, and the only focusout the
    * field will ever get for it: focus was released rather than handed
