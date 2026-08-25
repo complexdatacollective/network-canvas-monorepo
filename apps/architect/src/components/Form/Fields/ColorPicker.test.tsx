@@ -133,4 +133,44 @@ describe('ColorPicker', () => {
       'true',
     );
   });
+
+  it('keeps a schema-valid current reference outside the offered subset visible', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Map color"
+        component={ColorPicker}
+        initialValue="ord-color-seq-10"
+        palette="ord-color-seq"
+        paletteRange={COLOR_PALETTES['ord-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['ord-color-seq'] + 1,
+    );
+    expect(screen.getByRole('radio', { name: 'Slate Blue' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(getColor()).toBe('ord-color-seq-10');
+  });
+
+  it('does not add an invalid current value to the offered palette', () => {
+    renderInForm(
+      <ArchitectField
+        name="color"
+        label="Disease color"
+        component={ColorPicker}
+        initialValue="node-color-seq-10"
+        palette="node-color-seq"
+        paletteRange={COLOR_PALETTES['node-color-seq']}
+      />,
+    );
+
+    expect(screen.getAllByRole('radio')).toHaveLength(
+      COLOR_PALETTES['node-color-seq'],
+    );
+    expect(screen.queryByRole('radio', { name: 'Color 10' })).toBeNull();
+  });
 });

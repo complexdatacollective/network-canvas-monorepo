@@ -66,6 +66,17 @@ const ColorPicker = ({
       )
     : options;
 
+  // A picker can deliberately offer only part of the protocol-wide color
+  // reference union. Keep a different but schema-valid current reference
+  // visible and replaceable; raw, custom, and out-of-range values are not
+  // admitted here (or by protocol validation).
+  const currentReference = ColorReferenceSchema.safeParse(value);
+  const colors =
+    currentReference.success &&
+    !offered.some((color) => color.value === currentReference.data)
+      ? [...offered, asColorOption(currentReference.data)]
+      : offered;
+
   const isRequired = required || Boolean(ariaRequired);
 
   return (
@@ -93,7 +104,7 @@ const ColorPicker = ({
         readOnly && 'cursor-default opacity-70',
       )}
     >
-      {offered.map((color) => (
+      {colors.map((color) => (
         <Radio.Root
           key={color.value}
           value={color.value}
