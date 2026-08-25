@@ -71,6 +71,9 @@ export function SyntheticVerdict({ feasibility }: SyntheticVerdictProps) {
             <SyntheticConflictAlert
               key={conflictKey(conflict, index)}
               conflict={conflict}
+              // The description above tells the researcher to open the stage a
+              // refusal names; this is what lets it mean that.
+              linkToOwner
             />
           ))}
         </div>

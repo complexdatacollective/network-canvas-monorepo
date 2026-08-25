@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { analyseSyntheticFeasibility } from '@codaco/protocol-utilities';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  STAGE_SECTION_SYNTHETIC,
+  stageSectionHref,
+} from '~/components/StageEditor/deepLink';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
@@ -140,6 +144,18 @@ describe('the protocol verdict', () => {
     ).toBeVisible();
     expect(screen.getByText(reason as string)).toBeVisible();
     expect(screen.queryByText('Generation is possible')).toBeNull();
+
+    // "…or open the stage it names" is what the verdict tells the researcher
+    // to do, and a link is what lets it mean that: the conflict carries the
+    // owning stage structurally, so the route needs no prose parsed.
+    const stageId = conflicts[0]?.stageId;
+    expect(stageId).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: /^Open the stage/ }),
+    ).toHaveAttribute(
+      'href',
+      stageSectionHref(stageId as string, STAGE_SECTION_SYNTHETIC),
+    );
   });
 
   it('reports a draft that does not parse rather than a verdict', async () => {
