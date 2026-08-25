@@ -107,18 +107,26 @@ Each decision records the alternative it displaced and why.
 9. **One canonical response shape** — the existing JSON roster format.
    Rejected also accepting a bare array (second parse branch) and
    configurable mapping (an ETL tool inside Architect).
-10. **Additive schema 8 change.** Consistent with the 2026-08-25 decision
-    that schema 9 is rejected and corrections land in schema 8. New union
-    member plus new validation rules; no migration. Older app versions will
-    reject a protocol that uses the new type — the normal consequence of an
-    additive change.
+10. **New protocol schema version (9).** Revised during spec review on
+    2026-08-25 — the design interview had initially resolved this as an
+    additive schema 8 change. Schema 8 is released and 8.0.0 apps are in the
+    field, and the schema version is the compatibility contract: a protocol
+    no released app can run must be legibly unsupported ("schema 9 is not
+    supported") rather than failing a generic validation error inside a
+    version the app claims to support. Dynamic rosters therefore define
+    schema 9, with a v8→v9 migration (§5.12). Accepted consequence: a
+    protocol opened and saved in the new Architect becomes schema 9 even if
+    it never uses a dynamic roster, so researchers mid-study must update
+    Interviewer/Fresco before re-importing edited protocols — the normal
+    cost of a version bump.
 
 ## 5. Design
 
 ### 5.1 The `dynamicnetwork` asset
 
 New member of the asset discriminated union
-(`packages/protocol-validation/src/schemas/8/assets/assets.ts`):
+(`packages/protocol-validation/src/schemas/9/assets/assets.ts` — schema 9's
+tree, §5.12):
 
 ```ts
 const dynamicNetworkAssetSchema = baseAssetSchema.extend({
@@ -415,6 +423,39 @@ solely so researchers can develop endpoints locally. All other directives
 (`script-src`, `default-src`, `object-src`, …) are unchanged. The tradeoff is
 acknowledged in §6.
 
+### 5.12 Schema version 9 and migration
+
+The version-bump mechanics follow the repository's existing pattern: only the
+current version keeps the full modular schema tree, and superseded versions
+are frozen to loose stubs (schema 7 today is an 11-line `z.looseObject` stub
+whose only job is discriminating and pre-validating documents before
+migration).
+
+- `packages/protocol-validation/src/schemas/8/` is renamed to `schemas/9/`
+  and evolved in place: `schemaVersion: z.literal(9)`, the `dynamicnetwork`
+  asset (§5.1), and the refinements in §7.
+- `schemas/8/` is recreated in the frozen schema-7 shape: a loose `schema.ts`
+  stub, plus the existing v7→v8 `migration.ts`, which stays put — each
+  version directory holds the migration _into_ that version.
+- `schemas/index.ts`: `z.literal(9)` joins `SchemaVersionSchema`,
+  `CURRENT_SCHEMA_VERSION = 9`, `ProtocolSchemaV9` joins
+  `VersionedProtocolSchema`, `CurrentProtocolSchema = ProtocolSchemaV9`, and
+  the star export moves from `./8/schema.ts` to `./9/schema.ts`.
+- `schemas/9/migration.ts` — the v8→v9 migration, registered in
+  `migration/migrate-protocol.ts`. It is a version bump plus one
+  normalisation: panels whose `dataSource` does not resolve to a manifest
+  asset of an allowed type are dropped. The normalisation exists because §7
+  validates panel data sources for the first time and `migrateProtocol`
+  post-validates its output — a migration must never produce an invalid
+  protocol. Dropping such a panel preserves effective behaviour: it renders
+  a permanent load error today.
+
+Consumers that read `CURRENT_SCHEMA_VERSION` / `CurrentProtocol` (Fresco's
+`validateAndMigrateProtocol`, Studio's migrate/validate, both importers)
+follow automatically. Classic apps (schema 7) are unaffected. The canonical
+protocols, templates, and fixtures in `packages/protocols` are re-saved at
+schema 9.
+
 ## 6. Security
 
 Governing rules, in order of importance:
@@ -467,16 +508,17 @@ answer preflights (any custom header or JSON POST triggers one) and send
 
 ## 7. Validation rules
 
-Protocol-level refinements added to `schemas/8/schema.ts`:
+Protocol-level refinements in `schemas/9/schema.ts`:
 
 - `NameGeneratorRoster.dataSource` must reference a manifest asset of type
-  `network` **or** `dynamicnetwork` (extends the existing rule at
-  `schema.ts:1015-1032`).
+  `network` **or** `dynamicnetwork` (extends the roster rule carried forward
+  from schema 8, `schema.ts:1015-1032`).
 - `panels[].dataSource` (NameGenerator, NameGeneratorQuickAdd): when not
   `'existing'`, must reference a manifest asset of type `network` or
   `dynamicnetwork`. This closes the pre-existing gap where panel data
   sources were never existence- or kind-checked; it lands here because the
-  new type makes the missing rule load-bearing.
+  new type makes the missing rule load-bearing, and the v8→v9 migration
+  normalises pre-existing violations (§5.12).
 - On each `dynamicnetwork` asset: URL origin is literal, `https` (or
   localhost); `body` present iff `method === 'POST'`; body template parses
   as JSON; every placeholder path is in the registry; no object-valued
@@ -492,12 +534,21 @@ rationale applies identically to sample columns).
 
 **`@codaco/protocol-validation`**
 
-- `src/schemas/8/assets/assets.ts` — `dynamicNetworkAssetSchema`, header
-  schemas, union member.
-- `src/schemas/8/schema.ts` — refinements (§7).
+- `src/schemas/9/` — the modular tree moved from `src/schemas/8/` and
+  evolved: `assets/assets.ts` (`dynamicNetworkAssetSchema`, header schemas,
+  union member), `schema.ts` (`z.literal(9)`, refinements §7),
+  `migration.ts` (new — v8→v9, §5.12).
+- `src/schemas/8/` — recreated as the frozen loose stub (schema-7 pattern);
+  the v7→v8 `migration.ts` stays.
+- `src/schemas/index.ts` — version-9 literal, `CURRENT_SCHEMA_VERSION`,
+  union/current-schema exports.
+- `src/migration/migrate-protocol.ts` — register the v8→v9 migration.
 - `src/utils/dynamicNetworkResponse.ts` (new) — canonical response schema.
 - `src/utils/protocolRequiresInternet.ts` (new) — shared derivation (§5.7).
 - `src/index.ts` — exports.
+
+**`@codaco/protocols`** — canonical development/sample protocols, templates,
+and fixtures re-saved at schema 9.
 
 **`@codaco/interview`**
 
@@ -539,6 +590,11 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
   (including the newly closed panel gap); response-schema tests (empty
   nodes valid, bad names rejected); `protocolRequiresInternet` cases;
   `collectAssetReferences` picks up `valueAssetId`.
+- **migration:** a valid v8 protocol migrates to a valid v9 protocol
+  changed only in `schemaVersion`; a v8 protocol with a dangling panel
+  `dataSource` has that panel dropped and post-validates;
+  `getMigrationInfo(8, 9)` reports the migration notes; the existing
+  v1→v8 chain fixtures still land on the new current version.
 - **interview:** substitution unit tests (tree substitution, typed
   replacement, interpolation escaping, encoding, absent values); executor
   tests with a mocked `fetch` (timeout, non-2xx, oversize, invalid JSON,
@@ -575,13 +631,17 @@ Interview.tsx` (context prop), `vite.renderer.config.ts` CSP.
 - `interviewer-online-and-offline-workflows.en.mdx`, `gdpr-compliance
 .en.mdx`, `irb-best-practices.en.md` — dynamic rosters join Geospatial as
   a third-party connection to disclose.
+- `protocol-schema-information.en.mdx` — current schema version becomes 9;
+  the app-support matrix gains the 9 row and the guidance that re-saving a
+  protocol in Architect upgrades it.
 
 ## 11. Shipping
 
-Normal changeset lane, one changeset: `@codaco/protocol-validation` (minor),
-`@codaco/interview` (minor), `@codaco/shared-consts` (minor), Architect,
-Interviewer, Fresco (minor each). Suggested implementation sequence (one plan,
-PRs may be combined): (1) schema + validation + shared helpers, (2) interview
-runtime + retry UX, (3) Architect authoring + preview, (4) hosts + CSP +
-docs. E2E suite selection follows from the workspace dependency closure as
-usual.
+Normal changeset lane, one changeset: `@codaco/protocol-validation` (**major**
+— `CURRENT_SCHEMA_VERSION` changes and every consumer's protocols migrate on
+next open/import), `@codaco/interview` (minor), `@codaco/shared-consts`
+(minor), Architect, Interviewer, Fresco (minor each). Suggested implementation
+sequence (one plan, PRs may be combined): (1) schema 9 + migration +
+validation + shared helpers, (2) interview runtime + retry UX, (3) Architect
+authoring + preview, (4) hosts + CSP + docs. E2E suite selection follows from
+the workspace dependency closure as usual.
