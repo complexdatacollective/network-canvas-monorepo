@@ -340,4 +340,34 @@ describe('Sociogram prompt tap behavior', () => {
     expect(prompt).not.toHaveProperty('highlight');
     expect(prompt).not.toHaveProperty('edges');
   });
+
+  it('clears the local interaction choice when a configured Section closes', async () => {
+    renderSection({
+      subject: { entity: 'node', type: 'person' },
+      prompts: [HIGHLIGHT_PROMPT],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+
+    const toggle = sectionToggle('Node interaction');
+    expect(toggle).toBeChecked();
+    expect(screen.getByLabelText('highlight.variable')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).not.toBeChecked());
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+
+    // The Section discards the registered highlight fields when it closes.
+    // Its unregistered local choice must reset too, or reopening would render
+    // an apparently selected Attribute Toggling mode without restoring the
+    // hidden allowHighlighting flag that makes the runtime honor it.
+    expect(
+      screen.queryByLabelText('highlight.variable'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('listbox', { name: 'Interaction type' }),
+    ).toBeInTheDocument();
+  });
 });

@@ -87,8 +87,9 @@ describe('<Home />', () => {
     );
     expect(openButton).toHaveClass('h-12', 'text-base');
     expect(openButton).toHaveClass(
+      'control-glass',
       '[--component-bg:var(--neutral-contrast)]',
-      '[--component-text:var(--neutral)]',
+      '[--component-text:var(--neutral-contrast)]',
     );
   });
 

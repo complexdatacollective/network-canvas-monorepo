@@ -103,6 +103,11 @@ const TapBehaviour = ({
     initialState(),
   );
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setTapBehaviour(null);
+    return true;
+  };
+
   // Turning highlighting off writes `false` rather than just dropping the
   // variable: the committed flag survives a save that never mentions it
   // (`mergeEditedRow` keeps whatever the row already had), which would leave
@@ -151,6 +156,7 @@ const TapBehaviour = ({
       description="Choose whether tapping a node toggles an attribute or creates an edge."
       toggleable
       defaultOpen={tapBehaviour !== null}
+      onOpenChange={handleOpenChange}
     >
       <UnconnectedField
         name="interaction-type"

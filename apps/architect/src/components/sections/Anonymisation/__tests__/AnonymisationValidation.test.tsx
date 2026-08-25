@@ -1,6 +1,8 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   asStage,
   renderStageForm,
@@ -93,6 +95,46 @@ describe('AnonymisationValidation', () => {
     expect(
       screen.getByRole('switch', { name: 'Maximum length', hidden: true }),
     ).toBeInTheDocument();
+  });
+
+  it('restores the collapsed state when closing validation is redone', async () => {
+    const { getHistory } = renderStageForm({
+      committedStage: asStage({
+        id: 'stage-1',
+        type: 'Anonymisation',
+        label: 'Anonymise data',
+        validation: { minLength: 8 },
+      }),
+      children: (
+        <>
+          <Field
+            name="label"
+            label="Label"
+            component={InputField}
+            initialValue="Anonymise data"
+          />
+          <AnonymisationValidation {...sectionProps} />
+        </>
+      ),
+    });
+
+    const toggle = screen.getByRole('switch', {
+      name: 'Passphrase validation',
+    });
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    await waitFor(() => expect(getHistory().canUndo).toBe(true));
+
+    act(() => getHistory().undo());
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(screen.getByRole('group', { name: 'Limits' })).toBeInTheDocument();
+
+    act(() => getHistory().redo());
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(
+      screen.queryByRole('group', { name: 'Limits' }),
+    ).not.toBeInTheDocument();
   });
 });
 

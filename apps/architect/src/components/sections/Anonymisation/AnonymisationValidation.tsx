@@ -1,3 +1,4 @@
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -17,14 +18,18 @@ const AnonymisationValidation = ({
   interfaceType,
 }: StageEditorSectionProps) => {
   // The Field's own `initialValue` is registration-time only and must not
-  // track live edits, or every keystroke would re-register the field. The
-  // live value supplements it when choosing the toggle's initial open state.
+  // track live edits, or every keystroke would re-register the field. Before
+  // the field has ever registered, the committed value chooses the toggle's
+  // initial state. Once it is known to the form, its live value wins even
+  // when that value is the `undefined` tombstone written by close/redo.
   const initialValidation = useStageInitialValue<ValidationMap>('validation');
   const liveValidation = useStageFormValue<ValidationMap>('validation');
-  const hasValidation =
-    liveValidation !== undefined
-      ? hasEntries(liveValidation)
-      : hasEntries(initialValidation);
+  const hasValidationField = useFormStore(
+    (store) => store.getFieldState('validation') !== undefined,
+  );
+  const hasValidation = hasValidationField
+    ? hasEntries(liveValidation)
+    : hasEntries(initialValidation);
   return (
     <Section
       toggleable
