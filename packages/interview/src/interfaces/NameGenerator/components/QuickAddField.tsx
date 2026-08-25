@@ -31,7 +31,10 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { getNodeIconName } from '../../../selectors/name-generator';
+import {
+  getCanAddMultipleNodes,
+  getNodeIconName,
+} from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
@@ -220,6 +223,7 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const canAddMultiple = useStageSelector(getCanAddMultipleNodes);
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
@@ -300,8 +304,17 @@ export default function QuickAddField({
                     className="max-w-md text-sm"
                     sideOffset={25}
                   >
-                    Press <kbd>Enter</kbd> when you are finished. The box will
-                    stay open so you can quickly enter multiple names in a row.
+                    {canAddMultiple ? (
+                      <>
+                        Press <kbd>Enter</kbd> when you are finished. The box
+                        will stay open so you can quickly enter multiple names
+                        in a row.
+                      </>
+                    ) : (
+                      <>
+                        Press <kbd>Enter</kbd> when you are finished.
+                      </>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipTrigger>
