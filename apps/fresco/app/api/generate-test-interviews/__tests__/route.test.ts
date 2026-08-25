@@ -13,6 +13,7 @@ const { addEvent, generateInterviews, prisma, requireApiAuth } = vi.hoisted(
     prisma: {
       protocol: { findUnique: vi.fn() },
       interview: { create: vi.fn() },
+      participant: { findMany: vi.fn() },
     },
     requireApiAuth: vi.fn(),
   }),
@@ -178,6 +179,7 @@ beforeEach(() => {
       id: `interview-${String(prisma.interview.create.mock.calls.length)}`,
     }),
   );
+  prisma.participant.findMany.mockResolvedValue([]);
   generateInterviews.mockReturnValue(RESULTS);
 });
 
@@ -299,6 +301,7 @@ describe('generating synthetic interviews', () => {
       {
         type: 'complete',
         created: 2,
+        participantsCreated: 2,
         seed: 99,
         startWindow: options.startWindow,
         batchToken: `99-${options.startWindow.slice(0, 10)}`,
@@ -330,6 +333,7 @@ describe('generating synthetic interviews', () => {
     expect(complete).toStrictEqual({
       type: 'complete',
       created: 2,
+      participantsCreated: 2,
       seed: options.seed,
       startWindow: options.startWindow,
       batchToken: `${String(options.seed)}-${options.startWindow.slice(0, 10)}`,
@@ -353,6 +357,32 @@ describe('generating synthetic interviews', () => {
     ];
     expect(options.seed).toBe(4242);
     expect(options.startWindow).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('reports how many participants a replay actually created', async () => {
+    // The replay reconnects to the participants the first run created, so the
+    // batch adds interviews and nobody at all; a count of one person per
+    // interview would tell the dashboard its test population had doubled.
+    prisma.participant.findMany.mockResolvedValue([
+      { identifier: 'test-session-1' },
+      { identifier: 'test-session-2' },
+    ]);
+
+    const events = await readEvents(
+      await postGenerate({
+        protocolId: PROTOCOL_ID,
+        count: 2,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+        batchToken: '4242-2026-08-01',
+      }),
+    );
+
+    expect(events.at(-1)).toMatchObject({
+      type: 'complete',
+      created: 2,
+      participantsCreated: 0,
+    });
   });
 
   it('surfaces a constraint refusal as a structured error, writing nothing', async () => {

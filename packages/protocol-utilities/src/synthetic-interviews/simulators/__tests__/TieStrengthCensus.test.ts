@@ -381,6 +381,73 @@ describe('simulateTieStrengthCensus', () => {
     expect(answers(second)).toEqual(answers(first));
   });
 
+  describe('the unique values a declined pair gives back', () => {
+    /** Two grades to go round, so a third leaked claim exhausts the space. */
+    const scarceCodebook = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            name: { name: 'name', type: 'text', component: 'Text' },
+          },
+        },
+      },
+      edge: {
+        friend: {
+          name: 'friend',
+          color: 'edge-color-seq-1',
+          variables: {
+            strength: {
+              name: 'strength',
+              type: 'ordinal',
+              component: 'LikertScale',
+              options: [
+                { label: 'Sort of close', value: 1 },
+                { label: 'Very close', value: 2 },
+              ],
+              validation: { unique: true },
+            },
+          },
+        },
+      },
+    };
+
+    /** One pair walked through the given densities, stage by stage. */
+    const censusRun = (densities: number[]): Harness => {
+      const protocol = parseProtocol(scarceCodebook, [
+        priorStage,
+        ...densities.map((density, position) => ({
+          ...stageWith({ synthetic: constantDensity(density) }),
+          id: `census-${position}`,
+        })),
+      ]);
+      const harness = harnessFor(protocol);
+      harness.seedAlters(2, {
+        attributes: (index) => ({ name: `Alter ${index}` }),
+      });
+
+      densities.forEach((_, position) => {
+        const stage = harness.context.protocol.stages[position + 1];
+        if (stage?.type !== 'TieStrengthCensus') {
+          throw new Error('fixture is not a tie-strength census');
+        }
+        simulateTieStrengthCensus(stage, harness.context);
+      });
+
+      return harness;
+    };
+
+    it('re-grades a pair whose edge earlier declines deleted', () => {
+      const harness = censusRun([1, 0, 1, 0, 1]);
+      const edges = edgesOfType(harness, 'friend');
+
+      expect(edges).toHaveLength(1);
+      expect(edges[0]?.[entityAttributesProperty].strength).toBeDefined();
+    });
+  });
+
   describe('protocols the codebook contradicts', () => {
     it('refuses a subject the codebook does not define', () => {
       const protocol = parseProtocol(codebookWith(), [priorStage, stageWith()]);

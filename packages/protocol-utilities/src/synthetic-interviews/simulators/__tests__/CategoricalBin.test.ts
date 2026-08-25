@@ -320,4 +320,61 @@ describe('simulateCategoricalBin', () => {
       expect(() => runStage(harness)).toThrow(/node type "ghost"/);
     });
   });
+
+  describe('a filter that reacts to the stage’s own writes', () => {
+    it('re-derives the alters before each prompt', () => {
+      // The stage shows only people not yet sorted, and the first prompt sorts
+      // everyone it shows — so by the second prompt the runtime's selector,
+      // which re-runs the filter after every write, shows nobody at all. A
+      // snapshot taken before the first prompt would hand the second prompt
+      // alters the participant could no longer see.
+      const withMood = {
+        node: {
+          person: {
+            ...codebookWith().node.person,
+            variables: {
+              ...codebookWith().node.person.variables,
+              mood: {
+                name: 'mood',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: GROUPS,
+              },
+            },
+          },
+        },
+      };
+      const harness = setUp({
+        alters: 6,
+        codebook: withMood,
+        stage: {
+          ...stageWith(),
+          prompts: [
+            { id: 'p1', text: 'Which group?', variable: 'group' },
+            { id: 'p2', text: 'And their mood?', variable: 'mood' },
+          ],
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: 'rule-1',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'group',
+                  operator: 'NOT_EXISTS',
+                },
+              },
+            ],
+          },
+        },
+      });
+      runStage(harness);
+
+      for (const node of harness.nodes()) {
+        expect(node[entityAttributesProperty].group).toBeDefined();
+        expect(node[entityAttributesProperty].mood).toBeUndefined();
+      }
+    });
+  });
 });

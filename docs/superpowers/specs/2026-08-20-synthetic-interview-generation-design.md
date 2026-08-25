@@ -458,6 +458,22 @@ generates on every seed with every rule satisfied) remains the gate.
   cannot create.) Fresco's route therefore starts resolving rosters
   server-side through the host-agnostic `collectRosterExternalData` — a named
   Phase 5 item; today it passes nothing.
+- **Shared roster rows are counted once, and jointly.** A nominated row is in
+  the interview network from that moment, and every roster view hides the
+  people already there, so no second stage can take it. Two consequences the
+  counting model owes the walk, both in `constraints/rosterDepletion.ts`:
+  a roster stage contributes the PEOPLE its pool can still supply rather than
+  its own count (two stages of three over one three-row roster are three
+  people, not six — counting the nominations refuses a later form's `unique`
+  variable over people no seed can build); and how much of a pool the stages
+  before it have spent is asked of all of them AT ONCE rather than one at a
+  time. Asked one at a time, two stages that jointly empty a four-row pool
+  each answer that they could have kept off the two rows a third stage needs,
+  and the gate approves a batch every seed strands below its own
+  `behaviours.minNodes` — the seed-dependent failure rule 5 forbids. Both
+  answers are exact for the model (each stage takes between its guaranteed and
+  its ceiling take, from its own pool, and no row twice), computed as a
+  maximum flow over the stages and the groups of rows they share.
 - **Cumulative pair cap**: `MAX_SYNTHETIC_PAIRS` has exactly one job — a
   feasibility-time refusal. Feasibility computes each census/edge stage's
   pair count from the cumulative per-type counts of the creator stages
@@ -477,6 +493,35 @@ generates on every seed with every rule satisfied) remains the gate.
   `nominationProbability` (default 0.3); when two panels show the same person,
   the first panel in stage order decides (the panel they meet first) — the
   tie-break is specified and tested in both directions.
+
+### What the gate models about the run's own bounds
+
+`analyseFeasibility` is bounded by the same options the walk is, because a
+demand the walk cannot make is a refusal nobody can act on:
+
+- **`stopAt`** truncates the pass exactly as it truncates the walk, fixture
+  edges included. An override edge is counted only where both of its endpoints
+  are ids the bounded pass can produce — a worked override entry's own `uid`,
+  or a row of a roster a worked stage draws from. Everything else the walk
+  builds is minted from the session's id stream, so an endpoint outside that
+  set is one the applier passes over rather than one it might apply, and a
+  preview that stops before the stage owning an endpoint is not refused over a
+  relationship it will never make.
+- **`respectFiltering: false`** means the walk hands every simulator
+  `undefined` in place of its stage's filter, so the gate reads no stage as
+  filtered either — a re-census that can see the earlier census's edges
+  re-grades them rather than making a second set.
+- **`respectFiltering: true`** keeps the pessimistic reading: every stage is
+  counted as if its filter passed everybody, and a filtered edge-creating
+  stage as if the filter hid every edge it might otherwise have re-graded. The
+  filter's verdict is resolved against the network the walk is still building,
+  so a static opinion about it would be a second evaluator that could disagree
+  with the runtime's own on some seeds — turning a pre-seed refusal into the
+  mid-walk failure the gate exists to prevent. The price is a protocol whose
+  filter happens to exclude everybody being refused over demands it never
+  makes; that is the one direction a pre-seed gate may err in.
+- **Skip logic** is not modelled at all, for the same reason and at the same
+  price: every stage is read as reached (see `worstCaseEntityCounts`).
 
 ### Dropout and burden
 

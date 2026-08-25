@@ -794,6 +794,193 @@ describe('feasibility across every possible session day', () => {
   });
 });
 
+describe('rosters several stages draw on at once', () => {
+  const sharedRoster = (
+    id: string,
+    count: number,
+    minNodes?: number,
+  ): Record<string, unknown> => ({
+    id,
+    type: 'NameGeneratorRoster',
+    label: `Roster ${id}`,
+    subject: { entity: 'node', type: 'person' },
+    dataSource: 'colleagues',
+    synthetic: {
+      generatesData: true,
+      count: { distribution: 'constant', value: count },
+    },
+    prompts: [{ id: `${id}-p1`, text: 'Who do you work with?' }],
+    ...(minNodes === undefined ? {} : { behaviours: { minNodes } }),
+  });
+
+  const protocol = parse([
+    sharedRoster('first', 2),
+    sharedRoster('second', 2),
+    sharedRoster('third', 1, 1),
+  ]);
+
+  it('refuses a roster the earlier stages jointly empty', () => {
+    // Four rows, taken two apiece by the stages before, and a third stage
+    // whose own pool is two of those four. Asked one at a time, either
+    // earlier stage could have kept off those two; asked together they
+    // cannot, because a row one of them takes is a row the other can no
+    // longer see — so the third stage is starved on every seed.
+    const shared = rows(5);
+    const conflicts = analyse(protocol, {
+      rosterNodes: {
+        first: shared.slice(0, 4),
+        second: shared.slice(0, 4),
+        third: shared.slice(2, 4),
+      },
+    });
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.rules).toEqual(['behaviours.minNodes']);
+    expect(conflicts[0]?.reason).toContain('Roster third');
+    expect(conflicts[0]?.reason).toContain('leave it at most 0');
+  });
+
+  it('measures a form after them against the people, not the nominations', () => {
+    // Two stages of two over one two-row roster, and a form filling in a
+    // two-valued `unique` variable over everybody afterwards. The roster can
+    // supply two people between the stages however many times it is offered,
+    // so the two values are enough; adding the stages' counts up would refuse
+    // the protocol over four people no seed can build.
+    const shared = rows(2);
+    const conflicts = analyse(
+      parse([
+        sharedRoster('first', 2),
+        sharedRoster('second', 2),
+        {
+          id: 'about',
+          type: 'AlterForm',
+          label: 'About each person',
+          subject: { entity: 'node', type: 'person' },
+          introductionPanel: { title: 'About them', text: 'A few questions.' },
+          form: { fields: [{ variable: 'band', prompt: 'How close?' }] },
+        },
+      ]),
+      { rosterNodes: { first: shared, second: shared } },
+    );
+
+    expect(conflicts).toEqual([]);
+  });
+
+  it('leaves the same stages alone where the pool can feed them all', () => {
+    // One more row than the earlier stages spend between them, so the third
+    // stage always has somebody left.
+    const shared = rows(6);
+    expect(
+      analyse(protocol, {
+        rosterNodes: {
+          first: shared.slice(0, 5),
+          second: shared.slice(0, 5),
+          third: shared.slice(2, 5),
+        },
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('a run that ignores stage filtering', () => {
+  const gradedEdges = (options: number): Record<string, unknown> => ({
+    edge: {
+      friend: {
+        name: 'Friend',
+        color: 'edge-color-seq-1',
+        variables: {
+          strength: {
+            name: 'strength',
+            type: 'ordinal',
+            component: 'LikertScale',
+            options: Array.from({ length: options }, (_unused, index) => ({
+              label: `Level ${index + 1}`,
+              value: index + 1,
+            })),
+            validation: { unique: true },
+          },
+        },
+      },
+    },
+  });
+
+  const denseCensus = (
+    id: string,
+    filter?: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    id,
+    type: 'TieStrengthCensus',
+    label: `Census ${id}`,
+    subject: { entity: 'node', type: 'person' },
+    introductionPanel: { title: 'Pairs', text: 'About each pair.' },
+    synthetic: {
+      generatesData: true,
+      topology: {
+        metric: 'density',
+        distribution: { distribution: 'constant', value: 1 },
+      },
+    },
+    prompts: [
+      {
+        id: `${id}-p1`,
+        text: 'How close are these two?',
+        createEdge: 'friend',
+        edgeVariable: 'strength',
+        negativeLabel: 'They do not know each other',
+      },
+    ],
+    ...(filter ? { filter } : {}),
+  });
+
+  const anyPerson = {
+    join: 'AND',
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'node',
+        options: { type: 'person', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  // Four people are six pairs. A second census that can SEE the first one's
+  // edges re-grades them; one that cannot makes six more.
+  const protocol = parse(
+    [elicits(4), denseCensus('c1'), denseCensus('c2', anyPerson)],
+    gradedEdges(8),
+  );
+
+  const analyseWith = (
+    respectFiltering: boolean,
+  ): ReturnType<typeof analyseFeasibility> =>
+    analyseFeasibility({
+      protocol,
+      assetData: {},
+      today: TODAY,
+      interfaceRules: collectInterfaceImpliedRules(protocol),
+      respectFiltering,
+    });
+
+  it('counts a filtered re-census as a re-grade, not a second set of edges', () => {
+    // The walk hands every simulator `undefined` in place of its stage's
+    // filter here, so the second census reads the whole network — there is no
+    // hidden edge for it to duplicate, and no demand for twelve values.
+    expect(analyseWith(false)).toEqual([]);
+  });
+
+  it('keeps the additive reading for a run that honours filters', () => {
+    // The filter's verdict is resolved against a network that does not exist
+    // yet, so the gate reads the stage as one whose filter may hide every
+    // edge and refuses. Pessimistic by design: the alternative is a second
+    // opinion about filtering that could disagree with the runtime's own on
+    // some seeds, which is the mid-walk failure this gate exists to prevent.
+    const conflicts = analyseWith(true);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.entity).toBe('edge');
+    expect(conflicts[0]?.reason).toContain('up to 12 edges');
+  });
+});
+
 describe('feasibility stops where the walk stops', () => {
   it('does not refuse a preview over a stage the walk never reaches', () => {
     // `collects(['band'], 3)` is refused outright: three holders, two values.
@@ -815,5 +1002,46 @@ describe('feasibility stops where the walk stops', () => {
     expect(analyseStopped()).toHaveLength(1);
     expect(analyseStopped({ stageIndex: 1 })).toEqual([]);
     expect(analyseStopped({ stageIndex: 1, promptIndex: 1 })).toHaveLength(1);
+  });
+
+  it('does not refuse a preview over a fixture edge the walk never makes', () => {
+    // Three predetermined ties on an edge type with two distinct strengths.
+    // Walked through, that is a demand no seed can meet; stopped before the
+    // stage that produces the people, the walk relates nobody at all — the
+    // applier passes over an edge whose endpoints have not materialised —
+    // so the preview must not be refused over ties it cannot create.
+    const protocol = parse([elicits(2), elicits(2, 'late')]);
+    const overrides = {
+      nodes: {
+        late: [
+          { type: 'person', uid: 'a' },
+          { type: 'person', uid: 'b' },
+        ],
+      },
+      edges: [
+        { type: 'friend', from: 'a', to: 'b' },
+        { type: 'friend', from: 'b', to: 'a' },
+        { type: 'friend', from: 'a', to: 'b' },
+      ],
+    };
+    const analyseStopped = (stopAt?: {
+      stageIndex: number;
+      promptIndex?: number;
+    }): ReturnType<typeof analyseFeasibility> =>
+      analyseFeasibility({
+        protocol,
+        assetData: {},
+        today: TODAY,
+        interfaceRules: collectInterfaceImpliedRules(protocol),
+        overrides,
+        ...(stopAt ? { stopAt } : {}),
+      });
+
+    const refused = analyseStopped();
+    expect(refused).toHaveLength(1);
+    expect(refused[0]?.entity).toBe('edge');
+    expect(refused[0]?.rules).toEqual(['unique']);
+
+    expect(analyseStopped({ stageIndex: 0 })).toEqual([]);
   });
 });

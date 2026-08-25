@@ -19,7 +19,10 @@ import { ValueGenerator } from '../../constraints/ValueGenerator';
 import type { SyntheticSessionAction } from '../../session-engine/actions';
 import { createSessionClock } from '../../session-engine/clock';
 import { SessionEngine } from '../../session-engine/engine';
-import { createSessionStreams } from '../../session-engine/streams';
+import {
+  createSessionStreams,
+  sessionValueSeed,
+} from '../../session-engine/streams';
 import type { AssetData, SimulationContext } from '../types';
 
 /**
@@ -125,7 +128,7 @@ export const harnessFor = (
 
   const today = clock.startTime.slice(0, 10);
   const interfaceRules = collectInterfaceImpliedRules(protocol);
-  const valueGen = new ValueGenerator(seed, today);
+  const valueGen = new ValueGenerator(sessionValueSeed(seed, index), today);
   const uniqueRegistry = new UniqueRegistry();
   const entityConstraints = createEntityConstraintCache({
     codebook: protocol.codebook,

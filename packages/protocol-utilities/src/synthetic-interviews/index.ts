@@ -29,7 +29,10 @@ import {
   finaliseSession,
   type SyntheticInterviewResult,
 } from './session-engine/envelope';
-import { createSessionStreams } from './session-engine/streams';
+import {
+  createSessionStreams,
+  sessionValueSeed,
+} from './session-engine/streams';
 import { simulateAlterEdgeForm } from './simulators/AlterEdgeForm';
 import { simulateAlterForm } from './simulators/AlterForm';
 import { simulateCategoricalBin } from './simulators/CategoricalBin';
@@ -320,7 +323,13 @@ const prepareBatch = (
       );
       invariant(
         promptIndex <= promptCeiling,
-        `stopAt.promptIndex ${promptIndex} is out of range: stage "${stage.id}" has ${promptCeiling === 1 && !('prompts' in stage) ? 'no prompts' : `${promptCeiling} prompts`}`,
+        `stopAt.promptIndex ${promptIndex} is out of range: stage "${stage.id}" has ${
+          !('prompts' in stage)
+            ? 'no prompts'
+            : promptCeiling === 1
+              ? '1 prompt'
+              : `${promptCeiling} prompts`
+        }`,
       );
     }
   }
@@ -344,9 +353,11 @@ const prepareBatch = (
   // session's date-relative windows resolve against its OWN start day — so
   // the verdict moves with the batch rather than with a clock read of its
   // own. The walk's own bounds bound the analysis too: stages a stopAt run
-  // never reaches, and stages the fixture channel replaces, demand nothing.
-  // Runs over the very rules the walk below reads, so this gate and the one
-  // a host runs standalone are the same gate by construction.
+  // never reaches, stages the fixture channel replaces, and — where the run
+  // ignores filtering — the filters the walk will not apply, all demand
+  // exactly what the walk will make of them. Runs over the very rules the
+  // walk below reads, so this gate and the one a host runs standalone are
+  // the same gate by construction.
   const conflicts = analyseFeasibility({
     protocol,
     assetData,
@@ -355,6 +366,7 @@ const prepareBatch = (
     today: startWindowAnchor.slice(0, 10),
     interfaceRules,
     windowDays: SYNTHETIC_START_WINDOW_DAYS,
+    respectFiltering: options.respectFiltering,
     ...(options.stopAt ? { stopAt: options.stopAt } : {}),
     ...(options.overrides ? { overrides: options.overrides } : {}),
   });
@@ -380,8 +392,12 @@ const prepareBatch = (
     // Values are the one thing NOT drawn from the session's substreams: the
     // constraint machinery needs personas rather than uniform bits, so it
     // keeps its own faker, seeded from the same batch seed and this session's
-    // position in it.
-    const valueGen = new ValueGenerator(options.seed + index, today);
+    // position in it — through the ordered, domain-separated mix, so two
+    // batches never meet on one session.
+    const valueGen = new ValueGenerator(
+      sessionValueSeed(options.seed, index),
+      today,
+    );
     const uniqueRegistry = new UniqueRegistry();
     const entityConstraints = createEntityConstraintCache({
       codebook: protocol.codebook,

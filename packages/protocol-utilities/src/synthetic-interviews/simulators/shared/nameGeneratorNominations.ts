@@ -147,8 +147,24 @@ export const simulateNameGeneratorNominations = ({
   // holds the sampled budget inside that window, but a panel's per-person
   // nominations sit outside the budget, so the cap is enforced here across
   // everything the stage adds, in the order the participant adds it.
+  //
+  // Held as the SET of those nodes rather than a tally of additions, because
+  // that is what the selector counts. A panel offers a person again on every
+  // prompt but the first that named them (`displayedExistingNodes` hides only
+  // the current prompt's), so a tally would charge one alter to the cap twice
+  // and starve a later prompt of the creations the participant could still
+  // make.
   const maxNodes = stage.behaviours?.maxNodes ?? Number.POSITIVE_INFINITY;
-  let stageNodeCount = 0;
+  const stagePromptIds = new Set(stage.prompts.map((prompt) => prompt.id));
+  const stageNodes = new Set(
+    engine.draft.network.nodes
+      .filter(
+        (node) =>
+          node.type === stage.subject.type &&
+          (node.promptIDs ?? []).some((id) => stagePromptIds.has(id)),
+      )
+      .map((node) => node[entityPrimaryKeyProperty]),
+  );
 
   // Counts every person this stage fabricates, across prompts, so the
   // constraint engine sees a distinct index per entity.
@@ -178,7 +194,7 @@ export const simulateNameGeneratorNominations = ({
       stageId: stage.id,
       assetData,
       network: engine.draft.network,
-      wanted: Math.min(rosterHere, Math.max(0, maxNodes - stageNodeCount)),
+      wanted: Math.min(rosterHere, Math.max(0, maxNodes - stageNodes.size)),
       chooseIndex: () => 0,
       nominate: (row) => {
         const fixed: Record<string, VariableValue> = {
@@ -205,34 +221,35 @@ export const simulateNameGeneratorNominations = ({
         // are in the network now, and a later draw handed one would be the
         // duplicate `unique` forbids.
         claimFixedValues(handles, scope, fixed);
+        stageNodes.add(row[entityPrimaryKeyProperty]);
         return true;
       },
     });
-    stageNodeCount += fromRosterHere;
 
     // A row passed over for a value the network already holds leaves the
     // stage's count to be met by somebody the participant types in, exactly as
     // the G2 engine fell back to fabrication.
     const newHere = Math.min(
       share - fromRosterHere,
-      Math.max(0, maxNodes - stageNodeCount),
+      Math.max(0, maxNodes - stageNodes.size),
     );
 
     for (let index = 0; index < newHere; index += 1) {
       const entityIndex = created;
       created += 1;
+      const uid = streams.uuid();
       engine.addNode({
         nodeType: stage.subject.type,
-        uid: streams.uuid(),
+        uid,
         attributeData: {
           ...attributesForNewNode(entityIndex, shared),
           ...shared,
         },
         currentStep,
       });
+      stageNodes.add(uid);
       if (hasShared) claimFixedValues(handles, scope, shared);
     }
-    stageNodeCount += newHere;
 
     // Nodes added from the existing network. The panel invites a decision per
     // person, but the interface stops honouring them at the stage's cap: a
@@ -244,13 +261,16 @@ export const simulateNameGeneratorNominations = ({
       prompt.id,
       streams,
     )) {
-      if (stageNodeCount >= maxNodes) break;
-      stageNodeCount += 1;
+      // The gate reads the COUNT, not this candidate: a full stage disables
+      // every drag source, so even a person the stage already counts cannot be
+      // moved onto another prompt once it is at the cap.
+      if (stageNodes.size >= maxNodes) break;
       engine.addNodeToPrompt({
         nodeId: node[entityPrimaryKeyProperty],
         promptAttributes: shared,
         currentStep,
       });
+      stageNodes.add(node[entityPrimaryKeyProperty]);
       if (hasShared) claimFixedValues(handles, scope, shared);
     }
   });
