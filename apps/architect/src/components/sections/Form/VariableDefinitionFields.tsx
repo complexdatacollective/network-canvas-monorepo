@@ -10,6 +10,7 @@ import Options, {
   type OptionValue,
 } from '~/components/Form/arrayFields/Options';
 import { VariablePickerControl } from '~/components/Form/Fields/VariablePicker/VariablePicker';
+import IssueAnchor from '~/components/IssueAnchor';
 import { getLockedOptions } from '~/components/Options/getLockedOptions';
 import LockedOptions from '~/components/Options/LockedOptions';
 import Parameters from '~/components/Parameters';
@@ -20,7 +21,6 @@ import {
   isVariableTypeWithParameters,
 } from '~/config/variables';
 import { documentationLinks } from '~/utils/documentationLinks';
-import { getFieldId } from '~/utils/issues';
 
 import BooleanChoice from '../../BooleanChoice';
 import ExternalLink from '../../ExternalLink';
@@ -64,7 +64,8 @@ export const VariablePickerSection = ({
   fields,
   hint,
 }: SharedProps & { hint: ReactNode }) => (
-  <div id={getFieldId('variable')} className="w-full">
+  <>
+    <IssueAnchor fieldName="variable" description="Attribute" />
     <Section
       title="Attribute selection"
       description="Choose the attribute this form field will collect."
@@ -82,7 +83,7 @@ export const VariablePickerSection = ({
         onCreateOption={fields.handleNewVariable}
       />
     </Section>
-  </div>
+  </>
 );
 
 /**
@@ -114,69 +115,69 @@ const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
 
   return (
     <>
-      <div id={getFieldId('component')} className="w-full">
-        <Section
-          title="Answer control"
-          description={
-            variable
-              ? 'Choose how participants enter an answer for this attribute.'
-              : 'Select an attribute before choosing its input control.'
+      <IssueAnchor fieldName="component" description="Input control" />
+      <Section
+        title="Answer control"
+        description={
+          variable
+            ? 'Choose how participants enter an answer for this attribute.'
+            : 'Select an attribute before choosing its input control.'
+        }
+        disabled={!variable}
+      >
+        <ArchitectField
+          name="component"
+          label="Input control"
+          hint={
+            <>
+              How the answer is collected. For detailed information about these
+              options, see our{' '}
+              <ExternalLink href={documentationLinks.inputControls}>
+                documentation
+              </ExternalLink>
+              .
+            </>
           }
-          disabled={!variable}
-        >
-          <ArchitectField
-            name="component"
-            label="Input control"
-            hint={
-              <>
-                How the answer is collected. For detailed information about
-                these options, see our{' '}
-                <ExternalLink href={documentationLinks.inputControls}>
-                  documentation
-                </ExternalLink>
-                .
-              </>
-            }
-            component={NativeSelectField}
-            initialValue={asString(item.component)}
-            validation={{ required: true }}
-            placeholder="Select an input control"
-            // A NEW variable keeps the authored order, which reads as a
-            // progression from simplest control to most involved. An existing
-            // variable's list is a lookup — the researcher knows what they want
-            // and is finding it — so it is alphabetised (within each group,
-            // since the list may still be grouped by type).
-            options={toSelectOptions(componentOptions, {
-              sorted: !isNewVariable,
-            })}
-          />
-          {isNewVariable && variableType && (
-            <Alert variant="info" className="my-7">
-              <AlertDescription>
-                The selected input control will cause this attribute to be
-                defined as type <strong>{variableType}</strong>. Once set, this
-                cannot be changed (although you may change the input control
-                within this type).
-              </AlertDescription>
-            </Alert>
-          )}
-          {!isNewVariable && variableType && (
-            <Alert variant="warning" className="my-7">
-              <AlertTitle>Attribute type is locked</AlertTitle>
-              <AlertDescription>
-                A pre-existing attribute is currently selected. You cannot
-                change an attribute type after it has been created, so only{' '}
-                <strong>{variableType}</strong> compatible input controls can be
-                selected above. If you would like to use a different input
-                control type, you will need to create a new attribute.
-              </AlertDescription>
-            </Alert>
-          )}
-        </Section>
-      </div>
+          component={NativeSelectField}
+          initialValue={asString(item.component)}
+          validation={{ required: true }}
+          placeholder="Select an input control"
+          // A NEW variable keeps the authored order, which reads as a
+          // progression from simplest control to most involved. An existing
+          // variable's list is a lookup — the researcher knows what they want
+          // and is finding it — so it is alphabetised (within each group,
+          // since the list may still be grouped by type).
+          options={toSelectOptions(componentOptions, {
+            sorted: !isNewVariable,
+          })}
+        />
+        {isNewVariable && variableType && (
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              The selected input control will cause this attribute to be defined
+              as type <strong>{variableType}</strong>. Once set, this cannot be
+              changed (although you may change the input control within this
+              type).
+            </AlertDescription>
+          </Alert>
+        )}
+        {!isNewVariable && variableType && (
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>Attribute type is locked</AlertTitle>
+            <AlertDescription>
+              A pre-existing attribute is currently selected. You cannot change
+              an attribute type after it has been created, so only{' '}
+              <strong>{variableType}</strong> compatible input controls can be
+              selected above. If you would like to use a different input control
+              type, you will need to create a new attribute.
+            </AlertDescription>
+          </Alert>
+        )}
+      </Section>
 
       {isOrdinalOrCategoricalType(variableType) && (
-        <div id={getFieldId('options')} className="w-full">
+        <>
+          <IssueAnchor fieldName="options" description="Choice values" />
           <Section
             title="Choice values"
             description="Define the values participants can choose for this categorical or ordinal attribute."
@@ -195,23 +196,25 @@ const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
               />
             )}
           </Section>
-        </div>
+        </>
       )}
       {isBooleanWithOptions(component) && (
-        // BooleanChoice writes to the `options` field, so anchor it there (it
-        // is mutually exclusive with the Categorical/Ordinal options section
-        // above, so the shared id never collides at runtime).
-        <div id={getFieldId('options')} className="w-full">
+        <>
+          {/* BooleanChoice writes to the `options` field, so anchor it there (it
+              is mutually exclusive with the Categorical/Ordinal options section
+              above, so the shared id never collides at runtime). */}
+          <IssueAnchor fieldName="options" description="Boolean values" />
           <Section
             title="Boolean values"
             description="Define the values stored for the on and off states."
           >
             <BooleanChoice initialValue={asOptions(item.options)} />
           </Section>
-        </div>
+        </>
       )}
       {isVariableTypeWithParameters(variableType) && (
-        <div id={getFieldId('parameters')} className="w-full">
+        <>
+          <IssueAnchor fieldName="parameters" description="Control settings" />
           <Section
             title="Control settings"
             description="Configure the settings available for this input control."
@@ -223,7 +226,7 @@ const VariableDefinitionFields = ({ item, fields }: SharedProps) => {
               initialParameters={asParameterValues(item.parameters)}
             />
           </Section>
-        </div>
+        </>
       )}
     </>
   );

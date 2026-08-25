@@ -4,7 +4,7 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
-import { getFieldId } from '~/utils/issues';
+import IssueAnchor from '~/components/IssueAnchor';
 
 import ValidationSection from '../ValidationSection';
 import { asValidationMap } from './helpers';
@@ -73,23 +73,22 @@ const FieldFields = ({
         hint="Select an attribute"
       />
 
-      <div id={getFieldId('prompt')} className="w-full">
-        <Section
-          title="Participant prompt"
-          description="Write the question participants will answer in this form field."
-        >
-          <ArchitectField
-            name="prompt"
-            label="Question text"
-            hint="The question to display to the participant. Supports markdown formatting."
-            component={RichText}
-            initialValue={asString(item.prompt)}
-            validation={{ required: true }}
-            singleLine
-            placeholder="What is this person's name?"
-          />
-        </Section>
-      </div>
+      <IssueAnchor fieldName="prompt" description="Question text" />
+      <Section
+        title="Participant prompt"
+        description="Write the question participants will answer in this form field."
+      >
+        <ArchitectField
+          name="prompt"
+          label="Question text"
+          hint="The question to display to the participant. Supports markdown formatting."
+          component={RichText}
+          initialValue={asString(item.prompt)}
+          validation={{ required: true }}
+          singleLine
+          placeholder="What is this person's name?"
+        />
+      </Section>
       <Section
         title="Answer guidance"
         description="Add optional guidance and choose whether validation requirements are shown to participants."

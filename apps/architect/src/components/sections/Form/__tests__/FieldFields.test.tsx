@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
+import { getFieldId } from '~/utils/issues';
 
 // The heavy editor chrome is stubbed the way ComposerAttributeFields' test
 // stubs it; what matters here is the props FieldFields hands ValidationSection,
@@ -75,7 +76,7 @@ vi.mock('../withFieldsHandlers', () => ({
 import FieldFields from '../FieldFields';
 
 const renderFields = () => {
-  render(
+  return render(
     <Form onSubmit={() => ({ success: true })}>
       <FieldFields entity="node" type="person" />
     </Form>,
@@ -89,7 +90,9 @@ const currentVariableId = () =>
 
 beforeEach(() => {
   fieldHandlers.variable = 'age';
+  fieldHandlers.variableType = 'number';
   fieldHandlers.isNewVariable = false;
+  fieldHandlers.component = 'Number';
 });
 
 // Audit sweep: creating a variable writes the typed DISPLAY NAME into
@@ -101,18 +104,49 @@ beforeEach(() => {
 // rejected on save.
 describe('FieldFields validation identity', () => {
   it('groups dialog fields in titled Section surfaces', () => {
-    renderFields();
+    const { container } = renderFields();
 
     const sections = screen.getAllByTestId('section');
+    const form = container.querySelector('form');
+    expect(form).not.toBeNull();
     expect(sections.length).toBeGreaterThan(0);
     sections.forEach((section) => {
       expect(section).toHaveAttribute('data-has-title', 'true');
+      expect(section.parentElement).toBe(form);
+    });
+    ['variable', 'prompt', 'component'].forEach((fieldName) => {
+      const anchor = document.getElementById(getFieldId(fieldName));
+      expect(anchor).toHaveClass('sr-only');
+      expect(anchor?.nextElementSibling).toHaveAttribute(
+        'data-testid',
+        'section',
+      );
     });
     expect(screen.getByTestId('validation-section')).toHaveAttribute(
       'data-show-heading',
       'false',
     );
   });
+
+  it.each([
+    ['categorical', 'RadioGroup', 'options'],
+    ['boolean', 'Boolean', 'options'],
+    ['scalar', 'VisualAnalogScale', 'parameters'],
+  ])(
+    'keeps the %s definition Section beside its issue anchor',
+    (variableType, component, fieldName) => {
+      fieldHandlers.variableType = variableType;
+      fieldHandlers.component = component;
+      renderFields();
+
+      const anchor = document.getElementById(getFieldId(fieldName));
+      expect(anchor).toHaveClass('sr-only');
+      expect(anchor?.nextElementSibling).toHaveAttribute(
+        'data-testid',
+        'section',
+      );
+    },
+  );
 
   it('passes an empty id for a variable that does not exist yet', () => {
     fieldHandlers.isNewVariable = true;

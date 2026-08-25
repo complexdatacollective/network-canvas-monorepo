@@ -4,12 +4,12 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import RichText from '~/components/Form/Fields/RichText/Field';
+import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useStageFormValue,
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
-import { getFieldId } from '~/utils/issues';
 
 const InterviewerScript = (_props: StageEditorSectionProps) => {
   const currentValue = useStageFormValue('interviewScript');
@@ -35,7 +35,11 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
     [confirm, currentValue],
   );
   return (
-    <div id={getFieldId('interviewScript')} className="w-full">
+    <>
+      <IssueAnchor
+        fieldName="interviewScript"
+        description="Interviewer script text"
+      />
       <Section
         title="Interviewer guidance"
         description="Create notes or a guide for the interviewer."
@@ -51,7 +55,7 @@ const InterviewerScript = (_props: StageEditorSectionProps) => {
           placeholder="Enter text for the interviewer here..."
         />
       </Section>
-    </div>
+    </>
   );
 };
 export default InterviewerScript;

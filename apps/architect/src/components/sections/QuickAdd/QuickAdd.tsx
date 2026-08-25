@@ -1,5 +1,6 @@
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
+import IssueAnchor from '~/components/IssueAnchor';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
   useCreateVariable,
@@ -42,7 +43,8 @@ const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
   }
 
   return (
-    <div id="issue-form" className="w-full">
+    <>
+      <IssueAnchor fieldName="quickAdd" description="Select an attribute" />
       <Section
         title="Quick add configuration"
         description={
@@ -79,7 +81,7 @@ const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
           />
         )}
       </Section>
-    </div>
+    </>
   );
 };
 
