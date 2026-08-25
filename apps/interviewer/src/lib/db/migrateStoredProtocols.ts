@@ -158,22 +158,33 @@ async function migrateStoredProtocolRow(
     };
   }
 
-  // Two different protocols migrating onto one hash means they share a
-  // structure, and storage is content-addressed: keep the row that is already
-  // there rather than overwriting it (and its assets, which are keyed under the
-  // same hash), and move this row's sessions onto it. Checked here so the
-  // asset re-encryption below is skipped in that case, and checked again inside
-  // the transaction, which is what actually decides.
-  const collides =
-    (await db.protocols.where('hash').equals(hash).first()) !== undefined;
-  const assetRows = collides ? [] : await rekeyAssets(previousHash, hash);
+  // Two different protocols migrating onto one hash share a structure, but
+  // the hash covers codebook and stages only — the rows can still carry
+  // different assets (images, API keys) and experiments. Merging them would
+  // resume this row's interviews against the other row's resources, so a
+  // cross-row collision is refused: this row, its sessions, and its assets
+  // stay exactly as they are, and the failure is reported like any other
+  // unmigratable protocol. Checked here so the asset re-encryption below is
+  // skipped, and checked again inside the transaction, which is what actually
+  // decides.
+  const collisionError = () =>
+    new Error(
+      `Migrating "${nextStored.name}" produces the same content hash as ` +
+        'another stored protocol. The two are not interchangeable (their ' +
+        'media and settings can differ), so this protocol was left unchanged.',
+    );
+  if ((await db.protocols.where('hash').equals(hash).first()) !== undefined) {
+    throw collisionError();
+  }
+  const assetRows = await rekeyAssets(previousHash, hash);
 
   await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
     const existing = await db.protocols.where('hash').equals(hash).first();
-    if (!existing) {
-      await db.protocols.put(protocolRow);
-      if (assetRows.length > 0) await db.assets.bulkPut(assetRows);
-    }
+    // A collider that appeared since the check above aborts the transaction,
+    // rolling back everything, and reports the refusal.
+    if (existing) throw collisionError();
+    await db.protocols.put(protocolRow);
+    if (assetRows.length > 0) await db.assets.bulkPut(assetRows);
     // Query the sessions by primary key rather than by the `protocolHash`
     // index we are about to rewrite: Dexie leaves the result undefined when a
     // `modify` changes the very index it is iterating.

@@ -193,7 +193,11 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     expect(dbHash).toBe(importHash);
   });
 
-  it('hard-fails with id and name when a protocol fails to migrate', async () => {
+  it('leaves an unmigratable protocol in place without failing the deployment', async () => {
+    // Rows stored under an older, more permissive validator can fail the
+    // corrected rules; one such row must never block a customer's upgrade.
+    // The runtime payload guard refuses its interviews instead.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const prisma = makeMockPrisma();
     prisma.protocol.findMany.mockResolvedValue([
       {
@@ -217,15 +221,14 @@ describe('migrateProtocolsToCompatibleVersion', () => {
           typeof migrateProtocolsToCompatibleVersion
         >[0],
       ),
-    ).rejects.toThrow(/Broken Protocol\.netcanvas/);
+    ).resolves.toBeUndefined();
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).rejects.toThrow(/cm-broken/);
+    // Nothing was written for the broken row, and the failure names it.
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(logged).toMatch(/Broken Protocol\.netcanvas/);
+    expect(logged).toMatch(/cm-broken/);
+    errorSpy.mockRestore();
   });
 
   it('normalizes a protocol stored at the compatible version that is not conformant', async () => {
@@ -514,18 +517,24 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       name: 'Existing.netcanvas',
     });
 
-    const error = await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    ).catch((e: unknown) => e);
+    // A hash collision is tolerated like any other per-row failure — the
+    // deployment completes and the log names both rows so the administrator
+    // can resolve the duplicate.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      ),
+    ).resolves.toBeUndefined();
 
-    expect(error).toBeInstanceOf(Error);
-    const message = (error as Error).message;
-    expect(message).toMatch(/cm-collide/);
-    expect(message).toMatch(/Colliding\.netcanvas/);
-    expect(message).toMatch(/cm-existing/);
-    expect(message).toMatch(/Existing\.netcanvas/);
+    const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(logged).toMatch(/cm-collide/);
+    expect(logged).toMatch(/Colliding\.netcanvas/);
+    expect(logged).toMatch(/cm-existing/);
+    expect(logged).toMatch(/Existing\.netcanvas/);
+    errorSpy.mockRestore();
   });
 });
 

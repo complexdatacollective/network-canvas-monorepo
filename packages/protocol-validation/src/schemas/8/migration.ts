@@ -42,7 +42,11 @@ const VALID_ORDINAL_PROMPT_COLORS = new Set<unknown>(OrdinalColorSequence);
 // defines eight. Its edge and ordinal palettes both offer eight, which is
 // inside v8's ranges, and the disease palette is v8-only, so no v7 document
 // can carry an out-of-range value for any of those.
-const NODE_COLOR_POSITION = /^node-color-seq-(\d+)$/;
+// Exactly the two positions Classic could author and nothing more: a larger
+// position (`node-color-seq-11`, …) has no legacy interpretation — it can only
+// be hand-authored or corrupt — and must fail validation rather than be
+// silently recoloured.
+const LEGACY_NODE_COLOR_POSITION = /^node-color-seq-(9|10)$/;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null
@@ -1438,29 +1442,25 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // Wrap a node definition's out-of-range palette position back onto
+        // Wrap the two node palette positions Classic could author back onto
         // v8's eight node colours. Architect Classic offered ten node palette
         // positions, so a legitimately authored v7 node type can name
         // `node-color-seq-9` or `node-color-seq-10`, which
         // `NodeColorReferenceSchema` rejects — the protocol could not be
         // imported at all. Wrapping (position 9 -> 1, position 10 -> 2) keeps
-        // the authored positions distinct from one another and lands on a
+        // the two authored positions distinct from one another and lands on a
         // colour the interfaces can render; the alternative, dropping the
         // value, is not available because a node definition's `color` is
-        // required. Only the position is rewritten: a `color` that is not a
-        // `node-color-seq-<position>` reference at all is left for the schema
+        // required. Nothing else is rewritten: positions beyond 10 have no
+        // legacy interpretation, and any other value is left for the schema
         // to reject on its own terms.
         paths: ['codebook.node.*'],
         fn: <V>(entityDefinition: V) => {
           const typedEntity = asRecord(entityDefinition);
           if (typeof typedEntity?.color !== 'string') return entityDefinition;
-          const position = Number(
-            NODE_COLOR_POSITION.exec(typedEntity.color)?.[1],
-          );
-          if (!Number.isInteger(position) || position < 1) {
-            return entityDefinition;
-          }
-          if (position <= NodeColorSequence.length) return entityDefinition;
+          const match = LEGACY_NODE_COLOR_POSITION.exec(typedEntity.color);
+          if (!match) return entityDefinition;
+          const position = Number(match[1]);
           typedEntity.color =
             NodeColorSequence[(position - 1) % NodeColorSequence.length];
           return entityDefinition;

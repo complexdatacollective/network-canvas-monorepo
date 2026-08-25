@@ -281,7 +281,11 @@ describe.each([
     expect((await db.sessions.get('s1'))?.protocolHash).toBe(hash);
   });
 
-  it('repoints onto an existing row rather than duplicating it when hashes collide', async () => {
+  it('refuses a collision with an existing row and leaves everything untouched', async () => {
+    // Equal structural hashes do NOT make two rows interchangeable — the hash
+    // covers codebook and stages only, and the rows can carry different media
+    // or API keys. Merging would resume this row's interviews against the
+    // other row's resources, so the sweep must refuse.
     const collisionHash = migratedHash(v7Document(), 'Alpha Study');
     const existing = migrateProtocol(
       v7Document(),
@@ -306,24 +310,27 @@ describe.each([
 
     const result = await migrateStoredProtocols();
 
-    expect(result.failed).toEqual([]);
-    expect(result.migrated[0]?.hash).toBe(collisionHash);
+    expect(result.migrated).toEqual([]);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0]?.name).toBe('Alpha Study');
+    expect(result.failed[0]?.reason).toMatch(/not interchangeable/);
 
-    // One row, and it is the one that was already there.
-    expect(await db.protocols.count()).toBe(1);
-    const row = await db.protocols.get(collisionHash);
-    if (!row) throw new Error('expected the pre-existing row to survive');
-    expect(row.name).toBe('Existing Copy');
-    expect(row.importedAt).toBe('2026-02-02T00:00:00.000Z');
+    // Both rows survive exactly as they were.
+    expect(await db.protocols.count()).toBe(2);
+    const oldRow = await db.protocols.get('old-hash');
+    expect(oldRow?.schemaVersion).toBe(7);
+    const existingRow = await db.protocols.get(collisionHash);
+    expect(existingRow?.name).toBe('Existing Copy');
 
-    // Both protocols' sessions now point at the surviving row.
+    // Neither protocol's sessions moved.
     const sessions = await db.sessions.toArray();
-    expect(sessions).toHaveLength(2);
-    expect(sessions.every((s) => s.protocolHash === collisionHash)).toBe(true);
+    expect(
+      sessions.find((s) => s.id === 'existing-session')?.protocolHash,
+    ).toBe(collisionHash);
+    expect(sessions.find((s) => s.id === 's1')?.protocolHash).toBe('old-hash');
 
-    // The surviving row keeps its own asset; the superseded row's is gone
-    // rather than having overwritten it.
-    expect(await db.assets.count()).toBe(1);
+    // Both rows keep their own assets.
+    expect(await db.assets.count()).toBe(2);
     const assetRow = await db.assets.get(`${collisionHash}::key-1`);
     if (!assetRow) throw new Error('expected the existing asset to survive');
     expect((await decryptAsset(assetRow)).data).toBe('secret-key-1');

@@ -1515,6 +1515,17 @@ describe('Migration V7 to V8', () => {
       expect(migratedRaw.stages[0]?.prompts[0]?.color).toBe('ord-color-seq-1');
     });
 
+    it('leaves positions beyond the tenth for the schema to reject', () => {
+      // Classic's palette stopped at ten, so an eleventh position can only be
+      // hand-authored or corrupt — it has no legacy interpretation to wrap to.
+      const migratedRaw = migrationV7toV8.migrate(
+        v7WithNodeColors({ person: 'node-color-seq-11' }),
+        { name: 'Test Protocol' },
+      ) as { codebook: { node: Record<string, { color: string }> } };
+      expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
+      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+    });
+
     it('leaves a colour that is not a palette position for the schema to reject', () => {
       // Not a repair path: only a `node-color-seq-<position>` reference is
       // rewritten, and only its position. Anything else is a value the

@@ -244,14 +244,17 @@ async function normalizeNonConformantProtocol(
  * with the strict schema the app applies on read.
  *
  * Two classes of protocol need work:
- * - below the target version: migrated up to it (hard-fails the deploy on
- *   error, since the interview runtime cannot read older data at all).
+ * - below the target version: migrated up to it.
  * - at the target version but non-conformant: rows persisted before the
  *   current validation rules shipped, mechanically re-normalized through the
- *   migration chain (see `normalizeNonConformantProtocol`). If a protocol's
- *   content is genuinely invalid and cannot be migrated, it is logged and left
- *   in place — the read path degrades gracefully rather than crashing, so one
- *   bad protocol must not abort the deploy.
+ *   migration chain (see `normalizeNonConformantProtocol`).
+ *
+ * Both classes tolerate failure: a protocol that cannot be migrated or
+ * normalized is logged and left in place, because one bad row must never
+ * block a customer's deployment. A left-behind below-target row is safe at
+ * runtime — the interview payload refuses a protocol whose stored version
+ * does not match the runtime's — and a left-behind non-conformant row
+ * degrades gracefully through the read path's per-field parsing.
  *
  * Idempotent: conformant protocols at the target version are skipped.
  */
@@ -279,8 +282,26 @@ export async function migrateProtocolsToCompatibleVersion(
 
   for (const row of protocols) {
     if (row.schemaVersion < TARGET_SCHEMA_VERSION) {
-      await migrateOneProtocol(prisma, row);
-      migrated += 1;
+      // Tolerated, never deploy-fatal: rows stored under an older, more
+      // permissive validator can legitimately fail the corrected rules (the
+      // released CEGRM disease color is a real example), and one such row must
+      // not block a customer's upgrade. A row left behind is safe at runtime —
+      // the interview payload refuses a protocol whose stored version does not
+      // match the runtime's, so its interviews report the mismatch instead of
+      // running incorrectly.
+      try {
+        await migrateOneProtocol(prisma, row);
+        migrated += 1;
+      } catch (err) {
+        skipped += 1;
+        const cause = err instanceof Error ? err.message : String(err);
+        console.error(
+          `Could not migrate protocol "${row.name}" (id=${row.id}) from ` +
+            `schema version ${row.schemaVersion}: ${cause}. Leaving it in ` +
+            `place; interviews using it will refuse to start until it is ` +
+            `repaired in Architect and uploaded again.`,
+        );
+      }
       continue;
     }
 
