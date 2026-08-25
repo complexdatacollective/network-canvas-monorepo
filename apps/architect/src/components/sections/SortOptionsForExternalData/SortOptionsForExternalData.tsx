@@ -76,50 +76,36 @@ const SortOptions = ({ dataSource, disabled }: SortOptionsProps) => {
       defaultOpen={hasSortOrder || hasSortableProperties}
       disabled={disabled}
     >
-      <Section
-        title="Initial ordering"
-        description="Create the rule that determines the roster's default order."
-      >
-        <ArchitectArrayField
-          name="sortOptions.sortOrder"
-          label="Sort rule"
-          hint="Set the roster's initial sort order. Without a rule, nodes keep their order from the data file."
-          component={MultiSelect}
-          addButtonLabel="Add new sort rule"
-          initialValue={initialSortOrder}
-          maxItems={1}
-          properties={SORT_ORDER_PROPERTIES}
-          validation={SORT_ORDER_VALIDATION}
-          options={sortOrderOptionGetter}
-        />
-      </Section>
-      <Section
-        title="Participant sorting"
-        description="Choose the roster attributes participants can use to reorder the cards."
-      >
-        <ArchitectArrayField
-          name="sortOptions.sortableProperties"
-          label="Sortable properties"
-          hint="Select attributes that help participants locate a specific roster member."
-          component={MultiSelect}
-          addButtonLabel="Add new sortable property"
-          initialValue={initialSortableProperties}
-          maxItems={maxVariableOptions}
-          properties={SORTABLE_PROPERTIES}
-          validation={SORTABLE_PROPERTIES_VALIDATION}
-          options={(
-            fieldName: string,
-            rowValues: unknown,
-            allValues: unknown,
-          ) =>
-            variableOptionsGetter(
-              fieldName,
-              rowValues,
-              allValues as Array<Record<string, unknown>>,
-            )
-          }
-        />
-      </Section>
+      <ArchitectArrayField
+        name="sortOptions.sortOrder"
+        label="Sort rule"
+        hint="Set the roster's initial sort order. Without a rule, nodes keep their order from the data file."
+        component={MultiSelect}
+        addButtonLabel="Add new sort rule"
+        initialValue={initialSortOrder}
+        maxItems={1}
+        properties={SORT_ORDER_PROPERTIES}
+        validation={SORT_ORDER_VALIDATION}
+        options={sortOrderOptionGetter}
+      />
+      <ArchitectArrayField
+        name="sortOptions.sortableProperties"
+        label="Sortable properties"
+        hint="Select attributes that help participants locate a specific roster member."
+        component={MultiSelect}
+        addButtonLabel="Add new sortable property"
+        initialValue={initialSortableProperties}
+        maxItems={maxVariableOptions}
+        properties={SORTABLE_PROPERTIES}
+        validation={SORTABLE_PROPERTIES_VALIDATION}
+        options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
+          variableOptionsGetter(
+            fieldName,
+            rowValues,
+            allValues as Array<Record<string, unknown>>,
+          )
+        }
+      />
     </Section>
   );
 };

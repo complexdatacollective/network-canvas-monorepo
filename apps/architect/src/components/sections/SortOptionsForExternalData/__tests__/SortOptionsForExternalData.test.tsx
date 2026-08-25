@@ -47,6 +47,17 @@ describe('SortOptionsForExternalData', () => {
     expect(getFieldState('sortOptions.sortableProperties')?.value).toEqual([
       { variable: 'name', label: 'Name' },
     ]);
+    expect(
+      screen.getByRole('heading', { name: 'Roster sorting' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Initial ordering' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Participant sorting' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Sort rule')).toBeInTheDocument();
+    expect(screen.getByText('Sortable properties')).toBeInTheDocument();
   });
 
   it('does not resurrect sortOrder/sortableProperties when reopened after a clear', async () => {
