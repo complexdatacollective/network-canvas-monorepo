@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
@@ -138,9 +138,11 @@ describe('ConnectedVariablePill', () => {
     expect(dialog).toBeInTheDocument();
     // The trigger's default percentage max-width constrains its normal layout,
     // but the viewport overlay must regain the internal editing width.
-    expect(dialog.querySelector('.variable-pill')).toHaveStyle({
-      width: '320px',
-    });
+    await waitFor(() =>
+      expect(dialog.querySelector('.variable-pill')).toHaveStyle({
+        width: '320px',
+      }),
+    );
     expect(input).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     const saveButton = screen.getByRole('button', { name: 'Save Changes' });
@@ -234,15 +236,19 @@ describe('VariablePill', () => {
     const editor = dialog.querySelector<HTMLElement>('.variable-pill');
     if (!editor) throw new Error('variable pill editor did not render');
 
-    const frameLeft = Number.parseFloat(dialog.style.left);
-    const frameWidth = Number.parseFloat(dialog.style.width);
-    const editorWidth = Number.parseFloat(editor.style.width);
-
     // The frame keeps a 16px viewport gutter, and the 1.5x pill plus its 24px
     // padding on each side fits inside that frame instead of overflowing it.
-    expect(frameLeft).toBeGreaterThanOrEqual(16);
-    expect(frameLeft + frameWidth).toBeLessThanOrEqual(window.innerWidth - 16);
-    expect(editorWidth * 1.5 + 48).toBeLessThanOrEqual(frameWidth);
+    await waitFor(() => {
+      const frameLeft = Number.parseFloat(dialog.style.left);
+      const frameWidth = Number.parseFloat(dialog.style.width);
+      const editorWidth = Number.parseFloat(editor.style.width);
+
+      expect(frameLeft).toBeGreaterThanOrEqual(16);
+      expect(frameLeft + frameWidth).toBeLessThanOrEqual(
+        window.innerWidth - 16,
+      );
+      expect(editorWidth * 1.5 + 48).toBeLessThanOrEqual(frameWidth);
+    });
   });
 
   it('uses a data element and a static border for a non-interactive reference', () => {

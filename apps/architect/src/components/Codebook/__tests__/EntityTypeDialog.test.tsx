@@ -19,10 +19,6 @@ vi.mock('~/components/DialogForm/DialogForm', async () => {
   };
 });
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
 // The pickers are irrelevant to store identity and drag in canvas/motion work
 // jsdom cannot do.
 vi.mock('~/components/Form/Fields/ColorPicker', () => ({

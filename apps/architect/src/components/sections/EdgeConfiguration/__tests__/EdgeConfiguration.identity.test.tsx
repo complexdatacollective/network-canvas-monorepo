@@ -1,22 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <div data-testid="section">
-      {title && <h2>{title}</h2>}
-      {children}
-    </div>
-  ),
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 
 // The real multi-select is a `CheckboxGroupField` over the codebook's edge
 // types; unchecking one emits the surviving entries in checked order, which is

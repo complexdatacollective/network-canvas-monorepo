@@ -1,6 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,9 +9,6 @@ import Form from '@codaco/fresco-ui/form/Form';
 // renders it at all is what this file is about. Every `ArchitectField`/
 // `ArchitectArrayField` is reduced to its name so the editable option list can
 // be asserted absent.
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('~/components/Form/ArchitectField', () => ({
   default: ({ name }: { name: string }) => (
     <div data-testid={`field-${name}`} />

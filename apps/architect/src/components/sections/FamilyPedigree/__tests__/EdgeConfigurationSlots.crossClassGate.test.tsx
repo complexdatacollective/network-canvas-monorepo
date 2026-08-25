@@ -23,9 +23,6 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // the mirror of NodeConfigurationSlots.crossClassGate.test.tsx on the edge
 // subject. There is no intra-draft case here: FamilyPedigree has no validated
 // writer on its edge type.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('@codaco/fresco-ui/Section', () => ({
   default: ({ children, title }: { children: ReactNode; title: string }) => (
     <section aria-label={title} data-component="Section">

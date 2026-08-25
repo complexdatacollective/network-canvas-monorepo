@@ -23,9 +23,6 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // app's other field-level gates. ArchitectArrayField is mocked to capture the
 // nodeConfig.form dialog's editorValidate, so the intra-draft MIRROR (a form
 // field picking a variable a still-unsaved slot drafts) is pinned too.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('@codaco/fresco-ui/Section', () => ({
   default: ({ children, title }: { children: ReactNode; title: string }) => (
     <section aria-label={title} data-component="Section">

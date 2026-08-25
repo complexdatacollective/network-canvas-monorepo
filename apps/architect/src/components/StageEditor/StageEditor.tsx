@@ -557,7 +557,7 @@ const StageEditor = (props: StageEditorProps) => {
           hasUnsavedChanges={hasUnsavedChanges}
         />
         <div className="phone-landscape:px-6 px-4">
-          <div className="mx-auto w-full max-w-7xl">
+          <div className="mx-auto w-full max-w-4xl">
             {/*
              * The editor's visible hero heading is the stage-name INPUT
              * (StageHeading), which is a control, not a heading — so this route

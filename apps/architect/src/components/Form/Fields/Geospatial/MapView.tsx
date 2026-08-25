@@ -11,7 +11,6 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
-import { Layout } from '~/components/EditorLayout';
 import { getAssetManifest } from '~/selectors/protocol';
 
 export type MapOptions = {
@@ -215,27 +214,25 @@ const MapView = ({
         </>
       }
     >
-      <Layout>
-        <Section
-          title="Initial map view"
-          description="Pan and zoom the map to set the view participants see when the map first loads or is reset."
-        >
-          {mapStatus === 'loading' && (
-            <output className="sr-only">Loading map preview.</output>
-          )}
-          {mapError && (
-            <Alert variant="destructive" density="compact">
-              <AlertDescription>{mapError}</AlertDescription>
-            </Alert>
-          )}
-          <section
-            ref={setMapContainer}
-            aria-label="Interactive map preview"
-            aria-busy={mapStatus === 'loading'}
-            className="h-[50vh] w-full"
-          />
-        </Section>
-      </Layout>
+      <Section
+        title="Initial map view"
+        description="Pan and zoom the map to set the view participants see when the map first loads or is reset."
+      >
+        {mapStatus === 'loading' && (
+          <output className="sr-only">Loading map preview.</output>
+        )}
+        {mapError && (
+          <Alert variant="destructive" density="compact">
+            <AlertDescription>{mapError}</AlertDescription>
+          </Alert>
+        )}
+        <section
+          ref={setMapContainer}
+          aria-label="Interactive map preview"
+          aria-busy={mapStatus === 'loading'}
+          className="h-[50vh] w-full"
+        />
+      </Section>
     </Dialog>
   );
 };

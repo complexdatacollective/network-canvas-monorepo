@@ -14,9 +14,6 @@ import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 // NewVariableWindow are stubbed so only the array field's `onBeforeSave` is
 // exercised; `updateVariableAsync`/`createVariableAsync` are faked thunks so
 // the codebook write itself is a plain spy.
-vi.mock('~/components/EditorLayout', () => ({
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('@codaco/fresco-ui/Section', () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

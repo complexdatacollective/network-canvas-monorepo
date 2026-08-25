@@ -1,30 +1,10 @@
 import { screen } from '@testing-library/react';
-import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   asStage,
   renderStageForm,
 } from '~/components/StageEditor/__tests__/stageFormTestHarness';
-
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: ReactNode;
-  }) => (
-    <div
-      data-testid="section"
-      data-title={typeof title === 'string' ? title : ''}
-    >
-      {title && <h2>{title}</h2>}
-      {children}
-    </div>
-  ),
-  Row: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 
 // The multi-select is exercised in its own test; here we only assert it renders.
 vi.mock('../EdgeTypeMultiSelect', () => ({

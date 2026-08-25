@@ -29,10 +29,6 @@ import { describe, expect, it, vi } from 'vitest';
   };
 });
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
 // The pickers are irrelevant here and drag in canvas/motion work jsdom cannot
 // do.
 vi.mock('~/components/Form/Fields/ColorPicker', () => ({

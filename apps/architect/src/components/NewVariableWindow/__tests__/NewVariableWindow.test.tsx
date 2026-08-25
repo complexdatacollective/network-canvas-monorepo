@@ -26,10 +26,6 @@ vi.mock('~/components/DialogForm/DialogForm', async () => {
   };
 });
 
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-
 vi.mock('~/components/Form/arrayFields/Options', () => ({
   default: () => null,
   optionsValidation: {},

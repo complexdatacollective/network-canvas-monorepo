@@ -1,6 +1,5 @@
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import { Layout } from '~/components/EditorLayout';
 
 import AssetBrowser from './AssetBrowser';
 
@@ -31,14 +30,14 @@ const AssetBrowserWindow = ({
         </Button>
       }
     >
-      <Layout>
+      <div className="pb-2">
         <AssetBrowser
           type={type}
           onSelect={onSelect}
           selected={selected}
           disableDelete
         />
-      </Layout>
+      </div>
     </Dialog>
   );
 };

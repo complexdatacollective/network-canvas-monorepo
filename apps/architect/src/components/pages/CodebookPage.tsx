@@ -3,7 +3,6 @@ import { useCallback, useState } from 'react';
 import Codebook from '~/components/Codebook/Codebook';
 import EntityTypeDialog from '~/components/Codebook/EntityTypeDialog';
 import UnusedVariablesAlert from '~/components/Codebook/UnusedVariablesAlert';
-import { Layout } from '~/components/EditorLayout';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 
 type DialogState = {
@@ -30,16 +29,16 @@ const CodebookPage = () => {
 
   return (
     <>
-      <Layout className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
+      <div className="phone-landscape:px-7 tablet-landscape:px-29 px-5">
         <PageHeading
           title="Codebook"
           description="Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted."
         />
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="mx-auto mt-6 w-full max-w-6xl">
           <UnusedVariablesAlert />
           <Codebook onEditEntity={handleOpenEntityDialog} />
         </div>
-      </Layout>
+      </div>
       <EntityTypeDialog
         show={dialogOpen}
         entity={dialogState.entity}

@@ -59,7 +59,6 @@ export default function Section({
 }: SectionProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const hasDescription = description !== undefined && description !== null;
   const surfaceDepth = useSurfaceDepth();
   const headingLevel = surfaceDepth === 0 ? 'h3' : 'h4';
   const [open, setOpen] = useState(toggleable ? defaultOpen : true);
@@ -126,16 +125,16 @@ export default function Section({
         spacing="none"
         shadow="sm"
         aria-labelledby={titleId}
-        aria-describedby={hasDescription ? descriptionId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
         aria-disabled={disabled || undefined}
         className="group w-full overflow-visible!"
       >
-        <header className="flex items-start justify-between gap-6 p-6">
+        <header className="flex items-start justify-between gap-6 px-8 py-6">
           <div className="min-w-0 group-aria-disabled:opacity-50">
             <Heading id={titleId} level={headingLevel} margin="none">
               {title}
             </Heading>
-            {hasDescription && (
+            {description && (
               <Paragraph
                 id={descriptionId}
                 emphasis="muted"
@@ -150,7 +149,7 @@ export default function Section({
             <Collapsible.Trigger
               aria-busy={isChangePending || undefined}
               aria-labelledby={titleId}
-              aria-describedby={hasDescription ? descriptionId : undefined}
+              aria-describedby={description ? descriptionId : undefined}
               disabled={isChangePending}
               render={(triggerProps, state) => (
                 <Toggle
@@ -170,7 +169,7 @@ export default function Section({
             <FieldUnmountPolicyProvider discardOnUnmount={discardOnUnmount}>
               <fieldset
                 disabled={disabled}
-                className="m-0 min-w-0 border-0 p-6 disabled:opacity-60"
+                className="m-0 min-w-0 border-0 px-8 py-6 disabled:opacity-60"
               >
                 {children}
               </fieldset>

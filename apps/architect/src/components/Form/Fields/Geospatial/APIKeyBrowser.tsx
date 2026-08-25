@@ -16,7 +16,6 @@ import { normalizeForComparison } from '@codaco/shared-consts';
 import Assets from '~/components/AssetBrowser/Assets';
 import useExternalDataPreview from '~/components/AssetBrowser/useExternalDataPreview';
 import { useNestedDraftDialog } from '~/components/DialogForm/useNestedDraftDialog';
-import { Layout } from '~/components/EditorLayout';
 import ArchitectField from '~/components/Form/ArchitectField';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
 import { getProtocolLockState } from '~/ducks/modules/app';
@@ -193,57 +192,51 @@ const APIKeyBrowserBody = ({
       }
     >
       <FormWithoutProvider onSubmit={handleSubmit}>
-        <Layout>
-          <Section
-            title="Create API key"
-            description={
-              <>
-                This key is saved inside your protocol and included as plain
-                text in exported <code>.netcanvas</code> files, so only use a
-                key you are comfortable distributing.
-              </>
-            }
-          >
-            <ArchitectField
-              name="keyName"
-              label="Key name"
-              component={InputField}
-              validation={{ required: true }}
-              type="text"
-              placeholder="Name this key"
-            />
-            <ArchitectField
-              name="keyValue"
-              label="Key value"
-              component={InputField}
-              validation={{ required: true }}
-              type="text"
-              placeholder="Enter an API Key..."
-            />
-            <div className="pt-4">
-              <SubmitButton
-                key="save"
-                iconPosition="right"
-                icon={<ArrowRight />}
-              >
-                Create Key
-              </SubmitButton>
-            </div>
-          </Section>
-          <Section
-            title="Saved API keys"
-            description="Select an API key already stored in this protocol."
-          >
-            <Assets
-              onSelect={handleSelectAsset}
-              selected={selected}
-              type="apikey"
-              disableDelete
-              onPreview={handleShowPreview}
-            />
-          </Section>
-          {preview}
-        </Layout>
+        <Section
+          title="Create API key"
+          description={
+            <>
+              This key is saved inside your protocol and included as plain text
+              in exported <code>.netcanvas</code> files, so only use a key you
+              are comfortable distributing.
+            </>
+          }
+        >
+          <ArchitectField
+            name="keyName"
+            label="Key name"
+            component={InputField}
+            validation={{ required: true }}
+            type="text"
+            placeholder="Name this key"
+          />
+          <ArchitectField
+            name="keyValue"
+            label="Key value"
+            component={InputField}
+            validation={{ required: true }}
+            type="text"
+            placeholder="Enter an API Key..."
+          />
+          <div className="pt-4">
+            <SubmitButton key="save" iconPosition="right" icon={<ArrowRight />}>
+              Create Key
+            </SubmitButton>
+          </div>
+        </Section>
+        <Section
+          title="Saved API keys"
+          description="Select an API key already stored in this protocol."
+        >
+          <Assets
+            onSelect={handleSelectAsset}
+            selected={selected}
+            type="apikey"
+            disableDelete
+            onPreview={handleShowPreview}
+          />
+        </Section>
+        {preview}
       </FormWithoutProvider>
     </Dialog>
   );

@@ -6,7 +6,6 @@ import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import { Layout } from '~/components/EditorLayout';
 import { useRefusedNestedCommit } from '~/hooks/useRefusedNestedCommit';
 
 import {
@@ -189,21 +188,21 @@ const DialogFormBody = ({
           aria-label="Resize form and preview panes"
           className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
         >
-          <Layout className="min-w-0 @min-[60rem]:pr-4">
-            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-              {children}
-            </FormWithoutProvider>
-          </Layout>
+          <FormWithoutProvider
+            id={domFormId}
+            onSubmit={handleSubmit}
+            className="min-w-0 @min-[60rem]:pr-4"
+          >
+            {children}
+          </FormWithoutProvider>
           <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
             {aside}
           </aside>
         </ResizableFlexPanel>
       ) : (
-        <Layout>
-          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-            {children}
-          </FormWithoutProvider>
-        </Layout>
+        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+          {children}
+        </FormWithoutProvider>
       )}
     </Dialog>
   );

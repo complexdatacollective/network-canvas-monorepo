@@ -9,9 +9,6 @@ import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/shared-consts';
 
 // Editor chrome only — `LockedOptions` stays REAL, because which option list
 // it is handed is the whole point of this file.
-vi.mock('~/components/EditorLayout', () => ({
-  Section: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
 vi.mock('~/components/Form/Fields/VariablePicker/VariablePicker', () => ({
   VariablePickerControl: () => <div data-testid="variable-picker" />,
 }));
