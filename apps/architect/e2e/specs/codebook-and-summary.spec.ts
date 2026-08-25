@@ -248,6 +248,18 @@ test(
         exact: true,
       }),
     ).toBeVisible();
+    // The feasibility verdict at the top of the Codebook settles only after a
+    // debounced engine run; capturing earlier would bake the transient
+    // "Checking this protocol…" banner — or no banner at all — into the
+    // baseline, and every later comparison would race the same window.
+    // Anchoring on either SETTLED title (rather than on the transient's
+    // absence, which also holds before the verdict mounts) keeps the guard
+    // honest if the fixture ever gains a refusal.
+    await expect(
+      architectPage.getByText(
+        /^(Generation is possible|Synthetic data cannot be generated)$/,
+      ),
+    ).toBeVisible();
 
     const capture = makeCapture(architectPage);
     await capture(baseline);
@@ -284,17 +296,34 @@ test('lists roster data-source references in Used In', async ({
 
   // The invariant behind the two symptoms, asserted across the whole table:
   // a row whose delete is disabled as in-use must say where.
-  const disabledWithNothingToShow = await architectPage.evaluate(() => {
-    const rows = [...document.querySelectorAll('table tbody tr')];
-    return rows
-      .filter((row) => {
+  //
+  // The column is resolved from each table's own header rather than by a fixed
+  // position, because the codebook gained columns between "Name" and "Used In".
+  // Only the attribute tables carry that column (a network asset's attribute
+  // list has a name and nothing else), so `inspected` is reported alongside and
+  // asserted: an empty walk would compare an empty list to an empty list and
+  // pass while measuring nothing.
+  const { offenders, inspected } = await architectPage.evaluate(() => {
+    const found: string[] = [];
+    let tables = 0;
+    for (const table of document.querySelectorAll('table')) {
+      const usageIndex = [...table.querySelectorAll('thead th')].findIndex(
+        (heading) => (heading.textContent ?? '').trim() === 'Used In',
+      );
+      if (usageIndex < 0) continue;
+      tables += 1;
+      for (const row of table.querySelectorAll('tbody tr')) {
         const control = row.querySelector('button[aria-label^="In use"]');
-        const usage = row.querySelectorAll('td')[1];
-        return control !== null && (usage?.textContent ?? '').trim() === '';
-      })
-      .map((row) => row.textContent?.trim().slice(0, 60) ?? '');
+        const usage = row.querySelectorAll('td')[usageIndex];
+        if (control !== null && (usage?.textContent ?? '').trim() === '') {
+          found.push(row.textContent?.trim().slice(0, 60) ?? '');
+        }
+      }
+    }
+    return { offenders: found, inspected: tables };
   });
-  expect(disabledWithNothingToShow).toEqual([]);
+  expect(inspected).toBeGreaterThan(0);
+  expect(offenders).toEqual([]);
 });
 
 // The same references reach the printable Summary's own "Used In" column,

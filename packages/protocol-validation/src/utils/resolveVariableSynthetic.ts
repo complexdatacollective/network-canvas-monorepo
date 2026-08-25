@@ -657,11 +657,40 @@ export type SubjectInterfaceRules = ReadonlyMap<string, EffectiveVariableRules>;
  */
 export type BinOnlyVariables = ReadonlyMap<string, ReadonlySet<string>>;
 
+/**
+ * One stage's own contribution to one variable's implied rules: the stage it
+ * came from, and what that stage alone imposes.
+ *
+ * Identified by INDEX rather than by id or label. The index is what the walk
+ * has — `collectVariableRoleHits` reports it off each writer's path — and it
+ * addresses a stage in a mid-edit draft whose id may be missing and whose
+ * label may be blank or shared with another stage. A caller that wants a name
+ * reads `protocol.stages[stageIndex]` and decides for itself how to name it.
+ */
+export type ImpliedRuleSource = {
+  stageIndex: number;
+  rules: EffectiveVariableRules;
+};
+
+/**
+ * Where each implied rule came from, keyed by subject and then by variable id
+ * exactly as the rules themselves are, with the sources in stage order.
+ *
+ * Carried alongside the rules rather than derived a second time by the caller:
+ * running the collector once per stage would answer the same question, but as
+ * a separate reading free to drift from the one that produced the rules.
+ */
+export type ImpliedRuleSources = ReadonlyMap<
+  string,
+  ReadonlyMap<string, readonly ImpliedRuleSource[]>
+>;
+
 export type InterfaceImpliedRules = ReadonlyMap<
   string,
   SubjectInterfaceRules
 > & {
   readonly binOnlyVariables: BinOnlyVariables;
+  readonly impliedRuleSources: ImpliedRuleSources;
 };
 
 /** How {@link collectInterfaceImpliedRules} files one subject. */
@@ -811,6 +840,11 @@ const isQuickAddField = (
  * keeps its rules, because that site may be a form field where the participant
  * is shown a validation error.
  *
+ * It also answers WHICH stage each rule came from — see
+ * {@link ImpliedRuleSources}. The rules a subject is held to are the sources
+ * folded together, so a caller naming the stage behind a rule and a caller
+ * applying that rule are reading one derivation rather than two.
+ *
  * Walk the whole protocol ONCE per generation run: this visits every stage.
  */
 export function collectInterfaceImpliedRules(
@@ -821,6 +855,10 @@ export function collectInterfaceImpliedRules(
 
   const bySubject = new Map<string, Map<string, EffectiveVariableRules>>();
   const binOnlyVariables = new Map<string, Set<string>>();
+  const impliedRuleSources = new Map<
+    string,
+    Map<string, ImpliedRuleSource[]>
+  >();
 
   for (const group of collectVariableRoleHits(protocol)) {
     // Read across EVERY writer rather than the first: the intersection is what
@@ -844,25 +882,43 @@ export function collectInterfaceImpliedRules(
       binOnlyVariables.set(key, forSubject);
     }
 
-    const implied: EffectiveVariableRules = {};
-    if (writers.some((hit) => isCategoricalBinAssignment(hit.path, stages))) {
-      implied.maxSelected = 1;
+    // Per STAGE first, then folded. Skipping a writer with no stage index
+    // drops no rule: all three predicates below already require a path of the
+    // form `stages[n]…`, which is exactly the condition `stageIndexOf` reports
+    // an index for, so a writer without one imposes nothing either way.
+    const byStage = new Map<number, EffectiveVariableRules>();
+    for (const hit of writers) {
+      const { stageIndex } = hit;
+      if (stageIndex === undefined) continue;
+      const rules = byStage.get(stageIndex) ?? {};
+      if (isCategoricalBinAssignment(hit.path, stages)) rules.maxSelected = 1;
+      if (isBinPromptAssignment(hit.path, stages)) {
+        // A bin affords no way to SKIP a node while placing the others — total
+        // placement is the interaction's design, and the next-button pulse
+        // encodes it. Missingness on a bin-written variable therefore
+        // describes a state the interface does not afford, and the implied
+        // rule resolves it to zero exactly as quick-add's does (maintainer
+        // ruling, 2026-08-21). The runtime does not yet BLOCK advancing with
+        // unplaced nodes; when issue #1428's optional stage-level placement
+        // gate lands, this rule becomes conditional on that gate.
+        rules.required = true;
+      }
+      if (isQuickAddField(hit.path, stages)) rules.required = true;
+      if (Object.keys(rules).length > 0) byStage.set(stageIndex, rules);
     }
-    if (writers.some((hit) => isBinPromptAssignment(hit.path, stages))) {
-      // A bin affords no way to SKIP a node while placing the others — total
-      // placement is the interaction's design, and the next-button pulse
-      // encodes it. Missingness on a bin-written variable therefore
-      // describes a state the interface does not afford, and the implied
-      // rule resolves it to zero exactly as quick-add's does (maintainer
-      // ruling, 2026-08-21). The runtime does not yet BLOCK advancing with
-      // unplaced nodes; when issue #1428's optional stage-level placement
-      // gate lands, this rule becomes conditional on that gate.
-      implied.required = true;
-    }
-    if (writers.some((hit) => isQuickAddField(hit.path, stages))) {
-      implied.required = true;
-    }
-    if (Object.keys(implied).length === 0) continue;
+    // Stage order, so a note listing several sources reads down the timeline.
+    const sources: ImpliedRuleSource[] = [...byStage.entries()]
+      .toSorted(([a], [b]) => a - b)
+      .map(([stageIndex, rules]) => ({ stageIndex, rules }));
+    if (sources.length === 0) continue;
+
+    // The subject's rules ARE its sources folded together, by the same
+    // intersection that combines any two readings of a rule — so the rules and
+    // their provenance cannot disagree about what a stage imposes.
+    const implied = sources.reduce<EffectiveVariableRules>(
+      (narrowed, source) => narrowVariableRules(narrowed, source.rules),
+      {},
+    );
 
     const forSubject =
       bySubject.get(key) ?? new Map<string, EffectiveVariableRules>();
@@ -871,9 +927,14 @@ export function collectInterfaceImpliedRules(
       narrowVariableRules(forSubject.get(group.variableId) ?? {}, implied),
     );
     bySubject.set(key, forSubject);
+
+    const sourcesForSubject =
+      impliedRuleSources.get(key) ?? new Map<string, ImpliedRuleSource[]>();
+    sourcesForSubject.set(group.variableId, sources);
+    impliedRuleSources.set(key, sourcesForSubject);
   }
 
   // Carried ON the map rather than beside it, so every existing reader keeps
   // asking `.get(subjectKey)` for the rules it came for.
-  return Object.assign(bySubject, { binOnlyVariables });
+  return Object.assign(bySubject, { binOnlyVariables, impliedRuleSources });
 }

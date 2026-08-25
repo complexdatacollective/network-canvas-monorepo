@@ -1,7 +1,7 @@
 import { getInterviewProgress } from '@codaco/interview';
 import {
   freshBatchStartWindow,
-  generateInterviews,
+  generateInterviewsAsync,
 } from '@codaco/protocol-utilities';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
@@ -17,9 +17,9 @@ import { loadSyntheticAssetData } from './loadAssetData';
 
 /**
  * Generation runs in two phases the researcher can tell apart: the engine
- * draws the whole batch in one synchronous call, then each session is
- * encrypted and written. Reporting them separately keeps the progress bar
- * honest — a long pause before the first row lands is the draw, not a stall.
+ * draws the whole batch, then each session is encrypted and written. Reporting
+ * them separately keeps the progress bar honest — a long pause before the
+ * first row lands is the draw, not a stall.
  */
 export type SyntheticGenerationProgress = {
   phase: 'generating' | 'storing';
@@ -113,7 +113,13 @@ export async function generateSyntheticSessions(
   // retry live inside the engine: it re-runs a dropped session on its own
   // substreams rather than drawing a fresh one, so the batch stays a pure
   // function of `seed` and `startWindow` together.
-  const results = generateInterviews(
+  //
+  // Drawn through the engine's yielding driver for the same reason Architect's
+  // export is: this runs on the tab's only thread, a session costs real work,
+  // and a batch may ask for a thousand of them. The synchronous driver would
+  // hold the thread for the whole draw, so the progress reported below would
+  // have no frame to render in and the tab would sit frozen until it finished.
+  const results = await generateInterviewsAsync(
     parsed,
     {
       count,

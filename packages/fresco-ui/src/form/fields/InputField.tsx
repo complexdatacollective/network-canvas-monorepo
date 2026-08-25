@@ -159,6 +159,21 @@ type InputFieldProps = CreateFormFieldProps<
     // "Decrease value", which are ambiguous once a screen has more than one
     // numeric field.
     stepperLabels?: { increase: string; decrease: string };
+    // Replaces the native step arithmetic for callers whose valid range an
+    // `<input type="number">` cannot state: an open one, a bound the range
+    // excludes, or a continuous quantity with no single grid to snap to. Given
+    // what is currently in the box and a direction, it returns the value to
+    // settle on, or `undefined` to leave the box alone (a step past the edge
+    // of the range moves nothing).
+    //
+    // Supplying it also ENABLES the steppers and the arrow keys under
+    // `step="any"`, whose native `stepUp()`/`stepDown()` throw — a field that
+    // accepts any value in its range would otherwise have to lie about its
+    // step to offer stepping at all.
+    resolveStep?: (
+      current: string,
+      direction: 'up' | 'down',
+    ) => string | undefined;
   }
 >;
 
@@ -174,6 +189,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
       nativeOnChange,
       onStep,
       stepperLabels,
+      resolveStep,
       onKeyDown,
       type = 'text',
       inputMode,
@@ -197,12 +213,26 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     const internalRef = useRef<HTMLInputElement>(null);
     const isNumber = type === 'number';
     const isInteractive = !disabled && !readOnly;
-    const canStep = isInteractive && inputProps.step !== 'any';
+    const canStep =
+      isInteractive && (resolveStep !== undefined || inputProps.step !== 'any');
 
     const handleStep = useCallback(
       (direction: 'up' | 'down') => {
         const input = internalRef.current;
-        if (!input || input.step === 'any') return;
+        if (!input) return;
+
+        if (resolveStep) {
+          const next = resolveStep(input.value, direction);
+          // A step the caller's range cannot hold moves nothing.
+          if (next === undefined) return;
+          // The value is the caller's to own — writing it to the DOM here
+          // would be overwritten by the next controlled render anyway.
+          onChange?.(next);
+          onStep?.(next);
+          return;
+        }
+
+        if (input.step === 'any') return;
 
         if (direction === 'up') {
           input.stepUp();
@@ -214,7 +244,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         onChange?.(input.value);
         onStep?.(input.value);
       },
-      [onChange, onStep],
+      [onChange, onStep, resolveStep],
     );
 
     const wrapperClassName = cx(

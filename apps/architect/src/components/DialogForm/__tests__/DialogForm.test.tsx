@@ -383,7 +383,7 @@ describe('DialogForm', () => {
 describe('DialogForm unsaved-changes guard', () => {
   const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
 
-  const renderForm = (onClose: () => void) =>
+  const renderForm = (onClose: () => void, unregisteredDraft?: () => boolean) =>
     render(
       <DialogForm
         open
@@ -392,6 +392,7 @@ describe('DialogForm unsaved-changes guard', () => {
         formId="guard-form"
         submitLabel="Save"
         onSubmit={vi.fn()}
+        {...(unregisteredDraft ? { unregisteredDraft } : {})}
       >
         <Field
           name="hint"
@@ -449,6 +450,31 @@ describe('DialogForm unsaved-changes guard', () => {
     await waitFor(() => expect(openDialogSpy).toHaveBeenCalledTimes(1));
     expect(onClose).not.toHaveBeenCalled();
     expect(hint).toHaveValue('DRAFT-HINT');
+  });
+
+  it('asks about work the registered fields cannot report', () => {
+    // A dialog whose editor writes into state BESIDE the form — an opaque
+    // value with no control of its own to register, like a variable's
+    // synthetic block — is dirty in a way `selectIsFormDirty` cannot see.
+    // Opened with its fields already filled in, it reported "nothing to lose"
+    // for an edit that was about to be lost.
+    const onClose = vi.fn();
+    renderForm(onClose, () => true);
+
+    cancel();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(openDialogSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still closes immediately when that work has not been started', () => {
+    const onClose = vi.fn();
+    renderForm(onClose, () => false);
+
+    cancel();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(openDialogSpy).not.toHaveBeenCalled();
   });
 
   it('does not nag once an edit has been undone by hand', async () => {

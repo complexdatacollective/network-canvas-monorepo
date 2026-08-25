@@ -1,4 +1,3 @@
-import { omit } from 'es-toolkit/compat';
 import {
   useCallback,
   useEffect,
@@ -54,13 +53,19 @@ import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
+import { useStageSectionDeepLink } from './deepLink';
 import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
-import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
+import {
+  getInterface,
+  interfaceHasSkipLogicSection,
+  interfaceHasSyntheticSection,
+} from './Interfaces';
 import StageDraftConflictDialog from './StageDraftConflictDialog';
 import StageForm from './StageForm';
 import { flushStageLiveValues } from './StageFormBridge';
 import StageHeading from './StageHeading';
+import { withStageIdentity } from './withStageIdentity';
 
 type StageEditorProps = {
   id?: string | null;
@@ -121,6 +126,10 @@ const StageEditor = (props: StageEditorProps) => {
     setLocation('/protocol');
   }, [stageMissing, openDialog, setLocation, dispatch]);
 
+  // A `?section=` link opens the editor at the section it names, once the
+  // sections below have rendered.
+  useStageSectionDeepLink();
+
   const stagePath = stageIndex !== -1 ? `stages[${stageIndex}]` : null;
   const interfaceType = (stage?.type || type || 'Information') as StageType;
   const template = getInterface(interfaceType).template;
@@ -147,57 +156,23 @@ const StageEditor = (props: StageEditorProps) => {
   // interview runtime — could never survive a trip through the form.
   const stageFormCarriesSkipLogic = interfaceHasSkipLogicSection(interfaceType);
 
+  // The same question for the stage's generation parameters: an interface that
+  // renders the Synthetic data section has a field registered for `synthetic`,
+  // so the form's own values are authoritative for it.
+  const stageFormCarriesSynthetic = interfaceHasSyntheticSection(interfaceType);
+
   /**
-   * The stage's `id` and `type` belong to no field, so neither survives a trip
-   * through the form. Every consumer of the form's values has to merge them
-   * back: without `type` the stage matches no member of the schema's tagged
-   * union, and the whole protocol fails validation.
+   * The stage a set of form values stands for. Shared with every other surface
+   * that has to describe what a save would commit — see `withStageIdentity`,
+   * which owns the reasoning.
    */
-  const withStageIdentity = useCallback(
+  const withCommittedIdentity = useCallback(
     (values: Stage): Stage =>
-      ({
-        id: committedStage.id,
-        type: committedStage.type,
-        // No field owns either key, so `values` cannot carry them — dropping
-        // them keeps that explicit, and keeps the committed identity
-        // authoritative if a future field ever does register one.
-        ...omit(values as unknown as Record<string, unknown>, ['id', 'type']),
-        // Like the identity above, a committed `skipLogic` on an interface
-        // that renders no SkipLogic section structurally cannot be carried by
-        // `values`; without this merge the overwrite save would silently
-        // delete it on the first Finished Editing. Interfaces that DO render
-        // the section are excluded on purpose: there an absent key means the
-        // researcher toggled skip logic off, and restoring it would resurrect
-        // exactly what they removed.
-        ...(!stageFormCarriesSkipLogic && committedStage.skipLogic !== undefined
-          ? { skipLogic: committedStage.skipLogic }
-          : {}),
-        // A committed `synthetic` — the stage's generation parameters, which
-        // the schema allows on every stage type — is carried the same way,
-        // and for the same reason: without the merge the overwrite save would
-        // silently delete authored generation parameters on the first
-        // Finished Editing.
-        //
-        // UNCONDITIONAL, unlike `skipLogic` above, because no interface's
-        // section list authors `synthetic` today: on EVERY interface it is a
-        // key `values` structurally cannot carry, so there is no interface on
-        // which an absent key could mean "the researcher removed it". A gate
-        // here would therefore be a branch that is never taken. When Architect
-        // does gain a synthetic editor (#1420) it must add one — at that point
-        // the absence becomes a deletion on the interfaces that render it, and
-        // restoring the committed value would resurrect exactly what was
-        // removed.
-        //
-        // Costs nothing for a stage that never had one: no interface template
-        // seeds the key (see `interfaces.skipLogic.test.ts`), so
-        // `committedStage.synthetic` is `undefined` on a fresh stage, and both
-        // `prune` boundaries — the commit reducer and `buildProtocolWithStage`
-        // — strip an `undefined` value anyway.
-        ...(committedStage.synthetic !== undefined
-          ? { synthetic: committedStage.synthetic }
-          : {}),
-      }) as unknown as Stage,
-    [committedStage, stageFormCarriesSkipLogic],
+      withStageIdentity(values, committedStage, {
+        skipLogic: stageFormCarriesSkipLogic,
+        synthetic: stageFormCarriesSynthetic,
+      }),
+    [committedStage, stageFormCarriesSkipLogic, stageFormCarriesSynthetic],
   );
 
   // Preview state
@@ -234,7 +209,7 @@ const StageEditor = (props: StageEditorProps) => {
     const runValidation = () => {
       const wipProtocol = buildProtocolWithStage(
         protocol,
-        withStageIdentity(formValues),
+        withCommittedIdentity(formValues),
         id,
         insertAtIndex,
       );
@@ -268,7 +243,7 @@ const StageEditor = (props: StageEditorProps) => {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [protocol, formValues, id, insertAtIndex, withStageIdentity]);
+  }, [protocol, formValues, id, insertAtIndex, withCommittedIdentity]);
 
   const isStageInvalid = !isWipProtocolValid;
 
@@ -294,7 +269,7 @@ const StageEditor = (props: StageEditorProps) => {
       // off), which is why the update overwrites rather than merges: preview
       // already renders the stage without it, and a merge would silently
       // resurrect it on save.
-      const normalizedStage = withStageIdentity(values as unknown as Stage);
+      const normalizedStage = withCommittedIdentity(values as unknown as Stage);
 
       // The stage and every codebook edit its field editors made are promoted
       // in one action, so the protocol timeline, validation and persistence
@@ -304,7 +279,14 @@ const StageEditor = (props: StageEditorProps) => {
 
       return { success: true };
     },
-    [withStageIdentity, id, insertAtIndex, setLocation, dispatch, reduxStore],
+    [
+      withCommittedIdentity,
+      id,
+      insertAtIndex,
+      setLocation,
+      dispatch,
+      reduxStore,
+    ],
   );
 
   // Cancel handler with unsaved changes confirmation
@@ -412,7 +394,7 @@ const StageEditor = (props: StageEditorProps) => {
 
     const previewProtocol = buildProtocolWithStage(
       protocol,
-      withStageIdentity(liveValues),
+      withCommittedIdentity(liveValues),
       id,
       insertAtIndex,
     );
@@ -494,7 +476,7 @@ const StageEditor = (props: StageEditorProps) => {
     stageIndex,
     openDialog,
     reduxStore,
-    withStageIdentity,
+    withCommittedIdentity,
     id,
     insertAtIndex,
     useSyntheticData,
@@ -551,7 +533,7 @@ const StageEditor = (props: StageEditorProps) => {
           }
         />
         <span id={syntheticDataLabelId} className="text-sm">
-          Start preview with example data
+          Start preview with synthetic data
         </span>
       </div>
       <div className="flex items-center gap-3">
@@ -586,7 +568,7 @@ const StageEditor = (props: StageEditorProps) => {
       <StageDraftConflictDialog
         stageId={id}
         insertAtIndex={insertAtIndex}
-        withStageIdentity={withStageIdentity}
+        withStageIdentity={withCommittedIdentity}
       />
       <div className="relative h-full overflow-y-auto pb-32">
         <StageEditorNav

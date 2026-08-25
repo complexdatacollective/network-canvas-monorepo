@@ -78,7 +78,13 @@ type UseFieldResult = {
     'data-field-path': string; // Canonical internal key used to focus errors
     // Validate-on-blur is scoped to the whole field: this fires on focusout
     // bubbling from any descendant, so moving focus to an in-field control
-    // (a slot button, a sibling radio…) does not validate prematurely.
+    // (a slot button, a sibling radio…) does not validate prematurely. Nor
+    // does opening an overlay from inside the field, or moving around within
+    // one — a portal's events bubble through the tree that RENDERED it, so
+    // some of what arrives here is not this field's blur at all. A move that
+    // LEAVES the overlay is: whether it releases focus or hands it to another
+    // control, that is the researcher leaving, and the only notice of it the
+    // field gets.
     'onBlur': (e: React.FocusEvent<HTMLElement>) => void;
   };
   fieldProps: {
@@ -133,6 +139,67 @@ type UseFieldResult = {
 
 /** Default debounce delay for validateOnChange in milliseconds */
 const DEFAULT_VALIDATE_ON_CHANGE_DELAY = 1000;
+
+/**
+ * The roles an overlay layer announces itself with. A picker dialog, a menu
+ * and a listbox are all surfaces that appear ON TOP of the form rather than
+ * inside it, whoever rendered them.
+ */
+const OVERLAY_ROLES =
+  '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+
+/**
+ * Whether focus landed inside an overlay stacked above `field` — one the field
+ * is not part of, and which is not part of the field either (a combobox popup
+ * rendered inline belongs to its own field and is not "above" it).
+ */
+const isInOverlayAbove = (
+  field: HTMLElement,
+  landed: Element | null,
+): boolean => {
+  const overlay = landed?.closest(OVERLAY_ROLES) ?? null;
+  return (
+    overlay !== null && !overlay.contains(field) && !field.contains(overlay)
+  );
+};
+
+/**
+ * The outermost element the portalled event came from — the surface itself,
+ * for a portal mounted where portals go — or `null` where the walk runs into
+ * the field, which means the two are not separated by a portal at all.
+ *
+ * Needed because a surface is not obliged to announce a role, and the deferral
+ * below rests on the PORTAL boundary rather than on a recognised one.
+ */
+const portalSurfaceOf = (field: HTMLElement, from: Element): Element | null => {
+  const root = from.ownerDocument.body;
+  let node: Element = from;
+  while (node.parentElement !== null && node.parentElement !== root) {
+    node = node.parentElement;
+  }
+  return node.contains(field) ? null : node;
+};
+
+/**
+ * Whether focus is still inside the surface a portalled focusout came from.
+ *
+ * The question the deferral really wants answered. A move from one part of an
+ * overlay to another is the researcher still working in it; a move from the
+ * overlay straight to some other control is them leaving the field — and it is
+ * the ONLY notice the field gets, since focus never returns to it and no later
+ * event can come from inside it. Answered by role where a surface announces
+ * one, and by the portal boundary where it does not.
+ */
+const stayedInSurface = (
+  field: HTMLElement,
+  from: Element,
+  landed: Element | null,
+): boolean => {
+  if (landed === null) return false;
+  if (isInOverlayAbove(field, landed)) return true;
+  const surface = portalSurfaceOf(field, from);
+  return surface !== null && surface.contains(landed);
+};
 
 type UseFieldConfig = {
   name: string;
@@ -392,6 +459,31 @@ export function useField(config: UseFieldConfig): UseFieldResult {
 
   const handleContainerBlur = useCallback(
     (e: React.FocusEvent<HTMLElement>) => {
+      // The focusout did not come from inside this field, and focus went on
+      // somewhere else outside it. React delivers a portal's events to the
+      // tree that RENDERED it rather than the one that contains it, so a
+      // control in this field that opens an overlay — an attribute picker, a
+      // menu — hands the field every focus move made INSIDE that overlay.
+      // None of those is this field's blur: the researcher is still working in
+      // something the field put in front of them, whatever shape of portal it
+      // is rendered through and whether or not it announces an overlay role.
+      //
+      // A move that LEAVES the overlay is the exception, and is let through.
+      // Whether it releases focus — a surface closing, having been answered —
+      // or hands it straight to some other control, that focusout is the only
+      // one the field will ever receive for the departure: focus never came
+      // back, so no later event can come from inside it. Deferring those too
+      // would leave a field the researcher finished with permanently
+      // unblurred, and the value they committed never validated until the
+      // save.
+      if (
+        !(e.target instanceof Element) ||
+        (!e.currentTarget.contains(e.target) &&
+          stayedInSurface(e.currentTarget, e.target, e.relatedTarget))
+      ) {
+        return;
+      }
+
       // Focus moved to another control inside this field (a slot button, a
       // stepper, a sibling radio…) → the field is still active; don't validate
       // yet. The escape hatch validates on in-field focus moves anyway.
@@ -399,6 +491,18 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         !config.validateOnControlBlur &&
         e.currentTarget.contains(e.relatedTarget)
       ) {
+        return;
+      }
+
+      // Focus moved into an overlay stacked ABOVE this field — the picker one
+      // of its own controls just opened, or a dialog that took the screen. The
+      // researcher has not finished with the field; they are inside something
+      // it put in front of them, and validating now shows a half-finished
+      // field its own "required" errors while they are on their way to
+      // answering them. The re-render that follows can also swallow the very
+      // click that would have answered it. The field validates when focus
+      // really leaves it, and the save validates regardless.
+      if (isInOverlayAbove(e.currentTarget, e.relatedTarget)) {
         return;
       }
 

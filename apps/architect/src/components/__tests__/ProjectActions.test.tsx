@@ -203,7 +203,8 @@ describe('<ProjectActions />', () => {
     const historyActions = screen.getByRole('toolbar', {
       name: 'History actions',
     });
-    expect(within(pageActions).getAllByRole('separator')).toHaveLength(1);
+    // Two separators: navigation | synthetic-data | download segments.
+    expect(within(pageActions).getAllByRole('separator')).toHaveLength(2);
     expect(within(historyActions).getAllByRole('separator')).toHaveLength(1);
   });
 

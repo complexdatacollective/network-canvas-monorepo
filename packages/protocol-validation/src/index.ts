@@ -77,6 +77,8 @@ export {
   collectInterfaceImpliedRules,
   declaresTextGenerator,
   type EffectiveVariableRules,
+  type ImpliedRuleSource,
+  type ImpliedRuleSources,
   type InterfaceImpliedRules,
   inferTextGenerator,
   narrowVariableRules,
@@ -102,6 +104,10 @@ export {
 export {
   MAX_SYNTHETIC_PAIRS,
   MAX_SYNTHETIC_POPULATION,
+  // The typed identity an option value is compared by — the rule every
+  // refusal about weights rests on, and the one an editor keying the same
+  // table has to key it by.
+  optionValueKey,
 } from './shared/synthetic/helpers.ts';
 export { syntheticCountSupport } from './schemas/8/synthetic/helpers.ts';
 export {

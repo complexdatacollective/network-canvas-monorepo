@@ -9,6 +9,7 @@ import { CurrentProtocolSchema } from '../../schemas/index.ts';
 import {
   collectInterfaceImpliedRules,
   type EffectiveVariableRules,
+  narrowVariableRules,
   type ResolvedVariableSynthetic,
   resolveVariableSynthetic,
   type SyntheticResolvableVariable,
@@ -628,6 +629,114 @@ describe('the variables only a bin drop writes', () => {
       collectInterfaceImpliedRules({ stages: [formStage('hobbies')] })
         .binOnlyVariables.size,
     ).toBe(0);
+  });
+});
+
+describe('which stage implies each rule', () => {
+  const personKey = syntheticSubjectKey({ entity: 'node', type: 'person' });
+
+  const quickAddStage = (id: string, variable: string) => ({
+    id,
+    type: 'NameGeneratorQuickAdd',
+    label: id,
+    subject: { entity: 'node', type: 'person' },
+    quickAdd: variable,
+  });
+
+  const categoricalBinStage = (id: string, variable: string) => ({
+    id,
+    type: 'CategoricalBin',
+    label: id,
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      {
+        id: `${id}-p1`,
+        variable,
+        text: 'Sort them',
+        bucketSortOrder: [],
+        binSortOrder: [],
+      },
+    ],
+  });
+
+  const formStage = (id: string, variable: string) => ({
+    id,
+    type: 'AlterForm',
+    label: id,
+    subject: { entity: 'node', type: 'person' },
+    form: { fields: [{ variable }] },
+  });
+
+  const sourcesFor = (protocol: unknown, variableId: string) =>
+    collectInterfaceImpliedRules(protocol)
+      .impliedRuleSources.get(personKey)
+      ?.get(variableId);
+
+  it('names the one stage behind a rule, by its position', () => {
+    const protocol = {
+      stages: [formStage('about', 'age'), quickAddStage('quick', 'name')],
+    };
+
+    expect(sourcesFor(protocol, 'name')).toEqual([
+      { stageIndex: 1, rules: { required: true } },
+    ]);
+  });
+
+  it('separates the rules two stages each contribute', () => {
+    // The bin contributes both rules; the quick-add field contributes only
+    // the one. A reading that folded them first could not tell them apart.
+    const protocol = {
+      stages: [
+        categoricalBinStage('bin', 'hobbies'),
+        quickAddStage('quick', 'hobbies'),
+      ],
+    };
+
+    expect(sourcesFor(protocol, 'hobbies')).toEqual([
+      { stageIndex: 0, rules: { maxSelected: 1, required: true } },
+      { stageIndex: 1, rules: { required: true } },
+    ]);
+  });
+
+  it('lists the sources in timeline order whatever the walk order', () => {
+    const protocol = {
+      stages: [
+        formStage('about', 'hobbies'),
+        quickAddStage('quick', 'hobbies'),
+        categoricalBinStage('bin', 'hobbies'),
+      ],
+    };
+
+    expect(sourcesFor(protocol, 'hobbies')?.map((s) => s.stageIndex)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it('is exactly what the subject’s own rules are folded from', () => {
+    const protocol = {
+      stages: [
+        categoricalBinStage('bin', 'hobbies'),
+        formStage('about', 'hobbies'),
+      ],
+    };
+    const collected = collectInterfaceImpliedRules(protocol);
+    const sources = collected.impliedRuleSources.get(personKey)?.get('hobbies');
+
+    expect(
+      sources?.reduce(
+        (narrowed, source) => narrowVariableRules(narrowed, source.rules),
+        {},
+      ),
+    ).toEqual(collected.get(personKey)?.get('hobbies'));
+  });
+
+  it('records no source for a variable no interface constrains', () => {
+    const protocol = { stages: [formStage('about', 'hobbies')] };
+
+    expect(sourcesFor(protocol, 'hobbies')).toBeUndefined();
+    expect(collectInterfaceImpliedRules(protocol).impliedRuleSources.size).toBe(
+      0,
+    );
   });
 });
 

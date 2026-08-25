@@ -29,12 +29,17 @@ export class Toolbar {
       'return-to-timeline': 'Return to Stages',
       'print': 'Print',
       'finished-editing': 'Finished Editing',
+      'generate-synthetic-data': 'Generate synthetic data…',
     };
     return map[id] ?? id;
   }
 
   async download() {
     await this.button('download').click();
+  }
+
+  async generateSyntheticData() {
+    await this.button('generate-synthetic-data').click();
   }
 
   async undo() {

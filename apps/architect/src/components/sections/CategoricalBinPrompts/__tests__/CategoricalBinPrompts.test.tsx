@@ -564,3 +564,151 @@ describe('CategoricalBinPrompts', () => {
     expect(prompt).not.toHaveProperty('variableOptions');
   });
 });
+
+/**
+ * The one generation parameter a categorical bin prompt carries: how readily a
+ * generated participant reaches past the categories on offer.
+ *
+ * The schema attaches it to the branch that HAS an other bin and refuses it on
+ * the branch that does not, so the control lives inside that section and leaves
+ * with it — everything below is that rule, read from the saved prompt.
+ */
+const OTHER_BIN_ODDS_LABEL = 'Chance of the ‘other’ bin';
+
+const PROMPT_WITH_OTHER_BIN = {
+  id: 'p1',
+  text: 'Group these',
+  variable: 'group',
+  otherVariable: 'free_text',
+  otherOptionLabel: 'Other',
+  otherVariablePrompt: 'Please specify',
+};
+
+const editPromptWithOtherBin = async (
+  prompt: Record<string, unknown> = PROMPT_WITH_OTHER_BIN,
+) => {
+  const view = renderSection({
+    subject: { entity: 'node', type: 'person' },
+    prompts: [prompt],
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Edit prompt' }));
+  await screen.findByLabelText('otherVariable');
+  return view;
+};
+
+const otherBinOdds = () =>
+  screen.getByRole('spinbutton', { name: OTHER_BIN_ODDS_LABEL });
+
+const firstPrompt = (getPrompts: () => unknown) =>
+  (getPrompts() as Record<string, unknown>[])[0];
+
+describe('the chance a generated participant reaches the "other" bin', () => {
+  it('is offered only while the "Other" section is on', async () => {
+    await editPromptWithOtherBin();
+    expect(otherBinOdds()).toBeInTheDocument();
+
+    const [otherToggle] = screen
+      .getAllByRole('switch')
+      .filter((toggle) => toggle.getAttribute('aria-checked') === 'true');
+    if (!otherToggle) throw new Error('expected the "Other" toggle to be on');
+    fireEvent.click(otherToggle);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('spinbutton', { name: OTHER_BIN_ODDS_LABEL }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('saves a typed chance onto the prompt', async () => {
+    const { getPrompts } = await editPromptWithOtherBin();
+
+    const odds = otherBinOdds();
+    fireEvent.change(odds, { target: { value: '0.35' } });
+    fireEvent.blur(odds);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForSave('Save');
+
+    expect(firstPrompt(getPrompts)).toMatchObject({
+      synthetic: { otherBinProbability: 0.35 },
+    });
+  });
+
+  // Presence is authorship (spec governing rule 4): a prompt nobody has told
+  // anything about must not start carrying the schema's own default.
+  it('leaves an untouched prompt with no synthetic key at all', async () => {
+    const { getPrompts } = await editPromptWithOtherBin();
+
+    fireEvent.change(screen.getByLabelText('text'), {
+      target: { value: 'Sort these' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForSave('Save');
+
+    expect(firstPrompt(getPrompts)).not.toHaveProperty('synthetic');
+  });
+
+  /**
+   * The mirror image of the otherVariable trio's own clear. The schema refuses
+   * `synthetic` on a prompt with no `otherVariable` — 'synthetic other-bin odds
+   * require otherVariable to be set.' — so odds left behind by a toggle-off
+   * would make the saved prompt unparseable.
+   */
+  it('removes the whole synthetic key when the "Other" section is switched off', async () => {
+    const { getPrompts } = await editPromptWithOtherBin({
+      ...PROMPT_WITH_OTHER_BIN,
+      synthetic: { otherBinProbability: 0.4 },
+    });
+
+    const [otherToggle] = screen
+      .getAllByRole('switch')
+      .filter((toggle) => toggle.getAttribute('aria-checked') === 'true');
+    if (!otherToggle) throw new Error('expected the "Other" toggle to be on');
+    fireEvent.click(otherToggle);
+    await waitFor(() => {
+      expect(screen.queryByLabelText('otherVariable')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitForSave('Save');
+
+    expect(firstPrompt(getPrompts)).not.toHaveProperty('synthetic');
+  });
+
+  // Clearing the box is how a researcher takes the statement back, and the
+  // schema's own default is what a run then reads — so the key goes rather than
+  // the default being written into the protocol.
+  it('removes the key again when the box is cleared', async () => {
+    const { getPrompts } = await editPromptWithOtherBin({
+      ...PROMPT_WITH_OTHER_BIN,
+      synthetic: { otherBinProbability: 0.4 },
+    });
+
+    const odds = otherBinOdds();
+    expect(odds).toHaveValue(0.4);
+    fireEvent.change(odds, { target: { value: '' } });
+    fireEvent.blur(odds);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitForSave('Save');
+
+    expect(firstPrompt(getPrompts)).not.toHaveProperty('synthetic');
+  });
+
+  it('refuses a chance outside the window the schema states', async () => {
+    const { getPrompts } = await editPromptWithOtherBin();
+
+    const odds = otherBinOdds();
+    fireEvent.change(odds, { target: { value: '1.4' } });
+    fireEvent.blur(odds);
+    // Refusal rather than clamping: the box comes back to the value that was.
+    expect(odds).toHaveValue(null);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitForSave('Save');
+
+    expect(firstPrompt(getPrompts)).not.toHaveProperty('synthetic');
+  });
+});

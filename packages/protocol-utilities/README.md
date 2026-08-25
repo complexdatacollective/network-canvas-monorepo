@@ -17,6 +17,16 @@ protocols.
   byte-reproducible batches), `familyPedigree` (run-level population options),
   `captureTrace`, and `overrides` (fixture entities applied at their stage's
   creation draw).
+- `generateInterviewsAsync(protocol, options, assetData?, onProgress?, batch?)`
+  — the same batch, byte for byte, drawn so that the thread it runs on stays
+  usable: the driver hands control back between sessions (`batch.sliceMs`, one
+  frame by default; `batch.yieldControl` for a host with a scheduler of its
+  own). **Every browser host uses this one.** Drawing a session costs real work
+  and a batch may ask for `MAX_SYNTHETIC_INTERVIEWS` of them, so the
+  synchronous driver holds the tab for the whole run, with its `onProgress`
+  never reaching a frame it could render in. `generateInterviews` stays right
+  for a caller that owns its thread: a server route, a test, a one-session
+  preview.
 - `ProtocolBuilder` — fluent builder for codebooks, stages, prompts, forms,
   and full interview payloads. `getProtocolParsed()` returns the schema-parse
   of the built document; `getInterviewPayload(opts)` delegates to

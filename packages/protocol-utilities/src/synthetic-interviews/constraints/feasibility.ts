@@ -93,6 +93,13 @@ const variablesFor = (
  * its rows — is a protocol that would strand a real participant, which is the
  * same session the generator would have to invent; the refusal is
  * runtime-faithful rather than a generator limitation.
+ *
+ * Carries the STARVED stage's `stageId`, including where earlier stages
+ * sharing the roster are what starved it. That stage is the screen a
+ * participant is stranded on and the one whose gate, pool or position an
+ * author can change, so a surface routing refusals to a stage editor has one
+ * unambiguous place to show it. Only a demand summed over stages with no such
+ * screen — an exhausted `unique` slot — is left unowned.
  */
 const rosterConflicts = (
   codebook: StructuralCodebook,
@@ -114,6 +121,7 @@ const rosterConflicts = (
       entity: 'node' as const,
       entityType: demand.nodeType,
       ...(name === undefined ? {} : { entityTypeName: name }),
+      stageId: demand.stageId,
       variableIds: [],
       variableNames: [],
       rules: ['behaviours.minNodes'],
@@ -142,6 +150,7 @@ const populationConflicts = (
       entity: 'node' as const,
       entityType: demand.nodeType,
       ...(name === undefined ? {} : { entityTypeName: name }),
+      stageId: demand.stageId,
       variableIds: [],
       variableNames: [],
       rules: ['behaviours.minNodes'],
@@ -181,6 +190,7 @@ const pairConflicts = (
         entity: 'node' as const,
         entityType: demand.subjectType,
         ...(name === undefined ? {} : { entityTypeName: name }),
+        stageId: demand.stageId,
         variableIds: [],
         variableNames: [],
         rules: ['synthetic.count'],
@@ -210,6 +220,10 @@ const pairConflicts = (
  * seeds that reach the ceiling is a protocol that does not always generate, so
  * refusing it pre-seed is what keeps refusal seed-independent rather than
  * letting the draw discover it.
+ *
+ * Carries no `stageId`, deliberately. The demand is the sum of every stage
+ * that draws the slot, so no single stage is the one to change — which is why
+ * it belongs to the protocol-level verdict rather than to any stage editor.
  *
  * Measured on EVERY day a session of the batch can start, not the window's
  * anchor alone. A datetime window with an absolute bound and an open other

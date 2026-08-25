@@ -7,6 +7,10 @@ import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import {
+  type ArchitectValidation,
+  useValidationProps,
+} from '~/components/Form/toZodValidation';
+import {
   formattedInputOptions,
   getComponentsForType,
   getTypeForComponent,
@@ -49,18 +53,38 @@ const READ_FIELDS = [
  *
  * `getFormValues()` reports registered fields only, so anything the save
  * handler or the contradiction check reads has to be a real field. Used for
- * `_createNewVariable` in both editors, and for the composer editor's
- * `validation`, which it carries from the codebook without offering an editor
- * for it.
+ * `_createNewVariable` in both editors, the composer editor's `validation`
+ * (carried from the codebook with no editor of its own), the panel slots'
+ * fixed leaves, and the stage's whole synthetic descriptor.
+ *
+ * `validation` is offered because a registration WITHOUT one is a value the
+ * save cannot refuse however wrong it is: `formStore.validateForm()` skips a
+ * field with no validation function at all. That is harmless for a value some
+ * other control is responsible for, and not harmless at all for a hidden field
+ * carrying a whole schema-governed block — which is what the stage editor's
+ * "Synthetic data" section registers here.
  */
 export const HiddenFieldValue = ({
   name,
   initialValue,
+  validation,
 }: {
   name: string;
   initialValue?: FieldValue;
+  /** Architect's rule-name → parameter map, as `ArchitectField` takes it. */
+  validation?: ArchitectValidation;
 }) => {
-  useField({ name, initialValue });
+  // The same adapter every visible field goes through, so a hidden field's
+  // rules are written and read exactly like a visible one's — and so the
+  // `custom` entry keeps one identity across renders rather than
+  // re-registering the field (see `useValidationProps`).
+  const { nativeProps, custom } = useValidationProps(validation, name);
+  useField({
+    name,
+    initialValue,
+    ...nativeProps,
+    ...(custom ? { custom } : {}),
+  });
   return null;
 };
 

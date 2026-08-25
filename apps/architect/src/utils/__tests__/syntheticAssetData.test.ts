@@ -9,11 +9,11 @@ vi.mock('~/utils/assetUtils', () => ({
 }));
 
 const {
-  collectPreviewAssetData,
-  collectPreviewGeospatialData,
-  collectPreviewRosterData,
+  collectSyntheticAssetData,
+  collectSyntheticGeospatialData,
+  collectSyntheticRosterData,
   makeAssetResolver,
-} = await import('../previewAssetData');
+} = await import('../syntheticAssetData');
 
 const PROTOCOL_ID = 'protocol-1';
 const PEOPLE_CSV = 'Name,Age\nAda,36\nGrace,45\nAlan,41\n';
@@ -250,7 +250,7 @@ describe('makeAssetResolver', () => {
   });
 });
 
-describe('collectPreviewRosterData', () => {
+describe('collectSyntheticRosterData', () => {
   it('builds external data keyed by stage from the protocol rosters', async () => {
     getAssetById.mockResolvedValue({
       id: 'roster',
@@ -261,7 +261,7 @@ describe('collectPreviewRosterData', () => {
     const protocol = makeProtocol({
       stages: [rosterStage],
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewRosterData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticRosterData(protocol, PROTOCOL_ID);
 
     expect(result['stage-ngr']).toHaveLength(3);
     const [first] = result['stage-ngr']!;
@@ -276,7 +276,7 @@ describe('collectPreviewRosterData', () => {
     const protocol = makeProtocol({
       stages: [rosterStage],
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewRosterData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticRosterData(protocol, PROTOCOL_ID);
 
     expect(result).toEqual({});
   });
@@ -299,14 +299,14 @@ describe('collectPreviewRosterData', () => {
       stages: [explodingStage],
     } as unknown as Partial<CurrentProtocol>);
 
-    const result = await collectPreviewRosterData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticRosterData(protocol, PROTOCOL_ID);
 
     expect(result).toEqual({});
     expect(consoleError).toHaveBeenCalled();
   });
 });
 
-describe('collectPreviewGeospatialData', () => {
+describe('collectSyntheticGeospatialData', () => {
   it('builds the answer pool keyed by stage from the protocol GeoJSON', async () => {
     getAssetById.mockResolvedValue({
       id: 'regions',
@@ -318,7 +318,7 @@ describe('collectPreviewGeospatialData', () => {
       stages: [geospatialStage],
       assetManifest: { regions: GEOJSON_MANIFEST_ENTRY },
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewGeospatialData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticGeospatialData(protocol, PROTOCOL_ID);
 
     expect(result['stage-geo']).toEqual(['North', 'South']);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:geojson');
@@ -331,7 +331,7 @@ describe('collectPreviewGeospatialData', () => {
       stages: [geospatialStage],
       assetManifest: { regions: GEOJSON_MANIFEST_ENTRY },
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewGeospatialData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticGeospatialData(protocol, PROTOCOL_ID);
 
     // An absent key is what generation reads as "no pool was supplied" and
     // fabricates for; an empty array would claim the map has no areas at all.
@@ -358,13 +358,13 @@ describe('collectPreviewGeospatialData', () => {
         },
       },
     } as unknown as Partial<CurrentProtocol>);
-    const result = await collectPreviewGeospatialData(protocol, PROTOCOL_ID);
+    const result = await collectSyntheticGeospatialData(protocol, PROTOCOL_ID);
 
     expect(result['stage-geo']).toEqual(['North', 'South']);
   });
 });
 
-describe('collectPreviewAssetData', () => {
+describe('collectSyntheticAssetData', () => {
   it('resolves roster people and map answers from the same protocol', async () => {
     getAssetById.mockImplementation((assetId: string) =>
       Promise.resolve(
@@ -387,7 +387,7 @@ describe('collectPreviewAssetData', () => {
       },
     } as unknown as Partial<CurrentProtocol>);
 
-    const assetData = await collectPreviewAssetData(protocol, PROTOCOL_ID);
+    const assetData = await collectSyntheticAssetData(protocol, PROTOCOL_ID);
 
     expect(assetData.rosterNodes?.['stage-ngr']).toHaveLength(3);
     expect(assetData.geojsonPropertyValues?.['stage-geo']).toEqual([
@@ -397,7 +397,7 @@ describe('collectPreviewAssetData', () => {
   });
 
   it('yields empty pools rather than throwing when a protocol has no assets', async () => {
-    const assetData = await collectPreviewAssetData(
+    const assetData = await collectSyntheticAssetData(
       makeProtocol({
         assetManifest: {},
       } as unknown as Partial<CurrentProtocol>),

@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,10 +19,17 @@ const mocks = vi.hoisted(() => ({
   setLocation: vi.fn(),
   launchPreview: vi.fn(),
   hasSkipLogicSection: vi.fn(() => true),
+  // The stub interface below registers no `synthetic` field, so it stands for
+  // an interface that renders no Synthetic data section — the case the save's
+  // carry-through exists for. Flipped on in the test that covers the other.
+  hasSyntheticSection: vi.fn(() => false),
 }));
 
 vi.mock('wouter', () => ({
   useLocation: () => ['/protocol/stage/stage-1', mocks.setLocation],
+  // The editor opens at a section when the query names one (see `deepLink`);
+  // this stub stands for a plain stage URL, which names none.
+  useSearch: () => '',
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -46,10 +53,14 @@ vi.mock('~/components/ProjectNav/StageEditorNav', () => ({
     onCancel,
     onPreview,
     isStageInvalid,
+    previewOptionsContent,
   }: {
     onCancel: () => void;
     onPreview: () => void;
     isStageInvalid: boolean;
+    // The real nav hides these behind a popover; rendering them inline is what
+    // puts the editor's own preview options in reach of a query.
+    previewOptionsContent: ReactNode;
   }) => (
     <div>
       <button type="button" onClick={onCancel}>
@@ -58,6 +69,7 @@ vi.mock('~/components/ProjectNav/StageEditorNav', () => ({
       <button type="button" onClick={onPreview} disabled={isStageInvalid}>
         Preview
       </button>
+      {previewOptionsContent}
     </div>
   ),
 }));
@@ -105,6 +117,7 @@ vi.mock('../Interfaces', async () => {
   return {
     getInterface: () => ({ sections: [StageFields], template: {} }),
     interfaceHasSkipLogicSection: () => mocks.hasSkipLogicSection(),
+    interfaceHasSyntheticSection: () => mocks.hasSyntheticSection(),
   };
 });
 
@@ -128,8 +141,8 @@ const SKIP_LOGIC = {
 };
 
 // The generation parameters a hand-authored protocol may carry on a name
-// generator. No Architect section renders them, which is what the carry below
-// exists for.
+// generator. On an interface whose editor renders no Synthetic data section
+// no field can carry them, which is what the carry below exists for.
 const SYNTHETIC = {
   generatesData: true,
   responseBurden: 0.42,
@@ -239,6 +252,11 @@ describe('StageEditor', () => {
     // Module state shared with the navigation guards; a test that leaves a
     // confirmation pending would otherwise gag the next one.
     guardState.prompting = false;
+    // Restated rather than left to `clearAllMocks`, which clears calls but
+    // keeps a `mockReturnValue` a test set — so without these the interface
+    // shape one test chose would leak into the next.
+    mocks.hasSkipLogicSection.mockReturnValue(true);
+    mocks.hasSyntheticSection.mockReturnValue(false);
     mocks.openDialog.mockResolvedValue(false);
     mocks.launchPreview.mockResolvedValue({ kind: 'delivered' });
     // Most interfaces render the SkipLogic section; the Anonymisation-shaped
@@ -485,11 +503,31 @@ describe('StageEditor', () => {
     });
   });
 
+  describe('preview options', () => {
+    it('names the generated-data toggle "synthetic data"', () => {
+      // One term everywhere (spec governing rule 6). The switch is a bare
+      // button named through `aria-labelledby`, so this is also the assertion
+      // that it is named at all — the e2e page object locates it the same way.
+      renderEditor();
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'Start preview with synthetic data',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('switch', {
+          name: 'Start preview with example data',
+        }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('committed synthetic preservation', () => {
     it('carries a committed synthetic block through a zero-edit save', async () => {
-      // No interface's section list authors `synthetic`, so the form's values
-      // structurally cannot carry it and the overwrite save would delete the
-      // author's generation parameters outright.
+      // On an interface with no Synthetic data section the form's values
+      // structurally cannot carry the key, and the overwrite save would delete
+      // the author's generation parameters outright.
       const { container, dispatched } = renderEditor({
         stageOverrides: { synthetic: SYNTHETIC },
       });
@@ -508,9 +546,9 @@ describe('StageEditor', () => {
     });
 
     it('does not invent a synthetic key for a stage that never had one', async () => {
-      // The carry is unconditional, which is only safe because no interface
-      // template seeds the key: an invented one would appear in every stage a
-      // researcher creates, and in every committed e2e stage snapshot.
+      // No interface template seeds the key, so a stage created from scratch
+      // carries none: an invented one would appear in every stage a researcher
+      // creates, and in every committed e2e stage snapshot.
       const { container, dispatched } = renderEditor();
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
@@ -552,6 +590,29 @@ describe('StageEditor', () => {
       // `toEqual` alone would pass on a block that gained a key holding
       // `undefined`, which is exactly what a half-done carry produces.
       expect(JSON.stringify(stage.synthetic)).toBe(JSON.stringify(SYNTHETIC));
+    });
+
+    it('still drops an absent synthetic when the interface owns a Synthetic data section', async () => {
+      // The gate that makes the carry safe now that a section authors the key.
+      // The form carries no `synthetic` (the researcher reset it); on an
+      // interface that renders the section that absence is a removal, and the
+      // save must not resurrect what they removed.
+      mocks.hasSyntheticSection.mockReturnValue(true);
+      const { container, dispatched } = renderEditor({
+        stageOverrides: { synthetic: SYNTHETIC },
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Preview' })).toBeEnabled();
+      });
+
+      submitStageForm(container);
+
+      await waitFor(() => {
+        expect(findUpdateStage(dispatched)).toBeDefined();
+      });
+      expect('synthetic' in findUpdateStage(dispatched)!.payload.stage).toBe(
+        false,
+      );
     });
   });
 });

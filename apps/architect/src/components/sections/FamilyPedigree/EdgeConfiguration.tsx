@@ -19,6 +19,7 @@ import type {
 import NewVariableWindow, {
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import { EntitySelectControl } from '~/components/sections/fields/EntitySelectField/EntitySelectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
@@ -64,6 +65,9 @@ type VariableWindowInitialProps = {
     type: string;
   };
   lockedOptions: LockedVariableOptions | null;
+  /** See `prospectiveImpliedRules`. */
+  readOwningStage: () => Record<string, unknown> | undefined;
+  slotPath: string | null;
 };
 
 type VariableRowProps = {
@@ -290,36 +294,49 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
     ];
     setStageValue(params.field, id);
   };
+  const readOwningStage = useOwningStageReader();
   const initialWindowProps: VariableWindowInitialProps = {
     entity: edgeEntity,
     type: edgeType ?? '',
     initialValues: { name: '', type: '' },
     lockedOptions: null,
+    readOwningStage,
+    slotPath: null,
   };
   const [variableWindowProps, openVariableWindow] = useNewVariableWindowState(
     initialWindowProps,
     handleCreatedVariable,
   );
+  /**
+   * Opening the window is also declaring which slot the new attribute will
+   * fill: the stage field the created id is written into IS that slot's
+   * stage-relative path, so the window can ask the schema what this stage
+   * implies about an attribute there rather than being told the path twice.
+   */
+  const openVariableWindowForSlot = (
+    props: Omit<Partial<VariableWindowInitialProps>, 'slotPath'>,
+    field: string,
+  ) => openVariableWindow({ ...props, slotPath: field }, { field });
   const handleNewRelationshipTypeVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       {
         initialValues: { name, type: 'categorical' },
         lockedOptions: INTERFACE_OWNED_OPTION_SETS.relationshipType.options,
       },
-      { field: 'edgeConfig.relationshipTypeVariable' },
+      'edgeConfig.relationshipTypeVariable',
     );
   const handleNewIsActiveVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
-      { field: 'edgeConfig.isActiveVariable' },
+      'edgeConfig.isActiveVariable',
     );
   const handleNewGestationalCarrierVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       { initialValues: { name, type: 'boolean' }, lockedOptions: null },
-      { field: 'edgeConfig.isGestationalCarrierVariable' },
+      'edgeConfig.isGestationalCarrierVariable',
     );
   const handleNewGameteRoleVariable = (name: string) =>
-    openVariableWindow(
+    openVariableWindowForSlot(
       {
         initialValues: { name, type: 'categorical' },
         // Seed and lock the canonical value set — the interview writes these
@@ -327,7 +344,7 @@ const EdgeConfiguration = (_props: StageEditorSectionProps) => {
         // relationship-type variable).
         lockedOptions: INTERFACE_OWNED_OPTION_SETS.gameteRole.options,
       },
-      { field: 'edgeConfig.gameteRoleVariable' },
+      'edgeConfig.gameteRoleVariable',
     );
   return (
     <>

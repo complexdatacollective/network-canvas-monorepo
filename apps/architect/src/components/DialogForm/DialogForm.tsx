@@ -60,6 +60,12 @@ export type DialogFormProps = {
   /** Semantic width preset forwarded to the underlying Dialog. */
   size?: DialogProps['size'];
   /**
+   * Whether this dialog is holding work its registered fields cannot report —
+   * a value the editor keeps beside the form rather than in it. Counted as
+   * dirtiness, so dismissing asks first. See `useNestedDraftDialog`.
+   */
+  unregisteredDraft?: () => boolean;
+  /**
    * Where focus RETURNS when this dialog closes. Resolve lazily (a function) —
    * it is read after the exit animation, by which time a control that unmounted
    * while the dialog was open has been remounted as a different element.
@@ -90,6 +96,7 @@ const DialogFormBody = ({
   layoutId,
   style,
   size,
+  unregisteredDraft,
   finalFocus,
   aside,
   children,
@@ -109,6 +116,7 @@ const DialogFormBody = ({
   const { isSubmitting, requestClose } = useNestedDraftDialog({
     open,
     onClose,
+    ...(unregisteredDraft ? { unregisteredDraft } : {}),
   });
 
   /**

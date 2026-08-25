@@ -8,6 +8,7 @@ import NewVariableWindow, {
   type Entity,
   useNewVariableWindowState,
 } from '~/components/NewVariableWindow';
+import { useOwningStageReader } from '~/components/NewVariableWindow/prospectiveImpliedRules';
 import PromptText from '~/components/sections/PromptText';
 import type { RootState } from '~/ducks/modules/root';
 import { getVariableOptionsForSubject } from '~/selectors/codebook';
@@ -58,10 +59,19 @@ const PromptFields = ({
   // not the stage.
   const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
 
+  // An attribute created from here is bound to this prompt the moment the
+  // dialog closes, so the create-attribute window is told which stage and which
+  // slot it is creating for, and offers only what the rules that slot implies
+  // leave open. The index is arbitrary: what a slot implies is decided by the
+  // shape of the path, not by which prompt it is.
+  const readOwningStage = useOwningStageReader();
+
   const newVariableWindowInitialProps = {
     entity: entity as Entity,
     type,
     initialValues: { name: '', type: VARIABLE_TYPE },
+    readOwningStage,
+    slotPath: 'prompts.0.variable',
   };
 
   const handleCreatedNewVariable = (...args: unknown[]) => {

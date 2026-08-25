@@ -129,4 +129,117 @@ describe('codebook.updateVariable', () => {
 
     expect(next).toEqual(state);
   });
+
+  it('reconciles a CREATED variable too, not only an updated one', () => {
+    // The create-attribute dialog holds its synthetic block beside the form,
+    // so an option renamed after a weight was typed reaches the codebook with
+    // a weight naming a value the variable no longer offers. Creation goes
+    // through the same merge as an update, which is why one reconciliation
+    // covers both.
+    const created = reducer(
+      {
+        node: { person: { name: 'person', variables: {} } },
+        edge: {},
+      } as unknown as Codebook,
+      test.createVariable({
+        entity: 'node',
+        type: 'person',
+        variable: AGE,
+        configuration: {
+          name: 'hobbies',
+          type: 'categorical',
+          options: [
+            { label: 'Sport', value: 'exercise' },
+            { label: 'Music', value: 'music' },
+          ],
+          synthetic: {
+            optionWeights: [
+              { value: 'sport', weight: 5 },
+              { value: 'music', weight: 1 },
+            ],
+          },
+        } as unknown as Variable,
+      }),
+    );
+
+    expect(getAge(created)).toMatchObject({
+      synthetic: { optionWeights: [{ value: 'music', weight: 1 }] },
+    });
+  });
+
+  it('reconciles synthetic option metadata the new options have outgrown', () => {
+    // Every prompt editor that binds a categorical attribute writes its option
+    // list back through this action, carrying no synthetic block of its own —
+    // so a renamed option used to leave a weight naming a value the variable
+    // no longer offers, which `VariableSchema` refuses. The protocol became
+    // invalid from an editor that never mentioned generation.
+    const weighted = {
+      name: 'hobbies',
+      type: 'categorical',
+      options: [
+        { label: 'Sport', value: 'sport' },
+        { label: 'Music', value: 'music' },
+      ],
+      synthetic: {
+        optionWeights: [
+          { value: 'sport', weight: 5 },
+          { value: 'music', weight: 1 },
+        ],
+      },
+    } as unknown as Variable;
+
+    const next = reducer(
+      codebookWith(weighted),
+      test.updateVariable({
+        variable: AGE,
+        configuration: {
+          options: [
+            { label: 'Sport', value: 'exercise' },
+            { label: 'Music', value: 'music' },
+          ],
+        } as Partial<Variable>,
+      }),
+    );
+
+    expect(getAge(next)).toMatchObject({
+      synthetic: { optionWeights: [{ value: 'music', weight: 1 }] },
+    });
+  });
+
+  it('reconciles a distribution the new validation bounds have outgrown', () => {
+    // The same write from a stage's field editor, this time carrying
+    // validation rather than options: narrowing the attribute to 18–80 strands
+    // a synthetic constant of 5, which `VariableSchema` refuses just as firmly
+    // as a stale weight — and there is no generation control in that editor
+    // either.
+    const constant = {
+      ...ageVariable,
+      synthetic: {
+        distribution: 'constant',
+        value: 5,
+        missingProbability: 0.2,
+      },
+    } as unknown as Variable;
+
+    const next = reducer(
+      codebookWith(constant),
+      test.updateVariable({
+        variable: AGE,
+        configuration: {
+          validation: { minValue: 18, maxValue: 80 },
+        } as Partial<Variable>,
+        replaceProperties: ['validation'],
+      }),
+    );
+
+    // The constant went with the bounds it could not satisfy; the missingness
+    // beside it, which nothing about the bounds touches, stayed.
+    expect(getAge(next)).toEqual({
+      name: 'age',
+      type: 'number',
+      component: 'Number',
+      validation: { minValue: 18, maxValue: 80 },
+      synthetic: { missingProbability: 0.2 },
+    });
+  });
 });

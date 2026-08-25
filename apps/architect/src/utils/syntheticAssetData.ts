@@ -8,17 +8,26 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 import { getAssetById } from '~/utils/assetUtils';
 
+/**
+ * The host side of the engine's `AssetData` contract, resolved from the
+ * editor's own asset store. Everything synthetic generation cannot fetch for
+ * itself — the roster rows a roster stage draws people from, and the
+ * feature-property values a Geospatial stage's map can produce — collected
+ * here once, for every surface that runs the engine on a draft: the preview
+ * popup's session build and the live feasibility analysis.
+ */
+
 /** The manifest entry types this module knows how to hand to a collector. */
 type ResolvableAssetType = 'network' | 'geojson';
 
 /**
- * Resolves a protocol asset id to a fetchable asset for synthetic preview
- * generation, reusing the editor's own asset store (IndexedDB, then the
- * Safari-private in-memory fallback). Previews run on draft protocols, so an
- * asset may be of the wrong kind, may lack a source, or may not exist yet —
- * every unresolvable case returns null and any error is swallowed, so an asset
- * problem can never break a preview. The worst case is that a stage's pool goes
- * unresolved and generation fabricates values for it instead, exactly as before
+ * Resolves a protocol asset id to a fetchable asset for synthetic generation,
+ * reusing the editor's own asset store (IndexedDB, then the Safari-private
+ * in-memory fallback). Generation runs on draft protocols, so an asset may be
+ * of the wrong kind, may lack a source, or may not exist yet — every
+ * unresolvable case returns null and any error is swallowed, so an asset
+ * problem can never break the surface asking. The worst case is that a stage's
+ * pool goes unresolved and the engine reads it as such, exactly as before
  * asset data was wired in.
  *
  * `allowedTypes` is checked here because the manifest is the only place an
@@ -68,24 +77,25 @@ export function makeAssetResolver(
       };
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error(`Could not resolve asset "${assetId}" for preview`, error);
+      console.error(`Could not resolve asset "${assetId}"`, error);
       return null;
     }
   };
 }
 
 /**
- * Roster node pools (keyed by stage id) for a preview's synthetic session,
- * drawn from the protocol's actual roster assets.
+ * Roster node pools (keyed by stage id) for a synthetic run, drawn from the
+ * protocol's actual roster assets.
  */
-export async function collectPreviewRosterData(
+export async function collectSyntheticRosterData(
   protocol: CurrentProtocol,
   protocolId: string,
 ): Promise<Record<string, NcNode[]>> {
-  // Load-bearing soft-fail: previews run on draft protocols, so collection can
-  // throw on half-built shapes that per-asset error isolation can't anticipate
-  // (e.g. a malformed panel filter throwing inside network-query). Any failure
-  // returns {} so the preview still renders, falling back to fabricated people.
+  // Load-bearing soft-fail: synthetic runs happen on draft protocols, so
+  // collection can throw on half-built shapes that per-asset error isolation
+  // can't anticipate (e.g. a malformed panel filter throwing inside
+  // network-query). Any failure returns {} so the caller still runs, its
+  // pools simply unresolved.
   try {
     return await collectRosterExternalData({
       stages: protocol.stages,
@@ -94,19 +104,19 @@ export async function collectPreviewRosterData(
     });
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Could not collect roster data for preview', error);
+    console.error('Could not collect roster data', error);
     return {};
   }
 }
 
 /**
- * Geospatial answer pools (keyed by stage id) for a preview's synthetic
- * session: the values a map tap can store, read off each Geospatial stage's
- * map data asset — manifest-typed `geojson` or `network`, the two kinds the
- * schema lets `mapOptions.dataSourceAssetId` reference. Soft-fails to {} for
- * the same reason its roster sibling does.
+ * Geospatial answer pools (keyed by stage id) for a synthetic run: the values
+ * a map tap can store, read off each Geospatial stage's map data asset —
+ * manifest-typed `geojson` or `network`, the two kinds the schema lets
+ * `mapOptions.dataSourceAssetId` reference. Soft-fails to {} for the same
+ * reason its roster sibling does.
  */
-export async function collectPreviewGeospatialData(
+export async function collectSyntheticGeospatialData(
   protocol: CurrentProtocol,
   protocolId: string,
 ): Promise<Record<string, (string | number)[]>> {
@@ -120,27 +130,30 @@ export async function collectPreviewGeospatialData(
     });
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Could not collect geospatial data for preview', error);
+    console.error('Could not collect geospatial data', error);
     return {};
   }
 }
 
 /**
- * Everything `generateInterviews` cannot fetch for itself, resolved from the
+ * Everything the synthetic engine cannot fetch for itself, resolved from the
  * editor's own asset store: the roster rows a roster stage draws people from,
  * and the feature-property values a Geospatial stage's map can produce.
  *
- * A stage whose asset could not be resolved contributes no key at all, which is
- * what the engine reads as "no pool was supplied" — distinct from a pool known
- * to be empty — and fabricates for instead.
+ * A stage whose asset could not be resolved contributes no key at all, which
+ * is what the engine reads as "the host looked and could not resolve this
+ * source" — distinct from a pool known to be empty, and grounds for the
+ * feasibility gate to refuse a stage whose own `behaviours.minNodes` floor the
+ * missing pool cannot meet. The engine never fabricates a pool, and neither
+ * does this module.
  */
-export async function collectPreviewAssetData(
+export async function collectSyntheticAssetData(
   protocol: CurrentProtocol,
   protocolId: string,
 ): Promise<AssetData> {
   const [rosterNodes, geojsonPropertyValues] = await Promise.all([
-    collectPreviewRosterData(protocol, protocolId),
-    collectPreviewGeospatialData(protocol, protocolId),
+    collectSyntheticRosterData(protocol, protocolId),
+    collectSyntheticGeospatialData(protocol, protocolId),
   ]);
 
   return { rosterNodes, geojsonPropertyValues };
